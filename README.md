@@ -1,2 +1,31 @@
-# cht-platform-tool
-Healthcare Professional Engagement Platform
+# CHT Platform
+
+Healthcare Professional Engagement Platform - AI-powered content hub connecting KOLs and HCPs.
+
+## Project Structure
+
+```
+cht-platform/
+├── infrastructure/    # Terraform AWS infrastructure
+├── backend/          # TBD
+├── docs/             # Documentation
+└── .github/
+    └── workflows/    # CI/CD pipelines
+```
+
+## Tech Stack
+
+- **Backend**: Node.js + TypeScript + NestJS
+- **Database**: PostgreSQL + Prisma
+- **Infrastructure**: Terraform + AWS
+- **CI/CD**: GitHub Actions
+
+## Getting Started
+
+Documentation coming soon...
+
+## Week 1 Status
+
+- ✅ GitHub repository created
+- ⏳ AWS infrastructure (in progress)
+- ⏳ Backend API (not started)
