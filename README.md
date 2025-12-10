@@ -15,8 +15,8 @@ cht-platform/
 
 ## Tech Stack
 
-- **Backend**: Node.js + TypeScript + NestJS
-- **Database**: PostgreSQL + Prisma
+- **Backend**: TBD
+- **Database**: TBD
 - **Infrastructure**: Terraform + AWS
 - **CI/CD**: GitHub Actions
 
