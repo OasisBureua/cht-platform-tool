@@ -24,8 +24,8 @@ cht-platform/
 
 Documentation coming soon...
 
-## Week 1 Status
+## Status
 
-- ✅ GitHub repository created
-- ⏳ AWS infrastructure (in progress)
-- ⏳ Backend API (not started)
+- ✅ Repository created
+- ⏳ Infrastructure setup in progress
+- ⏳ Backend API coming soon
