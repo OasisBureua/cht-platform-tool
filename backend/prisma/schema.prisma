@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  npiNumber      String   @unique
+  firstName      String
+  lastName       String
+  specialization String?
+  credentials    String?
+  authId         String   @unique
+  linkedInUrl    String?
+  bio            String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  videoViews         VideoView[]
+  programEnrollments ProgramEnrollment[]
+  surveyResponses    SurveyResponse[]
+  payments           Payment[]
+  cmeCredits         CMECredit[]
+
+  @@index([email])
+  @@index([npiNumber])
+}
+
+model Program {
+  id                String    @id @default(uuid())
+  title             String
+  description       String?
+  creditAmount      Float
+  accreditationBody String?
+  status            String    @default("draft")
+  publishedAt       DateTime?
+  sponsorName       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  videos      Video[]
+  surveys     Survey[]
+  enrollments ProgramEnrollment[]
+  cmeCredits  CMECredit[]
+
+  @@index([status])
+}
+
+model Video {
+  id           String   @id @default(uuid())
+  programId    String
+  program      Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  platform     String
+  videoId      String
+  embedUrl     String
+  duration     Int
+  thumbnailUrl String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  views VideoView[]
+
+  @@index([programId])
+  @@index([platform, videoId])
+}
+
+model VideoView {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId        String
+  video          Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  watchedSeconds Int       @default(0)
+  progress       Int       @default(0)
+  completed      Boolean   @default(false)
+  startedAt      DateTime  @default(now())
+  lastWatchedAt  DateTime  @updatedAt
+  completedAt    DateTime?
+
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([videoId])
+}
+
+model ProgramEnrollment {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId       String
+  program         Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  overallProgress Int       @default(0)
+  completed       Boolean   @default(false)
+  enrolledAt      DateTime  @default(now())
+  completedAt     DateTime?
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@index([programId])
+}
+
+model Survey {
+  id          String   @id @default(uuid())
+  programId   String
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        String
+  required    Boolean  @default(false)
+  questions   Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  responses SurveyResponse[]
+
+  @@index([programId])
+}
+
+model SurveyResponse {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surveyId    String
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers     Json
+  score       Int?
+  submittedAt DateTime @default(now())
+
+  @@unique([userId, surveyId])
+  @@index([userId])
+  @@index([surveyId])
+}
+
+model CMECredit {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  programId      String
+  program        Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  credits        Float
+  category       String?
+  certificateUrl String?
+  awardedAt      DateTime  @default(now())
+  expiresAt      DateTime?
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@index([programId])
+}
+
+model Payment {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount          Float
+  currency        String    @default("USD")
+  description     String
+  programId       String?
+  stripePaymentId String?   @unique
+  stripeStatus    String?
+  w9Collected     Boolean   @default(false)
+  taxYear         Int?
+  status          String    @default("pending")
+  createdAt       DateTime  @default(now())
+  paidAt          DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([stripePaymentId])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String?
+  eventName String
+  eventData Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([eventName])
+  @@index([userId])
+  @@index([createdAt])
+}
