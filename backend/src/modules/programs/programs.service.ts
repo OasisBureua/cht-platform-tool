@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QueueService } from '../../queue/queue.service';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
 
 @Injectable()
 export class ProgramsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private queueService: QueueService,
+  ) {}
 
   async create(createProgramDto: CreateProgramDto) {
     const data = this.removeUndefined(createProgramDto);
@@ -114,15 +118,24 @@ export class ProgramsService {
       return existing;
     }
 
-    return this.prisma.programEnrollment.create({
+    const enrollment = await this.prisma.programEnrollment.create({
       data: {
         userId,
         programId,
       },
       include: {
         program: true,
+        user: true,
       },
     });
+
+    // Queue enrollment confirmation email
+    await this.queueService.sendEnrollmentConfirmation(
+      enrollment.user.email,
+      enrollment.program.title,
+    );
+
+    return enrollment;
   }
 
   async getEnrollments(programId: string) {
@@ -135,7 +148,7 @@ export class ProgramsService {
             email: true,
             firstName: true,
             lastName: true,
-            specialty: true,  // ← Added back
+            specialty: true,
             state: true,
           },
         },

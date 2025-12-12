@@ -1,14 +1,17 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { QueueService } from '../../queue/queue.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private queueService: QueueService,
+  ) {}
 
   async create(createUserDto: CreateUserDto) {
-    // Check if user already exists
     const existing = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
     });
@@ -17,13 +20,18 @@ export class UsersService {
       throw new ConflictException('User with this email already exists');
     }
 
-    // Remove undefined fields
     const data = this.removeUndefined(createUserDto);
-
-    // Create the user
-    return this.prisma.user.create({
+    const user = await this.prisma.user.create({
       data,
     });
+
+    // Queue welcome email
+    await this.queueService.sendWelcomeEmail(
+      user.email,
+      `${user.firstName} ${user.lastName}`,
+    );
+
+    return user;
   }
 
   async findAll(page = 1, limit = 10) {
@@ -69,9 +77,7 @@ export class UsersService {
 
   async update(id: string, updateUserDto: UpdateUserDto) {
     try {
-      // Remove undefined fields
       const data = this.removeUndefined(updateUserDto);
-
       return await this.prisma.user.update({
         where: { id },
         data,
@@ -91,7 +97,6 @@ export class UsersService {
     }
   }
 
-  // Helper method to remove undefined fields
   private removeUndefined(obj: any): any {
     return Object.fromEntries(
       Object.entries(obj).filter(([_, value]) => value !== undefined)
