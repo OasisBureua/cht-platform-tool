@@ -8,184 +8,163 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(uuid())
-  email          String   @unique
-  npiNumber      String   @unique
-  firstName      String
-  lastName       String
-  specialization String?
-  credentials    String?
-  authId         String   @unique
-  linkedInUrl    String?
-  bio            String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String              @id @default(cuid())
+  email           String              @unique
+  firstName       String
+  lastName        String
+  authId          String              @unique
+  npiNumber       String?             @unique
+  specialty       String?
+  state           String?
+  licenseNumber   String?
+  role            String              @default("HCP")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  analyticsEvents AnalyticsEvent[]
+  cmeCredits      CMECredit[]
+  payments        Payment[]
+  enrollments     ProgramEnrollment[]
+  surveyResponses SurveyResponse[]
+  videoViews      VideoView[]
 
-  videoViews         VideoView[]
-  programEnrollments ProgramEnrollment[]
-  surveyResponses    SurveyResponse[]
-  payments           Payment[]
-  cmeCredits         CMECredit[]
-
-  @@index([email])
-  @@index([npiNumber])
+  @@map("User")
 }
 
 model Program {
-  id                String    @id @default(uuid())
+  id                String              @id @default(cuid())
   title             String
-  description       String?
+  description       String
+  thumbnailUrl      String?
   creditAmount      Float
   accreditationBody String?
-  status            String    @default("draft")
-  publishedAt       DateTime?
-  sponsorName       String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  status            String              @default("DRAFT")
+  sponsorName       String
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  cmeCredits        CMECredit[]
+  enrollments       ProgramEnrollment[]
+  surveys           Survey[]
+  videos            Video[]
 
-  videos      Video[]
-  surveys     Survey[]
-  enrollments ProgramEnrollment[]
-  cmeCredits  CMECredit[]
-
-  @@index([status])
+  @@map("Program")
 }
 
 model Video {
-  id           String   @id @default(uuid())
-  programId    String
-  program      Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
-  title        String
-  description  String?
-  platform     String
-  videoId      String
-  embedUrl     String
-  duration     Int
-  thumbnailUrl String?
-  order        Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String      @id @default(cuid())
+  programId   String
+  title       String
+  description String?
+  platform    String
+  videoId     String
+  embedUrl    String
+  duration    Int
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  program     Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  views       VideoView[]
 
-  views VideoView[]
-
-  @@index([programId])
-  @@index([platform, videoId])
+  @@map("Video")
 }
 
 model VideoView {
-  id             String    @id @default(uuid())
+  id             String   @id @default(cuid())
   userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId        String
-  video          Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
-  watchedSeconds Int       @default(0)
-  progress       Int       @default(0)
-  completed      Boolean   @default(false)
-  startedAt      DateTime  @default(now())
-  lastWatchedAt  DateTime  @updatedAt
-  completedAt    DateTime?
+  watchedSeconds Int      @default(0)
+  progress       Float    @default(0)
+  completed      Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video          Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
 
   @@unique([userId, videoId])
-  @@index([userId])
-  @@index([videoId])
+  @@map("VideoView")
 }
 
 model ProgramEnrollment {
-  id              String    @id @default(uuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   programId       String
-  program         Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
-  overallProgress Int       @default(0)
-  completed       Boolean   @default(false)
   enrolledAt      DateTime  @default(now())
+  overallProgress Float     @default(0)
+  completed       Boolean   @default(false)
   completedAt     DateTime?
+  program         Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, programId])
-  @@index([userId])
-  @@index([programId])
+  @@map("ProgramEnrollment")
 }
 
 model Survey {
-  id          String   @id @default(uuid())
+  id          String           @id @default(cuid())
   programId   String
-  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
   title       String
   description String?
-  type        String
-  required    Boolean  @default(false)
   questions   Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type        String
+  required    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  program     Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  responses   SurveyResponse[]
 
-  responses SurveyResponse[]
-
-  @@index([programId])
+  @@map("Survey")
 }
 
 model SurveyResponse {
-  id          String   @id @default(uuid())
+  id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   surveyId    String
-  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
   answers     Json
-  score       Int?
+  score       Float?
   submittedAt DateTime @default(now())
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, surveyId])
-  @@index([userId])
-  @@index([surveyId])
+  @@map("SurveyResponse")
 }
 
 model CMECredit {
-  id             String    @id @default(uuid())
+  id             String    @id @default(cuid())
   userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   programId      String
-  program        Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
   credits        Float
-  category       String?
   certificateUrl String?
-  awardedAt      DateTime  @default(now())
+  issuedAt       DateTime  @default(now())
   expiresAt      DateTime?
+  program        Program   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, programId])
-  @@index([userId])
-  @@index([programId])
+  @@map("CMECredit")
 }
 
 model Payment {
-  id              String    @id @default(uuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   amount          Float
-  currency        String    @default("USD")
-  description     String
-  programId       String?
-  stripePaymentId String?   @unique
-  stripeStatus    String?
+  stripePaymentId String?
   w9Collected     Boolean   @default(false)
-  taxYear         Int?
-  status          String    @default("pending")
-  createdAt       DateTime  @default(now())
+  status          String
   paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([status])
-  @@index([stripePaymentId])
+  @@map("Payment")
 }
 
 model AnalyticsEvent {
-  id        String   @id @default(uuid())
-  userId    String?
+  id        String   @id @default(cuid())
+  userId    String
   eventName String
-  eventData Json?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  eventData Json
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([eventName])
-  @@index([userId])
-  @@index([createdAt])
+  @@map("AnalyticsEvent")
 }
