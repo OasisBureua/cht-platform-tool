@@ -105,8 +105,8 @@ resource "aws_elasticache_subnet_group" "redis" {
 # ElastiCache Redis Replication Group
 # ============================================
 resource "aws_elasticache_replication_group" "redis" {
+  description                = "Redis cache for ${var.project_name} ${var.environment}"
   replication_group_id       = "${var.project_name}-redis-${var.environment}"
-  replication_group_description = "Redis cache for ${var.project_name} ${var.environment}"
   
   engine                     = "redis"
   engine_version             = var.redis_engine_version
