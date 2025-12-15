@@ -1,31 +1,30 @@
-"""
-Worker Service Configuration
-"""
+import os
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
-    """Application settings"""
-    
     # Environment
     ENVIRONMENT: str = "development"
+    AWS_REGION: str = "us-east-1"
     
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/cht_platform"
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql://postgres:postgres@localhost:5432/cht_platform"
+    )
     
-    # Redis
-    REDIS_HOST: str = "localhost"
-    REDIS_PORT: int = 6379
-    REDIS_DB: int = 0
+    # SQS Queue URLs
+    SQS_EMAIL_QUEUE_URL: str = os.getenv("SQS_EMAIL_QUEUE_URL", "")
+    SQS_PAYMENT_QUEUE_URL: str = os.getenv("SQS_PAYMENT_QUEUE_URL", "")
+    SQS_CME_QUEUE_URL: str = os.getenv("SQS_CME_QUEUE_URL", "")
     
-    # Stripe
-    STRIPE_SECRET_KEY: str = ""
-    STRIPE_WEBHOOK_SECRET: str = ""
+    # External Services
+    STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
+    SENDGRID_API_KEY: str = os.getenv("SENDGRID_API_KEY", "")
+    SENDGRID_FROM_EMAIL: str = os.getenv("SENDGRID_FROM_EMAIL", "noreply@chtplatform.com")
     
-    # SendGrid
-    SENDGRID_API_KEY: str = ""
-    SENDGRID_FROM_EMAIL: str = "noreply@chtplatform.com"
+    # S3 Configuration
+    S3_BUCKET_CERTIFICATES: str = os.getenv("S3_BUCKET_CERTIFICATES", "")
     
     class Config:
         env_file = ".env"

@@ -1,26 +1,10 @@
-"""
-Background jobs
-"""
-from app.jobs.email_jobs import (
-    send_email,
-    send_welcome_email,
-    send_enrollment_confirmation,
-    send_cme_certificate_email,
-)
-from app.jobs.payment_jobs import (
-    process_payment,
-    process_honorarium,
-)
-from app.jobs.cme_jobs import (
-    generate_cme_certificate,
-)
+# Export job functions for easy importing
+from . import email_jobs
+from . import payment_jobs
+from . import cme_jobs
 
 __all__ = [
-    "send_email",
-    "send_welcome_email",
-    "send_enrollment_confirmation",
-    "send_cme_certificate_email",
-    "process_payment",
-    "process_honorarium",
-    "generate_cme_certificate",
+    'email_jobs',
+    'payment_jobs',
+    'cme_jobs',
 ]
