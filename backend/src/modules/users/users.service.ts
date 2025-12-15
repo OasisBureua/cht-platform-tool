@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QueueService } from '../../queue/queue.service';
+import { SqsService } from '../../queue/sqs.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
@@ -8,28 +12,43 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UsersService {
   constructor(
     private prisma: PrismaService,
-    private queueService: QueueService,
+    private sqsService: SqsService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-    const existing = await this.prisma.user.findUnique({
+    // Check if user already exists
+    const existingUser = await this.prisma.user.findUnique({
       where: { email: createUserDto.email },
     });
 
-    if (existing) {
+    if (existingUser) {
       throw new ConflictException('User with this email already exists');
     }
 
-    const data = this.removeUndefined(createUserDto);
-    const user = await this.prisma.user.create({
-      data,
+    // Check if authId already exists
+    const existingAuthId = await this.prisma.user.findUnique({
+      where: { authId: createUserDto.authId },
     });
 
-    // Queue welcome email
-    await this.queueService.sendWelcomeEmail(
-      user.email,
-      `${user.firstName} ${user.lastName}`,
-    );
+    if (existingAuthId) {
+      throw new ConflictException('User with this Auth0 ID already exists');
+    }
+
+    // Create user
+    const user = await this.prisma.user.create({
+      data: createUserDto,
+    });
+
+    // Queue welcome email (async, don't await)
+    this.sqsService
+      .sendWelcomeEmail(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+      )
+      .catch((error) => {
+        console.error('Failed to queue welcome email:', error);
+        // Don't fail user creation if email queuing fails
+      });
 
     return user;
   }
@@ -75,31 +94,30 @@ export class UsersService {
     });
   }
 
+  async findByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto) {
-    try {
-      const data = this.removeUndefined(updateUserDto);
-      return await this.prisma.user.update({
-        where: { id },
-        data,
-      });
-    } catch (error) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
+    // Check if user exists
+    await this.findOne(id);
+
+    // Update user
+    return this.prisma.user.update({
+      where: { id },
+      data: updateUserDto,
+    });
   }
 
   async remove(id: string) {
-    try {
-      return await this.prisma.user.delete({
-        where: { id },
-      });
-    } catch (error) {
-      throw new NotFoundException(`User with ID ${id} not found`);
-    }
-  }
+    // Check if user exists
+    await this.findOne(id);
 
-  private removeUndefined(obj: any): any {
-    return Object.fromEntries(
-      Object.entries(obj).filter(([_, value]) => value !== undefined)
-    );
+    // Delete user
+    return this.prisma.user.delete({
+      where: { id },
+    });
   }
 }

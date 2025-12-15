@@ -7,7 +7,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { QueueModule } from 'src/queue/queue.module';
-import { RolesGaurd } from './auth/guards/roles.guard';
+import { RolesGuard } from './auth/guards/roles.guard';
 import { UserModule } from './modules/users/user.module';
 import { ProgramsModule } from './modules/programs/programs.module';
 import { VideosModuule } from './modules/videos/videos.module';
@@ -34,7 +34,7 @@ import { VideosModuule } from './modules/videos/videos.module';
     },
     {
       provide: APP_GUARD,
-      useClass: RolesGaurd, // Authorization (second)
+      useClass: RolesGuard, // Authorization (second)
     }
   ],
 })

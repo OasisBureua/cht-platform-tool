@@ -4,7 +4,7 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Observable } from 'rxjs';
 
 @Injectable()
-export class RolesGaurd implements CanActivate {
+export class RolesGuard implements CanActivate {
     constructor(private reflector: Reflector) {}
 
     canActivate(context: ExecutionContext) {

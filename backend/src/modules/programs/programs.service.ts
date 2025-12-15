@@ -1,6 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { QueueService } from '../../queue/queue.service';
+import { SqsService } from '../../queue/sqs.service';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { UpdateProgramDto } from './dto/update-program.dto';
 
@@ -8,18 +12,18 @@ import { UpdateProgramDto } from './dto/update-program.dto';
 export class ProgramsService {
   constructor(
     private prisma: PrismaService,
-    private queueService: QueueService,
+    private sqsService: SqsService,
   ) {}
 
   async create(createProgramDto: CreateProgramDto) {
-    const data = this.removeUndefined(createProgramDto);
     return this.prisma.program.create({
-      data,
+      data: createProgramDto,
     });
   }
 
   async findAll(page = 1, limit = 10, status?: string) {
     const skip = (page - 1) * limit;
+
     const where = status ? { status } : {};
 
     const [programs, total] = await Promise.all([
@@ -27,6 +31,7 @@ export class ProgramsService {
         where,
         skip,
         take: limit,
+        orderBy: { createdAt: 'desc' },
         include: {
           _count: {
             select: {
@@ -35,7 +40,6 @@ export class ProgramsService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
       }),
       this.prisma.program.count({ where }),
     ]);
@@ -75,37 +79,38 @@ export class ProgramsService {
   }
 
   async update(id: string, updateProgramDto: UpdateProgramDto) {
-    try {
-      const data = this.removeUndefined(updateProgramDto);
-      return await this.prisma.program.update({
-        where: { id },
-        data,
-      });
-    } catch (error) {
-      throw new NotFoundException(`Program with ID ${id} not found`);
-    }
+    // Check if program exists
+    await this.findOne(id);
+
+    return this.prisma.program.update({
+      where: { id },
+      data: updateProgramDto,
+    });
   }
 
   async remove(id: string) {
-    try {
-      return await this.prisma.program.delete({
-        where: { id },
-      });
-    } catch (error) {
-      throw new NotFoundException(`Program with ID ${id} not found`);
-    }
+    // Check if program exists
+    await this.findOne(id);
+
+    return this.prisma.program.delete({
+      where: { id },
+    });
   }
 
-  async enroll(programId: string, userId: string) {
-    const program = await this.prisma.program.findUnique({
-      where: { id: programId },
-    });
+  // ============================================================================
+  // ENROLLMENT METHODS
+  // ============================================================================
 
-    if (!program) {
-      throw new NotFoundException(`Program with ID ${programId} not found`);
+  async enroll(programId: string, userId: string) {
+    // Check if program exists and is active
+    const program = await this.findOne(programId);
+
+    if (program.status !== 'ACTIVE') {
+      throw new BadRequestException('Program is not currently active');
     }
 
-    const existing = await this.prisma.programEnrollment.findUnique({
+    // Check if already enrolled
+    const existingEnrollment = await this.prisma.programEnrollment.findUnique({
       where: {
         userId_programId: {
           userId,
@@ -114,10 +119,11 @@ export class ProgramsService {
       },
     });
 
-    if (existing) {
-      return existing;
+    if (existingEnrollment) {
+      throw new BadRequestException('User is already enrolled in this program');
     }
 
+    // Create enrollment
     const enrollment = await this.prisma.programEnrollment.create({
       data: {
         userId,
@@ -129,16 +135,34 @@ export class ProgramsService {
       },
     });
 
-    // Queue enrollment confirmation email
-    await this.queueService.sendEnrollmentConfirmation(
-      enrollment.user.email,
-      enrollment.program.title,
-    );
+    // Queue enrollment confirmation email (async)
+    this.sqsService
+      .sendEnrollmentConfirmation(
+        enrollment.user.email,
+        enrollment.program.title,
+      )
+      .catch((error) => {
+        console.error('Failed to queue enrollment email:', error);
+        // Don't fail enrollment if email queuing fails
+      });
 
     return enrollment;
   }
 
-  async getEnrollments(programId: string) {
+  async getMyEnrollments(userId: string) {
+    return this.prisma.programEnrollment.findMany({
+      where: { userId },
+      include: {
+        program: true,
+      },
+      orderBy: { enrolledAt: 'desc' },
+    });
+  }
+
+  async getProgramEnrollments(programId: string) {
+    // Check if program exists
+    await this.findOne(programId);
+
     return this.prisma.programEnrollment.findMany({
       where: { programId },
       include: {
@@ -155,21 +179,5 @@ export class ProgramsService {
       },
       orderBy: { enrolledAt: 'desc' },
     });
-  }
-
-  async getUserEnrollments(userId: string) {
-    return this.prisma.programEnrollment.findMany({
-      where: { userId },
-      include: {
-        program: true,
-      },
-      orderBy: { enrolledAt: 'desc' },
-    });
-  }
-
-  private removeUndefined(obj: any): any {
-    return Object.fromEntries(
-      Object.entries(obj).filter(([_, value]) => value !== undefined)
-    );
   }
 }
