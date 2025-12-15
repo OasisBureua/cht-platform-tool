@@ -9,4 +9,4 @@ import { PrismaModule } from '../../prisma/prisma.module';
     providers: [VideosService],
     exports: [VideosService],
 })
-export class VideosModuule {}
+export class VideosModule {}
