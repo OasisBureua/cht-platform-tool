@@ -1,11 +1,13 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
-import { Public } from './auth/decorators/public.decorator';
-import { CurrentUser } from './auth/decorators/current-user.decorator';
+import { SqsService } from './queue/sqs.service';
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(
+    private readonly appService: AppService,
+    private readonly sqsService: SqsService,
+  ) {}
 
   @Get()
   getHello(): string {
@@ -13,19 +15,21 @@ export class AppController {
   }
 
   @Get('health')
-  @Public() // <- No auth required for health checks
-  health() {
+  getHealth() {
+    const queueStatus = this.sqsService.getQueueStatus();
+    const allConfigured = this.sqsService.isConfigured();
+
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
-    };
-  }
-
-  @Get('me')
-  getCurrentUser(@CurrentUser() user: any) {
-    return {
-      message: 'Authenticated user',
-      user
+      services: {
+        api: 'healthy',
+        database: 'healthy', // TODO: Add actual DB health check
+        queues: {
+          configured: allConfigured,
+          status: queueStatus,
+        },
+      },
     };
   }
 }
