@@ -47,6 +47,3 @@ output "terraform_state_bucket_name" {
   description = "Terraform state bucket name"
   value       = var.create_terraform_state_bucket ? aws_s3_bucket.terraform_state[0].bucket : null
 }
-EOF* ✅
-
-Your module structure is now:
