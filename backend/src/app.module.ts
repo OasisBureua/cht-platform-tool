@@ -8,6 +8,8 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { ProgramsModule } from './modules/programs/programs.module';
 import { VideosModule } from './modules/videos/videos.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -15,11 +17,13 @@ import { VideosModule } from './modules/videos/videos.module';
       isGlobal: true,
     }),
     PrismaModule,
-    QueueModule,  // Add QueueModule here
+    QueueModule,
     AuthModule,
     UsersModule,
     ProgramsModule,
     VideosModule,
+    PaymentsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
