@@ -5,12 +5,17 @@ import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 
 @Injectable()
 export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService,) {}
 
   /**
    * Get user's earnings breakdown
+   * Note: Redis caching will be added when Redis is deployed
    */
   async getEarnings(userId: string): Promise<EarningsResponseDto> {
+    // TODO: Add Redis caching when deployed
+    // const cached = await this.redis.get(`dashboard:earnings:${userId}`);
+    // if (cached) return JSON.parse(cached);
+
     // Get all payments for user
     const payments = await this.prisma.payment.findMany({
       where: { userId },
@@ -19,7 +24,7 @@ export class DashboardService {
 
     // Calculate total earnings (paid payments only)
     const paidPayments = payments.filter((p) => p.status === 'PAID');
-    const totalEarnings = paidPayments.reduce((sum, p) => sum + p.amount, 0) / 100; // Convert cents to dollars
+    const totalEarnings = paidPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
 
     // Calculate pending payments
     const pendingPayments = payments
@@ -39,30 +44,34 @@ export class DashboardService {
       (w) => w.weekStartDate === currentWeekStart.toISOString()
     )?.amount || 0;
 
-    return {
+    const result = {
       totalEarnings,
       weeklyEarnings,
       pendingPayments,
       lastPaymentDate,
       currentWeekEarnings,
     };
+
+    // TODO: Cache result for 5 minutes when Redis is deployed
+    // await this.redis.set(`dashboard:earnings:${userId}`, JSON.stringify(result), 300);
+
+    return result;
   }
 
   /**
    * Get user's activity statistics
+   * Note: Redis caching will be added when Redis is deployed
    */
   async getStats(userId: string): Promise<StatsResponseDto> {
+    // TODO: Add Redis caching when deployed
+    // const cached = await this.redis.get(`dashboard:stats:${userId}`);
+    // if (cached) return JSON.parse(cached);
+
     // Get enrollments
     const enrollments = await this.prisma.programEnrollment.findMany({
       where: { userId },
       include: {
-        program: {
-          include: {
-            _count: {
-              select: { videos: true },
-            },
-          },
-        },
+        program: true,
       },
     });
 
@@ -97,7 +106,7 @@ export class DashboardService {
     // Get peer benchmark (anonymized)
     const peerBenchmark = await this.calculatePeerBenchmark(userId);
 
-    return {
+    const result = {
       activitiesCompleted,
       activitiesInProgress,
       surveysCompleted,
@@ -105,6 +114,11 @@ export class DashboardService {
       completionRate: Math.round(completionRate),
       peerBenchmark,
     };
+
+    // TODO: Cache result for 5 minutes when Redis is deployed
+    // await this.redis.set(`dashboard:stats:${userId}`, JSON.stringify(result), 300);
+
+    return result;
   }
 
   /**
@@ -173,7 +187,7 @@ export class DashboardService {
 
     // Calculate average
     const totalEarnings = allUsers.reduce((sum, u) => sum + u.totalEarnings, 0);
-    const averageEarnings = totalEarnings / allUsers.length / 100; // Convert to dollars
+    const averageEarnings = totalEarnings / allUsers.length / 100;
 
     // Calculate percentile
     const sortedEarnings = allUsers
@@ -204,7 +218,7 @@ export class DashboardService {
     const d = new Date(date);
     d.setDate(d.getDate() - weeksAgo * 7);
     const day = d.getDay();
-    const diff = d.getDate() - day; // Adjust to Sunday
+    const diff = d.getDate() - day;
     const weekStart = new Date(d.setDate(diff));
     weekStart.setHours(0, 0, 0, 0);
     return weekStart;
