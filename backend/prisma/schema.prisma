@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MODEL
+// ============================================================================
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  firstName       String
+  lastName        String
+  authId          String   @unique // Auth0 user ID
+  
+  // Professional details
+  npiNumber       String?  @unique
+  specialty       String?
+  state           String?
+  licenseNumber   String?
+  
+  // Role and status
+  role            UserRole @default(HCP)
+  status          UserStatus @default(ACTIVE)
+  
+  // Stripe Connect (Payment system)
+  stripeAccountId     String?
+  stripeAccountStatus String?  // onboarding_incomplete, pending, active, rejected
+  paymentEnabled      Boolean @default(false)
+  w9Submitted         Boolean @default(false)
+  w9SubmittedAt       DateTime?
+  
+  // Earnings tracking
+  totalEarnings       Int @default(0)  // Total lifetime earnings in cents
+  activitiesCompleted Int @default(0)  // Count of completed programs
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastLoginAt     DateTime?
+  
+  // Relations
+  enrollments     ProgramEnrollment[]
+  videoViews      VideoView[]
+  surveyResponses SurveyResponse[]
+  payments        Payment[]
+  cmeCredits      CMECredit[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([email])
+  @@index([authId])
+  @@index([stripeAccountId])
+  @@map("User")
+}
+
+enum UserRole {
+  HCP          // Healthcare Professional
+  KOL          // Key Opinion Leader
+  ADMIN        // Platform Administrator
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ============================================================================
+// PROGRAM MODEL
+// ============================================================================
+model Program {
+  id                String   @id @default(cuid())
+  title             String
+  description       String   @db.Text
+  thumbnailUrl      String?
+  
+  // CME Information
+  creditAmount      Float    // CME credits (e.g., 2.5)
+  accreditationBody String?  // e.g., "ACCME", "AMA"
+  
+  // Status and visibility
+  status            ProgramStatus @default(DRAFT)
+  
+  // Sponsorship
+  sponsorName       String
+  sponsorLogo       String?
+  
+  // Scheduling
+  startDate         DateTime?
+  endDate           DateTime?
+  
+  // Survey integration (Jotform)
+  jotformSurveyId   String?
+  jotformSurveyUrl  String?
+  requiresSurvey    Boolean @default(false)
+  
+  // Payment configuration
+  honorariumAmount  Int?     // Amount in cents (e.g., 50000 = $500)
+  
+  // Zoom Events integration
+  zoomMeetingId     String?
+  zoomMeetingPassword String?
+  zoomJoinUrl       String?
+  zoomStartUrl      String?  // For host/KOL
+  
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  publishedAt       DateTime?
+  
+  // Relations
+  videos            Video[]
+  enrollments       ProgramEnrollment[]
+  surveys           Survey[]
+  payments          Payment[]
+  cmeCredits        CMECredit[]
+
+  @@index([status])
+  @@index([startDate])
+  @@map("Program")
+}
+
+enum ProgramStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+// ============================================================================
+// VIDEO MODEL
+// ============================================================================
+model Video {
+  id          String   @id @default(cuid())
+  programId   String
+  
+  // Video details
+  title       String
+  description String?  @db.Text
+  
+  // Video platform (Vimeo/YouTube)
+  platform    VideoPlatform
+  videoId     String   // Platform-specific video ID
+  embedUrl    String   // Embed URL
+  
+  // Metadata
+  duration    Int      // Duration in seconds
+  order       Int      @default(0)  // Display order in program
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  views       VideoView[]
+
+  @@index([programId])
+  @@map("Video")
+}
+
+enum VideoPlatform {
+  VIMEO
+  YOUTUBE
+}
+
+// ============================================================================
+// VIDEO VIEW MODEL (Progress Tracking)
+// ============================================================================
+model VideoView {
+  id             String   @id @default(cuid())
+  userId         String
+  videoId        String
+  
+  // Progress tracking
+  watchedSeconds Int      @default(0)
+  progress       Float    @default(0)  // Percentage (0-100)
+  completed      Boolean  @default(false)
+  
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  completedAt    DateTime?
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video          Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([videoId])
+  @@map("VideoView")
+}
+
+// ============================================================================
+// PROGRAM ENROLLMENT MODEL
+// ============================================================================
+model ProgramEnrollment {
+  id              String   @id @default(cuid())
+  userId          String
+  programId       String
+  
+  // Progress tracking
+  overallProgress Float    @default(0)  // Percentage (0-100)
+  completed       Boolean  @default(false)
+  
+  // Timestamps
+  enrolledAt      DateTime @default(now())
+  completedAt     DateTime?
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program         Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@index([programId])
+  @@index([completed])
+  @@map("ProgramEnrollment")
+}
+
+// ============================================================================
+// SURVEY MODEL
+// ============================================================================
+model Survey {
+  id          String   @id @default(cuid())
+  programId   String
+  
+  // Survey details
+  title       String
+  description String?  @db.Text
+  questions   Json     // Survey questions in JSON format
+  type        SurveyType
+  required    Boolean  @default(true)
+  
+  // Jotform integration
+  jotformFormId     String?
+  jotformWebhookUrl String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  responses   SurveyResponse[]
+
+  @@index([programId])
+  @@map("Survey")
+}
+
+enum SurveyType {
+  PRE_TEST
+  POST_TEST
+  FEEDBACK
+}
+
+// ============================================================================
+// SURVEY RESPONSE MODEL
+// ============================================================================
+model SurveyResponse {
+  id          String   @id @default(cuid())
+  userId      String
+  surveyId    String
+  
+  // Response data
+  answers     Json     // Survey answers in JSON format
+  score       Float?   // Score if applicable
+  
+  // Jotform tracking
+  jotformSubmissionId String? @unique
+  
+  // Timestamps
+  submittedAt DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, surveyId])
+  @@index([userId])
+  @@index([surveyId])
+  @@map("SurveyResponse")
+}
+
+// ============================================================================
+// PAYMENT MODEL
+// ============================================================================
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  programId   String?
+  
+  // Payment details
+  amount      Int      // Amount in cents
+  type        PaymentType
+  status      PaymentStatus
+  description String?
+  
+  // Stripe integration
+  stripePaymentIntentId String? @unique
+  stripeTransferId      String? @unique
+  
+  // W9 tracking
+  w9Collected Boolean  @default(false)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  paidAt      DateTime?
+  failedAt    DateTime?
+  failureReason String?
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program     Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([programId])
+  @@index([status])
+  @@index([type])
+  @@map("Payment")
+}
+
+enum PaymentType {
+  HONORARIUM       // Payment for program participation
+  CME_COMPLETION   // Bonus for completing CME
+  SURVEY_BONUS     // Bonus for survey completion
+  REFERRAL         // Referral bonus
+}
+
+enum PaymentStatus {
+  PENDING      // Payment created but not processed
+  PROCESSING   // Being processed by Stripe
+  PAID         // Successfully paid
+  FAILED       // Payment failed
+  CANCELLED    // Cancelled by admin
+}
+
+// ============================================================================
+// CME CREDIT MODEL
+// ============================================================================
+model CMECredit {
+  id             String   @id @default(cuid())
+  userId         String
+  programId      String
+  
+  // Credit details
+  credits        Float    // Number of CME credits earned
+  certificateUrl String?  // S3 URL to PDF certificate
+  
+  // Timestamps
+  issuedAt       DateTime @default(now())
+  expiresAt      DateTime?
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program        Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([programId])
+  @@map("CMECredit")
+}
+
+// ============================================================================
+// ANALYTICS EVENT MODEL
+// ============================================================================
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Event details
+  eventName String
+  eventData Json     // Event payload
+  
+  // Metadata
+  ipAddress String?
+  userAgent String?
+  
+  // Timestamp
+  timestamp DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventName])
+  @@index([timestamp])
+  @@map("AnalyticsEvent")
+}
