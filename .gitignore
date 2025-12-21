@@ -37,3 +37,6 @@ coverage/
 *.bak
 *.tmp
 *-OLD-BACKUP/
+
+# VSCode
+.vscode/
