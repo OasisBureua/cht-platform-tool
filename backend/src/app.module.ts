@@ -5,12 +5,13 @@ import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
 @Module({
   imports: [
-    // Config Module - Load environment variables
+    // Config Module
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
@@ -21,12 +22,13 @@ import { validationSchema } from './config/validation';
       },
     }),
     
-    // Core modules
+    // Core Modules
     PrismaModule,
     HealthModule,
-
-    // Feature modules
+    
+    // Feature Modules
     DashboardModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
