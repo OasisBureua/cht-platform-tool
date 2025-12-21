@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -20,11 +21,12 @@ import { validationSchema } from './config/validation';
       },
     }),
     
-    // Prisma Module - Database connection
+    // Core modules
     PrismaModule,
-    
-    // Health Module - Health checks
     HealthModule,
+
+    // Feature modules
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
