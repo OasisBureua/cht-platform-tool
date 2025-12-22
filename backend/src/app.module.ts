@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
+import { RedisModule } from './redis/redis.module';
 import { QueueModule } from './queue/queue.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PaymentsModule } from './modules/payments/payments.module';
@@ -13,7 +14,6 @@ import { validationSchema } from './config/validation';
 
 @Module({
   imports: [
-    // Config Module
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
@@ -24,12 +24,11 @@ import { validationSchema } from './config/validation';
       },
     }),
     
-    // Core Modules
     PrismaModule,
     HealthModule,
+    RedisModule,
     QueueModule,
     
-    // Feature Modules
     DashboardModule,
     PaymentsModule,
     ProgramsModule,

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisService } from '../../redis/redis.service';
 import { EarningsResponseDto, WeeklyEarnings } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 
@@ -7,13 +8,25 @@ import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   /**
-   * Get user's earnings breakdown
+   * Get user's earnings breakdown (with caching)
    */
   async getEarnings(userId: string): Promise<EarningsResponseDto> {
-    this.logger.debug(`Getting earnings for user: ${userId}`);
+    // Check cache first (5 minute TTL)
+    const cacheKey = this.redis.keys.dashboardEarnings(userId);
+    const cached = await this.redis.get<EarningsResponseDto>(cacheKey);
+    
+    if (cached) {
+      this.logger.log(`✅ CACHE HIT - Returning cached earnings for user: ${userId}`);
+      return cached;
+    }
+
+    this.logger.log(`❌ CACHE MISS - Fetching earnings from database for user: ${userId}`);
 
     // Get all payments for user
     const payments = await this.prisma.payment.findMany({
@@ -42,20 +55,35 @@ export class DashboardService {
     const currentWeekEarnings =
       weeklyEarnings.find((w) => w.weekStartDate === currentWeekStart.toISOString())?.amount || 0;
 
-    return {
+    const result = {
       totalEarnings,
       weeklyEarnings,
       pendingPayments,
       lastPaymentDate,
       currentWeekEarnings,
     };
+
+    // Cache for 5 minutes
+    await this.redis.set(cacheKey, result, this.redis.ttl.dashboard);
+    this.logger.log(`💾 Cached earnings for user: ${userId} (TTL: ${this.redis.ttl.dashboard}s)`);
+
+    return result;
   }
 
   /**
-   * Get user's activity statistics
+   * Get user's activity statistics (with caching)
    */
   async getStats(userId: string): Promise<StatsResponseDto> {
-    this.logger.debug(`Getting stats for user: ${userId}`);
+    // Check cache first (5 minute TTL)
+    const cacheKey = this.redis.keys.dashboardStats(userId);
+    const cached = await this.redis.get<StatsResponseDto>(cacheKey);
+    
+    if (cached) {
+      this.logger.log(`✅ CACHE HIT - Returning cached stats for user: ${userId}`);
+      return cached;
+    }
+
+    this.logger.log(`❌ CACHE MISS - Fetching stats from database for user: ${userId}`);
 
     // Get enrollments
     const enrollments = await this.prisma.programEnrollment.findMany({
@@ -86,7 +114,7 @@ export class DashboardService {
     // Get peer benchmark (anonymized)
     const peerBenchmark = await this.calculatePeerBenchmark(userId);
 
-    return {
+    const result = {
       activitiesCompleted,
       activitiesInProgress,
       surveysCompleted,
@@ -94,6 +122,12 @@ export class DashboardService {
       completionRate: Math.round(completionRate),
       peerBenchmark,
     };
+
+    // Cache for 5 minutes
+    await this.redis.set(cacheKey, result, this.redis.ttl.dashboard);
+    this.logger.log(`💾 Cached stats for user: ${userId} (TTL: ${this.redis.ttl.dashboard}s)`);
+
+    return result;
   }
 
   /**
