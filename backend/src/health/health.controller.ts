@@ -1,38 +1,84 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheckService, HealthCheck, PrismaHealthIndicator } from '@nestjs/terminus';
-import { PrismaService } from '../prisma/prisma.service';
+import { HealthCheck, HealthCheckService, HealthCheckResult } from '@nestjs/terminus';
+import { PrismaHealthIndicator } from './prisma.health';
+import { RedisHealthIndicator } from './redis.health';
 
-@Controller('health')
+@Controller()
 export class HealthController {
   constructor(
     private health: HealthCheckService,
-    private prismaHealthIndicator: PrismaHealthIndicator,
-    private prismaService: PrismaService,
+    private prismaHealth: PrismaHealthIndicator,
+    private redisHealth: RedisHealthIndicator,
   ) {}
 
-  @Get()
+  /**
+   * Basic health check - ALB uses this
+   * GET /health
+   */
+  @Get('health')
   @HealthCheck()
-  check() {
+  async check(): Promise<HealthCheckResult> {
     return this.health.check([
-      () => this.prismaHealthIndicator.pingCheck('database', this.prismaService),
+      async () => ({ app: { status: 'up' } }),
     ]);
   }
 
-  @Get('ready')
-  readiness() {
+  /**
+   * Readiness check - Service ready to accept traffic
+   * GET /health/ready
+   */
+  @Get('health/ready')
+  @HealthCheck()
+  async readiness(): Promise<HealthCheckResult> {
+    return this.health.check([
+      async () => this.prismaHealth.isHealthy('database'),
+      async () => this.redisHealth.isHealthy('redis'),
+    ]);
+  }
+
+  /**
+   * Liveness check - Service is alive
+   * GET /health/live
+   */
+  @Get('health/live')
+  live() {
     return {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV,
+      uptime: Math.floor(process.uptime()),
     };
   }
 
-  @Get('live')
-  liveness() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-    };
+  /**
+   * Detailed health with all components
+   * GET /health/detail
+   */
+  @Get('health/detail')
+  async detail() {
+    try {
+      const dbCheck = await this.prismaHealth.isHealthy('database');
+      const redisCheck = await this.redisHealth.isHealthy('redis');
+
+      return {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        components: {
+          database: dbCheck.database,
+          redis: redisCheck.redis,
+        },
+        application: {
+          version: process.env.APP_VERSION || '1.0.0',
+          uptime: Math.floor(process.uptime()),
+          environment: process.env.NODE_ENV || 'development',
+          nodeVersion: process.version,
+        },
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      };
+    }
   }
 }

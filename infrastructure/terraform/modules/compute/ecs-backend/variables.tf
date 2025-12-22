@@ -118,3 +118,9 @@ variable "max_capacity" {
   type        = number
   default     = 4
 }
+
+variable "enable_scheduled_scaling" {
+  description = "Enabled scheduled ECS scaling (dev only)"
+  type        = bool
+  default     = false
+}

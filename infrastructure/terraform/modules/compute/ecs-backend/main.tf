@@ -1,3 +1,7 @@
+locals {
+  is_prod = var.environment == "prod"
+}
+
 # Security Group for Backend
 resource "aws_security_group" "backend" {
   name        = "${var.project}-${var.environment}-backend-sg"
@@ -202,5 +206,33 @@ resource "aws_appautoscaling_policy" "backend_memory" {
       predefined_metric_type = "ECSServiceAverageMemoryUtilization"
     }
     target_value = 80.0
+  }
+}
+
+resource "aws_appautoscaling_scheduled_action" "backend_scale_up" {
+  count               = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
+  name                = "${var.project}-${var.environment}-backend-scale-up" 
+  service_namespace   = "ecs"
+  resource_id         = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension  = aws_appautoscaling_target.backend.scalable_dimension
+  schedule            = "cron(0 13 ? * MON-FRI *)"
+
+  scalable_target_action {
+    min_capacity = var.min_capacity
+    max_capacity = var.max_capacity
+  }
+}
+
+resource "aws_appautoscaling_scheduled_action" "backend_scale_down" {
+  count              = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
+  name               = "${var.project}-${var.environment}-backend-scale-down"
+  service_namespace  = "ecs"
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+  schedule           = "cron(0 1 ? * TUE-SAT *)"
+
+  scalable_target_action {
+    min_capacity = 0
+    max_capacity = 0
   }
 }

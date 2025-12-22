@@ -1,3 +1,7 @@
+locals {
+  is_prod = var.environment == "prod"
+}
+
 # Security Group for Worker
 resource "aws_security_group" "worker" {
   name        = "${var.project}-${var.environment}-worker-sg"
@@ -140,5 +144,33 @@ resource "aws_appautoscaling_policy" "worker_sqs" {
       }
     }
     target_value = 10.0  # Scale when queue has >10 messages
+  }
+}
+
+resource "aws_appautoscaling_scheduled_action" "worker_scale_up" {
+  count               = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
+  name                = "${var.project}-${var.environment}-worker-scale-up" 
+  service_namespace   = "ecs"
+  resource_id         = aws_appautoscaling_target.worker.resource_id
+  scalable_dimension  = aws_appautoscaling_target.worker.scalable_dimension
+  schedule            = "cron(0 13 ? * MON-FRI *)"
+
+  scalable_target_action {
+    min_capacity = var.min_capacity
+    max_capacity = var.max_capacity
+  }
+}
+
+resource "aws_appautoscaling_scheduled_action" "worker_scale_down" {
+  count              = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
+  name               = "${var.project}-${var.environment}-worker-scale-down"
+  service_namespace  = "ecs"
+  resource_id        = aws_appautoscaling_target.worker.resource_id
+  scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
+  schedule           = "cron(0 1 ? * TUE-SAT *)"
+
+  scalable_target_action {
+    min_capacity = 0
+    max_capacity = 0
   }
 }
