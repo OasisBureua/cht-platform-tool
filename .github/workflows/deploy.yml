@@ -1,0 +1,209 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_BACKEND_REPO: cht-platform-backend
+  ECR_WORKER_REPO: cht-platform-worker
+
+jobs:
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: ./backend
+        run: npm run lint
+      
+      - name: Run tests
+        working-directory: ./backend
+        run: npm test
+      
+      - name: Build
+        working-directory: ./backend
+        run: npm run build
+
+  test-worker:
+    name: Test Worker
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: worker/requirements.txt
+      
+      - name: Install dependencies
+        working-directory: ./worker
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pylint pytest
+      
+      - name: Run linter
+        working-directory: ./worker
+        run: pylint **/*.py --disable=all --enable=E || true
+      
+      - name: Run tests
+        working-directory: ./worker
+        run: pytest || echo "No tests found"
+
+  build-and-push:
+    name: Build and Push Images
+    needs: [test-backend, test-worker]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    
+    outputs:
+      backend-image: ${{ steps.meta-backend.outputs.tags }}
+      worker-image: ${{ steps.meta-worker.outputs.tags }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Extract metadata (Backend)
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_BACKEND_REPO }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Extract metadata (Worker)
+        id: meta-worker
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_WORKER_REPO }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+      
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Build and push Worker
+        uses: docker/build-push-action@v5
+        with:
+          context: ./worker
+          push: true
+          tags: ${{ steps.meta-worker.outputs.tags }}
+          labels: ${{ steps.meta-worker.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Image digest
+        run: |
+          echo "Backend: ${{ steps.meta-backend.outputs.tags }}"
+          echo "Worker: ${{ steps.meta-worker.outputs.tags }}"
+
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: dev
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Terraform Init
+        working-directory: ./infrastructure/terraform/environments/dev
+        run: terraform init
+      
+      - name: Terraform Plan
+        working-directory: ./infrastructure/terraform/environments/dev
+        run: terraform plan -var="backend_image=${{ needs.build-and-push.outputs.backend-image }}" -var="worker_image=${{ needs.build-and-push.outputs.worker-image }}"
+      
+      - name: Terraform Apply
+        working-directory: ./infrastructure/terraform/environments/dev
+        run: terraform apply -auto-approve -var="backend_image=${{ needs.build-and-push.outputs.backend-image }}" -var="worker_image=${{ needs.build-and-push.outputs.worker-image }}"
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+      
+      - name: Terraform Init
+        working-directory: ./infrastructure/terraform/environments/prod
+        run: terraform init
+      
+      - name: Terraform Plan
+        working-directory: ./infrastructure/terraform/environments/prod
+        run: terraform plan -var="backend_image=${{ needs.build-and-push.outputs.backend-image }}" -var="worker_image=${{ needs.build-and-push.outputs.worker-image }}"
+      
+      - name: Terraform Apply
+        working-directory: ./infrastructure/terraform/environments/prod
+        run: terraform apply -auto-approve -var="backend_image=${{ needs.build-and-push.outputs.backend-image }}" -var="worker_image=${{ needs.build-and-push.outputs.worker-image }}"

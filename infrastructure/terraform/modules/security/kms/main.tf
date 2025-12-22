@@ -1,0 +1,142 @@
+# KMS Key for RDS Database Encryption
+resource "aws_kms_key" "rds" {
+    description             = "${var.project}-${var.environment} RDS encryption key"
+    deletion_window_in_days = var.deletion_window_in_days
+    enable_key_rotation     = true
+
+    tags = {
+        Name        = "${var.project}-${var.environment}-rds-key"
+        Environment = var.environment
+        Service     = "rds"
+    }
+}
+
+resource "aws_kms_alias" "rds" {
+    name           = "alias/${var.project}-${var.environment}-rds"
+    target_key_id  = aws_kms_key.rds.id
+}
+
+# KMS Key for Elasticache Redis Encryption
+resource "aws_kms_key" "elasticache" {
+    description             = "${var.project}-${var.environment} Elasticache encryption key"
+    deletion_window_in_days = var.deletion_window_in_days
+    enable_key_rotation     = true
+
+    tags = {
+        Name        = "${var.project}-${var.environment}-elasticache-key"
+        Environment = var.environment
+        Service     = "elasticache"
+    }
+}
+
+resource "aws_kms_alias" "elasticache" {
+  name          = "alias/${var.project}-${var.environment}-elasticache"
+  target_key_id = aws_kms_key.elasticache.key_id
+}
+
+resource "aws_kms_key" "s3" {
+   description             = "${var.project}-${var.environment} S3 encryption key"
+   deletion_window_in_days = var.deletion_window_in_days
+   enable_key_rotation     = true
+
+   tags = {
+    Name        = "${var.project}-${var.environment}-s3-key"
+    Environment = var.environment
+    Service     = "s3"
+  } 
+}
+
+resource "aws_kms_alias" "s3" {
+    name          = "alias/${var.project}-${var.environment}-s3"
+    target_key_id = aws_kms_key.s3.key_id
+}
+
+# KMS Key for Secrets Manager
+resource "aws_kms_key" "secrets" {
+  description             = "${var.project}-${var.environment} Secrets Manager encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-secrets-key"
+    Environment = var.environment
+    Service     = "secrets-manager"
+  }
+}
+
+resource "aws_kms_alias" "secrets" {
+  name          = "alias/${var.project}-${var.environment}-secrets"
+  target_key_id = aws_kms_key.secrets.key_id
+}
+
+# KMS Key for SQS Queue Encryption
+resource "aws_kms_key" "sqs" {
+  description             = "${var.project}-${var.environment} SQS encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-sqs-key"
+    Environment = var.environment
+    Service     = "sqs"
+  }
+}
+
+resource "aws_kms_alias" "sqs" {
+  name          = "alias/${var.project}-${var.environment}-sqs"
+  target_key_id = aws_kms_key.sqs.key_id
+}
+
+# KMS Key for CloudWatch Logs Encryption
+resource "aws_kms_key" "cloudwatch" {
+  description             = "${var.project}-${var.environment} CloudWatch Logs encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "Enable IAM User Permissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${var.aws_account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "Allow CloudWatch Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:CreateGrant",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${var.aws_account_id}:log-group:*"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-cloudwatch-key"
+    Environment = var.environment
+    Service     = "cloudwatch"
+  }
+}
+
+resource "aws_kms_alias" "cloudwatch" {
+  name          = "alias/${var.project}-${var.environment}-cloudwatch"
+  target_key_id = aws_kms_key.cloudwatch.key_id
+}

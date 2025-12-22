@@ -4,9 +4,24 @@ __pycache__/
 *$py.class
 *.so
 .Python
-venv/
 env/
+venv/
 ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
 # Environment
 .env
@@ -16,16 +31,22 @@ ENV/
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
-# Logs
-*.log
+# OS
+.DS_Store
+Thumbs.db
 
-# Testing
-.pytest_cache/
-.coverage
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
 
 # Misc
-.DS_Store
-
-# VSCode
-.vscode/
+*.md
+LICENSE
+.editorconfig
