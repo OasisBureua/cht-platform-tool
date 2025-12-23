@@ -7,25 +7,7 @@ variable "project" {
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "dev"
-}
-
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "vpc_cidr" {
-  description = "VPC CIDR block"
-  type        = string
-  default     = "10.0.0.0/16"
-}
-
-variable "availability_zones" {
-  description = "Availability zones"
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
+  default     = "prod"
 }
 
 variable "backend_image" {
@@ -38,8 +20,14 @@ variable "worker_image" {
   type        = string
 }
 
+variable "rds_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
 variable "acm_certificate_arn" {
-  description = "ACM certificate ARN for ALB (must be in same region)"
+  description = "ACM certificate ARN for ALB"
   type        = string
   default     = ""
 }
@@ -48,12 +36,6 @@ variable "cloudfront_certificate_arn" {
   description = "ACM certificate ARN for CloudFront (must be in us-east-1)"
   type        = string
   default     = ""
-}
-
-variable "domain_aliases" {
-  description = "Domain aliases for CloudFront"
-  type        = list(string)
-  default     = []
 }
 
 variable "sns_topic_arn" {

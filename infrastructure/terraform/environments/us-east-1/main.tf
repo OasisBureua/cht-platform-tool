@@ -6,15 +6,11 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
   }
 
   backend "s3" {
     bucket         = "cht-platform-terraform-state-dev"
-    key            = "dev/terraform.tfstate"
+    key            = "us-east-1/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
     dynamodb_table = "cht-platform-terraform-locks"
@@ -22,44 +18,50 @@ terraform {
 }
 
 provider "aws" {
-  region = var.aws_region
+  region = "us-east-1"
 
   default_tags {
     tags = {
       Project     = var.project
       Environment = var.environment
+      Region      = "us-east-1"
       ManagedBy   = "Terraform"
     }
   }
 }
 
-# Get AWS account ID
 data "aws_caller_identity" "current" {}
 
-# KMS Module
+# ============================================
+# Security - KMS Keys
+# ============================================
 module "kms" {
   source = "../../modules/security/kms"
 
   project        = var.project
   environment    = var.environment
-  aws_region     = var.aws_region
+  aws_region     = "us-east-1"
   aws_account_id = data.aws_caller_identity.current.account_id
 }
 
-# VPC Module
+# ============================================
+# Networking - VPC
+# ============================================
 module "vpc" {
   source = "../../modules/networking/vpc"
 
   project            = var.project
   environment        = var.environment
-  vpc_cidr           = var.vpc_cidr
-  availability_zones = var.availability_zones
+  vpc_cidr           = "10.0.0.0/16"
+  availability_zones = ["us-east-1a", "us-east-1b"]
   enable_nat_gateway = true
   enable_flow_logs   = true
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
 }
 
-# RDS Module
+# ============================================
+# Database - RDS PostgreSQL
+# ============================================
 module "rds" {
   source = "../../modules/database/rds"
 
@@ -67,15 +69,17 @@ module "rds" {
   environment            = var.environment
   vpc_id                 = module.vpc.vpc_id
   private_subnet_ids     = module.vpc.private_subnet_ids
-  allowed_security_groups = []  # Will be populated after ECS
+  allowed_security_groups = [module.ecs_backend.security_group_id]
   kms_key_arn            = module.kms.rds_kms_key_arn
-  instance_class         = "db.t3.micro"
-  allocated_storage      = 20
-  multi_az               = false
-  backup_retention_period = 7
+  instance_class         = var.rds_instance_class
+  allocated_storage      = var.rds_allocated_storage
+  multi_az               = var.rds_multi_az
+  backup_retention_period = var.rds_backup_retention
 }
 
-# ElastiCache Module
+# ============================================
+# Cache - ElastiCache Redis
+# ============================================
 module "elasticache" {
   source = "../../modules/cache/elasticache"
 
@@ -83,14 +87,16 @@ module "elasticache" {
   environment            = var.environment
   vpc_id                 = module.vpc.vpc_id
   private_subnet_ids     = module.vpc.private_subnet_ids
-  allowed_security_groups = []  # Will be populated after ECS
+  allowed_security_groups = [module.ecs_backend.security_group_id]
   kms_key_arn            = module.kms.elasticache_kms_key_arn
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
-  node_type              = "cache.t3.micro"
-  num_cache_nodes        = 1
+  node_type              = var.redis_node_type
+  num_cache_nodes        = var.redis_num_nodes
 }
 
-# S3 Frontend Module
+# ============================================
+# Storage - S3 Buckets
+# ============================================
 module "s3_frontend" {
   source = "../../modules/storage/s3-frontend"
 
@@ -99,17 +105,18 @@ module "s3_frontend" {
   kms_key_id  = module.kms.s3_kms_key_id
 }
 
-# S3 Certificates Module
 module "s3_certificates" {
   source = "../../modules/storage/s3-certificates"
 
   project         = var.project
   environment     = var.environment
   kms_key_id      = module.kms.s3_kms_key_id
-  allowed_origins = ["*"]  # Update with your frontend domain
+  allowed_origins = ["https://app.${var.domain_name}"]
 }
 
-# SQS Module
+# ============================================
+# Messaging - SQS Queues
+# ============================================
 module "sqs" {
   source = "../../modules/messaging/sqs"
 
@@ -118,7 +125,9 @@ module "sqs" {
   kms_key_id  = module.kms.sqs_kms_key_id
 }
 
-# Secrets Manager Module
+# ============================================
+# Security - Secrets Manager
+# ============================================
 module "secrets" {
   source = "../../modules/security/secrets-manager"
 
@@ -126,7 +135,6 @@ module "secrets" {
   environment = var.environment
   kms_key_id  = module.kms.secrets_kms_key_id
 
-  # Database
   db_username          = module.rds.db_username
   db_password          = module.rds.db_password
   db_endpoint          = module.rds.db_endpoint
@@ -134,11 +142,9 @@ module "secrets" {
   db_name              = module.rds.db_name
   db_connection_string = module.rds.db_connection_string
 
-  # Redis
   redis_endpoint = module.elasticache.redis_endpoint
   redis_port     = module.elasticache.redis_port
 
-  # Application secrets (set via environment variables or AWS Console)
   stripe_secret_key      = var.stripe_secret_key
   stripe_publishable_key = var.stripe_publishable_key
   stripe_webhook_secret  = var.stripe_webhook_secret
@@ -148,7 +154,9 @@ module "secrets" {
   auth0_audience         = var.auth0_audience
 }
 
-# IAM Module
+# ============================================
+# Security - IAM Roles
+# ============================================
 module "iam" {
   source = "../../modules/security/iam"
 
@@ -171,7 +179,9 @@ module "iam" {
   certificates_bucket_arn = module.s3_certificates.bucket_arn
 }
 
-# ALB Module
+# ============================================
+# Networking - ALB
+# ============================================
 module "alb" {
   source = "../../modules/networking/alb"
 
@@ -183,24 +193,28 @@ module "alb" {
   enable_access_logs = false
 }
 
-# ECS Cluster Module
+# ============================================
+# Compute - ECS Cluster
+# ============================================
 module "ecs_cluster" {
   source = "../../modules/compute/ecs-cluster"
 
   project                = var.project
   environment            = var.environment
   enable_container_insights = true
-  log_retention_days     = 7
+  log_retention_days     = var.environment == "prod" ? 7 : 3
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
 }
 
-# ECS Backend Module
+# ============================================
+# Compute - ECS Backend Service
+# ============================================
 module "ecs_backend" {
   source = "../../modules/compute/ecs-backend"
 
   project                = var.project
-  environment            = "dev"
-  aws_region             = var.aws_region
+  environment            = var.environment
+  aws_region             = "us-east-1"
   vpc_id                 = module.vpc.vpc_id
   private_subnet_ids     = module.vpc.private_subnet_ids
   cluster_id             = module.ecs_cluster.cluster_id
@@ -215,20 +229,22 @@ module "ecs_backend" {
   database_secret_arn    = module.secrets.database_secret_arn
   redis_secret_arn       = module.secrets.redis_secret_arn
   app_secrets_arn        = module.secrets.app_secrets_arn
-  task_cpu               = 256
-  task_memory            = 512
-  desired_count          = 1
-  min_capacity           = 1
-  max_capacity           = 2
+  task_cpu               = var.backend_task_cpu
+  task_memory            = var.backend_task_memory
+  desired_count          = var.backend_desired_count
+  min_capacity           = var.backend_min_capacity
+  max_capacity           = var.backend_max_capacity
 }
 
-# ECS Worker Module
+# ============================================
+# Compute - ECS Worker Service
+# ============================================
 module "ecs_worker" {
   source = "../../modules/compute/ecs-worker"
 
   project             = var.project
-  environment         = "dev"
-  aws_region          = var.aws_region
+  environment         = var.environment
+  aws_region          = "us-east-1"
   vpc_id              = module.vpc.vpc_id
   private_subnet_ids  = module.vpc.private_subnet_ids
   cluster_id          = module.ecs_cluster.cluster_id
@@ -240,14 +256,16 @@ module "ecs_worker" {
   database_secret_arn = module.secrets.database_secret_arn
   app_secrets_arn     = module.secrets.app_secrets_arn
   primary_queue_name  = "${var.project}-${var.environment}-email-queue"
-  task_cpu            = 256
-  task_memory         = 512
-  desired_count       = 1
-  min_capacity        = 1
-  max_capacity        = 5
+  task_cpu            = var.worker_task_cpu
+  task_memory         = var.worker_task_memory
+  desired_count       = var.worker_desired_count
+  min_capacity        = var.worker_min_capacity
+  max_capacity        = var.worker_max_capacity
 }
 
-# CloudFront Module
+# ============================================
+# Networking - CloudFront
+# ============================================
 module "cloudfront" {
   source = "../../modules/networking/cloudfront"
 
@@ -257,20 +275,40 @@ module "cloudfront" {
   s3_bucket_domain_name    = module.s3_frontend.bucket_domain_name
   cloudfront_oai_path      = module.s3_frontend.cloudfront_oai_path
   certificate_arn          = var.cloudfront_certificate_arn
-  domain_aliases           = var.domain_aliases
-  price_class              = "PriceClass_100"
+  domain_aliases           = []  # Managed by Route53
+  price_class              = var.environment == "prod" ? "PriceClass_100" : "PriceClass_100"
 }
 
-# CloudWatch Module
+# ============================================
+# Networking - Route53 DNS
+# ============================================
+module "route53" {
+  source = "../../modules/networking/route53"
+
+  project     = var.project
+  environment = var.environment
+  subdomain_zone = var.domain_name
+
+  primary_alb_dns            = module.alb.alb_dns_name
+  primary_alb_zone_id        = module.alb.alb_zone_id
+  primary_cloudfront_dns     = module.cloudfront.distribution_domain_name
+  primary_cloudfront_zone_id = module.cloudfront.distribution_hosted_zone_id
+
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+}
+
+# ============================================
+# Monitoring - CloudWatch
+# ============================================
 module "cloudwatch" {
   source = "../../modules/monitoring/cloudwatch"
 
   project        = var.project
   environment    = var.environment
-  aws_region     = var.aws_region
+  aws_region     = "us-east-1"
   cluster_name   = module.ecs_cluster.cluster_name
-  db_instance_id = module.rds.db_instance_id
-  alb_arn_suffix = split("/", module.alb.alb_arn)[1]
+  db_instance_id = split(":", module.rds.db_endpoint)[0]
+  alb_arn_suffix = split("/", module.alb.alb_arn)[3]
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = var.sns_topic_arn
 }

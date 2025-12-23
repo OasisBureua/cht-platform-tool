@@ -1,0 +1,52 @@
+# CHT Platform - us-east-1 (Primary Region)
+
+project     = "cht-platform"
+environment = "dev"
+
+# Docker Images (update after building/pushing)
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.0"
+
+# Database
+rds_instance_class      = "db.t3.micro"
+rds_allocated_storage   = 20
+rds_multi_az            = false
+rds_backup_retention    = 7
+
+# Cache
+redis_node_type         = "cache.t3.micro"
+redis_num_nodes         = 1
+
+# Compute
+backend_task_cpu        = 256
+backend_task_memory     = 512
+backend_desired_count   = 2
+backend_min_capacity    = 1
+backend_max_capacity    = 4
+
+worker_task_cpu         = 256
+worker_task_memory      = 512
+worker_desired_count    = 1
+worker_min_capacity     = 1
+worker_max_capacity     = 10
+
+# SSL Certificates (add after requesting)
+# acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/..."
+# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/..."
+
+# Domain
+domain_name = "communityhealth.media"
+
+# Optional: Application secrets (or set via environment variables)
+stripe_secret_key      = "sk_test_51SgE8U4AsB5fThaf2V3I0Li9sQjSi2AVxSMlQFaX9liGKBIjdfh8cITr0Fwk3AHELnnPZhcyZX2u03rsrQpXSZyI00JqUqlMAd"
+stripe_publishable_key = "pk_test_51SgE8U4AsB5fThafcGimMu6kadDjrman1ptUTRs69I2m5HDgWM4hJegOuos8oJ47kwVmDYu3hP2uOUSrbUKjh5kn00TPu3XgL9"
+# stripe_webhook_secret  = ""
+# sendgrid_api_key       = ""
+# auth0_domain           = ""
+# auth0_client_id        = ""
+# auth0_audience         = ""
+
+# Optional: SNS for alerts
+# sns_topic_arn = ""
+
+# Cost: ~$145/month

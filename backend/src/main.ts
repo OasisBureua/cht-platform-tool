@@ -12,6 +12,7 @@ async function bootstrap() {
       'https://communityhealth.media',
       'https://www.communityhealth.media',
       'https://app.communityhealth.media',
+      'https://api.communityhealth.media',
       'http://localhost:5173',
       'http://localhost:3000',
     ],
