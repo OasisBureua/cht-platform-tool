@@ -29,6 +29,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/terminus": "^11.0.0",
     "@prisma/client": "^5.22.0",
+    "@sendgrid/mail": "^8.1.6",
     "@willsoto/nestjs-prometheus": "^6.0.2",
     "cache-manager": "^7.2.7",
     "cache-manager-ioredis-yet": "^2.1.2",

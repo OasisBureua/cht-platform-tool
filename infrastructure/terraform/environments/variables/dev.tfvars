@@ -31,8 +31,8 @@ worker_min_capacity     = 1
 worker_max_capacity     = 10
 
 # SSL Certificates (add after requesting)
-# acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/..."
-# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/..."
+acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/296eb14e-85f0-48d5-bda6-a60dde41afd6"
+cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/296eb14e-85f0-48d5-bda6-a60dde41afd6"
 
 # Domain
 domain_name = "communityhealth.media"
@@ -40,11 +40,11 @@ domain_name = "communityhealth.media"
 # Optional: Application secrets (or set via environment variables)
 stripe_secret_key      = "sk_test_51SgE8U4AsB5fThaf2V3I0Li9sQjSi2AVxSMlQFaX9liGKBIjdfh8cITr0Fwk3AHELnnPZhcyZX2u03rsrQpXSZyI00JqUqlMAd"
 stripe_publishable_key = "pk_test_51SgE8U4AsB5fThafcGimMu6kadDjrman1ptUTRs69I2m5HDgWM4hJegOuos8oJ47kwVmDYu3hP2uOUSrbUKjh5kn00TPu3XgL9"
-# stripe_webhook_secret  = ""
-# sendgrid_api_key       = ""
-# auth0_domain           = ""
-# auth0_client_id        = ""
-# auth0_audience         = ""
+stripe_webhook_secret  = "whsec_nmSP4aOvIHnW8ZFz7xApvEYE51vCGiLS"
+sendgrid_api_key       = "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"
+auth0_domain           = "dev-z6ql5fywvjgz4snj.us.auth0.com"
+auth0_client_id        = "aHwexIuzxluejiNGQ5ej0EHpSjwetl53"
+auth0_audience         = "https://api-dev.communityhealth.media"
 
 # Optional: SNS for alerts
 # sns_topic_arn = ""
