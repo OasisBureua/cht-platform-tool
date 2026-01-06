@@ -1,91 +1,189 @@
-import { Card } from '../components/ui/Card';
-import { CreditCard, AlertCircle, CheckCircle } from 'lucide-react';
+import { useMemo } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { paymentsApi } from '../api/payments';
+import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
+import { DollarSign, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
+import { format } from 'date-fns';
+
+function formatMoney(value: number) {
+  return `$${value.toFixed(2)}`;
+}
+
+function statusChip(status: PaymentStatus) {
+  const base = 'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold';
+  if (status === 'PAID') return `${base} border-green-200 bg-green-50 text-green-800`;
+  if (status === 'PROCESSING') return `${base} border-blue-200 bg-blue-50 text-blue-800`;
+  if (status === 'PENDING') return `${base} border-yellow-200 bg-yellow-50 text-yellow-800`;
+  return `${base} border-red-200 bg-red-50 text-red-800`;
+}
+
+function statusIcon(status: PaymentStatus) {
+  if (status === 'PAID') return <CheckCircle2 className="h-4 w-4" />;
+  if (status === 'PROCESSING') return <Clock3 className="h-4 w-4" />;
+  if (status === 'PENDING') return <AlertCircle className="h-4 w-4" />;
+  return <AlertCircle className="h-4 w-4" />;
+}
 
 export default function Payments() {
+  const { data: summary, isLoading: loadingSummary } = useQuery({
+    queryKey: ['payments-summary'],
+    queryFn: paymentsApi.getSummary,
+  });
+
+  const { data: history, isLoading: loadingHistory } = useQuery({
+    queryKey: ['payments-history'],
+    queryFn: paymentsApi.getHistory,
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: paymentsApi.createConnectLink,
+    onSuccess: ({ url }) => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+  });
+
+  const payoutMutation = useMutation({
+    mutationFn: () => paymentsApi.requestPayout(),
+  });
+
+  const totalThisMonth = useMemo(() => {
+    const items = history || [];
+    const now = new Date();
+    return items
+      .filter((i) => {
+        const d = new Date(i.date);
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      })
+      .reduce((sum, i) => sum + i.amount, 0);
+  }, [history]);
+
+  if (loadingSummary || loadingHistory) return <LoadingSpinner />;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Payment Settings</h1>
-        <p className="mt-2 text-gray-600">
-          Manage your payment account and view transaction history.
+      <header className="space-y-2">
+        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payments</h1>
+        <p className="text-sm text-gray-600">
+          Connect Stripe to receive payouts, track earnings, and review payment status.
+        </p>
+      </header>
+
+      {/* Stripe connect banner */}
+      <div className="rounded-3xl border border-gray-200 bg-gray-900 p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-white">Get paid faster with Stripe</p>
+            <p className="text-sm text-gray-300">
+              Connect your Stripe account to enable payouts and earnings tracking.
+            </p>
+          </div>
+
+          <button
+            onClick={() => connectMutation.mutate()}
+            disabled={connectMutation.isPending}
+            className={[
+              'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
+              connectMutation.isPending ? 'bg-gray-200 text-gray-700' : 'bg-white text-gray-900 hover:bg-gray-100',
+            ].join(' ')}
+          >
+            {connectMutation.isPending ? 'Opening…' : 'Connect Stripe'}
+            <ExternalLink className="ml-2 h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Summary cards */}
+      <section className="grid gap-6 md:grid-cols-3">
+        <StatCard label="Available balance" value={formatMoney(summary!.availableBalance)} sub="Ready to withdraw" />
+        <StatCard label="Pending balance" value={formatMoney(summary!.pendingBalance)} sub="Processing rewards" />
+        <StatCard label="This month" value={formatMoney(totalThisMonth)} sub="Earned so far" />
+      </section>
+
+      {/* Payout action */}
+      <section className="rounded-3xl border border-gray-200 bg-white p-6">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-gray-900">Withdraw funds</p>
+            <p className="text-sm text-gray-600">
+              Last payout:{' '}
+              <span className="font-semibold text-gray-900">
+                {summary!.lastPayoutDate ? format(new Date(summary!.lastPayoutDate), 'MMM d, yyyy') : '—'}
+              </span>
+            </p>
+          </div>
+
+          <button
+            onClick={() => payoutMutation.mutate()}
+            disabled={payoutMutation.isPending || summary!.availableBalance <= 0}
+            className={[
+              'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
+              payoutMutation.isPending || summary!.availableBalance <= 0
+                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                : 'bg-gray-900 text-white hover:bg-black',
+            ].join(' ')}
+          >
+            <DollarSign className="mr-2 h-4 w-4" />
+            {payoutMutation.isPending ? 'Requesting…' : 'Request payout'}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </button>
+        </div>
+      </section>
+
+      {/* History */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold text-gray-900">Payment history</h2>
+          <span className="text-sm text-gray-600">{(history || []).length} items</span>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="divide-y divide-gray-200">
+            {(history || []).map((item) => (
+              <HistoryRow key={item.id} item={item} />
+            ))}
+          </div>
+
+          {(history || []).length === 0 ? (
+            <div className="p-10 text-center">
+              <p className="font-semibold text-gray-900">No payments yet</p>
+              <p className="mt-1 text-sm text-gray-600">Complete activities to start earning.</p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="rounded-3xl border border-gray-200 bg-white p-6">
+      <p className="text-xs font-semibold text-gray-600">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>
+      <p className="mt-1 text-sm text-gray-600">{sub}</p>
+    </div>
+  );
+}
+
+function HistoryRow({ item }: { item: PaymentItem }) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-3">
+      <div className="min-w-0">
+        <p className="font-medium text-gray-900 truncate">{item.title}</p>
+        <p className="text-sm text-gray-600 truncate">
+          {format(new Date(item.date), 'MMM d, yyyy')} • {item.method || '—'}
         </p>
       </div>
 
-      {/* Setup Notice */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start">
-        <AlertCircle className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
-        <div>
-          <p className="text-sm text-blue-800">
-            <strong>Payment integration coming soon!</strong> Stripe Connect
-            onboarding will be available once Auth0 authentication is configured.
-          </p>
-        </div>
+      <div className="shrink-0 flex items-center gap-3">
+        <span className="text-sm font-semibold text-gray-900">{formatMoney(item.amount)}</span>
+        <span className={statusChip(item.status)}>
+          {statusIcon(item.status)}
+          {item.status}
+        </span>
       </div>
-
-      {/* Payment Account Status */}
-      <Card>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Payment Account
-            </h2>
-            <span className="px-3 py-1 bg-gray-100 text-gray-800 text-sm font-medium rounded-full">
-              Not Connected
-            </span>
-          </div>
-
-          <p className="text-sm text-gray-600">
-            Connect your bank account to receive honorarium payments directly.
-          </p>
-
-          <button className="btn-primary" disabled>
-            <CreditCard className="w-4 h-4 mr-2" />
-            Connect Bank Account
-          </button>
-        </div>
-      </Card>
-
-      {/* What You'll Need */}
-      <Card>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          What You'll Need
-        </h2>
-        <ul className="space-y-3">
-          {[
-            'Valid government-issued ID',
-            'Social Security Number or EIN',
-            'Bank account and routing number',
-            'Business information (if applicable)',
-          ].map((item, index) => (
-            <li key={index} className="flex items-start">
-              <CheckCircle className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" />
-              <span className="text-gray-700">{item}</span>
-            </li>
-          ))}
-        </ul>
-      </Card>
-
-      {/* Payment Schedule */}
-      <Card>
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Payment Schedule
-        </h2>
-        <div className="space-y-3 text-sm text-gray-600">
-          <p>
-            <strong>Honorarium Payments:</strong> Processed within 2-3 business
-            days after program completion
-          </p>
-          <p>
-            <strong>Survey Bonuses:</strong> Processed within 1 business day
-            after survey submission
-          </p>
-          <p>
-            <strong>Transfer Time:</strong> Funds typically arrive in your bank
-            account within 2-3 business days
-          </p>
-        </div>
-      </Card>
     </div>
   );
 }

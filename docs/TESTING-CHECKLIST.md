@@ -3,6 +3,7 @@
 ## Pre-Deployment Tests
 
 ### Local Development
+
 - [ ] Backend builds successfully: `cd backend && npm run build`
 - [ ] Worker builds successfully: `cd worker && npm run build`
 - [ ] Frontend builds successfully: `cd frontend && npm run build`
@@ -11,6 +12,7 @@
 - [ ] Unit tests pass (if any)
 
 ### AWS Prerequisites
+
 - [ ] AWS credentials configured: `aws sts get-caller-identity`
 - [ ] ECR repositories exist: `aws ecr describe-repositories --region us-east-1`
 - [ ] Docker images pushed: `./scripts/push-images.sh v1.0.0 us-east-1`
@@ -22,6 +24,7 @@
 ## Post-Deployment Tests (Dev)
 
 ### Infrastructure Verification
+
 ```bash
 cd infrastructure/terraform/environments/us-east-1
 terraform output
@@ -36,6 +39,7 @@ terraform output
 - [ ] Route53 nameservers returned
 
 ### DNS Configuration
+
 ```bash
 # Check Route53 nameservers
 cd infrastructure/terraform/environments/us-east-1
@@ -48,6 +52,7 @@ terraform output route53_nameservers
 - [ ] Both records resolve to correct values
 
 ### Backend Health Checks
+
 ```bash
 # Via ALB (direct)
 ALB_DNS=$(cd infrastructure/terraform/environments/us-east-1 && terraform output -raw alb_dns_name)
@@ -68,6 +73,7 @@ curl https://api.communityhealth.media/health/detail
 - [ ] Response time < 500ms
 
 ### Frontend Tests
+
 ```bash
 open https://app.communityhealth.media
 ```
@@ -81,6 +87,7 @@ open https://app.communityhealth.media
 - [ ] CloudFront serving correctly
 
 ### Application Flow Tests
+
 ```bash
 # Create test user in Auth0
 # Login and test full flow
@@ -97,6 +104,7 @@ open https://app.communityhealth.media
 - [ ] Can logout successfully
 
 ### Database Tests
+
 ```bash
 # Connect to ECS task and run queries
 ./scripts/run-migrations.sh dev
@@ -109,6 +117,7 @@ open https://app.communityhealth.media
 - [ ] Foreign keys working
 
 ### Worker Service Tests
+
 ```bash
 # Check worker logs
 aws logs tail /ecs/cht-platform-dev --follow --region us-east-1 | grep worker
@@ -121,6 +130,7 @@ aws logs tail /ecs/cht-platform-dev --follow --region us-east-1 | grep worker
 - [ ] Processes test message (if sent)
 
 ### Performance Tests
+
 ```bash
 # Load test backend
 ./scripts/load-test.sh https://api.communityhealth.media 100 30
@@ -133,6 +143,7 @@ aws logs tail /ecs/cht-platform-dev --follow --region us-east-1 | grep worker
 - [ ] CloudWatch metrics updating
 
 ### Security Tests
+
 - [ ] All S3 buckets are private (no public access)
 - [ ] Database only accessible from private subnet
 - [ ] Redis only accessible from private subnet
@@ -142,6 +153,7 @@ aws logs tail /ecs/cht-platform-dev --follow --region us-east-1 | grep worker
 - [ ] IAM roles follow least privilege
 
 ### Monitoring Tests
+
 ```bash
 # Check CloudWatch
 open https://console.aws.amazon.com/cloudwatch
@@ -157,6 +169,7 @@ open https://console.aws.amazon.com/cloudwatch
 - [ ] Health check alarm configured
 
 ### Cost Verification
+
 ```bash
 # Check current spend
 aws ce get-cost-and-usage \
@@ -176,6 +189,7 @@ aws ce get-cost-and-usage \
 ## Production Deployment Tests
 
 ### Pre-Production
+
 - [ ] All dev tests passed
 - [ ] Production variables reviewed: `cat environments/variables/prod.tfvars`
 - [ ] Application secrets configured
@@ -184,6 +198,7 @@ aws ce get-cost-and-usage \
 - [ ] Disaster recovery plan reviewed
 
 ### Production Infrastructure
+
 ```bash
 ./scripts/deploy-primary.sh prod
 ```
@@ -195,6 +210,7 @@ aws ce get-cost-and-usage \
 - [ ] Enhanced monitoring enabled
 
 ### Production Application Tests
+
 - [ ] SSL certificate valid (production domain)
 - [ ] All health checks passing
 - [ ] Login with production Auth0
@@ -203,6 +219,7 @@ aws ce get-cost-and-usage \
 - [ ] All integrations working
 
 ### Production Performance
+
 - [ ] Load test with 500 concurrent users
 - [ ] Auto-scaling working correctly
 - [ ] Response times acceptable
@@ -213,6 +230,7 @@ aws ce get-cost-and-usage \
 ## Disaster Recovery Tests
 
 ### Manual Failover Drill
+
 ```bash
 # Quarterly test
 cd infrastructure/terraform/environments/us-east-2-standby
@@ -226,6 +244,7 @@ cd infrastructure/terraform/environments/us-east-2-standby
 - [ ] Time to recovery documented
 
 ### Backup Verification
+
 ```bash
 # Check RDS snapshots
 aws rds describe-db-snapshots \
@@ -243,12 +262,14 @@ aws rds describe-db-snapshots \
 ## Regression Tests (After Updates)
 
 ### After Infrastructure Changes
+
 - [ ] All original tests still pass
 - [ ] No unexpected cost increases
 - [ ] No downtime during update
 - [ ] Rollback plan tested
 
 ### After Application Updates
+
 - [ ] Health checks still pass
 - [ ] Login still works
 - [ ] All features still functional
@@ -260,18 +281,21 @@ aws rds describe-db-snapshots \
 ## Continuous Monitoring
 
 ### Daily Checks
+
 - [ ] Check CloudWatch dashboard
 - [ ] Review error logs
 - [ ] Check cost explorer
 - [ ] Verify backups ran
 
 ### Weekly Checks
+
 - [ ] Review performance metrics
 - [ ] Check auto-scaling events
 - [ ] Review security group rules
 - [ ] Update documentation if needed
 
 ### Monthly Checks
+
 - [ ] Load testing
 - [ ] Disaster recovery drill
 - [ ] Cost optimization review
@@ -282,12 +306,14 @@ aws rds describe-db-snapshots \
 ## Emergency Response Tests
 
 ### Service Degradation
+
 - [ ] CloudWatch alarms fire correctly
 - [ ] SNS notifications received
 - [ ] Runbook procedures work
 - [ ] Can diagnose issues quickly
 
 ### Complete Outage
+
 - [ ] Can access logs
 - [ ] Can access AWS Console
 - [ ] Can deploy us-east-2
@@ -298,12 +324,14 @@ aws rds describe-db-snapshots \
 ## Sign-Off
 
 **Dev Environment:**
+
 - [ ] All tests passed
 - [ ] Tested by: ________________
 - [ ] Date: ________________
 - [ ] Approved for production: Yes/No
 
 **Production Environment:**
+
 - [ ] All tests passed
 - [ ] Load tested
 - [ ] Security reviewed
@@ -317,7 +345,6 @@ aws rds describe-db-snapshots \
 
 Document any issues found during testing:
 
-1. 
-2. 
-3. 
-
+1. TBD
+2. TBD
+3. TBD
