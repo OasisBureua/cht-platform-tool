@@ -11,6 +11,10 @@ import Contact from './pages/public/Contact';
 import Join from './pages/public/Join';
 import Login from './pages/public/Login';
 import Privacy from './pages/public/Privacy';
+import DiseaseDetail from './pages/public/DiseaseDetail';
+import Search from './pages/public/Search';
+import ForHCPs from './pages/public/ForHCPs';
+import WhatWeDo from './pages/public/WhatWeDo';
 
 // App layout (existing)
 import Layout from './components/layout/Layout';
@@ -61,6 +65,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/watch/:videoId" element={<PublicWatch />} />
+            <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
 
             {/* Public placeholders (so nav doesn't 404 yet) */}
             <Route path="/about" element={<About />} />
@@ -69,6 +74,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/privacy" element={<Privacy />} />
 
+            <Route path="/search" element={<Search />} />
+            <Route path="/for-hcps" element={<ForHCPs />} />
+            <Route path="/what-we-do" element={<WhatWeDo />} />
           </Route>
 
           {/* =======================
