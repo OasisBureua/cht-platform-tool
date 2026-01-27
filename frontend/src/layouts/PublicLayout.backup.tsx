@@ -1,6 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import logo from "../assets/icons/chm-logo.svg";
-import searchIcon from "../assets/icons/search.svg";
+import { Search } from 'lucide-react';
 
 function NavItem({ to, label }: { to: string; label: string }) {
   return (
@@ -8,7 +7,7 @@ function NavItem({ to, label }: { to: string; label: string }) {
       to={to}
       className={({ isActive }) =>
         [
-          'text-sm font-normal',
+          'text-sm font-medium',
           isActive ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900',
         ].join(' ')
       }
@@ -22,87 +21,51 @@ export default function PublicLayout() {
   return (
     <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="h-20 flex items-center">
-            {/* Logo + Nav */}
-            <div className="flex items-center gap-10">
-              <Link to="/" className="flex items-center">
-              <img src={logo} alt="Community Health Media" className="h-8 w-auto" />
-              </Link>
-              
-              <nav className="hidden lg:flex items-center gap-8">
-                <NavItem to="/about" label="About" />
-                <NavItem to="/what-we-do" label="What We Do" />
-                <NavItem to="/catalog" label="Content Library" />
-                <NavItem to="/for-hcps" label="For HCPs" />
-                <NavItem to="/contact" label="Contact" />
-              </nav>
-            </div>
+      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="h-20 flex items-center justify-between">
+            {/* Logo */}
+            <Link to="/" className="flex items-center gap-3">
+              {/* Simple mark placeholder (swap with your SVG when ready) */}
+              <div className="h-10 w-10 rounded-xl border border-gray-200 bg-white flex items-center justify-center">
+                <span className="text-sm font-bold text-gray-900">CH</span>
+              </div>
+            </Link>
+
+            {/* Desktop Nav */}
+            <nav className="hidden lg:flex items-center gap-10">
+              <NavItem to="/about" label="About" />
+              <NavItem to="/what-we-do" label="What We Do" />
+              <NavItem to="/catalog" label="Content Library" />
+              <NavItem to="/for-hcps" label="For HCPs" />
+              <NavItem to="/contact" label="Contact" />
+            </nav>
 
             {/* Right actions */}
-            <div className="ml-auto flex items-center gap-4 pl-3">
+            <div className="flex items-center gap-4">
               <Link
                 to="/search"
                 className="hidden sm:flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-50"
                 aria-label="Search"
               >
-                <img src={searchIcon} alt="" className="h-6 w-6" />
+                <Search className="h-6 w-6 text-gray-900" />
               </Link>
 
-              {/* Pills (PNG: Login outlined, Get Started filled) */}
-              <div className="hidden sm:flex items-center border border-black"
-                style={{
-                  width: 229,
-                  height: 62,
-                  borderRadius: 100,
-                  background: "#000",
-                  padding: 6,
-                  boxSizing: "border-box",
-                  fontFamily: "SF Pro Display",
-                }}
-              
-              >
-                {/* Login (black) */}
+              {/* Pills (matches PDF: Login filled, Get Started outlined) */}
+              <div className="hidden sm:flex items-center rounded-full border border-gray-200 p-1">
                 <Link
                   to="/login"
-                  className="flex items-center justify-center"
-                  style={{
-                    width: 134,
-                    height: 47,
-                    borderRadius: 100,
-                    background: "#000",
-                    color: "#fff",
-                    fontSize: 16,
-                    fontWeight: 400,
-                    lineHeight: "21px",
-                    textDecoration: "none",
-                }}
-              >
-                Login
-              </Link>
-          
-              {/* Get Started (white) */}
-              <Link
-                to="/join"
-                className="flex items-center justify-center border border-black"
-                style={{
-                  width: 134,
-                  height: 47,
-                  borderRadius: 100,
-                  background: "#fff",
-                  color: "#000",
-                  fontSize: 16,
-                  fontWeight: 400,
-                  lineHeight: "21px",
-                  textDecoration: "none",
-                  marginLeft: 8,
-                }}
-              >
-                Get Started
-              </Link>
-            </div>
-
+                  className="rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-black"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/join"
+                  className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                >
+                  Get Started
+                </Link>
+              </div>
 
               {/* Mobile: show CTA only */}
               <div className="sm:hidden">

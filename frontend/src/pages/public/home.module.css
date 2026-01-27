@@ -1,0 +1,748 @@
+/* =========================
+   HERO
+========================= */
+
+.hero {
+  position: relative;
+  width: 100%;
+  height: 643px;
+  background-image: url("../../assets/home/hero.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.heroOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55); /* #0000008C */
+  border: 1px solid #000;
+}
+
+.heroInner {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  max-width: 1677px;
+  margin: 0 auto;
+  padding: 0 24px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.heroTitle {
+  max-width: 1059px;
+  color: #ffffff;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 64px;
+  font-weight: 400;
+  line-height: 87px;
+  margin: 0;
+}
+
+.heroSubtitle {
+  max-width: 630px;
+  margin-top: 20px;
+
+  color: #ffffff;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 32px;
+}
+
+.heroCtas {
+  margin-top: 32px;
+  display: flex;
+  gap: 20px;
+}
+
+/* Hero buttons */
+.heroBtnLight,
+.heroBtnDark {
+  width: 208px;
+  height: 61px;
+  border-radius: 40px;
+  border: 1px solid #000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: "SF Pro Display";
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 54px;
+  text-decoration: none;
+}
+
+.heroBtnLight {
+  background: #ffffff;
+  color: #000000;
+}
+
+.heroBtnDark {
+  background: #000000;
+  color: #ffffff;
+}
+
+/* =========================
+   FEATURED VIDEOS
+========================= */
+
+.featured {
+  padding: 96px 0;
+  background: #ffffff;
+}
+
+.featuredInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.featuredTitle {
+  color: #000000;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 64px;
+  font-weight: 500;
+  line-height: normal;
+  margin: 0;
+}
+
+/* Scrollable viewport with snap */
+.featuredViewport {
+  margin-top: 28px;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 24px; /* makes snap feel centered with row padding */
+  -webkit-overflow-scrolling: touch;
+
+  /* hide scrollbar but keep scrolling */
+  scrollbar-width: none; /* Firefox */
+}
+.featuredViewport::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Classic carousel row */
+.featuredRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  justify-content: flex-start;
+
+  width: max-content; /* allow horizontal scroll width */
+  padding: 0 24px;
+}
+
+/* Cards */
+.videoCard {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+}
+
+.videoCardSide {
+  width: 668px;
+  scroll-snap-align: center;
+}
+
+.videoCardMain {
+  width: 875px;
+  scroll-snap-align: center;
+}
+
+/* Side thumbs */
+.videoThumb {
+  width: 100%;
+  height: 479px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.32);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Main thumb (exact Figma crop) */
+.videoThumbMain {
+  position: relative;
+  width: 875px;
+  height: 490px;
+  aspect-ratio: 25 / 14;
+  border-radius: 20px;
+  overflow: hidden;
+
+  background-color: #d9d9d9;
+  background-repeat: no-repeat;
+  background-size: 100% 119.001%;
+  background-position: 0px -22.053px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* If you want the band to read like big images only (like PNG), keep this ON */
+.videoCardMain .videoMeta {
+  display: none;
+}
+
+/* Play + duration */
+.playButton {
+  height: 64px;
+  width: 64px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+.videoDuration {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-family: "SF Pro Display";
+  font-size: 14px;
+}
+
+/* Meta styles (only matter if you set .videoCardMain .videoMeta back to display:block) */
+.videoMeta {
+  margin-top: 12px;
+}
+
+.videoTitle {
+  margin: 0;
+  font-family: "SF Pro Display";
+  font-size: 18px;
+  font-weight: 400;
+  color: #000000;
+}
+
+.videoSub {
+  margin: 6px 0 0;
+  font-family: "SF Pro Display";
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+/* Controls */
+.featuredControls {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+}
+
+.ctrlBtn {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: #ffffff;
+  color: #000000;
+  font-family: "SF Pro Display";
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.ctrlDots {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ctrlDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.ctrlDotActive {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* =========================
+   TREATMENTS (matches Featured Videos)
+========================= */
+
+.treatments {
+  padding: 96px 0;
+  background: #ffffff;
+}
+
+.treatmentsInner {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.treatmentsTitle {
+  color: #000000;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 64px;
+  font-style: normal;
+  font-weight: 500;
+  line-height: normal;
+  margin: 0;
+}
+
+.treatmentsSubtitle {
+  margin: 14px auto 0;
+  max-width: 780px;
+  color: #000000;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 20px;
+  font-weight: 400;
+  line-height: normal;
+}
+
+/* Scrollable viewport identical behavior to Featured Videos */
+.treatmentsViewport {
+  margin-top: 28px;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 24px;
+  -webkit-overflow-scrolling: touch;
+
+  scrollbar-width: none;
+}
+.treatmentsViewport::-webkit-scrollbar {
+  display: none;
+}
+
+.treatmentsRow {
+  display: flex;
+  align-items: center;
+  gap: 11px; /* same as Featured Videos */
+  justify-content: flex-start;
+
+  width: max-content;
+  padding: 0 24px;
+}
+
+/* Cards: same size as Featured Videos side cards */
+.treatmentCard {
+  width: 668px;
+  height: 479px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.32);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+
+  position: relative;
+  overflow: hidden;
+
+  scroll-snap-align: center;
+  flex: 0 0 auto;
+}
+
+/* Optional: darken overlay if your card backgrounds need contrast */
+.treatmentCardOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Text layout inside card */
+.treatmentCardContent {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 34px;
+  z-index: 1;
+}
+
+.treatmentName {
+  margin: 0;
+  color: #ffffff;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 32px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+}
+
+.treatmentExplore {
+  color: #ffffff;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: normal;
+
+  text-decoration-line: underline;
+  text-decoration-style: solid;
+  text-decoration-skip-ink: none;
+  text-decoration-thickness: auto;
+  text-underline-offset: auto;
+  text-underline-position: from-font;
+}
+
+/* Dots only (no arrows) */
+.treatmentsControls {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.treatmentsSubtitle {
+  margin: 14px auto 0;
+  max-width: 780px;
+  color: #000000;
+  text-align: center;
+  font-family: "SF Pro Display";
+  font-size: 20px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 40px; /* 200% */
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+
+/* Tablet / small desktop */
+@media (max-width: 1024px) {
+  /* HERO */
+  .hero {
+    height: 560px;
+  }
+
+  .heroTitle {
+    font-size: 52px;
+    line-height: 66px;
+    max-width: 860px;
+  }
+
+  .heroSubtitle {
+    font-size: 20px;
+    line-height: 30px;
+    max-width: 640px;
+  }
+
+  .heroCtas {
+    gap: 14px;
+  }
+
+  .heroBtnLight,
+  .heroBtnDark {
+    width: 196px;
+    height: 58px;
+    font-size: 18px;
+    line-height: 48px;
+  }
+
+  /* FEATURED VIDEOS */
+  .featuredInner {
+    max-width: 960px;
+  }
+
+  .featuredTitle {
+    font-size: 52px;
+  }
+
+  /* scale cards down while preserving look */
+  .videoCardSide {
+    width: 520px;
+  }
+
+  .videoThumb {
+    height: 380px;
+    border-radius: 18px;
+  }
+
+  .videoCardMain {
+    width: 720px;
+  }
+
+  .videoThumbMain {
+    width: 720px;
+    height: 404px; /* keeps similar proportion */
+    border-radius: 18px;
+  }
+
+  .featuredRow {
+    padding: 0 18px;
+    gap: 11px; /* keep exact gap */
+  }
+
+  .featuredViewport {
+    scroll-padding: 0 18px;
+  }
+
+  /* TREATMENTS */
+  .treatmentsInner {
+    max-width: 960px;
+  }
+
+  .treatmentsTitle {
+    font-size: 52px;
+  }
+
+  .treatmentsSubtitle {
+    font-size: 18px;
+    line-height: 34px;
+  }
+
+  .treatmentsRow {
+    padding: 0 18px;
+    gap: 11px;
+  }
+
+  .treatmentsViewport {
+    scroll-padding: 0 18px;
+  }
+
+  .treatmentCard {
+    width: 520px;
+    height: 380px;
+    border-radius: 18px;
+  }
+
+  .treatmentName {
+    font-size: 40px;
+  }
+
+  .treatmentExplore {
+    font-size: 20px;
+  }
+
+  .treatmentCardContent {
+    padding: 0 24px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  /* HERO */
+  .hero {
+    height: 520px;
+  }
+
+  .heroInner {
+    padding: 0 16px;
+  }
+
+  .heroTitle {
+    font-size: 36px;
+    line-height: 44px;
+    max-width: 100%;
+  }
+
+  .heroSubtitle {
+    font-size: 16px;
+    line-height: 24px;
+    max-width: 100%;
+    margin-top: 14px;
+  }
+
+  .heroCtas {
+    margin-top: 22px;
+    gap: 12px;
+    flex-direction: column;
+    width: 100%;
+    align-items: center;
+  }
+
+  .heroBtnLight,
+  .heroBtnDark {
+    width: 100%;
+    max-width: 320px;
+    height: 54px;
+    font-size: 18px;
+    line-height: 44px;
+  }
+
+  /* FEATURED VIDEOS */
+  .featured {
+    padding: 72px 0;
+  }
+
+  .featuredInner {
+    padding: 0 16px;
+  }
+
+  .featuredTitle {
+    font-size: 36px;
+  }
+
+  .featuredViewport {
+    margin-top: 18px;
+    scroll-padding: 0 16px;
+  }
+
+  .featuredRow {
+    padding: 0 16px;
+    gap: 11px;
+  }
+
+  .videoCardSide {
+    width: 320px;
+  }
+
+  .videoThumb {
+    height: 260px;
+    border-radius: 16px;
+  }
+
+  .videoCardMain {
+    width: 360px;
+  }
+
+  .videoThumbMain {
+    width: 360px;
+    height: 202px;
+    border-radius: 16px;
+  }
+
+  .playButton {
+    height: 54px;
+    width: 54px;
+    font-size: 20px;
+  }
+
+  .videoDuration {
+    right: 10px;
+    bottom: 10px;
+    font-size: 12px;
+    padding: 5px 8px;
+  }
+
+  .featuredControls {
+    margin-top: 14px;
+    gap: 12px;
+  }
+
+  .ctrlBtn {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+
+  .ctrlDot {
+    width: 7px;
+    height: 7px;
+  }
+
+  /* TREATMENTS */
+  .treatments {
+    padding: 72px 0;
+  }
+
+  .treatmentsInner {
+    padding: 0 16px;
+  }
+
+  .treatmentsTitle {
+    font-size: 36px;
+  }
+
+  .treatmentsSubtitle {
+    font-size: 16px;
+    line-height: 28px;
+    margin-top: 10px;
+  }
+
+  .treatmentsViewport {
+    margin-top: 18px;
+    scroll-padding: 0 16px;
+  }
+
+  .treatmentsRow {
+    padding: 0 16px;
+    gap: 11px;
+  }
+
+  .treatmentCard {
+    width: 340px;
+    height: 260px;
+    border-radius: 16px;
+  }
+
+  .treatmentCardContent {
+    padding: 0 16px;
+  }
+
+  .treatmentName {
+    font-size: 28px;
+  }
+
+  .treatmentExplore {
+    font-size: 16px;
+  }
+
+  .treatmentsControls {
+    margin-top: 14px;
+  }
+}
+
+/* =========================
+   POLISH – HOVERS & FOCUS
+========================= */
+
+.videoThumb,
+.videoThumbMain,
+.treatmentCard {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.videoCard:hover .videoThumb,
+.videoCard:hover .videoThumbMain,
+.treatmentCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Make links feel clickable */
+.treatmentExplore {
+  transition: opacity 150ms ease;
+}
+
+.treatmentExplore:hover {
+  opacity: 0.85;
+}
+
+/* Accessible focus states */
+.videoCard:focus-within,
+.treatmentCard:focus-within {
+  outline: 2px solid #000;
+  outline-offset: 6px;
+  border-radius: 22px;
+}
