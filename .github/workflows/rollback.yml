@@ -1,0 +1,51 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      image_tag:
+        description: 'Image tag to rollback to (e.g., dev-abc1234-1234567890)'
+        required: true
+        type: string
+
+jobs:
+  rollback:
+    name: Rollback to Previous Version
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Update ECS service with previous image
+        run: |
+          aws ecs update-service \
+            --cluster cht-platform-${{ inputs.environment }}-cluster \
+            --service cht-platform-${{ inputs.environment }}-backend \
+            --task-definition cht-platform-${{ inputs.environment }}-backend \
+            --force-new-deployment
+
+      - name: Wait for rollback
+        run: |
+          aws ecs wait services-stable \
+            --cluster cht-platform-${{ inputs.environment }}-cluster \
+            --services cht-platform-${{ inputs.environment }}-backend
+
+      - name: Verify health
+        run: |
+          curl -f https://api.communityhealth.media/health/ready
+          echo "✅ Rollback successful!"

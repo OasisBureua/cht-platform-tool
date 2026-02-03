@@ -1,31 +1,53 @@
 # CHT Platform
 
-Healthcare Professional Engagement Platform - AI-powered content hub connecting KOLs and HCPs.
+Healthcare education platform connecting medical professionals with CME programs and honorarium payments.
 
 ## Project Structure
-
 ```
 cht-platform/
-├── infrastructure/    # Terraform AWS infrastructure
-├── backend/          # TBD
-├── docs/             # Documentation
-└── .github/
-    └── workflows/    # CI/CD pipelines
+├── backend/          # NestJS API server
+├── worker/           # Python background workers
+├── frontend/         # React web application
+├── infrastructure/   # Terraform IaC
+├── docs/            # Documentation
+└── scripts/         # Deployment scripts
 ```
 
 ## Tech Stack
 
-- **Backend**: TBD
-- **Database**: TBD
-- **Infrastructure**: Terraform + AWS
-- **CI/CD**: GitHub Actions
+### Backend
+- NestJS (TypeScript)
+- PostgreSQL + Prisma ORM
+- Auth0 (Authentication)
+- Stripe Connect (Payments)
+- AWS SQS (Job queuing)
+
+### Worker
+- Python 3.11
+- Boto3 (AWS SDK)
+- SendGrid (Email)
+- ReportLab (PDF generation)
+
+### Frontend
+- React 18 + TypeScript
+- Vite (Build tool)
+- Tailwind CSS
+- React Query
+- Recharts
+
+### Infrastructure
+- AWS (ECS, RDS, ElastiCache, SQS, S3, CloudFront)
+- Terraform
+- Docker
 
 ## Getting Started
 
-Documentation coming soon...
+See [docs/getting-started.md](docs/getting-started.md)
 
-## Status
+## Architecture
 
-- ✅ Repository created
-- ⏳ Infrastructure setup in progress
-- ⏳ Backend API coming soon
+See [docs/architecture.md](docs/architecture.md)
+
+## Deployment
+
+See [docs/deployment.md](docs/deployment.md)
