@@ -1,126 +1,106 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { programsApi, type Program, type Video } from '../api/programs';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { Play, Bookmark, Eye } from 'lucide-react';
 
-function flattenVideos(programs: Program[]) {
-  const items: Array<{ program: Program; video: Video }> = [];
-  for (const p of programs) {
-    for (const v of p.videos || []) items.push({ program: p, video: v });
-  }
-  return items;
-}
+const STOCK_IMAGES = {
+  main: 'https://picsum.photos/seed/watch-main/1200/600',
+  playlist: [
+    'https://picsum.photos/seed/watch-p1/400/240',
+    'https://picsum.photos/seed/watch-p2/400/240',
+    'https://picsum.photos/seed/watch-p3/400/240',
+    'https://picsum.photos/seed/watch-p4/400/240',
+    'https://picsum.photos/seed/watch-p5/400/240',
+    'https://picsum.photos/seed/watch-p6/400/240',
+  ],
+};
+
+const PLAYLISTS = [
+  { id: '1', title: 'HER2+ Big Picture & Practice Change', videoNames: ['Video Name', 'Video Name', 'Video Name'], desc: 'Video Description: Lorem ipsum dolor sit amet consectetur.' },
+  { id: '2', title: 'First-Line & Sequencing Decisions', videoNames: ['Video Name', 'Video Name', 'Video Name'] },
+  { id: '3', title: 'High-Risk & CNS Disease', videoNames: ['Video Name', 'Video Name', 'Video Name'] },
+  { id: '4', title: 'HER2+ & Endocrine Crosstalk', videoNames: ['Video Name', 'Video Name'] },
+  { id: '5', title: 'ADC-Centered Conversations', desc: 'Video Description: Lorem ipsum dolor sit amet consectetur.' },
+  { id: '6', title: 'Expert Roundtables & Deep Dives', videoNames: ['Video Name', 'Video Name'] },
+];
 
 export default function Watch() {
-  const navigate = useNavigate();
-  const [visibleCount, setVisibleCount] = useState(10);
-
-  const { data: programs, isLoading } = useQuery({
-    queryKey: ['programs'],
-    queryFn: programsApi.getAll,
-  });
-
-  const allVideos = useMemo(() => {
-    return programs ? flattenVideos(programs) : [];
-  }, [programs]);
-
-  const featured = allVideos[0];
-  const canShowMore = allVideos.length > visibleCount;
-
-  if (isLoading) return <LoadingSpinner />;
-
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Watch & Earn</h1>
-        <p className="text-sm text-gray-600">Educational Library</p>
-      </header>
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Main Study Name</h1>
 
-      {/* Featured Video */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-gray-900">Featured Video</h2>
-
-        {featured ? (
-          <div className="bg-white border border-gray-200 rounded-xl p-5">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div className="space-y-2 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">{featured.video.title}</p>
-                <p className="text-sm text-gray-600">
-                  {featured.video.description || featured.program.title}
-                </p>
-                <p className="text-sm text-gray-700">
-                  {featured.program.sponsorName} •{' '}
-                  {featured.video.duration ? `${Math.round(featured.video.duration / 60)} min` : 'Video'}
-                </p>
-              </div>
-
-              <div className="md:pt-1 flex gap-2">
-                <button
-                  onClick={() => navigate(`/watch/${featured.video.id}`)}
-                  className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                >
-                  Start Watching
-                </button>
-                <button
-                  onClick={() => navigate(`/watch/${featured.video.id}`)}
-                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  View Details
-                </button>
-              </div>
+      {/* Main video + Info */}
+      <section className="flex flex-col lg:flex-row gap-6">
+        <div className="flex-1 space-y-4">
+          <div className="relative rounded-2xl overflow-hidden bg-black aspect-video">
+            <img src={STOCK_IMAGES.main} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20">
+              <button className="h-16 w-16 rounded-full bg-white/90 flex items-center justify-center hover:bg-white transition-colors">
+                <Play className="h-8 w-8 text-gray-900 ml-1" fill="currentColor" />
+              </button>
+              <p className="mt-3 text-white font-semibold">Breast Cancer Treatment Protocol Overview</p>
+              <p className="text-sm text-white/90">Duration: 45:32</p>
             </div>
           </div>
-        ) : (
-          <div className="bg-white border border-gray-200 rounded-xl p-8 text-center">
-            <p className="font-semibold text-gray-900">No videos available</p>
-            <p className="text-sm text-gray-600 mt-1">
-              Add videos to programs to populate Watch & Earn.
-            </p>
+          <div className="flex items-center gap-4">
+            <button className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+              <Play className="h-4 w-4" /> Play
+            </button>
+            <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900">
+              <Bookmark className="h-4 w-4" /> Save
+            </button>
+            <span className="flex items-center gap-1.5 text-sm text-gray-600">
+              <Eye className="h-4 w-4" /> 1,247 views
+            </span>
           </div>
-        )}
+        </div>
+        <div className="w-full lg:w-96 shrink-0 bg-white rounded-2xl border border-gray-200 p-6">
+          <h3 className="font-bold text-gray-900 mb-3">Video Information</h3>
+          <p className="text-sm text-gray-600 mb-4">
+            In this expert discussion, Dr. VK Gadi and Dr. Ruta Rao break down the data from DESTINY-Breast 05 and 11, and what it means for HER2+ treatment.
+          </p>
+          <dl className="space-y-2 text-sm">
+            <div><dt className="font-semibold text-gray-900">Research Focus:</dt><dd className="text-gray-600">Novel immunotherapy combinations and targeted therapy protocols</dd></div>
+            <div><dt className="font-semibold text-gray-900">Institution:</dt><dd className="text-gray-600">Memorial Cancer Research Center</dd></div>
+            <div><dt className="font-semibold text-gray-900">Publication Date:</dt><dd className="text-gray-600">March 2025</dd></div>
+            <div><dt className="font-semibold text-gray-900">Status:</dt><dd className="text-gray-600">Completed</dd></div>
+          </dl>
+        </div>
       </section>
 
-      {/* Video list */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Educational Videos</h2>
-          <button className="text-sm font-medium text-gray-700 hover:text-gray-900">
-            View All Videos
-          </button>
+      {/* Study Playlists */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Study Playlists</h2>
+          <p className="text-sm text-gray-600">Explore detailed discussions broken down into focused topics.</p>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="divide-y divide-gray-200">
-            {allVideos.slice(0, visibleCount).map(({ program, video }) => (
-              <div key={video.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{video.title}</p>
-                  <p className="text-sm text-gray-600 truncate">
-                    {program.sponsorName} • {program.title}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => navigate(`/watch/${video.id}`)}
-                  className="shrink-0 text-sm font-medium text-gray-700 hover:text-gray-900"
-                >
-                  More Info →
-                </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {PLAYLISTS.map((p, idx) => (
+            <div key={p.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="h-44">
+                <img src={STOCK_IMAGES.playlist[idx]} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
               </div>
-            ))}
-          </div>
-
-          {canShowMore ? (
-            <div className="p-3">
-              <button
-                onClick={() => setVisibleCount((v) => v + 10)}
-                className="w-full rounded-lg border border-gray-200 bg-white py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Show More
-              </button>
+              <div className="p-4 space-y-3">
+                <h3 className="font-bold text-gray-900">{p.title}</h3>
+                {p.videoNames ? (
+                  <ul className="space-y-1">
+                    {p.videoNames.map((v, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="h-1 w-1 rounded-full bg-gray-400" />
+                        {v}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-600">{p.desc}</p>
+                )}
+                <Link
+                  to="/app/watch"
+                  className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                >
+                  {p.videoNames ? 'Play all' : 'Play'}
+                </Link>
+              </div>
             </div>
-          ) : null}
+          ))}
         </div>
       </section>
     </div>

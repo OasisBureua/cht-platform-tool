@@ -1,238 +1,217 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+
+// Stock images for For HCPs page (Figma node-id=237-2495)
+const STOCK_IMAGES = {
+  featuredVideo: 'https://picsum.photos/seed/forhcp-video/800/500',
+  featuredWebinar: 'https://picsum.photos/seed/forhcp-webinar/800/500',
+  featuredSurvey: 'https://picsum.photos/seed/forhcp-survey/600/300',
+  featuredStudy: 'https://picsum.photos/seed/forhcp-study/600/300',
+  biomarker: [
+    'https://picsum.photos/seed/forhcp-bio1/600/200',
+    'https://picsum.photos/seed/forhcp-bio2/600/200',
+    'https://picsum.photos/seed/forhcp-bio3/600/200',
+  ],
+  webinar: [
+    'https://picsum.photos/seed/forhcp-w1/400/220',
+    'https://picsum.photos/seed/forhcp-w2/400/220',
+    'https://picsum.photos/seed/forhcp-w3/400/220',
+    'https://picsum.photos/seed/forhcp-w4/400/220',
+    'https://picsum.photos/seed/forhcp-w5/400/220',
+    'https://picsum.photos/seed/forhcp-w6/400/220',
+  ],
+} as const;
+
+const BIOMARKER_PLAYLISTS = [
+  { id: '1', title: 'HER2+ Big Picture & Practice Change', imageUrl: STOCK_IMAGES.biomarker[0] },
+  { id: '2', title: 'First-Line & Sequencing Decisions', imageUrl: STOCK_IMAGES.biomarker[1] },
+  { id: '3', title: 'High-Risk & CNS Disease', imageUrl: STOCK_IMAGES.biomarker[2] },
+];
+
+const WEBINARS = [
+  { id: '1', title: 'Webinar #1', imageUrl: STOCK_IMAGES.webinar[0], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+  { id: '2', title: 'Webinar #2', imageUrl: STOCK_IMAGES.webinar[1], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+  { id: '3', title: 'Webinar #3', imageUrl: STOCK_IMAGES.webinar[2], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+  { id: '4', title: 'Webinar #4', imageUrl: STOCK_IMAGES.webinar[3], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+  { id: '5', title: 'Webinar #5', imageUrl: STOCK_IMAGES.webinar[4], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+  { id: '6', title: 'Webinar #6', imageUrl: STOCK_IMAGES.webinar[5], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+];
 
 export default function ForHCPs() {
   return (
-    <div className="bg-white">
-      {/* Hero */}
-      <section className="relative">
-        <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-6 space-y-6">
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-gray-600">For HCPs</p>
-                <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
-                  Evidence-based content designed for clinical practice
-                </h1>
-                <p className="text-sm md:text-base text-gray-600 max-w-xl">
-                  Explore curated collections, expert-led videos, and educational resources built to support
-                  patient-centered decision-making.
-                </p>
-              </div>
+    <div className="bg-white min-h-screen">
+      <div className="mx-auto max-w-7xl px-6 py-10 md:py-14 space-y-12 md:space-y-16">
+        {/* Main title */}
+        <header>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">
+            HCP Platform
+          </h1>
+        </header>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  to="/join"
-                  className="rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black inline-flex items-center justify-center gap-2"
-                >
-                  Get Started <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/catalog"
-                  className="rounded-full bg-white px-7 py-3 text-sm font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 inline-flex items-center justify-center"
-                >
-                  Browse Content Library
-                </Link>
-              </div>
+        {/* Featured content: 2 large + 2 small cards */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <FeaturedCard
+            title="Featured Video Title"
+            imageUrl={STOCK_IMAGES.featuredVideo}
+            cta="Watch Now"
+            size="large"
+            to="/watch"
+            showNew
+          />
+          <FeaturedCard
+            title="Featured Webinar Title"
+            imageUrl={STOCK_IMAGES.featuredWebinar}
+            cta="Join Now"
+            size="large"
+            to="/app/webinars"
+            showNew
+          />
+          <FeaturedCard
+            title="Newest Survey"
+            imageUrl={STOCK_IMAGES.featuredSurvey}
+            cta="Join Now"
+            size="small"
+            to="/app/surveys"
+          />
+          <FeaturedCard
+            title="Newest Study"
+            imageUrl={STOCK_IMAGES.featuredStudy}
+            cta="Join Now"
+            size="small"
+            to="/catalog"
+          />
+        </section>
 
-              {/* Trust bullets */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <MiniBullet title="Curated Collections" subtitle="Focused by disease area + subtype" />
-                <MiniBullet title="Expert Speakers" subtitle="Practical, real-world clinical insights" />
-                <MiniBullet title="Quick to Consume" subtitle="Short videos built for busy clinicians" />
-                <MiniBullet title="Always Expanding" subtitle="New topics and updates added regularly" />
-              </div>
-            </div>
-
-            {/* Right visual block (simple, matches your minimal style) */}
-            <div className="lg:col-span-6">
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 overflow-hidden">
-                <div
-                  className="h-[360px] w-full bg-cover bg-center"
-                  style={{
-                    backgroundImage:
-                      "url('https://images.unsplash.com/photo-1580281658628-9b083b59f7f5?auto=format&fit=crop&w=1800&q=80')",
-                  }}
-                >
-                  <div className="h-full w-full bg-black/25" />
-                </div>
-                <div className="p-6 space-y-2">
-                  <p className="text-sm font-semibold text-gray-900">
-                    Built for learning, discovery, and practice impact
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    Explore disease-area hubs, watch short expert videos, and share relevant content with your team.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* What you get */}
-      <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900">
-              What you’ll find inside
+        {/* Featured Biomarker Playlists */}
+        <section className="space-y-5">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
+              Featured Biomarker Playlists
             </h2>
-            <p className="text-sm md:text-base text-gray-600 max-w-2xl">
-              A simple experience built to help you get to the information you need faster.
-            </p>
+            <p className="mt-1 text-lg font-semibold text-gray-900">HR+</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <FeatureCard
-              title="Disease-Area Hubs"
-              body="Structured pages by disease area and subtype, with curated playlists and collections."
-              ctaLabel="Explore Catalogue"
-              href="/catalog"
-            />
-            <FeatureCard
-              title="Short-form Video Learning"
-              body="Expert-led videos designed for busy schedules—clear takeaways and practical framing."
-              ctaLabel="Watch Now"
-              href="/watch/bc-101"
-            />
-            <FeatureCard
-              title="Search & Discovery"
-              body="Find content by topic, condition, speaker, or collection with quick filters."
-              ctaLabel="Search Content"
-              href="/search"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {BIOMARKER_PLAYLISTS.map((card) => (
+              <BiomarkerPlaylistCard key={card.id} card={card} />
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* How it works */}
-      <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900">How it works</h2>
-            <p className="text-sm md:text-base text-gray-600 max-w-2xl">
-              A straightforward flow from discovery to learning.
-            </p>
+        {/* Webinar Catalogue */}
+        <section className="space-y-6">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
+            Webinar Catalogue
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {WEBINARS.map((webinar) => (
+              <WebinarCard key={webinar.id} webinar={webinar} />
+            ))}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <StepCard
-              step="01"
-              title="Browse a treatment area"
-              body="Start from the catalogue and open a disease hub built around your needs."
-            />
-            <StepCard
-              step="02"
-              title="Select a collection"
-              body="Choose a subtype or topic collection to see curated videos and resources."
-            />
-            <StepCard
-              step="03"
-              title="Watch and share"
-              body="Watch short videos and share relevant content with colleagues."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Compliance + clarity (demo-safe copy) */}
-      <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12">
-          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-8 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7 space-y-3">
-              <h3 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                Designed with clarity and trust in mind
-              </h3>
-              <p className="text-sm md:text-base text-gray-600">
-                Content is presented in a clean, structured format to support clinical understanding and team communication.
-                (Demo copy — replace with approved language for production.)
-              </p>
-
-              <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <CheckItem label="Clear, structured collections" />
-                <CheckItem label="Fast discovery via search + filters" />
-                <CheckItem label="Easy sharing for team learning" />
-                <CheckItem label="Expandable for additional disease areas" />
-              </div>
-            </div>
-
-            <div className="lg:col-span-5 flex flex-col gap-3">
-              <Link
-                to="/join"
-                className="rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black inline-flex items-center justify-center gap-2"
-              >
-                Get Started <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/contact"
-                className="rounded-full bg-white px-7 py-3 text-sm font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 inline-flex items-center justify-center"
-              >
-                Contact Us
-              </Link>
-              <p className="text-xs text-gray-500 text-center">
-                For demo purposes only — replace copy, links, and compliance text before production.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
 
 /* =======================
-   UI Helpers
+   UI Components
    ======================= */
 
-function MiniBullet({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <p className="text-sm font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600 mt-1">{subtitle}</p>
-    </div>
-  );
-}
-
-function FeatureCard({
+function FeaturedCard({
   title,
-  body,
-  ctaLabel,
-  href,
+  imageUrl,
+  cta,
+  size,
+  to,
+  showNew,
 }: {
   title: string;
-  body: string;
-  ctaLabel: string;
-  href: string;
+  imageUrl: string;
+  cta: string;
+  size: 'large' | 'small';
+  to: string;
+  showNew?: boolean;
+}) {
+  const isLarge = size === 'large';
+  return (
+    <Link
+      to={to}
+      className={`group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 ${
+        isLarge ? 'min-h-[220px] md:min-h-[260px]' : 'min-h-[160px]'
+      }`}
+    >
+      <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+      {showNew && (
+        <span className="absolute left-3 top-3 rounded bg-[#000000] px-2.5 py-1 text-xs font-semibold text-white">
+          New
+        </span>
+      )}
+      <div className="absolute inset-0 p-5 flex flex-col justify-end">
+        <p className="text-lg font-semibold text-gray-900">{title}</p>
+        <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
+          {cta} →
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+function BiomarkerPlaylistCard({ card }: { card: { id: string; title: string; imageUrl: string } }) {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
+      <div className="relative h-[140px] shrink-0">
+        <img src={card.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+      </div>
+      <div className="p-5 flex flex-col flex-1">
+        <h4 className="font-bold text-gray-900">{card.title}</h4>
+        <ul className="mt-3 space-y-2 flex-1">
+          {[1, 2, 3, 4].map((i) => (
+            <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+              <span className="h-1 w-1 rounded-full bg-gray-400 shrink-0" />
+              Video Name
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 flex justify-end">
+          <Link
+            to="/watch"
+            className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+          >
+            Play all
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WebinarCard({
+  webinar,
+}: {
+  webinar: { id: string; title: string; imageUrl: string; description: string };
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-      <p className="text-lg font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600">{body}</p>
-      <Link
-        to={href}
-        className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700"
-      >
-        {ctaLabel} <span>→</span>
-      </Link>
-    </div>
-  );
-}
-
-function StepCard({ step, title, body }: { step: string; title: string; body: string }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-      <p className="text-sm font-semibold text-gray-500">{step}</p>
-      <p className="text-lg font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600">{body}</p>
-    </div>
-  );
-}
-
-function CheckItem({ label }: { label: string }) {
-  return (
-    <div className="flex items-start gap-2">
-      <CheckCircle2 className="h-5 w-5 text-gray-900 mt-0.5" />
-      <p className="text-sm text-gray-700">{label}</p>
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col sm:flex-row">
+      <div className="relative w-full sm:w-48 h-40 sm:h-auto shrink-0">
+        <img src={webinar.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+        <span className="absolute left-2 top-2 rounded bg-[#000000] px-2 py-0.5 text-xs font-semibold text-white">
+          New
+        </span>
+      </div>
+      <div className="p-5 flex flex-col flex-1">
+        <h4 className="font-bold text-gray-900">{webinar.title}</h4>
+        <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3 flex-1">
+          {webinar.description}
+        </p>
+        <div className="mt-4 flex justify-end">
+          <Link
+            to="/app/webinars"
+            className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+          >
+            Learn More
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

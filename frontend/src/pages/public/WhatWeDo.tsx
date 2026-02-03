@@ -10,11 +10,10 @@ export default function WhatWeDo() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-gray-600">What We Do</p>
-                <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
+                <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
                   We organize clinical education into focused, easy-to-navigate experiences
                 </h1>
-                <p className="text-sm md:text-base text-gray-600 max-w-2xl">
+                <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
                   CHT helps clinicians discover treatment-specific content, learn quickly through short-form videos,
                   and explore curated collections built around disease areas and subtypes.
                 </p>
@@ -57,7 +56,7 @@ export default function WhatWeDo() {
                   <p className="text-sm font-semibold text-gray-900">
                     Built to support modern clinical workflows
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600 leading-relaxed">
                     Browse disease hubs, watch curated videos, and share relevant content with your team.
                   </p>
                 </div>
@@ -71,10 +70,10 @@ export default function WhatWeDo() {
       <section>
         <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
           <div className="space-y-2">
-            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
               Our platform focuses on four things
             </h2>
-            <p className="text-sm md:text-base text-gray-600 max-w-2xl">
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
               A simple, structured system to make clinical learning easier to discover and faster to consume.
             </p>
           </div>
@@ -90,7 +89,7 @@ export default function WhatWeDo() {
               icon={<Play className="h-5 w-5" />}
               title="Short-form Video Learning"
               body="Focused videos designed for busy clinicians—clear takeaways and practical framing."
-              cta={{ label: 'Watch a Demo', to: '/watch/bc-101' }}
+              cta={{ label: 'Watch a Demo', to: '/watch' }}
             />
             <Pillar
               icon={<Search className="h-5 w-5" />}
@@ -112,8 +111,8 @@ export default function WhatWeDo() {
       <section className="border-t border-gray-200">
         <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
           <div className="space-y-2">
-            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900">How it works</h2>
-            <p className="text-sm md:text-base text-gray-600 max-w-2xl">
+            <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">How it works</h2>
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
               A clear path from discovery to learning.
             </p>
           </div>
@@ -135,10 +134,10 @@ export default function WhatWeDo() {
                 <Shield className="h-5 w-5" />
                 <p className="text-sm font-semibold">Built with clarity in mind</p>
               </div>
-              <h3 className="text-2xl md:text-3xl font-semibold text-gray-900">
+              <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
                 Structured content experiences, ready to scale
               </h3>
-              <p className="text-sm md:text-base text-gray-600">
+              <p className="text-sm md:text-base text-gray-600 leading-relaxed">
                 This page is a demo-friendly placeholder. Swap in approved copy, compliance language, and
                 production links when ready.
               </p>
@@ -198,7 +197,7 @@ function Pillar({
         {icon}
       </div>
       <p className="text-lg font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600">{body}</p>
+      <p className="text-sm text-gray-600 leading-relaxed">{body}</p>
       <Link to={cta.to} className="text-sm font-semibold text-gray-900 hover:text-gray-700 inline-flex items-center gap-2">
         {cta.label} <span>→</span>
       </Link>
@@ -211,7 +210,7 @@ function Step({ step, title, body }: { step: string; title: string; body: string
     <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
       <p className="text-sm font-semibold text-gray-500">{step}</p>
       <p className="text-lg font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600">{body}</p>
+      <p className="text-sm text-gray-600 leading-relaxed">{body}</p>
     </div>
   );
 }

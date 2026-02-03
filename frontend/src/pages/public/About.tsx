@@ -8,11 +8,10 @@ export default function About() {
       <section className="border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
           <div className="max-w-3xl space-y-4">
-            <p className="text-sm font-semibold text-gray-600">About</p>
-            <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
               Built to make clinical education easier to discover
             </h1>
-            <p className="text-sm md:text-base text-gray-600">
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed">
               CHT is a healthcare content platform designed to organize expert-led education into
               focused, easy-to-navigate experiences for healthcare professionals.
             </p>
@@ -26,7 +25,7 @@ export default function About() {
           <div className="lg:col-span-7 space-y-6">
             <div className="space-y-2">
               <p className="text-sm font-semibold text-gray-600">Our mission</p>
-              <h2 className="text-3xl md:text-4xl font-semibold text-gray-900">
+              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
                 High-signal content for modern clinical practice
               </h2>
             </div>
@@ -78,13 +77,13 @@ export default function About() {
               <div className="space-y-3">
                 <Link
                   to="/catalog"
-                  className="inline-flex w-full items-center justify-center rounded-full bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-black"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
                 >
-                  Browse Catalogue <ArrowRight className="ml-2 h-4 w-4" />
+                  Browse Catalogue <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/join"
-                  className="inline-flex w-full items-center justify-center rounded-full border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                  className="inline-flex w-full items-center justify-center rounded-full border border-gray-200 bg-white px-7 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                 >
                   Join CHT
                 </Link>
@@ -120,7 +119,7 @@ function Value({
         {icon}
       </div>
       <p className="text-sm font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600">{body}</p>
+      <p className="text-sm text-gray-600 leading-relaxed">{body}</p>
     </div>
   );
 }

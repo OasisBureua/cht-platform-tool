@@ -1,211 +1,114 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, Monitor, ClipboardList, Video } from 'lucide-react';
 
-type Category = 'All' | 'Oncology' | 'Metabolic' | 'Cardiology' | 'Neurology';
-
-type CatalogItem = {
-  id: string;
-  title: string;
-  category: Category;
-  countLabel: string; // e.g. "12 Videos • 3 Webinars"
-  imageUrl: string;
-  href: string;
-};
-
-const MOCK_ITEMS: CatalogItem[] = [
-  {
-    id: 'breast-cancer',
-    title: 'Breast Cancer',
-    category: 'Oncology',
-    countLabel: '12 Videos • 3 Webinars',
-    href: '/catalog/breast-cancer',
-    imageUrl:
-      'https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'lung-cancer',
-    title: 'Lung Cancer',
-    category: 'Oncology',
-    countLabel: '9 Videos • 2 Webinars',
-    href: '/catalog/lung-cancer',
-    imageUrl:
-      'https://images.unsplash.com/photo-1580281658628-9b083b59f7f5?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'weight-loss',
-    title: 'Weight Loss',
-    category: 'Metabolic',
-    countLabel: '8 Videos • 1 Webinar',
-    href: '/catalog/weight-loss',
-    imageUrl:
-      'https://images.unsplash.com/photo-1559757175-5700dde67548?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'diabetes',
-    title: 'Diabetes',
-    category: 'Metabolic',
-    countLabel: '10 Videos • 2 Webinars',
-    href: '/catalog/diabetes',
-    imageUrl:
-      'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'cardiology',
-    title: 'Cardiology',
-    category: 'Cardiology',
-    countLabel: '6 Videos • 1 Webinar',
-    href: '/catalog/cardiology',
-    imageUrl:
-      'https://images.unsplash.com/photo-1580281657527-47f249e8f7b7?auto=format&fit=crop&w=1600&q=80',
-  },
-  {
-    id: 'neurology',
-    title: 'Neurology',
-    category: 'Neurology',
-    countLabel: '7 Videos • 2 Webinars',
-    href: '/catalog/neurology',
-    imageUrl:
-      'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1600&q=80',
-  },
+const STOCK_IMAGES = [
+  'https://picsum.photos/seed/cat1/400/260',
+  'https://picsum.photos/seed/cat2/400/260',
+  'https://picsum.photos/seed/cat3/400/260',
+  'https://picsum.photos/seed/cat4/400/260',
+  'https://picsum.photos/seed/cat5/400/260',
+  'https://picsum.photos/seed/cat6/400/260',
+  'https://picsum.photos/seed/cat7/400/260',
+  'https://picsum.photos/seed/cat8/400/260',
+  'https://picsum.photos/seed/cat9/400/260',
 ];
 
-const CATEGORIES: Category[] = ['All', 'Oncology', 'Metabolic', 'Cardiology', 'Neurology'];
+const CATALOG_ITEMS = [
+  { id: '1', title: 'HER2+ Big Picture & Practice Change', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'] },
+  { id: '2', title: 'First-Line & Sequencing Decisions', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'] },
+  { id: '3', title: 'High-Risk & CNS Disease', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'] },
+  { id: '4', title: 'HER2+ & Endocrine Crosstalk', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'] },
+  { id: '5', title: 'ADC-Centered Conversations', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'] },
+  { id: '6', title: 'Expert Roundtables & Deep Dives', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'] },
+];
 
 export default function Catalog() {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<Category>('All');
-  const [visibleCount, setVisibleCount] = useState(8);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return MOCK_ITEMS.filter((item) => {
-      const matchesCategory = category === 'All' ? true : item.category === category;
-      const matchesQuery = q ? item.title.toLowerCase().includes(q) : true;
-      return matchesCategory && matchesQuery;
-    });
-  }, [query, category]);
+    if (!q) return CATALOG_ITEMS;
+    return CATALOG_ITEMS.filter((c) => c.title.toLowerCase().includes(q));
+  }, [query]);
 
-  const visible = filtered.slice(0, visibleCount);
-  const canShowMore = filtered.length > visibleCount;
+  const tabs = [
+    { key: 'webinars', label: 'Webinars', icon: Monitor, to: '/webinars' },
+    { key: 'surveys', label: 'Surveys', icon: ClipboardList, to: '/surveys' },
+    { key: 'videos', label: 'Videos', icon: Video, to: '/watch' },
+  ];
 
   return (
-    <div className="bg-white">
-      <div className="mx-auto max-w-7xl px-6 py-12 space-y-10">
-        {/* Header */}
-        <header className="space-y-3">
-          <h1 className="text-4xl md:text-5xl font-semibold text-gray-900">
-            Explore our Catalogue
-          </h1>
-          <p className="text-sm md:text-base text-gray-600 max-w-2xl">
-            Discover treatment-specific resources including videos, webinars, and clinical education.
-          </p>
-        </header>
+    <div className="bg-white min-h-screen">
+      <div className="mx-auto max-w-7xl px-6 py-10 space-y-8">
+        <h1 className="text-4xl md:text-5xl font-bold text-gray-900">Explore our Catalogue</h1>
 
-        {/* Search + filters */}
-        <section className="space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center gap-3">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search treatments, topics, conditions..."
-                className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
-            </div>
-
-            {/* Category filter (simple demo dropdown) */}
-            <div className="relative w-full md:w-[260px]">
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as Category)}
-                className="w-full appearance-none rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c === 'All' ? 'All Categories' : c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-700" />
-            </div>
+        {/* Search + Filters */}
+        <section className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search..."
+              className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            />
           </div>
-
-          {/* Results line */}
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold text-gray-900">{filtered.length}</span>{' '}
-            results
-          </p>
+          <select className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900">
+            <option>All Specialties</option>
+          </select>
+          <button className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 inline-flex items-center gap-2">
+            <span className="w-5 h-0.5 bg-current block" />
+            <span className="w-5 h-0.5 bg-current block" />
+            <span className="w-5 h-0.5 bg-current block" />
+            Sort by
+          </button>
         </section>
 
-        {/* Grid */}
-        <section className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {visible.map((item) => (
-              <CatalogCard key={item.id} item={item} />
-            ))}
-          </div>
+        {/* Content type tabs */}
+        <section className="flex flex-wrap gap-4">
+          {tabs.map(({ key, label, icon: Icon, to }) => (
+            <Link
+              key={key}
+              to={to}
+              className="flex flex-col items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              <Icon className="h-8 w-8" />
+              <span className="text-sm font-medium">{label}</span>
+            </Link>
+          ))}
+        </section>
 
-          {filtered.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-              <p className="text-base font-semibold text-gray-900">No results found</p>
-              <p className="mt-1 text-sm text-gray-600">
-                Try searching a different term or adjusting filters.
-              </p>
+        {/* Catalog grid */}
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filtered.map((item, idx) => (
+            <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="h-52">
+                <img src={STOCK_IMAGES[idx % STOCK_IMAGES.length]} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+              </div>
+              <div className="p-5 space-y-4">
+                <h3 className="font-bold text-gray-900">{item.title}</h3>
+                <ul className="space-y-1">
+                  {item.videoNames.map((v, i) => (
+                    <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="h-1 w-1 rounded-full bg-gray-400" />
+                      {v}
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex justify-end">
+                  <Link
+                    to="/watch"
+                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                  >
+                    Play all
+                  </Link>
+                </div>
+              </div>
             </div>
-          ) : null}
-
-          {/* Show more */}
-          {canShowMore ? (
-            <div className="flex justify-center">
-              <button
-                onClick={() => setVisibleCount((v) => v + 6)}
-                className="rounded-full border border-gray-200 bg-white px-7 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
-              >
-                Show More
-              </button>
-            </div>
-          ) : null}
+          ))}
         </section>
       </div>
     </div>
-  );
-}
-
-function CatalogCard({ item }: { item: CatalogItem }) {
-  return (
-    <Link
-      to={item.href}
-      className="group rounded-2xl overflow-hidden border border-gray-200 bg-white hover:shadow-sm transition-shadow"
-    >
-      <div className="relative h-[220px]">
-        <img
-          src={item.imageUrl}
-          alt={item.title}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
-
-        <div className="relative h-full p-5 flex flex-col justify-between">
-          <div className="inline-flex w-fit rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-            {item.category}
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-xl font-semibold text-white">{item.title}</p>
-            <p className="text-sm text-white/90">{item.countLabel}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4 flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-900">Explore</p>
-        <span className="text-gray-400 group-hover:text-gray-700 transition-colors">
-          →
-        </span>
-      </div>
-    </Link>
   );
 }

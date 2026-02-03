@@ -1,77 +1,63 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
-import { Search } from 'lucide-react';
+import { Outlet, Link, NavLink } from 'react-router-dom';
+import { Search, Instagram } from 'lucide-react';
+import logoSrc from '../assets/logo/LOGO.svg';
 
-function NavItem({ to, label }: { to: string; label: string }) {
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        [
-          'text-sm font-medium',
-          isActive ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900',
-        ].join(' ')
-      }
-    >
-      {label}
-    </NavLink>
-  );
-}
+const navLinks = [
+  { to: '/about', label: 'About' },
+  { to: '/what-we-do', label: 'What We Do' },
+  { to: '/catalog', label: 'Content Library' },
+  { to: '/for-hcps', label: 'For HCPs' },
+  { to: '/contact', label: 'Contact' },
+];
 
 export default function PublicLayout() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="h-20 flex items-center justify-between">
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-3">
-              {/* Simple mark placeholder (swap with your SVG when ready) */}
-              <div className="h-10 w-10 rounded-xl border border-gray-200 bg-white flex items-center justify-center">
-                <span className="text-sm font-bold text-gray-900">CH</span>
-              </div>
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo from assets */}
+            <Link to="/" className="flex items-center">
+              <img src={logoSrc} alt="CHT" className="h-8 w-auto" />
             </Link>
 
-            {/* Desktop Nav */}
-            <nav className="hidden lg:flex items-center gap-10">
-              <NavItem to="/about" label="About" />
-              <NavItem to="/what-we-do" label="What We Do" />
-              <NavItem to="/catalog" label="Content Library" />
-              <NavItem to="/for-hcps" label="For HCPs" />
-              <NavItem to="/contact" label="Contact" />
+            {/* Nav links */}
+            <nav className="hidden md:flex items-center gap-8">
+              {navLinks.map(({ to, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `text-sm font-medium transition-colors ${
+                      isActive ? 'text-gray-900' : 'text-gray-600 hover:text-gray-900'
+                    }`
+                  }
+                >
+                  {label}
+                </NavLink>
+              ))}
             </nav>
 
-            {/* Right actions */}
+            {/* Right: Search, Login/Get Started segmented pill (Figma design) */}
             <div className="flex items-center gap-4">
               <Link
                 to="/search"
-                className="hidden sm:flex h-11 w-11 items-center justify-center rounded-full hover:bg-gray-50"
+                className="p-2 text-gray-600 hover:text-gray-900 transition-colors"
                 aria-label="Search"
               >
-                <Search className="h-6 w-6 text-gray-900" />
+                <Search className="h-5 w-5" />
               </Link>
-
-              {/* Pills (matches PDF: Login filled, Get Started outlined) */}
-              <div className="hidden sm:flex items-center rounded-full border border-gray-200 p-1">
+              <div className="inline-flex items-center rounded-full bg-[#000000] p-1 gap-1">
                 <Link
                   to="/login"
-                  className="rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                 >
                   Login
                 </Link>
                 <Link
                   to="/join"
-                  className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50"
-                >
-                  Get Started
-                </Link>
-              </div>
-
-              {/* Mobile: show CTA only */}
-              <div className="sm:hidden">
-                <Link
-                  to="/join"
-                  className="rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#000000] hover:bg-white/90 transition-colors"
                 >
                   Get Started
                 </Link>
@@ -81,104 +67,88 @@ export default function PublicLayout() {
         </div>
       </header>
 
-      {/* Page */}
-      <main>
+      {/* Main content */}
+      <main className="flex-1">
         <Outlet />
       </main>
 
-      {/* Footer (matches PDF layout + copy) */}
-      <footer className="mt-16 bg-black">
-        <div className="mx-auto max-w-7xl px-6 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-            {/* Left */}
-            <div className="md:col-span-6 space-y-4">
-              <div className="text-sm text-white/80 space-y-1">
-                <p className="text-white font-semibold">Address:</p>
+      {/* Footer - Figma design (node-id=237-8879) */}
+      <footer className="bg-[#000000] text-white">
+        <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
+          <div className="flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-16">
+            {/* Left: Logo, address, contact, social */}
+            <div className="space-y-6 max-w-md">
+              <Link to="/" className="inline-flex">
+                <img src={logoSrc} alt="CHT" className="h-7 w-auto brightness-0 invert" />
+              </Link>
+              <address className="not-italic text-sm text-gray-300 space-y-1 leading-relaxed">
                 <p>2471 18th St NW</p>
                 <p>Second Floor</p>
                 <p>Washington, DC 20009</p>
-                <p className="pt-2">
-                  Email: <span className="text-white/90">info@communityhealth.media</span>
-                </p>
-              </div>
-
-              <p className="text-sm text-white/70">
-                Copyright © 2025 Community Health Technologies, Inc. All Rights Reserved
-              </p>
-
-              {/* Social icons placeholders */}
-              <div className="flex items-center gap-4 pt-2">
+                <p>Tel: (123) 456-7890</p>
+                <p>Email: info@communityhealth.media</p>
+              </address>
+              <div className="flex gap-4">
                 <a
-                  href="#"
-                  className="h-10 w-10 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center justify-center"
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
                   aria-label="Instagram"
                 >
-                  <span className="text-white text-xs font-semibold">IG</span>
+                  <Instagram className="h-5 w-5" />
                 </a>
                 <a
-                  href="#"
-                  className="h-10 w-10 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center justify-center"
-                  aria-label="Facebook"
-                >
-                  <span className="text-white text-xs font-semibold">FB</span>
-                </a>
-                <a
-                  href="#"
-                  className="h-10 w-10 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 flex items-center justify-center"
+                  href="https://youtube.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
                   aria-label="YouTube"
                 >
-                  <span className="text-white text-xs font-semibold">YT</span>
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
                 </a>
               </div>
             </div>
 
-            {/* Right columns */}
-            <div className="md:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-10">
-              <FooterLinks
-                title="Quick Link 1"
-                links={[
-                  { label: 'Quick Link 2', to: '/catalog' },
-                  { label: 'Quick Link 3', to: '/for-hcps' },
-                  { label: 'Quick Link 3', to: '/what-we-do' },
-                ]}
-              />
-              <FooterLinks
-                title="Quick Link 1"
-                links={[
-                  { label: 'Quick Link 2', to: '/about' },
-                  { label: 'Quick Link 3', to: '/contact' },
-                  { label: 'Quick Link 3', to: '/privacy' },
-                ]}
-              />
+            {/* Right: Quick Links + Legal */}
+            <div className="flex flex-col sm:flex-row gap-10 sm:gap-16">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Quick Links</p>
+                <ul className="space-y-3">
+                  {navLinks.map(({ to, label }) => (
+                    <li key={to}>
+                      <Link to={to} className="text-sm text-gray-300 hover:text-white transition-colors">
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Legal</p>
+                <ul className="space-y-3">
+                  <li>
+                    <Link to="/privacy" className="text-sm text-gray-300 hover:text-white transition-colors">
+                      Privacy Policy
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/terms" className="text-sm text-gray-300 hover:text-white transition-colors">
+                      Terms of Service
+                    </Link>
+                  </li>
+                </ul>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-12 pt-8 border-t border-white/10">
+            <p className="text-sm text-gray-500">Copyright © 2026 Community Health Technologies, Inc. All Rights Reserved.</p>
           </div>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function FooterLinks({
-  title,
-  links,
-}: {
-  title: string;
-  links: Array<{ label: string; to: string }>;
-}) {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm font-semibold text-white">{title}</p>
-      <div className="space-y-3">
-        {links.map((l, idx) => (
-          <Link
-            key={`${l.to}-${idx}`}
-            to={l.to}
-            className="block text-sm text-white/80 hover:text-white"
-          >
-            {l.label}
-          </Link>
-        ))}
-      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { Plus, MoreVertical } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calendar, MoreVertical } from 'lucide-react';
 
 const MOCK_PROGRAMS = [
   {
@@ -35,10 +36,13 @@ export default function AdminPrograms() {
           </p>
         </div>
 
-        <button className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">
-          <Plus className="h-4 w-4" />
-          Create Program
-        </button>
+        <Link
+          to="/admin/webinar-scheduler"
+          className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+        >
+          <Calendar className="h-4 w-4" />
+          Schedule Webinar
+        </Link>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">

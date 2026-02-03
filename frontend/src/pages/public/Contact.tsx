@@ -10,11 +10,10 @@ export default function Contact() {
       <div className="mx-auto max-w-7xl px-6 py-12 md:py-16 space-y-10">
         {/* Header */}
         <header className="max-w-3xl space-y-3">
-          <p className="text-sm font-semibold text-gray-600">Contact</p>
-          <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 leading-tight">
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
             Let’s connect
           </h1>
-          <p className="text-sm md:text-base text-gray-600">
+          <p className="text-sm md:text-base text-gray-600 leading-relaxed">
             Questions, partnership inquiries, or product feedback — send a note and we’ll follow up.
           </p>
         </header>
@@ -32,9 +31,9 @@ export default function Contact() {
                   <div className="pt-4">
                     <Link
                       to="/catalog"
-                      className="inline-flex items-center justify-center rounded-full bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-black"
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
                     >
-                      Browse Catalogue <ArrowRight className="ml-2 h-4 w-4" />
+                      Browse Catalogue <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
                 </div>
@@ -66,7 +65,7 @@ export default function Contact() {
                     <textarea
                       rows={5}
                       placeholder="Tell us what you’re looking for..."
-                      className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
                       required
                     />
                   </div>
@@ -74,13 +73,13 @@ export default function Contact() {
                   <div className="pt-1 flex flex-col sm:flex-row gap-3">
                     <button
                       type="submit"
-                      className="rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
+                      className="inline-flex items-center justify-center rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
                     >
                       Send message
                     </button>
                     <Link
                       to="/about"
-                      className="rounded-full bg-white px-7 py-3 text-sm font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 text-center"
+                      className="inline-flex items-center justify-center rounded-full bg-white px-7 py-3 text-sm font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 text-center"
                     >
                       Learn more
                     </Link>
@@ -159,7 +158,7 @@ function Field({
       <input
         type={type}
         placeholder={placeholder}
-        className="w-full rounded-full border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
       />
     </div>
   );

@@ -20,7 +20,7 @@ const MOCK_RESULTS: SearchResult[] = [
     subtitle: 'Foundations • 18 min • Dr. Paolo Tarantino',
     type: 'Video',
     tag: 'Breast Cancer',
-    href: '/watch/bc-101',
+    href: '/watch',
   },
   {
     id: 'r2',
@@ -44,7 +44,7 @@ const MOCK_RESULTS: SearchResult[] = [
     subtitle: 'General • 18 min • Biomarkers',
     type: 'Video',
     tag: 'Lung Cancer',
-    href: '/watch/lc-101',
+    href: '/watch',
   },
   {
     id: 'r5',
@@ -76,13 +76,11 @@ export default function Search() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
+      <div className="mx-auto max-w-7xl px-6 py-12 md:py-16 space-y-8">
         {/* Header */}
         <header className="space-y-3">
-          <h1 className="text-4xl md:text-5xl font-semibold text-gray-900">
-            Search
-          </h1>
-          <p className="text-sm md:text-base text-gray-600 max-w-2xl">
+
+          <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
             Find videos, collections, and educational resources across the content library.
           </p>
         </header>
@@ -96,7 +94,7 @@ export default function Search() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by condition, speaker, topic..."
-                className="w-full rounded-full border border-gray-200 bg-white pl-11 pr-12 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-12 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
 
               {query ? (
@@ -112,7 +110,7 @@ export default function Search() {
 
             <button
               onClick={() => setShowFilters((v) => !v)}
-              className="rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 inline-flex items-center gap-2"
+              className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50 inline-flex items-center gap-2"
             >
               <SlidersHorizontal className="h-4 w-4" />
               Filters
@@ -207,7 +205,7 @@ export default function Search() {
                   <div className="mt-6 flex justify-center gap-3">
                     <Link
                       to="/catalog"
-                      className="rounded-full border border-gray-200 bg-white px-6 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                      className="rounded-full border border-gray-200 bg-white px-7 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                     >
                       Browse Catalogue
                     </Link>
@@ -216,7 +214,7 @@ export default function Search() {
                         setQuery('');
                         setType('All');
                       }}
-                      className="rounded-full bg-gray-900 px-6 py-2 text-sm font-semibold text-white hover:bg-black"
+                      className="rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
                     >
                       Reset
                     </button>

@@ -1,213 +1,111 @@
-import { useState } from 'react';
-import { KeyRound, Bell, Link2, User } from 'lucide-react';
-
-type Tab = 'general' | 'security' | 'notifications' | 'integrations';
+import { Link } from 'react-router-dom';
+import { User, KeyRound, Bell, Link2, LogOut } from 'lucide-react';
 
 export default function Settings() {
-  const [tab, setTab] = useState<Tab>('general');
-
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-600">Manage your account, profile, and preferences</p>
-      </header>
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Your Profile</h1>
+        <p className="text-sm text-gray-600">Manage your professional information and social connections</p>
+      </div>
 
-      {/* Tabs */}
-      <div className="bg-white border border-gray-200 rounded-xl p-2">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <TabButton active={tab === 'general'} onClick={() => setTab('general')}>
-            General
-          </TabButton>
-          <TabButton active={tab === 'security'} onClick={() => setTab('security')}>
-            Security
-          </TabButton>
-          <TabButton active={tab === 'notifications'} onClick={() => setTab('notifications')}>
-            Notifications
-          </TabButton>
-          <TabButton active={tab === 'integrations'} onClick={() => setTab('integrations')}>
-            Integrations
-          </TabButton>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Profile Information */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="h-5 w-5 text-gray-700" />
+              <h2 className="text-lg font-bold text-gray-900">Profile Information</h2>
+            </div>
+            <p className="text-sm text-gray-600 mb-6">Your basic professional details</p>
+
+            <div className="flex items-start gap-4 mb-6">
+              <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center shrink-0">
+                <span className="text-xl font-bold text-gray-700">AO</span>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900">Adaze Oviawe</p>
+                <a href="#" className="text-sm text-blue-600 hover:underline">Oncology</a>
+              </div>
+            </div>
+
+            <div className="flex gap-2 border-b border-gray-200 pb-4">
+              {['General', 'Security', 'Notifications', 'Integrations'].map((tab, i) => (
+                <button
+                  key={tab}
+                  className={`px-4 py-2 text-sm font-medium ${
+                    i === 0 ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
+                <input type="text" defaultValue="Adaze" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
+                <input type="text" defaultValue="Oviawe" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                <input type="email" defaultValue="adaze@gmail.com" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
+                <input type="tel" defaultValue="+1 (555) 123-4567" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Bio</label>
+                <textarea rows={3} placeholder="Tell us about yourself..." className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right sidebar */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Profile Stats</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Total Points Earned</span>
+                <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800">7500</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Member Since</span>
+                <span className="text-sm font-semibold text-gray-900">Nov 2025</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Profile Completion</span>
+                <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">90%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="space-y-2">
+              <Link to="/app/earnings" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                View Earnings
+              </Link>
+              <Link to="/app/payments" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                Payment Settings
+              </Link>
+              <button className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                KOL Analytics
+              </button>
+              <button className="flex w-full items-center gap-2 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50">
+                <LogOut className="h-4 w-4" /> Logout
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Content */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl p-6">
-          {tab === 'general' && <GeneralPanel />}
-          {tab === 'security' && <SecurityPanel />}
-          {tab === 'notifications' && <NotificationsPanel />}
-          {tab === 'integrations' && <IntegrationsPanel />}
-        </div>
-
-        {/* Quick actions */}
-        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-base font-semibold text-gray-900">Quick Actions</h2>
-
-          <QuickAction
-            icon={<User className="h-4 w-4" />}
-            title="Update profile"
-            subtitle="Edit your personal information"
-          />
-
-          <QuickAction
-            icon={<KeyRound className="h-4 w-4" />}
-            title="Change password"
-            subtitle="Improve your account security"
-          />
-
-          <QuickAction
-            icon={<Bell className="h-4 w-4" />}
-            title="Notification settings"
-            subtitle="Choose how you receive updates"
-          />
-
-          <QuickAction
-            icon={<Link2 className="h-4 w-4" />}
-            title="Manage integrations"
-            subtitle="Connect supported services"
-          />
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={[
-        'rounded-lg px-3 py-2 text-sm font-semibold border',
-        active
-          ? 'bg-gray-900 text-white border-gray-900'
-          : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50',
-      ].join(' ')}
-    >
-      {children}
-    </button>
-  );
-}
-
-function QuickAction({
-  icon,
-  title,
-  subtitle,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <button className="w-full text-left rounded-xl border border-gray-200 bg-white p-4 hover:bg-gray-50">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 text-gray-700">{icon}</div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900">{title}</p>
-          <p className="text-sm text-gray-600">{subtitle}</p>
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function GeneralPanel() {
-  return (
-    <div className="space-y-5">
-      <h2 className="text-base font-semibold text-gray-900">General</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="First name" value="—" />
-        <Field label="Last name" value="—" />
-        <Field label="Email" value="—" />
-        <Field label="Specialty" value="—" />
-      </div>
-
-      <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">
-        Save changes
-      </button>
-    </div>
-  );
-}
-
-function SecurityPanel() {
-  return (
-    <div className="space-y-5">
-      <h2 className="text-base font-semibold text-gray-900">Security</h2>
-      <p className="text-sm text-gray-600">
-        Password and authentication controls will go here once Auth is connected.
-      </p>
-
-      <button className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-        Change password
-      </button>
-    </div>
-  );
-}
-
-function NotificationsPanel() {
-  return (
-    <div className="space-y-5">
-      <h2 className="text-base font-semibold text-gray-900">Notifications</h2>
-      <p className="text-sm text-gray-600">
-        Choose when and how we notify you about new activities and payments.
-      </p>
-
-      <div className="space-y-3">
-        <ToggleRow label="New opportunities" />
-        <ToggleRow label="Payment updates" />
-        <ToggleRow label="Program reminders" />
-      </div>
-
-      <button className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black">
-        Save preferences
-      </button>
-    </div>
-  );
-}
-
-function IntegrationsPanel() {
-  return (
-    <div className="space-y-5">
-      <h2 className="text-base font-semibold text-gray-900">Integrations</h2>
-      <p className="text-sm text-gray-600">
-        Connected integrations will appear here.
-      </p>
-
-      <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center">
-        <p className="text-sm font-semibold text-gray-900">No integrations connected</p>
-        <p className="mt-1 text-sm text-gray-600">Connect services when available.</p>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-semibold text-gray-600">{label}</p>
-      <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900">
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function ToggleRow({ label }: { label: string }) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border border-gray-200 p-4">
-      <p className="text-sm font-semibold text-gray-900">{label}</p>
-      <button className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-        Off
-      </button>
     </div>
   );
 }

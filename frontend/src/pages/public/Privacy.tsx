@@ -1,6 +1,6 @@
 export default function Privacy() {
   return (
-    <div className="space-y-6">
+    <div className="bg-white min-h-screen space-y-6">
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
           Privacy Policy

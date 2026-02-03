@@ -1,281 +1,114 @@
-import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { programsApi, type Program } from '../api/programs';
-import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { Award, DollarSign } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { Trophy } from 'lucide-react';
 
-const TEMP_USER_ID = '1234567890';
+const STOCK_IMAGES = {
+  featured: 'https://picsum.photos/seed/web-featured/800/450',
+  activity: 'https://picsum.photos/seed/web-activity/400/500',
+  webinar: [
+    'https://picsum.photos/seed/web-w1/400/260',
+    'https://picsum.photos/seed/web-w2/400/260',
+    'https://picsum.photos/seed/web-w3/400/260',
+    'https://picsum.photos/seed/web-w4/400/260',
+    'https://picsum.photos/seed/web-w5/400/260',
+    'https://picsum.photos/seed/web-w6/400/260',
+  ],
+};
 
-function formatMoney(value?: number | null) {
-  if (!value) return '$0';
-  return `$${value.toLocaleString()}`;
-}
-
-// Temporary: until backend gives webinar date/time + reward ranges
-function tempWhenLabel() {
-  return 'Friday, Feb 14 • 7:00 PM ET';
-}
+const WEBINARS = Array.from({ length: 6 }, (_, i) => ({
+  id: `w${i + 1}`,
+  title: `Webinar #${i + 1}`,
+  description: 'Lorem ipsum dolor sit amet consectetur. Pulvinar est massa cras tincidunt massa aliquet ultrices. Amet facilisi risus varius pellentesque nunc. Ac mauris ultrices nam massa morbi sit.',
+  imageUrl: STOCK_IMAGES.webinar[i],
+  isNew: true,
+}));
 
 export default function Webinars() {
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
-  const [visibleCount, setVisibleCount] = useState(8);
-
-  const { data: programs, isLoading } = useQuery({
-    queryKey: ['programs'],
-    queryFn: programsApi.getAll,
-  });
-
-  const { data: enrollments } = useQuery({
-    queryKey: ['enrollments', TEMP_USER_ID],
-    queryFn: () => programsApi.getEnrollments(TEMP_USER_ID),
-  });
-
-  const enrollMutation = useMutation({
-    mutationFn: ({ programId }: { programId: string }) =>
-      programsApi.enroll(TEMP_USER_ID, programId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enrollments'] });
-    },
-  });
-
-  const enrolledProgramIds = useMemo(
-    () => new Set(enrollments?.map((e) => e.programId) || []),
-    [enrollments]
-  );
-
-  const availablePrograms = useMemo(() => {
-    return (programs || []).filter((p) => !enrolledProgramIds.has(p.id));
-  }, [programs, enrolledProgramIds]);
-
-  const opportunityCount = availablePrograms.length;
-
-  if (isLoading) return <LoadingSpinner />;
-
-  const featured = programs?.[0]; // TODO: backend field: isFeatured
-
-  const listItems = (programs || []).slice(0, visibleCount);
-  const canShowMore = (programs || []).length > visibleCount;
-
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Webinars</h1>
-        <p className="text-sm text-gray-600">
-          You have{' '}
-          <span className="font-semibold text-gray-900">{opportunityCount}</span>{' '}
-          new opportunities to earn rewards today
-        </p>
-      </header>
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Webinars</h1>
 
-      {/* Featured Webinars */}
-      <section className="space-y-3">
-        <h2 className="text-base font-semibold text-gray-900">Featured Webinars</h2>
-
-        {featured ? (
-          <FeaturedWebinarCard
-            program={featured}
-            enrolled={enrolledProgramIds.has(featured.id)}
-            isLoading={enrollMutation.isPending}
-            onRegister={() => enrollMutation.mutate({ programId: featured.id })}
-            onMoreInfo={() => navigate(`/webinars/${featured.id}`)}
-          />
-        ) : (
-          <EmptyState
-            title="No featured webinars"
-            subtitle="Check back soon for new opportunities."
-          />
-        )}
+      {/* Achievements */}
+      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+        <h2 className="text-lg font-bold text-gray-900 mb-3">Achievements</h2>
+        <div className="flex gap-4 mb-4">
+          {[1, 2, 3].map((i) => (
+            <Trophy key={i} className="h-8 w-8 text-gray-400" />
+          ))}
+        </div>
+        <div>
+          <p className="font-bold text-gray-900">Milestones</p>
+          <p className="text-sm text-gray-600">Completed 6 Webinar sessions</p>
+          <div className="mt-2 h-1 w-full max-w-xs bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full w-2/3 bg-gray-900 rounded-full" />
+          </div>
+        </div>
       </section>
 
-      {/* Upcoming Activities */}
-      <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Upcoming Activities</h2>
-          <button className="text-sm font-medium text-gray-700 hover:text-gray-900">
-            View All Activities
-          </button>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="divide-y divide-gray-200">
-            {listItems.map((p) => {
-              const isEnrolled = enrolledProgramIds.has(p.id);
-
-              const meta = [
-                p.sponsorName ? p.sponsorName : null,
-                typeof p.creditAmount === 'number' ? `${p.creditAmount} CME Credits` : null,
-                p.honorariumAmount ? `${formatMoney(p.honorariumAmount)} honorarium` : null,
-              ]
-                .filter(Boolean)
-                .join(' • ');
-
-              return (
-                <ActivityRow
-                  key={p.id}
-                  title={p.title}
-                  secondary={meta || 'Webinar opportunity'}
-                  enrolled={isEnrolled}
-                  loading={enrollMutation.isPending}
-                  onRegister={() => enrollMutation.mutate({ programId: p.id })}
-                  onMoreInfo={() => navigate(`/webinars/${p.id}`)}
-                />
-              );
-            })}
+      {/* Featured Webinar - 2 cards */}
+      <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <Link
+          to="/app/webinars"
+          className="group relative rounded-2xl overflow-hidden min-h-[280px]"
+        >
+          <img src={STOCK_IMAGES.featured} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
+          <div className="absolute inset-0 p-6 flex flex-col justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-white">Featured Webinar Title</h3>
+              <span className="mt-2 inline-block rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white">New</span>
+            </div>
+            <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+              Join Now <span>→</span>
+            </span>
           </div>
-
-          <div className="p-3">
-            {canShowMore ? (
-              <button
-                onClick={() => setVisibleCount((v) => v + 8)}
-                className="w-full rounded-lg border border-gray-200 bg-white py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Show More
-              </button>
-            ) : null}
+        </Link>
+        <Link
+          to="/app/webinars"
+          className="group relative rounded-2xl overflow-hidden min-h-[280px]"
+        >
+          <img src={STOCK_IMAGES.activity} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
+          <div className="absolute inset-0 p-6 flex flex-col justify-between">
+            <h3 className="text-xl font-bold text-white">85 Minutes of Webinar Activity</h3>
+            <p className="text-sm text-white/90">See More</p>
           </div>
-        </div>
-
-        {(programs || []).length === 0 && (
-          <EmptyState
-            title="No webinars available"
-            subtitle="No opportunities are available at the moment."
-          />
-        )}
+        </Link>
       </section>
-    </div>
-  );
-}
 
-/** --- UI Blocks --- */
-
-function FeaturedWebinarCard({
-  program,
-  enrolled,
-  isLoading,
-  onRegister,
-  onMoreInfo,
-}: {
-  program: Program;
-  enrolled: boolean;
-  isLoading: boolean;
-  onRegister: () => void;
-  onMoreInfo: () => void;
-}) {
-  return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2 min-w-0">
-          <p className="text-sm font-semibold text-gray-900">{program.title}</p>
-
-          <h3 className="text-xl font-semibold text-gray-900 line-clamp-2">
-            {program.description}
-          </h3>
-
-          <div className="flex flex-wrap items-center gap-3 pt-1 text-sm text-gray-700">
-            {program.sponsorName ? (
-              <span className="font-medium">{program.sponsorName}</span>
-            ) : null}
-
-            <span className="inline-flex items-center gap-1 text-gray-700">
-              <Award className="h-4 w-4" /> {program.creditAmount} CME Credits
-            </span>
-
-            {program.honorariumAmount ? (
-              <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
-                <DollarSign className="h-4 w-4" /> {formatMoney(program.honorariumAmount)}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-              Double points until Friday
-            </span>
-            <span className="text-sm text-gray-700">{tempWhenLabel()}</span>
-          </div>
-
-          <button
-            onClick={onMoreInfo}
-            className="text-sm font-medium text-gray-700 hover:text-gray-900"
-          >
-            More Info →
-          </button>
+      {/* Webinar Catalogue */}
+      <section className="space-y-5">
+        <h2 className="text-2xl font-bold text-gray-900 text-center">Webinar Catalogue</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {WEBINARS.map((w) => (
+            <div key={w.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="relative h-44">
+                <img src={w.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+                {w.isNew && (
+                  <span className="absolute top-3 left-3 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">New</span>
+                )}
+              </div>
+              <div className="p-4 space-y-3">
+                <h3 className="font-bold text-gray-900">{w.title}</h3>
+                <p className="text-sm text-gray-600 line-clamp-3">{w.description}</p>
+                <Link
+                  to="/app/webinars"
+                  className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                >
+                  Learn More
+                </Link>
+              </div>
+            </div>
+          ))}
         </div>
-
-        <div className="md:pt-1">
-          <button
-            onClick={onRegister}
-            disabled={enrolled || isLoading}
-            className={[
-              'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
-              enrolled || isLoading
-                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-900 text-white hover:bg-black',
-            ].join(' ')}
+        <div className="flex justify-center">
+          <Link
+            to="/app/webinars"
+            className="inline-flex rounded-lg bg-gray-900 px-8 py-3 text-sm font-semibold text-white hover:bg-black"
           >
-            {enrolled ? 'Registered' : isLoading ? 'Registering…' : 'Register Now'}
-          </button>
+            See More
+          </Link>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function ActivityRow({
-  title,
-  secondary,
-  enrolled,
-  loading,
-  onRegister,
-  onMoreInfo,
-}: {
-  title: string;
-  secondary: string;
-  enrolled: boolean;
-  loading: boolean;
-  onRegister: () => void;
-  onMoreInfo: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="min-w-0">
-        <p className="font-medium text-gray-900 truncate">{title}</p>
-        <p className="text-sm text-gray-600 truncate">{secondary}</p>
-      </div>
-
-      <div className="shrink-0 flex items-center gap-3">
-        <button
-          onClick={onMoreInfo}
-          className="text-sm font-medium text-gray-700 hover:text-gray-900"
-        >
-          More Info →
-        </button>
-
-        <button
-          onClick={onRegister}
-          disabled={enrolled || loading}
-          className={[
-            'rounded-lg px-3 py-2 text-sm font-semibold',
-            enrolled || loading
-              ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-              : 'bg-gray-900 text-white hover:bg-black',
-          ].join(' ')}
-        >
-          {enrolled ? 'Registered' : loading ? 'Registering…' : 'Register Now'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="text-center py-10">
-      <p className="text-base font-semibold text-gray-900">{title}</p>
-      <p className="mt-1 text-sm text-gray-600">{subtitle}</p>
+      </section>
     </div>
   );
 }
