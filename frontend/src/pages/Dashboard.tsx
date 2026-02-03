@@ -13,6 +13,10 @@ const STOCK_IMAGES = {
     'https://picsum.photos/seed/dash-w6/400/280',
   ],
   hcp: ['https://picsum.photos/seed/dash-hcp1/200/200', 'https://picsum.photos/seed/dash-hcp2/200/200'],
+  recommendedHcp: [
+    { img: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=400&q=80', name: 'HCP Name', title: 'HCP Title', desc: 'Webinar Description: Lorem ipsum dolor sit amet consectetur. Eget est nulla lorem at enim lorem arcu lectus adipiscing.' },
+    { img: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=400&q=80', name: 'HCP Name', title: 'HCP Title', desc: 'Webinar Description: Lorem ipsum dolor sit amet consectetur. Eget est nulla lorem at enim lorem arcu lectus adipiscing.' },
+  ],
 };
 
 const QUICK_ACCESS = [
@@ -50,33 +54,40 @@ export default function Dashboard() {
       </section>
 
       {/* Recommended Activity */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold text-gray-900">Recommended Activity</h2>
-        <div className="flex flex-col lg:flex-row gap-6">
-          <div className="flex-1 bg-white rounded-2xl border border-gray-200 p-6 space-y-4">
-            <div>
-              <p className="text-sm font-semibold text-gray-900">Content Title</p>
-              <p className="text-sm text-gray-600">Content Type</p>
-              <p className="text-sm text-gray-600">Event Time</p>
-            </div>
-            <p className="text-sm text-gray-600">
-              Webinar Description: Lorem ipsum dolor sit amet consectetur. Enim lectus tellus sollicitudin nunc diam tristique egestas sit nisi. Netus posuere egestas semper sed enim habitant sit.
+      <section className="rounded-2xl overflow-hidden bg-white border border-gray-200">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center p-6 md:p-8 lg:p-10">
+          <div className="space-y-5 order-2 lg:order-1">
+            <h2 className="text-xl font-bold text-gray-900">Recommended Activity</h2>
+            <h4 className="text-2xl md:text-3xl font-semibold text-gray-900">Content Title</h4>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et
+              dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
+              ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
+              fugiat nulla pariatur.
             </p>
             <Link
               to="/app/webinars"
-              className="inline-flex rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black"
+              className="inline-flex rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
             >
               Sign Up
             </Link>
           </div>
-          <div className="flex gap-4">
-            {[1, 2].map((i) => (
-              <div key={i} className="w-48 shrink-0 bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <img src={STOCK_IMAGES.hcp[i - 1]} alt="" className="h-32 w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-                <div className="p-3 space-y-1">
-                  <p className="text-sm font-semibold text-gray-900">HCP Name</p>
-                  <p className="text-xs text-gray-600">HCP Title</p>
-                  <p className="text-xs text-gray-500 line-clamp-2">Webinar Description: Lorem ipsum dolor sit amet consectetur.</p>
+          <div className="grid grid-cols-2 gap-4 lg:gap-5 order-1 lg:order-2">
+            {STOCK_IMAGES.recommendedHcp.map((hcp, i) => (
+              <div key={i} className="rounded-2xl overflow-hidden bg-white">
+                <div className="relative w-full aspect-[3/4] min-h-0">
+                  <img
+                    src={hcp.img}
+                    alt=""
+                    className="h-full w-full object-cover object-top rounded-t-2xl"
+                    loading="eager"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
+                <div className="p-4 space-y-1">
+                  <p className="text-lg font-semibold text-gray-900">{hcp.name}</p>
+                  <p className="text-lg font-semibold text-gray-900">{hcp.title}</p>
+                  <p className="text-sm text-gray-600 leading-relaxed mt-2">{hcp.desc}</p>
                 </div>
               </div>
             ))}

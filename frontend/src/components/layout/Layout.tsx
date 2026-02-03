@@ -9,7 +9,7 @@ export default function Layout() {
       <AppSidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-14 lg:h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+        <header className="h-14 lg:h-16 bg-white flex items-center justify-between px-4 sm:px-6 lg:px-8">
           <div>
             <h1 className="text-lg md:text-xl font-bold text-gray-900">Welcome, {TEMP_USER_NAME}!</h1>
             <p className="text-sm text-gray-600 hidden sm:block">You have new opportunities to earn rewards today</p>

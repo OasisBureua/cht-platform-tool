@@ -24,7 +24,7 @@ export default function Settings() {
                 <span className="text-xl font-bold text-gray-700">AO</span>
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900">Adaze Oviawe</p>
+                <p className="text-lg font-bold text-gray-900">Jane Doe</p>
                 <a href="#" className="text-sm text-blue-600 hover:underline">Oncology</a>
               </div>
             </div>
@@ -45,15 +45,15 @@ export default function Settings() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
-                <input type="text" defaultValue="Adaze" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+                <input type="text" defaultValue="Jane" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
-                <input type="text" defaultValue="Oviawe" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+                <input type="text" defaultValue="Doe" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                <input type="email" defaultValue="adaze@gmail.com" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
+                <input type="email" defaultValue="janedoe@gmail.com" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>

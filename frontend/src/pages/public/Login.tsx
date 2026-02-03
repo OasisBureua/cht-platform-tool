@@ -4,14 +4,14 @@ export default function Login() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 bg-gray-900">
+    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 bg-white">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200/10 bg-white shadow-xl">
-        {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-orange-500 via-rose-500 to-pink-500 px-6 py-8 text-center">
-          <h1 className="text-xl font-semibold text-white md:text-2xl">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-6 py-8 text-center">
+          <h1 className="text-xl font-semibold text-gray-900 md:text-2xl">
             Working on your HCP content today?
           </h1>
-          <p className="mt-2 text-sm text-white/95">
+          <p className="mt-2 text-sm text-gray-600">
             Pick a channel and get started.
           </p>
         </div>
@@ -40,7 +40,7 @@ export default function Login() {
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-pink-500 focus:ring-pink-500"
+                  className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                 />
                 <span className="text-sm text-gray-700">Remember me</span>
               </label>
@@ -54,7 +54,7 @@ export default function Login() {
 
             <button
               type="submit"
-              className="w-full rounded-lg bg-pink-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2"
+              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
             >
               Login
             </button>
@@ -140,7 +140,7 @@ function Input({
       <input
         type={type}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-pink-500 focus:outline-none focus:ring-1 focus:ring-pink-500"
+        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
       />
     </div>
   );

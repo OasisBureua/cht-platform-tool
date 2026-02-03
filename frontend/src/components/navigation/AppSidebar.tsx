@@ -22,9 +22,9 @@ const nav = [
 
 export default function AppSidebar() {
   return (
-    <aside className="hidden md:flex md:flex-col w-[100px] bg-white border-x border-gray-900 shrink-0">
+    <aside className="hidden md:flex md:flex-col w-[100px] bg-white shrink-0">
       {/* Logo */}
-      <div className="flex w-full h-[82px] justify-center items-center border-b border-gray-900 shrink-0" style={{ aspectRatio: '50/41' }}>
+      <div className="flex w-full h-[82px] justify-center items-center shrink-0" style={{ aspectRatio: '50/41' }}>
         <Link to="/app/home" className="flex w-full h-full justify-center items-center">
           <img src={logoSrc} alt="CHT" className="max-w-[60px] max-h-[50px] object-contain" />
         </Link>

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy } from 'lucide-react';
+import { Trophy, X, Clock, User, CheckCircle } from 'lucide-react';
 
 const STOCK_IMAGES = {
   featured: 'https://picsum.photos/seed/web-featured/800/450',
@@ -22,7 +23,19 @@ const WEBINARS = Array.from({ length: 6 }, (_, i) => ({
   isNew: true,
 }));
 
+const FEATURED_WEBINAR_INFO = {
+  title: 'Featured Webinar Title',
+  imageUrl: 'https://picsum.photos/seed/webinar-signup/600/320',
+  speaker: 'Dr. Sarah Chen',
+  time: 'March 15, 2025 at 2:00 PM ET',
+  duration: '60 min',
+  description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.',
+};
+
 export default function Webinars() {
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showConfirmedModal, setShowConfirmedModal] = useState(false);
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Webinars</h1>
@@ -46,9 +59,9 @@ export default function Webinars() {
 
       {/* Featured Webinar - 2 cards */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Link
-          to="/app/webinars"
-          className="group relative rounded-2xl overflow-hidden min-h-[280px]"
+        <div
+          className="group relative rounded-2xl overflow-hidden min-h-[280px] cursor-pointer"
+          onClick={() => setShowSignUpModal(true)}
         >
           <img src={STOCK_IMAGES.featured} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
           <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
@@ -58,10 +71,10 @@ export default function Webinars() {
               <span className="mt-2 inline-block rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white">New</span>
             </div>
             <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
-              Join Now <span>→</span>
+              Sign Up
             </span>
           </div>
-        </Link>
+        </div>
         <Link
           to="/app/webinars"
           className="group relative rounded-2xl overflow-hidden min-h-[280px]"
@@ -109,6 +122,103 @@ export default function Webinars() {
           </Link>
         </div>
       </section>
+
+      {/* Webinar Sign Up Modal */}
+      {showSignUpModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowSignUpModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative h-40">
+              <img
+                src={FEATURED_WEBINAR_INFO.imageUrl}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="eager"
+                referrerPolicy="no-referrer"
+              />
+              <button
+                onClick={() => setShowSignUpModal(false)}
+                className="absolute top-3 right-3 p-2 bg-white/90 hover:bg-white rounded-full text-gray-700"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{FEATURED_WEBINAR_INFO.title}</h3>
+                <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-4 w-4" />
+                    {FEATURED_WEBINAR_INFO.time} · {FEATURED_WEBINAR_INFO.duration}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <User className="h-4 w-4" />
+                    {FEATURED_WEBINAR_INFO.speaker}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">{FEATURED_WEBINAR_INFO.description}</p>
+              <form
+                className="space-y-4 pt-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setShowSignUpModal(false);
+                  setShowConfirmedModal(true);
+                }}
+              >
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                >
+                  Sign Up for Webinar
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmedModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          onClick={() => setShowConfirmedModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 mb-4">
+              <CheckCircle className="h-10 w-10" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900">You're signed up!</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              You've been registered for {FEATURED_WEBINAR_INFO.title}. We'll send a reminder to your email before the webinar.
+            </p>
+            <button
+              onClick={() => setShowConfirmedModal(false)}
+              className="mt-6 w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -67,18 +67,47 @@ export default function ExploreOpportunities() {
 
       {/* Category tabs */}
       <div className="flex flex-wrap gap-2">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition ${
-              tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            <Icon className="h-6 w-6" />
-            {label}
-          </button>
-        ))}
+        {tabs.map(({ key, label, icon: Icon }) =>
+          key === 'webinars' ? (
+            <Link
+              key={key}
+              to="/app/webinars"
+              className="flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+            >
+              <Icon className="h-6 w-6" />
+              {label}
+            </Link>
+          ) : key === 'videos' ? (
+            <Link
+              key={key}
+              to="/app/watch"
+              className="flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+            >
+              <Icon className="h-6 w-6" />
+              {label}
+            </Link>
+          ) : key === 'surveys' ? (
+            <Link
+              key={key}
+              to="/app/surveys"
+              className="flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+            >
+              <Icon className="h-6 w-6" />
+              {label}
+            </Link>
+          ) : (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition ${
+                tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Icon className="h-6 w-6" />
+              {label}
+            </button>
+          )
+        )}
       </div>
 
       {/* Content grid */}
