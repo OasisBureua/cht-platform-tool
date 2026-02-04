@@ -69,6 +69,38 @@ export class SurveysService {
   }
 
   /**
+   * Create survey (admin)
+   */
+  async createSurvey(dto: {
+    programId: string;
+    title: string;
+    description?: string;
+    questions: Record<string, unknown>[];
+    type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+    required?: boolean;
+  }) {
+    const program = await this.prisma.program.findUnique({
+      where: { id: dto.programId },
+    });
+    if (!program) {
+      throw new BadRequestException('Program not found');
+    }
+
+    const survey = await this.prisma.survey.create({
+      data: {
+        programId: dto.programId,
+        title: dto.title,
+        description: dto.description,
+        questions: dto.questions as object,
+        type: dto.type ?? 'POST_TEST',
+        required: dto.required ?? true,
+      },
+    });
+    this.logger.log(`Survey created: ${survey.id} - ${survey.title}`);
+    return survey;
+  }
+
+  /**
    * Submit a survey response.
    * Creates SurveyResponse in DB and sends SURVEY_BONUS payment message if configured.
    */

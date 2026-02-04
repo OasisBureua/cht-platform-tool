@@ -2,7 +2,7 @@ import apiClient from './client';
 import { mockPrograms } from '../mocks/programs.mocks';
 import { demoEnrollmentsStore } from '../mocks/enrollments.mocks';
 
-const ENABLE_MOCK_FALLBACK = true;
+const ENABLE_MOCK_FALLBACK = import.meta.env.DEV;
 
 export interface Video {
   id: string;

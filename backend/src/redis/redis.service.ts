@@ -121,6 +121,7 @@ export class RedisService implements OnModuleDestroy {
   keys = {
     session: (sessionId: string) => `session:${sessionId}`,
     user: (userId: string) => `user:${userId}`,
+    authUser: (authId: string) => `auth:user:${authId}`,
     dashboardEarnings: (userId: string) => `dashboard:earnings:${userId}`,
     dashboardStats: (userId: string) => `dashboard:stats:${userId}`,
     programs: () => 'programs:list',

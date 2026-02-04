@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
@@ -13,6 +14,81 @@ export class ProgramsService {
     private prisma: PrismaService,
     private queueService: QueueService,
   ) {}
+
+  /**
+   * Get all programs for admin (any status)
+   */
+  async getAllProgramsForAdmin() {
+    const programs = await this.prisma.program.findMany({
+      include: {
+        videos: { orderBy: { order: 'asc' } },
+        _count: { select: { enrollments: true, surveys: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return programs.map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      sponsorName: p.sponsorName,
+      sponsorLogo: p.sponsorLogo || undefined,
+      status: p.status,
+      creditAmount: p.creditAmount,
+      honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
+      startDate: p.startDate?.toISOString(),
+      endDate: p.endDate?.toISOString(),
+      enrollmentsCount: p._count.enrollments,
+      surveysCount: p._count.surveys,
+    }));
+  }
+
+  /**
+   * Create program (admin). honorariumAmount in dollars, stored as cents.
+   */
+  async createProgram(dto: {
+    title: string;
+    description: string;
+    sponsorName: string;
+    sponsorLogo?: string;
+    creditAmount?: number;
+    accreditationBody?: string;
+    status?: 'DRAFT' | 'PUBLISHED';
+    honorariumAmount?: number;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const program = await this.prisma.program.create({
+      data: {
+        title: dto.title,
+        description: dto.description,
+        sponsorName: dto.sponsorName,
+        sponsorLogo: dto.sponsorLogo,
+        creditAmount: dto.creditAmount ?? 0,
+        accreditationBody: dto.accreditationBody,
+        status: dto.status ?? 'DRAFT',
+        honorariumAmount: dto.honorariumAmount != null ? Math.round(dto.honorariumAmount * 100) : null,
+        startDate: dto.startDate ? new Date(dto.startDate) : null,
+        endDate: dto.endDate ? new Date(dto.endDate) : null,
+      },
+    });
+    this.logger.log(`Program created: ${program.id} - ${program.title}`);
+    return program;
+  }
+
+  /**
+   * Update program status (admin)
+   */
+  async updateProgramStatus(id: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') {
+    const program = await this.prisma.program.update({
+      where: { id },
+      data: {
+        status,
+        publishedAt: status === 'PUBLISHED' ? new Date() : undefined,
+      },
+    });
+    this.logger.log(`Program ${id} status updated to ${status}`);
+    return program;
+  }
 
   /**
    * Get all published programs
@@ -301,7 +377,11 @@ export class ProgramsService {
   /**
    * Handle program completion (send emails, process payments, generate certificate)
    */
-  private async handleProgramCompletion(enrollment: any): Promise<void> {
+  private async handleProgramCompletion(
+    enrollment: Prisma.ProgramEnrollmentGetPayload<{
+      include: { program: true; user: true };
+    }>,
+  ): Promise<void> {
     this.logger.log(`Program completed: ${enrollment.programId} by user ${enrollment.userId}`);
 
     const { user, program } = enrollment;

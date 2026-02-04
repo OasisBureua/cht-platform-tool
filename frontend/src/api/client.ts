@@ -8,10 +8,17 @@ const apiClient = axios.create({
 });
 
 type AuthHeaderGetter = () => Promise<Record<string, string>>;
+type UnauthorizedHandler = () => void;
+
 let authHeaderGetter: AuthHeaderGetter | null = null;
+let onUnauthorized: UnauthorizedHandler | null = null;
 
 export function setAuthHeaderGetter(getter: AuthHeaderGetter) {
   authHeaderGetter = getter;
+}
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
+  onUnauthorized = handler;
 }
 
 apiClient.interceptors.request.use(
@@ -33,8 +40,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Caller can redirect to login via useAuth
-      console.warn('Unauthorized - token may have expired');
+      onUnauthorized?.();
     }
     return Promise.reject(error);
   },

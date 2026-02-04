@@ -131,9 +131,6 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="payments" element={<Payments />} />
 
-            {/* Optional legacy */}
-            <Route path="home" element={<Dashboard />} />
-
             {/* Catch-all within /app */}
             <Route path="*" element={<Navigate to="/app/home" replace />} />
           </Route>

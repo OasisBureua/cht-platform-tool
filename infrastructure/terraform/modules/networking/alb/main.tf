@@ -83,20 +83,35 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-# HTTP Listener (redirect to HTTPS)
-resource "aws_lb_listener" "http" {
+# HTTP Listener: redirect to HTTPS when cert present
+resource "aws_lb_listener" "http_redirect" {
+  count = var.certificate_arn != "" ? 1 : 0
+
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
     type = "redirect"
-
     redirect {
       port        = "443"
       protocol    = "HTTPS"
       status_code = "HTTP_301"
     }
+  }
+}
+
+# HTTP Listener: forward to backend when no cert (dev testing without ACM)
+resource "aws_lb_listener" "http_forward" {
+  count = var.certificate_arn == "" ? 1 : 0
+
+  load_balancer_arn = aws_lb.main.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
   }
 }
 

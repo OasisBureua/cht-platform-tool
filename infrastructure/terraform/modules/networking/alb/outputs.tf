@@ -25,7 +25,10 @@ output "backend_target_group_arn" {
 
 output "http_listener_arn" {
   description = "HTTP listener ARN"
-  value       = aws_lb_listener.http.arn
+  value       = coalesce(
+    try(aws_lb_listener.http_redirect[0].arn, ""),
+    try(aws_lb_listener.http_forward[0].arn, "")
+  )
 }
 
 output "https_listener_arn" {

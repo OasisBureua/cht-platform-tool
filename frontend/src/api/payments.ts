@@ -6,7 +6,7 @@ import {
   type PaymentSummary,
 } from '../mocks/payments.mocks';
 
-const ENABLE_MOCK_FALLBACK = true;
+const ENABLE_MOCK_FALLBACK = import.meta.env.DEV;
 
 export const paymentsApi = {
   getAccountStatus: async (userId: string) => {

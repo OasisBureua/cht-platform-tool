@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { setAuthHeaderGetter } from '../api/client';
+import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
 
 const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN;
 const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID;
@@ -120,7 +120,7 @@ function Auth0Inner({ children, useAuth0 }: { children: ReactNode; useAuth0: Use
           setApiUser({
             userId: data.userId,
             email: data.email || auth0User?.email,
-            name: auth0User?.name,
+            name: data.name || auth0User?.name,
             role: data.role,
           });
         } else {
@@ -181,6 +181,16 @@ function Auth0Inner({ children, useAuth0 }: { children: ReactNode; useAuth0: Use
   useEffect(() => {
     setAuthHeaderGetter(getAuthHeaders);
   }, [getAuthHeaders]);
+
+  const handleUnauthorized = useCallback(() => {
+    setApiUser(null);
+    window.location.href = '/login';
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(handleUnauthorized);
+    return () => setUnauthorizedHandler(null);
+  }, [handleUnauthorized]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -259,6 +269,18 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setAuthHeaderGetter(getAuthHeaders);
   }, [getAuthHeaders]);
+
+  const handleUnauthorized = useCallback(() => {
+    setUserId('');
+    setProfile(null);
+    localStorage.removeItem('cht-dev-user-id');
+    window.location.href = '/login';
+  }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(handleUnauthorized);
+    return () => setUnauthorizedHandler(null);
+  }, [handleUnauthorized]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -17,6 +17,7 @@ export class AuthController {
       userId: user.userId,
       authId: user.authId,
       email: user.email,
+      name: user.name,
       role: user.role,
     };
   }

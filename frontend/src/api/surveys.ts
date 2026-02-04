@@ -35,13 +35,16 @@ export interface Survey {
   };
 }
 
+const ENABLE_MOCK_FALLBACK = import.meta.env.DEV;
+
 export const surveysApi = {
   getAll: async (): Promise<Survey[]> => {
     try {
       const { data } = await apiClient.get('/surveys');
       return Array.isArray(data) && data.length > 0 ? data : mockSurveys;
     } catch {
-      return mockSurveys;
+      if (ENABLE_MOCK_FALLBACK) return mockSurveys;
+      throw new Error('Failed to load surveys');
     }
   },
 
@@ -50,9 +53,11 @@ export const surveysApi = {
       const { data } = await apiClient.get(`/surveys/${id}`);
       return data;
     } catch {
-      const survey = mockSurveys.find((s) => s.id === id);
-      if (!survey) throw new Error('Survey not found');
-      return survey;
+      if (ENABLE_MOCK_FALLBACK) {
+        const survey = mockSurveys.find((s) => s.id === id);
+        if (survey) return survey;
+      }
+      throw new Error('Survey not found');
     }
   },
 

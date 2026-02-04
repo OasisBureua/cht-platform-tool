@@ -43,6 +43,29 @@ cp .env.example .env
 npm run dev
 ```
 
+## Environment Variables
+
+### Frontend (`frontend/.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_API_URL` | Yes | Backend API base URL. Local: `http://localhost:3000/api`. Production: `https://api.yourdomain.com/api` |
+| `VITE_AUTH0_DOMAIN` | No* | Auth0 tenant domain (e.g. `your-tenant.auth0.com`) |
+| `VITE_AUTH0_CLIENT_ID` | No* | Auth0 application client ID |
+| `VITE_AUTH0_AUDIENCE` | No* | Auth0 API identifier |
+| `VITE_DEV_USER_ID` | No** | Dev bypass: user ID from `npx prisma db seed` when Auth0 not configured |
+
+\* Required for production OAuth; omit for local dev with `X-Dev-User-Id` bypass.  
+\** Required for dev mode when Auth0 is not configured.
+
+### Backend (`backend/.env`)
+
+See `backend/.env.example`. Key: `DATABASE_URL` (required), `REDIS_HOST`, `AUTH0_*`, `SQS_*`, etc.
+
+### Worker (`worker/.env`)
+
+See `worker/.env.example`. Key: `DATABASE_URL` (required), `SQS_*_QUEUE_URL`, `STRIPE_SECRET_KEY`, etc.
+
 ## Access Points
 
 - Frontend: http://localhost:5173

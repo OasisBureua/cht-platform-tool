@@ -1,31 +1,33 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Calendar, MoreVertical } from 'lucide-react';
-
-const MOCK_PROGRAMS = [
-  {
-    id: '123',
-    title: 'Cardiometabolic Care Update',
-    sponsor: 'Pfizer',
-    status: 'Active',
-    credits: '1.5 CME',
-  },
-  {
-    id: '456',
-    title: 'Oncology Treatment Pathways',
-    sponsor: 'Novartis',
-    status: 'Draft',
-    credits: '1.0 CME',
-  },
-  {
-    id: '789',
-    title: 'Neurology Case Series',
-    sponsor: 'Biogen',
-    status: 'Active',
-    credits: 'CME Eligible',
-  },
-];
+import { adminApi, type AdminProgram } from '../../api/admin';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminPrograms() {
+  const { data: programs, isLoading, error } = useQuery({
+    queryKey: ['admin', 'programs'],
+    queryFn: () => adminApi.getPrograms(),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        Failed to load programs. Please try again.
+      </div>
+    );
+  }
+
+  const items = programs ?? [];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -66,27 +68,35 @@ export default function AdminPrograms() {
           </thead>
 
           <tbody className="divide-y divide-gray-200">
-            {MOCK_PROGRAMS.map((p) => (
-              <tr key={p.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">
-                  {p.title}
-                </td>
-                <td className="px-4 py-3 text-gray-700">
-                  {p.sponsor}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusBadge status={p.status} />
-                </td>
-                <td className="px-4 py-3 text-gray-700">
-                  {p.credits}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <button className="text-gray-500 hover:text-gray-700">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  No programs yet. Create one via Schedule Webinar.
                 </td>
               </tr>
-            ))}
+            ) : (
+              items.map((p) => (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {p.title}
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">
+                    {p.sponsorName}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={p.status} />
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">
+                    {p.creditAmount} CME
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button className="text-gray-500 hover:text-gray-700">
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -94,11 +104,14 @@ export default function AdminPrograms() {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: AdminProgram['status'] }) {
+  const label = status === 'PUBLISHED' ? 'Active' : status === 'DRAFT' ? 'Draft' : 'Archived';
   const styles =
-    status === 'Active'
+    status === 'PUBLISHED'
       ? 'bg-green-50 text-green-700 border-green-200'
-      : 'bg-gray-100 text-gray-700 border-gray-200';
+      : status === 'ARCHIVED'
+        ? 'bg-gray-100 text-gray-500 border-gray-200'
+        : 'bg-amber-50 text-amber-700 border-amber-200';
 
   return (
     <span
@@ -107,7 +120,7 @@ function StatusBadge({ status }: { status: string }) {
         styles,
       ].join(' ')}
     >
-      {status}
+      {label}
     </span>
   );
 }

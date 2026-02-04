@@ -13,6 +13,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ProgramsModule } from './modules/programs/programs.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
+import { AdminModule } from './modules/admin/admin.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -41,6 +42,7 @@ import { validationSchema } from './config/validation';
     PaymentsModule,
     ProgramsModule,
     SurveysModule,
+    AdminModule,
   ],
   controllers: [AppController],
   providers: [

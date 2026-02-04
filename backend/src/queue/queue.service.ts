@@ -56,8 +56,11 @@ export class QueueService {
       const response = await this.sqsClient.send(command);
       this.logger.log(`Message sent to ${queueName}: ${response.MessageId}`);
     } catch (error) {
-      this.logger.error(`Failed to send message to ${queueName}:`, error);
-      throw error;
+      this.logger.error(
+        `Failed to send message to ${queueName} - business operation will succeed but job may need retry:`,
+        error,
+      );
+      // Do not rethrow - allow survey/program completion to succeed; queue can be retried manually or via DLQ
     }
   }
 
