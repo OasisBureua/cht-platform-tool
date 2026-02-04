@@ -1,0 +1,6 @@
+{
+  "venvPath": "worker",
+  "venv": ".venv",
+  "include": ["worker"],
+  "extraPaths": ["worker"]
+}

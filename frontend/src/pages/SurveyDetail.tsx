@@ -2,11 +2,10 @@ import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useAuth } from '../contexts/AuthContext';
 import { surveysApi } from '../api/surveys';
 import type { Survey, SurveyQuestion } from '../api/surveys';
 import { ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, ClipboardList } from 'lucide-react';
-
-const TEMP_USER_ID = '1234567890';
 
 function safeQuestions(questions: any): SurveyQuestion[] {
   if (!questions) return [];
@@ -29,6 +28,8 @@ function typeLabel(type?: Survey['type']) {
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.userId ?? '';
 
   const [started, setStarted] = useState(false);
 
@@ -44,7 +45,7 @@ export default function SurveyDetail() {
     mutationFn: async () => {
       // UI-only placeholder submission payload (answers empty for now)
       return surveysApi.submitResponse(id!, {
-        userId: TEMP_USER_ID,
+        userId,
         answers: {},
       });
     },

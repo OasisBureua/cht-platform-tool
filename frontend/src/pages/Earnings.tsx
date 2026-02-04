@@ -13,7 +13,7 @@ import {
   Tooltip,
 } from 'recharts';
 
-const TEMP_USER_ID = '1234567890';
+import { useAuth } from '../contexts/AuthContext';
 
 function dollarsToPoints(dollars: number) {
   // TODO: replace with real conversion rate once backend defines it
@@ -21,9 +21,13 @@ function dollarsToPoints(dollars: number) {
 }
 
 export default function Earnings() {
+  const { user } = useAuth();
+  const userId = user?.userId ?? '';
+
   const { data: earnings, isLoading } = useQuery({
-    queryKey: ['earnings', TEMP_USER_ID],
-    queryFn: () => dashboardApi.getEarnings(TEMP_USER_ID),
+    queryKey: ['earnings', userId],
+    queryFn: () => dashboardApi.getEarnings(userId),
+    enabled: !!userId,
   });
 
   const chartData = useMemo(() => {

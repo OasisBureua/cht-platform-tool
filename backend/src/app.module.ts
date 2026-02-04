@@ -1,14 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './redis/redis.module';
 import { QueueModule } from './queue/queue.module';
+import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ProgramsModule } from './modules/programs/programs.module';
+import { SurveysModule } from './modules/surveys/surveys.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -23,17 +27,25 @@ import { validationSchema } from './config/validation';
         abortEarly: false,
       },
     }),
-    
+    ThrottlerModule.forRoot([
+      { name: 'short', ttl: 1000, limit: 10 },
+      { name: 'medium', ttl: 10000, limit: 50 },
+      { name: 'long', ttl: 60000, limit: 200 },
+    ]),
     PrismaModule,
     HealthModule,
     RedisModule,
     QueueModule,
-    
+    AuthModule,
     DashboardModule,
     PaymentsModule,
     ProgramsModule,
+    SurveysModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class AppModule {}

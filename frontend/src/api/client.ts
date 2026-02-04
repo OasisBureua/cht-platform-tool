@@ -7,31 +7,37 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor for adding auth token (when Auth0 is ready)
+type AuthHeaderGetter = () => Promise<Record<string, string>>;
+let authHeaderGetter: AuthHeaderGetter | null = null;
+
+export function setAuthHeaderGetter(getter: AuthHeaderGetter) {
+  authHeaderGetter = getter;
+}
+
 apiClient.interceptors.request.use(
-  (config) => {
-    // TODO: Add Auth0 token here
-    // const token = getAuthToken();
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+  async (config) => {
+    if (authHeaderGetter) {
+      try {
+        const headers = await authHeaderGetter();
+        Object.assign(config.headers, headers);
+      } catch {
+        // Ignore - no auth available
+      }
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // TODO: Handle unauthorized (redirect to login)
-      console.error('Unauthorized - redirect to login');
+      // Caller can redirect to login via useAuth
+      console.warn('Unauthorized - token may have expired');
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default apiClient;

@@ -53,6 +53,7 @@ import AdminSettings from './pages/admin/AdminSettings';
 
 // optional legacy page
 import Dashboard from './pages/Dashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -99,7 +100,14 @@ function App() {
           {/* =======================
               APP ROUTES (NOW UNDER /app)
               ======================= */}
-          <Route path="/app" element={<Layout />}>
+          <Route
+            path="/app"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<Navigate to="/app/home" replace />} />
 
             {/* Home + Search */}
@@ -146,7 +154,14 @@ function App() {
           {/* Old legacy paths you mentioned */}
           <Route path="/programs" element={<Navigate to="/app/webinars" replace />} />
           
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminLayout />
+              </ProtectedRoute>
+            }
+          >
             <Route index element={<AdminDashboard />} />
             <Route path="programs" element={<AdminPrograms />} />
             <Route path="surveys" element={<AdminSurveys />} />

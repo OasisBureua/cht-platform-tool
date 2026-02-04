@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
@@ -14,8 +15,6 @@ import {
   ArrowRight,
   ClipboardList,
 } from 'lucide-react';
-
-const TEMP_USER_ID = '1234567890';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -32,6 +31,8 @@ export default function WebinarDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.userId ?? '';
 
   const {
     data: program,
@@ -46,8 +47,9 @@ export default function WebinarDetail() {
   });
 
   const { data: enrollments } = useQuery({
-    queryKey: ['enrollments', TEMP_USER_ID],
-    queryFn: () => programsApi.getEnrollments(TEMP_USER_ID),
+    queryKey: ['enrollments', userId],
+    queryFn: () => programsApi.getEnrollments(userId),
+    enabled: !!userId,
   });
 
   const enrolledProgramIds = useMemo(
@@ -57,9 +59,9 @@ export default function WebinarDetail() {
 
   const enrollMutation = useMutation({
     mutationFn: ({ programId }: { programId: string }) =>
-      programsApi.enroll(TEMP_USER_ID, programId),
+      programsApi.enroll(userId, programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enrollments', TEMP_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
     },
   });
 

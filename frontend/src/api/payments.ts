@@ -8,13 +8,15 @@ import {
 
 const ENABLE_MOCK_FALLBACK = true;
 
-// TODO: replace TEMP_USER_ID once auth exists
-const TEMP_USER_ID = '1234567890';
-
 export const paymentsApi = {
-  getSummary: async (): Promise<PaymentSummary> => {
+  getAccountStatus: async (userId: string) => {
+    const { data } = await apiClient.get(`/payments/${userId}/account-status`);
+    return data;
+  },
+
+  getSummary: async (userId: string): Promise<PaymentSummary> => {
     try {
-      const { data } = await apiClient.get(`/payments/${TEMP_USER_ID}/summary`);
+      const { data } = await apiClient.get(`/payments/${userId}/summary`);
       return data;
     } catch (err) {
       if (ENABLE_MOCK_FALLBACK) return mockPaymentSummary;
@@ -22,9 +24,9 @@ export const paymentsApi = {
     }
   },
 
-  getHistory: async (): Promise<PaymentItem[]> => {
+  getHistory: async (userId: string): Promise<PaymentItem[]> => {
     try {
-      const { data } = await apiClient.get(`/payments/${TEMP_USER_ID}/history`);
+      const { data } = await apiClient.get(`/payments/${userId}/history`);
       return data;
     } catch (err) {
       if (ENABLE_MOCK_FALLBACK) return mockPaymentItems;
@@ -32,22 +34,23 @@ export const paymentsApi = {
     }
   },
 
-  // Stripe Connect onboarding link
-  createConnectLink: async (): Promise<{ url: string }> => {
+  createConnectLink: async (userId: string): Promise<{ url: string }> => {
     try {
-      const { data } = await apiClient.post(`/payments/${TEMP_USER_ID}/stripe/connect-link`);
-      return data;
+      const { data } = await apiClient.post(`/payments/${userId}/connect-account`);
+      return { url: data.onboardingUrl || data.url || 'https://dashboard.stripe.com/' };
     } catch (err) {
-      if (ENABLE_MOCK_FALLBACK) {
-        return { url: 'https://dashboard.stripe.com/' };
-      }
+      if (ENABLE_MOCK_FALLBACK) return { url: 'https://dashboard.stripe.com/' };
       throw err;
     }
   },
 
-  requestPayout: async (amount?: number) => {
+  requestPayout: async (userId: string, amount?: number) => {
     try {
-      const { data } = await apiClient.post(`/payments/${TEMP_USER_ID}/payout`, { amount });
+      const { data } = await apiClient.post(`/payments/payout`, {
+        userId,
+        amount: amount ? Math.round(amount * 100) : 0,
+        description: 'Payout request',
+      });
       return data;
     } catch (err) {
       if (ENABLE_MOCK_FALLBACK) return { success: true };

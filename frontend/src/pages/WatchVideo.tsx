@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useAuth } from '../contexts/AuthContext';
 import { programsApi, type Program, type Video } from '../api/programs';
 import { ChevronLeft, RotateCcw, CheckCircle2, ExternalLink } from 'lucide-react';
-
-const TEMP_USER_ID = '1234567890';
 
 // How often we sync progress to backend (seconds)
 const SYNC_INTERVAL_SECONDS = 15;
@@ -35,6 +34,8 @@ function findVideo(programs: Program[], videoId: string) {
 export default function WatchVideo() {
   const { videoId } = useParams<{ videoId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const userId = user?.userId ?? '';
 
   const { data: programs, isLoading } = useQuery({
     queryKey: ['programs'],
@@ -47,8 +48,8 @@ export default function WatchVideo() {
   }, [programs, videoId]);
 
   const storageKey = useMemo(() => {
-    return videoId ? `watch_progress_${TEMP_USER_ID}_${videoId}` : '';
-  }, [videoId]);
+    return videoId ? `watch_progress_${userId}_${videoId}` : '';
+  }, [videoId, userId]);
 
   const [watchedSeconds, setWatchedSeconds] = useState<number>(0);
   const [lastSyncedSeconds, setLastSyncedSeconds] = useState<number>(0);
@@ -100,7 +101,7 @@ export default function WatchVideo() {
     }) => {
       if (!videoId) throw new Error('Missing videoId');
       return programsApi.updateVideoProgress(
-        TEMP_USER_ID,
+        userId,
         videoId,
         payload.watchedSeconds,
         payload.progress,

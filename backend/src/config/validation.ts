@@ -40,4 +40,7 @@ export const validationSchema = Joi.object({
   // Redis
   REDIS_HOST: Joi.string().default('localhost'),
   REDIS_PORT: Joi.number().default(6379),
+
+  // Surveys
+  SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
 });

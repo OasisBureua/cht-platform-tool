@@ -1,6 +1,18 @@
+import apiClient from './client';
 import { mockSurveys } from '../mocks/surveys.mock';
 
 export type SurveyType = 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+
+export interface SurveyQuestion {
+  id?: string;
+  type?: string;
+  prompt?: string;
+  options?: string[];
+  scaleMin?: number;
+  scaleMax?: number;
+  required?: boolean;
+  [key: string]: unknown;
+}
 
 export interface Survey {
   id: string;
@@ -23,25 +35,31 @@ export interface Survey {
   };
 }
 
-/**
- * MOCK-ONLY API
- * Backend surveys module does not exist yet.
- */
 export const surveysApi = {
   getAll: async (): Promise<Survey[]> => {
-    return mockSurveys;
+    try {
+      const { data } = await apiClient.get('/surveys');
+      return Array.isArray(data) && data.length > 0 ? data : mockSurveys;
+    } catch {
+      return mockSurveys;
+    }
   },
 
   getById: async (id: string): Promise<Survey> => {
-    const survey = mockSurveys.find((s) => s.id === id);
-    if (!survey) {
-      throw new Error('Survey not found (mock)');
+    try {
+      const { data } = await apiClient.get(`/surveys/${id}`);
+      return data;
+    } catch {
+      const survey = mockSurveys.find((s) => s.id === id);
+      if (!survey) throw new Error('Survey not found');
+      return survey;
     }
-    return survey;
   },
 
-  submitResponse: async () => {
-    // UI-only success
-    return { success: true };
+  submitResponse: async (id: string, payload: { userId: string; answers: Record<string, unknown> }) => {
+    const { data } = await apiClient.post(`/surveys/${id}/responses`, {
+      answers: payload.answers,
+    });
+    return data;
   },
 };

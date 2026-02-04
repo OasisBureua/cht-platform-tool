@@ -1,4 +1,9 @@
-import { Controller, Post, Get, Body, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Logger, UseGuards } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CheckUserGuard } from '../../auth/check-user.guard';
+import { RolesGuard } from '../../auth/roles.guard';
+import { Roles } from '../../auth/roles.decorator';
 import { PaymentsService } from './payments.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
@@ -12,9 +17,10 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/connect-account
-   * Create Stripe Connect account for user
+   * Create Stripe Connect account for user (auth required)
    */
   @Post(':userId/connect-account')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createConnectAccount(
     @Param('userId') userId: string,
   ): Promise<CreateConnectAccountResponseDto> {
@@ -24,9 +30,10 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/account-link
-   * Generate new onboarding link (refresh)
+   * Generate new onboarding link (refresh) (auth required)
    */
   @Post(':userId/account-link')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createAccountLink(@Param('userId') userId: string): Promise<AccountLinkResponseDto> {
     this.logger.log(`Creating account link for user: ${userId}`);
     return this.paymentsService.createAccountLink(userId);
@@ -34,9 +41,10 @@ export class PaymentsController {
 
   /**
    * GET /api/payments/:userId/account-status
-   * Get user's payment account status
+   * Get user's payment account status (auth required)
    */
   @Get(':userId/account-status')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
   async getAccountStatus(@Param('userId') userId: string): Promise<AccountStatusDto> {
     this.logger.log(`Getting account status for user: ${userId}`);
     return this.paymentsService.getAccountStatus(userId);
@@ -44,9 +52,11 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/payout
-   * Create payout to user (admin only - will add auth later)
+   * Create payout to user (admin only)
    */
   @Post('payout')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   async createPayout(@Body() dto: CreatePayoutDto): Promise<PayoutResponseDto> {
     this.logger.log(`Creating payout for user: ${dto.userId}`);
     return this.paymentsService.createPayout(dto);
@@ -54,9 +64,10 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/sync-account
-   * Sync account status from Stripe (for testing without webhooks)
+   * Sync account status from Stripe (auth required)
    */
   @Post(':userId/sync-account')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
   async syncAccountStatus(@Param('userId') userId: string) {
     this.logger.log(`Syncing account status for user: ${userId}`);
     return this.paymentsService.syncAccountStatus(userId);

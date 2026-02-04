@@ -1,4 +1,8 @@
-import { Controller, Get, Post, Body, Param, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Logger, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CheckUserGuard } from '../../auth/check-user.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { AuthUser } from '../../auth/auth.service';
 import { ProgramsService } from './programs.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto } from './dto/program-response.dto';
@@ -12,7 +16,7 @@ export class ProgramsController {
 
   /**
    * GET /api/programs
-   * Get all published programs
+   * Get all published programs (public)
    */
   @Get()
   async getAllPrograms(): Promise<ProgramResponseDto[]> {
@@ -22,7 +26,7 @@ export class ProgramsController {
 
   /**
    * GET /api/programs/:id
-   * Get single program by ID
+   * Get single program by ID (public)
    */
   @Get(':id')
   async getProgramById(@Param('id') id: string): Promise<ProgramResponseDto> {
@@ -32,19 +36,25 @@ export class ProgramsController {
 
   /**
    * POST /api/programs/enroll
-   * Enroll user in program
+   * Enroll user in program (auth required; uses authenticated user ID)
    */
   @Post('enroll')
-  async enrollUser(@Body() dto: EnrollUserDto): Promise<EnrollmentResponseDto> {
-    this.logger.log(`Enrolling user ${dto.userId} in program ${dto.programId}`);
-    return this.programsService.enrollUser(dto);
+  @UseGuards(JwtAuthGuard)
+  async enrollUser(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: EnrollUserDto,
+  ): Promise<EnrollmentResponseDto> {
+    const enrollDto = { ...dto, userId: user.userId };
+    this.logger.log(`Enrolling user ${user.userId} in program ${dto.programId}`);
+    return this.programsService.enrollUser(enrollDto);
   }
 
   /**
    * GET /api/programs/enrollments/:userId
-   * Get user's enrollments
+   * Get user's enrollments (auth required)
    */
   @Get('enrollments/:userId')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
   async getUserEnrollments(@Param('userId') userId: string) {
     this.logger.log(`Getting enrollments for user: ${userId}`);
     return this.programsService.getUserEnrollments(userId);
@@ -52,11 +62,16 @@ export class ProgramsController {
 
   /**
    * POST /api/programs/video-progress
-   * Update video progress
+   * Update video progress (auth required; uses authenticated user ID)
    */
   @Post('video-progress')
-  async updateVideoProgress(@Body() dto: UpdateVideoProgressDto): Promise<VideoProgressResponseDto> {
-    this.logger.debug(`Updating video progress for user: ${dto.userId}`);
-    return this.programsService.updateVideoProgress(dto);
+  @UseGuards(JwtAuthGuard)
+  async updateVideoProgress(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: UpdateVideoProgressDto,
+  ): Promise<VideoProgressResponseDto> {
+    const progressDto = { ...dto, userId: user.userId };
+    this.logger.debug(`Updating video progress for user: ${user.userId}`);
+    return this.programsService.updateVideoProgress(progressDto);
   }
 }

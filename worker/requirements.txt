@@ -13,8 +13,8 @@ sendgrid==6.11.0
 reportlab==4.0.9
 Pillow==10.1.0
 
-# Stripe
-stripe==7.8.0
+# Stripe (7.8.0 was yanked; use recent stable)
+stripe>=14.0,<15
 
 # Environment
 python-dotenv==1.0.0

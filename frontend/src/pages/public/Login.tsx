@@ -1,7 +1,20 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { isAuthenticated, login } = useAuth();
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app/home';
+
+  if (isAuthenticated) {
+    return <Navigate to={from} replace />;
+  }
+
+  const handleLogin = () => {
+    login();
+    // Auth0: redirects away. Dev mode: isAuthenticated becomes true → Navigate above
+  };
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 bg-white">
@@ -22,7 +35,7 @@ export default function Login() {
             className="space-y-4"
             onSubmit={(e) => {
               e.preventDefault();
-              navigate('/app/home');
+              handleLogin();
             }}
           >
             <Input
@@ -74,7 +87,7 @@ export default function Login() {
           <div className="space-y-3">
             <button
               type="button"
-              onClick={() => navigate('/app/home')}
+              onClick={handleLogin}
               className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
@@ -99,7 +112,7 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/app/home')}
+              onClick={handleLogin}
               className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
               <svg className="h-5 w-5 text-gray-800" viewBox="0 0 24 24" fill="currentColor">

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
 import { DollarSign, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
@@ -26,25 +27,30 @@ function statusIcon(status: PaymentStatus) {
 }
 
 export default function Payments() {
+  const { user } = useAuth();
+  const userId = user?.userId ?? '';
+
   const { data: summary, isLoading: loadingSummary } = useQuery({
-    queryKey: ['payments-summary'],
-    queryFn: paymentsApi.getSummary,
+    queryKey: ['payments-summary', userId],
+    queryFn: () => paymentsApi.getSummary(userId),
+    enabled: !!userId,
   });
 
   const { data: history, isLoading: loadingHistory } = useQuery({
-    queryKey: ['payments-history'],
-    queryFn: paymentsApi.getHistory,
+    queryKey: ['payments-history', userId],
+    queryFn: () => paymentsApi.getHistory(userId),
+    enabled: !!userId,
   });
 
   const connectMutation = useMutation({
-    mutationFn: paymentsApi.createConnectLink,
+    mutationFn: () => paymentsApi.createConnectLink(userId),
     onSuccess: ({ url }) => {
       window.open(url, '_blank', 'noopener,noreferrer');
     },
   });
 
   const payoutMutation = useMutation({
-    mutationFn: () => paymentsApi.requestPayout(),
+    mutationFn: () => paymentsApi.requestPayout(userId),
   });
 
   const totalThisMonth = useMemo(() => {

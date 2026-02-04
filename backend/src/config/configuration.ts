@@ -48,4 +48,9 @@ export default () => ({
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
   },
+
+  // Surveys (optional survey bonus payment in cents, 0 = disabled)
+  surveys: {
+    bonusAmountCents: parseInt(process.env.SURVEY_BONUS_AMOUNT_CENTS || '0', 10),
+  },
 });
