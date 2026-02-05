@@ -36,6 +36,7 @@ import WatchVideo from './pages/WatchVideo';
 import Earnings from './pages/Earnings';
 import Settings from './pages/Settings';
 import Payments from './pages/Payments';
+import ChatBot from './pages/ChatBot';
 
 // =======================
 // ADMIN ROUTES
@@ -118,8 +119,9 @@ function App() {
             <Route path="watch" element={<Watch />} />
             <Route path="watch/:videoId" element={<WatchVideo />} />
 
-            {/* Earnings + Settings + Payments */}
+            {/* Earnings + ChatBot + Settings + Payments */}
             <Route path="earnings" element={<Earnings />} />
+            <Route path="chatbot" element={<ChatBot />} />
             <Route path="settings" element={<Settings />} />
             <Route path="payments" element={<Payments />} />
 

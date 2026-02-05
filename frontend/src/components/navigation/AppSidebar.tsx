@@ -3,9 +3,9 @@ import {
   Home,
   Search,
   Presentation,
-  ClipboardList,
-  PlayCircle,
-  DollarSign,
+  MonitorPlay,
+  Banknote,
+  Bot,
   Settings,
 } from 'lucide-react';
 import logoSrc from '../../assets/logo/LOGO.svg';
@@ -14,9 +14,9 @@ const nav = [
   { to: '/app/home', label: 'Home', icon: Home, end: true },
   { to: '/app/search', label: 'Search', icon: Search, end: false },
   { to: '/app/webinars', label: 'Webinars', icon: Presentation, end: false },
-  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
-  { to: '/app/watch', label: 'Watch', icon: PlayCircle, end: false },
-  { to: '/app/earnings', label: 'Earnings', icon: DollarSign, end: false },
+  { to: '/app/watch', label: 'Watch', icon: MonitorPlay, end: false },
+  { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
+  { to: '/app/chatbot', label: 'ChatBot', icon: Bot, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },
 ];
 
