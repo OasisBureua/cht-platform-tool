@@ -6,6 +6,8 @@ import {
   ChevronRight,
   Play,
   Volume2,
+  Maximize2,
+  X,
   Monitor,
   Headphones,
   FileText,
@@ -57,21 +59,33 @@ export default function Home() {
     { id: 'f3', title: 'Featured Video 3', imageUrl: 'https://picsum.photos/seed/cht-video3/600/400' },
   ];
 
-  const treatments: Treatment[] = [
-    { id: 't1', title: 'Breast Cancer', slug: 'breast-cancer', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=1600&q=80' },
-    { id: 't2', title: 'Weight Loss', slug: 'weight-loss', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=1600&q=80' },
-    { id: 't3', title: 'Cancer Treatment', slug: 'cancer-treatment', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=1600&q=80' },
+  const biomarkerPlaylists: Treatment[] = [
+    { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80' },
+    { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80' },
+    { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80' },
+  ];
+
+  const hrPlusPlaylists: Treatment[] = [
+    { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80' },
+    { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80' },
+    { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80' },
   ];
 
   const midVideo = getMiddleIndex(featuredVideos.length);
-  const midTreatment = getMiddleIndex(treatments.length);
+  const midPlaylist = getMiddleIndex(biomarkerPlaylists.length);
+  const midHrPlaylist = getMiddleIndex(hrPlusPlaylists.length);
   const [featuredVideoIndex, setFeaturedVideoIndex] = useState(midVideo);
-  const [treatmentIndex, setTreatmentIndex] = useState(midTreatment);
+  const [playlistIndex, setPlaylistIndex] = useState(midPlaylist);
+  const [hrPlaylistIndex, setHrPlaylistIndex] = useState(midHrPlaylist);
+  const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
+  const [modalAnimate, setModalAnimate] = useState(false);
   const videoScrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const treatmentScrollRef = useRef<HTMLDivElement>(null);
+  const hrScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    window.scrollTo({ top: 0 });
     const scrollToMiddle = (ref: React.RefObject<HTMLDivElement>, selector: string, index: number) => {
       const el = ref.current;
       if (!el) return;
@@ -83,10 +97,30 @@ export default function Home() {
     };
     const t = requestAnimationFrame(() => {
       scrollToMiddle(videoScrollRef, '[data-video-card]', midVideo);
-      scrollToMiddle(treatmentScrollRef, '[data-treatment-card]', midTreatment);
+      scrollToMiddle(treatmentScrollRef, '[data-treatment-card]', midPlaylist);
+      scrollToMiddle(hrScrollRef, '[data-hr-card]', midHrPlaylist);
+      window.scrollTo({ top: 0 });
     });
     return () => cancelAnimationFrame(t);
-  }, [midVideo, midTreatment]);
+  }, [midVideo, midPlaylist, midHrPlaylist]);
+
+  useEffect(() => {
+    if (expandedVideoId) {
+      setModalAnimate(false);
+      const id = requestAnimationFrame(() => setModalAnimate(true));
+      return () => cancelAnimationFrame(id);
+    } else {
+      setModalAnimate(false);
+    }
+  }, [expandedVideoId]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && expandedVideoId) setExpandedVideoId(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [expandedVideoId]);
 
   const resources: Resource[] = [
     { id: 'r1', title: 'Webinars', href: '/catalog', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
@@ -98,18 +132,65 @@ export default function Home() {
     { id: 'r7', title: 'Search', href: '/search', icon: <Search className="h-10 w-10" />, imageUrl: resourceImages.search },
   ];
 
+  const expandedVideo = expandedVideoId ? featuredVideos.find((v) => v.id === expandedVideoId) : null;
+
   return (
-    <div className="bg-white">
+    <div className="bg-white min-w-0 overflow-x-hidden">
+      {/* Video pop-out modal */}
+      {expandedVideo && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 transition-opacity duration-200 ${modalAnimate ? 'opacity-100' : 'opacity-0'}`}
+          onClick={() => setExpandedVideoId(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Video player"
+        >
+          <div
+            className={`relative w-full max-w-4xl rounded-2xl overflow-hidden bg-black shadow-2xl transition-all duration-300 ${modalAnimate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setExpandedVideoId(null)}
+              className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="relative aspect-video w-full">
+              <img
+                src={expandedVideo.imageUrl}
+                alt={expandedVideo.title}
+                className="h-full w-full object-contain"
+              />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                <button
+                  type="button"
+                  onClick={() => navigate(`/watch/${expandedVideo.id}`)}
+                  className="h-16 w-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-900 shadow-lg transition-colors"
+                  aria-label="Play video"
+                >
+                  <Play className="h-8 w-8 ml-1" fill="currentColor" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4 bg-gray-900 text-white">
+              <h3 className="text-lg font-semibold">{expandedVideo.title}</h3>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
       <section className="relative">
         <div
-          className="h-[520px] w-full bg-cover bg-center bg-gray-800"
+          className="min-h-[400px] sm:min-h-[460px] md:h-[520px] w-full bg-cover bg-center bg-gray-800"
           style={{
             backgroundImage: "url('/images/hero-placeholder.svg')",
           }}
         >
           <div className="absolute inset-0 bg-black/45" />
-          <div className="relative h-full mx-auto max-w-7xl px-6 flex items-center justify-center text-center">
+          <div className="relative h-full min-h-[400px] sm:min-h-[460px] md:min-h-[520px] mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-center text-center">
             <div className="max-w-3xl space-y-6">
               <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">
                 Innovating the next phase of
@@ -140,8 +221,8 @@ export default function Home() {
       </section>
 
       {/* Featured Videos */}
-      <section className="py-14 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 space-y-10">
+      <section className="py-10 sm:py-14 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-8 sm:space-y-10">
           <h2 className="text-3xl md:text-4xl font-semibold text-center text-gray-900">
             Featured Videos
           </h2>
@@ -163,28 +244,50 @@ export default function Home() {
                 });
                 setFeaturedVideoIndex(newIdx);
               }}
-              className="flex gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-6 px-6"
+              className="flex items-center gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-4 sm:-mx-6 px-4 sm:px-6"
               style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
             >
-              <div className="shrink-0 w-[max(1rem,calc(50%-230px))] min-w-[max(1rem,calc(50%-140px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
-              {featuredVideos.map((video) => (
-                <Link
-                  key={video.id}
-                  to="/watch"
-                  data-video-card
-                  className="shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] h-[180px] sm:h-[220px] md:h-[280px] block"
-                >
-                  <img src={video.imageUrl} alt={video.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-                </Link>
-              ))}
-              <div className="shrink-0 w-[max(1rem,calc(50%-230px))] min-w-[max(1rem,calc(50%-140px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
+              <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
+              {featuredVideos.map((video, idx) => {
+                const isSelected = idx === featuredVideoIndex;
+                const baseH = 'h-[180px] sm:h-[220px] md:h-[280px]';
+                const selectedH = 'h-[200px] sm:h-[240px] md:h-[300px]';
+                return (
+                  <div
+                    key={video.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setExpandedVideoId(video.id)}
+                    onKeyDown={(e) => e.key === 'Enter' && setExpandedVideoId(video.id)}
+                    data-video-card
+                    className={`shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] block relative transition-[height] duration-300 cursor-pointer ${isSelected ? selectedH : baseH}`}
+                  >
+                    <img src={video.imageUrl} alt={video.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setExpandedVideoId(video.id);
+                      }}
+                      className="absolute top-3 right-3 h-9 w-9 rounded-lg bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                      aria-label="Play full screen"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              })}
+              <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
             </div>
             {/* Video controls - Figma design: pill-shaped bar with Play, Prev, Next, Volume */}
-            <div className="mt-5 flex items-center justify-center">
-              <div className="inline-flex items-center rounded-full bg-gray-200/80 px-2 py-2 gap-2">
+            <div className="mt-5 flex items-center justify-center overflow-x-auto">
+              <div className="inline-flex items-center rounded-full bg-gray-200/80 px-2 py-2 gap-1.5 sm:gap-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/watch')}
+                  onClick={() => {
+                    const id = featuredVideos[featuredVideoIndex]?.id;
+                    if (id) setExpandedVideoId(id);
+                  }}
                   className="h-10 w-10 shrink-0 rounded-full bg-gray-900 flex items-center justify-center text-white hover:bg-black transition-colors"
                   aria-label="Play"
                 >
@@ -241,14 +344,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* View treatment specific content */}
-      <section className="py-14 overflow-hidden">
-        <div className="mx-auto max-w-7xl px-6 space-y-8">
+      {/* Biomarker Playlists - treatment specific content */}
+      <section className="py-10 sm:py-14 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
           <div className="text-center space-y-2">
             <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
-              View treatment specific content
+              Biomarker Playlists
             </h3>
-            <p className="text-sm text-gray-600">Lorem ipsum dolor sit amet consectetur suspendisse ultrices</p>
+            <p className="text-lg md:text-xl font-medium text-gray-900">HER2+</p>
           </div>
           <div className="relative">
             <div
@@ -264,54 +367,161 @@ export default function Home() {
                   const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
                   if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + 24)) newIdx = i;
                 });
-                setTreatmentIndex(newIdx);
+                setPlaylistIndex(newIdx);
               }}
-              className="flex gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-6 px-6"
+              className="flex gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-4 sm:-mx-6 px-4 sm:px-6"
               style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
             >
-              <div className="shrink-0 w-[max(1rem,calc(50%-230px))] min-w-[max(1rem,calc(50%-140px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
-              {treatments.map((t) => (
+              <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
+              {biomarkerPlaylists.map((t) => (
                 <div
                   key={t.id}
                   data-treatment-card
-                  className="relative shrink-0 snap-center w-[280px] sm:w-[360px] md:w-[480px] h-[180px] sm:h-[220px] md:h-[260px] rounded-2xl overflow-hidden bg-gray-200"
+                  className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm flex flex-col"
                 >
-                  <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" />
-                  <div className="absolute inset-0 bg-black/20" />
-                  <div className="absolute inset-0 p-6 flex items-center justify-between">
-                    <p className="text-xl md:text-2xl font-semibold text-white">{t.title}</p>
+                  <div className="aspect-video w-full bg-gray-200 overflow-hidden">
+                    <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-3">{t.title}</h4>
+                    <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
+                      {['Video Name', 'Video Name', 'Video Name', 'Video Name'].map((label, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-gray-400">•</span>
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
                     <Link
-                      to={`/catalog/${t.slug}`}
-                      className="text-sm font-semibold text-white underline underline-offset-4 hover:text-white/90 shrink-0"
+                      to="/watch"
+                      className="inline-flex self-end rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
                     >
-                      Explore Treatment
+                      Play all
                     </Link>
                   </div>
                 </div>
               ))}
-              <div className="shrink-0 w-[max(1rem,calc(50%-230px))] min-w-[max(1rem,calc(50%-140px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
+              <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
             </div>
-            <div className="mt-4 flex items-center justify-center gap-2">
-              {treatments.map((_, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => {
-                    setTreatmentIndex(idx);
-                    treatmentScrollRef.current?.querySelectorAll('[data-treatment-card]')[idx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                  }}
-                  className={`h-2 w-2 rounded-full transition-colors ${idx === treatmentIndex ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400'}`}
-                  aria-label={`Go to treatment ${idx + 1}`}
-                />
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = (playlistIndex - 1 + biomarkerPlaylists.length) % biomarkerPlaylists.length;
+                  setPlaylistIndex(next);
+                  treatmentScrollRef.current?.querySelectorAll('[data-treatment-card]')[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className="h-10 w-10 rounded-full bg-white border-2 border-gray-900 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-colors"
+                aria-label="Previous"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = (playlistIndex + 1) % biomarkerPlaylists.length;
+                  setPlaylistIndex(next);
+                  treatmentScrollRef.current?.querySelectorAll('[data-treatment-card]')[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className="h-10 w-10 rounded-full bg-white border-2 border-gray-900 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-colors"
+                aria-label="Next"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Biomarker Playlists - HR+ */}
+      <section className="py-10 sm:py-14 overflow-hidden">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
+          <h3 className="text-3xl md:text-4xl font-semibold text-center text-gray-900">
+            HR+
+          </h3>
+          <div className="relative">
+            <div
+              ref={hrScrollRef}
+              onScroll={() => {
+                const el = hrScrollRef.current;
+                if (!el) return;
+                const cards = el.querySelectorAll('[data-hr-card]');
+                let newIdx = 0;
+                const containerCenter = el.scrollLeft + el.clientWidth / 2;
+                cards.forEach((card, i) => {
+                  const rect = (card as HTMLElement).getBoundingClientRect();
+                  const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
+                  if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + 24)) newIdx = i;
+                });
+                setHrPlaylistIndex(newIdx);
+              }}
+              className="flex gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-6 px-6"
+              style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+            >
+              <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
+              {hrPlusPlaylists.map((t) => (
+                <div
+                  key={t.id}
+                  data-hr-card
+                  className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm flex flex-col"
+                >
+                  <div className="aspect-video w-full bg-gray-200 overflow-hidden">
+                    <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" />
+                  </div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-3">{t.title}</h4>
+                    <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
+                      {['Video Name', 'Video Name', 'Video Name', 'Video Name'].map((label, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-gray-400">•</span>
+                          {label}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      to="/watch"
+                      className="inline-flex self-end rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
+                    >
+                      Play all
+                    </Link>
+                  </div>
+                </div>
               ))}
+              <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
+            </div>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = (hrPlaylistIndex - 1 + hrPlusPlaylists.length) % hrPlusPlaylists.length;
+                  setHrPlaylistIndex(next);
+                  hrScrollRef.current?.querySelectorAll('[data-hr-card]')[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className="h-10 w-10 rounded-full bg-white border-2 border-gray-900 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-colors"
+                aria-label="Previous"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = (hrPlaylistIndex + 1) % hrPlusPlaylists.length;
+                  setHrPlaylistIndex(next);
+                  hrScrollRef.current?.querySelectorAll('[data-hr-card]')[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }}
+                className="h-10 w-10 rounded-full bg-white border-2 border-gray-900 flex items-center justify-center text-gray-900 hover:bg-gray-50 transition-colors"
+                aria-label="Next"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
       </section>
 
       {/* Content Title section */}
-      <section className="py-14">
-        <div className="mx-auto max-w-7xl px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+      <section className="py-10 sm:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 items-start">
           <div className="space-y-5">
             <h4 className="text-3xl font-semibold text-gray-900">Content Title</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
@@ -347,13 +557,13 @@ export default function Home() {
       </section>
 
       {/* Resources */}
-      <section className="py-14">
-        <div className="mx-auto max-w-7xl px-6 space-y-6">
+      <section className="py-10 sm:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6">
           <div className="space-y-2">
             <h5 className="text-4xl md:text-5xl font-semibold text-gray-900">Resources</h5>
             <p className="text-sm text-gray-600">Lorem ipsum dolor sit amet consectetur.</p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {resources.map((r) => (
               <Link
                 key={r.id}
@@ -372,21 +582,23 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FAQ */}
-      <section className="py-14">
-        <div className="mx-auto max-w-7xl px-6 space-y-6">
-          <h6 className="text-4xl md:text-5xl font-semibold text-gray-900">FAQ</h6>
+      {/* What We Do - accordion */}
+      <section className="py-10 sm:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10">
+            What We Do
+          </h2>
           <div className="border-t border-gray-200">
             {Array.from({ length: 5 }).map((_, idx) => (
-              <details key={idx} className="border-b border-gray-200 py-5 group">
-                <summary className="list-none flex items-center justify-between cursor-pointer">
+              <details key={idx} className="group">
+                <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
                   <span className="text-base font-medium text-gray-900">Lorem Ipsum</span>
-                  <span className="h-7 w-7 rounded-full bg-gray-100 flex items-center justify-center text-gray-700 shrink-0 ml-2">
-                    +
+                  <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4">
+                    <span className="text-lg font-light leading-none">+</span>
                   </span>
                 </summary>
-                <p className="mt-3 text-sm text-gray-600 max-w-3xl">
-                  Placeholder answer content. Replace with real FAQ copy from stakeholders.
+                <p className="pb-5 text-sm text-gray-600 max-w-3xl">
+                  Placeholder answer content. Replace with real copy from stakeholders.
                 </p>
               </details>
             ))}
@@ -395,18 +607,20 @@ export default function Home() {
       </section>
 
       {/* Brand CTA */}
-      <section className="py-16">
-        <div className="mx-auto max-w-7xl px-6 text-center space-y-6">
-          <p className="text-3xl md:text-5xl font-serif text-gray-900 leading-tight">
-            A media company that's
+      <section className="py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 text-center space-y-8 sm:space-y-10">
+          <p className="text-3xl sm:text-4xl md:text-5xl font-serif text-gray-900 leading-[1.4] tracking-tight">
+            A Media Company Thats
             <br />
-            about more than just content
+            About More Than Just
+            <br />
+            Content
           </p>
           <Link
-            to="/catalog"
+            to="/join"
             className="inline-flex items-center justify-center rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
           >
-            Explore
+            Join Us
           </Link>
         </div>
       </section>
