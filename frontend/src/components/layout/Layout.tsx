@@ -12,11 +12,11 @@ export default function Layout() {
       <AppSidebar />
       <AppBottomNav />
 
-      <div className="flex-1 flex flex-col min-w-0 pb-16 sm:pb-0">
-        <header className="h-14 lg:h-16 bg-white flex items-center justify-between px-4 sm:px-6 lg:px-8 shrink-0 border-b border-gray-200 sm:border-0">
-          <div className="min-w-0">
-            <h1 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 truncate">Welcome, {displayName}!</h1>
-            <p className="text-sm text-gray-600 hidden sm:block truncate">You have new opportunities to earn rewards today</p>
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="h-14 lg:h-16 bg-white flex items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div>
+            <h1 className="text-lg md:text-xl font-bold text-gray-900">Welcome, {displayName}!</h1>
+            <p className="text-sm text-gray-600 hidden sm:block">You have new opportunities to earn rewards today</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100" aria-label="Notifications">
@@ -28,7 +28,7 @@ export default function Layout() {
             >
               Logout
             </button>
-            <div className="h-9 w-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600 shrink-0" aria-hidden>
+            <div className="h-9 w-9 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium text-gray-600" aria-hidden>
               {displayName.charAt(0).toUpperCase()}
             </div>
           </div>
