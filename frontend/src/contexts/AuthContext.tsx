@@ -7,11 +7,11 @@ import {
   type ReactNode,
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
+import { supabase } from '../lib/supabase';
+import type { AuthError, Session, User as SupabaseUser } from '@supabase/supabase-js';
 
-const AUTH0_DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN;
-const AUTH0_CLIENT_ID = import.meta.env.VITE_AUTH0_CLIENT_ID;
-const AUTH0_AUDIENCE = import.meta.env.VITE_AUTH0_AUDIENCE;
 const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID;
+const USE_DEV_AUTH = import.meta.env.VITE_USE_DEV_AUTH === 'true';
 
 export interface AuthUser {
   userId: string;
@@ -24,120 +24,79 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => void;
+  login: (email: string, password: string) => Promise<{ error?: AuthError }>;
+  signUp: (
+    email: string,
+    password: string,
+    options?: { fullName?: string; profession?: string },
+  ) => Promise<{ error?: AuthError }>;
+  resetPasswordForEmail: (email: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
   getAuthHeaders: () => Promise<Record<string, string>>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function Auth0Provider({ children }: { children: ReactNode }) {
-  // Dynamic import to avoid loading Auth0 when not configured
-  const [Auth0ProviderComponent, setAuth0Provider] = useState<React.ComponentType<{
-    domain: string;
-    clientId: string;
-    authorizationParams: { redirect_uri: string; audience?: string };
-    children: ReactNode;
-  }> | null>(null);
-  const [useAuth0Hook, setUseAuth0Hook] = useState<() => {
-    isAuthenticated: boolean;
-    isLoading: boolean;
-    user?: { sub?: string; email?: string; name?: string };
-    loginWithRedirect: () => Promise<void>;
-    logout: (args?: { logoutParams?: { returnTo: string } }) => void;
-    getAccessTokenSilently: (opts?: { authorizationParams?: { audience: string } }) => Promise<string>;
-  } | null>(null);
-
-  useEffect(() => {
-    import('@auth0/auth0-react').then((mod) => {
-      setAuth0Provider(() => mod.Auth0Provider);
-      setUseAuth0Hook(() => mod.useAuth0);
-    });
-  }, []);
-
-  if (!Auth0ProviderComponent || !useAuth0Hook) {
-    return <div className="min-h-screen flex items-center justify-center">Loading auth...</div>;
-  }
-
-  const redirectUri = typeof window !== 'undefined' ? window.location.origin + '/app/home' : '';
-
-  return (
-    <Auth0ProviderComponent
-      domain={AUTH0_DOMAIN!}
-      clientId={AUTH0_CLIENT_ID!}
-      authorizationParams={{
-        redirect_uri: redirectUri,
-        ...(AUTH0_AUDIENCE && { audience: AUTH0_AUDIENCE }),
-      }}
-    >
-      <Auth0Inner useAuth0={useAuth0Hook}>{children}</Auth0Inner>
-    </Auth0ProviderComponent>
-  );
-}
-
-type UseAuth0Hook = () => {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  user?: { sub?: string; email?: string; name?: string };
-  loginWithRedirect: () => Promise<void>;
-  logout: (args?: { logoutParams?: { returnTo: string } }) => void;
-  getAccessTokenSilently: (opts?: { authorizationParams?: { audience: string } }) => Promise<string>;
-};
-
-function Auth0Inner({ children, useAuth0 }: { children: ReactNode; useAuth0: UseAuth0Hook }) {
-  const {
-    isAuthenticated,
-    isLoading: auth0Loading,
-    user: auth0User,
-    loginWithRedirect,
-    logout: auth0Logout,
-    getAccessTokenSilently,
-  } = useAuth0();
-
+function SupabaseAuthProvider({ children }: { children: ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null);
   const [apiUser, setApiUser] = useState<AuthUser | null>(null);
   const [userLoading, setUserLoading] = useState(true);
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      userLoading && setUserLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session?.access_token) {
       setApiUser(null);
       setUserLoading(false);
       return;
     }
     let cancelled = false;
     setUserLoading(true);
-    getAccessTokenSilently(
-      AUTH0_AUDIENCE ? { authorizationParams: { audience: AUTH0_AUDIENCE } } : undefined,
-    )
-      .then((token) =>
-        fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      )
+    fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (!cancelled && data?.userId) {
+        if (cancelled) return;
+        const sbUser = session.user as SupabaseUser & { user_metadata?: { full_name?: string } };
+        if (data?.userId) {
           setApiUser({
             userId: data.userId,
-            email: data.email || auth0User?.email,
-            name: data.name || auth0User?.name,
+            email: data.email || sbUser?.email,
+            name: data.name || sbUser?.user_metadata?.full_name || sbUser?.email,
             role: data.role,
           });
         } else {
-          setApiUser(
-            auth0User?.sub
-              ? { userId: auth0User.sub, email: auth0User.email, name: auth0User.name }
-              : null,
-          );
+          setApiUser({
+            userId: sbUser?.id || '',
+            email: sbUser?.email,
+            name: sbUser?.user_metadata?.full_name || sbUser?.email,
+          });
         }
       })
       .catch(() => {
-        if (!cancelled)
-          setApiUser(
-            auth0User?.sub
-              ? { userId: auth0User.sub, email: auth0User.email, name: auth0User.name }
-              : null,
-          );
+        if (!cancelled) {
+          const sbUser = session.user;
+          setApiUser({
+            userId: sbUser?.id || '',
+            email: sbUser?.email,
+            name: (sbUser as SupabaseUser & { user_metadata?: { full_name?: string } })?.user_metadata?.full_name || sbUser?.email,
+          });
+        }
       })
       .finally(() => {
         if (!cancelled) setUserLoading(false);
@@ -145,35 +104,67 @@ function Auth0Inner({ children, useAuth0 }: { children: ReactNode; useAuth0: Use
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, auth0User, getAccessTokenSilently, apiUrl]);
+  }, [session, apiUrl]);
 
   const user = apiUser;
-  const isLoading = auth0Loading || userLoading;
+  const isLoading = userLoading;
 
-  const login = useCallback(() => {
-    loginWithRedirect();
-  }, [loginWithRedirect]);
+  const login = useCallback(async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error };
+    setSession(data.session);
+    return {};
+  }, []);
+
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      options?: { fullName?: string; profession?: string },
+    ) => {
+      const metadata: Record<string, string> = {};
+      if (options?.fullName) metadata.full_name = options.fullName;
+      if (options?.profession) metadata.profession = options.profession;
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: Object.keys(metadata).length ? { data: metadata } : undefined,
+      });
+      if (error) return { error };
+      if (data.session) setSession(data.session);
+      return {};
+    },
+    [],
+  );
+
+  const resetPasswordForEmail = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    return error ? { error } : {};
+  }, []);
 
   const logout = useCallback(() => {
-    auth0Logout({ logoutParams: { returnTo: window.location.origin } });
-  }, [auth0Logout]);
+    supabase.auth.signOut();
+    setSession(null);
+    setApiUser(null);
+  }, []);
 
-  const getAuthHeaders = useCallback(async () => {
-    try {
-      const token = await getAccessTokenSilently(
-        AUTH0_AUDIENCE ? { authorizationParams: { audience: AUTH0_AUDIENCE } } : undefined,
-      );
-      return { Authorization: `Bearer ${token}` };
-    } catch {
-      return {};
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
+    const {
+      data: { session: s },
+    } = await supabase.auth.getSession();
+    if (s?.access_token) {
+      return { Authorization: `Bearer ${s.access_token}` };
     }
-  }, [getAccessTokenSilently]);
+    return {};
+  }, []);
 
   const value: AuthContextValue = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
+    signUp,
+    resetPasswordForEmail,
     logout,
     getAuthHeaders,
   };
@@ -184,6 +175,7 @@ function Auth0Inner({ children, useAuth0 }: { children: ReactNode; useAuth0: Use
 
   const handleUnauthorized = useCallback(() => {
     setApiUser(null);
+    setSession(null);
     window.location.href = '/login';
   }, []);
 
@@ -209,12 +201,14 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
     } else {
       localStorage.removeItem('cht-dev-user-id');
       setProfile(null);
+      setIsLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    setIsLoading(true);
     fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
       headers: { 'X-Dev-User-Id': userId },
     })
@@ -233,26 +227,48 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!cancelled) setProfile({ userId, email: 'dev@chtplatform.local', name: 'Dev User' });
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId, apiUrl]);
 
   const user: AuthUser | null = userId ? (profile || { userId, email: 'dev@chtplatform.local', name: 'Dev User' }) : null;
 
-  const login = useCallback(() => {
-    const id = prompt(
-      'Dev mode: Enter user ID (run: cd backend && npx prisma db seed, then copy ID)',
-      userId || '',
-    );
-    if (id) setUserId(id.trim());
-  }, [userId]);
+  const login = useCallback(
+    async (_email: string, _password: string) => {
+      const id = prompt(
+        'Dev mode: Enter user ID (run: cd backend && npx prisma db seed, then copy ID)',
+        userId || '',
+      );
+      if (id) setUserId(id.trim());
+      return {};
+    },
+    [userId],
+  );
+
+  const signUp = useCallback(
+    async (_email: string, _password: string, _options?: { fullName?: string; profession?: string }) => {
+      alert('Dev mode: Use seed users. Run: cd backend && npx prisma db seed');
+      return {};
+    },
+    [],
+  );
+
+  const resetPasswordForEmail = useCallback(async () => {
+    alert('Dev mode: Password reset not available. Use seed users.');
+    return {};
+  }, []);
 
   const logout = useCallback(() => {
     setUserId('');
     localStorage.removeItem('cht-dev-user-id');
   }, []);
 
-  const getAuthHeaders = useCallback(async () => {
+  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
     if (!userId) return {};
     return { 'X-Dev-User-Id': userId };
   }, [userId]);
@@ -262,6 +278,8 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     isLoading,
     login,
+    signUp,
+    resetPasswordForEmail,
     logout,
     getAuthHeaders,
   };
@@ -286,10 +304,10 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  if (AUTH0_DOMAIN && AUTH0_CLIENT_ID) {
-    return <Auth0Provider>{children}</Auth0Provider>;
+  if (USE_DEV_AUTH) {
+    return <DevAuthProvider>{children}</DevAuthProvider>;
   }
-  return <DevAuthProvider>{children}</DevAuthProvider>;
+  return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
 
 export function useAuth(): AuthContextValue {

@@ -17,7 +17,7 @@ export function setAuthHeaderGetter(getter: AuthHeaderGetter) {
   authHeaderGetter = getter;
 }
 
-export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
   onUnauthorized = handler;
 }
 

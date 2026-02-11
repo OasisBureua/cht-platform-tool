@@ -14,9 +14,14 @@ describe('AppController', () => {
     appController = app.get<AppController>(AppController);
   });
 
-  describe('root', () => {
-    it('should return "Hello World!"', () => {
-      expect(appController.getHello()).toBe('Hello World!');
+  describe('getInfo', () => {
+    it('should return API info', () => {
+      const result = appController.getInfo();
+      expect(result).toHaveProperty('name', 'CHT Platform API');
+      expect(result).toHaveProperty('version', '1.0.0');
+      expect(result).toHaveProperty('description');
+      expect(result).toHaveProperty('environment');
+      expect(result).toHaveProperty('timestamp');
     });
   });
 });

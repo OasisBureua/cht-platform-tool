@@ -9,11 +9,16 @@ export default () => ({
     url: process.env.DATABASE_URL || '',
   },
 
-  // Auth0
+  // Auth0 (legacy)
   auth0: {
     domain: process.env.AUTH0_DOMAIN,
     audience: process.env.AUTH0_AUDIENCE,
     clientId: process.env.AUTH0_CLIENT_ID,
+  },
+
+  // GoTrue / shared CHT auth (mediahub.communityhealth.media/auth/v1)
+  gotrue: {
+    jwtSecret: process.env.GOTRUE_JWT_SECRET,
   },
 
   // Stripe

@@ -1,8 +1,53 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import { Award, DollarSign, ClipboardCheck } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function Join() {
-  const navigate = useNavigate();
+  const { isAuthenticated, signUp } = useAuth();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [profession, setProfession] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (isAuthenticated) {
+    return <Navigate to="/app/home" replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    const { error: err } = await signUp(email, password, { fullName, profession });
+    setSubmitting(false);
+    if (err) {
+      setError(err.message || 'Sign up failed. Please try again.');
+      return;
+    }
+    setSuccess(true);
+  };
+
+  if (success) {
+    return (
+      <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 md:py-16">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center">
+          <h2 className="text-xl font-semibold text-gray-900">Check your email</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            We&apos;ve sent a verification link to <strong>{email}</strong>. Click the link to verify your account, then you can sign in.
+          </p>
+          <Link
+            to="/login"
+            className="mt-6 inline-block rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black"
+          >
+            Go to Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 md:py-16">
@@ -53,22 +98,47 @@ export default function Join() {
             For healthcare professionals only.
           </p>
 
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              navigate('/app/home');
-            }}
-          >
-            <Input label="Full name" placeholder="Jane Doe" />
-            <Input label="Email address" type="email" placeholder="jane@email.com" />
-            <Input label="Profession" placeholder="Physician, NP, PA, etc." />
+          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            {error && (
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+            <Input
+              label="Full name"
+              placeholder="Jane Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+            <Input
+              label="Email address"
+              type="email"
+              placeholder="jane@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <Input
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <Input
+              label="Profession"
+              placeholder="Physician, NP, PA, etc."
+              value={profession}
+              onChange={(e) => setProfession(e.target.value)}
+            />
 
             <button
               type="submit"
-              className="w-full rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
+              disabled={submitting}
+              className="w-full rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-70"
             >
-              Create account
+              {submitting ? 'Creating account...' : 'Create account'}
             </button>
           </form>
 
@@ -120,10 +190,16 @@ function Input({
   label,
   type = 'text',
   placeholder,
+  value,
+  onChange,
+  required,
 }: {
   label: string;
   type?: string;
   placeholder?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -131,6 +207,9 @@ function Input({
       <input
         type={type}
         placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        required={required}
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
       />
     </div>

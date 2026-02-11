@@ -23,13 +23,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  private isAuth0Configured(): boolean {
-    const domain = this.configService.get<string>('auth0.domain');
-    return !!domain;
+  private isJwtAuthConfigured(): boolean {
+    const auth0Domain = this.configService.get<string>('auth0.domain');
+    const gotrueSecret = this.configService.get<string>('gotrue.jwtSecret');
+    return !!(auth0Domain || gotrueSecret);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    if (!this.isAuth0Configured()) {
+    if (!this.isJwtAuthConfigured()) {
       return this.devBypass(context);
     }
     return super.canActivate(context) as Promise<boolean>;
@@ -41,7 +42,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
     if (!devUserId) {
       throw new UnauthorizedException(
-        `Auth0 not configured. For local dev, set ${DEV_USER_HEADER} header with a valid user ID.`,
+        `Auth not configured. For local dev, set ${DEV_USER_HEADER} header with a valid user ID.`,
       );
     }
 
