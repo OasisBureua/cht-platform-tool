@@ -65,8 +65,15 @@ variable "stripe_webhook_secret" {
   default     = ""
 }
 
-variable "sendgrid_api_key" {
-  description = "SendGrid API key"
+variable "hubspot_smtp_user" {
+  description = "HubSpot SMTP username (from transactional email token)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "hubspot_smtp_password" {
+  description = "HubSpot SMTP password (from transactional email token)"
   type        = string
   sensitive   = true
   default     = ""

@@ -39,8 +39,15 @@ export interface CreateSurveyPayload {
 
 export const adminApi = {
   getPrograms: async (): Promise<AdminProgram[]> => {
-    const { data } = await apiClient.get<AdminProgram[]>('/admin/programs');
-    return data;
+    try {
+      const { data } = await apiClient.get<AdminProgram[]>('/admin/programs');
+      return data;
+    } catch (err) {
+      if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
+        return [];
+      }
+      throw err;
+    }
   },
 
   createProgram: async (payload: CreateProgramPayload) => {
@@ -57,4 +64,40 @@ export const adminApi = {
     const { data } = await apiClient.post('/admin/surveys', payload);
     return data;
   },
+
+  getPendingPayments: async () => {
+    try {
+      const { data } = await apiClient.get<PendingPayment[]>('/payments/pending');
+      return data;
+    } catch (err) {
+      if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
+        return [];
+      }
+      throw err;
+    }
+  },
+
+  payNow: async (paymentId: string) => {
+    const { data } = await apiClient.post(`/payments/${paymentId}/pay-now`);
+    return data;
+  },
 };
+
+export interface PendingPayment {
+  id: string;
+  userId: string;
+  programId: string | null;
+  amount: number;
+  type: string;
+  status: string;
+  description: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    billVendorId: string | null;
+  };
+  program: { id: string; title: string } | null;
+}

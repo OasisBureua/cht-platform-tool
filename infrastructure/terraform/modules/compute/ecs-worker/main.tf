@@ -59,8 +59,12 @@ resource "aws_ecs_task_definition" "worker" {
           valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
         },
         {
-          name      = "SENDGRID_API_KEY"
-          valueFrom = "${var.app_secrets_arn}:sendgrid_api_key::"
+          name      = "HUBSPOT_SMTP_USER"
+          valueFrom = "${var.app_secrets_arn}:hubspot_smtp_user::"
+        },
+        {
+          name      = "HUBSPOT_SMTP_PASSWORD"
+          valueFrom = "${var.app_secrets_arn}:hubspot_smtp_password::"
         }
       ]
 

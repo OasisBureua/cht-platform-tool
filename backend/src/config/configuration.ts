@@ -21,11 +21,15 @@ export default () => ({
     jwtSecret: process.env.GOTRUE_JWT_SECRET,
   },
 
-  // Stripe
-  stripe: {
-    secretKey: process.env.STRIPE_SECRET_KEY,
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  // Bill.com
+  bill: {
+    devKey: process.env.BILL_DEV_KEY,
+    sessionId: process.env.BILL_SESSION_ID,
+    username: process.env.BILL_USERNAME,
+    password: process.env.BILL_PASSWORD,
+    orgId: process.env.BILL_ORG_ID,
+    fundingAccountId: process.env.BILL_FUNDING_ACCOUNT_ID,
+    apiUrl: process.env.BILL_API_URL,
   },
 
   // AWS
@@ -40,12 +44,6 @@ export default () => ({
     emailQueueUrl: process.env.SQS_EMAIL_QUEUE_URL,
     paymentQueueUrl: process.env.SQS_PAYMENT_QUEUE_URL,
     cmeQueueUrl: process.env.SQS_CME_QUEUE_URL,
-  },
-
-  // SendGrid
-  sendGrid: {
-    apiKey: process.env.SENDGRID_API_KEY,
-    fromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@chtplatform.com',
   },
 
   // Redis

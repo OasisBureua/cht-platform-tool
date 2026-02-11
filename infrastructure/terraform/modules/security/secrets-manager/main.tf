@@ -60,7 +60,8 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     stripe_secret_key       = var.stripe_secret_key
     stripe_publishable_key  = var.stripe_publishable_key
     stripe_webhook_secret   = var.stripe_webhook_secret
-    sendgrid_api_key        = var.sendgrid_api_key
+    hubspot_smtp_user       = var.hubspot_smtp_user
+    hubspot_smtp_password   = var.hubspot_smtp_password
     auth0_domain            = var.auth0_domain
     auth0_client_id         = var.auth0_client_id
     auth0_audience          = var.auth0_audience

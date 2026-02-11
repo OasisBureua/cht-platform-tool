@@ -2,7 +2,7 @@
 from unittest.mock import patch
 
 
-@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": "", "STRIPE_SECRET_KEY": ""}, clear=False)
+@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": ""}, clear=False)
 @patch("consumers.payment_consumer.boto3")
 def test_payment_consumer_validate_message_valid(boto_mock):
     """Valid PROCESS_PAYMENT message passes validation."""
@@ -20,7 +20,7 @@ def test_payment_consumer_validate_message_valid(boto_mock):
     assert err is None
 
 
-@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": "", "STRIPE_SECRET_KEY": ""}, clear=False)
+@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": ""}, clear=False)
 @patch("consumers.payment_consumer.boto3")
 def test_payment_consumer_validate_message_wrong_type(boto_mock):
     """Wrong type fails validation."""
@@ -38,7 +38,7 @@ def test_payment_consumer_validate_message_wrong_type(boto_mock):
     assert err is not None and "Unknown type" in err
 
 
-@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": "", "STRIPE_SECRET_KEY": ""}, clear=False)
+@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": ""}, clear=False)
 @patch("consumers.payment_consumer.boto3")
 def test_payment_consumer_validate_message_missing_user_id(boto_mock):
     """Missing userId fails validation."""
@@ -51,7 +51,7 @@ def test_payment_consumer_validate_message_missing_user_id(boto_mock):
     assert err is not None and "userId" in err
 
 
-@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": "", "STRIPE_SECRET_KEY": ""}, clear=False)
+@patch.dict("os.environ", {"SQS_PAYMENT_QUEUE_URL": ""}, clear=False)
 @patch("consumers.payment_consumer.boto3")
 def test_payment_consumer_validate_message_invalid_amount(boto_mock):
     """Invalid amount fails validation."""

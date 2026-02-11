@@ -4,7 +4,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
-import { DollarSign, ExternalLink, ArrowRight, CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
+import { ExternalLink, CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
 import { format } from 'date-fns';
 
 function formatMoney(value: number) {
@@ -49,10 +49,6 @@ export default function Payments() {
     },
   });
 
-  const payoutMutation = useMutation({
-    mutationFn: () => paymentsApi.requestPayout(userId),
-  });
-
   const totalThisMonth = useMemo(() => {
     const items = history || [];
     const now = new Date();
@@ -72,17 +68,17 @@ export default function Payments() {
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payments</h1>
         <p className="text-sm text-gray-600">
-          Connect Stripe to receive payouts, track earnings, and review payment status.
+          Add your bank details to receive payouts. Admins process payouts (ACH or check) and verify W-9 in Bill.com.
         </p>
       </header>
 
-      {/* Stripe connect banner */}
+      {/* Bill.com connect banner */}
       <div className="rounded-3xl border border-gray-200 bg-gray-900 p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-white">Get paid faster with Stripe</p>
+            <p className="text-sm font-semibold text-white">Get paid faster with Bill.com</p>
             <p className="text-sm text-gray-300">
-              Connect your Stripe account to enable payouts and earnings tracking.
+              Add your bank details so admins can send you payouts via ACH or check. W-9 must be on file.
             </p>
           </div>
 
@@ -94,7 +90,7 @@ export default function Payments() {
               connectMutation.isPending ? 'bg-gray-200 text-gray-700' : 'bg-white text-gray-900 hover:bg-gray-100',
             ].join(' ')}
           >
-            {connectMutation.isPending ? 'Opening…' : 'Connect Stripe'}
+            {connectMutation.isPending ? 'Opening…' : 'Connect Bill.com'}
             <ExternalLink className="ml-2 h-4 w-4" />
           </button>
         </div>
@@ -107,33 +103,20 @@ export default function Payments() {
         <StatCard label="This month" value={formatMoney(totalThisMonth)} sub="Earned so far" />
       </section>
 
-      {/* Payout action */}
+      {/* Payout info */}
       <section className="rounded-3xl border border-gray-200 bg-white p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-gray-900">Withdraw funds</p>
+            <p className="text-sm font-semibold text-gray-900">Payouts</p>
             <p className="text-sm text-gray-600">
               Last payout:{' '}
               <span className="font-semibold text-gray-900">
                 {summary!.lastPayoutDate ? format(new Date(summary!.lastPayoutDate), 'MMM d, yyyy') : '—'}
               </span>
+              {' · '}
+              Admins process payouts via Bill.com (ACH or check) and verify W-9 on file.
             </p>
           </div>
-
-          <button
-            onClick={() => payoutMutation.mutate()}
-            disabled={payoutMutation.isPending || summary!.availableBalance <= 0}
-            className={[
-              'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
-              payoutMutation.isPending || summary!.availableBalance <= 0
-                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-900 text-white hover:bg-black',
-            ].join(' ')}
-          >
-            <DollarSign className="mr-2 h-4 w-4" />
-            {payoutMutation.isPending ? 'Requesting…' : 'Request payout'}
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </button>
         </div>
       </section>
 

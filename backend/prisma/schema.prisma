@@ -29,12 +29,12 @@ model User {
   role            UserRole @default(HCP)
   status          UserStatus @default(ACTIVE)
   
-  // Stripe Connect (Payment system)
-  stripeAccountId     String?
-  stripeAccountStatus String?  // onboarding_incomplete, pending, active, rejected
-  paymentEnabled      Boolean @default(false)
-  w9Submitted         Boolean @default(false)
-  w9SubmittedAt       DateTime?
+  // Bill.com (Payment system)
+  billVendorId     String?
+  billVendorStatus String?  // onboarding_incomplete, pending, active, rejected
+  paymentEnabled   Boolean @default(false)
+  w9Submitted     Boolean @default(false)
+  w9SubmittedAt   DateTime?
   
   // Earnings tracking
   totalEarnings       Int @default(0)  // Total lifetime earnings in cents
@@ -55,7 +55,7 @@ model User {
 
   @@index([email])
   @@index([authId])
-  @@index([stripeAccountId])
+  @@index([billVendorId])
   @@map("User")
 }
 
@@ -303,9 +303,9 @@ model Payment {
   status      PaymentStatus
   description String?
   
-  // Stripe integration
-  stripePaymentIntentId String? @unique
-  stripeTransferId      String? @unique
+  // Bill.com integration
+  billPaymentIntentId String? @unique
+  billPaymentId       String? @unique
   
   // W9 tracking
   w9Collected Boolean  @default(false)
@@ -337,7 +337,7 @@ enum PaymentType {
 
 enum PaymentStatus {
   PENDING      // Payment created but not processed
-  PROCESSING   // Being processed by Stripe
+  PROCESSING   // Being processed by Bill.com
   PAID         // Successfully paid
   FAILED       // Payment failed
   CANCELLED    // Cancelled by admin

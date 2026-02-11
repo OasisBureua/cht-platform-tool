@@ -97,7 +97,8 @@ jobs:
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
           TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          TF_VAR_sendgrid_api_key: ${{ secrets.SENDGRID_API_KEY }}
+          TF_VAR_hubspot_smtp_user: ${{ secrets.HUBSPOT_SMTP_USER }}
+          TF_VAR_hubspot_smtp_password: ${{ secrets.HUBSPOT_SMTP_PASSWORD }}
           TF_VAR_sns_topic_arn: ${{ secrets.SNS_TOPIC_ARN }}
 
       - name: Get Terraform outputs

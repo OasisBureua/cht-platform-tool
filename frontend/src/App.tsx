@@ -35,7 +35,6 @@ import Watch from './pages/Watch';
 import WatchVideo from './pages/WatchVideo';
 import Earnings from './pages/Earnings';
 import Settings from './pages/Settings';
-import Payments from './pages/Payments';
 import ChatBot from './pages/ChatBot';
 
 // =======================
@@ -127,11 +126,11 @@ function App() {
             <Route path="watch" element={<Watch />} />
             <Route path="watch/:videoId" element={<WatchVideo />} />
 
-            {/* Earnings + ChatBot + Settings + Payments */}
+            {/* Earnings + ChatBot + Settings (Payments moved to admin) */}
             <Route path="earnings" element={<Earnings />} />
             <Route path="chatbot" element={<ChatBot />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="payments" element={<Payments />} />
+            <Route path="payments" element={<Navigate to="/app/earnings" replace />} />
 
             {/* Catch-all within /app */}
             <Route path="*" element={<Navigate to="/app/home" replace />} />
@@ -146,7 +145,7 @@ function App() {
 
 
           <Route path="/earnings" element={<Navigate to="/app/earnings" replace />} />
-          <Route path="/payments" element={<Navigate to="/app/payments" replace />} />
+          <Route path="/payments" element={<Navigate to="/app/earnings" replace />} />
           <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
           <Route path="/home" element={<Navigate to="/app/home" replace />} />
 

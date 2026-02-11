@@ -2,7 +2,11 @@
 
 ## Overview
 
-The payment system uses Stripe Connect to handle user payments. Users complete W9 forms through Stripe's onboarding, and payments are processed via Stripe transfers.
+The payment system uses **Bill.com** to handle user payments:
+
+1. **User onboarding:** Users provide bank details; backend creates a Bill.com vendor.
+2. **Earnings recorded:** Program completions and survey bonuses queue payment messages; worker records `Payment` rows with `status=PENDING` (no Bill.com call yet).
+3. **Admin pays:** Admins see pending payments in Admin → Payments, click **Pay now** to send via Bill.com (ACH or check). W-9 must be verified in Bill.com before paying.
 
 ## Endpoints
 
@@ -11,16 +15,50 @@ The payment system uses Stripe Connect to handle user payments. Users complete W
 POST /api/payments/:userId/connect-account
 ```
 
-Creates a Stripe Connect Express account for the user and returns an onboarding URL.
+Creates a Bill.com vendor for the user. Optionally accepts bank details in the request body to complete onboarding.
+
+**Optional body (CreateVendorDto):**
+```json
+{
+  "payeeName": "John Doe",
+  "bankAccount": {
+    "nameOnAccount": "John Doe",
+    "accountNumber": "111222333",
+    "routingNumber": "074000010"
+  },
+  "addressLine1": "123 Main St",
+  "city": "San Jose",
+  "state": "CA",
+  "zipCode": "95002"
+}
+```
 
 **Response:**
 ```json
 {
-  "accountId": "acct_xxx",
-  "onboardingUrl": "https://connect.stripe.com/setup/...",
-  "accountStatus": "onboarding_incomplete"
+  "accountId": "009xxx",
+  "onboardingUrl": "https://app.bill.com/...",
+  "accountStatus": "active"
 }
 ```
+
+---
+
+### Get Pending Payments (admin)
+```
+GET /api/payments/pending
+```
+
+Returns all payments with `status=PENDING` for the admin "Pay now" flow.
+
+---
+
+### Pay Now (admin)
+```
+POST /api/payments/:paymentId/pay-now
+```
+
+For a PENDING payment: creates payment in Bill.com, updates record to PAID, increments user earnings.
 
 ---
 
@@ -35,7 +73,7 @@ Returns the user's payment account status.
 ```json
 {
   "hasAccount": true,
-  "accountId": "acct_xxx",
+  "accountId": "009xxx",
   "accountStatus": "active",
   "paymentEnabled": true,
   "w9Submitted": true,
@@ -49,122 +87,61 @@ Returns the user's payment account status.
 
 ---
 
-### Create Payout
-```
-POST /api/payments/payout
-```
-
-Creates a payout to a user (admin only - auth will be added later).
-
-**Request Body:**
-```json
-{
-  "userId": "user_xxx",
-  "programId": "program_xxx",
-  "amount": 50000,
-  "description": "Honorarium for program completion"
-}
-```
-
-**Response:**
-```json
-{
-  "paymentId": "payment_xxx",
-  "amount": 50000,
-  "status": "PAID",
-  "transferId": "tr_xxx"
-}
-```
-
----
-
-### Refresh Account Link
-```
-POST /api/payments/:userId/account-link
-```
-
-Generates a new onboarding URL (if user's link expired).
-
-**Response:**
-```json
-{
-  "url": "https://connect.stripe.com/setup/...",
-  "expiresAt": 1234567890
-}
-```
-
----
-
 ### Sync Account Status
 ```
 POST /api/payments/:userId/sync-account
 ```
 
-Manually syncs account status from Stripe (for testing without webhooks).
-
-**Response:**
-```json
-{
-  "userId": "user_xxx",
-  "stripeAccountId": "acct_xxx",
-  "previousStatus": "onboarding_incomplete",
-  "newStatus": "active",
-  "paymentEnabled": true,
-  "w9Submitted": true
-}
-```
+Manually syncs account status from Bill.com.
 
 ---
 
-## Stripe Setup
+## Bill.com Setup
 
-### Test Mode
+1. Sign up at [developer.bill.com](https://developer.bill.com)
+2. Generate a developer key (Settings → Sync & Integrations → Manage Developer Keys)
+3. Get your Organization ID (same page, at bottom)
+4. Configure bank account for funding in Bill.com
+5. Add to `.env`:
 
-1. Get test API keys from Stripe Dashboard
-2. Add to `.env`:
+**Option A: Auto-login (recommended)** – Backend calls Bill.com Login API when needed; session auto-refreshes on 401.
 ```
-   STRIPE_SECRET_KEY=sk_test_...
-   STRIPE_PUBLISHABLE_KEY=pk_test_...
+BILL_DEV_KEY=your_developer_key
+BILL_USERNAME=your_bill_account_email
+BILL_PASSWORD=your_bill_account_password
+BILL_ORG_ID=008xxxxx
+BILL_FUNDING_ACCOUNT_ID=your_funding_account_id
 ```
 
-3. Test onboarding:
-   - SSN: 0000
-   - Routing: 110000000
-   - Account: 000123456789
+**Option B: Manual session** – Set session manually; expires after 35 min of inactivity.
+```
+BILL_DEV_KEY=your_developer_key
+BILL_SESSION_ID=session_from_login_api
+BILL_ORG_ID=008xxxxx
+BILL_FUNDING_ACCOUNT_ID=your_funding_account_id
+```
 
-### Production Mode
-
-1. Business verification (1-2 days)
-2. Apply for Stripe Connect (1-3 days)
-3. Get live API keys
-4. Configure webhook endpoint: `https://api.chtplatform.com/webhooks/stripe`
-5. Update `.env` with live keys
-
----
+**Getting session ID manually (if needed):**
+```bash
+curl -X POST https://gateway.stage.bill.com/connect/v3/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"YOUR_EMAIL","password":"YOUR_PASSWORD","organizationId":"008xxxxx","devKey":"YOUR_DEV_KEY"}'
+```
+Response: `{"sessionId":"...","organizationId":"...","userId":"..."}`
 
 ## Payment Flow
 
-1. User creates account → `POST /payments/:userId/connect-account`
-2. User completes Stripe onboarding (W9, bank info)
-3. Stripe webhook updates account status
-4. Admin processes payout → `POST /payments/payout`
-5. Stripe transfers money to user's bank
-6. Database updated with payment record
+1. **User onboarding:** User provides bank details; backend creates vendor in Bill.com.
+2. **Worker records PENDING:** Program/survey completion → SQS → worker creates `Payment` with `status=PENDING` (no Bill.com call).
+3. **Admin clicks Pay now:** Admin sees pending list at `/admin/payments`, clicks **Pay now** → backend calls Bill.com API → payment marked `PAID`, `totalEarnings` updated.
+4. Bill.com sends funds to the user's bank (ACH) or issues a check.
 
----
+## Admin "Pay now" Flow
 
-## Cost
+- **GET /api/payments/pending** (admin) – Lists all PENDING payments with user/program info.
+- **POST /api/payments/:paymentId/pay-now** (admin) – For a PENDING payment: creates payment in Bill.com, updates record to PAID, increments user earnings.
+- Admins verify W-9 in Bill.com before paying; payment method (ACH vs check) is configured in Bill.com.
 
-- Stripe Connect: 0.25% per payout
-- No monthly fees
-- Free 1099 generation
-- Example: $500 payout = $1.25 fee
+## Payment Queue & Worker
 
----
-
-## Security
-
-- W9 data stored in Stripe (encrypted)
-- No SSN/EIN in our database
-- Stripe handles identity verification
-- All transfers logged in database
+Program completions and survey bonuses queue `PROCESS_PAYMENT` messages to SQS. The **payment worker** consumes these but **does not call Bill.com**. It records `Payment` rows with `status=PENDING`. Admins then use the **Pay now** button to send via Bill.com.

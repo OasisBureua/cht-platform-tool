@@ -1,14 +1,20 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
+const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
 }
 
 export default function ProtectedRoute({ children, requireAdmin }: ProtectedRouteProps) {
-  const { user, isAuthenticated, isLoading, login } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
+
+  if (DISABLE_AUTH) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (

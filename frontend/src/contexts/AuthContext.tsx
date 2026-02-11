@@ -12,6 +12,7 @@ import type { AuthError, Session, User as SupabaseUser } from '@supabase/supabas
 
 const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID;
 const USE_DEV_AUTH = import.meta.env.VITE_USE_DEV_AUTH === 'true';
+const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
 
 export interface AuthUser {
   userId: string;
@@ -189,7 +190,12 @@ function SupabaseAuthProvider({ children }: { children: ReactNode }) {
 
 function DevAuthProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<string>(() => {
-    return DEV_USER_ID || localStorage.getItem('cht-dev-user-id') || '';
+    if (DEV_USER_ID) return DEV_USER_ID;
+    if (import.meta.env.VITE_CLEAR_DEV_AUTH === 'true') {
+      localStorage.removeItem('cht-dev-user-id');
+      return '';
+    }
+    return localStorage.getItem('cht-dev-user-id') || '';
   });
   const [profile, setProfile] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -303,7 +309,30 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+function NoAuthProvider({ children }: { children: ReactNode }) {
+  const value: AuthContextValue = {
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: async () => ({}),
+    signUp: async () => ({}),
+    resetPasswordForEmail: async () => ({}),
+    logout: () => {},
+    getAuthHeaders: async () => ({}),
+  };
+
+  useEffect(() => {
+    setAuthHeaderGetter(() => Promise.resolve({}));
+    return () => setAuthHeaderGetter(null);
+  }, []);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  if (DISABLE_AUTH) {
+    return <NoAuthProvider>{children}</NoAuthProvider>;
+  }
   if (USE_DEV_AUTH) {
     return <DevAuthProvider>{children}</DevAuthProvider>;
   }

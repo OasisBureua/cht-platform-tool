@@ -16,10 +16,14 @@ export const validationSchema = Joi.object({
   AUTH0_AUDIENCE: Joi.string().allow('').optional(),
   AUTH0_CLIENT_ID: Joi.string().allow('').optional(),
 
-  // Stripe (optional - empty strings allowed)
-  STRIPE_SECRET_KEY: Joi.string().allow('').optional(),
-  STRIPE_PUBLISHABLE_KEY: Joi.string().allow('').optional(),
-  STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+  // Bill.com (optional - empty strings allowed)
+  BILL_DEV_KEY: Joi.string().allow('').optional(),
+  BILL_SESSION_ID: Joi.string().allow('').optional(),
+  BILL_USERNAME: Joi.string().allow('').optional(),
+  BILL_PASSWORD: Joi.string().allow('').optional(),
+  BILL_ORG_ID: Joi.string().allow('').optional(),
+  BILL_FUNDING_ACCOUNT_ID: Joi.string().allow('').optional(),
+  BILL_API_URL: Joi.string().allow('').optional(),
 
   // AWS (optional - empty strings allowed)
   AWS_REGION: Joi.string().default('us-east-1'),
@@ -30,12 +34,6 @@ export const validationSchema = Joi.object({
   SQS_EMAIL_QUEUE_URL: Joi.string().allow('').optional(),
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
   SQS_CME_QUEUE_URL: Joi.string().allow('').optional(),
-
-  // SendGrid (optional - empty strings allowed)
-  SENDGRID_API_KEY: Joi.string().allow('').optional(),
-  SENDGRID_FROM_EMAIL: Joi.string()
-    .email()
-    .default('noreply@chtplatform.com'),
 
   // Redis
   REDIS_HOST: Joi.string().default('localhost'),

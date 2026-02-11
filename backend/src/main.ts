@@ -6,7 +6,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
-  // Enable CORS
+  // Enable CORS (127.0.0.1 = same as localhost, avoids "Failed to fetch" when browser uses 127.0.0.1)
   app.enableCors({
     origin: [
       'https://communityhealth.media',
@@ -15,6 +15,8 @@ async function bootstrap() {
       'https://api.communityhealth.media',
       'http://localhost:5173',
       'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
     ],
     credentials: true,
   });

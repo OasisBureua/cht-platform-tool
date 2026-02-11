@@ -64,7 +64,7 @@ See `backend/.env.example`. Key: `DATABASE_URL` (required), `REDIS_HOST`, `AUTH0
 
 ### Worker (`worker/.env`)
 
-See `worker/.env.example`. Key: `DATABASE_URL` (required), `SQS_*_QUEUE_URL`, `STRIPE_SECRET_KEY`, etc.
+See `worker/.env.example`. Key: `DATABASE_URL` (required), `SQS_*_QUEUE_URL`, `BILL_DEV_KEY`, `BILL_SESSION_ID`, etc.
 
 ## Access Points
 
@@ -79,7 +79,7 @@ See `worker/.env.example`. Key: `DATABASE_URL` (required), `SQS_*_QUEUE_URL`, `S
 **Program completion (all videos watched):**
 1. Frontend calls `POST /api/programs/video-progress` with progress.
 2. Backend marks enrollment `completed`, sends to SQS: Email, CME certificate, Payment (honorarium).
-3. Worker processes payment queue (Stripe transfer, Payment record).
+3. Worker processes payment queue (Bill.com payment, Payment record).
 
 **Survey completion:**
 1. Frontend calls `POST /api/surveys/:id/responses` with answers.
@@ -102,22 +102,31 @@ CloudWatch alarms fire when messages appear in any DLQ; investigate those messag
 
 ## Auth & Local Development
 
-- **Auth0 configured** (`AUTH0_DOMAIN`, `VITE_AUTH0_*`): Full OAuth login.
-- **Auth0 not configured**: Dev bypass using `X-Dev-User-Id` header.
+- **Supabase/GoTrue** (`VITE_SUPABASE_URL`): Full login with email/password.
+- **Dev bypass** (`VITE_USE_DEV_AUTH=true`): Skip Supabase, use `X-Dev-User-Id` header.
 
-For local dev without Auth0:
+For local dev without Supabase (avoids "Failed to fetch" when auth server unreachable):
 
 ```bash
 cd backend
-npx prisma db seed   # Creates dev user, prints X-Dev-User-Id
+npx prisma db seed   # Creates dev user, prints user ID
 ```
 
 Add to `frontend/.env`:
 ```
+VITE_USE_DEV_AUTH=true
 VITE_DEV_USER_ID=<user-id-from-seed>
+VITE_API_URL=http://localhost:3000/api
 ```
 
 Or at runtime: on Login page, click Login → enter the user ID from seed.
+
+### Troubleshooting "Failed to fetch" on Login
+
+1. **Backend not running** – Start backend: `cd backend && npm run start:dev`
+2. **Wrong VITE_API_URL** – Must be `http://localhost:3000/api` (or `http://127.0.0.1:3000/api`)
+3. **CORS / 127.0.0.1 vs localhost** – If using `http://127.0.0.1:5173` for frontend, backend CORS allows it. Try `http://localhost:5173` if one fails.
+4. **Supabase unreachable** – Use dev auth: `VITE_USE_DEV_AUTH=true` and `VITE_DEV_USER_ID=<seed-user-id>`
 
 ## Testing the Backend
 

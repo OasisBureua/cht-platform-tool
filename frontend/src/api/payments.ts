@@ -37,9 +37,9 @@ export const paymentsApi = {
   createConnectLink: async (userId: string): Promise<{ url: string }> => {
     try {
       const { data } = await apiClient.post(`/payments/${userId}/connect-account`);
-      return { url: data.onboardingUrl || data.url || 'https://dashboard.stripe.com/' };
+      return { url: data.onboardingUrl || data.url || 'https://app.bill.com/' };
     } catch (err) {
-      if (ENABLE_MOCK_FALLBACK) return { url: 'https://dashboard.stripe.com/' };
+      if (ENABLE_MOCK_FALLBACK) return { url: 'https://app.bill.com/' };
       throw err;
     }
   },

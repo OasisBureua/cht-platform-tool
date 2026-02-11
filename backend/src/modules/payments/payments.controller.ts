@@ -7,6 +7,7 @@ import { Roles } from '../../auth/roles.decorator';
 import { PaymentsService } from './payments.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
+import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 
 @Controller('payments')
@@ -17,26 +18,49 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/connect-account
-   * Create Stripe Connect account for user (auth required)
+   * Create Bill.com vendor for user (auth required). Optional body with bank details.
    */
   @Post(':userId/connect-account')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createConnectAccount(
     @Param('userId') userId: string,
+    @Body() body?: CreateVendorDto,
   ): Promise<CreateConnectAccountResponseDto> {
-    this.logger.log(`Creating Connect account for user: ${userId}`);
-    return this.paymentsService.createConnectAccount(userId);
+    this.logger.log(`Creating Bill.com vendor for user: ${userId}`);
+    return this.paymentsService.createConnectAccount(userId, body);
   }
 
   /**
    * POST /api/payments/:userId/account-link
-   * Generate new onboarding link (refresh) (auth required)
+   * Get payment settings URL (auth required)
    */
   @Post(':userId/account-link')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createAccountLink(@Param('userId') userId: string): Promise<AccountLinkResponseDto> {
     this.logger.log(`Creating account link for user: ${userId}`);
     return this.paymentsService.createAccountLink(userId);
+  }
+
+  /**
+   * GET /api/payments/pending
+   * List pending payments for admin "Pay now" flow (admin only)
+   */
+  @Get('pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async getPendingPayments() {
+    return this.paymentsService.getPendingPayments();
+  }
+
+  /**
+   * POST /api/payments/:paymentId/pay-now
+   * Pay a PENDING payment via Bill.com (admin only)
+   */
+  @Post(':paymentId/pay-now')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async payNow(@Param('paymentId') paymentId: string) {
+    return this.paymentsService.payNow(paymentId);
   }
 
   /**
@@ -52,7 +76,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/payout
-   * Create payout to user (admin only)
+   * Create payout to user (admin only). Admins choose ACH or check and verify W-9 in Bill.com.
    */
   @Post('payout')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -64,7 +88,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/sync-account
-   * Sync account status from Stripe (auth required)
+   * Sync account status from Bill.com (auth required)
    */
   @Post(':userId/sync-account')
   @UseGuards(JwtAuthGuard, CheckUserGuard)

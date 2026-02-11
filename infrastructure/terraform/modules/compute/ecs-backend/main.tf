@@ -86,10 +86,6 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
         },
         {
-          name      = "SENDGRID_API_KEY"
-          valueFrom = "${var.app_secrets_arn}:sendgrid_api_key::"
-        },
-        {
           name      = "AUTH0_DOMAIN"
           valueFrom = "${var.app_secrets_arn}:auth0_domain::"
         },

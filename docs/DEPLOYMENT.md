@@ -104,7 +104,8 @@ domain_aliases = ["app.example.com"]
 
 # Secrets (or use environment variables)
 stripe_secret_key = "sk_test_..."
-sendgrid_api_key  = "SG...."
+hubspot_smtp_user       = "..."  # From HubSpot transactional email token
+hubspot_smtp_password   = "..."  # From HubSpot transactional email token
 ```
 
 ### 7. Deploy Infrastructure
