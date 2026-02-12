@@ -2,21 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 
-vi.mock('../../lib/supabase', () => ({
-  supabase: {
-    auth: {
-      onAuthStateChange: vi.fn(() => ({
-        data: { subscription: { unsubscribe: vi.fn() } },
-      })),
-      getSession: vi.fn().mockResolvedValue({ data: { session: null } }),
-      signInWithPassword: vi.fn(),
-      signUp: vi.fn(),
-      resetPasswordForEmail: vi.fn(),
-      signOut: vi.fn(),
-    },
-  },
-}));
-
 vi.mock('../../api/client', () => ({
   setAuthHeaderGetter: vi.fn(),
   setUnauthorizedHandler: vi.fn(),
@@ -25,7 +10,8 @@ vi.mock('../../api/client', () => ({
 describe('AuthContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv('VITE_USE_DEV_AUTH', 'false');
+    if (typeof localStorage?.clear === 'function') localStorage.clear();
+    vi.stubEnv('VITE_DISABLE_AUTH', 'false');
   });
 
   it('useAuth throws when used outside AuthProvider', () => {

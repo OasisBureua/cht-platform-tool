@@ -102,15 +102,14 @@ output "next_steps" {
     
     ✅ us-east-1 (Primary) deployed successfully!
     
-    📋 Add these NS records to your DNS provider (where communityhealth.media is registered):
+    📋 Add NS records in your DNS provider (GoDaddy for communityhealth.media):
     
     Type: NS
-    Name: api
-    Value: ${join("\n           ", module.route53.name_servers)}
+    Name: ${replace(var.domain_name, ".communityhealth.media", "")}
+    Value: Add 4 records, one per line:
+    ${join("\n    ", module.route53.name_servers)}
     
-    Type: NS
-    Name: app
-    Value: ${join("\n           ", module.route53.name_servers)}
+    This delegates ${var.domain_name} to Route53.
     
     🧪 Test your deployment:
     Backend:  curl ${module.route53.api_fqdn}/health/ready

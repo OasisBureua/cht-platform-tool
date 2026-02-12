@@ -7,18 +7,16 @@ import {
   type ReactNode,
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
-import { supabase } from '../lib/supabase';
-import type { AuthError, Session, User as SupabaseUser } from '@supabase/supabase-js';
-
-const DEV_USER_ID = import.meta.env.VITE_DEV_USER_ID;
-const USE_DEV_AUTH = import.meta.env.VITE_USE_DEV_AUTH === 'true';
-const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
 
 export interface AuthUser {
   userId: string;
   email?: string;
   name?: string;
   role?: string;
+}
+
+interface AuthError {
+  message?: string;
 }
 
 interface AuthContextValue {
@@ -38,185 +36,89 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function SupabaseAuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [apiUser, setApiUser] = useState<AuthUser | null>(null);
-  const [userLoading, setUserLoading] = useState(true);
+const SESSION_TOKEN_KEY = 'cht-session-token';
+const DEV_USER_KEY = 'cht-dev-user-id';
+
+function BackendAuthProvider({ children }: { children: ReactNode }) {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const [sessionToken, setSessionToken] = useState<string | null>(() => {
+    try {
+      return typeof localStorage?.getItem === 'function' ? localStorage.getItem(SESSION_TOKEN_KEY) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [devUserId, setDevUserId] = useState<string>(() => {
+    try {
+      return typeof localStorage?.getItem === 'function' ? localStorage.getItem(DEV_USER_KEY) || '' : '';
+    } catch {
+      return '';
+    }
+  });
+  const [profile, setProfile] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
+
+  const userId = sessionToken ? 'session' : devUserId;
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      userLoading && setUserLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    try {
+      if (typeof localStorage?.setItem === 'function' && typeof localStorage?.removeItem === 'function') {
+        if (sessionToken) localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
+        else localStorage.removeItem(SESSION_TOKEN_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [sessionToken]);
 
   useEffect(() => {
-    if (!session?.access_token) {
-      setApiUser(null);
-      setUserLoading(false);
+    try {
+      if (typeof localStorage?.setItem === 'function' && typeof localStorage?.removeItem === 'function') {
+        if (devUserId) localStorage.setItem(DEV_USER_KEY, devUserId);
+        else localStorage.removeItem(DEV_USER_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [devUserId]);
+
+  useEffect(() => {
+    if (!userId || userId === 'session') {
+      if (userId === 'session') {
+        setIsLoading(true);
+        fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
+          headers: { Authorization: `Bearer ${sessionToken}` },
+        })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data?.userId) {
+              setProfile({
+                userId: data.userId,
+                email: data.email,
+                name: data.name,
+                role: data.role,
+              });
+            } else {
+              setSessionToken(null);
+              setProfile(null);
+            }
+          })
+          .catch(() => {
+            setSessionToken(null);
+            setProfile(null);
+          })
+          .finally(() => setIsLoading(false));
+      } else {
+        setProfile(null);
+        setIsLoading(false);
+      }
       return;
     }
     let cancelled = false;
-    setUserLoading(true);
-    fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (cancelled) return;
-        const sbUser = session.user as SupabaseUser & { user_metadata?: { full_name?: string } };
-        if (data?.userId) {
-          setApiUser({
-            userId: data.userId,
-            email: data.email || sbUser?.email,
-            name: data.name || sbUser?.user_metadata?.full_name || sbUser?.email,
-            role: data.role,
-          });
-        } else {
-          setApiUser({
-            userId: sbUser?.id || '',
-            email: sbUser?.email,
-            name: sbUser?.user_metadata?.full_name || sbUser?.email,
-          });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          const sbUser = session.user;
-          setApiUser({
-            userId: sbUser?.id || '',
-            email: sbUser?.email,
-            name: (sbUser as SupabaseUser & { user_metadata?: { full_name?: string } })?.user_metadata?.full_name || sbUser?.email,
-          });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setUserLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [session, apiUrl]);
-
-  const user = apiUser;
-  const isLoading = userLoading;
-
-  const login = useCallback(async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return { error };
-    setSession(data.session);
-    return {};
-  }, []);
-
-  const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      options?: { fullName?: string; profession?: string },
-    ) => {
-      const metadata: Record<string, string> = {};
-      if (options?.fullName) metadata.full_name = options.fullName;
-      if (options?.profession) metadata.profession = options.profession;
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: Object.keys(metadata).length ? { data: metadata } : undefined,
-      });
-      if (error) return { error };
-      if (data.session) setSession(data.session);
-      return {};
-    },
-    [],
-  );
-
-  const resetPasswordForEmail = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    return error ? { error } : {};
-  }, []);
-
-  const logout = useCallback(() => {
-    supabase.auth.signOut();
-    setSession(null);
-    setApiUser(null);
-  }, []);
-
-  const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    const {
-      data: { session: s },
-    } = await supabase.auth.getSession();
-    if (s?.access_token) {
-      return { Authorization: `Bearer ${s.access_token}` };
-    }
-    return {};
-  }, []);
-
-  const value: AuthContextValue = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    signUp,
-    resetPasswordForEmail,
-    logout,
-    getAuthHeaders,
-  };
-
-  useEffect(() => {
-    setAuthHeaderGetter(getAuthHeaders);
-  }, [getAuthHeaders]);
-
-  const handleUnauthorized = useCallback(() => {
-    setApiUser(null);
-    setSession(null);
-    window.location.href = '/login';
-  }, []);
-
-  useEffect(() => {
-    setUnauthorizedHandler(handleUnauthorized);
-    return () => setUnauthorizedHandler(null);
-  }, [handleUnauthorized]);
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function DevAuthProvider({ children }: { children: ReactNode }) {
-  const [userId, setUserId] = useState<string>(() => {
-    if (DEV_USER_ID) return DEV_USER_ID;
-    if (import.meta.env.VITE_CLEAR_DEV_AUTH === 'true') {
-      localStorage.removeItem('cht-dev-user-id');
-      return '';
-    }
-    return localStorage.getItem('cht-dev-user-id') || '';
-  });
-  const [profile, setProfile] = useState<AuthUser | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const apiUrl = import.meta.env.VITE_API_URL || '/api';
-
-  useEffect(() => {
-    if (userId) {
-      localStorage.setItem('cht-dev-user-id', userId);
-    } else {
-      localStorage.removeItem('cht-dev-user-id');
-      setProfile(null);
-      setIsLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
     setIsLoading(true);
     fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-      headers: { 'X-Dev-User-Id': userId },
+      headers: { 'X-Dev-User-Id': devUserId },
     })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -227,12 +129,16 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
             name: data.name,
             role: data.role,
           });
-        } else {
-          setProfile({ userId, email: 'dev@chtplatform.local', name: 'Dev User' });
+        } else if (!cancelled) {
+          setDevUserId('');
+          setProfile(null);
         }
       })
       .catch(() => {
-        if (!cancelled) setProfile({ userId, email: 'dev@chtplatform.local', name: 'Dev User' });
+        if (!cancelled) {
+          setDevUserId('');
+          setProfile(null);
+        }
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -240,44 +146,90 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [userId, apiUrl]);
+  }, [userId, sessionToken, devUserId, apiUrl]);
 
-  const user: AuthUser | null = userId ? (profile || { userId, email: 'dev@chtplatform.local', name: 'Dev User' }) : null;
+  const user: AuthUser | null =
+    userId && userId !== 'session'
+      ? profile || { userId: devUserId, email: '', name: 'User' }
+      : profile;
 
   const login = useCallback(
-    async (_email: string, _password: string) => {
-      const id = prompt(
-        'Dev mode: Enter user ID (run: cd backend && npx prisma db seed, then copy ID)',
-        userId || '',
-      );
-      if (id) setUserId(id.trim());
+    async (email: string, password: string) => {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: (email || '').trim(), password: password || '' }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+
+      if (data.session_token) {
+        setSessionToken(data.session_token);
+        setDevUserId('');
+        setProfile({
+          userId: data.userId,
+          email: data.email,
+          name: data.name,
+          role: data.role,
+        });
+      } else if (data.userId) {
+        setSessionToken(null);
+        setDevUserId(data.userId);
+        setProfile({
+          userId: data.userId,
+          email: data.email,
+          name: data.name,
+          role: data.role,
+        });
+      } else {
+        return { error: { message: 'Login failed.' } };
+      }
       return {};
     },
-    [userId],
+    [apiUrl],
   );
 
   const signUp = useCallback(
-    async (_email: string, _password: string, _options?: { fullName?: string; profession?: string }) => {
-      alert('Dev mode: Use seed users. Run: cd backend && npx prisma db seed');
-      return {};
+    async (
+      _email: string,
+      _password: string,
+      _options?: { fullName?: string; profession?: string },
+    ) => {
+      return { error: { message: 'Sign up is not available. Use the Join page.' } };
     },
     [],
   );
 
-  const resetPasswordForEmail = useCallback(async () => {
-    alert('Dev mode: Password reset not available. Use seed users.');
-    return {};
+  const resetPasswordForEmail = useCallback(async (_email: string) => {
+    return { error: { message: 'Password reset is not available.' } };
   }, []);
 
   const logout = useCallback(() => {
-    setUserId('');
-    localStorage.removeItem('cht-dev-user-id');
+    setSessionToken(null);
+    setDevUserId('');
+    setProfile(null);
+    try {
+      if (typeof localStorage?.removeItem === 'function') {
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+        localStorage.removeItem(DEV_USER_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    if (!userId) return {};
-    return { 'X-Dev-User-Id': userId };
-  }, [userId]);
+    if (sessionToken) {
+      return { Authorization: `Bearer ${sessionToken}` };
+    }
+    if (devUserId) {
+      return { 'X-Dev-User-Id': devUserId };
+    }
+    return {};
+  }, [sessionToken, devUserId]);
 
   const value: AuthContextValue = {
     user,
@@ -295,48 +247,39 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
   }, [getAuthHeaders]);
 
   const handleUnauthorized = useCallback(() => {
-    setUserId('');
-    setProfile(null);
-    localStorage.removeItem('cht-dev-user-id');
+    logout();
     window.location.href = '/login';
-  }, []);
+  }, [logout]);
 
   useEffect(() => {
     setUnauthorizedHandler(handleUnauthorized);
     return () => setUnauthorizedHandler(null);
   }, [handleUnauthorized]);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-function NoAuthProvider({ children }: { children: ReactNode }) {
-  const value: AuthContextValue = {
-    user: null,
-    isAuthenticated: false,
-    isLoading: false,
-    login: async () => ({}),
-    signUp: async () => ({}),
-    resetPasswordForEmail: async () => ({}),
-    logout: () => {},
-    getAuthHeaders: async () => ({}),
-  };
-
-  useEffect(() => {
-    setAuthHeaderGetter(() => Promise.resolve({}));
-    return () => setAuthHeaderGetter(null);
-  }, []);
+  if (DISABLE_AUTH) {
+    return (
+      <AuthContext.Provider
+        value={{
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          login: async () => ({}),
+          signUp: async () => ({}),
+          resetPasswordForEmail: async () => ({}),
+          logout: () => {},
+          getAuthHeaders: async () => ({}),
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    );
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  if (DISABLE_AUTH) {
-    return <NoAuthProvider>{children}</NoAuthProvider>;
-  }
-  if (USE_DEV_AUTH) {
-    return <DevAuthProvider>{children}</DevAuthProvider>;
-  }
-  return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
+  return <BackendAuthProvider>{children}</BackendAuthProvider>;
 }
 
 export function useAuth(): AuthContextValue {

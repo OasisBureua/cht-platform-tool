@@ -1,7 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { UserRole } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
 // Class (not interface) for Nest decorator metadata
 export class AuthUser {
@@ -21,6 +23,14 @@ interface AuthUserCache {
   role: UserRole;
 }
 
+interface SessionCache {
+  authId: string;
+  userId: string;
+  email: string;
+  name: string;
+  role: UserRole;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -28,6 +38,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private configService: ConfigService,
   ) {}
 
   /**
@@ -96,6 +107,52 @@ export class AuthService {
       await this.redis.del(this.redis.keys.authUser(user.authId));
       this.logger.debug(`Invalidated auth cache for user ${userId}`);
     }
+  }
+
+  /**
+   * Find user by email (for dev login).
+   */
+  async findByEmail(email: string): Promise<AuthUser | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.trim().toLowerCase() },
+    });
+    if (!user) return null;
+    const authUser = new AuthUser();
+    authUser.authId = user.authId;
+    authUser.userId = user.id;
+    authUser.email = user.email;
+    authUser.name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+    authUser.role = user.role;
+    return authUser;
+  }
+
+  /**
+   * Create a session in Redis. Returns session token.
+   */
+  async createSession(user: AuthUser): Promise<string> {
+    const token = randomUUID();
+    const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
+    const cache: SessionCache = {
+      authId: user.authId,
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+    await this.redis.set(this.redis.keys.session(token), cache, ttl);
+    this.logger.debug(`Session created for ${user.userId}, TTL: ${ttl}s`);
+    return token;
+  }
+
+  /**
+   * Get session from Redis. Returns AuthUser if valid.
+   */
+  async getSession(token: string): Promise<AuthUser | null> {
+    const cached = await this.redis.get<SessionCache>(this.redis.keys.session(token));
+    if (!cached) return null;
+    const authUser = new AuthUser();
+    Object.assign(authUser, cached);
+    return authUser;
   }
 
   /**

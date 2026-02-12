@@ -24,7 +24,7 @@ export default function Login() {
     const { error: err } = await login(email, password);
     setSubmitting(false);
     if (err) {
-      setError(err.message || 'Login failed. Please check your email and password.');
+      setError(err.message || 'Login failed. Please check your credentials.');
       return;
     }
     navigate(from, { replace: true });
@@ -93,7 +93,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* OAuth coming soon - disabled per integration notes */}
           <div className="mt-6">
             <p className="text-center text-sm text-gray-500">
               Google and Apple sign-in coming soon.

@@ -43,6 +43,8 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 
   logger.log(`🚀 Application is running on: http://localhost:${port}`);
+  logger.log(`📡 API base: http://localhost:${port}/api`);
+  logger.log(`🔐 Auth: ${process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY ? 'Supabase' : 'Dev (DB)'}`);
   logger.log(`📊 Health check: http://localhost:${port}/health`);
   logger.log(`🔍 Health ready: http://localhost:${port}/health/ready`);
   logger.log(`💚 Health live: http://localhost:${port}/health/live`);
