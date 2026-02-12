@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
+import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
   Award,
@@ -33,6 +34,14 @@ export default function WebinarDetail() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  const isZoomWebinar = id?.startsWith('zoom-') ?? false;
+
+  const { data: zoomWebinar, isLoading: zoomLoading } = useQuery({
+    queryKey: ['webinar', id],
+    queryFn: () => webinarsApi.getById(id!),
+    enabled: !!id && isZoomWebinar,
+    retry: false,
+  });
 
   const {
     data: program,
@@ -42,7 +51,7 @@ export default function WebinarDetail() {
   } = useQuery({
     queryKey: ['program', id],
     queryFn: () => programsApi.getById(id!),
-    enabled: !!id,
+    enabled: !!id && !isZoomWebinar,
     retry: false,
   });
 
@@ -64,6 +73,45 @@ export default function WebinarDetail() {
       queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
     },
   });
+
+  if (isZoomWebinar) {
+    if (zoomLoading) return <LoadingSpinner />;
+    if (!zoomWebinar) {
+      return (
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
+          <p className="font-semibold text-gray-900">Webinar not found</p>
+          <Link to="/app/webinars" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+            Back to webinars
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-8 pb-24 md:pb-0">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to Webinars
+        </button>
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h1 className="text-2xl font-bold text-gray-900">{zoomWebinar.title}</h1>
+          <p className="mt-3 text-gray-600">{zoomWebinar.description}</p>
+          {zoomWebinar.joinUrl && (
+            <a
+              href={zoomWebinar.joinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            >
+              Join Webinar
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) return <LoadingSpinner />;
 

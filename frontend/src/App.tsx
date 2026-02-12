@@ -16,6 +16,7 @@ import DiseaseDetail from './pages/public/DiseaseDetail';
 import Search from './pages/public/Search';
 import ForHCPs from './pages/public/ForHCPs';
 import PublicWebinars from './pages/public/PublicWebinars';
+import PublicWebinarDetail from './pages/public/PublicWebinarDetail';
 import PublicSurveys from './pages/public/PublicSurveys';
 import WhatWeDo from './pages/public/WhatWeDo';
 import Services from './pages/public/Services';
@@ -92,6 +93,7 @@ function App() {
             <Route path="/watch" element={<PublicWatch />} />
             <Route path="/watch/:videoId" element={<PublicWatch />} />
             <Route path="/webinars" element={<PublicWebinars />} />
+            <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
             <Route path="/surveys" element={<PublicSurveys />} />
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
@@ -139,8 +141,6 @@ function App() {
           {/* =======================
               BACK-COMPAT REDIRECTS
               ======================= */}
-          <Route path="/webinars/:id" element={<WebinarRedirect />} />
-
           <Route path="/surveys/:id" element={<SurveyRedirect />} />
 
 
@@ -177,11 +177,6 @@ function App() {
 }
 
 export default App;
-
-function WebinarRedirect() {
-  const { id } = useParams<{ id: string }>();
-  return <Navigate to={id ? `/app/webinars/${id}` : '/app/webinars'} replace />;
-}
 
 function SurveyRedirect() {
   const { id } = useParams<{ id: string }>();

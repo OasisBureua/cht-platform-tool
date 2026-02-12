@@ -41,4 +41,13 @@ export const validationSchema = Joi.object({
 
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
+
+  // YouTube (optional – for catalog playlists)
+  YOUTUBE_API_KEY: Joi.string().allow('').optional(),
+  YOUTUBE_PLAYLIST_IDS: Joi.string().allow('').optional(),
+
+  // Zoom (optional – for webinars)
+  ZOOM_ACCOUNT_ID: Joi.string().allow('').optional(),
+  ZOOM_CLIENT_ID: Joi.string().allow('').optional(),
+  ZOOM_CLIENT_SECRET: Joi.string().allow('').optional(),
 });

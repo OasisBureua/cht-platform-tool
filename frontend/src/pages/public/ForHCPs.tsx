@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2 } from 'lucide-react';
+import { webinarsApi } from '../../api/webinars';
 
-// Stock images for For HCPs page (Figma node-id=237-2495)
 const STOCK_IMAGES = {
   featuredVideo: 'https://picsum.photos/seed/forhcp-video/800/500',
   featuredWebinar: 'https://picsum.photos/seed/forhcp-webinar/800/500',
@@ -27,16 +29,21 @@ const BIOMARKER_PLAYLISTS = [
   { id: '3', title: 'High-Risk & CNS Disease', imageUrl: STOCK_IMAGES.biomarker[2] },
 ];
 
-const WEBINARS = [
-  { id: '1', title: 'Webinar #1', imageUrl: STOCK_IMAGES.webinar[0], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '2', title: 'Webinar #2', imageUrl: STOCK_IMAGES.webinar[1], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '3', title: 'Webinar #3', imageUrl: STOCK_IMAGES.webinar[2], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '4', title: 'Webinar #4', imageUrl: STOCK_IMAGES.webinar[3], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '5', title: 'Webinar #5', imageUrl: STOCK_IMAGES.webinar[4], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '6', title: 'Webinar #6', imageUrl: STOCK_IMAGES.webinar[5], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+const FALLBACK_WEBINARS = [
+  { id: '1', title: 'Webinar #1', imageUrl: STOCK_IMAGES.webinar[0], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+  { id: '2', title: 'Webinar #2', imageUrl: STOCK_IMAGES.webinar[1], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
+  { id: '3', title: 'Webinar #3', imageUrl: STOCK_IMAGES.webinar[2], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
 ];
 
 export default function ForHCPs() {
+  const { data: webinars = [], isLoading } = useQuery({
+    queryKey: ['webinars'],
+    queryFn: webinarsApi.list,
+    staleTime: 5 * 60 * 1000,
+  });
+  const webinarItems = webinars.length > 0
+    ? webinars.map((w) => ({ id: w.id, title: w.title, imageUrl: w.imageUrl || '', description: w.description }))
+    : FALLBACK_WEBINARS;
   return (
     <div className="bg-white min-h-screen">
       <div className="mx-auto max-w-7xl px-6 py-10 md:py-14 space-y-12 md:space-y-16">
@@ -58,11 +65,11 @@ export default function ForHCPs() {
             showNew
           />
           <FeaturedCard
-            title="Featured Webinar Title"
-            imageUrl={STOCK_IMAGES.featuredWebinar}
+            title={webinarItems[0]?.title || 'Featured Webinar'}
+            imageUrl={webinarItems[0]?.imageUrl || STOCK_IMAGES.featuredWebinar}
             cta="Join Now"
             size="large"
-            to="/app/webinars"
+            to={webinarItems[0] ? `/webinars/${webinarItems[0].id}` : '/webinars'}
             showNew
           />
           <FeaturedCard
@@ -101,11 +108,17 @@ export default function ForHCPs() {
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
             Webinar Catalogue
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {WEBINARS.map((webinar) => (
-              <WebinarCard key={webinar.id} webinar={webinar} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {webinarItems.map((webinar) => (
+                <WebinarCard key={webinar.id} webinar={webinar} />
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </div>
@@ -205,7 +218,7 @@ function WebinarCard({
         </p>
         <div className="mt-4 flex justify-end">
           <Link
-            to="/app/webinars"
+            to={`/webinars/${webinar.id}`}
             className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
           >
             Learn More

@@ -21,6 +21,15 @@ export default () => ({
     jwtSecret: process.env.GOTRUE_JWT_SECRET,
   },
 
+  // Supabase Auth (for backend login validation)
+  supabase: {
+    url: process.env.SUPABASE_URL,
+    anonKey: process.env.SUPABASE_ANON_KEY,
+  },
+
+  // Session TTL in seconds (default 30 min). Sessions cached in Redis.
+  sessionTtlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '1800', 10),
+
   // Bill.com
   bill: {
     devKey: process.env.BILL_DEV_KEY,
@@ -55,5 +64,18 @@ export default () => ({
   // Surveys (optional survey bonus payment in cents, 0 = disabled)
   surveys: {
     bonusAmountCents: parseInt(process.env.SURVEY_BONUS_AMOUNT_CENTS || '0', 10),
+  },
+
+  // YouTube Data API v3 (for catalog playlists)
+  youtube: {
+    apiKey: process.env.YOUTUBE_API_KEY,
+    playlistIds: process.env.YOUTUBE_PLAYLIST_IDS?.split(',').map((id) => id.trim()).filter(Boolean) || [],
+  },
+
+  // Zoom (Server-to-Server OAuth for webinars)
+  zoom: {
+    accountId: process.env.ZOOM_ACCOUNT_ID,
+    clientId: process.env.ZOOM_CLIENT_ID,
+    clientSecret: process.env.ZOOM_CLIENT_SECRET,
   },
 });
