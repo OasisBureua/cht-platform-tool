@@ -67,10 +67,40 @@ export default () => ({
   },
 
   // YouTube Data API v3 (for catalog playlists)
-  youtube: {
-    apiKey: process.env.YOUTUBE_API_KEY,
-    playlistIds: process.env.YOUTUBE_PLAYLIST_IDS?.split(',').map((id) => id.trim()).filter(Boolean) || [],
-  },
+  youtube: (() => {
+    let ids: string[] =
+      process.env.YOUTUBE_PLAYLIST_IDS?.split(',')
+        .map((id) => id.trim())
+        .filter(Boolean) || [];
+    if (ids.length === 0) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
+          ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
+          : path.resolve(process.cwd(), '..', 'data', 'youtube-playlists.csv');
+        if (fs.existsSync(csvPath)) {
+          const content = fs.readFileSync(csvPath, 'utf8');
+          const lines = content.split(/\r?\n/).filter((l) => l.trim());
+          const start = lines[0]?.toLowerCase().includes('playlist') ? 1 : 0;
+          const idRegex = /PL[\w-]{20,}/g;
+          for (let i = start; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.startsWith('#')) continue;
+            const matches = line.match(idRegex);
+            if (matches) ids.push(...matches);
+          }
+          ids = [...new Set(ids)];
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    return {
+      apiKey: process.env.YOUTUBE_API_KEY,
+      playlistIds: ids,
+    };
+  })(),
 
   // Zoom (Server-to-Server OAuth for webinars)
   zoom: {

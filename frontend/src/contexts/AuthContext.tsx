@@ -194,18 +194,49 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = useCallback(
     async (
-      _email: string,
-      _password: string,
-      _options?: { fullName?: string; profession?: string },
+      email: string,
+      password: string,
+      options?: { fullName?: string; profession?: string },
     ) => {
-      return { error: { message: 'Sign up is not available. Use the Join page.' } };
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (email || '').trim(),
+          password,
+          fullName: options?.fullName,
+          profession: options?.profession,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return {};
     },
-    [],
+    [apiUrl],
   );
 
-  const resetPasswordForEmail = useCallback(async (_email: string) => {
-    return { error: { message: 'Password reset is not available.' } };
-  }, []);
+  const resetPasswordForEmail = useCallback(
+    async (email: string) => {
+      const emailStr = (email || '').trim();
+      if (!emailStr) return { error: { message: 'Email is required.' } };
+
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailStr }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return {};
+    },
+    [apiUrl],
+  );
 
   const logout = useCallback(() => {
     setSessionToken(null);

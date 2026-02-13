@@ -33,13 +33,7 @@ sleep 5
 echo "📋 DNS Validation Records (add in GoDaddy):"
 echo ""
 
-# ACM may return multiple validation records for wildcard + apex
-aws acm describe-certificate \
-    --certificate-arn "$CERT_ARN" \
-    --region "$REGION" \
-    --query 'Certificate.DomainValidationOptions[].[DomainName,ResourceRecord]' \
-    --output table
-
+# Get validation records (skip table - it errors on nested ResourceRecord)
 echo ""
 echo "📝 Add these CNAME records in GoDaddy (dns.godaddy.com):"
 echo ""

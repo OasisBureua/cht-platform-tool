@@ -24,6 +24,60 @@ export class AuthController {
   ) {}
 
   /**
+   * POST /api/auth/signup
+   * Proxies to GoTrue signup (avoids CORS when frontend calls from localhost).
+   */
+  @Post('signup')
+  async signup(
+    @Body('email') email: string,
+    @Body('password') password: string,
+    @Body('fullName') fullName?: string,
+    @Body('profession') profession?: string,
+  ): Promise<{ error?: string }> {
+    const emailStr = (email || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!password) return { error: 'Password is required.' };
+
+    const supabaseUrl = this.configService.get<string>('supabase.url');
+    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
+
+    if (!supabaseUrl || !supabaseAnon) {
+      return { error: 'Sign up is not configured. Contact support.' };
+    }
+
+    this.logger.log(`[Auth] Signup attempt for email: ${emailStr}`);
+    const res = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnon,
+      },
+      body: JSON.stringify({
+        email: emailStr,
+        password,
+        data: {
+          full_name: fullName,
+          profession,
+        },
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data?.msg || data?.error_description || data?.error || 'Sign up failed. Please try again.';
+      this.logger.warn(`[Auth] Signup failed for ${emailStr}: ${msg}`);
+      if (msg.toLowerCase().includes('confirmation mail')) {
+        this.logger.log(`[Auth] Signup likely succeeded for ${emailStr} (email send failed)`);
+        return {};
+      }
+      return { error: msg };
+    }
+
+    this.logger.log(`[Auth] Signup success for ${emailStr}`);
+    return {};
+  }
+
+  /**
    * POST /api/auth/login
    * Validates email/password against Supabase when configured.
    * When Supabase not configured (dev): lookup by email in DB (password ignored).
@@ -98,6 +152,43 @@ export class AuthController {
       name: user.name,
       role: user.role,
     };
+  }
+
+  /**
+   * POST /api/auth/recover
+   * Proxies to GoTrue password reset (avoids CORS).
+   */
+  @Post('recover')
+  async recover(@Body('email') email: string): Promise<{ error?: string }> {
+    const emailStr = (email || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+
+    const supabaseUrl = this.configService.get<string>('supabase.url');
+    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
+
+    if (!supabaseUrl || !supabaseAnon) {
+      return { error: 'Password reset is not configured.' };
+    }
+
+    this.logger.log(`[Auth] Password reset request for: ${emailStr}`);
+    const res = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/recover`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnon,
+      },
+      body: JSON.stringify({ email: emailStr }),
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const msg = data?.msg || data?.error_description || 'Password reset failed.';
+      this.logger.warn(`[Auth] Recover failed for ${emailStr}: ${msg}`);
+      return { error: msg };
+    }
+
+    this.logger.log(`[Auth] Recover email sent to ${emailStr}`);
+    return {};
   }
 
   /**
