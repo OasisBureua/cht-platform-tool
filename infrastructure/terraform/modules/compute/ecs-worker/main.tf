@@ -1,10 +1,13 @@
 locals {
-  is_prod = var.environment == "prod"
+  is_prod             = var.environment == "prod" || var.environment == "platform"
+  prefix              = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  worker_security_sgs = length(var.security_group_ids) > 0 ? var.security_group_ids : [aws_security_group.worker[0].id]
 }
 
-# Security Group for Worker
+# Security Group for Worker (created only when not provided via security_group_ids)
 resource "aws_security_group" "worker" {
-  name        = "${var.project}-${var.environment}-worker-sg"
+  count       = length(var.security_group_ids) > 0 ? 0 : 1
+  name        = "${local.prefix}-worker-sg"
   description = "Security group for worker ECS tasks"
   vpc_id      = var.vpc_id
 
@@ -17,14 +20,14 @@ resource "aws_security_group" "worker" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-worker-sg"
+    Name        = "${local.prefix}-worker-sg"
     Environment = var.environment
   }
 }
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "worker" {
-  family                   = "${var.project}-${var.environment}-worker"
+  family                   = "${local.prefix}-worker"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = var.task_cpu
@@ -38,42 +41,37 @@ resource "aws_ecs_task_definition" "worker" {
       image     = var.container_image
       essential = true
 
-      environment = [
-        {
-          name  = "ENVIRONMENT"
-          value = var.environment
-        },
-        {
-          name  = "AWS_REGION"
-          value = var.aws_region
-        }
-      ]
+      environment = concat(
+        [
+          {
+            name  = "ENVIRONMENT"
+            value = var.environment
+          },
+          {
+            name  = "AWS_REGION"
+            value = var.aws_region
+          }
+        ],
+        concat(
+          var.sqs_email_queue_url != "" ? [{ name = "SQS_EMAIL_QUEUE_URL", value = var.sqs_email_queue_url }] : [],
+          var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : [],
+          var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : []
+        )
+      )
 
       secrets = [
         {
           name      = "DATABASE_URL"
           valueFrom = "${var.database_secret_arn}:url::"
-        },
-        {
-          name      = "STRIPE_SECRET_KEY"
-          valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
-        },
-        {
-          name      = "HUBSPOT_SMTP_USER"
-          valueFrom = "${var.app_secrets_arn}:hubspot_smtp_user::"
-        },
-        {
-          name      = "HUBSPOT_SMTP_PASSWORD"
-          valueFrom = "${var.app_secrets_arn}:hubspot_smtp_password::"
         }
       ]
 
-      environmentFiles = [
+      environmentFiles = var.sqs_queue_urls_env_file_arn != "" ? [
         {
           value = var.sqs_queue_urls_env_file_arn
           type  = "s3"
         }
-      ]
+      ] : []
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -83,18 +81,26 @@ resource "aws_ecs_task_definition" "worker" {
           "awslogs-stream-prefix" = "worker"
         }
       }
+
+      healthCheck = {
+        command     = ["CMD-SHELL", "pgrep -f start_workers || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 90
+      }
     }
   ])
 
   tags = {
-    Name        = "${var.project}-${var.environment}-worker-task"
+    Name        = "${local.prefix}-worker-task"
     Environment = var.environment
   }
 }
 
 # ECS Service
 resource "aws_ecs_service" "worker" {
-  name            = "${var.project}-${var.environment}-worker"
+  name            = "${local.prefix}-worker"
   cluster         = var.cluster_id
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = var.desired_count
@@ -102,9 +108,12 @@ resource "aws_ecs_service" "worker" {
 
   network_configuration {
     subnets          = var.private_subnet_ids
-    security_groups  = [aws_security_group.worker.id]
+    security_groups  = local.worker_security_sgs
     assign_public_ip = false
   }
+
+  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = 50
 
   deployment_circuit_breaker {
     enable   = true
@@ -114,7 +123,7 @@ resource "aws_ecs_service" "worker" {
   enable_execute_command = true
 
   tags = {
-    Name        = "${var.project}-${var.environment}-worker-service"
+    Name        = "${local.prefix}-worker-service"
     Environment = var.environment
   }
 }
@@ -130,7 +139,7 @@ resource "aws_appautoscaling_target" "worker" {
 
 # Scale based on SQS queue depth
 resource "aws_appautoscaling_policy" "worker_sqs" {
-  name               = "${var.project}-${var.environment}-worker-sqs-scaling"
+  name               = "${local.prefix}-worker-sqs-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.worker.resource_id
   scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
@@ -153,7 +162,7 @@ resource "aws_appautoscaling_policy" "worker_sqs" {
 
 resource "aws_appautoscaling_scheduled_action" "worker_scale_up" {
   count               = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
-  name                = "${var.project}-${var.environment}-worker-scale-up" 
+  name                = "${local.prefix}-worker-scale-up" 
   service_namespace   = "ecs"
   resource_id         = aws_appautoscaling_target.worker.resource_id
   scalable_dimension  = aws_appautoscaling_target.worker.scalable_dimension
@@ -167,7 +176,7 @@ resource "aws_appautoscaling_scheduled_action" "worker_scale_up" {
 
 resource "aws_appautoscaling_scheduled_action" "worker_scale_down" {
   count              = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
-  name               = "${var.project}-${var.environment}-worker-scale-down"
+  name               = "${local.prefix}-worker-scale-down"
   service_namespace  = "ecs"
   resource_id        = aws_appautoscaling_target.worker.resource_id
   scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension

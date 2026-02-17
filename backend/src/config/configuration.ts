@@ -76,9 +76,12 @@ export default () => ({
       try {
         const fs = require('fs');
         const path = require('path');
+        const dataDir = path.resolve(process.cwd(), '..', 'data');
         const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
           ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
-          : path.resolve(process.cwd(), '..', 'data', 'youtube-playlists.csv');
+          : [path.join(dataDir, 'youtube-playlists.csv'), path.join(dataDir, 'YT Playlist IDs - Sheet1.csv')].find(
+              (p) => fs.existsSync(p),
+            ) || path.join(dataDir, 'youtube-playlists.csv');
         if (fs.existsSync(csvPath)) {
           const content = fs.readFileSync(csvPath, 'utf8');
           const lines = content.split(/\r?\n/).filter((l) => l.trim());

@@ -8,6 +8,12 @@ variable "environment" {
   type        = string
 }
 
+variable "resource_prefix" {
+  description = "Prefix for resource names (optional - derived from project/environment if empty)"
+  type        = string
+  default     = ""
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -87,6 +93,30 @@ variable "sqs_queue_urls_env_file_arn" {
   description = "S3 ARN for environment file with SQS queue URLs"
   type        = string
   default     = ""
+}
+
+variable "frontend_url" {
+  description = "Frontend URL for CORS and redirects (e.g. https://testapp.communityhealth.media)"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_email_queue_url" {
+  description = "SQS email queue URL"
+  type        = string
+  default     = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-email-queue"
+}
+
+variable "sqs_payment_queue_url" {
+  description = "SQS payment queue URL"
+  type        = string
+  default     = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-payment-queue"
+}
+
+variable "sqs_cme_queue_url" {
+  description = "SQS CME queue URL"
+  type        = string
+  default     = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-cme-queue"
 }
 
 variable "task_cpu" {

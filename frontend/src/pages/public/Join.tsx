@@ -20,6 +20,10 @@ export default function Join() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (!password || password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
     setSubmitting(true);
     const { error: err } = await signUp(email, password, { fullName, profession });
     setSubmitting(false);
@@ -121,10 +125,11 @@ export default function Join() {
             <Input
               label="Password"
               type="password"
-              placeholder="••••••••"
+              placeholder="At least 8 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={8}
             />
             <Input
               label="Profession"
@@ -193,6 +198,7 @@ function Input({
   value,
   onChange,
   required,
+  minLength,
 }: {
   label: string;
   type?: string;
@@ -200,6 +206,7 @@ function Input({
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  minLength?: number;
 }) {
   return (
     <div className="space-y-2">
@@ -210,6 +217,7 @@ function Input({
         value={value}
         onChange={onChange}
         required={required}
+        minLength={minLength}
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
       />
     </div>

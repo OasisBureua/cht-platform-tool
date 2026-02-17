@@ -37,6 +37,7 @@ export class AuthController {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
     if (!password) return { error: 'Password is required.' };
+    if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');

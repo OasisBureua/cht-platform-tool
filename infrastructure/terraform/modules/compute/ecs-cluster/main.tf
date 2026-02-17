@@ -1,5 +1,9 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 resource "aws_ecs_cluster" "main" {
-  name = "${var.project}-${var.environment}-cluster"
+  name = "${local.prefix}-cluster"
 
   setting {
     name  = "containerInsights"
@@ -7,7 +11,7 @@ resource "aws_ecs_cluster" "main" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-cluster"
+    Name        = "${local.prefix}-cluster"
     Environment = var.environment
   }
 }
@@ -26,12 +30,12 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
 
 # CloudWatch Log Group for ECS
 resource "aws_cloudwatch_log_group" "ecs" {
-  name              = "/ecs/${var.project}-${var.environment}"
+  name              = "/ecs/${local.prefix}"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.cloudwatch_kms_key_arn
 
   tags = {
-    Name        = "${var.project}-${var.environment}-ecs-logs"
+    Name        = "${local.prefix}-ecs-logs"
     Environment = var.environment
   }
 }

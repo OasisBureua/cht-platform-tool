@@ -1,10 +1,11 @@
 locals {
-  is_prod = var.environment == "prod"
+  is_prod = var.environment == "prod" || var.environment == "platform"
+  prefix  = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
 }
 
 # Security Group for Backend
 resource "aws_security_group" "backend" {
-  name        = "${var.project}-${var.environment}-backend-sg"
+  name        = "${local.prefix}-backend-sg"
   description = "Security group for backend ECS tasks"
   vpc_id      = var.vpc_id
 
@@ -25,14 +26,14 @@ resource "aws_security_group" "backend" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-backend-sg"
+    Name        = "${local.prefix}-backend-sg"
     Environment = var.environment
   }
 }
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "backend" {
-  family                   = "${var.project}-${var.environment}-backend"
+  family                   = "${local.prefix}-backend"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = var.task_cpu
@@ -53,20 +54,32 @@ resource "aws_ecs_task_definition" "backend" {
         }
       ]
 
-      environment = [
-        {
-          name  = "NODE_ENV"
-          value = var.environment
-        },
-        {
-          name  = "PORT"
-          value = "3000"
-        },
-        {
-          name  = "AWS_REGION"
-          value = var.aws_region
-        }
-      ]
+      environment = concat(
+        [
+          {
+            name  = "NODE_ENV"
+            value = var.environment == "prod" || var.environment == "platform" ? "production" : var.environment
+          },
+          {
+            name  = "PORT"
+            value = "3000"
+          },
+          {
+            name  = "AWS_REGION"
+            value = var.aws_region
+          },
+          {
+            name  = "SESSION_TTL_SECONDS"
+            value = "1800"
+          }
+        ],
+        concat(
+          var.frontend_url != "" ? [{ name = "FRONTEND_URL", value = var.frontend_url }] : [],
+          var.sqs_email_queue_url != "" ? [{ name = "SQS_EMAIL_QUEUE_URL", value = var.sqs_email_queue_url }] : [],
+          var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : [],
+          var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : []
+        )
+      )
 
       secrets = [
         {
@@ -82,29 +95,29 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.redis_secret_arn}:port::"
         },
         {
-          name      = "STRIPE_SECRET_KEY"
-          valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
+          name      = "SUPABASE_URL"
+          valueFrom = "${var.app_secrets_arn}:supabase_url::"
         },
         {
-          name      = "AUTH0_DOMAIN"
-          valueFrom = "${var.app_secrets_arn}:auth0_domain::"
+          name      = "SUPABASE_ANON_KEY"
+          valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
         },
         {
-          name      = "AUTH0_CLIENT_ID"
-          valueFrom = "${var.app_secrets_arn}:auth0_client_id::"
+          name      = "YOUTUBE_API_KEY"
+          valueFrom = "${var.app_secrets_arn}:youtube_api_key::"
         },
         {
-          name      = "AUTH0_AUDIENCE"
-          valueFrom = "${var.app_secrets_arn}:auth0_audience::"
+          name      = "YOUTUBE_PLAYLIST_IDS"
+          valueFrom = "${var.app_secrets_arn}:youtube_playlist_ids::"
         }
       ]
 
-      environmentFiles = [
+      environmentFiles = var.sqs_queue_urls_env_file_arn != "" ? [
         {
           value = var.sqs_queue_urls_env_file_arn
           type  = "s3"
         }
-      ]
+      ] : []
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -116,24 +129,24 @@ resource "aws_ecs_task_definition" "backend" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+        command     = ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
-        startPeriod = 60
+        startPeriod = 90
       }
     }
   ])
 
   tags = {
-    Name        = "${var.project}-${var.environment}-backend-task"
+    Name        = "${local.prefix}-backend-task"
     Environment = var.environment
   }
 }
 
 # ECS Service
 resource "aws_ecs_service" "backend" {
-  name            = "${var.project}-${var.environment}-backend"
+  name            = "${local.prefix}-backend"
   cluster         = var.cluster_id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = var.desired_count
@@ -151,6 +164,9 @@ resource "aws_ecs_service" "backend" {
     container_port   = 3000
   }
 
+  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = 50
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
@@ -159,7 +175,7 @@ resource "aws_ecs_service" "backend" {
   enable_execute_command = true
 
   tags = {
-    Name        = "${var.project}-${var.environment}-backend-service"
+    Name        = "${local.prefix}-backend-service"
     Environment = var.environment
   }
 
@@ -176,7 +192,7 @@ resource "aws_appautoscaling_target" "backend" {
 }
 
 resource "aws_appautoscaling_policy" "backend_cpu" {
-  name               = "${var.project}-${var.environment}-backend-cpu-scaling"
+  name               = "${local.prefix}-backend-cpu-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.backend.resource_id
   scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
@@ -191,7 +207,7 @@ resource "aws_appautoscaling_policy" "backend_cpu" {
 }
 
 resource "aws_appautoscaling_policy" "backend_memory" {
-  name               = "${var.project}-${var.environment}-backend-memory-scaling"
+  name               = "${local.prefix}-backend-memory-scaling"
   policy_type        = "TargetTrackingScaling"
   resource_id        = aws_appautoscaling_target.backend.resource_id
   scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
@@ -207,7 +223,7 @@ resource "aws_appautoscaling_policy" "backend_memory" {
 
 resource "aws_appautoscaling_scheduled_action" "backend_scale_up" {
   count               = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
-  name                = "${var.project}-${var.environment}-backend-scale-up" 
+  name                = "${local.prefix}-backend-scale-up" 
   service_namespace   = "ecs"
   resource_id         = aws_appautoscaling_target.backend.resource_id
   scalable_dimension  = aws_appautoscaling_target.backend.scalable_dimension
@@ -221,7 +237,7 @@ resource "aws_appautoscaling_scheduled_action" "backend_scale_up" {
 
 resource "aws_appautoscaling_scheduled_action" "backend_scale_down" {
   count              = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
-  name               = "${var.project}-${var.environment}-backend-scale-down"
+  name               = "${local.prefix}-backend-scale-down"
   service_namespace  = "ecs"
   resource_id        = aws_appautoscaling_target.backend.resource_id
   scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension

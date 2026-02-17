@@ -20,10 +20,11 @@ function getThumbnail(item: CatalogItem): string {
 
 export default function Catalog() {
   const [query, setQuery] = useState('');
-  const { data: catalogItems = [], isLoading } = useQuery({
+  const { data: catalogItems = [], isLoading, isError, error } = useQuery({
     queryKey: ['catalog'],
     queryFn: catalogApi.getItems,
     staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 
   const items = catalogItems.length > 0 ? catalogItems : FALLBACK_ITEMS;
@@ -85,6 +86,11 @@ export default function Catalog() {
           {isLoading ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+            </div>
+          ) : isError ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+              <p className="text-gray-600 mb-2">Unable to load catalog. The API may be unavailable.</p>
+              <p className="text-sm text-gray-500">{(error as Error)?.message || 'Unknown error'}</p>
             </div>
           ) : (
             filtered.map((item) => (

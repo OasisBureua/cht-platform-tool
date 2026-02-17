@@ -9,22 +9,21 @@ export class QueueService {
   private queueUrls: Map<string, string>;
 
   constructor(private configService: ConfigService) {
-    // Initialize SQS client
+    // Initialize SQS client - use explicit credentials when set (local dev), else default chain (ECS task role)
     const region = this.configService.get<string>('aws.region') || 'us-east-1';
     const accessKeyId = this.configService.get<string>('aws.accessKeyId');
     const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
 
+    this.sqsClient = new SQSClient({
+      region,
+      ...(accessKeyId && secretAccessKey
+        ? { credentials: { accessKeyId, secretAccessKey } }
+        : {}),
+    });
     if (accessKeyId && secretAccessKey) {
-      this.sqsClient = new SQSClient({
-        region,
-        credentials: {
-          accessKeyId,
-          secretAccessKey,
-        },
-      });
-      this.logger.log('SQS client initialized');
+      this.logger.log('SQS client initialized (explicit credentials)');
     } else {
-      this.logger.warn('AWS credentials not configured - SQS disabled');
+      this.logger.log('SQS client initialized (default credential chain)');
     }
 
     // Map queue names to URLs

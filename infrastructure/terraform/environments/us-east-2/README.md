@@ -28,7 +28,7 @@ terraform apply disaster-recovery.tfplan
 # Update Route53 records in us-east-1 to point to us-east-2 resources
 
 # 5. Test
-curl https://api.communityhealth.media/health/ready
+curl https://testapp.communityhealth.media/health/ready
 ```
 
 ## Cost

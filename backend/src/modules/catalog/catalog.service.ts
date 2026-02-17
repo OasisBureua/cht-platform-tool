@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -37,9 +37,21 @@ interface YouTubePlaylistItemsResponse {
 }
 
 @Injectable()
-export class CatalogService {
+export class CatalogService implements OnModuleInit {
   private readonly logger = new Logger(CatalogService.name);
   private readonly youtubeBase = 'https://www.googleapis.com/youtube/v3';
+
+  onModuleInit() {
+    const apiKey = this.config.get<string>('youtube.apiKey');
+    const playlistIds = this.config.get<string[]>('youtube.playlistIds') || [];
+    if (apiKey && playlistIds.length > 0) {
+      this.logger.log(`YouTube catalog: configured with ${playlistIds.length} playlist(s)`);
+    } else {
+      this.logger.log(
+        `YouTube catalog: not configured (apiKey=${!!apiKey}, playlists=${playlistIds.length}). Using DB programs.`,
+      );
+    }
+  }
 
   constructor(
     private config: ConfigService,
@@ -54,15 +66,25 @@ export class CatalogService {
     const apiKey = this.config.get<string>('youtube.apiKey');
     const playlistIds = this.config.get<string[]>('youtube.playlistIds') || [];
 
-    if (apiKey && playlistIds.length > 0) {
-      try {
-        return await this.fetchFromYouTube(apiKey, playlistIds);
-      } catch (err) {
-        this.logger.warn(`YouTube API failed: ${err}. Falling back to programs.`);
-      }
+    if (!apiKey || playlistIds.length === 0) {
+      this.logger.debug(
+        `YouTube not configured: apiKey=${!!apiKey}, playlistCount=${playlistIds.length}. Using programs fallback.`,
+      );
+      return this.fetchFromPrograms();
     }
 
-    return this.fetchFromPrograms();
+    try {
+      const items = await this.fetchFromYouTube(apiKey, playlistIds);
+      this.logger.log(`YouTube catalog: fetched ${items.length} playlists`);
+      return items;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      this.logger.warn(
+        `YouTube API failed (status=${status ?? 'N/A'}): ${msg}. Falling back to programs.`,
+      );
+      return this.fetchFromPrograms();
+    }
   }
 
   private async fetchFromYouTube(apiKey: string, playlistIds: string[]): Promise<CatalogItem[]> {
@@ -94,32 +116,45 @@ export class CatalogService {
   }
 
   private async getPlaylistDetails(apiKey: string, playlistId: string) {
-    const { data } = await firstValueFrom(
-      this.http.get<YouTubePlaylistResponse>(`${this.youtubeBase}/playlists`, {
-        params: {
-          part: 'snippet,contentDetails',
-          id: playlistId,
-          key: apiKey,
-        },
-      }),
-    );
-    const item = data?.items?.[0];
-    if (!item) throw new Error(`Playlist ${playlistId} not found`);
-    return item;
+    try {
+      const { data } = await firstValueFrom(
+        this.http.get<YouTubePlaylistResponse>(`${this.youtubeBase}/playlists`, {
+          params: {
+            part: 'snippet,contentDetails',
+            id: playlistId,
+            key: apiKey,
+          },
+        }),
+      );
+      const item = data?.items?.[0];
+      if (!item) throw new Error(`Playlist ${playlistId} not found`);
+      return item;
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number; data?: { error?: { message?: string; code?: number } } } };
+      const msg = ax?.response?.data?.error?.message ?? (err instanceof Error ? err.message : String(err));
+      const code = ax?.response?.data?.error?.code ?? ax?.response?.status;
+      throw new Error(`YouTube playlists API: ${msg} (code=${code})`);
+    }
   }
 
   private async getPlaylistVideoTitles(apiKey: string, playlistId: string): Promise<string[]> {
-    const { data } = await firstValueFrom(
-      this.http.get<YouTubePlaylistItemsResponse>(`${this.youtubeBase}/playlistItems`, {
-        params: {
-          part: 'snippet',
-          playlistId,
-          maxResults: 10,
-          key: apiKey,
-        },
-      }),
-    );
-    return (data?.items || []).map((i) => i.snippet?.title || 'Video').filter(Boolean);
+    try {
+      const { data } = await firstValueFrom(
+        this.http.get<YouTubePlaylistItemsResponse>(`${this.youtubeBase}/playlistItems`, {
+          params: {
+            part: 'snippet',
+            playlistId,
+            maxResults: 10,
+            key: apiKey,
+          },
+        }),
+      );
+      return (data?.items || []).map((i) => i.snippet?.title || 'Video').filter(Boolean);
+    } catch (err: unknown) {
+      const ax = err as { response?: { status?: number; data?: { error?: { message?: string } } } };
+      const msg = ax?.response?.data?.error?.message ?? (err instanceof Error ? err.message : String(err));
+      throw new Error(`YouTube playlistItems API: ${msg}`);
+    }
   }
 
   /**

@@ -1,11 +1,26 @@
-# Database credentials
+# =============================================================================
+# Secrets Manager - Master Credentials
+# =============================================================================
+# All master credentials flow through Secrets Manager:
+# - Database: RDS username, password, endpoint, connection string (from module.rds)
+# - Redis: ElastiCache host, port (from module.elasticache)
+# - App: Stripe, Auth0, HubSpot API keys (from tfvars / TF_VAR_*)
+# ECS tasks pull these via valueFrom in container_definitions.
+# =============================================================================
+
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
+# Database credentials (master from RDS)
 resource "aws_secretsmanager_secret" "database" {
-  name        = "${var.project}-${var.environment}-database-credentials"
-  description = "Database credentials for ${var.project} ${var.environment}"
-  kms_key_id  = var.kms_key_id
+  name                    = "${local.prefix}-database-credentials"
+  description             = "Database credentials for ${var.project} ${var.environment}"
+  kms_key_id              = var.kms_key_id
+  recovery_window_in_days = 30
 
   tags = {
-    Name        = "${var.project}-${var.environment}-database-credentials"
+    Name        = "${local.prefix}-database-credentials"
     Environment = var.environment
   }
 }
@@ -22,14 +37,15 @@ resource "aws_secretsmanager_secret_version" "database" {
   })
 }
 
-# Redis connection
+# Redis connection (master from ElastiCache)
 resource "aws_secretsmanager_secret" "redis" {
-  name        = "${var.project}-${var.environment}-redis-connection"
-  description = "Redis connection details for ${var.project} ${var.environment}"
-  kms_key_id  = var.kms_key_id
+  name                    = "${local.prefix}-redis-connection"
+  description             = "Redis connection details for ${var.project} ${var.environment}"
+  kms_key_id              = var.kms_key_id
+  recovery_window_in_days = 30
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis-connection"
+    Name        = "${local.prefix}-redis-connection"
     Environment = var.environment
   }
 }
@@ -42,14 +58,15 @@ resource "aws_secretsmanager_secret_version" "redis" {
   })
 }
 
-# Application secrets (API keys, etc.)
+# Application secrets (API keys, etc. - master from tfvars)
 resource "aws_secretsmanager_secret" "app_secrets" {
-  name        = "${var.project}-${var.environment}-app-secrets"
-  description = "Application secrets for ${var.project} ${var.environment}"
-  kms_key_id  = var.kms_key_id
+  name                    = "${local.prefix}-app-secrets"
+  description             = "Application secrets for ${var.project} ${var.environment}"
+  kms_key_id              = var.kms_key_id
+  recovery_window_in_days = 30
 
   tags = {
-    Name        = "${var.project}-${var.environment}-app-secrets"
+    Name        = "${local.prefix}-app-secrets"
     Environment = var.environment
   }
 }
@@ -57,13 +74,9 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    stripe_secret_key       = var.stripe_secret_key
-    stripe_publishable_key  = var.stripe_publishable_key
-    stripe_webhook_secret   = var.stripe_webhook_secret
-    hubspot_smtp_user       = var.hubspot_smtp_user
-    hubspot_smtp_password   = var.hubspot_smtp_password
-    auth0_domain            = var.auth0_domain
-    auth0_client_id         = var.auth0_client_id
-    auth0_audience          = var.auth0_audience
+    supabase_url         = var.supabase_url
+    supabase_anon_key    = var.supabase_anon_key
+    youtube_api_key      = var.youtube_api_key
+    youtube_playlist_ids = var.youtube_playlist_ids
   })
 }

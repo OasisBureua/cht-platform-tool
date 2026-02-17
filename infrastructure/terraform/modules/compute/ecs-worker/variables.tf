@@ -69,6 +69,30 @@ variable "sqs_queue_urls_env_file_arn" {
   default     = ""
 }
 
+variable "sqs_email_queue_url" {
+  description = "SQS email queue URL"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_payment_queue_url" {
+  description = "SQS payment queue URL"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_cme_queue_url" {
+  description = "SQS CME queue URL"
+  type        = string
+  default     = ""
+}
+
+variable "security_group_ids" {
+  description = "Security group IDs for worker tasks (optional - creates default if not provided)"
+  type        = list(string)
+  default     = []
+}
+
 variable "primary_queue_name" {
   description = "Primary SQS queue name for scaling"
   type        = string

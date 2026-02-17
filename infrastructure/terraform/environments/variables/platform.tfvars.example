@@ -1,0 +1,55 @@
+# CHT Platform - Single Account (us-east-1)
+# Copy to platform.tfvars and fill in secrets.
+# Or use: export TF_VAR_supabase_anon_key=... TF_VAR_youtube_api_key=... TF_VAR_youtube_playlist_ids=...
+# platform.tfvars is gitignored to avoid committing API keys.
+
+project     = "cht-platform"
+environment = "platform"
+
+# Docker Images (update after building/pushing)
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.0"
+
+# Database (600 users, non-simultaneous)
+rds_instance_class      = "db.t3.small"
+rds_allocated_storage   = 20
+rds_multi_az            = false
+rds_backup_retention    = 7
+
+# Cache (600 users, non-simultaneous)
+redis_node_type         = "cache.t3.small"
+redis_num_nodes         = 1
+
+# Compute (scaled up for higher load)
+backend_task_cpu        = 512
+backend_task_memory     = 1024
+backend_desired_count   = 2
+backend_min_capacity    = 2
+backend_max_capacity    = 6
+
+worker_task_cpu         = 512
+worker_task_memory      = 1024
+worker_desired_count    = 1
+worker_min_capacity     = 1
+worker_max_capacity     = 10
+
+# SSL Certificates (testapp - issued)
+acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
+cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
+
+# Domain (testapp.communityhealth.media)
+domain_name = "testapp.communityhealth.media"
+
+# Application secrets - SET VIA platform.tfvars OR TF_VAR_* (never commit real values)
+supabase_url      = "https://mediahub.communityhealth.media"
+# Get Supabase anon key (JWT) from MediaHub/CHM team
+supabase_anon_key = ""
+
+# YouTube Data API v3 - get key from Google Cloud Console
+youtube_api_key = ""
+
+# Comma-separated playlist IDs, or run: node scripts/load-youtube-playlists.js data/YT\ Playlist\ IDs\ -\ Sheet1.csv
+youtube_playlist_ids = ""
+
+# Optional: SNS for alerts
+# sns_topic_arn = ""

@@ -1,33 +1,25 @@
 # Manages DNS records for the CHT Platform with manual failover support
 
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 # Create subdomain hosted zone for platform
 resource "aws_route53_zone" "platform" {
   name = var.subdomain_zone
 
   tags = {
-    Name        = "${var.project}-${var.environment}-platform-zone"
+    Name        = "${local.prefix}-platform-zone"
     Environment = var.environment
     Purpose     = "Platform subdomain delegation"
   }
 }
 
-# API DNS Record - Points to primary ALB by default
-resource "aws_route53_record" "api" {
+# Apex DNS Record - Single domain testapp.communityhealth.media -> CloudFront
+# Endpoints (e.g. /api/*) follow under this domain via CloudFront path-based routing
+resource "aws_route53_record" "apex" {
   zone_id = aws_route53_zone.platform.zone_id
-  name    = "api"
-  type    = "A"
-
-  alias {
-    name                   = var.primary_alb_dns
-    zone_id                = var.primary_alb_zone_id
-    evaluate_target_health = true
-  }
-}
-
-# App DNS Record - Points to primary CloudFront by default
-resource "aws_route53_record" "app" {
-  zone_id = aws_route53_zone.platform.zone_id
-  name    = "app"
+  name    = ""
   type    = "A"
 
   alias {
@@ -38,23 +30,24 @@ resource "aws_route53_record" "app" {
 }
 
 # Health check for primary region
+# Uses /health (instant) not /health/ready - Route53 timeout is ~2s, DB/Redis checks can exceed that
 resource "aws_route53_health_check" "primary" {
   fqdn              = var.primary_alb_dns
   port              = 443
   type              = "HTTPS"
-  resource_path     = "/health/ready"
+  resource_path     = "/health"
   failure_threshold = 3
   request_interval  = 30
 
   tags = {
-    Name        = "${var.project}-${var.environment}-primary-health"
+    Name        = "${local.prefix}-primary-health"
     Environment = var.environment
   }
 }
 
 # CloudWatch alarm for health check failure
 resource "aws_cloudwatch_metric_alarm" "primary_down" {
-  alarm_name          = "${var.project}-${var.environment}-primary-region-down"
+  alarm_name          = "${local.prefix}-primary-region-down"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
   metric_name         = "HealthCheckStatus"

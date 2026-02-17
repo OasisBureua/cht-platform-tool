@@ -59,54 +59,24 @@ variable "redis_port" {
 }
 
 # Application secrets
-variable "stripe_secret_key" {
-  description = "Stripe secret key"
+variable "supabase_url" {
+  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
+  type        = string
+}
+
+variable "supabase_anon_key" {
+  description = "Supabase anon key - valid JWT (set via platform.tfvars or TF_VAR_supabase_anon_key)"
   type        = string
   sensitive   = true
-  default     = ""
 }
 
-variable "stripe_publishable_key" {
-  description = "Stripe publishable key"
-  type        = string
-  default     = ""
-}
-
-variable "stripe_webhook_secret" {
-  description = "Stripe webhook secret"
+variable "youtube_api_key" {
+  description = "YouTube Data API v3 key for catalog playlists (set via platform.tfvars or TF_VAR_youtube_api_key)"
   type        = string
   sensitive   = true
-  default     = ""
 }
 
-variable "hubspot_smtp_user" {
-  description = "HubSpot SMTP username (from transactional email token)"
+variable "youtube_playlist_ids" {
+  description = "Comma-separated YouTube playlist IDs for catalog (set via platform.tfvars or TF_VAR_youtube_playlist_ids)"
   type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "hubspot_smtp_password" {
-  description = "HubSpot SMTP password (from transactional email token)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "auth0_domain" {
-  description = "Auth0 domain"
-  type        = string
-  default     = ""
-}
-
-variable "auth0_client_id" {
-  description = "Auth0 client ID"
-  type        = string
-  default     = ""
-}
-
-variable "auth0_audience" {
-  description = "Auth0 audience"
-  type        = string
-  default     = ""
 }

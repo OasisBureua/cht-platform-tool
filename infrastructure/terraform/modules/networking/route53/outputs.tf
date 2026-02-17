@@ -8,14 +8,19 @@ output "name_servers" {
   value       = aws_route53_zone.platform.name_servers
 }
 
+output "root_fqdn" {
+  description = "Root/apex fully qualified domain name (single domain)"
+  value       = var.subdomain_zone
+}
+
 output "api_fqdn" {
-  description = "API fully qualified domain name"
-  value       = "api.${var.subdomain_zone}"
+  description = "API FQDN (path-based under root: /api/*)"
+  value       = var.subdomain_zone
 }
 
 output "app_fqdn" {
-  description = "App fully qualified domain name"
-  value       = "app.${var.subdomain_zone}"
+  description = "App FQDN (same as root)"
+  value       = var.subdomain_zone
 }
 
 output "health_check_id" {

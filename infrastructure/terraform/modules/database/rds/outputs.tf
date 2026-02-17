@@ -36,8 +36,8 @@ output "db_password" {
 }
 
 output "db_connection_string" {
-  description = "Database connection string"
-  value       = "postgresql://${aws_db_instance.main.username}:${random_password.db_password.result}@${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}"
+  description = "Database connection string (password URL-encoded for special chars)"
+  value       = "postgresql://${aws_db_instance.main.username}:${urlencode(random_password.db_password.result)}@${aws_db_instance.main.endpoint}/${aws_db_instance.main.db_name}"
   sensitive   = true
 }
 

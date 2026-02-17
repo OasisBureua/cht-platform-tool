@@ -1,95 +1,99 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 # KMS Key for RDS Database Encryption
 resource "aws_kms_key" "rds" {
-    description             = "${var.project}-${var.environment} RDS encryption key"
+    description             = "${local.prefix} RDS encryption key"
     deletion_window_in_days = var.deletion_window_in_days
     enable_key_rotation     = true
 
     tags = {
-        Name        = "${var.project}-${var.environment}-rds-key"
+        Name        = "${local.prefix}-rds-key"
         Environment = var.environment
         Service     = "rds"
     }
 }
 
 resource "aws_kms_alias" "rds" {
-    name           = "alias/${var.project}-${var.environment}-rds"
+    name           = "alias/${local.prefix}-rds"
     target_key_id  = aws_kms_key.rds.id
 }
 
 # KMS Key for Elasticache Redis Encryption
 resource "aws_kms_key" "elasticache" {
-    description             = "${var.project}-${var.environment} Elasticache encryption key"
+    description             = "${local.prefix} Elasticache encryption key"
     deletion_window_in_days = var.deletion_window_in_days
     enable_key_rotation     = true
 
     tags = {
-        Name        = "${var.project}-${var.environment}-elasticache-key"
+        Name        = "${local.prefix}-elasticache-key"
         Environment = var.environment
         Service     = "elasticache"
     }
 }
 
 resource "aws_kms_alias" "elasticache" {
-  name          = "alias/${var.project}-${var.environment}-elasticache"
+  name          = "alias/${local.prefix}-elasticache"
   target_key_id = aws_kms_key.elasticache.key_id
 }
 
 resource "aws_kms_key" "s3" {
-   description             = "${var.project}-${var.environment} S3 encryption key"
+   description             = "${local.prefix} S3 encryption key"
    deletion_window_in_days = var.deletion_window_in_days
    enable_key_rotation     = true
 
    tags = {
-    Name        = "${var.project}-${var.environment}-s3-key"
+    Name        = "${local.prefix}-s3-key"
     Environment = var.environment
     Service     = "s3"
   } 
 }
 
 resource "aws_kms_alias" "s3" {
-    name          = "alias/${var.project}-${var.environment}-s3"
+    name          = "alias/${local.prefix}-s3"
     target_key_id = aws_kms_key.s3.key_id
 }
 
 # KMS Key for Secrets Manager
 resource "aws_kms_key" "secrets" {
-  description             = "${var.project}-${var.environment} Secrets Manager encryption key"
+  description             = "${local.prefix} Secrets Manager encryption key"
   deletion_window_in_days = var.deletion_window_in_days
   enable_key_rotation     = true
 
   tags = {
-    Name        = "${var.project}-${var.environment}-secrets-key"
+    Name        = "${local.prefix}-secrets-key"
     Environment = var.environment
     Service     = "secrets-manager"
   }
 }
 
 resource "aws_kms_alias" "secrets" {
-  name          = "alias/${var.project}-${var.environment}-secrets"
+  name          = "alias/${local.prefix}-secrets"
   target_key_id = aws_kms_key.secrets.key_id
 }
 
 # KMS Key for SQS Queue Encryption
 resource "aws_kms_key" "sqs" {
-  description             = "${var.project}-${var.environment} SQS encryption key"
+  description             = "${local.prefix} SQS encryption key"
   deletion_window_in_days = var.deletion_window_in_days
   enable_key_rotation     = true
 
   tags = {
-    Name        = "${var.project}-${var.environment}-sqs-key"
+    Name        = "${local.prefix}-sqs-key"
     Environment = var.environment
     Service     = "sqs"
   }
 }
 
 resource "aws_kms_alias" "sqs" {
-  name          = "alias/${var.project}-${var.environment}-sqs"
+  name          = "alias/${local.prefix}-sqs"
   target_key_id = aws_kms_key.sqs.key_id
 }
 
 # KMS Key for CloudWatch Logs Encryption
 resource "aws_kms_key" "cloudwatch" {
-  description             = "${var.project}-${var.environment} CloudWatch Logs encryption key"
+  description             = "${local.prefix} CloudWatch Logs encryption key"
   deletion_window_in_days = var.deletion_window_in_days
   enable_key_rotation     = true
 
@@ -130,13 +134,13 @@ resource "aws_kms_key" "cloudwatch" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-cloudwatch-key"
+    Name        = "${local.prefix}-cloudwatch-key"
     Environment = var.environment
     Service     = "cloudwatch"
   }
 }
 
 resource "aws_kms_alias" "cloudwatch" {
-  name          = "alias/${var.project}-${var.environment}-cloudwatch"
+  name          = "alias/${local.prefix}-cloudwatch"
   target_key_id = aws_kms_key.cloudwatch.key_id
 }

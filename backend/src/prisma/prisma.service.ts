@@ -15,8 +15,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     this.logger.log('Connecting to database...');
-    await this.$connect();
-    this.logger.log('Database connected successfully');
+    // Don't block startup - ECS health check needs /health within ~30s.
+    // Prisma connects in background; first DB request may be slow.
+    this.$connect()
+      .then(() => this.logger.log('Database connected successfully'))
+      .catch((err) => this.logger.error('Database connection failed:', err));
   }
 
   async onModuleDestroy() {

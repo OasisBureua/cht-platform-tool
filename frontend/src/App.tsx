@@ -75,7 +75,8 @@ function App() {
               PUBLIC ROUTES
               ======================= */}
           <Route element={<PublicLayout />}>
-            <Route path="/" element={<Home />} />
+            <Route path="/" element={<Navigate to="/home" replace />} />
+            <Route path="/home" element={<Home />} />
             <Route path="/catalog" element={<Catalog />} />
             <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
 
@@ -147,7 +148,6 @@ function App() {
           <Route path="/earnings" element={<Navigate to="/app/earnings" replace />} />
           <Route path="/payments" element={<Navigate to="/app/earnings" replace />} />
           <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
-          <Route path="/home" element={<Navigate to="/app/home" replace />} />
 
           {/* Old legacy paths you mentioned */}
           <Route path="/programs" element={<Navigate to="/app/webinars" replace />} />
