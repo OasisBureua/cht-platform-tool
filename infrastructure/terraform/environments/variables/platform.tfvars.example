@@ -51,5 +51,11 @@ youtube_api_key = ""
 # Comma-separated playlist IDs, or run: node scripts/load-youtube-playlists.js data/YT\ Playlist\ IDs\ -\ Sheet1.csv
 youtube_playlist_ids = ""
 
+# Zoom (Server-to-Server OAuth for webinars). Create app at marketplace.zoom.us
+# Scopes: webinar:read:admin, webinar:read
+# zoom_account_id = ""
+# zoom_client_id = ""
+# zoom_client_secret = ""
+
 # Optional: SNS for alerts
 # sns_topic_arn = ""

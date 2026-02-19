@@ -78,5 +78,8 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     supabase_anon_key    = var.supabase_anon_key
     youtube_api_key      = var.youtube_api_key
     youtube_playlist_ids = var.youtube_playlist_ids
+    zoom_account_id      = var.zoom_account_id
+    zoom_client_id       = var.zoom_client_id
+    zoom_client_secret   = var.zoom_client_secret
   })
 }

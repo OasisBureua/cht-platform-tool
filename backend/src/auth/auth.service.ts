@@ -50,6 +50,7 @@ export class AuthService {
     email?: string,
     firstName?: string,
     lastName?: string,
+    npiNumber?: string | null,
   ): Promise<AuthUser | null> {
     const cacheKey = this.redis.keys.authUser(authId);
     const cached = await this.redis.get<AuthUserCache>(cacheKey);
@@ -72,6 +73,7 @@ export class AuthService {
           email: email || `${authId}@auth0.user`,
           firstName: firstName || 'User',
           lastName: lastName || '',
+          npiNumber: npiNumber || undefined,
         },
       });
     }

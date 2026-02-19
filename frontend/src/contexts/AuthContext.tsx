@@ -27,7 +27,7 @@ interface AuthContextValue {
   signUp: (
     email: string,
     password: string,
-    options?: { fullName?: string; profession?: string },
+    options?: { firstName?: string; lastName?: string; profession?: string; npiNumber?: string },
   ) => Promise<{ error?: AuthError }>;
   resetPasswordForEmail: (email: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
@@ -196,7 +196,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     async (
       email: string,
       password: string,
-      options?: { fullName?: string; profession?: string },
+      options?: { firstName?: string; lastName?: string; profession?: string; npiNumber?: string },
     ) => {
       const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/signup`, {
         method: 'POST',
@@ -204,8 +204,10 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({
           email: (email || '').trim(),
           password,
-          fullName: options?.fullName,
+          firstName: options?.firstName,
+          lastName: options?.lastName,
           profession: options?.profession,
+          npiNumber: options?.npiNumber,
         }),
       });
       const data = await res.json().catch(() => ({}));

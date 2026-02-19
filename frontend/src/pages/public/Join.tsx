@@ -3,12 +3,24 @@ import { Link, Navigate } from 'react-router-dom';
 import { Award, DollarSign, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
+const PROFESSION_OPTIONS = [
+  { value: '', label: 'Select your profession' },
+  { value: 'Physician', label: 'Physician (MD/DO)' },
+  { value: 'Nurse Practitioner', label: 'Nurse Practitioner (NP)' },
+  { value: 'Physician Assistant', label: 'Physician Assistant (PA)' },
+  { value: 'Pharmacist', label: 'Pharmacist' },
+  { value: 'Nurse', label: 'Nurse (RN/LPN)' },
+  { value: 'Other HCP', label: 'Other Healthcare Professional' },
+];
+
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
-  const [fullName, setFullName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [profession, setProfession] = useState('');
+  const [npiNumber, setNpiNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -24,8 +36,13 @@ export default function Join() {
       setError('Password must be at least 8 characters.');
       return;
     }
+    const npi = npiNumber.replace(/\D/g, '');
+    if (npi.length !== 10) {
+      setError('NPI number must be 10 digits.');
+      return;
+    }
     setSubmitting(true);
-    const { error: err } = await signUp(email, password, { fullName, profession });
+    const { error: err } = await signUp(email, password, { firstName, lastName, profession, npiNumber: npi });
     setSubmitting(false);
     if (err) {
       setError(err.message || 'Sign up failed. Please try again.');
@@ -109,10 +126,18 @@ export default function Join() {
               </div>
             )}
             <Input
-              label="Full name"
-              placeholder="Jane Doe"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              label="First name"
+              placeholder="Jane"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+            />
+            <Input
+              label="Last name"
+              placeholder="Doe"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
             />
             <Input
               label="Email address"
@@ -131,11 +156,21 @@ export default function Join() {
               required
               minLength={8}
             />
-            <Input
+            <Select
               label="Profession"
-              placeholder="Physician, NP, PA, etc."
               value={profession}
               onChange={(e) => setProfession(e.target.value)}
+              options={PROFESSION_OPTIONS}
+              required
+            />
+            <Input
+              label="NPI number"
+              type="text"
+              placeholder="10-digit National Provider Identifier"
+              value={npiNumber}
+              onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              required
+              maxLength={10}
             />
 
             <button
@@ -199,6 +234,7 @@ function Input({
   onChange,
   required,
   minLength,
+  maxLength,
 }: {
   label: string;
   type?: string;
@@ -207,6 +243,7 @@ function Input({
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
   minLength?: number;
+  maxLength?: number;
 }) {
   return (
     <div className="space-y-2">
@@ -218,8 +255,41 @@ function Input({
         onChange={onChange}
         required={required}
         minLength={minLength}
+        maxLength={maxLength}
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
       />
+    </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  options: { value: string; label: string }[];
+  required?: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <label className="text-sm font-semibold text-gray-900">{label}</label>
+      <select
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

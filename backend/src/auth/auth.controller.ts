@@ -31,13 +31,18 @@ export class AuthController {
   async signup(
     @Body('email') email: string,
     @Body('password') password: string,
-    @Body('fullName') fullName?: string,
+    @Body('firstName') firstName?: string,
+    @Body('lastName') lastName?: string,
     @Body('profession') profession?: string,
+    @Body('npiNumber') npiNumber?: string,
   ): Promise<{ error?: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
     if (!password) return { error: 'Password is required.' };
     if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+
+    const npi = (npiNumber || '').replace(/\D/g, '');
+    if (npi.length !== 10) return { error: 'NPI number must be 10 digits.' };
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
@@ -57,8 +62,11 @@ export class AuthController {
         email: emailStr,
         password,
         data: {
-          full_name: fullName,
+          first_name: (firstName || '').trim(),
+          last_name: (lastName || '').trim(),
+          full_name: [firstName, lastName].map((s) => (s || '').trim()).filter(Boolean).join(' '),
           profession,
+          npi_number: npi,
         },
       }),
     });
@@ -117,11 +125,17 @@ export class AuthController {
       const authId = data?.user?.id;
       if (!authId) return { error: 'Login failed.' };
 
+      const metadata = data.user?.user_metadata || {};
+      const firstName = metadata.first_name || 'User';
+      const lastName = metadata.last_name || '';
+      const npiNumber = metadata.npi_number || null;
+
       const user = await this.authService.findOrCreateByAuthId(
         authId,
         data.user?.email,
-        data.user?.user_metadata?.first_name || data.user?.user_metadata?.full_name,
-        data.user?.user_metadata?.last_name,
+        firstName,
+        lastName,
+        npiNumber,
       );
       if (!user) return { error: 'User not found.' };
 

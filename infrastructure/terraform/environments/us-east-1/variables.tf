@@ -151,6 +151,28 @@ variable "youtube_playlist_ids" {
   type        = string
 }
 
+# Zoom (Server-to-Server OAuth for webinars)
+variable "zoom_account_id" {
+  description = "Zoom Account ID (from Server-to-Server OAuth app at marketplace.zoom.us)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_client_id" {
+  description = "Zoom OAuth Client ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_client_secret" {
+  description = "Zoom OAuth Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # SQS queue URLs (optional - backend/worker use module.sqs outputs)
 variable "sqs_email_queue_url" {
   description = "SQS email queue URL (unused - module.sqs used)"

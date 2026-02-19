@@ -109,6 +109,18 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "YOUTUBE_PLAYLIST_IDS"
           valueFrom = "${var.app_secrets_arn}:youtube_playlist_ids::"
+        },
+        {
+          name      = "ZOOM_ACCOUNT_ID"
+          valueFrom = "${var.app_secrets_arn}:zoom_account_id::"
+        },
+        {
+          name      = "ZOOM_CLIENT_ID"
+          valueFrom = "${var.app_secrets_arn}:zoom_client_id::"
+        },
+        {
+          name      = "ZOOM_CLIENT_SECRET"
+          valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
         }
       ]
 

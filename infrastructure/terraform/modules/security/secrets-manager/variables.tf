@@ -80,3 +80,25 @@ variable "youtube_playlist_ids" {
   description = "Comma-separated YouTube playlist IDs for catalog (set via platform.tfvars or TF_VAR_youtube_playlist_ids)"
   type        = string
 }
+
+# Zoom (Server-to-Server OAuth for webinars)
+variable "zoom_account_id" {
+  description = "Zoom Account ID (from Server-to-Server OAuth app at marketplace.zoom.us)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_client_id" {
+  description = "Zoom OAuth Client ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_client_secret" {
+  description = "Zoom OAuth Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
