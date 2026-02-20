@@ -7,7 +7,7 @@ export default function Contact() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto max-w-7xl px-6 py-12 md:py-16 space-y-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16 space-y-10">
         {/* Header */}
         <header className="max-w-3xl space-y-3">
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">

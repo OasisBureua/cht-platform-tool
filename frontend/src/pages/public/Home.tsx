@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   Search,
   ChevronLeft,
@@ -14,7 +15,9 @@ import {
   Video,
   Clock,
   LayoutGrid,
+  Loader2,
 } from 'lucide-react';
+import { catalogApi, type CatalogItem } from '../../api/catalog';
 
 const resourceImages: Record<string, string> = {
   webinars: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#1e3a5f"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Webinars</text></svg>'),
@@ -38,6 +41,8 @@ type Treatment = {
   title: string;
   imageUrl: string;
   slug: string;
+  videoNames: string[];
+  playlistUrl: string;
 };
 
 type Resource = {
@@ -52,24 +57,96 @@ function getMiddleIndex(length: number) {
   return length > 0 ? Math.floor(length / 2) : 0;
 }
 
+function shuffleArray<T>(arr: T[]): T[] {
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function catalogToTreatment(p: CatalogItem): Treatment {
+  const thumb = p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist';
+  return {
+    id: p.id,
+    title: p.title,
+    imageUrl: thumb,
+    slug: p.id,
+    videoNames: p.videoNames || [],
+    playlistUrl: `/catalog/playlist/${p.id}`,
+  };
+}
+
+const FALLBACK_HER2: Treatment[] = [
+  { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+];
+
+const FALLBACK_HR: Treatment[] = [
+  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+];
+
 export default function Home() {
-  const featuredVideos: FeaturedVideo[] = [
-    { id: 'f1', title: 'Featured Video 1', imageUrl: 'https://picsum.photos/seed/cht-video1/600/400' },
-    { id: 'f2', title: 'Featured Video 2', imageUrl: 'https://picsum.photos/seed/cht-video2/600/400' },
-    { id: 'f3', title: 'Featured Video 3', imageUrl: 'https://picsum.photos/seed/cht-video3/600/400' },
-  ];
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: ['catalog', 'playlists'],
+    queryFn: catalogApi.getPlaylists,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const biomarkerPlaylists: Treatment[] = [
-    { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80' },
-    { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80' },
-    { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80' },
-  ];
+  const { data: clipsData } = useQuery({
+    queryKey: ['catalog', 'clips', 'featured'],
+    queryFn: () => catalogApi.getClips({ limit: 50 }),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const hrPlusPlaylists: Treatment[] = [
-    { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80' },
-    { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80' },
-    { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80' },
-  ];
+  const biomarkerPlaylists = useMemo(() => {
+    if (playlists.length === 0) return FALLBACK_HER2;
+    const her2 = playlists.filter(
+      (p) => /HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
+    );
+    return her2.length > 0 ? her2.map(catalogToTreatment) : FALLBACK_HER2;
+  }, [playlists]);
+
+  const hrPlusPlaylists = useMemo(() => {
+    if (playlists.length === 0) return FALLBACK_HR;
+    const hrOrTnbc = playlists.filter(
+      (p) => /HR\+|hormone|TNBC|mTNBC|CDK4|endocrine|triple.?negative/i.test(p.title) &&
+        !/HER2|her2|DESTINY-Breast/i.test(p.title)
+    );
+    if (hrOrTnbc.length > 0) return hrOrTnbc.map(catalogToTreatment);
+    const nonHer2 = playlists.filter(
+      (p) => !/HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
+    );
+    return nonHer2.length > 0 ? nonHer2.map(catalogToTreatment) : FALLBACK_HR;
+  }, [playlists]);
+
+  const featuredVideos: FeaturedVideo[] = useMemo(() => {
+    const clips = clipsData?.items || [];
+    if (clips.length > 0) {
+      const shuffled = shuffleArray(clips);
+      return shuffled.slice(0, 6).map((c) => {
+        let img = c.thumbnail_url;
+        if (!img && c.youtube_url) {
+          const m = c.youtube_url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
+          if (m) img = `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
+        }
+        return {
+          id: c.id,
+          title: c.title,
+          imageUrl: img || 'https://picsum.photos/seed/cht-video/600/400',
+        };
+      });
+    }
+    return [
+      { id: 'f1', title: 'Featured Video 1', imageUrl: 'https://picsum.photos/seed/cht-video1/600/400' },
+      { id: 'f2', title: 'Featured Video 2', imageUrl: 'https://picsum.photos/seed/cht-video2/600/400' },
+      { id: 'f3', title: 'Featured Video 3', imageUrl: 'https://picsum.photos/seed/cht-video3/600/400' },
+    ];
+  }, [clipsData?.items]);
 
   const midVideo = getMiddleIndex(featuredVideos.length);
   const midPlaylist = getMiddleIndex(biomarkerPlaylists.length);
@@ -166,7 +243,7 @@ export default function Home() {
               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                 <button
                   type="button"
-                  onClick={() => navigate(`/watch/${expandedVideo.id}`)}
+                  onClick={() => navigate(expandedVideo.id.startsWith('f') ? '/watch' : `/catalog/clip/${expandedVideo.id}`)}
                   className="h-16 w-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-900 shadow-lg transition-colors"
                   aria-label="Play video"
                 >
@@ -354,6 +431,11 @@ export default function Home() {
             <p className="text-lg md:text-xl font-medium text-gray-900">HER2+</p>
           </div>
           <div className="relative">
+            {playlistsLoading && playlists.length === 0 ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+              </div>
+            ) : (
             <div
               ref={treatmentScrollRef}
               onScroll={() => {
@@ -379,21 +461,23 @@ export default function Home() {
                   data-treatment-card
                   className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm flex flex-col"
                 >
-                  <div className="aspect-video w-full bg-gray-200 overflow-hidden">
-                    <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" />
-                  </div>
+                  <Link to={t.playlistUrl} className="aspect-video w-full bg-gray-200 overflow-hidden block">
+                    <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                  </Link>
                   <div className="p-5 flex flex-col flex-1">
-                    <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-3">{t.title}</h4>
+                    <Link to={t.playlistUrl} className="block mb-3">
+                      <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline">{t.title}</h4>
+                    </Link>
                     <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
-                      {['Video Name', 'Video Name', 'Video Name', 'Video Name'].map((label, i) => (
+                      {(t.videoNames.length > 0 ? t.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((label, i) => (
                         <li key={i} className="flex items-center gap-2">
                           <span className="text-gray-400">•</span>
-                          {label}
+                          <span className="truncate">{label}</span>
                         </li>
                       ))}
                     </ul>
                     <Link
-                      to="/watch"
+                      to={t.playlistUrl}
                       className="inline-flex self-end rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
                     >
                       Play all
@@ -403,6 +487,7 @@ export default function Home() {
               ))}
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
             </div>
+            )}
             <div className="mt-6 flex items-center justify-center gap-2">
               <button
                 type="button"
@@ -440,6 +525,11 @@ export default function Home() {
             HR+
           </h3>
           <div className="relative">
+            {playlistsLoading && playlists.length === 0 ? (
+              <div className="flex justify-center py-16">
+                <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+              </div>
+            ) : (
             <div
               ref={hrScrollRef}
               onScroll={() => {
@@ -465,21 +555,23 @@ export default function Home() {
                   data-hr-card
                   className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm flex flex-col"
                 >
-                  <div className="aspect-video w-full bg-gray-200 overflow-hidden">
-                    <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" />
-                  </div>
+                  <Link to={t.playlistUrl} className="aspect-video w-full bg-gray-200 overflow-hidden block">
+                    <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                  </Link>
                   <div className="p-5 flex flex-col flex-1">
-                    <h4 className="text-base md:text-lg font-semibold text-gray-900 mb-3">{t.title}</h4>
+                    <Link to={t.playlistUrl} className="block mb-3">
+                      <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline">{t.title}</h4>
+                    </Link>
                     <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
-                      {['Video Name', 'Video Name', 'Video Name', 'Video Name'].map((label, i) => (
+                      {(t.videoNames.length > 0 ? t.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((label, i) => (
                         <li key={i} className="flex items-center gap-2">
                           <span className="text-gray-400">•</span>
-                          {label}
+                          <span className="truncate">{label}</span>
                         </li>
                       ))}
                     </ul>
                     <Link
-                      to="/watch"
+                      to={t.playlistUrl}
                       className="inline-flex self-end rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
                     >
                       Play all
@@ -489,6 +581,7 @@ export default function Home() {
               ))}
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
             </div>
+            )}
             <div className="mt-6 flex items-center justify-center gap-2">
               <button
                 type="button"

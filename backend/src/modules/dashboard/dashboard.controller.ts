@@ -4,6 +4,7 @@ import { CheckUserGuard } from '../../auth/check-user.guard';
 import { DashboardService } from './dashboard.service';
 import { EarningsResponseDto } from './dto/earnings-response.dto';
 import { StatsResponseDto } from './dto/stats-response.dto';
+import { ProfileResponseDto } from './dto/profile-response.dto';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -30,5 +31,15 @@ export class DashboardController {
   async getStats(@Param('userId') userId: string): Promise<StatsResponseDto> {
     this.logger.log(`Getting stats for user: ${userId}`);
     return this.dashboardService.getStats(userId);
+  }
+
+  /**
+   * GET /api/dashboard/:userId/profile
+   * Get user profile for Settings page (auth required)
+   */
+  @Get(':userId/profile')
+  async getProfile(@Param('userId') userId: string): Promise<ProfileResponseDto> {
+    this.logger.log(`Getting profile for user: ${userId}`);
+    return this.dashboardService.getProfile(userId);
   }
 }

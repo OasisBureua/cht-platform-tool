@@ -4,8 +4,8 @@ project     = "cht-platform"
 environment = "dev"
 
 # Docker Images (update after building/pushing)
-backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
-worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.0"
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.8"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.8"
 
 # Database
 rds_instance_class      = "db.t3.micro"
@@ -36,6 +36,16 @@ cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4
 
 # Domain (testapp.communityhealth.media)
 domain_name = "testapp.communityhealth.media"
+
+# MediaHub Public API (catalog - clips, tags, doctors, search)
+# mediahub_api_key = "uqXk-53y3B9UcisI0gcFSS0AENhVceGPYXC0o-tVCnY"
+
+# Bill.com (payment processing - get from team, API: https://developer.bill.com/reference/api-reference-overview)
+# bill_dev_key             = "01LQJPNSALIQKDZM5289"
+# bill_username           = "your_bill_account@email.com"
+# bill_password           = "your_bill_password"
+# bill_org_id             = "008xxxxx"
+# bill_funding_account_id = "your_funding_account_id"
 
 # Optional: Application secrets (or set via environment variables)
 # stripe_secret_key      = "sk_test_51SgE8U4AsB5fThaf2V3I0Li9sQjSi2AVxSMlQFaX9liGKBIjdfh8cITr0Fwk3AHELnnPZhcyZX2u03rsrQpXSZyI00JqUqlMAd"

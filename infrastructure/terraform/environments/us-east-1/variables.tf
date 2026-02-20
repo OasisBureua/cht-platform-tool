@@ -140,8 +140,15 @@ variable "supabase_anon_key" {
   sensitive   = true
 }
 
+variable "mediahub_api_key" {
+  description = "MediaHub Public API key for catalog"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "youtube_api_key" {
-  description = "YouTube Data API v3 key for catalog playlists (set via platform.tfvars or TF_VAR_youtube_api_key)"
+  description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
   type        = string
   sensitive   = true
 }
@@ -168,6 +175,42 @@ variable "zoom_client_id" {
 
 variable "zoom_client_secret" {
   description = "Zoom OAuth Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Bill.com (payment processing - set via TF_VAR_* or dev.tfvars)
+variable "bill_dev_key" {
+  description = "Bill.com developer key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_username" {
+  description = "Bill.com account email"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_password" {
+  description = "Bill.com account password"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_org_id" {
+  description = "Bill.com organization ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_funding_account_id" {
+  description = "Bill.com funding account ID"
   type        = string
   sensitive   = true
   default     = ""

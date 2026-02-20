@@ -170,13 +170,19 @@ module "secrets" {
   redis_endpoint = module.elasticache.redis_endpoint
   redis_port     = module.elasticache.redis_port
 
-  supabase_url           = var.supabase_url
-  supabase_anon_key      = var.supabase_anon_key
-  youtube_api_key        = var.youtube_api_key
-  youtube_playlist_ids   = var.youtube_playlist_ids
-  zoom_account_id        = var.zoom_account_id
-  zoom_client_id         = var.zoom_client_id
-  zoom_client_secret     = var.zoom_client_secret
+  supabase_url             = var.supabase_url
+  supabase_anon_key        = var.supabase_anon_key
+  mediahub_api_key         = var.mediahub_api_key
+  youtube_api_key          = var.youtube_api_key
+  youtube_playlist_ids     = var.youtube_playlist_ids
+  zoom_account_id          = var.zoom_account_id
+  zoom_client_id           = var.zoom_client_id
+  zoom_client_secret       = var.zoom_client_secret
+  bill_dev_key             = var.bill_dev_key
+  bill_username            = var.bill_username
+  bill_password            = var.bill_password
+  bill_org_id              = var.bill_org_id
+  bill_funding_account_id  = var.bill_funding_account_id
 }
 
 # ============================================

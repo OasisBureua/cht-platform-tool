@@ -103,6 +103,10 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
         },
         {
+          name      = "MEDIAHUB_API_KEY"
+          valueFrom = "${var.app_secrets_arn}:mediahub_api_key::"
+        },
+        {
           name      = "YOUTUBE_API_KEY"
           valueFrom = "${var.app_secrets_arn}:youtube_api_key::"
         },
@@ -121,6 +125,26 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "ZOOM_CLIENT_SECRET"
           valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
+        },
+        {
+          name      = "BILL_DEV_KEY"
+          valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
+        },
+        {
+          name      = "BILL_USERNAME"
+          valueFrom = "${var.app_secrets_arn}:bill_username::"
+        },
+        {
+          name      = "BILL_PASSWORD"
+          valueFrom = "${var.app_secrets_arn}:bill_password::"
+        },
+        {
+          name      = "BILL_ORG_ID"
+          valueFrom = "${var.app_secrets_arn}:bill_org_id::"
+        },
+        {
+          name      = "BILL_FUNDING_ACCOUNT_ID"
+          valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
         }
       ]
 

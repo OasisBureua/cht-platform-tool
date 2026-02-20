@@ -98,11 +98,14 @@ Manually syncs account status from Bill.com.
 
 ## Bill.com Setup
 
+**API Documentation:** [developer.bill.com/reference/api-reference-overview](https://developer.bill.com/reference/api-reference-overview)
+
 1. Sign up at [developer.bill.com](https://developer.bill.com)
-2. Generate a developer key (Settings → Sync & Integrations → Manage Developer Keys)
-3. Get your Organization ID (same page, at bottom)
-4. Configure bank account for funding in Bill.com
-5. Add to `.env`:
+2. Developer key is provided by the team (e.g. `01LQJPNSALIQKDZM5289`)
+3. Get your Organization ID (Settings → Sync & Integrations → Manage Developer Keys, at bottom)
+4. Configure bank account for funding in Bill.com; get the funding account ID from Bill.com (used for payouts)
+5. **MFA:** Creating payments requires an MFA-trusted API session. Enable MFA trust for the API in Bill.com (see MFA setup in the API reference)
+6. Add to `.env`:
 
 **Option A: Auto-login (recommended)** – Backend calls Bill.com Login API when needed; session auto-refreshes on 401.
 ```

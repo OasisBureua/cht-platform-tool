@@ -76,7 +76,7 @@ export default function Search() {
 
   return (
     <div className="bg-white">
-      <div className="mx-auto max-w-7xl px-6 py-12 md:py-16 space-y-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16 space-y-8">
         {/* Header */}
         <header className="space-y-3">
 

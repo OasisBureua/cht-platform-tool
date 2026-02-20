@@ -63,6 +63,7 @@ if [ ! -f "$VAR_FILE" ] && [ -f "${VAR_FILE}.example" ]; then
   echo "   cp ${VAR_FILE}.example $VAR_FILE"
   exit 1
 fi
+# Ensure tfvars has the version we're deploying
 CURRENT_BACKEND=$(grep "backend_image" "$VAR_FILE" 2>/dev/null | sed 's/.*= *"\([^"]*\)".*/\1/' || true)
 NEW_BACKEND="${ECR_BACKEND}:${VERSION}"
 if [ -n "$CURRENT_BACKEND" ] && [ "$CURRENT_BACKEND" != "$NEW_BACKEND" ]; then
@@ -74,12 +75,14 @@ if [ -n "$CURRENT_BACKEND" ] && [ "$CURRENT_BACKEND" != "$NEW_BACKEND" ]; then
     sed -i "s|backend_image = .*|backend_image = \"${ECR_BACKEND}:${VERSION}\"|" "$VAR_FILE"
     sed -i "s|worker_image = .*|worker_image  = \"${ECR_WORKER}:${VERSION}\"|" "$VAR_FILE"
   fi
-  echo "   Running Terraform apply..."
-  cd infrastructure/terraform/environments/us-east-1
-  terraform apply -var-file="../variables/${ENV}.tfvars" -auto-approve -target=module.ecs_backend -target=module.ecs_worker
-  cd "$PROJECT_ROOT"
-  echo ""
 fi
+
+# Always run Terraform apply so ECS task definition gets the correct image
+echo "🔄 Applying Terraform (ECS task definition)..."
+cd infrastructure/terraform/environments/us-east-1
+terraform apply -var-file="../variables/${ENV}.tfvars" -auto-approve -target=module.ecs_backend -target=module.ecs_worker
+cd "$PROJECT_ROOT"
+echo ""
 
 # Force ECS to pull new images and redeploy (restore desired count if was 0)
 BACKEND_DESIRED=$(grep "backend_desired_count" "$VAR_FILE" 2>/dev/null | sed 's/.*= *\([0-9]*\).*/\1/' || echo "2")

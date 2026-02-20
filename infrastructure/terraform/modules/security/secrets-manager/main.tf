@@ -4,7 +4,7 @@
 # All master credentials flow through Secrets Manager:
 # - Database: RDS username, password, endpoint, connection string (from module.rds)
 # - Redis: ElastiCache host, port (from module.elasticache)
-# - App: Stripe, Auth0, HubSpot API keys (from tfvars / TF_VAR_*)
+# - App: Bill.com, Supabase, YouTube, Zoom API keys (from tfvars / TF_VAR_*)
 # ECS tasks pull these via valueFrom in container_definitions.
 # =============================================================================
 
@@ -74,12 +74,18 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    supabase_url         = var.supabase_url
-    supabase_anon_key    = var.supabase_anon_key
-    youtube_api_key      = var.youtube_api_key
-    youtube_playlist_ids = var.youtube_playlist_ids
-    zoom_account_id      = var.zoom_account_id
-    zoom_client_id       = var.zoom_client_id
-    zoom_client_secret   = var.zoom_client_secret
+    supabase_url             = var.supabase_url
+    supabase_anon_key        = var.supabase_anon_key
+    mediahub_api_key         = var.mediahub_api_key
+    youtube_api_key          = var.youtube_api_key
+    youtube_playlist_ids     = var.youtube_playlist_ids
+    zoom_account_id          = var.zoom_account_id
+    zoom_client_id           = var.zoom_client_id
+    zoom_client_secret       = var.zoom_client_secret
+    bill_dev_key             = var.bill_dev_key
+    bill_username            = var.bill_username
+    bill_password            = var.bill_password
+    bill_org_id              = var.bill_org_id
+    bill_funding_account_id  = var.bill_funding_account_id
   })
 }

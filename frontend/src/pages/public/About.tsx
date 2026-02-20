@@ -6,7 +6,7 @@ export default function About() {
     <div className="bg-white">
       {/* Hero */}
       <section className="border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16">
           <div className="max-w-3xl space-y-4">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
               Built to make clinical education easier to discover
@@ -21,7 +21,7 @@ export default function About() {
 
       {/* Mission */}
       <section>
-        <div className="mx-auto max-w-7xl px-6 py-12 grid grid-cols-1 lg:grid-cols-12 gap-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-7 space-y-6">
             <div className="space-y-2">
               <p className="text-sm font-semibold text-gray-600">Our mission</p>

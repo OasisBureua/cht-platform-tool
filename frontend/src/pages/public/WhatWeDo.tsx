@@ -6,7 +6,7 @@ export default function WhatWeDo() {
     <div className="bg-white">
       {/* Hero */}
       <section className="border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12 md:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-3">
@@ -68,7 +68,7 @@ export default function WhatWeDo() {
 
       {/* Pillars */}
       <section>
-        <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           <div className="space-y-2">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
               Our platform focuses on four things
@@ -109,7 +109,7 @@ export default function WhatWeDo() {
 
       {/* How it works */}
       <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12 space-y-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           <div className="space-y-2">
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">How it works</h2>
             <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
@@ -127,7 +127,7 @@ export default function WhatWeDo() {
 
       {/* Trust / compliance placeholder */}
       <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-6 py-12">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12">
           <div className="rounded-3xl border border-gray-200 bg-gray-50 p-8 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-7 space-y-3">
               <div className="flex items-center gap-2 text-gray-900">

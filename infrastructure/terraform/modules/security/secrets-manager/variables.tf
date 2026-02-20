@@ -70,8 +70,15 @@ variable "supabase_anon_key" {
   sensitive   = true
 }
 
+variable "mediahub_api_key" {
+  description = "MediaHub Public API key for catalog (clips, tags, doctors, search)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "youtube_api_key" {
-  description = "YouTube Data API v3 key for catalog playlists (set via platform.tfvars or TF_VAR_youtube_api_key)"
+  description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
   type        = string
   sensitive   = true
 }
@@ -98,6 +105,42 @@ variable "zoom_client_id" {
 
 variable "zoom_client_secret" {
   description = "Zoom OAuth Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Bill.com (payment processing - HCP payouts via ACH/check)
+variable "bill_dev_key" {
+  description = "Bill.com developer key (from Settings > Sync & Integrations > Manage Developer Keys)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_username" {
+  description = "Bill.com account email for API login"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_password" {
+  description = "Bill.com account password for API login"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_org_id" {
+  description = "Bill.com organization ID (from Sync & Integrations page)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_funding_account_id" {
+  description = "Bill.com funding account ID (bank account for payouts)"
   type        = string
   sensitive   = true
   default     = ""

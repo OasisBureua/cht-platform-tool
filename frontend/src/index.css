@@ -10,6 +10,10 @@
   body {
     @apply bg-gray-50 text-gray-900 antialiased overflow-x-hidden min-w-0;
   }
+  /* Prevent horizontal overflow on mobile */
+  #root {
+    @apply min-w-0 overflow-x-hidden max-w-full;
+  }
 }
 
 @layer components {

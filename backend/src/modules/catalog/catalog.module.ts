@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { CatalogController } from './catalog.controller';
 import { CatalogService } from './catalog.service';
+import { MediaHubService } from './mediahub.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
@@ -13,7 +14,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     PrismaModule,
   ],
   controllers: [CatalogController],
-  providers: [CatalogService],
-  exports: [CatalogService],
+  providers: [CatalogService, MediaHubService],
+  exports: [CatalogService, MediaHubService],
 })
 export class CatalogModule {}

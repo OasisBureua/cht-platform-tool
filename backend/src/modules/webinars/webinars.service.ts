@@ -73,8 +73,7 @@ export class WebinarsService {
   async getWebinarById(id: string): Promise<WebinarItem | null> {
     if (id.startsWith('zoom-')) {
       const zoomId = id.replace(/^zoom-/, '');
-      const webinars = await this.zoom.listWebinars();
-      const w = webinars.find((x) => x.id === zoomId);
+      const w = await this.zoom.getWebinarById(zoomId);
       if (!w) return null;
       return {
         id: `zoom-${w.id}`,

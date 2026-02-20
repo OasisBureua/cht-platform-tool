@@ -42,7 +42,11 @@ export const validationSchema = Joi.object({
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
 
-  // YouTube (optional – for catalog playlists)
+  // MediaHub Public API (optional – for catalog clips, tags, doctors)
+  MEDIAHUB_BASE_URL: Joi.string().allow('').optional(),
+  MEDIAHUB_API_KEY: Joi.string().allow('').optional(),
+
+  // YouTube (optional – for catalog playlists, fallback when MediaHub not configured)
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),
   YOUTUBE_PLAYLIST_IDS: Joi.string().allow('').optional(),
 

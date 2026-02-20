@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import { EarningsResponseDto, WeeklyEarnings } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
+import { ProfileResponseDto } from './dto/profile-response.dto';
 
 @Injectable()
 export class DashboardService {
@@ -128,6 +129,33 @@ export class DashboardService {
     this.logger.log(`💾 Cached stats for user: ${userId} (TTL: ${this.redis.ttl.dashboard}s)`);
 
     return result;
+  }
+
+  /**
+   * Get user profile for Settings page
+   */
+  async getProfile(userId: string): Promise<ProfileResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const stats = await this.getStats(userId);
+    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+
+    return {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      name,
+      specialty: user.specialty ?? undefined,
+      role: user.role,
+      createdAt: user.createdAt.toISOString(),
+      totalEarnings: user.totalEarnings / 100,
+      activitiesCompleted: stats.activitiesCompleted,
+    };
   }
 
   /**

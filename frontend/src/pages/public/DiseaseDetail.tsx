@@ -69,7 +69,7 @@ export default function DiseaseDetail() {
 
   return (
     <div className="bg-white min-h-screen">
-      <div className="mx-auto max-w-7xl px-6 py-10 space-y-10">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-10">
         {/* Hero: Title + View All Biomarkers */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-4xl md:text-5xl font-bold text-gray-900">{page.title}</h1>

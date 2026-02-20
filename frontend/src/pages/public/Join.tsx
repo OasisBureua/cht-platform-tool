@@ -53,7 +53,7 @@ export default function Join() {
 
   if (success) {
     return (
-      <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 md:py-16">
+      <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center">
           <h2 className="text-xl font-semibold text-gray-900">Check your email</h2>
           <p className="mt-2 text-sm text-gray-600">
@@ -71,7 +71,7 @@ export default function Join() {
   }
 
   return (
-    <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-6 py-12 md:py-16">
+    <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
       <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-10">
         {/* =====================
             LEFT: VALUE

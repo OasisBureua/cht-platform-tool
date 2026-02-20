@@ -4,8 +4,8 @@ project     = "cht-platform"
 environment = "prod"
 
 # Docker Images (update with production tags)
-backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
-worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.0"
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.8"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.8"
 
 # Database - Production sizing
 rds_instance_class      = "db.t3.small"
@@ -36,6 +36,17 @@ worker_max_capacity     = 20
 
 # Domain
 domain_name = "communityhealth.media"
+
+# MediaHub Public API (catalog)
+# mediahub_api_key = "uqXk-53y3B9UcisI0gcFSS0AENhVceGPYXC0o-tVCnY"
+
+# Bill.com (payment processing - HCP payouts via ACH/check)
+# API: https://developer.bill.com/reference/api-reference-overview
+# bill_dev_key             = "01LQJPNSALIQKDZM5289"
+# bill_username           = "your_bill_account@email.com"
+# bill_password           = "your_bill_password"
+# bill_org_id             = "008xxxxx"
+# bill_funding_account_id  = "your_funding_account_id"
 
 # Application Secrets (REQUIRED for production)
 # Use environment variables or AWS Secrets Manager:

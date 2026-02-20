@@ -66,7 +66,13 @@ export default () => ({
     bonusAmountCents: parseInt(process.env.SURVEY_BONUS_AMOUNT_CENTS || '0', 10),
   },
 
-  // YouTube Data API v3 (for catalog playlists)
+  // MediaHub Public API (catalog - clips, tags, doctors, search)
+  mediahub: {
+    baseUrl: process.env.MEDIAHUB_BASE_URL || 'https://mediahub.communityhealth.media/api/public',
+    apiKey: process.env.MEDIAHUB_API_KEY,
+  },
+
+  // YouTube Data API v3 (for catalog playlists - fallback when MediaHub not configured)
   youtube: (() => {
     let ids: string[] =
       process.env.YOUTUBE_PLAYLIST_IDS?.split(',')

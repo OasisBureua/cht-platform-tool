@@ -117,8 +117,8 @@ export default function PublicLayout() {
         )}
       </header>
 
-      {/* Main content */}
-      <main className="flex-1">
+      {/* Main content - responsive, no horizontal overflow */}
+      <main className="flex-1 min-w-0 overflow-x-hidden">
         <Outlet />
       </main>
 

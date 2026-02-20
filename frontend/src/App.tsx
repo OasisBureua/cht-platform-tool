@@ -1,11 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import ScrollToTop from './components/ScrollToTop';
 
 // Public layout + pages
 import PublicLayout from './layouts/PublicLayout';
 import Home from './pages/public/Home';
 import Catalog from './pages/public/Catalog';
-import PublicWatch from './pages/public/PublicWatch';
+import ClipDetail from './pages/public/ClipDetail';
+import PlaylistDetail from './pages/public/PlaylistDetail';
+import VideosPage from './pages/public/VideosPage';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Join from './pages/public/Join';
@@ -70,6 +73,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* =======================
               PUBLIC ROUTES
@@ -78,6 +82,8 @@ function App() {
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<Home />} />
             <Route path="/catalog" element={<Catalog />} />
+            <Route path="/catalog/clip/:id" element={<ClipDetail />} />
+            <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
             <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
 
             <Route path="/about" element={<About />} />
@@ -91,8 +97,8 @@ function App() {
             <Route path="/terms" element={<Terms />} />
 
             <Route path="/search" element={<Search />} />
-            <Route path="/watch" element={<PublicWatch />} />
-            <Route path="/watch/:videoId" element={<PublicWatch />} />
+            <Route path="/watch" element={<VideosPage />} />
+            <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
             <Route path="/webinars" element={<PublicWebinars />} />
             <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
             <Route path="/surveys" element={<PublicSurveys />} />
@@ -125,9 +131,17 @@ function App() {
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
-            {/* Watch (app experience) */}
-            <Route path="watch" element={<Watch />} />
+            {/* Watch (same as public /watch - VideosPage with search, tags, clips) */}
+            <Route path="watch" element={<VideosPage />} />
             <Route path="watch/:videoId" element={<WatchVideo />} />
+
+            {/* Clip detail (MediaHub clips - stays in app) */}
+            <Route path="clip/:id" element={<ClipDetail />} />
+
+            {/* Catalog (YouTube playlists - same as public, stays in app) */}
+            <Route path="catalog" element={<Catalog />} />
+            <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+            <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
 
             {/* Earnings + ChatBot + Settings (Payments moved to admin) */}
             <Route path="earnings" element={<Earnings />} />
@@ -181,4 +195,9 @@ export default App;
 function SurveyRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/app/surveys/${id}` : '/app/surveys'} replace />;
+}
+
+function WatchVideoRedirect() {
+  const { videoId } = useParams<{ videoId: string }>();
+  return <Navigate to={videoId ? `/catalog/clip/${videoId}` : '/watch'} replace />;
 }

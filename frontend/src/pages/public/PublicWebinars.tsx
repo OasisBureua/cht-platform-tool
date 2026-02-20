@@ -28,7 +28,7 @@ export default function PublicWebinars() {
     : FALLBACK_WEBINARS;
   return (
     <div className="bg-white min-h-screen">
-      <div className="mx-auto max-w-7xl px-6 py-10 md:py-14 space-y-10 md:space-y-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-10 md:space-y-14">
         {/* Header: Title + View All Diseases */}
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">

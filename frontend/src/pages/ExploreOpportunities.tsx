@@ -1,39 +1,161 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Zap, Presentation, PlayCircle, ClipboardList } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2 } from 'lucide-react';
+import { webinarsApi } from '../api/webinars';
+import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
+import { surveysApi } from '../api/surveys';
 
-const STOCK_IMAGES = [
-  'https://picsum.photos/seed/exp1/400/260',
-  'https://picsum.photos/seed/exp2/400/260',
-  'https://picsum.photos/seed/exp3/400/260',
-  'https://picsum.photos/seed/exp4/400/260',
-  'https://picsum.photos/seed/exp5/400/260',
-  'https://picsum.photos/seed/exp6/400/260',
-  'https://picsum.photos/seed/exp7/400/260',
-  'https://picsum.photos/seed/exp8/400/260',
-  'https://picsum.photos/seed/exp9/400/260',
-];
+const STOCK_IMAGE = 'https://via.placeholder.com/400x260?text=Content';
 
-const OPPORTUNITIES = [
-  { id: '1', title: 'HER2+ Big Picture & Practice Change', type: 'video' as const, videoNames: ['Video Name', 'Video Name', 'Video Name'] },
-  { id: '2', title: 'First-Line & Sequencing Decisions', type: 'video' as const, videoNames: ['Video Name', 'Video Name', 'Video Name'] },
-  { id: '3', title: 'High-Risk & CNS Disease', type: 'video' as const, videoNames: ['Video Name', 'Video Name', 'Video Name'] },
-  { id: '4', title: 'HER2+ & Endocrine Crosstalk', type: 'video' as const, videoNames: ['Video Name', 'Video Name'] },
-  { id: '5', title: 'ADC-Centered Conversations', type: 'video' as const, desc: 'Video Description: Lorem ipsum dolor sit amet consectetur.' },
-  { id: '6', title: 'Expert Roundtables & Deep Dives', type: 'survey' as const, desc: 'Survey Description: Lorem ipsum dolor sit amet consectetur.' },
-];
+function getClipThumbnail(clip: MediaHubClip): string {
+  if (clip.thumbnail_url) return clip.thumbnail_url;
+  const m = clip.youtube_url?.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
+  if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
+  return STOCK_IMAGE;
+}
+
+function getPlaylistThumbnail(item: CatalogItem): string {
+  if (item.thumbnailUrl) return item.thumbnailUrl;
+  const m = item.playUrl?.match(/list=([a-zA-Z0-9_-]+)/);
+  if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
+  return STOCK_IMAGE;
+}
 
 type Tab = 'best' | 'webinars' | 'videos' | 'surveys';
 
+type UnifiedItem =
+  | { type: 'webinar'; id: string; title: string; description: string; imageUrl: string; href: string }
+  | { type: 'clip'; id: string; title: string; description: string; imageUrl: string; href: string; subtitle?: string }
+  | { type: 'playlist'; id: string; title: string; description: string; imageUrl: string; href: string; videoNames?: string[] }
+  | { type: 'survey'; id: string; title: string; description: string; imageUrl: string; href: string };
+
+function matchesQuery(item: UnifiedItem, q: string): boolean {
+  if (!q) return true;
+  const lower = q.toLowerCase();
+  return (
+    item.title.toLowerCase().includes(lower) ||
+    (item.description?.toLowerCase().includes(lower) ?? false)
+  );
+}
+
 export default function ExploreOpportunities() {
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tab, setTab] = useState<Tab>('best');
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return OPPORTUNITIES;
-    return OPPORTUNITIES.filter((o) => o.title.toLowerCase().includes(q));
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
+    return () => clearTimeout(t);
   }, [query]);
+
+  const { data: tags = {} } = useQuery({
+    queryKey: ['catalog', 'tags'],
+    queryFn: catalogApi.getTags,
+    staleTime: 10 * 60 * 1000,
+  });
+
+  const useMediaHub = Object.keys(tags).length > 0;
+
+  const { data: webinars = [], isLoading: webinarsLoading } = useQuery({
+    queryKey: ['webinars'],
+    queryFn: webinarsApi.list,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: clipsData, isLoading: clipsLoading } = useQuery({
+    queryKey: ['catalog', 'clips', debouncedQuery],
+    queryFn: () =>
+      useMediaHub
+        ? catalogApi.getClips({
+            q: debouncedQuery || undefined,
+            limit: 24,
+            offset: 0,
+          })
+        : Promise.resolve({ items: [], total: 0 }),
+    enabled: useMediaHub,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: ['catalog', 'playlists'],
+    queryFn: catalogApi.getPlaylists,
+    enabled: !useMediaHub,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: surveys = [], isLoading: surveysLoading } = useQuery({
+    queryKey: ['surveys'],
+    queryFn: surveysApi.getAll,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const items = useMemo((): UnifiedItem[] => {
+    const out: UnifiedItem[] = [];
+
+    webinars.forEach((w) => {
+      out.push({
+        type: 'webinar',
+        id: `webinar-${w.id}`,
+        title: w.title,
+        description: w.description || '',
+        imageUrl: w.imageUrl || '',
+        href: `/app/webinars/${w.id}`,
+      });
+    });
+
+    if (useMediaHub && clipsData?.items) {
+      clipsData.items.forEach((c) => {
+        out.push({
+          type: 'clip',
+          id: `clip-${c.id}`,
+          title: c.title,
+          description: c.description || '',
+          imageUrl: getClipThumbnail(c),
+          href: `/app/clip/${c.id}`,
+          subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,
+        });
+      });
+    } else if (!useMediaHub) {
+      playlists.forEach((p) => {
+        out.push({
+          type: 'playlist',
+          id: `playlist-${p.id}`,
+          title: p.title,
+          description: p.videoNames?.slice(0, 3).join(' • ') || '',
+          imageUrl: getPlaylistThumbnail(p),
+          href: `/app/catalog/playlist/${p.id}`,
+          videoNames: p.videoNames,
+        });
+      });
+    }
+
+    surveys.forEach((s) => {
+      out.push({
+        type: 'survey',
+        id: `survey-${s.id}`,
+        title: s.title || s.program?.title || 'Survey',
+        description: s.description || s.program?.sponsorName || '',
+        imageUrl: '',
+        href: `/app/surveys/${s.id}`,
+      });
+    });
+
+    return out;
+  }, [webinars, clipsData, playlists, surveys, useMediaHub]);
+
+  const filtered = useMemo(() => {
+    const q = debouncedQuery;
+    let list = items.filter((item) => matchesQuery(item, q));
+
+    if (tab === 'webinars') list = list.filter((i) => i.type === 'webinar');
+    else if (tab === 'videos') list = list.filter((i) => i.type === 'clip' || i.type === 'playlist');
+    else if (tab === 'surveys') list = list.filter((i) => i.type === 'survey');
+
+    return list;
+  }, [items, debouncedQuery, tab]);
+
+  const isLoading = webinarsLoading || surveysLoading || (useMediaHub ? clipsLoading : playlistsLoading);
 
   const tabs = [
     { key: 'best' as Tab, label: 'Best Match', icon: Zap },
@@ -43,7 +165,7 @@ export default function ExploreOpportunities() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Explore Opportunities</h1>
 
       {/* Search + Filters */}
@@ -53,94 +175,88 @@ export default function ExploreOpportunities() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search"
+            placeholder="Search by title, topic, or description..."
             className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
           />
         </div>
-        <select className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900">
-          <option>All Specialties</option>
-        </select>
-        <select className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900">
-          <option>Sort By</option>
-        </select>
       </div>
 
-      {/* Category tabs */}
+      {/* Category tabs - filter by type */}
       <div className="flex flex-wrap gap-2">
-        {tabs.map(({ key, label, icon: Icon }) =>
-          key === 'webinars' ? (
-            <Link
-              key={key}
-              to="/app/webinars"
-              className="flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-            >
-              <Icon className="h-6 w-6" />
-              {label}
-            </Link>
-          ) : key === 'videos' ? (
-            <Link
-              key={key}
-              to="/app/watch"
-              className="flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-            >
-              <Icon className="h-6 w-6" />
-              {label}
-            </Link>
-          ) : key === 'surveys' ? (
-            <Link
-              key={key}
-              to="/app/surveys"
-              className="flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300"
-            >
-              <Icon className="h-6 w-6" />
-              {label}
-            </Link>
-          ) : (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition ${
-                tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <Icon className="h-6 w-6" />
-              {label}
-            </button>
-          )
-        )}
+        {tabs.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition ${
+              tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+            }`}
+          >
+            <Icon className="h-6 w-6" />
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Content grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filtered.map((item, idx) => (
-          <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-            <div className="h-44">
-              <img src={STOCK_IMAGES[idx % STOCK_IMAGES.length]} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
+          <p className="text-gray-600 mb-2">No opportunities found</p>
+          <p className="text-sm text-gray-500">
+            {query ? 'Try a different search term or clear the filter.' : 'Content will appear here once configured.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filtered.map((item) => (
+            <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="h-44">
+                <img
+                  src={item.imageUrl || STOCK_IMAGE}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+              <div className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                    {item.type === 'webinar' && 'Webinar'}
+                    {item.type === 'clip' && 'Video'}
+                    {item.type === 'playlist' && 'Playlist'}
+                    {item.type === 'survey' && 'Survey'}
+                  </span>
+                </div>
+                <h3 className="font-bold text-gray-900 line-clamp-2">{item.title}</h3>
+                {item.subtitle ? (
+                  <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
+                ) : item.videoNames?.length ? (
+                  <ul className="space-y-1">
+                    {item.videoNames.slice(0, 3).map((v, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                        <span className="h-1 w-1 rounded-full bg-gray-400" />
+                        {v}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-600 line-clamp-2">{item.description || item.title}</p>
+                )}
+                <Link
+                  to={item.href}
+                  className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                >
+                  {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'Learn More' : 'Watch'}
+                </Link>
+              </div>
             </div>
-            <div className="p-4 space-y-3">
-              <h3 className="font-bold text-gray-900">{item.title}</h3>
-              {item.videoNames ? (
-                <ul className="space-y-1">
-                  {item.videoNames.map((v, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                      <span className="h-1 w-1 rounded-full bg-gray-400" />
-                      {v}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-sm text-gray-600">{item.desc}</p>
-              )}
-              <Link
-                to="/app/webinars"
-                className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-              >
-                {item.type === 'survey' ? 'Join' : 'Play all'}
-              </Link>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
