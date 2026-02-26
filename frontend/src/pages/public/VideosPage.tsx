@@ -99,6 +99,13 @@ export default function VideosPage() {
   const doctorOptions = useMemo(() => getDoctorOptions(tags, doctors), [tags, doctors]);
   const useMediaHub = tagOptions.length > 0;
 
+  const { data: playlists = [] } = useQuery({
+    queryKey: ['catalog', 'playlists'],
+    queryFn: catalogApi.getPlaylists,
+    staleTime: 10 * 60 * 1000,
+    enabled: !useMediaHub,
+  });
+
   const {
     data: clipsData,
     isLoading: clipsLoading,
@@ -152,6 +159,7 @@ export default function VideosPage() {
 
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
+  const hasPlaylistFallback = !useMediaHub && playlists.length > 0;
 
   return (
     <div className="bg-white min-h-screen min-w-0">
@@ -174,7 +182,8 @@ export default function VideosPage() {
           ))}
         </section>
 
-        {/* Search + Filters */}
+        {/* Search + Filters (MediaHub clips only) */}
+        {useMediaHub && (
         <section className="flex flex-col md:flex-row gap-3 flex-wrap">
           <div className="flex-1 min-w-[200px] relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
@@ -243,16 +252,54 @@ export default function VideosPage() {
             )}
           </div>
         </section>
+        )}
 
         {/* Clips grid */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {!useMediaHub ? (
+          {!useMediaHub && !hasPlaylistFallback ? (
             <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-gray-600 mb-2">Video catalog requires MediaHub configuration.</p>
+              <p className="text-gray-600 mb-2">Video catalog requires MediaHub API key or YouTube playlists.</p>
+              <p className="text-sm text-gray-500 mb-3">Configure mediahub_api_key or youtube_playlist_ids in the backend.</p>
               <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
                 Browse playlists in Catalog
               </Link>
             </div>
+          ) : hasPlaylistFallback ? (
+            playlists.map((item) => {
+              const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
+              return (
+                <div
+                  key={item.id}
+                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  <div className="h-52 relative">
+                    <Link to={playlistUrl}>
+                      <img
+                        src={item.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    </Link>
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <Link to={playlistUrl} className="block">
+                      <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
+                    </Link>
+                    <p className="text-sm text-gray-600">{item.videoCount} videos</p>
+                    <div className="flex justify-end">
+                      <Link
+                        to={playlistUrl}
+                        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                      >
+                        View Playlist
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           ) : isLoading && displayItems.length === 0 ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-gray-400" />

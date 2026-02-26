@@ -96,12 +96,27 @@ Manually syncs account status from Bill.com.
 
 ---
 
+## Test Bill.com Connection
+
+**Funding account ID is not required** for testing. Only org ID, username, password, and dev key are needed.
+
+```
+GET /api/payments/test-connection
+```
+(Admin only, requires auth.) Returns `{ success: true, organizationId: "00802JRVLQNWWQB3hgkt" }` on success.
+
+**Organization ID:** `00802JRVLQNWWQB3hgkt`
+
+**Funding account ID** (required only for Pay now): Only Seth Laderman has access. Path: Settings → Bank & Payment Accounts → Bank accounts. To add app@communityhealth.media as authorized user: click arrow next to default account → View authorized users → Add user.
+
+---
+
 ## Bill.com Setup
 
 **API Documentation:** [developer.bill.com/reference/api-reference-overview](https://developer.bill.com/reference/api-reference-overview)
 
 1. Sign up at [developer.bill.com](https://developer.bill.com)
-2. Developer key is provided by the team (e.g. `01LQJPNSALIQKDZM5289`)
+2. Developer key is provided by the team (e.g. `01LQJPNSALIQKDZMxxxxxxxx`)
 3. Get your Organization ID (Settings → Sync & Integrations → Manage Developer Keys, at bottom)
 4. Configure bank account for funding in Bill.com; get the funding account ID from Bill.com (used for payouts)
 5. **MFA:** Creating payments requires an MFA-trusted API session. Enable MFA trust for the API in Bill.com (see MFA setup in the API reference)

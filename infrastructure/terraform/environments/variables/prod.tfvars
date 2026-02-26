@@ -37,16 +37,17 @@ worker_max_capacity     = 20
 # Domain
 domain_name = "communityhealth.media"
 
-# MediaHub Public API (catalog)
-# mediahub_api_key = "uqXk-53y3B9UcisI0gcFSS0AENhVceGPYXC0o-tVCnY"
+# MediaHub Public API (catalog) - get from MediaHub/CHM team
+# mediahub_api_key = ""
 
 # Bill.com (payment processing - HCP payouts via ACH/check)
 # API: https://developer.bill.com/reference/api-reference-overview
-# bill_dev_key             = "01LQJPNSALIQKDZM5289"
-# bill_username           = "your_bill_account@email.com"
-# bill_password           = "your_bill_password"
-# bill_org_id             = "008xxxxx"
-# bill_funding_account_id  = "your_funding_account_id"
+# Set via TF_VAR_* or Secrets Manager. Never commit real values.
+# bill_dev_key             = ""
+# bill_username           = ""
+# bill_password           = ""
+# bill_org_id             = ""
+# bill_funding_account_id = ""
 
 # Application Secrets (REQUIRED for production)
 # Use environment variables or AWS Secrets Manager:

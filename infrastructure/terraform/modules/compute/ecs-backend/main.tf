@@ -71,6 +71,11 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name  = "SESSION_TTL_SECONDS"
             value = "1800"
+          },
+          # Elasticache TLS cert verification often fails; bypass to fix "connection is closed"
+          {
+            name  = "REDIS_TLS_REJECT_UNAUTHORIZED"
+            value = "false"
           }
         ],
         concat(
@@ -101,6 +106,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "SUPABASE_ANON_KEY"
           valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
+        },
+        {
+          name      = "GOTRUE_JWT_SECRET"
+          valueFrom = "${var.app_secrets_arn}:gotrue_jwt_secret::"
+        },
+        {
+          name      = "MEDIAHUB_BASE_URL"
+          valueFrom = "${var.app_secrets_arn}:mediahub_base_url::"
         },
         {
           name      = "MEDIAHUB_API_KEY"

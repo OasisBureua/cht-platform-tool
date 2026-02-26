@@ -53,8 +53,9 @@ resource "aws_secretsmanager_secret" "redis" {
 resource "aws_secretsmanager_secret_version" "redis" {
   secret_id     = aws_secretsmanager_secret.redis.id
   secret_string = jsonencode({
-    host        = var.redis_endpoint
-    port        = var.redis_port
+    host = var.redis_endpoint
+    # Store port as string so ECS env injection and backend parsing are unambiguous
+    port = tostring(var.redis_port)
   })
 }
 
@@ -76,6 +77,8 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_string = jsonencode({
     supabase_url             = var.supabase_url
     supabase_anon_key        = var.supabase_anon_key
+    gotrue_jwt_secret        = var.gotrue_jwt_secret
+    mediahub_base_url        = var.mediahub_base_url
     mediahub_api_key         = var.mediahub_api_key
     youtube_api_key          = var.youtube_api_key
     youtube_playlist_ids     = var.youtube_playlist_ids

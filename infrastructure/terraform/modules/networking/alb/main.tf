@@ -43,6 +43,7 @@ resource "aws_lb" "main" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
+  idle_timeout       = 90
 
   enable_deletion_protection = (var.environment == "prod" || var.environment == "platform") ? true : false
   enable_http2              = true

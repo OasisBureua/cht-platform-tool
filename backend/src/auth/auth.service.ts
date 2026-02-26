@@ -1,29 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
 // Class (not interface) for Nest decorator metadata
 export class AuthUser {
-  authId: string;
-  userId: string;
-  email: string;
-  name: string;
-  role: UserRole;
-}
-
-// Plain object for Redis serialization
-interface AuthUserCache {
-  authId: string;
-  userId: string;
-  email: string;
-  name: string;
-  role: UserRole;
-}
-
-interface SessionCache {
   authId: string;
   userId: string;
   email: string;
@@ -37,13 +19,12 @@ export class AuthService {
 
   constructor(
     private prisma: PrismaService,
-    private redis: RedisService,
     private configService: ConfigService,
   ) {}
 
   /**
    * Find or create user by Auth0 sub (authId).
-   * Caches result in Redis (30 min TTL) to avoid DB lookup on every request.
+   * Uses DB only (Redis bypassed to avoid connection/timeout issues during login).
    */
   async findOrCreateByAuthId(
     authId: string,
@@ -52,15 +33,6 @@ export class AuthService {
     lastName?: string,
     npiNumber?: string | null,
   ): Promise<AuthUser | null> {
-    const cacheKey = this.redis.keys.authUser(authId);
-    const cached = await this.redis.get<AuthUserCache>(cacheKey);
-    if (cached) {
-      const authUser = new AuthUser();
-      Object.assign(authUser, cached);
-      authUser.name = cached.name || cached.email || 'User';
-      return authUser;
-    }
-
     let user = await this.prisma.user.findUnique({
       where: { authId },
     });
@@ -76,6 +48,17 @@ export class AuthService {
           npiNumber: npiNumber || undefined,
         },
       });
+    } else if (
+      (firstName && firstName !== 'User' && firstName !== user.firstName) ||
+      (lastName !== undefined && lastName !== user.lastName)
+    ) {
+      user = await this.prisma.user.update({
+        where: { authId },
+        data: {
+          ...(firstName && firstName !== 'User' && { firstName }),
+          ...(lastName !== undefined && { lastName }),
+        },
+      });
     }
 
     const authUser = new AuthUser();
@@ -85,30 +68,15 @@ export class AuthService {
     authUser.name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
     authUser.role = user.role;
 
-    const toCache: AuthUserCache = {
-      authId: authUser.authId,
-      userId: authUser.userId,
-      email: authUser.email,
-      name: authUser.name,
-      role: authUser.role,
-    };
-    await this.redis.set(cacheKey, toCache, this.redis.ttl.user);
     return authUser;
   }
 
   /**
    * Invalidate cached auth user when role/email/name is updated.
-   * Call after admin updates user profile so subsequent requests get fresh data.
+   * No-op when using DB-only (no Redis cache).
    */
-  async invalidateAuthCache(userId: string): Promise<void> {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { authId: true },
-    });
-    if (user?.authId) {
-      await this.redis.del(this.redis.keys.authUser(user.authId));
-      this.logger.debug(`Invalidated auth cache for user ${userId}`);
-    }
+  async invalidateAuthCache(_userId: string): Promise<void> {
+    // Auth user lookup is DB-only; no cache to invalidate
   }
 
   /**
@@ -129,32 +97,78 @@ export class AuthService {
   }
 
   /**
-   * Create a session in Redis. Returns session token.
+   * Create a session. Uses DB only (Redis bypassed to avoid connection/timeout issues).
+   * @param accessToken - Optional GoTrue JWT for chatbot (stored when Supabase login)
    */
-  async createSession(user: AuthUser): Promise<string> {
+  async createSession(user: AuthUser, accessToken?: string | null): Promise<string> {
     const token = randomUUID();
     const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
-    const cache: SessionCache = {
-      authId: user.authId,
-      userId: user.userId,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    };
-    await this.redis.set(this.redis.keys.session(token), cache, ttl);
-    this.logger.debug(`Session created for ${user.userId}, TTL: ${ttl}s`);
+    const expiresAt = new Date(Date.now() + ttl * 1000);
+    await this.prisma.session.create({
+      data: {
+        token,
+        authId: user.authId,
+        userId: user.userId,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        expiresAt,
+        accessToken: accessToken || undefined,
+      },
+    });
+    this.logger.debug(`Session created in DB for ${user.userId}, expires: ${expiresAt.toISOString()}`);
     return token;
   }
 
   /**
-   * Get session from Redis. Returns AuthUser if valid.
+   * Get chatbot token (GoTrue JWT) for the given session. Returns null if not stored.
+   */
+  async getChatbotToken(sessionToken: string): Promise<string | null> {
+    const session = await this.prisma.session.findUnique({
+      where: { token: sessionToken.trim() },
+      select: { accessToken: true, expiresAt: true },
+    });
+    if (!session || session.expiresAt < new Date()) return null;
+    return session.accessToken;
+  }
+
+  /**
+   * Get session. Uses DB only (Redis bypassed to avoid connection/timeout issues).
    */
   async getSession(token: string): Promise<AuthUser | null> {
-    const cached = await this.redis.get<SessionCache>(this.redis.keys.session(token));
-    if (!cached) return null;
+    if (!token?.trim()) {
+      this.logger.debug('[Auth] getSession: empty token');
+      return null;
+    }
+    const trimmed = token.trim();
+    const session = await this.prisma.session.findUnique({
+      where: { token: trimmed },
+    });
+    if (!session || session.expiresAt < new Date()) {
+      this.logger.debug(`[Auth] getSession: not found or expired (found=${!!session})`);
+      if (session) {
+        await this.prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+      }
+      return null;
+    }
     const authUser = new AuthUser();
-    Object.assign(authUser, cached);
+    authUser.authId = session.authId;
+    authUser.userId = session.userId;
+    authUser.email = session.email;
+    authUser.name = session.name;
+    authUser.role = session.role;
     return authUser;
+  }
+
+  /**
+   * Get user by DB userId (for /me to return firstName, lastName).
+   */
+  async getUserById(userId: string): Promise<{ firstName: string; lastName: string } | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    return user;
   }
 
   /**

@@ -8,19 +8,24 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
   const logger = app.get(Logger);
 
-  // Enable CORS (127.0.0.1 = same as localhost, avoids "Failed to fetch" when browser uses 127.0.0.1)
+  // CORS: allow frontend origins. FRONTEND_URL from env (e.g. ECS) is added when set.
+  const corsOrigins = [
+    'https://testapp.communityhealth.media',
+    'https://communityhealth.media',
+    'https://www.communityhealth.media',
+    'https://app.communityhealth.media',
+    'https://api.communityhealth.media',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+  ];
+  const frontendUrl = process.env.FRONTEND_URL?.replace(/\/$/, '');
+  if (frontendUrl && !corsOrigins.includes(frontendUrl)) {
+    corsOrigins.push(frontendUrl);
+  }
   app.enableCors({
-    origin: [
-      'https://testapp.communityhealth.media',
-      'https://communityhealth.media',
-      'https://www.communityhealth.media',
-      'https://app.communityhealth.media',
-      'https://api.communityhealth.media',
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:3000',
-    ],
+    origin: corsOrigins,
     credentials: true,
   });
 

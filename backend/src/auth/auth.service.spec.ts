@@ -1,13 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { RedisService } from '../redis/redis.service';
 import { UserRole } from '@prisma/client';
 
 describe('AuthService', () => {
   let service: AuthService;
   let prisma: PrismaService;
-  let redis: RedisService;
 
   const mockUser = {
     id: 'user-1',
@@ -16,14 +15,6 @@ describe('AuthService', () => {
     firstName: 'Test',
     lastName: 'User',
     role: UserRole.HCP,
-  };
-
-  const mockRedis = {
-    get: jest.fn(),
-    set: jest.fn(),
-    del: jest.fn(),
-    keys: { authUser: (authId: string) => `auth:user:${authId}` },
-    ttl: { user: 1800 },
   };
 
   beforeEach(async () => {
@@ -42,38 +33,18 @@ describe('AuthService', () => {
           },
         },
         {
-          provide: RedisService,
-          useValue: mockRedis,
+          provide: ConfigService,
+          useValue: { get: jest.fn((key: string) => (key === 'sessionTtlSeconds' ? 1800 : undefined)) },
         },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
     prisma = module.get<PrismaService>(PrismaService);
-    redis = module.get<RedisService>(RedisService);
   });
 
   describe('findOrCreateByAuthId', () => {
-    it('should return cached user from Redis when present', async () => {
-      const cached = {
-        authId: mockUser.authId,
-        userId: mockUser.id,
-        email: mockUser.email,
-        name: 'Test User',
-        role: mockUser.role,
-      };
-      (redis.get as jest.Mock).mockResolvedValue(cached);
-
-      const result = await service.findOrCreateByAuthId(mockUser.authId);
-
-      expect(result).toBeDefined();
-      expect(result?.userId).toBe(mockUser.id);
-      expect(result?.email).toBe(mockUser.email);
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    });
-
-    it('should create user when not in cache and not in DB', async () => {
-      (redis.get as jest.Mock).mockResolvedValue(null);
+    it('should create user when not in DB', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
       (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
 
@@ -83,8 +54,7 @@ describe('AuthService', () => {
       expect(prisma.user.create).toHaveBeenCalled();
     });
 
-    it('should return existing user from DB when not cached', async () => {
-      (redis.get as jest.Mock).mockResolvedValue(null);
+    it('should return existing user from DB', async () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
 
       const result = await service.findOrCreateByAuthId(mockUser.authId);

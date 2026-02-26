@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Login() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, login } = useAuth();
+  const { isAuthenticated, isLoading, login } = useAuth();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app/home';
 
   const [email, setEmail] = useState('');
@@ -13,7 +12,9 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  if (isAuthenticated) {
+  // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop
+  // where app renders before authHeaderGetter is updated, causing 401 on first API call
+  if (isAuthenticated && !isLoading) {
     return <Navigate to={from} replace />;
   }
 
@@ -27,8 +28,20 @@ export default function Login() {
       setError(err.message || 'Login failed. Please check your credentials.');
       return;
     }
-    navigate(from, { replace: true });
+    // Don't navigate here - let the isAuthenticated check above render <Navigate> after state updates
   };
+
+  // Show loading after successful login while validating session
+  if (isAuthenticated && isLoading) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-white">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mb-4" />
+          <p className="text-gray-600">Signing you in...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-white">

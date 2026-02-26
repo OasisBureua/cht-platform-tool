@@ -38,25 +38,26 @@ cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4
 domain_name = "testapp.communityhealth.media"
 
 # MediaHub Public API (catalog - clips, tags, doctors, search)
-# mediahub_api_key = "uqXk-53y3B9UcisI0gcFSS0AENhVceGPYXC0o-tVCnY"
+# Get from MediaHub/CHM team. Set via TF_VAR_mediahub_api_key or here.
+# mediahub_api_key = ""
 
 # Bill.com (payment processing - get from team, API: https://developer.bill.com/reference/api-reference-overview)
-# bill_dev_key             = "01LQJPNSALIQKDZM5289"
-# bill_username           = "your_bill_account@email.com"
-# bill_password           = "your_bill_password"
-# bill_org_id             = "008xxxxx"
-# bill_funding_account_id = "your_funding_account_id"
+# Set via TF_VAR_* or AWS Secrets Manager. Never commit real values.
+# bill_dev_key             = ""
+# bill_username           = ""
+# bill_password           = ""
+# bill_org_id             = ""
+# bill_funding_account_id = ""
 
-# Optional: Application secrets (or set via environment variables)
-# stripe_secret_key      = "sk_test_51SgE8U4AsB5fThaf2V3I0Li9sQjSi2AVxSMlQFaX9liGKBIjdfh8cITr0Fwk3AHELnnPZhcyZX2u03rsrQpXSZyI00JqUqlMAd"
-# stripe_publishable_key = "pk_test_51SgE8U4AsB5fThafcGimMu6kadDjrman1ptUTRs69I2m5HDgWM4hJegOuos8oJ47kwVmDYu3hP2uOUSrbUKjh5kn00TPu3XgL9"
-# stripe_webhook_secret  = "whsec_nmSP4aOvIHnW8ZFz7xApvEYE51vCGiLS"
-# HubSpot (await credentials - create token at Settings > Integrations > Email in HubSpot)
+# Optional: Application secrets - use TF_VAR_* or Secrets Manager. Never commit.
+# stripe_secret_key      = ""
+# stripe_publishable_key = ""
+# stripe_webhook_secret  = ""
 # hubspot_smtp_user       = ""
 # hubspot_smtp_password  = ""
-# auth0_domain           = "dev-z6ql5fywvjgz4snj.us.auth0.com"
-# auth0_client_id        = "aHwexIuzxluejiNGQ5ej0EHpSjwetl53"
-# auth0_audience         = "https://api-dev.communityhealth.media"
+# auth0_domain           = ""
+# auth0_client_id        = ""
+# auth0_audience         = ""
 
 # Optional: SNS for alerts
 # sns_topic_arn = ""

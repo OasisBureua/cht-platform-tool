@@ -13,7 +13,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 /**
  * JWT Auth Guard with session and dev bypass.
- * 1. X-Session-Token or Bearer (UUID): validate against Redis session cache.
+ * 1. X-Session-Token or Bearer (UUID): validate against DB session.
  * 2. When JWT configured: Bearer JWT via Passport.
  * 3. When not configured: X-Dev-User-Id header (dev fallback).
  */

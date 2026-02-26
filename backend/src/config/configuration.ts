@@ -58,7 +58,12 @@ export default () => ({
   // Redis
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+    port: (() => {
+      const p = parseInt(process.env.REDIS_PORT || '6379', 10);
+      return Number.isNaN(p) ? 6379 : p;
+    })(),
+    tls: process.env.REDIS_TLS === 'true' || process.env.REDIS_TLS === '1',
+    tlsRejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false' && process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== '0',
   },
 
   // Surveys (optional survey bonus payment in cents, 0 = disabled)

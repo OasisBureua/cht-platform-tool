@@ -12,6 +12,8 @@ export interface AuthUser {
   userId: string;
   email?: string;
   name?: string;
+  firstName?: string;
+  lastName?: string;
   role?: string;
 }
 
@@ -23,6 +25,8 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  /** GoTrue JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
+  accessToken: string | null;
   login: (email: string, password: string) => Promise<{ error?: AuthError }>;
   signUp: (
     email: string,
@@ -32,12 +36,14 @@ interface AuthContextValue {
   resetPasswordForEmail: (email: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
   getAuthHeaders: () => Promise<Record<string, string>>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const SESSION_TOKEN_KEY = 'cht-session-token';
 const DEV_USER_KEY = 'cht-dev-user-id';
+const ACCESS_TOKEN_KEY = 'cht-access-token';
 
 function BackendAuthProvider({ children }: { children: ReactNode }) {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
@@ -53,6 +59,13 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       return typeof localStorage?.getItem === 'function' ? localStorage.getItem(DEV_USER_KEY) || '' : '';
     } catch {
       return '';
+    }
+  });
+  const [accessToken, setAccessToken] = useState<string | null>(() => {
+    try {
+      return typeof localStorage?.getItem === 'function' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
+    } catch {
+      return null;
     }
   });
   const [profile, setProfile] = useState<AuthUser | null>(null);
@@ -84,11 +97,26 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   }, [devUserId]);
 
   useEffect(() => {
+    try {
+      if (typeof localStorage?.setItem === 'function' && typeof localStorage?.removeItem === 'function') {
+        if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        else localStorage.removeItem(ACCESS_TOKEN_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
     if (!userId || userId === 'session') {
       if (userId === 'session') {
         setIsLoading(true);
         fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-          headers: { Authorization: `Bearer ${sessionToken}` },
+          cache: 'no-store',
+          headers: {
+            Authorization: `Bearer ${sessionToken}`,
+            'X-Session-Token': sessionToken,
+          },
         })
           .then((res) => (res.ok ? res.json() : null))
           .then((data) => {
@@ -97,6 +125,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
                 userId: data.userId,
                 email: data.email,
                 name: data.name,
+                firstName: data.firstName,
+                lastName: data.lastName,
                 role: data.role,
               });
             } else {
@@ -127,6 +157,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
             userId: data.userId,
             email: data.email,
             name: data.name,
+            firstName: data.firstName,
+            lastName: data.lastName,
             role: data.role,
           });
         } else if (!cancelled) {
@@ -148,6 +180,44 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     };
   }, [userId, sessionToken, devUserId, apiUrl]);
 
+  const refreshProfile = useCallback(async () => {
+    if (userId === 'session' && sessionToken) {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
+        cache: 'no-store',
+        headers: {
+          Authorization: `Bearer ${sessionToken}`,
+          'X-Session-Token': sessionToken,
+        },
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.userId) {
+        setProfile({
+          userId: data.userId,
+          email: data.email,
+          name: data.name,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role,
+        });
+      }
+    } else if (devUserId) {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
+        headers: { 'X-Dev-User-Id': devUserId },
+      });
+      const data = await res.json().catch(() => null);
+      if (data?.userId) {
+        setProfile({
+          userId: data.userId,
+          email: data.email,
+          name: data.name,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role,
+        });
+      }
+    }
+  }, [userId, sessionToken, devUserId, apiUrl]);
+
   const user: AuthUser | null =
     userId && userId !== 'session'
       ? profile || { userId: devUserId, email: '', name: 'User' }
@@ -155,11 +225,25 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(
     async (email: string, password: string) => {
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: (email || '').trim(), password: password || '' }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+      let res: Response;
+      try {
+        res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: (email || '').trim(), password: password || '' }),
+          signal: controller.signal,
+        });
+      } catch (err) {
+        clearTimeout(timeout);
+        const msg =
+          err instanceof Error && err.name === 'AbortError'
+            ? 'Request timed out. Please try again.'
+            : 'Login failed. Please try again.';
+        return { error: { message: msg } };
+      }
+      clearTimeout(timeout);
       const data = await res.json().catch(() => ({}));
 
       if (data.error) {
@@ -169,14 +253,21 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       if (data.session_token) {
         setSessionToken(data.session_token);
         setDevUserId('');
+        setAccessToken(data.access_token ?? null);
         setProfile({
           userId: data.userId,
           email: data.email,
           name: data.name,
+          firstName: data.firstName,
+          lastName: data.lastName,
           role: data.role,
         });
+        // Keep isLoading true until /api/auth/me validates - prevents app from rendering
+        // and making API calls before authHeaderGetter is updated (which caused 401 → redirect)
+        setIsLoading(true);
       } else if (data.userId) {
         setSessionToken(null);
+        setAccessToken(null);
         setDevUserId(data.userId);
         setProfile({
           userId: data.userId,
@@ -243,11 +334,13 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setSessionToken(null);
     setDevUserId('');
+    setAccessToken(null);
     setProfile(null);
     try {
       if (typeof localStorage?.removeItem === 'function') {
         localStorage.removeItem(SESSION_TOKEN_KEY);
         localStorage.removeItem(DEV_USER_KEY);
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
       }
     } catch {
       /* ignore */
@@ -268,11 +361,13 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user,
     isLoading,
+    accessToken,
     login,
     signUp,
     resetPasswordForEmail,
     logout,
     getAuthHeaders,
+    refreshProfile,
   };
 
   useEffect(() => {
@@ -296,11 +391,13 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           user: null,
           isAuthenticated: false,
           isLoading: false,
+          accessToken: null,
           login: async () => ({}),
           signUp: async () => ({}),
           resetPasswordForEmail: async () => ({}),
           logout: () => {},
           getAuthHeaders: async () => ({}),
+          refreshProfile: async () => {},
         }}
       >
         {children}

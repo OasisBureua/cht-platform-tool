@@ -1,10 +1,11 @@
-import { Controller, Get, Param, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, Logger, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { DashboardService } from './dashboard.service';
 import { EarningsResponseDto } from './dto/earnings-response.dto';
 import { StatsResponseDto } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -41,5 +42,21 @@ export class DashboardController {
   async getProfile(@Param('userId') userId: string): Promise<ProfileResponseDto> {
     this.logger.log(`Getting profile for user: ${userId}`);
     return this.dashboardService.getProfile(userId);
+  }
+
+  /**
+   * PATCH /api/dashboard/:userId/profile
+   * Update user profile (firstName, lastName only for now)
+   */
+  @Patch(':userId/profile')
+  async updateProfile(
+    @Param('userId') userId: string,
+    @Body() dto: UpdateProfileDto,
+  ): Promise<ProfileResponseDto> {
+    this.logger.log(`Updating profile for user: ${userId}`);
+    return this.dashboardService.updateProfile(userId, {
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+    });
   }
 }

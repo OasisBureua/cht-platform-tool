@@ -74,6 +74,17 @@ export class BillService {
   }
 
   /**
+   * Test Bill.com connection (login only). Does not require funding account ID.
+   * Use to verify org ID, username, password, dev key before enabling payouts.
+   */
+  async testConnection(): Promise<{ success: true; organizationId: string }> {
+    const sessionId = await this.login();
+    const orgId = this.orgId || '';
+    this.logger.log(`Bill.com connection test OK: orgId=${orgId}`);
+    return { success: true, organizationId: orgId };
+  }
+
+  /**
    * Login to Bill.com API to obtain session.
    * POST /v3/login with username, password, organizationId, devKey
    * Session expires after 35 minutes of inactivity.

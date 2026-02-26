@@ -42,6 +42,17 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/test-connection
+   * Test Bill.com API connection (login). Admin only. Does not require funding account ID.
+   */
+  @Get('test-connection')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async testConnection() {
+    return this.paymentsService.testBillConnection();
+  }
+
+  /**
    * GET /api/payments/pending
    * List pending payments for admin "Pay now" flow (admin only)
    */

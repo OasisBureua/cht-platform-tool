@@ -1,8 +1,27 @@
-import { Controller, Get, Post, Body, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Logger, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
+
+/** Supabase/GoTrue external call timeout (ms). Prevents login hanging on slow/unreachable auth. */
+const SUPABASE_FETCH_TIMEOUT_MS = 15000;
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    return res;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 interface LoginSuccess {
   session_token: string;
@@ -11,6 +30,8 @@ interface LoginSuccess {
   userId: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   role: string;
 }
 
@@ -51,25 +72,40 @@ export class AuthController {
       return { error: 'Sign up is not configured. Contact support.' };
     }
 
+    const signupStart = Date.now();
     this.logger.log(`[Auth] Signup attempt for email: ${emailStr}`);
-    const res = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/signup`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnon,
-      },
-      body: JSON.stringify({
-        email: emailStr,
-        password,
-        data: {
-          first_name: (firstName || '').trim(),
-          last_name: (lastName || '').trim(),
-          full_name: [firstName, lastName].map((s) => (s || '').trim()).filter(Boolean).join(' '),
-          profession,
-          npi_number: npi,
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(
+        `${supabaseUrl.replace(/\/$/, '')}/auth/v1/signup`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: supabaseAnon,
+          },
+          body: JSON.stringify({
+          email: emailStr,
+          password,
+          data: {
+            first_name: (firstName || '').trim(),
+            last_name: (lastName || '').trim(),
+            full_name: [firstName, lastName].map((s) => (s || '').trim()).filter(Boolean).join(' '),
+            profession,
+            npi_number: npi,
+          },
+        }),
         },
-      }),
-    });
+        SUPABASE_FETCH_TIMEOUT_MS,
+      );
+    } catch (err) {
+      const msg = err instanceof Error && err.name === 'AbortError'
+        ? 'Sign up request timed out. Please try again.'
+        : 'Sign up failed. Please try again.';
+      this.logger.warn(`[Auth] Signup error for ${emailStr} after ${Date.now() - signupStart}ms:`, err);
+      return { error: msg };
+    }
+    this.logger.log(`[Auth] Supabase signup fetch completed in ${Date.now() - signupStart}ms`);
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -105,15 +141,37 @@ export class AuthController {
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
 
     if (supabaseUrl && supabaseAnon) {
+      const loginStart = Date.now();
       this.logger.log(`[Auth] Login attempt via Supabase for email: ${emailStr}`);
-      const res = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/token?grant_type=password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: supabaseAnon,
-        },
-        body: JSON.stringify({ email: emailStr, password: password || '' }),
-      });
+      let res: Response;
+      try {
+        const supabaseStart = Date.now();
+        res = await fetchWithTimeout(
+          `${supabaseUrl.replace(/\/$/, '')}/auth/v1/token?grant_type=password`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              apikey: supabaseAnon,
+            },
+            body: JSON.stringify({ email: emailStr, password: password || '' }),
+          },
+          SUPABASE_FETCH_TIMEOUT_MS,
+        );
+        this.logger.log(
+          `[Auth] Supabase fetch completed in ${Date.now() - supabaseStart}ms (status=${res.status})`,
+        );
+      } catch (err) {
+        const msg =
+          err instanceof Error && err.name === 'AbortError'
+            ? 'Login request timed out. Please try again.'
+            : 'Login failed. Please try again.';
+        this.logger.warn(
+          `[Auth] Supabase login error for ${emailStr} after ${Date.now() - loginStart}ms:`,
+          err,
+        );
+        return { error: msg };
+      }
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
@@ -130,6 +188,7 @@ export class AuthController {
       const lastName = metadata.last_name || '';
       const npiNumber = metadata.npi_number || null;
 
+      const dbStart = Date.now();
       const user = await this.authService.findOrCreateByAuthId(
         authId,
         data.user?.email,
@@ -137,10 +196,18 @@ export class AuthController {
         lastName,
         npiNumber,
       );
+      this.logger.log(`[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`);
+
       if (!user) return { error: 'User not found.' };
 
-      const sessionToken = await this.authService.createSession(user);
-      this.logger.log(`[Auth] Supabase login success: userId=${user.userId} email=${user.email}`);
+      const sessionStart = Date.now();
+      const sessionToken = await this.authService.createSession(user, data.access_token);
+      this.logger.log(`[Auth] createSession completed in ${Date.now() - sessionStart}ms`);
+
+      const dbUser = await this.authService.getUserById(user.userId);
+      this.logger.log(
+        `[Auth] Supabase login success: userId=${user.userId} email=${user.email} total=${Date.now() - loginStart}ms`,
+      );
       return {
         session_token: sessionToken,
         access_token: data.access_token,
@@ -148,6 +215,8 @@ export class AuthController {
         userId: user.userId,
         email: user.email,
         name: user.name,
+        firstName: dbUser?.firstName ?? firstName,
+        lastName: dbUser?.lastName ?? lastName,
         role: user.role,
       };
     }
@@ -185,15 +254,31 @@ export class AuthController {
       return { error: 'Password reset is not configured.' };
     }
 
+    const recoverStart = Date.now();
     this.logger.log(`[Auth] Password reset request for: ${emailStr}`);
-    const res = await fetch(`${supabaseUrl.replace(/\/$/, '')}/auth/v1/recover`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnon,
-      },
-      body: JSON.stringify({ email: emailStr }),
-    });
+    let res: Response;
+    try {
+      res = await fetchWithTimeout(
+        `${supabaseUrl.replace(/\/$/, '')}/auth/v1/recover`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: supabaseAnon,
+          },
+          body: JSON.stringify({ email: emailStr }),
+        },
+        SUPABASE_FETCH_TIMEOUT_MS,
+      );
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.name === 'AbortError'
+          ? 'Request timed out. Please try again.'
+          : 'Password reset failed. Please try again.';
+      this.logger.warn(`[Auth] Recover error for ${emailStr} after ${Date.now() - recoverStart}ms:`, err);
+      return { error: msg };
+    }
+    this.logger.log(`[Auth] Supabase recover fetch completed in ${Date.now() - recoverStart}ms`);
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -207,19 +292,46 @@ export class AuthController {
   }
 
   /**
+   * GET /api/auth/chatbot-token
+   * Returns GoTrue JWT for chatbot (unlimited queries). Requires session auth.
+   */
+  @Get('chatbot-token')
+  @UseGuards(JwtAuthGuard)
+  async getChatbotToken(@CurrentUser() user: AuthUser, @Req() req: Request) {
+    const raw =
+      req.headers['x-session-token'] ??
+      (req.headers.authorization?.startsWith?.('Bearer ')
+        ? req.headers.authorization.slice(7).trim()
+        : null);
+    const sessionToken = Array.isArray(raw) ? raw[0] : raw;
+    if (!sessionToken || typeof sessionToken !== 'string') return { token: null };
+    const token = await this.authService.getChatbotToken(sessionToken);
+    return { token };
+  }
+
+  /**
    * GET /api/auth/me
-   * Returns the current authenticated user's profile (userId, email, role).
+   * Returns the current authenticated user's profile (userId, email, firstName, lastName, role).
    * Frontend uses this to get the DB userId for API calls.
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getMe(@CurrentUser() user: AuthUser) {
+  async getMe(@CurrentUser() user: AuthUser) {
+    const dbUser = await this.authService.getUserById(user.userId);
+    const nameParts = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
+    const dbFirst = dbUser?.firstName?.trim();
+    const dbLast = dbUser?.lastName?.trim();
+    const firstName =
+      dbFirst && dbFirst !== 'User' ? dbFirst : nameParts[0] || dbFirst || 'User';
+    const lastName = dbLast ? dbLast : nameParts.slice(1).join(' ') || dbLast || '';
     this.logger.debug(`[Auth] /me OK: userId=${user.userId} email=${user.email}`);
     return {
       userId: user.userId,
       authId: user.authId,
       email: user.email,
       name: user.name,
+      firstName,
+      lastName,
       role: user.role,
     };
   }

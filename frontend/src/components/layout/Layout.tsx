@@ -5,7 +5,12 @@ import { useAuth } from '../../contexts/AuthContext';
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const displayName = user?.name || user?.email || 'User';
+  const displayName = (
+    [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() ||
+    user?.name ||
+    user?.email ||
+    'User'
+  ).replace(/[\[\]]/g, '');
 
   return (
     <div className="min-h-screen flex flex-col sm:flex-row bg-gray-50 min-w-0">

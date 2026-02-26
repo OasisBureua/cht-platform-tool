@@ -25,18 +25,29 @@ export class CatalogController {
   /**
    * GET /api/catalog/tags
    * MediaHub: All tags grouped by category (doctor, biomarker, drug, trial, stage, topic, brand).
+   * On 401 (Invalid API key), returns {} so frontend can fall back to YouTube playlists.
    */
   @Get('tags')
   async getTags() {
     if (!this.mediahub.isConfigured()) {
       return {};
     }
-    return this.mediahub.getTags();
+    try {
+      return await this.mediahub.getTags();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.');
+        return {};
+      }
+      throw err;
+    }
   }
 
   /**
    * GET /api/catalog/clips
    * MediaHub: Video catalog with filters (q, tag, doctor, platform, sort_by, limit, offset).
+   * On 401 (Invalid API key), returns empty so frontend can fall back to YouTube playlists.
    */
   @Get('clips')
   async getClips(
@@ -51,15 +62,24 @@ export class CatalogController {
     if (!this.mediahub.isConfigured()) {
       return { items: [], total: 0 };
     }
-    const doctorTag = doctor ? `doctor:${doctor}` : undefined;
-    return this.mediahub.getClips({
-      q,
-      tag: doctorTag || tag,
-      platform,
-      sort_by: sortBy,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      offset: offset ? parseInt(offset, 10) : undefined,
-    });
+    try {
+      const doctorTag = doctor ? `doctor:${doctor}` : undefined;
+      return await this.mediahub.getClips({
+        q,
+        tag: doctorTag || tag,
+        platform,
+        sort_by: sortBy,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.');
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
   }
 
   /**
@@ -77,13 +97,23 @@ export class CatalogController {
   /**
    * GET /api/catalog/doctors
    * MediaHub: Doctor profiles with slug, shoot count, post count, views/likes.
+   * On 401 (Invalid API key), returns [] so frontend can fall back to YouTube playlists.
    */
   @Get('doctors')
   async getDoctors() {
     if (!this.mediahub.isConfigured()) {
       return [];
     }
-    return this.mediahub.getDoctors();
+    try {
+      return await this.mediahub.getDoctors();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.');
+        return [];
+      }
+      throw err;
+    }
   }
 
   /**

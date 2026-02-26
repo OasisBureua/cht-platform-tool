@@ -21,6 +21,13 @@ export class PaymentsService {
   }
 
   /**
+   * Test Bill.com API connection (login only). Does not require funding account ID.
+   */
+  async testBillConnection(): Promise<{ success: true; organizationId: string }> {
+    return this.billService.testConnection();
+  }
+
+  /**
    * Create Bill.com vendor for user (with bank details)
    */
   async createConnectAccount(

@@ -60,6 +60,25 @@ model User {
   @@map("User")
 }
 
+// ============================================================================
+// SESSION MODEL (DB fallback when Redis unavailable)
+// ============================================================================
+model Session {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  authId      String
+  userId      String
+  email       String
+  name        String
+  role        UserRole
+  expiresAt   DateTime
+  accessToken String?  // GoTrue JWT for chatbot (unlimited queries)
+
+  @@index([token])
+  @@index([expiresAt])
+  @@map("Session")
+}
+
 enum UserRole {
   HCP          // Healthcare Professional
   KOL          // Key Opinion Leader

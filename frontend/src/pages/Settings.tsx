@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,9 +18,15 @@ function getInitials(name: string, email?: string): string {
 }
 
 export default function Settings() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const userId = user?.userId ?? '';
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', userId],
@@ -32,6 +39,27 @@ export default function Settings() {
     queryFn: () => dashboardApi.getStats(userId),
     enabled: !!userId,
   });
+
+  useEffect(() => {
+    if (profile) {
+      setFirstName(profile.firstName ?? '');
+      setLastName(profile.lastName ?? '');
+    }
+  }, [profile]);
+
+  const handleSaveName = async () => {
+    setSaveError(null);
+    setSaving(true);
+    try {
+      await dashboardApi.updateProfile(userId, { firstName: firstName.trim(), lastName: lastName.trim() });
+      await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
+      await refreshProfile();
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -97,19 +125,31 @@ export default function Settings() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
                 <input
                   type="text"
-                  value={profile?.firstName ?? ''}
-                  readOnly
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter first name"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                 />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
                 <input
                   type="text"
-                  value={profile?.lastName ?? ''}
-                  readOnly
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter last name"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                 />
+              </div>
+              <div className="md:col-span-2 flex items-center gap-3">
+                <button
+                  onClick={handleSaveName}
+                  disabled={saving}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Name'}
+                </button>
+                {saveError && <span className="text-sm text-red-600">{saveError}</span>}
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
