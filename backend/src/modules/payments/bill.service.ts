@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 const BILL_STAGE_URL = 'https://gateway.stage.bill.com/connect/v3';
-const BILL_PROD_URL = 'https://gateway.bill.com/connect/v3';
+const BILL_PROD_URL = 'https://gateway.prod.bill.com/connect/v3';
 
 export interface BillVendor {
   id: string;
@@ -71,6 +71,11 @@ export class BillService {
     if (!this.devKey) {
       this.logger.warn('Bill.com dev key not configured');
     }
+    if (!this.username || !this.password || !this.orgId) {
+      this.logger.warn(
+        `Bill.com login credentials incomplete. Have: devKey=${!!this.devKey} username=${!!this.username} password=${!!this.password} orgId=${!!this.orgId}`,
+      );
+    }
   }
 
   /**
@@ -90,9 +95,15 @@ export class BillService {
    * Session expires after 35 minutes of inactivity.
    */
   private async login(): Promise<string> {
-    if (!this.username || !this.password || !this.orgId) {
+    if (this.sessionId) return this.sessionId;
+    const missing: string[] = [];
+    if (!this.username?.trim()) missing.push('BILL_USERNAME');
+    if (!this.password) missing.push('BILL_PASSWORD');
+    if (!this.orgId?.trim()) missing.push('BILL_ORG_ID');
+    if (!this.devKey?.trim()) missing.push('BILL_DEV_KEY');
+    if (missing.length > 0) {
       throw new Error(
-        'Bill.com credentials not configured. Set BILL_USERNAME, BILL_PASSWORD, BILL_ORG_ID (or BILL_SESSION_ID for manual session).',
+        `Bill.com credentials not configured. Missing in backend/.env: ${missing.join(', ')}. (Or set BILL_SESSION_ID for manual session.)`,
       );
     }
 

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, UseGuards, Logger, Req } from '@nestjs/common';
 import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
+import * as jwt from 'jsonwebtoken';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
@@ -120,6 +121,61 @@ export class AuthController {
 
     this.logger.log(`[Auth] Signup success for ${emailStr}`);
     return {};
+  }
+
+  /**
+   * POST /api/auth/login-oauth
+   * Exchange GoTrue OAuth access_token (Google/Apple) for CHT session.
+   * Body: { access_token: string }
+   */
+  @Post('login-oauth')
+  async loginOAuth(@Body('access_token') accessToken: string): Promise<LoginSuccess | { error: string }> {
+    if (!accessToken?.trim()) {
+      return { error: 'access_token is required.' };
+    }
+
+    const secret = this.configService.get<string>('gotrue.jwtSecret');
+    if (!secret) {
+      return { error: 'OAuth login is not configured.' };
+    }
+
+    let payload: { sub?: string; email?: string; user_metadata?: Record<string, unknown> };
+    try {
+      payload = jwt.verify(accessToken.trim(), secret, { algorithms: ['HS256'] }) as typeof payload;
+    } catch {
+      return { error: 'Invalid or expired token.' };
+    }
+
+    const authId = payload.sub;
+    if (!authId) return { error: 'Invalid token.' };
+
+    const meta = (payload.user_metadata || {}) as Record<string, string>;
+    const firstName = meta.first_name || (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
+    const lastName = meta.last_name || (meta.full_name ? String(meta.full_name).split(' ').slice(1).join(' ') : undefined);
+
+    const user = await this.authService.findOrCreateByAuthId(
+      authId,
+      payload.email,
+      firstName || meta.full_name,
+      lastName,
+      meta.npi_number || null,
+    );
+    if (!user) return { error: 'User not found.' };
+
+    const sessionToken = await this.authService.createSession(user, accessToken.trim());
+    const dbUser = await this.authService.getUserById(user.userId);
+
+    this.logger.log(`[Auth] OAuth login success: userId=${user.userId} email=${user.email}`);
+    return {
+      session_token: sessionToken,
+      access_token: accessToken.trim(),
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      firstName: dbUser?.firstName ?? firstName ?? 'User',
+      lastName: dbUser?.lastName ?? lastName ?? '',
+      role: user.role,
+    };
   }
 
   /**

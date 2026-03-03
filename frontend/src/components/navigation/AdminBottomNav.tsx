@@ -15,6 +15,7 @@ const nav = [
   { to: '/admin/programs', label: 'Webinars', icon: Presentation, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/admin/payments', label: 'Payments', icon: DollarSign, end: false },
+  { to: '/admin/users', label: 'Users', icon: Users, end: false },
   { to: '/admin/settings', label: 'Settings', icon: Settings, end: false },
 ];
 

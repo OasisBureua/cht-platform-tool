@@ -28,6 +28,8 @@ interface AuthContextValue {
   /** GoTrue JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
   accessToken: string | null;
   login: (email: string, password: string) => Promise<{ error?: AuthError }>;
+  /** Exchange GoTrue OAuth access_token (Google/Apple) for CHT session. */
+  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError }>;
   signUp: (
     email: string,
     password: string,
@@ -283,6 +285,43 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     [apiUrl],
   );
 
+  const loginOAuth = useCallback(
+    async (accessToken: string) => {
+      const token = (accessToken || '').trim();
+      if (!token) return { error: { message: 'Access token is required.' } };
+
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/login-oauth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ access_token: token }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+
+      if (data.session_token) {
+        setSessionToken(data.session_token);
+        setDevUserId('');
+        setAccessToken(data.access_token ?? null);
+        setProfile({
+          userId: data.userId,
+          email: data.email,
+          name: data.name,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: data.role,
+        });
+        setIsLoading(true);
+      } else {
+        return { error: { message: 'Login failed.' } };
+      }
+      return {};
+    },
+    [apiUrl],
+  );
+
   const signUp = useCallback(
     async (
       email: string,
@@ -363,6 +402,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     accessToken,
     login,
+    loginOAuth,
     signUp,
     resetPasswordForEmail,
     logout,
@@ -393,6 +433,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           isLoading: false,
           accessToken: null,
           login: async () => ({}),
+          loginOAuth: async () => ({}),
           signUp: async () => ({}),
           resetPasswordForEmail: async () => ({}),
           logout: () => {},

@@ -270,13 +270,10 @@ export default function Home() {
           <div className="relative h-full min-h-[400px] sm:min-h-[460px] md:min-h-[520px] mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-center text-center">
             <div className="max-w-3xl space-y-6">
               <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">
-                Innovating the next phase of
-                <br />
-                Healthcare through information
+                The future of healthcare marketing and education
               </h1>
               <p className="text-sm md:text-base text-white/90 leading-relaxed">
-                Community Health Media (CHM) is your full service healthcare communications partner,
-                combining our production expertise with targeted multi-channel campaigns.
+                Community Health Technologies is redefining how pharma reaches healthcare audiences—and educates them where they actively consume and trust information.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
@@ -612,22 +609,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Content Title section */}
+      {/* About Us teaser */}
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 items-start">
           <div className="space-y-5">
-            <h4 className="text-3xl font-semibold text-gray-900">Content Title</h4>
+            <h4 className="text-3xl font-semibold text-gray-900">About Us</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et
-              dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-              ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu
-              fugiat nulla pariatur.
+              Built by veterans from Live Nation, Lionsgate, television production, and health insurance—not traditional pharma agencies—we apply proven entertainment and media strategies to healthcare marketing and medical education.
+            </p>
+            <p className="text-sm text-gray-700 leading-relaxed">
+              We don&apos;t just create content. We ensure it reaches the right audiences where they&apos;re already paying attention.
             </p>
             <Link
-              to="/catalog"
+              to="/about"
               className="inline-flex rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
             >
-              Explore
+              Learn More
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-5">
@@ -644,6 +641,27 @@ export default function Home() {
                 alt=""
                 className="h-full w-full object-cover"
               />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Who We Reach */}
+      <section className="py-10 sm:py-14 border-t border-gray-200">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <h4 className="text-3xl font-semibold text-gray-900 mb-8">Who We Reach</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <p className="font-semibold text-gray-900 mb-2">HCPs</p>
+              <p className="text-sm text-gray-600 leading-relaxed">Beyond conferences and CME, where they actually consume content</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <p className="font-semibold text-gray-900 mb-2">Patients</p>
+              <p className="text-sm text-gray-600 leading-relaxed">Pre or active treatment, searching for credible information</p>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
+              <p className="font-semibold text-gray-900 mb-2">Caregivers</p>
+              <p className="text-sm text-gray-600 leading-relaxed">Making decisions, seeking guidance, needing support</p>
             </div>
           </div>
         </div>
@@ -675,46 +693,92 @@ export default function Home() {
         </div>
       </section>
 
-      {/* What We Do - accordion */}
-      <section className="py-10 sm:py-14">
+      {/* How We Help Pharma - FAQ accordion */}
+      <section className="py-12 sm:py-16 border-t border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10">
-            What We Do
+            How We Help Pharma Educate Healthcare Audiences
           </h2>
           <div className="border-t border-gray-200">
-            {Array.from({ length: 5 }).map((_, idx) => (
-              <details key={idx} className="group">
-                <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
-                  <span className="text-base font-medium text-gray-900">Lorem Ipsum</span>
-                  <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4">
-                    <span className="text-lg font-light leading-none">+</span>
-                  </span>
-                </summary>
-                <p className="pb-5 text-sm text-gray-600 max-w-3xl">
-                  Placeholder answer content. Replace with real copy from stakeholders.
-                </p>
-              </details>
-            ))}
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+                <span className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-base font-medium text-gray-900">AI-Powered Content Automation</span>
+                </span>
+                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
+                  <span className="text-lg font-light leading-none">+</span>
+                </span>
+              </summary>
+              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+                Turn one medical webinar or clinical presentation into 20+ platform-specific assets—social posts, podcast clips, infographics, and more.
+              </p>
+            </details>
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+                <span className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-base font-medium text-gray-900">Multi-Audience Reach</span>
+                </span>
+                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
+                  <span className="text-lg font-light leading-none">+</span>
+                </span>
+              </summary>
+              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+                Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
+              </p>
+            </details>
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+                <span className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-base font-medium text-gray-900">Entertainment-Grade Distribution</span>
+                </span>
+                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
+                  <span className="text-lg font-light leading-none">+</span>
+                </span>
+              </summary>
+              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+                Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
+              </p>
+            </details>
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+                <span className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-base font-medium text-gray-900">First-Party HCP Intelligence</span>
+                </span>
+                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
+                  <span className="text-lg font-light leading-none">+</span>
+                </span>
+              </summary>
+              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+                Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
+              </p>
+            </details>
+            <details className="group">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+                <span className="flex items-center gap-2">
+                  <span className="text-green-600">✓</span>
+                  <span className="text-base font-medium text-gray-900">Real Engagement Analytics</span>
+                </span>
+                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
+                  <span className="text-lg font-light leading-none">+</span>
+                </span>
+              </summary>
+              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+                Move beyond impressions. Track who watched, who shared, and who took meaningful action.
+              </p>
+            </details>
           </div>
-        </div>
-      </section>
-
-      {/* Brand CTA */}
-      <section className="py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 text-center space-y-8 sm:space-y-10">
-          <p className="text-3xl sm:text-4xl md:text-5xl font-serif text-gray-900 leading-[1.4] tracking-tight">
-            A Media Company Thats
-            <br />
-            About More Than Just
-            <br />
-            Content
-          </p>
-          <Link
-            to="/join"
-            className="inline-flex items-center justify-center rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
-          >
-            Join Us
-          </Link>
+          <div className="mt-10">
+            <Link
+              to="/join"
+              className="inline-flex items-center justify-center rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
+            >
+              Get Started
+            </Link>
+          </div>
         </div>
       </section>
     </div>

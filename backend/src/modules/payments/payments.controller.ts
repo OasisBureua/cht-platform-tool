@@ -4,6 +4,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
@@ -43,11 +44,10 @@ export class PaymentsController {
 
   /**
    * GET /api/payments/test-connection
-   * Test Bill.com API connection (login). Admin only. Does not require funding account ID.
+   * Test Bill.com API connection (login). Admin only in prod; X-Dev-User-Id bypass for local testing.
    */
   @Get('test-connection')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
   async testConnection() {
     return this.paymentsService.testBillConnection();
   }

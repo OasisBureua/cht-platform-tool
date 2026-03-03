@@ -9,11 +9,13 @@ export default function About() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16">
           <div className="max-w-3xl space-y-4">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
-              Built to make clinical education easier to discover
+              About Us
             </h1>
             <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              CHT is a healthcare content platform designed to organize expert-led education into
-              focused, easy-to-navigate experiences for healthcare professionals.
+              While pharmaceutical companies invest heavily in traditional marketing tactics, patients stream content, caregivers binge podcasts, and healthcare professionals scroll social media like everyone else.
+            </p>
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed">
+              Community Health Technologies bridges this gap.
             </p>
           </div>
         </div>
@@ -23,22 +25,12 @@ export default function About() {
       <section>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-12 gap-10">
           <div className="lg:col-span-7 space-y-6">
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-600">Our mission</p>
-              <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
-                High-signal content for modern clinical practice
-              </h2>
-            </div>
-
             <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              Healthcare professionals are overwhelmed with information. CHT exists to reduce noise
-              by curating expert-led videos, webinars, and surveys into structured collections
-              organized by disease area and clinical relevance.
+              Built by veterans from Live Nation, Lionsgate, television production, and health insurance—not traditional pharma agencies—we apply proven entertainment and media strategies to healthcare marketing and medical education.
             </p>
 
             <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              Our goal is simple: help clinicians learn faster, stay aligned, and access meaningful
-              insights that support patient-centered decision making.
+              We don&apos;t just create content. We ensure it reaches the right audiences where they&apos;re already paying attention.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">

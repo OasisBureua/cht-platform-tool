@@ -13,7 +13,9 @@ import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Join from './pages/public/Join';
 import Login from './pages/public/Login';
+import AdminLogin from './pages/public/AdminLogin';
 import ForgotPassword from './pages/public/ForgotPassword';
+import AuthCallback from './pages/public/AuthCallback';
 import Privacy from './pages/public/Privacy';
 import DiseaseDetail from './pages/public/DiseaseDetail';
 import Search from './pages/public/Search';
@@ -24,6 +26,7 @@ import PublicSurveys from './pages/public/PublicSurveys';
 import WhatWeDo from './pages/public/WhatWeDo';
 import Services from './pages/public/Services';
 import Portfolios from './pages/public/Portfolios';
+import DolNetwork from './pages/public/DolNetwork';
 import Terms from './pages/public/Terms';
 
 // App layout (existing)
@@ -54,6 +57,7 @@ import AdminPayments from './pages/admin/AdminPayments';
 import AdminHcpExplorer from './pages/admin/AdminHcpExplorer';
 import AdminRxAnalytics from './pages/admin/AdminRxAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
+import AdminUsers from './pages/admin/AdminUsers';
 
 // optional legacy page
 import Dashboard from './pages/Dashboard';
@@ -92,7 +96,9 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/join" element={<Join />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
 
@@ -104,6 +110,7 @@ function App() {
             <Route path="/surveys" element={<PublicSurveys />} />
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
+            <Route path="/kol-network" element={<DolNetwork />} />
           </Route>
 
           {/* =======================
@@ -182,6 +189,7 @@ function App() {
             <Route path="payments" element={<AdminPayments />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
+            <Route path="users" element={<AdminUsers />} />
             <Route path="rx-analytics" element={<AdminRxAnalytics />} />
           </Route>
         </Routes>

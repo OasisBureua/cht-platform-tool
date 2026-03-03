@@ -37,6 +37,35 @@ export interface CreateSurveyPayload {
   required?: boolean;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'HCP' | 'KOL' | 'ADMIN';
+  status: string;
+  createdAt: string;
+}
+
+export interface PendingPayment {
+  id: string;
+  userId: string;
+  programId: string | null;
+  amount: number;
+  type: string;
+  status: string;
+  description: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    billVendorId: string | null;
+  };
+  program: { id: string; title: string } | null;
+}
+
 export const adminApi = {
   getPrograms: async (): Promise<AdminProgram[]> => {
     try {
@@ -65,6 +94,16 @@ export const adminApi = {
     return data;
   },
 
+  getUsers: async (): Promise<AdminUser[]> => {
+    const { data } = await apiClient.get<AdminUser[]>('/admin/users');
+    return data;
+  },
+
+  updateUserRole: async (userId: string, role: 'HCP' | 'KOL' | 'ADMIN') => {
+    const { data } = await apiClient.patch(`/admin/users/${userId}/role`, { role });
+    return data;
+  },
+
   getPendingPayments: async () => {
     try {
       const { data } = await apiClient.get<PendingPayment[]>('/payments/pending');
@@ -82,22 +121,3 @@ export const adminApi = {
     return data;
   },
 };
-
-export interface PendingPayment {
-  id: string;
-  userId: string;
-  programId: string | null;
-  amount: number;
-  type: string;
-  status: string;
-  description: string | null;
-  createdAt: string;
-  user: {
-    id: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    billVendorId: string | null;
-  };
-  program: { id: string; title: string } | null;
-}

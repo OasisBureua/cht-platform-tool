@@ -6,9 +6,11 @@ const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  /** When requireAdmin, redirect unauthenticated users here (default: /admin/login) */
+  loginPath?: string;
 }
 
-export default function ProtectedRoute({ children, requireAdmin }: ProtectedRouteProps) {
+export default function ProtectedRoute({ children, requireAdmin, loginPath }: ProtectedRouteProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
@@ -25,7 +27,8 @@ export default function ProtectedRoute({ children, requireAdmin }: ProtectedRout
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const to = loginPath ?? (requireAdmin ? '/admin/login' : '/login');
+    return <Navigate to={to} state={{ from: location }} replace />;
   }
 
   if (requireAdmin && user.role !== 'ADMIN') {

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { RequestMethod } from '@nestjs/common';
+import { join } from 'path';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -23,6 +25,7 @@ import { validationSchema } from './config/validation';
 @Module({
   imports: [
     LoggerModule.forRoot({
+      forRoutes: [{ method: RequestMethod.ALL, path: '{*splat}' }],
       pinoHttp: {
         level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
         transport:
@@ -37,6 +40,7 @@ import { validationSchema } from './config/validation';
     }),
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [join(__dirname, '..', '..', '.env'), '.env'],
       load: [configuration],
       validationSchema,
       validationOptions: {
