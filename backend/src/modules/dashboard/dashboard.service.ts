@@ -98,12 +98,13 @@ export class DashboardService {
   }
 
   /**
-   * Update user profile (firstName, lastName only for now)
+   * Update user profile (firstName, lastName, specialty, npiNumber)
    */
   async updateProfile(
     userId: string,
-    data: { firstName?: string; lastName?: string },
+    data: { firstName?: string; lastName?: string; specialty?: string; npiNumber?: string },
   ): Promise<ProfileResponseDto> {
+    const npi = data.npiNumber !== undefined ? data.npiNumber.replace(/\D/g, '').slice(0, 10) : undefined;
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -111,6 +112,8 @@ export class DashboardService {
           firstName: data.firstName.trim() || 'User',
         }),
         ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
+        ...(data.specialty !== undefined && { specialty: data.specialty.trim() || null }),
+        ...(npi !== undefined && { npiNumber: npi.length === 10 ? npi : null }),
       },
     });
     return this.getProfile(userId);
@@ -136,6 +139,7 @@ export class DashboardService {
       email: user.email,
       name,
       specialty: user.specialty ?? undefined,
+      npiNumber: user.npiNumber ?? undefined,
       role: user.role,
       createdAt: user.createdAt.toISOString(),
       totalEarnings: user.totalEarnings / 100,

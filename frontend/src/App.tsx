@@ -16,6 +16,7 @@ import Login from './pages/public/Login';
 import AdminLogin from './pages/public/AdminLogin';
 import ForgotPassword from './pages/public/ForgotPassword';
 import AuthCallback from './pages/public/AuthCallback';
+import CompleteProfile from './pages/public/CompleteProfile';
 import Privacy from './pages/public/Privacy';
 import DiseaseDetail from './pages/public/DiseaseDetail';
 import Search from './pages/public/Search';
@@ -99,6 +100,7 @@ function App() {
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route path="/complete-profile" element={<CompleteProfile />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
 

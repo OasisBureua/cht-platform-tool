@@ -10,4 +10,14 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(100)
   lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  specialty?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  npiNumber?: string;
 }

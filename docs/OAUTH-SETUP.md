@@ -1,6 +1,13 @@
 # Google / Apple OAuth Sign-In
 
-CHT Platform supports Google and Apple sign-in via Supabase/GoTrue OAuth.
+CHT Platform supports Google and Apple sign-in via Supabase/GoTrue OAuth. **OAuth creates a CHT account and redirects to the platform** (`/app/home`), not to MediaHub.
+
+## Flow
+
+1. User clicks Google or Apple on **Login** or **Join**
+2. Supabase/GoTrue handles OAuth with Google/Apple
+3. **GoTrue redirects back to the CHT platform** (testapp/app.communityhealth.media/auth/callback)
+4. CHT callback exchanges token with backend → creates/finds user → redirects to `/app/home`
 
 ## Backend
 
@@ -8,21 +15,27 @@ CHT Platform supports Google and Apple sign-in via Supabase/GoTrue OAuth.
 - **Body:** `{ "access_token": "<GoTrue JWT>" }`
 - **Returns:** Same shape as `POST /api/auth/login` (session_token, userId, email, etc.)
 
-The backend validates the GoTrue JWT with `GOTRUE_JWT_SECRET` and creates a CHT session.
+The backend validates the GoTrue JWT with `GOTRUE_JWT_SECRET` and creates a CHT user via `findOrCreateByAuthId`.
 
 ## Frontend
 
-- **Login page:** Google and Apple buttons call `supabase.auth.signInWithOAuth({ provider })`
-- **Redirect:** Supabase redirects to `/auth/callback` with `access_token` in the URL hash
-- **Callback:** Extracts token, calls `POST /api/auth/login-oauth`, stores session, redirects to app
+- **Login & Join pages:** Google and Apple buttons call `supabase.auth.signInWithOAuth({ provider })`
+- **Redirect:** `redirectTo: ${origin}/auth/callback?from=/app/home` — always back to CHT platform
+- **Callback:** Extracts token, calls `POST /api/auth/login-oauth`, stores session, navigates to `/app/home`
 
-## MediaHub / GoTrue Configuration (Sebastian)
+## GoTrue Configuration (Sebastian) — Critical
 
-For OAuth to work, the following must be configured in the MediaHub/GoTrue dashboard:
+**OAuth must redirect to the CHT platform, NOT MediaHub.** Add these to GoTrue's **Redirect URLs**:
+
+- `https://testapp.communityhealth.media/auth/callback`
+- `https://app.communityhealth.media/auth/callback`
+- `http://localhost:5173/auth/callback` (dev)
+
+If these URLs are missing, users will be sent to MediaHub instead of the CHT platform.
 
 1. **Google OAuth**
    - Create OAuth 2.0 credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
-   - Add authorized redirect URI: `https://mediahub.communityhealth.media/auth/v1/callback` (or your GoTrue callback URL)
+   - Add authorized redirect URI: `https://mediahub.communityhealth.media/auth/v1/callback` (GoTrue callback)
    - Add Client ID and Client Secret to GoTrue
 
 2. **Apple Sign-In**
@@ -30,8 +43,9 @@ For OAuth to work, the following must be configured in the MediaHub/GoTrue dashb
    - Configure Service ID, redirect URL, and keys
    - Add to GoTrue
 
-3. **Redirect URLs**
-   - Add `https://testapp.communityhealth.media/auth/callback` (and localhost for dev) to allowed redirect URLs in GoTrue
+3. **Redirect URLs (Site URL / Redirect allowlist)**
+   - Add all CHT platform callback URLs above
+   - Do NOT use MediaHub as the default redirect for CHT OAuth
 
 ## Environment
 

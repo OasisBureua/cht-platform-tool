@@ -25,6 +25,8 @@ export class AuthService {
   /**
    * Find or create user by Auth0 sub (authId).
    * Uses DB only (Redis bypassed to avoid connection/timeout issues during login).
+   * For existing users, we never overwrite firstName/lastName from OAuth metadata—
+   * those are managed via Settings PATCH and must persist across login/logout.
    */
   async findOrCreateByAuthId(
     authId: string,
@@ -32,6 +34,7 @@ export class AuthService {
     firstName?: string,
     lastName?: string,
     npiNumber?: string | null,
+    specialty?: string | null,
   ): Promise<AuthUser | null> {
     let user = await this.prisma.user.findUnique({
       where: { authId },
@@ -39,27 +42,20 @@ export class AuthService {
 
     if (!user) {
       this.logger.log(`Creating new user for authId: ${authId}`);
+      const npi = npiNumber && String(npiNumber).replace(/\D/g, '').length === 10 ? String(npiNumber).replace(/\D/g, '').slice(0, 10) : undefined;
       user = await this.prisma.user.create({
         data: {
           authId,
           email: email || `${authId}@auth0.user`,
           firstName: firstName || 'User',
           lastName: lastName || '',
-          npiNumber: npiNumber || undefined,
-        },
-      });
-    } else if (
-      (firstName && firstName !== 'User' && firstName !== user.firstName) ||
-      (lastName !== undefined && lastName !== user.lastName)
-    ) {
-      user = await this.prisma.user.update({
-        where: { authId },
-        data: {
-          ...(firstName && firstName !== 'User' && { firstName }),
-          ...(lastName !== undefined && { lastName }),
+          npiNumber: npi,
+          specialty: specialty?.trim() || undefined,
         },
       });
     }
+    // Do NOT overwrite firstName/lastName for existing users—Settings PATCH is the source of truth.
+    // OAuth metadata is only used when creating a new user.
 
     const authUser = new AuthUser();
     authUser.authId = user.authId;
@@ -161,14 +157,25 @@ export class AuthService {
   }
 
   /**
-   * Get user by DB userId (for /me to return firstName, lastName).
+   * Get user by DB userId (for /me to return firstName, lastName, profileComplete).
    */
-  async getUserById(userId: string): Promise<{ firstName: string; lastName: string } | null> {
+  async getUserById(
+    userId: string,
+  ): Promise<{ firstName: string; lastName: string; specialty: string | null; npiNumber: string | null } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, lastName: true },
+      select: { firstName: true, lastName: true, specialty: true, npiNumber: true },
     });
     return user;
+  }
+
+  /**
+   * Check if user has completed required profile (specialty + 10-digit NPI).
+   */
+  isProfileComplete(user: { specialty: string | null; npiNumber: string | null } | null): boolean {
+    if (!user) return false;
+    const npi = (user.npiNumber || '').replace(/\D/g, '');
+    return !!(user.specialty?.trim() && npi.length === 10);
   }
 
   /**

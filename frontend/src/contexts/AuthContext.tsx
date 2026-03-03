@@ -15,6 +15,7 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   role?: string;
+  profileComplete?: boolean;
 }
 
 interface AuthError {
@@ -28,8 +29,8 @@ interface AuthContextValue {
   /** GoTrue JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
   accessToken: string | null;
   login: (email: string, password: string) => Promise<{ error?: AuthError }>;
-  /** Exchange GoTrue OAuth access_token (Google/Apple) for CHT session. */
-  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError }>;
+  /** Exchange GoTrue OAuth access_token (Google/Apple) for CHT session. Returns profileComplete when successful. */
+  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean }>;
   signUp: (
     email: string,
     password: string,
@@ -130,6 +131,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
                 firstName: data.firstName,
                 lastName: data.lastName,
                 role: data.role,
+                profileComplete: data.profileComplete ?? true,
               });
             } else {
               setSessionToken(null);
@@ -162,6 +164,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
             firstName: data.firstName,
             lastName: data.lastName,
             role: data.role,
+            profileComplete: data.profileComplete ?? true,
           });
         } else if (!cancelled) {
           setDevUserId('');
@@ -200,6 +203,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           firstName: data.firstName,
           lastName: data.lastName,
           role: data.role,
+          profileComplete: data.profileComplete ?? true,
         });
       }
     } else if (devUserId) {
@@ -215,6 +219,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           firstName: data.firstName,
           lastName: data.lastName,
           role: data.role,
+          profileComplete: data.profileComplete ?? true,
         });
       }
     }
@@ -263,6 +268,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           firstName: data.firstName,
           lastName: data.lastName,
           role: data.role,
+          profileComplete: data.profileComplete ?? true,
         });
         // Keep isLoading true until /api/auth/me validates - prevents app from rendering
         // and making API calls before authHeaderGetter is updated (which caused 401 → redirect)
@@ -312,12 +318,12 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           firstName: data.firstName,
           lastName: data.lastName,
           role: data.role,
+          profileComplete: data.profileComplete ?? true,
         });
         setIsLoading(true);
-      } else {
-        return { error: { message: 'Login failed.' } };
+        return { profileComplete: data.profileComplete ?? true };
       }
-      return {};
+      return { error: { message: 'Login failed.' } };
     },
     [apiUrl],
   );

@@ -40,6 +40,10 @@ export default function AuthCallback() {
         setError(result.error.message || 'Sign-in failed.');
         return;
       }
+      if (result.profileComplete === false) {
+        navigate('/complete-profile', { replace: true });
+        return;
+      }
       const from = searchParams.get('from') || '/app/home';
       navigate(from, { replace: true });
     });

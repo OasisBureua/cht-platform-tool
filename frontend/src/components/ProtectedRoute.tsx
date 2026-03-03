@@ -35,5 +35,10 @@ export default function ProtectedRoute({ children, requireAdmin, loginPath }: Pr
     return <Navigate to="/app/home" replace />;
   }
 
+  // Require profile complete (profession + NPI) for app access
+  if (!requireAdmin && user.profileComplete === false) {
+    return <Navigate to="/complete-profile" replace />;
+  }
+
   return <>{children}</>;
 }

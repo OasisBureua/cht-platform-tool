@@ -171,9 +171,6 @@ export default function Login() {
                 Apple
               </button>
             </div>
-            <p className="text-center text-xs text-gray-500">
-              OAuth requires Google/Apple to be configured in MediaHub.
-            </p>
           </div>
 
           {/* Footer */}

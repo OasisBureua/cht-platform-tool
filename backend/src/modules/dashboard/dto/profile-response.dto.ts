@@ -18,6 +18,10 @@ export class ProfileResponseDto {
   specialty?: string;
 
   @IsString()
+  @IsOptional()
+  npiNumber?: string;
+
+  @IsString()
   role: string;
 
   @IsDateString()

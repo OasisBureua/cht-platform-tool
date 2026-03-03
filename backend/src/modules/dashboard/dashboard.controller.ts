@@ -57,6 +57,8 @@ export class DashboardController {
     return this.dashboardService.updateProfile(userId, {
       firstName: dto.firstName,
       lastName: dto.lastName,
+      specialty: dto.specialty,
+      npiNumber: dto.npiNumber,
     });
   }
 }

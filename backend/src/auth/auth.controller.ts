@@ -34,6 +34,7 @@ interface LoginSuccess {
   firstName?: string;
   lastName?: string;
   role: string;
+  profileComplete?: boolean;
 }
 
 @Controller('auth')
@@ -159,11 +160,13 @@ export class AuthController {
       firstName || meta.full_name,
       lastName,
       meta.npi_number || null,
+      meta.profession || meta.specialty || null,
     );
     if (!user) return { error: 'User not found.' };
 
     const sessionToken = await this.authService.createSession(user, accessToken.trim());
     const dbUser = await this.authService.getUserById(user.userId);
+    const profileComplete = this.authService.isProfileComplete(dbUser);
 
     this.logger.log(`[Auth] OAuth login success: userId=${user.userId} email=${user.email}`);
     return {
@@ -175,6 +178,7 @@ export class AuthController {
       firstName: dbUser?.firstName ?? firstName ?? 'User',
       lastName: dbUser?.lastName ?? lastName ?? '',
       role: user.role,
+      profileComplete,
     };
   }
 
@@ -243,6 +247,7 @@ export class AuthController {
       const firstName = metadata.first_name || 'User';
       const lastName = metadata.last_name || '';
       const npiNumber = metadata.npi_number || null;
+      const specialty = metadata.profession || metadata.specialty || null;
 
       const dbStart = Date.now();
       const user = await this.authService.findOrCreateByAuthId(
@@ -251,6 +256,7 @@ export class AuthController {
         firstName,
         lastName,
         npiNumber,
+        specialty,
       );
       this.logger.log(`[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`);
 
@@ -261,6 +267,7 @@ export class AuthController {
       this.logger.log(`[Auth] createSession completed in ${Date.now() - sessionStart}ms`);
 
       const dbUser = await this.authService.getUserById(user.userId);
+      const profileComplete = this.authService.isProfileComplete(dbUser);
       this.logger.log(
         `[Auth] Supabase login success: userId=${user.userId} email=${user.email} total=${Date.now() - loginStart}ms`,
       );
@@ -274,6 +281,7 @@ export class AuthController {
         firstName: dbUser?.firstName ?? firstName,
         lastName: dbUser?.lastName ?? lastName,
         role: user.role,
+        profileComplete,
       };
     }
 
@@ -284,6 +292,8 @@ export class AuthController {
       return { error: 'User not found. Run: cd backend && npx prisma db seed' };
     }
     const sessionToken = await this.authService.createSession(user);
+    const dbUser = await this.authService.getUserById(user.userId);
+    const profileComplete = this.authService.isProfileComplete(dbUser);
     this.logger.log(`[Auth] Dev login success: userId=${user.userId} email=${user.email}`);
     return {
       session_token: sessionToken,
@@ -291,6 +301,7 @@ export class AuthController {
       email: user.email,
       name: user.name,
       role: user.role,
+      profileComplete,
     };
   }
 
@@ -380,6 +391,7 @@ export class AuthController {
     const firstName =
       dbFirst && dbFirst !== 'User' ? dbFirst : nameParts[0] || dbFirst || 'User';
     const lastName = dbLast ? dbLast : nameParts.slice(1).join(' ') || dbLast || '';
+    const profileComplete = this.authService.isProfileComplete(dbUser);
     this.logger.debug(`[Auth] /me OK: userId=${user.userId} email=${user.email}`);
     return {
       userId: user.userId,
@@ -389,6 +401,7 @@ export class AuthController {
       firstName,
       lastName,
       role: user.role,
+      profileComplete,
     };
   }
 }

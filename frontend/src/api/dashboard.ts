@@ -36,6 +36,7 @@ export interface ProfileResponse {
   email: string;
   name: string;
   specialty?: string;
+  npiNumber?: string;
   role: string;
   createdAt: string;
   totalEarnings: number;
@@ -60,7 +61,7 @@ export const dashboardApi = {
 
   updateProfile: async (
     userId: string,
-    updates: { firstName?: string; lastName?: string },
+    updates: { firstName?: string; lastName?: string; specialty?: string; npiNumber?: string },
   ): Promise<ProfileResponse> => {
     const { data } = await apiClient.patch(`/dashboard/${userId}/profile`, updates);
     return data;
