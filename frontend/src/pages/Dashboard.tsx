@@ -22,7 +22,7 @@ const STOCK_IMAGES = {
 const QUICK_ACCESS = [
   { title: 'Join Webinars', desc: 'Attend live medical education sessions and earn $500-$1,000 per webinar', icon: Presentation, to: '/app/webinars' },
   { title: 'Complete Surveys', desc: 'Share your insights through voice-based surveys in just 5-10 minutes', icon: ClipboardList, to: '/app/surveys' },
-  { title: 'Watch or Listen Content', desc: 'View educational videos and earn rewards for staying engaged', icon: PlayCircle, to: '/app/watch' },
+  { title: 'Conversations or Listen Content', desc: 'View educational videos and earn rewards for staying engaged', icon: PlayCircle, to: '/app/watch' },
 ];
 
 const FEATURED_WEBINARS = Array.from({ length: 6 }, (_, i) => ({

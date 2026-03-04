@@ -269,7 +269,7 @@ export default function WebinarDetail() {
                 active={!enrolled}
               />
               <StepCard
-                title="Watch"
+                title="Conversations"
                 subtitle={hasVideos ? `${program.videos.length} video(s)` : 'Video coming soon'}
                 done={false}
                 active={enrolled}
@@ -305,7 +305,7 @@ export default function WebinarDetail() {
                   onClick={() => navigate(`/app/watch/${firstVideo.id}`)}
                   className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                 >
-                  Continue Watching
+                  Continue in Conversations
                   <ArrowRight className="h-4 w-4" />
                 </button>
               ) : null}
@@ -354,14 +354,14 @@ export default function WebinarDetail() {
                                 ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
                                 : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
                             ].join(' ')}
-                            title={disabled ? 'Register to unlock playback' : 'Watch'}
+                            title={disabled ? 'Register to unlock playback' : 'Conversations'}
                           >
                             {disabled ? (
                               <Lock className="h-4 w-4" />
                             ) : (
                               <Play className="h-4 w-4" />
                             )}
-                            {disabled ? 'Locked' : 'Watch'}
+                            {disabled ? 'Locked' : 'Conversations'}
                           </button>
                         </div>
                       );
@@ -415,7 +415,7 @@ export default function WebinarDetail() {
                 done={enrolled}
               />
               <RequirementRow
-                label="Watch all required videos"
+                label="Complete all required videos in Conversations"
                 done={false}
                 disabled={!enrolled}
               />
@@ -429,7 +429,7 @@ export default function WebinarDetail() {
             {!enrolled ? (
               <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-xs text-gray-600">
-                  Register to unlock watching and survey completion.
+                  Register to unlock content and survey completion.
                 </p>
               </div>
             ) : null}

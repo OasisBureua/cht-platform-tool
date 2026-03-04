@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Play,
   Volume2,
+  VolumeX,
   Maximize2,
   X,
   Monitor,
@@ -18,12 +19,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
+import { YouTubePlayer } from '../../components/YouTubePlayer';
 
 const resourceImages: Record<string, string> = {
   webinars: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#1e3a5f"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Webinars</text></svg>'),
   protocols: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#2d5a3d"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Protocols</text></svg>'),
   clinicals: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#374151"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Clinicals</text></svg>'),
-  watch: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#1e3a5f"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Watch</text></svg>'),
+  watch: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#1e3a5f"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Conversations</text></svg>'),
   reporting: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#4b5563"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Reporting</text></svg>'),
   data: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#2d5a3d"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Data</text></svg>'),
   search: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#374151"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Search</text></svg>'),
@@ -34,6 +36,7 @@ type FeaturedVideo = {
   id: string;
   title: string;
   imageUrl: string;
+  youtubeUrl?: string;
 };
 
 type Treatment = {
@@ -138,6 +141,7 @@ export default function Home() {
           id: c.id,
           title: c.title,
           imageUrl: img || 'https://picsum.photos/seed/cht-video/600/400',
+          youtubeUrl: c.youtube_url,
         };
       });
     }
@@ -156,6 +160,9 @@ export default function Home() {
   const [hrPlaylistIndex, setHrPlaylistIndex] = useState(midHrPlaylist);
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
   const [modalAnimate, setModalAnimate] = useState(false);
+  const [modalPlaying, setModalPlaying] = useState(false);
+  const [inlinePlayingId, setInlinePlayingId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
   const videoScrollRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const treatmentScrollRef = useRef<HTMLDivElement>(null);
@@ -183,13 +190,16 @@ export default function Home() {
 
   useEffect(() => {
     if (expandedVideoId) {
+      setModalPlaying(false);
       setModalAnimate(false);
       const id = requestAnimationFrame(() => setModalAnimate(true));
       return () => cancelAnimationFrame(id);
     } else {
+      setModalPlaying(false);
       setModalAnimate(false);
     }
   }, [expandedVideoId]);
+
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -203,7 +213,7 @@ export default function Home() {
     { id: 'r1', title: 'Webinars', href: '/catalog', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
     { id: 'r2', title: 'Protocols', href: '/catalog', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
     { id: 'r3', title: 'Clinicals', href: '/catalog', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
-    { id: 'r4', title: 'Watch', href: '/watch', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
+    { id: 'r4', title: 'Conversations', href: '/watch', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
     { id: 'r5', title: 'Reporting', href: '/catalog', icon: <Clock className="h-10 w-10" />, imageUrl: resourceImages.reporting },
     { id: 'r6', title: 'Data', href: '/catalog', icon: <LayoutGrid className="h-10 w-10" />, imageUrl: resourceImages.data },
     { id: 'r7', title: 'Search', href: '/search', icon: <Search className="h-10 w-10" />, imageUrl: resourceImages.search },
@@ -223,33 +233,65 @@ export default function Home() {
           aria-label="Video player"
         >
           <div
-            className={`relative w-full max-w-4xl rounded-2xl overflow-hidden bg-black shadow-2xl transition-all duration-300 ${modalAnimate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
+            className={`relative w-full max-w-6xl rounded-2xl overflow-hidden bg-black shadow-2xl transition-all duration-300 ${modalAnimate ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={() => setExpandedVideoId(null)}
-              className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <div className="relative aspect-video w-full">
-              <img
-                src={expandedVideo.imageUrl}
-                alt={expandedVideo.title}
-                className="h-full w-full object-contain"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                <button
-                  type="button"
-                  onClick={() => navigate(expandedVideo.id.startsWith('f') ? '/watch' : `/catalog/clip/${expandedVideo.id}`)}
-                  className="h-16 w-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-900 shadow-lg transition-colors"
-                  aria-label="Play video"
-                >
-                  <Play className="h-8 w-8 ml-1" fill="currentColor" />
-                </button>
-              </div>
+            <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsMuted((m) => !m)}
+                className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                aria-label={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setExpandedVideoId(null)}
+                className="h-10 w-10 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="relative aspect-video w-full bg-black">
+              {modalPlaying && expandedVideo.youtubeUrl ? (
+                <YouTubePlayer
+                  youtubeUrl={expandedVideo.youtubeUrl}
+                  muted={isMuted}
+                  autoplay
+                  className="absolute inset-0 w-full h-full"
+                  title={expandedVideo.title}
+                />
+              ) : (
+                <>
+                  <img
+                    src={expandedVideo.imageUrl}
+                    alt={expandedVideo.title}
+                    className="h-full w-full object-contain"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                    {expandedVideo.youtubeUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setModalPlaying(true)}
+                        className="h-16 w-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-900 shadow-lg transition-colors"
+                        aria-label="Play video"
+                      >
+                        <Play className="h-8 w-8 ml-1" fill="currentColor" />
+                      </button>
+                    ) : (
+                      <Link
+                        to={expandedVideo.id.startsWith('f') ? '/watch' : `/catalog/clip/${expandedVideo.id}`}
+                        className="h-16 w-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-900 shadow-lg transition-colors"
+                        aria-label="Conversations"
+                      >
+                        <Play className="h-8 w-8 ml-1" fill="currentColor" />
+                      </Link>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <div className="p-4 bg-gray-900 text-white">
               <h3 className="text-lg font-semibold">{expandedVideo.title}</h3>
@@ -263,7 +305,7 @@ export default function Home() {
         <div
           className="min-h-[400px] sm:min-h-[460px] md:h-[520px] w-full bg-cover bg-center bg-gray-800"
           style={{
-            backgroundImage: "url('/images/hero-placeholder.svg')",
+            backgroundImage: "url('/images/hero-bg.png')",
           }}
         >
           <div className="absolute inset-0 bg-black/45" />
@@ -316,6 +358,7 @@ export default function Home() {
                   const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
                   if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + gap)) newIdx = i;
                 });
+                if (newIdx !== featuredVideoIndex) setInlinePlayingId(null);
                 setFeaturedVideoIndex(newIdx);
               }}
               className="flex items-center gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-4 sm:-mx-6 px-4 sm:px-6"
@@ -324,6 +367,7 @@ export default function Home() {
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
               {featuredVideos.map((video, idx) => {
                 const isSelected = idx === featuredVideoIndex;
+                const isPlayingInline = inlinePlayingId === video.id && isSelected;
                 const baseH = 'h-[180px] sm:h-[220px] md:h-[280px]';
                 const selectedH = 'h-[200px] sm:h-[240px] md:h-[300px]';
                 return (
@@ -336,7 +380,22 @@ export default function Home() {
                     data-video-card
                     className={`shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] block relative transition-[height] duration-300 cursor-pointer ${isSelected ? selectedH : baseH}`}
                   >
-                    <img src={video.imageUrl} alt={video.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+                    {isPlayingInline && video.youtubeUrl ? (
+                      <div
+                        className="absolute inset-0 w-full h-full"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <YouTubePlayer
+                          youtubeUrl={video.youtubeUrl}
+                          muted={isMuted}
+                          autoplay
+                          className="absolute inset-0 w-full h-full"
+                          title={video.title}
+                        />
+                      </div>
+                    ) : (
+                      <img src={video.imageUrl} alt={video.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -359,8 +418,12 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
-                    const id = featuredVideos[featuredVideoIndex]?.id;
-                    if (id) setExpandedVideoId(id);
+                    const video = featuredVideos[featuredVideoIndex];
+                    if (video?.youtubeUrl) {
+                      setInlinePlayingId(inlinePlayingId === video.id ? null : video.id);
+                    } else {
+                      if (video?.id) setExpandedVideoId(video.id);
+                    }
                   }}
                   className="h-10 w-10 shrink-0 rounded-full bg-gray-900 flex items-center justify-center text-white hover:bg-black transition-colors"
                   aria-label="Play"
@@ -370,6 +433,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
+                    setInlinePlayingId(null);
                     const next = (featuredVideoIndex - 1 + featuredVideos.length) % featuredVideos.length;
                     setFeaturedVideoIndex(next);
                     videoScrollRef.current?.querySelectorAll('[data-video-card]')[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -382,6 +446,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => {
+                    setInlinePlayingId(null);
                     const next = (featuredVideoIndex + 1) % featuredVideos.length;
                     setFeaturedVideoIndex(next);
                     videoScrollRef.current?.querySelectorAll('[data-video-card]')[next]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -393,10 +458,11 @@ export default function Home() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setIsMuted((m) => !m)}
                   className="h-10 w-10 shrink-0 rounded-full bg-gray-900 flex items-center justify-center text-white hover:bg-black transition-colors"
-                  aria-label="Volume"
+                  aria-label={isMuted ? 'Unmute' : 'Mute'}
                 >
-                  <Volume2 className="h-5 w-5" />
+                  {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
                 </button>
               </div>
             </div>
@@ -694,14 +760,14 @@ export default function Home() {
       </section>
 
       {/* How We Help Pharma - FAQ accordion */}
-      <section className="py-12 sm:py-16 border-t border-gray-200">
+      <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10">
             How We Help Pharma Educate Healthcare Audiences
           </h2>
-          <div className="border-t border-gray-200">
+          <div>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-base font-medium text-gray-900">AI-Powered Content Automation</span>
@@ -710,12 +776,12 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
                 Turn one medical webinar or clinical presentation into 20+ platform-specific assets—social posts, podcast clips, infographics, and more.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-base font-medium text-gray-900">Multi-Audience Reach</span>
@@ -724,12 +790,12 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
                 Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-base font-medium text-gray-900">Entertainment-Grade Distribution</span>
@@ -738,12 +804,12 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
                 Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-base font-medium text-gray-900">First-Party HCP Intelligence</span>
@@ -752,12 +818,12 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
                 Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-base font-medium text-gray-900">Real Engagement Analytics</span>
@@ -766,7 +832,7 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pb-5 text-sm text-gray-600 max-w-3xl pl-8">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
                 Move beyond impressions. Track who watched, who shared, and who took meaningful action.
               </p>
             </details>
@@ -779,6 +845,21 @@ export default function Home() {
               Get Started
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* A media company thats about more than just content - Figma Frame 13 */}
+      <section className="py-12 sm:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 text-center">
+          <h2 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-normal leading-tight text-gray-900 max-w-4xl mx-auto mb-10">
+            A media company thats about more than just content
+          </h2>
+          <Link
+            to="/join"
+            className="inline-flex items-center justify-center rounded-full bg-gray-900 px-10 py-4 text-base font-medium text-white hover:bg-black transition-colors min-w-[208px]"
+          >
+            Join Us
+          </Link>
         </div>
       </section>
     </div>

@@ -93,7 +93,7 @@ export default function ClipDetail() {
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6">
         <p className="text-gray-600">Unable to load clip. {(error as Error)?.message || 'Not found.'}</p>
         <Link to={isInApp ? '/app/watch' : '/catalog'} className="text-gray-900 font-medium hover:underline flex items-center gap-2">
-          <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Watch' : 'Back to catalog'}
+          <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Conversations' : 'Back to catalog'}
         </Link>
       </div>
     );
@@ -109,7 +109,7 @@ export default function ClipDetail() {
           to={isInApp ? '/app/watch' : '/catalog'}
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
         >
-          <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Watch' : 'Back to catalog'}
+          <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Conversations' : 'Back to catalog'}
         </Link>
 
         {/* Video embed */}

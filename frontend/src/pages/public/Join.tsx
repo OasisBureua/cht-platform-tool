@@ -16,6 +16,11 @@ const PROFESSION_OPTIONS = [
 
 const PLATFORM_HOME = '/app/home';
 
+/** Base URL for OAuth redirect - must be in GoTrue's Redirect URLs allowlist. Falls back to current origin. */
+function getOAuthRedirectBase(): string {
+  return import.meta.env.VITE_APP_URL || window.location.origin;
+}
+
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
   const [firstName, setFirstName] = useState('');
@@ -40,7 +45,7 @@ export default function Join() {
       const { data, error: err } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?from=${encodeURIComponent(PLATFORM_HOME)}`,
+          redirectTo: `${getOAuthRedirectBase()}/auth/callback?from=${encodeURIComponent(PLATFORM_HOME)}`,
         },
       });
       if (err) {

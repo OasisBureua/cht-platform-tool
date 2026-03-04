@@ -345,7 +345,7 @@ export default function VideosPage() {
                         to={detailUrl}
                         className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                       >
-                        Watch
+                        Conversations
                       </Link>
                     </div>
                   </div>

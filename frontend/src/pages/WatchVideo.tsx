@@ -293,7 +293,7 @@ export default function WatchVideo() {
                 onClick={() => setHasStarted(true)}
                 className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
-                {canResume ? 'Resume' : 'Start Watching'}
+                {canResume ? 'Resume' : 'Start'}
               </button>
             ) : (
               <button

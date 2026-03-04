@@ -48,7 +48,7 @@ terraform output route53_nameservers
 
 - [ ] NS records added to main DNS provider
 - [ ] DNS propagation verified: `dig api.communityhealth.media`
-- [ ] DNS propagation verified: `dig app.communityhealth.media`
+- [ ] DNS propagation verified: `dig testapp.communityhealth.media`
 - [ ] Both records resolve to correct values
 
 ### Backend Health Checks
@@ -75,7 +75,7 @@ curl https://api.communityhealth.media/health/detail
 ### Frontend Tests
 
 ```bash
-open https://app.communityhealth.media
+open https://testapp.communityhealth.media
 ```
 
 - [ ] React app loads without errors

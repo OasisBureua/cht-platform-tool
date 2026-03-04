@@ -168,7 +168,7 @@ export default function PlaylistDetail() {
                 </div>
 
                 {/* Video title banner */}
-                <div className="rounded-xl bg-indigo-600 px-6 py-4">
+                <div className="rounded-xl bg-gray-900 px-6 py-4">
                   <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
                 </div>
 

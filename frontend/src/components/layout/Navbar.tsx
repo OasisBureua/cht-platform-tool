@@ -44,7 +44,7 @@ export default function Navbar() {
 
               <NavLink to="/watch" className={linkClass}>
                 <PlayCircle className="w-4 h-4 mr-2" />
-                Watch &amp; Earn
+                Conversations &amp; Earn
               </NavLink>
 
               <NavLink to="/earnings" className={linkClass}>

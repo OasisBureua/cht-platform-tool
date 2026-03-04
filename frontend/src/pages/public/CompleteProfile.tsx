@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardApi } from '../../api/dashboard';
 
@@ -14,6 +14,7 @@ const PROFESSION_OPTIONS = [
 ];
 
 export default function CompleteProfile() {
+  const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
   const [profession, setProfession] = useState('');
   const [npiNumber, setNpiNumber] = useState('');
@@ -60,7 +61,7 @@ export default function CompleteProfile() {
         npiNumber: npi,
       });
       await refreshProfile();
-      // refreshProfile will update profileComplete; Navigate will trigger on re-render
+      navigate('/app/home', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
     } finally {

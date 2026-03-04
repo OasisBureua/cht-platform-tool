@@ -57,7 +57,7 @@ export default function WhatWeDo() {
                     Built to support modern clinical workflows
                   </p>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    Browse disease hubs, watch curated videos, and share relevant content with your team.
+                    Browse disease hubs, conversations curated videos, and share relevant content with your team.
                   </p>
                 </div>
               </div>
@@ -89,7 +89,7 @@ export default function WhatWeDo() {
               icon={<Play className="h-5 w-5" />}
               title="Short-form Video Learning"
               body="Focused videos designed for busy clinicians—clear takeaways and practical framing."
-              cta={{ label: 'Watch a Demo', to: '/watch' }}
+              cta={{ label: 'Conversations Demo', to: '/watch' }}
             />
             <Pillar
               icon={<Search className="h-5 w-5" />}
@@ -120,7 +120,7 @@ export default function WhatWeDo() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <Step step="01" title="Discover" body="Browse the catalogue or search for a condition, topic, or speaker." />
             <Step step="02" title="Select" body="Open a disease hub and choose the collection or playlist that matches your need." />
-            <Step step="03" title="Watch" body="Watch short-form videos and share with your team for fast alignment." />
+            <Step step="03" title="Conversations" body="View short-form videos in Conversations and share with your team for fast alignment." />
           </div>
         </div>
       </section>

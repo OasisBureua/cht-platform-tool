@@ -154,6 +154,6 @@ jobs:
         run: |
           echo "🎉 Deployment Complete!"
           echo ""
-          echo "Frontend: https://app.communityhealth.media"
+          echo "Frontend: https://testapp.communityhealth.media"
           echo "Backend: https://api.communityhealth.media"
           echo "Image Tag: ${{ steps.meta.outputs.image_tag }}"

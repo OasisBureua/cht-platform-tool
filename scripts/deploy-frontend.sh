@@ -81,5 +81,5 @@ echo ""
 if [ "$ENV" == "platform" ]; then
     echo "🌐 Test: open https://testapp.communityhealth.media"
 else
-    echo "🌐 Test: open https://app.communityhealth.media"
+    echo "🌐 Test: open https://testapp.communityhealth.media"
 fi

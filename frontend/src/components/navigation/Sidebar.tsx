@@ -4,7 +4,7 @@ import { Presentation, ClipboardList, Video, DollarSign, Settings } from 'lucide
 const nav = [
   { to: '/webinars', label: 'Webinars', icon: Presentation },
   { to: '/surveys', label: 'Surveys', icon: ClipboardList },
-  { to: '/watch', label: 'Watch', icon: Video },
+  { to: '/watch', label: 'Conversations', icon: Video },
   { to: '/earnings', label: 'Earnings', icon: DollarSign },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

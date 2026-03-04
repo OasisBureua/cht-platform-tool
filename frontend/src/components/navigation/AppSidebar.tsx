@@ -14,7 +14,7 @@ const nav = [
   { to: '/app/home', label: 'Home', icon: Home, end: true },
   { to: '/app/search', label: 'Search', icon: Search, end: false },
   { to: '/app/webinars', label: 'Webinars', icon: Presentation, end: false },
-  { to: '/app/watch', label: 'Watch', icon: MonitorPlay, end: false },
+  { to: '/app/watch', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
   { to: '/app/chatbot', label: 'ChatBot', icon: Bot, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },

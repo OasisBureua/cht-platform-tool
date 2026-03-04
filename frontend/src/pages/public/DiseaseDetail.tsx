@@ -86,7 +86,7 @@ export default function DiseaseDetail() {
           <FeaturedCard
             title={page.featuredVideo.title}
             imageUrl={page.featuredVideo.imageUrl}
-            cta="Watch Now"
+            cta="Conversations"
             size="large"
             to="/watch"
           />

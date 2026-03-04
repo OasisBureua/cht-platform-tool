@@ -16,7 +16,7 @@ const nav = [
   { to: '/admin/hcp-explorer', label: 'Search', icon: Search, end: false },
   { to: '/admin/programs', label: 'Webinars', icon: Presentation, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
-  { to: '/admin/programs', label: 'Watch', icon: PlayCircle, end: false },
+  { to: '/admin/programs', label: 'Conversations', icon: PlayCircle, end: false },
   { to: '/admin/payments', label: 'Earnings', icon: DollarSign, end: false },
   { to: '/admin/users', label: 'Users', icon: Users, end: false },
   { to: '/admin/settings', label: 'Settings', icon: Settings, end: false },

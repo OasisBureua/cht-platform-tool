@@ -6,7 +6,7 @@ CHT Platform supports Google and Apple sign-in via Supabase/GoTrue OAuth. **OAut
 
 1. User clicks Google or Apple on **Login** or **Join**
 2. Supabase/GoTrue handles OAuth with Google/Apple
-3. **GoTrue redirects back to the CHT platform** (testapp/app.communityhealth.media/auth/callback)
+3. **GoTrue redirects back to the CHT platform** (testapp.communityhealth.media/auth/callback)
 4. CHT callback exchanges token with backend → creates/finds user → redirects to `/app/home`
 
 ## Backend
@@ -28,7 +28,6 @@ The backend validates the GoTrue JWT with `GOTRUE_JWT_SECRET` and creates a CHT 
 **OAuth must redirect to the CHT platform, NOT MediaHub.** Add these to GoTrue's **Redirect URLs**:
 
 - `https://testapp.communityhealth.media/auth/callback`
-- `https://app.communityhealth.media/auth/callback`
 - `http://localhost:5173/auth/callback` (dev)
 
 If these URLs are missing, users will be sent to MediaHub instead of the CHT platform.
@@ -51,4 +50,5 @@ If these URLs are missing, users will be sent to MediaHub instead of the CHT pla
 
 - `VITE_SUPABASE_URL` – GoTrue base URL (e.g. https://mediahub.communityhealth.media)
 - `VITE_SUPABASE_ANON_KEY` – GoTrue anon key
+- `VITE_APP_URL` – **Required for OAuth.** Your CHT platform base URL (e.g. https://testapp.communityhealth.media). OAuth uses this for `redirectTo` so users return to the CHT platform, not MediaHub. Must match an entry in GoTrue's Redirect URLs allowlist.
 - `GOTRUE_JWT_SECRET` – Backend must have this to validate OAuth tokens

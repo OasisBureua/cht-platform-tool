@@ -3,6 +3,11 @@ import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 
+/** Base URL for OAuth redirect - must be in GoTrue's Redirect URLs allowlist. Falls back to current origin. */
+function getOAuthRedirectBase(): string {
+  return import.meta.env.VITE_APP_URL || window.location.origin;
+}
+
 export default function Login() {
   const location = useLocation();
   const { isAuthenticated, isLoading, login } = useAuth();
@@ -21,7 +26,7 @@ export default function Login() {
       const { data, error: err } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?from=${encodeURIComponent(from)}`,
+          redirectTo: `${getOAuthRedirectBase()}/auth/callback?from=${encodeURIComponent(from)}`,
         },
       });
       if (err) {

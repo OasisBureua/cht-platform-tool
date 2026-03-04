@@ -250,7 +250,7 @@ export default function ExploreOpportunities() {
                   to={item.href}
                   className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                 >
-                  {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'Learn More' : 'Watch'}
+                  {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'Learn More' : 'Conversations'}
                 </Link>
               </div>
             </div>
