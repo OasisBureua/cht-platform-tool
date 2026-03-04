@@ -52,10 +52,13 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
 fi
 
 # Production build: always use .env.production (Vite loads it for npm run build)
+# VITE_APP_URL: OAuth redirect base - must match GoTrue Redirect URLs allowlist (Sebastien)
+APP_URL="https://testapp.communityhealth.media"
 build_env_file() {
   echo "VITE_API_URL=$API_URL"
   echo "VITE_SUPABASE_URL=$SUPABASE_URL"
   echo "VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
+  echo "VITE_APP_URL=$APP_URL"
   echo "VITE_DISABLE_AUTH=false"
   echo "VITE_USE_DEV_AUTH=false"
 }

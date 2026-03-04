@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Award, DollarSign, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
+import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
 
 const PROFESSION_OPTIONS = [
   { value: '', label: 'Select your profession' },
@@ -15,11 +15,6 @@ const PROFESSION_OPTIONS = [
 ];
 
 const PLATFORM_HOME = '/app/home';
-
-/** Base URL for OAuth redirect - must be in GoTrue's Redirect URLs allowlist. Falls back to current origin. */
-function getOAuthRedirectBase(): string {
-  return import.meta.env.VITE_APP_URL || window.location.origin;
-}
 
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
@@ -38,30 +33,11 @@ export default function Join() {
     return <Navigate to={PLATFORM_HOME} replace />;
   }
 
-  const handleOAuth = async (provider: 'google' | 'apple') => {
+  const handleOAuth = (provider: 'google' | 'apple') => {
     setError(null);
     setOauthLoading(provider);
-    try {
-      const { data, error: err } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${getOAuthRedirectBase()}/auth/callback?from=${encodeURIComponent(PLATFORM_HOME)}`,
-        },
-      });
-      if (err) {
-        setError(err.message || 'OAuth failed.');
-        setOauthLoading(null);
-        return;
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setError('OAuth not configured. Contact support.');
-    } catch {
-      setError('Sign-in failed.');
-    }
-    setOauthLoading(null);
+    // Use direct authorize URL with redirect_to - fixes Google OAuth redirect (Sebastien)
+    window.location.href = buildOAuthAuthorizeUrl(provider, PLATFORM_HOME);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

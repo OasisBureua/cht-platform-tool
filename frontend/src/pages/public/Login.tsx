@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
-
-/** Base URL for OAuth redirect - must be in GoTrue's Redirect URLs allowlist. Falls back to current origin. */
-function getOAuthRedirectBase(): string {
-  return import.meta.env.VITE_APP_URL || window.location.origin;
-}
+import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
 
 export default function Login() {
   const location = useLocation();
@@ -19,30 +14,11 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
-  const handleOAuth = async (provider: 'google' | 'apple') => {
+  const handleOAuth = (provider: 'google' | 'apple') => {
     setError(null);
     setOauthLoading(provider);
-    try {
-      const { data, error: err } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${getOAuthRedirectBase()}/auth/callback?from=${encodeURIComponent(from)}`,
-        },
-      });
-      if (err) {
-        setError(err.message || 'OAuth failed.');
-        setOauthLoading(null);
-        return;
-      }
-      if (data?.url) {
-        window.location.href = data.url;
-        return;
-      }
-      setError('OAuth not configured. Contact support.');
-    } catch {
-      setError('Sign-in failed.');
-    }
-    setOauthLoading(null);
+    // Use direct authorize URL with redirect_to - fixes Google OAuth redirect (Sebastien)
+    window.location.href = buildOAuthAuthorizeUrl(provider, from);
   };
 
   // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop

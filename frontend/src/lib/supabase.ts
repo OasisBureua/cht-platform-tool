@@ -8,3 +8,23 @@ if (!supabaseAnonKey) {
   throw new Error('VITE_SUPABASE_ANON_KEY is required. Get valid JWT from MediaHub/CHM team.');
 }
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+/** OAuth redirect base - must be in GoTrue's Redirect URLs allowlist. */
+export function getOAuthRedirectBase(): string {
+  return import.meta.env.VITE_APP_URL || window.location.origin;
+}
+
+/**
+ * Build GoTrue authorize URL with redirect_to explicitly set.
+ * Fix for Google OAuth: GoTrue requires redirect_to to send users back to the CHT platform.
+ * @see Sebastien: GET .../auth/v1/authorize?provider=google&redirect_to=https://testapp.communityhealth.media/auth/callback
+ */
+export function buildOAuthAuthorizeUrl(provider: 'google' | 'apple', fromPath: string): string {
+  const base = getOAuthRedirectBase();
+  const redirectTo = `${base}/auth/callback?from=${encodeURIComponent(fromPath)}`;
+  const params = new URLSearchParams({
+    provider,
+    redirect_to: redirectTo,
+  });
+  return `${supabaseUrl}/auth/v1/authorize?${params.toString()}`;
+}

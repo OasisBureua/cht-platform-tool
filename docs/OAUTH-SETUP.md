@@ -23,9 +23,17 @@ The backend validates the GoTrue JWT with `GOTRUE_JWT_SECRET` and creates a CHT 
 - **Redirect:** `redirectTo: ${origin}/auth/callback?from=/app/home` — always back to CHT platform
 - **Callback:** Extracts token, calls `POST /api/auth/login-oauth`, stores session, navigates to `/app/home`
 
-## GoTrue Configuration (Sebastian) — Critical
+## GoTrue Configuration (Sebastien) — Critical
 
-**OAuth must redirect to the CHT platform, NOT MediaHub.** Add these to GoTrue's **Redirect URLs**:
+**OAuth must redirect to the CHT platform, NOT MediaHub.** The fix is to pass `redirect_to` when calling the authorize endpoint:
+
+```
+GET https://mediahub.communityhealth.media/auth/v1/authorize?provider=google&redirect_to=https://testapp.communityhealth.media/auth/callback
+```
+
+The frontend now builds this URL directly (see `buildOAuthAuthorizeUrl` in `lib/supabase.ts`).
+
+Add these to GoTrue's **Redirect URLs** allowlist:
 
 - `https://testapp.communityhealth.media/auth/callback`
 - `http://localhost:5173/auth/callback` (dev)
