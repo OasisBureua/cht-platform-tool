@@ -127,25 +127,13 @@ export class AuthController {
   /**
    * POST /api/auth/login-oauth
    * Exchange GoTrue OAuth access_token (Google/Apple) for CHT session.
-   * Body: { access_token: string } - raw JWT string (do NOT base64-encode).
+   * Body: { access_token: string }
    */
   @Post('login-oauth')
   async loginOAuth(@Body('access_token') accessToken: string): Promise<LoginSuccess | { error: string }> {
-    let token = accessToken?.trim();
+    const token = accessToken?.trim();
     if (!token) {
       return { error: 'access_token is required.' };
-    }
-
-    // Use raw string: if token was mistakenly base64-encoded, decode to get the actual JWT
-    if (!token.includes('.') && /^[A-Za-z0-9+/=]+$/.test(token)) {
-      try {
-        const decoded = Buffer.from(token, 'base64').toString('utf8');
-        if (decoded.includes('.') && decoded.split('.').length === 3) {
-          token = decoded;
-        }
-      } catch {
-        /* keep original token */
-      }
     }
 
     const secret = this.configService.get<string>('gotrue.jwtSecret');
