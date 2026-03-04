@@ -6,10 +6,6 @@ Project documentation and guides.
 
 To deploy the app at `testapp.communityhealth.media` with DNS on GoDaddy: **[TESTAPP-DEPLOYMENT-GODADDY.md](./TESTAPP-DEPLOYMENT-GODADDY.md)** — request ACM certificate first, add CNAME in GoDaddy for validation, then deploy Terraform and add NS records.
 
-## Email (HubSpot)
+## Email (Amazon SES)
 
-Transactional emails are sent via HubSpot SMTP. With no credentials configured, the worker logs emails only. To enable:
-
-1. In HubSpot: **Settings → Integrations → Email** (or Transactional Email)
-2. Create an SMTP API token
-3. Set `HUBSPOT_SMTP_USER` and `HUBSPOT_SMTP_PASSWORD` in worker `.env` (or via Terraform secrets)
+Transactional emails are sent via Amazon SES. Verify your sending domain in SES first. The worker uses the ECS task IAM role for SES access. Set `SES_FROM_EMAIL` in worker `.env` (e.g. `noreply@communityhealth.media`).

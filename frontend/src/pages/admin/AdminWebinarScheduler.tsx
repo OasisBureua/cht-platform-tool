@@ -16,6 +16,8 @@ export default function AdminWebinarScheduler() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [duration, setDuration] = useState('60');
+  const [createSurvey, setCreateSurvey] = useState(true);
+  const JOTFORM_TEMPLATE_ID = '260624911991966'; // Post-event survey template
 
   const createMutation = useMutation({
     mutationFn: (payload: {
@@ -25,6 +27,7 @@ export default function AdminWebinarScheduler() {
       honorariumAmount?: number;
       startDate?: string;
       status: 'DRAFT' | 'PUBLISHED';
+      createSurveyFromTemplate?: string;
     }) => adminApi.createProgram(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'programs'] });
@@ -51,6 +54,7 @@ export default function AdminWebinarScheduler() {
       honorariumAmount: !isNaN(rewardNum) && rewardNum > 0 ? rewardNum : undefined,
       startDate,
       status: 'DRAFT',
+      createSurveyFromTemplate: createSurvey ? JOTFORM_TEMPLATE_ID : undefined,
     });
   };
 
@@ -149,6 +153,19 @@ export default function AdminWebinarScheduler() {
               placeholder="Brief bio of the speaker..."
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
             />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="createSurvey"
+              checked={createSurvey}
+              onChange={(e) => setCreateSurvey(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <label htmlFor="createSurvey" className="text-sm font-medium text-gray-700">
+              Create post-event survey from Jotform template (clone + webhook)
+            </label>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

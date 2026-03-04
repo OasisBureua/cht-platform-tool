@@ -140,6 +140,14 @@ resource "aws_iam_role_policy" "worker_task" {
       {
         Effect = "Allow"
         Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes",

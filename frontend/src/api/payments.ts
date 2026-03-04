@@ -37,11 +37,40 @@ export const paymentsApi = {
   createConnectLink: async (userId: string): Promise<{ url: string }> => {
     try {
       const { data } = await apiClient.post(`/payments/${userId}/connect-account`);
-      return { url: data.onboardingUrl || data.url || 'https://app.bill.com/' };
+      return { url: data.onboardingUrl || data.url || '/app/payments' };
     } catch (err) {
-      if (ENABLE_MOCK_FALLBACK) return { url: 'https://app.bill.com/' };
+      if (ENABLE_MOCK_FALLBACK) return { url: '/app/payments' };
       throw err;
     }
+  },
+
+  /** Submit bank details to create Bill.com vendor (stays on platform) */
+  createConnectAccount: async (
+    userId: string,
+    bankData: {
+      payeeName: string;
+      nameOnAccount: string;
+      accountNumber: string;
+      routingNumber: string;
+      addressLine1?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    },
+  ) => {
+    const { data } = await apiClient.post(`/payments/${userId}/connect-account`, {
+      payeeName: bankData.payeeName,
+      bankAccount: {
+        nameOnAccount: bankData.nameOnAccount,
+        accountNumber: bankData.accountNumber,
+        routingNumber: bankData.routingNumber,
+      },
+      addressLine1: bankData.addressLine1,
+      city: bankData.city,
+      state: bankData.state,
+      zipCode: bankData.zipCode,
+    });
+    return data;
   },
 
   requestPayout: async (userId: string, amount?: number) => {

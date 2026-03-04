@@ -127,23 +127,41 @@ export class AuthController {
   /**
    * POST /api/auth/login-oauth
    * Exchange GoTrue OAuth access_token (Google/Apple) for CHT session.
-   * Body: { access_token: string }
+   * Body: { access_token: string } - raw JWT string (do NOT base64-encode).
    */
   @Post('login-oauth')
   async loginOAuth(@Body('access_token') accessToken: string): Promise<LoginSuccess | { error: string }> {
-    if (!accessToken?.trim()) {
+    let token = accessToken?.trim();
+    if (!token) {
       return { error: 'access_token is required.' };
+    }
+
+    // Use raw string: if token was mistakenly base64-encoded, decode to get the actual JWT
+    if (!token.includes('.') && /^[A-Za-z0-9+/=]+$/.test(token)) {
+      try {
+        const decoded = Buffer.from(token, 'base64').toString('utf8');
+        if (decoded.includes('.') && decoded.split('.').length === 3) {
+          token = decoded;
+        }
+      } catch {
+        /* keep original token */
+      }
     }
 
     const secret = this.configService.get<string>('gotrue.jwtSecret');
     if (!secret) {
+      this.logger.warn('[Auth] login-oauth: GOTRUE_JWT_SECRET not configured');
       return { error: 'OAuth login is not configured.' };
     }
 
+    this.logger.log(`[Auth] login-oauth: token length=${token.length}, secret configured`);
+
     let payload: { sub?: string; email?: string; user_metadata?: Record<string, unknown> };
     try {
-      payload = jwt.verify(accessToken.trim(), secret, { algorithms: ['HS256'] }) as typeof payload;
-    } catch {
+      payload = jwt.verify(token, secret, { algorithms: ['HS256'] }) as typeof payload;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`[Auth] login-oauth JWT verify failed: ${msg}`);
       return { error: 'Invalid or expired token.' };
     }
 

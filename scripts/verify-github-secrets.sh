@@ -39,8 +39,6 @@ OPTIONAL_SECRETS=(
     "BILL_DEV_KEY"
     "BILL_SESSION_ID"
     "BILL_FUNDING_ACCOUNT_ID"
-    "HUBSPOT_SMTP_USER"
-    "HUBSPOT_SMTP_PASSWORD"
 )
 
 echo "Required for deployment:"

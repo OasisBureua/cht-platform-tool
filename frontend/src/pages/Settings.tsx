@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, CreditCard, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
+import { paymentsApi } from '../api/payments';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 function getInitials(name: string, email?: string): string {
@@ -37,6 +38,12 @@ export default function Settings() {
   const { data: stats } = useQuery({
     queryKey: ['stats', userId],
     queryFn: () => dashboardApi.getStats(userId),
+    enabled: !!userId,
+  });
+
+  const { data: accountStatus, isLoading: loadingAccount } = useQuery({
+    queryKey: ['payments-account-status', userId],
+    queryFn: () => paymentsApi.getAccountStatus(userId),
     enabled: !!userId,
   });
 
@@ -181,6 +188,15 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {/* Payment Settings */}
+          <PaymentSettingsSection
+            userId={userId}
+            accountStatus={accountStatus}
+            isLoading={loadingAccount}
+            displayName={displayName}
+            onSuccess={() => queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] })}
+          />
         </div>
 
         {/* Right sidebar */}
@@ -219,9 +235,9 @@ export default function Settings() {
               <Link to="/app/earnings" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
                 View Earnings
               </Link>
-              <Link to="/app/earnings" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
+              <a href="#payment-settings" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
                 Payment Settings
-              </Link>
+              </a>
               <button className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
                 KOL Analytics
               </button>
@@ -235,6 +251,195 @@ export default function Settings() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PaymentSettingsSection({
+  userId,
+  accountStatus,
+  isLoading,
+  displayName,
+  onSuccess,
+}: {
+  userId: string;
+  accountStatus?: {
+    hasAccount: boolean;
+    w9Submitted?: boolean;
+    w9SubmittedAt?: string;
+    totalEarnings?: number;
+    payoutsEnabled?: boolean;
+  };
+  isLoading: boolean;
+  displayName: string;
+  onSuccess: () => void;
+}) {
+  const [payeeName, setPayeeName] = useState('');
+  const [nameOnAccount, setNameOnAccount] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [routingNumber, setRoutingNumber] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const connectMutation = useMutation({
+    mutationFn: () =>
+      paymentsApi.createConnectAccount(userId, {
+        payeeName: payeeName.trim(),
+        nameOnAccount: nameOnAccount.trim(),
+        accountNumber: accountNumber.trim(),
+        routingNumber: routingNumber.trim(),
+      }),
+    onSuccess: () => {
+      setError(null);
+      setPayeeName('');
+      setNameOnAccount('');
+      setAccountNumber('');
+      setRoutingNumber('');
+      onSuccess();
+    },
+    onError: (err: Error) => {
+      setError(err.message || 'Failed to add bank account');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!payeeName.trim() || !nameOnAccount.trim() || !accountNumber.trim() || !routingNumber.trim()) {
+      setError('All fields are required');
+      return;
+    }
+    if (routingNumber.replace(/\D/g, '').length !== 9) {
+      setError('Routing number must be 9 digits');
+      return;
+    }
+    connectMutation.mutate();
+  };
+
+  if (isLoading) {
+    return (
+      <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard className="h-5 w-5 text-gray-700" />
+          <h2 className="text-lg font-bold text-gray-900">Payment Settings</h2>
+        </div>
+        <div className="py-8 flex justify-center">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
+
+  const hasAccount = accountStatus?.hasAccount ?? false;
+  const w9Submitted = accountStatus?.w9Submitted ?? false;
+
+  return (
+    <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <CreditCard className="h-5 w-5 text-gray-700" />
+        <h2 className="text-lg font-bold text-gray-900">Payment Settings</h2>
+      </div>
+      <p className="text-sm text-gray-600 mb-6">
+        Add your bank details to receive payouts via ACH or check. W-9 must be on file in Bill.com before admins can pay you.
+      </p>
+
+      {hasAccount ? (
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+            <div>
+              <p className="font-medium text-green-900">Bank account connected</p>
+              <p className="text-sm text-green-700">Admins will process payouts via Bill.com (ACH or check)</p>
+            </div>
+          </div>
+
+          {!w9Submitted ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900">W-9 required</p>
+                  <p className="text-sm text-amber-800 mt-1">
+                    Complete your W-9 form in Bill.com before admins can process your payouts.
+                  </p>
+                  <a
+                    href="https://app.bill.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-amber-900 hover:underline"
+                  >
+                    Complete W-9 in Bill.com
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <span>W-9 on file{accountStatus?.w9SubmittedAt ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})` : ''}</span>
+            </div>
+          )}
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Payee name (as on tax forms)</label>
+            <input
+              type="text"
+              value={payeeName}
+              onChange={(e) => setPayeeName(e.target.value)}
+              placeholder={displayName}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Name on bank account</label>
+            <input
+              type="text"
+              value={nameOnAccount}
+              onChange={(e) => setNameOnAccount(e.target.value)}
+              placeholder="As it appears on your bank statement"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Account number</label>
+              <input
+                type="text"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                placeholder="Bank account number"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Routing number (9 digits)</label>
+              <input
+                type="text"
+                value={routingNumber}
+                onChange={(e) => setRoutingNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                placeholder="e.g. 074000010"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+          </div>
+          {error && (
+            <p className="text-sm text-red-600">{error}</p>
+          )}
+          <button
+            type="submit"
+            disabled={connectMutation.isPending}
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+          >
+            {connectMutation.isPending ? 'Saving...' : 'Add bank account'}
+          </button>
+        </form>
+      )}
     </div>
   );
 }

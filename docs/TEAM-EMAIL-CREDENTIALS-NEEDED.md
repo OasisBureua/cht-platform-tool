@@ -40,16 +40,11 @@ Add to `platform.tfvars` (or Secrets Manager) for testapp.communityhealth.media.
 
 ---
 
-## 3. HubSpot API Credentials (Surveys / Email)
+## 3. Amazon SES (Surveys / Email)
 
 **Needed to finish survey and email configuration.**
 
-| Credential | Where to get |
-|------------|---------------|
-| `hubspot_smtp_user` | HubSpot → Settings → Integrations → Email |
-| `hubspot_smtp_password` | HubSpot → Settings → Integrations → Email |
-
-Used for survey notifications and transactional email. Add to Secrets Manager or `platform.tfvars`.
+Transactional emails are sent via Amazon SES. Verify your sending domain (e.g. `communityhealth.media`) in SES. The worker uses IAM role for `ses:SendEmail`. Set `SES_FROM_EMAIL` (e.g. `noreply@communityhealth.media`) in worker env.
 
 ---
 
@@ -78,7 +73,7 @@ Bill.com connection is working locally. For production (testapp.communityhealth.
 | `zoom_account_id` | **NEEDED** | Webinars |
 | `zoom_client_id` | **NEEDED** | Webinars |
 | `zoom_client_secret` | **NEEDED** | Webinars |
-| HubSpot SMTP | **NEEDED** | Surveys / email |
+| Amazon SES | **NEEDED** | Surveys / email (verify domain in SES) |
 
 ---
 
@@ -86,7 +81,7 @@ Bill.com connection is working locally. For production (testapp.communityhealth.
 
 1. **Sebastian:** Auth, MediaHub, OAuth, admin auth
 2. **Team:** Zoom credentials for webinars
-3. **Team:** HubSpot SMTP for surveys/email
+3. **Team:** Verify sending domain in Amazon SES for surveys/email
 4. **Seth:** Bill.com funding account ID for Pay now
 
 ---

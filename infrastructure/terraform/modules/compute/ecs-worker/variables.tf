@@ -134,3 +134,9 @@ variable "enable_scheduled_scaling" {
   type        = bool
   default     = false
 }
+
+variable "ses_from_email" {
+  description = "From email address for SES (must be verified in SES)"
+  type        = string
+  default     = "noreply@chtplatform.com"
+}

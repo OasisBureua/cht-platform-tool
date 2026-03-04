@@ -25,7 +25,7 @@ cht-platform/
 ### Worker
 - Python 3.11
 - Boto3 (AWS SDK)
-- HubSpot (Email via SMTP)
+- Amazon SES (Email)
 - ReportLab (PDF generation)
 
 ### Frontend

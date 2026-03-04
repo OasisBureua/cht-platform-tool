@@ -26,6 +26,8 @@ export interface CreateProgramPayload {
   honorariumAmount?: number;
   startDate?: string;
   endDate?: string;
+  /** Jotform template form ID – when set, clones form, adds webhook, creates Survey */
+  createSurveyFromTemplate?: string;
 }
 
 export interface CreateSurveyPayload {

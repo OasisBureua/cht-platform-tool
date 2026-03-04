@@ -42,6 +42,7 @@ import SurveyDetail from './pages/SurveyDetail';
 import Watch from './pages/Watch';
 import WatchVideo from './pages/WatchVideo';
 import Earnings from './pages/Earnings';
+import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
 
@@ -156,7 +157,7 @@ function App() {
             <Route path="earnings" element={<Earnings />} />
             <Route path="chatbot" element={<ChatBot />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="payments" element={<Navigate to="/app/earnings" replace />} />
+            <Route path="payments" element={<Payments />} />
 
             {/* Catch-all within /app */}
             <Route path="*" element={<Navigate to="/app/home" replace />} />
@@ -169,7 +170,7 @@ function App() {
 
 
           <Route path="/earnings" element={<Navigate to="/app/earnings" replace />} />
-          <Route path="/payments" element={<Navigate to="/app/earnings" replace />} />
+          <Route path="/payments" element={<Navigate to="/app/payments" replace />} />
           <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
 
           {/* Old legacy paths you mentioned */}

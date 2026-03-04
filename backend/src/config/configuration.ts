@@ -116,6 +116,18 @@ export default () => ({
     };
   })(),
 
+  // Jotform (surveys - enterprise at communityhealthmedia.jotform.com; note /API is uppercase)
+  jotform: {
+    apiKey: process.env.JOTFORM_API_KEY,
+    baseUrl: process.env.JOTFORM_BASE_URL || 'https://communityhealthmedia.jotform.com/API',
+    templateFormId: process.env.JOTFORM_TEMPLATE_FORM_ID || '260624911991966',
+    webhookUrl:
+      process.env.JOTFORM_WEBHOOK_URL ||
+      (process.env.FRONTEND_URL
+        ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/webhooks/jotform`
+        : 'https://testapp.communityhealth.media/api/webhooks/jotform'),
+  },
+
   // Zoom (Server-to-Server OAuth for webinars)
   zoom: {
     accountId: process.env.ZOOM_ACCOUNT_ID,

@@ -51,6 +51,10 @@ export const validationSchema = Joi.object({
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),
   YOUTUBE_PLAYLIST_IDS: Joi.string().allow('').optional(),
 
+  // Jotform (optional – for surveys)
+  JOTFORM_API_KEY: Joi.string().allow('').optional(),
+  JOTFORM_BASE_URL: Joi.string().allow('').optional(),
+
   // Zoom (optional – for webinars)
   ZOOM_ACCOUNT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_ID: Joi.string().allow('').optional(),

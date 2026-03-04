@@ -11,7 +11,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /** OAuth redirect base - must be in GoTrue's Redirect URLs allowlist. */
 export function getOAuthRedirectBase(): string {
-  return import.meta.env.VITE_APP_URL || window.location.origin;
+  // Hardcode production so OAuth always returns to CHT platform, not MediaHub
+  if (typeof window !== 'undefined' && window.location?.hostname?.includes('testapp.communityhealth.media')) {
+    return 'https://testapp.communityhealth.media';
+  }
+  return import.meta.env.VITE_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 }
 
 /**

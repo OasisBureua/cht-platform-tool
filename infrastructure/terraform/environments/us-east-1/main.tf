@@ -180,6 +180,7 @@ module "secrets" {
   zoom_account_id          = var.zoom_account_id
   zoom_client_id           = var.zoom_client_id
   zoom_client_secret       = var.zoom_client_secret
+  jotform_api_key          = var.jotform_api_key
   bill_dev_key             = var.bill_dev_key
   bill_username            = var.bill_username
   bill_password            = var.bill_password

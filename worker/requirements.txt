@@ -6,7 +6,7 @@ botocore==1.35.0
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
 
-# Email: HubSpot SMTP (uses stdlib smtplib, no extra deps)
+# Email: Amazon SES (uses boto3)
 
 # PDF Generation
 reportlab==4.0.9

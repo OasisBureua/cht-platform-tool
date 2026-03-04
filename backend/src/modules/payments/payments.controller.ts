@@ -86,6 +86,26 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/:userId/summary
+   * Get payment summary (auth required)
+   */
+  @Get(':userId/summary')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
+  async getSummary(@Param('userId') userId: string) {
+    return this.paymentsService.getSummary(userId);
+  }
+
+  /**
+   * GET /api/payments/:userId/history
+   * Get payment history (auth required)
+   */
+  @Get(':userId/history')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
+  async getHistory(@Param('userId') userId: string) {
+    return this.paymentsService.getHistory(userId);
+  }
+
+  /**
    * POST /api/payments/payout
    * Create payout to user (admin only). Admins choose ACH or check and verify W-9 in Bill.com.
    */

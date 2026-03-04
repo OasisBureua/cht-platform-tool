@@ -215,7 +215,7 @@ aws ce get-cost-and-usage \
 - [ ] All health checks passing
 - [ ] Login with production Auth0
 - [ ] Stripe production keys working
-- [ ] HubSpot emails sending
+- [ ] SES emails sending
 - [ ] All integrations working
 
 ### Production Performance

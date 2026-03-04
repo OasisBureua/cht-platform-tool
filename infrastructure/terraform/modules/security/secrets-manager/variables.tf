@@ -123,6 +123,14 @@ variable "zoom_client_secret" {
   default     = ""
 }
 
+# Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
+variable "jotform_api_key" {
+  description = "Jotform API key for surveys (from Jotform enterprise account)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Bill.com (payment processing - HCP payouts via ACH/check)
 variable "bill_dev_key" {
   description = "Bill.com developer key (from Settings > Sync & Integrations > Manage Developer Keys)"

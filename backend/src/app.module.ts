@@ -19,6 +19,7 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { WebinarsModule } from './modules/webinars/webinars.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { JotformModule } from './modules/jotform/jotform.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -65,6 +66,7 @@ import { validationSchema } from './config/validation';
     WebinarsModule,
     SurveysModule,
     AdminModule,
+    JotformModule,
   ],
   controllers: [AppController],
   providers: [

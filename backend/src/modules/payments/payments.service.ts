@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
+import { QueueService } from '../../queue/queue.service';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
@@ -16,6 +17,7 @@ export class PaymentsService {
     private prisma: PrismaService,
     private billService: BillService,
     private configService: ConfigService,
+    private queueService: QueueService,
   ) {
     this.frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
   }
@@ -196,6 +198,7 @@ export class PaymentsService {
 
   /**
    * Pay a specific PENDING payment via Bill.com (admin only). "Pay now" button flow.
+   * Checks W9 before paying; sends email notification if HCP must complete setup.
    */
   async payNow(paymentId: string): Promise<PayoutResponseDto> {
     const payment = await this.prisma.payment.findUnique({
@@ -212,8 +215,30 @@ export class PaymentsService {
     }
 
     const user = payment.user;
+    const amountDollars = (payment.amount / 100).toFixed(2);
+
     if (!user.billVendorId) {
-      throw new BadRequestException('User does not have a Bill.com vendor account');
+      this.logger.warn(`Pay now blocked: user ${user.id} has no Bill.com vendor`);
+      await this.queueService.sendEmail(
+        user.email,
+        'Add bank details to receive your payout',
+        `You have a pending payout of $${amountDollars} waiting. Please add your bank details at ${this.frontendUrl}/app/payments to receive payment.`,
+      );
+      throw new BadRequestException(
+        'HCP has not added bank details. Notification sent to complete setup before getting paid.',
+      );
+    }
+
+    if (!user.w9Submitted) {
+      this.logger.warn(`Pay now blocked: user ${user.id} has not completed W9`);
+      await this.queueService.sendEmail(
+        user.email,
+        'Complete W-9 to receive your payout',
+        `You have a pending payout of $${amountDollars} waiting. Please complete your W-9 at ${this.frontendUrl}/app/payments before we can process your payment.`,
+      );
+      throw new BadRequestException(
+        'HCP has not completed W-9. Notification sent to complete before getting paid.',
+      );
     }
 
     try {
@@ -340,6 +365,60 @@ export class PaymentsService {
 
       throw new BadRequestException(`Payout failed: ${error.message}`);
     }
+  }
+
+  /**
+   * Get payment summary for user (available balance, pending, lifetime earnings)
+   */
+  async getSummary(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { billVendorId: true, totalEarnings: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const payments = await this.prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const paid = payments.filter((p) => p.status === 'PAID');
+    const pending = payments.filter((p) => p.status === 'PENDING' || p.status === 'PROCESSING');
+    const availableBalance = paid.reduce((s, p) => s + p.amount, 0) / 100;
+    const pendingBalance = pending.reduce((s, p) => s + p.amount, 0) / 100;
+    const lifetimeEarnings = (user.totalEarnings || 0) / 100;
+    const lastPaid = paid[0];
+    const lastPayoutDate = lastPaid?.paidAt?.toISOString() ?? null;
+
+    return {
+      availableBalance,
+      pendingBalance,
+      lifetimeEarnings,
+      lastPayoutDate,
+      billConnected: !!user.billVendorId,
+      billVendorId: user.billVendorId,
+    };
+  }
+
+  /**
+   * Get payment history for user
+   */
+  async getHistory(userId: string) {
+    const payments = await this.prisma.payment.findMany({
+      where: { userId },
+      include: { program: { select: { title: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return payments.map((p) => ({
+      id: p.id,
+      date: (p.paidAt || p.createdAt).toISOString(),
+      title: p.description || p.program?.title || p.type.replace(/_/g, ' '),
+      amount: p.amount / 100,
+      status: p.status,
+      method: 'Bill.com',
+    }));
   }
 
   /**

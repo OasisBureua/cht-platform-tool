@@ -1,11 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
+import multer from 'multer';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+
+  // Jotform sends multipart/form-data with rawRequest field. Parse it for the webhook route.
+  const multerUpload = multer();
+  app.use('/api/webhooks/jotform', multerUpload.none());
   const logger = app.get(Logger);
 
   // CORS: allow frontend origins. FRONTEND_URL from env (e.g. ECS) is added when set.

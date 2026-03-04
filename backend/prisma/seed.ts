@@ -45,7 +45,7 @@ async function main() {
 
   const survey = await prisma.survey.upsert({
     where: { id: 'seed-survey-1' },
-    update: {},
+    update: { jotformFormId: '260624911991966' },
     create: {
       id: 'seed-survey-1',
       programId: program.id,
@@ -53,6 +53,7 @@ async function main() {
       description: 'Share your feedback on this activity.',
       type: 'FEEDBACK',
       required: true,
+      jotformFormId: '260624911991966', // 2/18 Post Event Survey - https://communityhealthmedia.jotform.com/260624911991966
       questions: {
         questions: [
           { id: 'q1', type: 'single_choice', prompt: 'How valuable was this activity?', options: ['Low', 'Medium', 'High'], required: true },

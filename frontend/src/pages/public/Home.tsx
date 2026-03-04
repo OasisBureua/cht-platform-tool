@@ -128,7 +128,7 @@ export default function Home() {
   }, [playlists]);
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
-    const clips = clipsData?.items || [];
+    const clips = (clipsData?.items || []).filter((c) => !c.is_short);
     if (clips.length > 0) {
       const shuffled = shuffleArray(clips);
       return shuffled.slice(0, 6).map((c) => {

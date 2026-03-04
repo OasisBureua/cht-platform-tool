@@ -14,29 +14,50 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const hash = window.location.hash?.slice(1);
-    if (!hash) {
+    const query = window.location.search?.slice(1);
+    const hashParams = hash ? new URLSearchParams(hash) : null;
+    const queryParams = query ? new URLSearchParams(query) : null;
+
+    // Debug: log OAuth callback URL structure (no token values)
+    const debugInfo = {
+      hasHash: !!hash,
+      hashLength: hash?.length ?? 0,
+      hasQuery: !!query,
+      hashKeys: hashParams ? [...hashParams.keys()] : [],
+      queryKeys: queryParams ? [...queryParams.keys()] : [],
+    };
+    console.log('[OAuth callback]', debugInfo);
+
+    const params = hashParams ?? queryParams;
+    if (!params) {
       setError('No OAuth response received.');
       return;
     }
 
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get('access_token');
+    // GoTrue typically puts tokens in hash; fallback to query if redirect differs
+    const accessToken = hashParams?.get('access_token') ?? queryParams?.get('access_token');
     const errorDesc = params.get('error_description');
+    const errorCode = params.get('error');
 
     if (errorDesc) {
+      console.log('[OAuth callback] error:', { error: errorCode, error_description: errorDesc });
       setError(decodeURIComponent(errorDesc));
       return;
     }
 
     if (!accessToken) {
+      console.warn('[OAuth callback] Missing access_token. Available params:', debugInfo.hashKeys.length ? debugInfo.hashKeys : debugInfo.queryKeys);
       setError('Missing access token.');
       return;
     }
+
+    console.log('[OAuth callback] Token received, length:', accessToken.length);
 
     let cancelled = false;
     loginOAuth(accessToken).then((result) => {
       if (cancelled) return;
       if (result.error) {
+        console.error('[OAuth callback] loginOAuth failed:', result.error.message);
         setError(result.error.message || 'Sign-in failed.');
         return;
       }

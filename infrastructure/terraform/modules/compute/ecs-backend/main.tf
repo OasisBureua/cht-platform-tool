@@ -140,6 +140,10 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
         },
         {
+          name      = "JOTFORM_API_KEY"
+          valueFrom = "${var.app_secrets_arn}:jotform_api_key::"
+        },
+        {
           name      = "BILL_DEV_KEY"
           valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
         },

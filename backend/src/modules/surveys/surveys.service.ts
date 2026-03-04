@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
+import { JotformService } from '../jotform/jotform.service';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class SurveysService {
     private prisma: PrismaService,
     private queueService: QueueService,
     private configService: ConfigService,
+    private jotformService: JotformService,
   ) {}
 
   /**
@@ -98,6 +100,44 @@ export class SurveysService {
     });
     this.logger.log(`Survey created: ${survey.id} - ${survey.title}`);
     return survey;
+  }
+
+  /**
+   * Create a Survey from a Jotform template: clone form, add webhook, create Survey.
+   * Use when creating a new webinar/program that needs a unique survey.
+   */
+  async createSurveyFromJotformTemplate(dto: {
+    programId: string;
+    templateFormId: string;
+    title?: string;
+    type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+  }) {
+    const program = await this.prisma.program.findUnique({
+      where: { id: dto.programId },
+    });
+    if (!program) {
+      throw new BadRequestException('Program not found');
+    }
+
+    const { formId, title: clonedTitle } = await this.jotformService.cloneForm(dto.templateFormId);
+    await this.jotformService.addWebhook(formId);
+
+    const survey = await this.prisma.survey.create({
+      data: {
+        programId: dto.programId,
+        title: dto.title || clonedTitle,
+        jotformFormId: formId,
+        questions: { source: 'jotform', formId },
+        type: dto.type ?? 'FEEDBACK',
+        required: true,
+      },
+    });
+
+    this.logger.log(`Survey created from Jotform template: ${survey.id} (form ${formId})`);
+    return {
+      ...survey,
+      jotformFormUrl: `https://communityhealthmedia.jotform.com/${formId}`,
+    };
   }
 
   /**

@@ -104,8 +104,7 @@ domain_aliases = ["app.example.com"]
 
 # Secrets (or use environment variables)
 stripe_secret_key = "sk_test_..."
-hubspot_smtp_user       = "..."  # From HubSpot transactional email token
-hubspot_smtp_password   = "..."  # From HubSpot transactional email token
+# Email via Amazon SES - verify domain in SES, worker uses IAM role
 ```
 
 ### 7. Deploy Infrastructure

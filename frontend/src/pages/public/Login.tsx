@@ -17,8 +17,10 @@ export default function Login() {
   const handleOAuth = (provider: 'google' | 'apple') => {
     setError(null);
     setOauthLoading(provider);
-    // Use direct authorize URL with redirect_to - fixes Google OAuth redirect (Sebastien)
-    window.location.href = buildOAuthAuthorizeUrl(provider, from);
+    const url = buildOAuthAuthorizeUrl(provider, from);
+    // Debug: verify redirect_to is in URL (should contain testapp.communityhealth.media/auth/callback)
+    if (import.meta.env.DEV) console.log('[OAuth] Redirecting to:', url);
+    window.location.href = url;
   };
 
   // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop

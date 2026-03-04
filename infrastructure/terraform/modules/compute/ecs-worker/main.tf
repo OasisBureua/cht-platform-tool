@@ -50,6 +50,10 @@ resource "aws_ecs_task_definition" "worker" {
           {
             name  = "AWS_REGION"
             value = var.aws_region
+          },
+          {
+            name  = "SES_FROM_EMAIL"
+            value = var.ses_from_email
           }
         ],
         concat(
