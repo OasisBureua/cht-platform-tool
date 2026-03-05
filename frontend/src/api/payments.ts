@@ -73,6 +73,16 @@ export const paymentsApi = {
     return data;
   },
 
+  getBillElementSession: async (): Promise<{ sessionId: string; userId: string; orgId: string; devKey: string }> => {
+    const { data } = await apiClient.get('/payments/bill-element-session');
+    return data;
+  },
+
+  saveVendorId: async (userId: string, vendorId: string) => {
+    const { data } = await apiClient.post(`/payments/${userId}/save-vendor-id`, { vendorId });
+    return data;
+  },
+
   requestPayout: async (userId: string, amount?: number) => {
     try {
       const { data } = await apiClient.post(`/payments/payout`, {

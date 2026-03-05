@@ -6,6 +6,7 @@ import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
+import { BillService } from './bill.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
@@ -15,7 +16,10 @@ import { AccountStatusDto } from './dto/account-status.dto';
 export class PaymentsController {
   private readonly logger = new Logger(PaymentsController.name);
 
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly billService: BillService,
+  ) {}
 
   /**
    * POST /api/payments/:userId/connect-account
@@ -50,6 +54,30 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, AdminOrDevGuard)
   async testConnection() {
     return this.paymentsService.testBillConnection();
+  }
+
+  /**
+   * GET /api/payments/bill-element-session
+   * Returns Bill.com Elements SDK credentials (sessionId, userId, orgId, devKey).
+   * Frontend uses these to initialize the embedded vendorSetupApp Element.
+   */
+  @Get('bill-element-session')
+  @UseGuards(JwtAuthGuard)
+  async getBillElementSession() {
+    return this.billService.getElementSession();
+  }
+
+  /**
+   * POST /api/payments/:userId/save-vendor-id
+   * Called by frontend after vendorSetupSuccess event to persist the Bill.com vendorId.
+   */
+  @Post(':userId/save-vendor-id')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
+  async saveVendorId(
+    @Param('userId') userId: string,
+    @Body('vendorId') vendorId: string,
+  ) {
+    return this.paymentsService.saveVendorId(userId, vendorId);
   }
 
   /**

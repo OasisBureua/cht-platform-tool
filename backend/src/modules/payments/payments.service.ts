@@ -23,6 +23,25 @@ export class PaymentsService {
   }
 
   /**
+   * Save Bill.com vendorId after frontend Elements SDK vendorSetupSuccess event.
+   */
+  async saveVendorId(userId: string, vendorId: string): Promise<{ saved: boolean }> {
+    if (!vendorId?.trim()) throw new BadRequestException('vendorId is required');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        billVendorId: vendorId.trim(),
+        billVendorStatus: 'active',
+        paymentEnabled: true,
+      },
+    });
+    this.logger.log(`Saved Bill.com vendorId=${vendorId} for user=${userId}`);
+    return { saved: true };
+  }
+
+  /**
    * Test Bill.com API connection (login only). Does not require funding account ID.
    */
   async testBillConnection(): Promise<{ success: true; organizationId: string }> {

@@ -128,6 +128,8 @@ export class AuthController {
    * POST /api/auth/login-oauth
    * Exchange GoTrue OAuth access_token (Google/Apple) for CHT session.
    * Body: { access_token: string }
+   * Validates the token against GoTrue /auth/v1/user instead of local JWT verify,
+   * so it works regardless of signing algorithm (HS256 or ES256).
    */
   @Post('login-oauth')
   async loginOAuth(@Body('access_token') accessToken: string): Promise<LoginSuccess | { error: string }> {
@@ -136,33 +138,49 @@ export class AuthController {
       return { error: 'access_token is required.' };
     }
 
-    const secret = this.configService.get<string>('gotrue.jwtSecret');
-    if (!secret) {
-      this.logger.warn('[Auth] login-oauth: GOTRUE_JWT_SECRET not configured');
+    const supabaseUrl = this.configService.get<string>('supabase.url');
+    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
+    if (!supabaseUrl || !supabaseAnon) {
+      this.logger.warn('[Auth] login-oauth: Supabase not configured');
       return { error: 'OAuth login is not configured.' };
     }
 
-    this.logger.log(`[Auth] login-oauth: token length=${token.length}, secret configured`);
-
-    let payload: { sub?: string; email?: string; user_metadata?: Record<string, unknown> };
+    let userData: { id?: string; email?: string; user_metadata?: Record<string, unknown> };
     try {
-      payload = jwt.verify(token, secret, { algorithms: ['HS256'] }) as typeof payload;
+      const res = await fetchWithTimeout(
+        `${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`,
+        {
+          method: 'GET',
+          headers: {
+            apikey: supabaseAnon,
+            Authorization: `Bearer ${token}`,
+          },
+        },
+        SUPABASE_FETCH_TIMEOUT_MS,
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const msg = (body as { msg?: string })?.msg || res.statusText;
+        this.logger.warn(`[Auth] login-oauth GoTrue rejected token: ${res.status} ${msg}`);
+        return { error: 'Invalid or expired token.' };
+      }
+      userData = await res.json();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`[Auth] login-oauth JWT verify failed: ${msg}`);
-      return { error: 'Invalid or expired token.' };
+      this.logger.warn(`[Auth] login-oauth GoTrue fetch failed: ${msg}`);
+      return { error: 'Could not verify token. Please try again.' };
     }
 
-    const authId = payload.sub;
+    const authId = userData?.id;
     if (!authId) return { error: 'Invalid token.' };
 
-    const meta = (payload.user_metadata || {}) as Record<string, string>;
+    const meta = (userData.user_metadata || {}) as Record<string, string>;
     const firstName = meta.first_name || (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
     const lastName = meta.last_name || (meta.full_name ? String(meta.full_name).split(' ').slice(1).join(' ') : undefined);
 
     const user = await this.authService.findOrCreateByAuthId(
       authId,
-      payload.email,
+      userData.email,
       firstName || meta.full_name,
       lastName,
       meta.npi_number || null,
@@ -170,14 +188,14 @@ export class AuthController {
     );
     if (!user) return { error: 'User not found.' };
 
-    const sessionToken = await this.authService.createSession(user, accessToken.trim());
+    const sessionToken = await this.authService.createSession(user, token);
     const dbUser = await this.authService.getUserById(user.userId);
     const profileComplete = this.authService.isProfileComplete(dbUser);
 
     this.logger.log(`[Auth] OAuth login success: userId=${user.userId} email=${user.email}`);
     return {
       session_token: sessionToken,
-      access_token: accessToken.trim(),
+      access_token: token,
       userId: user.userId,
       email: user.email,
       name: user.name,

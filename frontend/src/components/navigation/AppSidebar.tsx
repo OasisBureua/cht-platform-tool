@@ -5,7 +5,6 @@ import {
   Presentation,
   MonitorPlay,
   Banknote,
-  CreditCard,
   Bot,
   Settings,
 } from 'lucide-react';
@@ -17,7 +16,6 @@ const nav = [
   { to: '/app/webinars', label: 'Webinars', icon: Presentation, end: false },
   { to: '/app/watch', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
-  { to: '/app/payments', label: 'Payments', icon: CreditCard, end: false },
   { to: '/app/chatbot', label: 'ChatBot', icon: Bot, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },
 ];

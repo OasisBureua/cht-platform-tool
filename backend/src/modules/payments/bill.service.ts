@@ -46,11 +46,19 @@ interface BillLoginResponse {
   userId: string;
 }
 
+export interface BillElementSession {
+  sessionId: string;
+  userId: string;
+  orgId: string;
+  devKey: string;
+}
+
 @Injectable()
 export class BillService {
   private readonly logger = new Logger(BillService.name);
   private devKey: string;
   private sessionId: string | null = null;
+  private userId: string | null = null;
   private baseUrl: string;
   private username: string | null = null;
   private password: string | null = null;
@@ -76,6 +84,23 @@ export class BillService {
         `Bill.com login credentials incomplete. Have: devKey=${!!this.devKey} username=${!!this.username} password=${!!this.password} orgId=${!!this.orgId}`,
       );
     }
+  }
+
+  /**
+   * Get credentials for Bill.com Elements SDK (vendorSetupApp).
+   * Frontend uses these to initialize the embedded Element.
+   */
+  async getElementSession(): Promise<BillElementSession> {
+    const sessionId = await this.ensureSession();
+    if (!this.userId) {
+      throw new Error('Bill.com userId not available after login');
+    }
+    return {
+      sessionId,
+      userId: this.userId,
+      orgId: this.orgId || '',
+      devKey: this.devKey,
+    };
   }
 
   /**
@@ -126,6 +151,7 @@ export class BillService {
 
     const data = JSON.parse(text) as BillLoginResponse;
     this.sessionId = data.sessionId;
+    this.userId = data.userId;
     this.logger.log('Bill.com session established');
     return this.sessionId;
   }
