@@ -22,13 +22,13 @@ import { catalogApi, type CatalogItem } from '../../api/catalog';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 
 const resourceImages: Record<string, string> = {
-  webinars: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#1e3a5f"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Webinars</text></svg>'),
-  protocols: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#2d5a3d"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Protocols</text></svg>'),
-  clinicals: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#374151"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Clinicals</text></svg>'),
-  watch: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#1e3a5f"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Conversations</text></svg>'),
-  reporting: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#4b5563"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Reporting</text></svg>'),
-  data: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#2d5a3d"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Data</text></svg>'),
-  search: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><rect width="400" height="300" fill="#374151"/><text x="200" y="155" fill="white" font-family="sans-serif" font-size="16" text-anchor="middle" fill-opacity="0.8">Search</text></svg>'),
+  webinars: '/images/resource-webinars.png',
+  protocols: '/images/resource-protocols.png',
+  clinicals: '/images/resource-clinicals.png',
+  watch: '/images/resource-watch.png',
+  reporting: '/images/resource-reporting.png',
+  data: '/images/resource-data.png',
+  search: '/images/resource-search.png',
 };
 
 
@@ -737,7 +737,6 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6">
           <div className="space-y-2">
             <h5 className="text-4xl md:text-5xl font-semibold text-gray-900">Resources</h5>
-            <p className="text-sm text-gray-600">Lorem ipsum dolor sit amet consectetur.</p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {resources.map((r) => (

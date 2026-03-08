@@ -81,9 +81,6 @@ export default function About() {
                 </Link>
               </div>
 
-              <p className="text-xs text-gray-500">
-                Demo environment. Content, features, and language may change prior to production.
-              </p>
             </div>
           </div>
         </div>

@@ -156,9 +156,7 @@ export default function WhatWeDo() {
               >
                 Contact Us
               </Link>
-              <p className="text-xs text-gray-500 text-center">
-                Demo copy only — replace before production.
-              </p>
+
             </div>
           </div>
         </div>

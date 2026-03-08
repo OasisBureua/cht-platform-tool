@@ -1,39 +1,58 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
-import { webinarsApi } from '../../api/webinars';
+import { Loader2, Calendar, Clock } from 'lucide-react';
+import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { webinarsApi, type WebinarItem } from '../../api/webinars';
+import { catalogApi, type CatalogItem } from '../../api/catalog';
+
+const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
 
 const STOCK_IMAGES = {
-  featuredVideo: 'https://picsum.photos/seed/forhcp-video/800/500',
-  featuredWebinar: 'https://picsum.photos/seed/forhcp-webinar/800/500',
-  featuredSurvey: 'https://picsum.photos/seed/forhcp-survey/600/300',
-  featuredStudy: 'https://picsum.photos/seed/forhcp-study/600/300',
-  biomarker: [
-    'https://picsum.photos/seed/forhcp-bio1/600/200',
-    'https://picsum.photos/seed/forhcp-bio2/600/200',
-    'https://picsum.photos/seed/forhcp-bio3/600/200',
-  ],
-  webinar: [
-    'https://picsum.photos/seed/forhcp-w1/400/220',
-    'https://picsum.photos/seed/forhcp-w2/400/220',
-    'https://picsum.photos/seed/forhcp-w3/400/220',
-    'https://picsum.photos/seed/forhcp-w4/400/220',
-    'https://picsum.photos/seed/forhcp-w5/400/220',
-    'https://picsum.photos/seed/forhcp-w6/400/220',
-  ],
+  featuredVideo: '/images/resource-watch.png',
+  featuredWebinar: '/images/resource-webinars.png',
+  featuredSurvey: '/images/resource-reporting.png',
+  featuredStudy: '/images/resource-clinicals.png',
 } as const;
 
-const BIOMARKER_PLAYLISTS = [
-  { id: '1', title: 'HER2+ Big Picture & Practice Change', imageUrl: STOCK_IMAGES.biomarker[0] },
-  { id: '2', title: 'First-Line & Sequencing Decisions', imageUrl: STOCK_IMAGES.biomarker[1] },
-  { id: '3', title: 'High-Risk & CNS Disease', imageUrl: STOCK_IMAGES.biomarker[2] },
+type Treatment = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  slug: string;
+  videoNames: string[];
+  playlistUrl: string;
+};
+
+function catalogToTreatment(p: CatalogItem): Treatment {
+  return {
+    id: p.id,
+    title: p.title,
+    imageUrl: p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist',
+    slug: p.id,
+    videoNames: p.videoNames || [],
+    playlistUrl: `/catalog/playlist/${p.id}`,
+  };
+}
+
+const FALLBACK_HR: Treatment[] = [
+  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
 ];
 
-const FALLBACK_WEBINARS = [
-  { id: '1', title: 'Webinar #1', imageUrl: STOCK_IMAGES.webinar[0], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-  { id: '2', title: 'Webinar #2', imageUrl: STOCK_IMAGES.webinar[1], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-  { id: '3', title: 'Webinar #3', imageUrl: STOCK_IMAGES.webinar[2], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.' },
-];
+function isExpired(w: WebinarItem): boolean {
+  if (!w.startTime) return false;
+  return isPast(new Date(w.startTime));
+}
+
+function formatDuration(minutes?: number): string {
+  if (!minutes) return '';
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
 
 export default function ForHCPs() {
   const { data: webinars = [], isLoading } = useQuery({
@@ -41,9 +60,45 @@ export default function ForHCPs() {
     queryFn: webinarsApi.list,
     staleTime: 5 * 60 * 1000,
   });
-  const webinarItems = webinars.length > 0
-    ? webinars.map((w) => ({ id: w.id, title: w.title, imageUrl: w.imageUrl || '', description: w.description }))
-    : FALLBACK_WEBINARS;
+
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: ['catalog', 'playlists'],
+    queryFn: catalogApi.getPlaylists,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const hrPlusPlaylists = useMemo<Treatment[]>(() => {
+    if (playlists.length === 0) return FALLBACK_HR;
+    const hrOrTnbc = playlists.filter(
+      (p) => /HR\+|hormone|TNBC|mTNBC|CDK4|endocrine|triple.?negative/i.test(p.title) &&
+        !/HER2|her2|DESTINY-Breast/i.test(p.title)
+    );
+    if (hrOrTnbc.length > 0) return hrOrTnbc.map(catalogToTreatment);
+    const nonHer2 = playlists.filter(
+      (p) => !/HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
+    );
+    return nonHer2.length > 0 ? nonHer2.map(catalogToTreatment) : FALLBACK_HR;
+  }, [playlists]);
+
+  const { upcoming, past } = useMemo(() => {
+    const now = Date.now();
+    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const sorted = [...webinars].sort((a, b) => {
+      if (!a.startTime && !b.startTime) return 0;
+      if (!a.startTime) return 1;
+      if (!b.startTime) return -1;
+      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+    });
+    return {
+      upcoming: sorted.filter((w) => !isExpired(w)),
+      past: sorted.filter((w) => {
+        if (!isExpired(w) || !w.startTime) return false;
+        return new Date(w.startTime).getTime() >= thirtyDaysAgo;
+      }),
+    };
+  }, [webinars]);
+
+  const firstWebinar = upcoming[0] ?? past[0] ?? null;
   return (
     <div className="bg-white min-h-screen">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-12 md:space-y-16">
@@ -65,11 +120,11 @@ export default function ForHCPs() {
             showNew
           />
           <FeaturedCard
-            title={webinarItems[0]?.title || 'Featured Webinar'}
-            imageUrl={webinarItems[0]?.imageUrl || STOCK_IMAGES.featuredWebinar}
+            title={firstWebinar?.title || 'Featured Webinar'}
+            imageUrl={firstWebinar?.imageUrl || STOCK_IMAGES.featuredWebinar}
             cta="Join Now"
             size="large"
-            to={webinarItems[0] ? `/webinars/${webinarItems[0].id}` : '/webinars'}
+            to={firstWebinar ? `/webinars/${firstWebinar.id}` : '/webinars'}
             showNew
           />
           <FeaturedCard
@@ -88,7 +143,7 @@ export default function ForHCPs() {
           />
         </section>
 
-        {/* Featured Biomarker Playlists */}
+        {/* Featured Biomarker Playlists — HR+ */}
         <section className="space-y-5">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
@@ -96,11 +151,17 @@ export default function ForHCPs() {
             </h2>
             <p className="mt-1 text-lg font-semibold text-gray-900">HR+</p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {BIOMARKER_PLAYLISTS.map((card) => (
-              <BiomarkerPlaylistCard key={card.id} card={card} />
-            ))}
-          </div>
+          {playlistsLoading && playlists.length === 0 ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {hrPlusPlaylists.slice(0, 3).map((card) => (
+                <BiomarkerPlaylistCard key={card.id} card={card} />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Webinar Catalogue */}
@@ -112,11 +173,37 @@ export default function ForHCPs() {
             <div className="flex justify-center py-12">
               <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
             </div>
+          ) : webinars.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
+              <p className="font-semibold text-gray-900">No webinars scheduled</p>
+              <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {webinarItems.map((webinar) => (
-                <WebinarCard key={webinar.id} webinar={webinar} />
-              ))}
+            <div className="space-y-8">
+              {upcoming.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Upcoming · {upcoming.length}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {upcoming.map((w) => (
+                      <WebinarCard key={w.id} webinar={w} expired={false} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {past.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                    Past · {past.length}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-75">
+                    {past.map((w) => (
+                      <WebinarCard key={w.id} webinar={w} expired />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -169,25 +256,26 @@ function FeaturedCard({
   );
 }
 
-function BiomarkerPlaylistCard({ card }: { card: { id: string; title: string; imageUrl: string } }) {
+
+function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
       <div className="relative h-[140px] shrink-0">
-        <img src={card.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+        <img src={card.imageUrl} alt={card.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
       </div>
       <div className="p-5 flex flex-col flex-1">
         <h4 className="font-bold text-gray-900">{card.title}</h4>
         <ul className="mt-3 space-y-2 flex-1">
-          {[1, 2, 3, 4].map((i) => (
+          {(card.videoNames.length > 0 ? card.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((name, i) => (
             <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
               <span className="h-1 w-1 rounded-full bg-gray-400 shrink-0" />
-              Video Name
+              {name}
             </li>
           ))}
         </ul>
         <div className="mt-4 flex justify-end">
           <Link
-            to="/watch"
+            to={card.playlistUrl}
             className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
           >
             Play all
@@ -198,28 +286,53 @@ function BiomarkerPlaylistCard({ card }: { card: { id: string; title: string; im
   );
 }
 
-function WebinarCard({
-  webinar,
-}: {
-  webinar: { id: string; title: string; imageUrl: string; description: string };
-}) {
+function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: boolean }) {
+  const date = w.startTime ? new Date(w.startTime) : null;
+  const imgSrc = w.imageUrl || FALLBACK_WEBINAR_IMAGE;
+
   return (
     <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col sm:flex-row">
-      <div className="relative w-full sm:w-48 h-40 sm:h-auto shrink-0">
-        <img src={webinar.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-        <span className="absolute left-2 top-2 rounded bg-[#000000] px-2 py-0.5 text-xs font-semibold text-white">
-          New
-        </span>
+      <div className="relative w-full sm:w-44 h-40 sm:h-auto shrink-0">
+        <img src={imgSrc} alt="" className="h-full w-full object-cover" loading="eager" />
+        {expired ? (
+          <span className="absolute left-2 top-2 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+            Expired
+          </span>
+        ) : (
+          <span className="absolute left-2 top-2 rounded bg-black px-2 py-0.5 text-xs font-semibold text-white">
+            Upcoming
+          </span>
+        )}
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <h4 className="font-bold text-gray-900">{webinar.title}</h4>
-        <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-3 flex-1">
-          {webinar.description}
-        </p>
+        <h4 className={`font-bold leading-snug ${expired ? 'text-gray-500' : 'text-gray-900'}`}>
+          {w.title}
+        </h4>
+        {date && (
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {format(date, 'EEE, MMM d, yyyy')}
+              {!expired && (
+                <span className="text-gray-400 ml-1">· {formatDistanceToNow(date, { addSuffix: true })}</span>
+              )}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {format(date, 'h:mm a')}
+            </span>
+            {w.duration && <span>{formatDuration(w.duration)}</span>}
+          </div>
+        )}
+        {w.description && (
+          <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2 flex-1">
+            {w.description}
+          </p>
+        )}
         <div className="mt-4 flex justify-end">
           <Link
-            to={`/webinars/${webinar.id}`}
-            className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+            to={`/webinars/${w.id}`}
+            className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
           >
             Learn More
           </Link>
