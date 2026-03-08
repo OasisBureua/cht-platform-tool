@@ -30,11 +30,20 @@ interface AuthContextValue {
   accessToken: string | null;
   login: (email: string, password: string) => Promise<{ error?: AuthError }>;
   /** Exchange GoTrue OAuth access_token (Google/Apple) for CHT session. Returns profileComplete when successful. */
-  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean }>;
+  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
   signUp: (
     email: string,
     password: string,
-    options?: { firstName?: string; lastName?: string; profession?: string; npiNumber?: string },
+    options?: {
+      firstName?: string;
+      lastName?: string;
+      profession?: string;
+      npiNumber?: string;
+      institution?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    },
   ) => Promise<{ error?: AuthError }>;
   resetPasswordForEmail: (email: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
@@ -321,7 +330,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           profileComplete: data.profileComplete ?? true,
         });
         setIsLoading(true);
-        return { profileComplete: data.profileComplete ?? true };
+        return { profileComplete: data.profileComplete ?? true, role: data.role as string | undefined };
       }
       return { error: { message: 'Login failed.' } };
     },
@@ -332,7 +341,16 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     async (
       email: string,
       password: string,
-      options?: { firstName?: string; lastName?: string; profession?: string; npiNumber?: string },
+      options?: {
+        firstName?: string;
+        lastName?: string;
+        profession?: string;
+        npiNumber?: string;
+        institution?: string;
+        city?: string;
+        state?: string;
+        zipCode?: string;
+      },
     ) => {
       const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/signup`, {
         method: 'POST',
@@ -344,6 +362,10 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           lastName: options?.lastName,
           profession: options?.profession,
           npiNumber: options?.npiNumber,
+          institution: options?.institution,
+          city: options?.city,
+          state: options?.state,
+          zipCode: options?.zipCode,
         }),
       });
       const data = await res.json().catch(() => ({}));

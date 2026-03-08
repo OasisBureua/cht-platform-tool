@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import multer from 'multer';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -18,7 +19,6 @@ async function bootstrap() {
     'https://testapp.communityhealth.media',
     'https://communityhealth.media',
     'https://www.communityhealth.media',
-    'https://api.communityhealth.media',
     'http://localhost:5173',
     'http://localhost:3000',
     'http://127.0.0.1:5173',
@@ -51,6 +51,18 @@ async function bootstrap() {
     ],
   });
 
+  // Swagger — available in all envs but only accessible internally in prod
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('CHT Platform API')
+    .setDescription('Internal API for CHT Platform — admin operations, user management, programs, payments')
+    .setVersion(process.env.APP_VERSION || '1.0.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'session-token')
+    .build();
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
+
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
 
@@ -64,6 +76,7 @@ async function bootstrap() {
   logger.log(`📋 Health detail: ${baseUrl}/health/detail`);
   logger.log(`📦 Version: ${process.env.APP_VERSION || '1.0.0'}`);
   logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(`📖 Swagger docs: ${baseUrl}/api/docs`);
 }
 
 bootstrap();

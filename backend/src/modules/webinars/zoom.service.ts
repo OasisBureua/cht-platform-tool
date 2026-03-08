@@ -191,4 +191,91 @@ export class ZoomService implements OnModuleInit {
       return null;
     }
   }
+
+  async createWebinar(params: {
+    topic: string;
+    agenda?: string;
+    startTime: string;
+    duration: number;
+    timezone?: string;
+  }): Promise<ZoomWebinar> {
+    if (!this.isConfigured()) throw new Error('Zoom not configured');
+
+    const token = await this.getAccessToken();
+    const { data } = await firstValueFrom(
+      this.http.post<ZoomWebinarResponse>(
+        'https://api.zoom.us/v2/users/me/webinars',
+        {
+          topic: params.topic,
+          agenda: params.agenda,
+          start_time: params.startTime,
+          duration: params.duration,
+          timezone: params.timezone || 'America/New_York',
+          type: 5, // Webinar type
+        },
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+
+    this.logger.log(`Zoom: created webinar ${data.id} — ${data.topic}`);
+    return {
+      id: String(data.id),
+      uuid: data.uuid,
+      topic: data.topic,
+      agenda: data.agenda,
+      startTime: data.start_time,
+      duration: data.duration,
+      joinUrl: data.join_url,
+      startUrl: data.start_url,
+      timezone: data.timezone,
+    };
+  }
+
+  async updateWebinar(
+    webinarId: string,
+    params: {
+      topic?: string;
+      agenda?: string;
+      startTime?: string;
+      duration?: number;
+      timezone?: string;
+    },
+  ): Promise<void> {
+    if (!this.isConfigured()) return;
+
+    const token = await this.getAccessToken();
+    const body: Record<string, unknown> = {};
+    if (params.topic) body.topic = params.topic;
+    if (params.agenda !== undefined) body.agenda = params.agenda;
+    if (params.startTime) body.start_time = params.startTime;
+    if (params.duration !== undefined) body.duration = params.duration;
+    if (params.timezone) body.timezone = params.timezone;
+
+    await firstValueFrom(
+      this.http.patch(
+        `https://api.zoom.us/v2/webinars/${webinarId}`,
+        body,
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+    this.logger.log(`Zoom: updated webinar ${webinarId}`);
+  }
+
+  async deleteWebinar(webinarId: string): Promise<void> {
+    if (!this.isConfigured()) return;
+
+    try {
+      const token = await this.getAccessToken();
+      await firstValueFrom(
+        this.http.delete(
+          `https://api.zoom.us/v2/webinars/${webinarId}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      );
+      this.logger.log(`Zoom: deleted webinar ${webinarId}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Zoom deleteWebinar ${webinarId} failed: ${msg}`);
+    }
+  }
 }

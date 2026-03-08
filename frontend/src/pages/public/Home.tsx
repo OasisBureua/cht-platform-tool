@@ -100,9 +100,9 @@ export default function Home() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clipsData } = useQuery({
-    queryKey: ['catalog', 'clips', 'featured'],
-    queryFn: () => catalogApi.getClips({ limit: 50 }),
+  const { data: randomVideos = [], isLoading: randomVideosLoading } = useQuery({
+    queryKey: ['catalog', 'random-videos'],
+    queryFn: () => catalogApi.getRandomVideos(6),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -128,29 +128,13 @@ export default function Home() {
   }, [playlists]);
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
-    const clips = (clipsData?.items || []).filter((c) => !c.is_short);
-    if (clips.length > 0) {
-      const shuffled = shuffleArray(clips);
-      return shuffled.slice(0, 6).map((c) => {
-        let img = c.thumbnail_url;
-        if (!img && c.youtube_url) {
-          const m = c.youtube_url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-          if (m) img = `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
-        }
-        return {
-          id: c.id,
-          title: c.title,
-          imageUrl: img || 'https://picsum.photos/seed/cht-video/600/400',
-          youtubeUrl: c.youtube_url,
-        };
-      });
-    }
-    return [
-      { id: 'f1', title: 'Featured Video 1', imageUrl: 'https://picsum.photos/seed/cht-video1/600/400' },
-      { id: 'f2', title: 'Featured Video 2', imageUrl: 'https://picsum.photos/seed/cht-video2/600/400' },
-      { id: 'f3', title: 'Featured Video 3', imageUrl: 'https://picsum.photos/seed/cht-video3/600/400' },
-    ];
-  }, [clipsData?.items]);
+    return randomVideos.map((v) => ({
+      id: v.id,
+      title: v.title,
+      imageUrl: v.thumbnailUrl || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+      youtubeUrl: v.youtubeUrl,
+    }));
+  }, [randomVideos]);
 
   const midVideo = getMiddleIndex(featuredVideos.length);
   const midPlaylist = getMiddleIndex(biomarkerPlaylists.length);
@@ -210,7 +194,7 @@ export default function Home() {
   }, [expandedVideoId]);
 
   const resources: Resource[] = [
-    { id: 'r1', title: 'Webinars', href: '/catalog', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
+    { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
     { id: 'r2', title: 'Protocols', href: '/catalog', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
     { id: 'r3', title: 'Clinicals', href: '/catalog', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
     { id: 'r4', title: 'Conversations', href: '/watch', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
@@ -342,6 +326,20 @@ export default function Home() {
           <h2 className="text-3xl md:text-4xl font-semibold text-center text-gray-900">
             Featured Videos
           </h2>
+
+          {/* Loading skeleton — shown only while random videos are fetching */}
+          {randomVideosLoading && (
+            <div className="flex items-center justify-center gap-4 sm:gap-6 -mx-4 sm:-mx-6 px-4 sm:px-6 overflow-hidden">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className={`shrink-0 rounded-2xl bg-gray-200 animate-pulse w-[280px] sm:w-[360px] md:w-[460px] ${i === 1 ? 'h-[200px] sm:h-[240px] md:h-[300px]' : 'h-[180px] sm:h-[220px] md:h-[280px]'}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {!randomVideosLoading && featuredVideos.length > 0 && (
           <div className="relative">
             {/* Scrollable carousel - selected video centered */}
             <div
@@ -481,6 +479,7 @@ export default function Home() {
               ))}
             </div>
           </div>
+          )}
         </div>
       </section>
 

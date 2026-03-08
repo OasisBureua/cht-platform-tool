@@ -26,6 +26,11 @@ model User {
   state           String?
   licenseNumber   String?
   
+  // Institution & Location
+  institution     String?
+  city            String?
+  zipCode         String?
+
   // Role and status
   role            UserRole @default(HCP)
   status          UserStatus @default(ACTIVE)
@@ -114,6 +119,7 @@ model Program {
   // Scheduling
   startDate         DateTime?
   endDate           DateTime?
+  duration          Int?     // Duration in minutes (for webinars)
   
   // Survey integration (Jotform)
   jotformSurveyId   String?

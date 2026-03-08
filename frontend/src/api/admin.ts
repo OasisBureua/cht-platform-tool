@@ -15,6 +15,41 @@ export interface AdminProgram {
   surveysCount: number;
 }
 
+export interface AdminWebinar {
+  id: string;
+  title: string;
+  description: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  startDate: string | null;
+  duration: number | null;
+  zoomMeetingId: string | null;
+  zoomJoinUrl: string | null;
+  zoomStartUrl: string | null;
+  sponsorName: string;
+  creditAmount: number;
+  createdAt: string;
+}
+
+export interface CreateWebinarPayload {
+  title: string;
+  description?: string;
+  sponsorName?: string;
+  startDate: string;
+  duration: number;
+  timezone?: string;
+  createSurveyFromTemplate?: string;
+  status?: 'DRAFT' | 'PUBLISHED';
+}
+
+export interface UpdateWebinarPayload {
+  title?: string;
+  description?: string;
+  sponsorName?: string;
+  startDate?: string;
+  duration?: number;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+}
+
 export interface CreateProgramPayload {
   title: string;
   description: string;
@@ -96,8 +131,38 @@ export const adminApi = {
     return data;
   },
 
-  getUsers: async (): Promise<AdminUser[]> => {
-    const { data } = await apiClient.get<AdminUser[]>('/admin/users');
+  // ─── Webinar CRUD (Zoom-backed) ──────────────────────────────────────────
+
+  getWebinars: async (): Promise<AdminWebinar[]> => {
+    try {
+      const { data } = await apiClient.get<AdminWebinar[]>('/admin/webinars');
+      return data;
+    } catch (err) {
+      if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
+        return [];
+      }
+      throw err;
+    }
+  },
+
+  createWebinar: async (payload: CreateWebinarPayload): Promise<AdminWebinar> => {
+    const { data } = await apiClient.post<AdminWebinar>('/admin/webinars', payload);
+    return data;
+  },
+
+  updateWebinar: async (id: string, payload: UpdateWebinarPayload): Promise<AdminWebinar> => {
+    const { data } = await apiClient.patch<AdminWebinar>(`/admin/webinars/${id}`, payload);
+    return data;
+  },
+
+  deleteWebinar: async (id: string): Promise<void> => {
+    await apiClient.delete(`/admin/webinars/${id}`);
+  },
+
+  // ─── Users ───────────────────────────────────────────────────────────────
+
+  getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {
+    const { data } = await apiClient.get<AdminUser[]>('/admin/users', { params });
     return data;
   },
 

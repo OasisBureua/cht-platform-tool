@@ -156,6 +156,15 @@ export class CatalogController {
   }
 
   /**
+   * GET /api/catalog/random-videos?count=6
+   * YouTube: Random videos from playlists for the Home page carousel.
+   */
+  @Get('random-videos')
+  async getRandomVideos(@Query('count') count?: string) {
+    return this.catalogService.getRandomVideos(count ? parseInt(count, 10) : 6);
+  }
+
+  /**
    * GET /api/catalog/playlists
    * YouTube: Playlists for Catalog page (when YouTube configured).
    */

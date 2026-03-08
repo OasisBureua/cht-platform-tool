@@ -65,8 +65,12 @@ export default function AuthCallback() {
         navigate('/complete-profile', { replace: true });
         return;
       }
-      const from = searchParams.get('from') || '/app/home';
-      navigate(from, { replace: true });
+      const from = searchParams.get('from');
+      if (from) {
+        navigate(from, { replace: true });
+        return;
+      }
+      navigate(result.role === 'ADMIN' ? '/admin' : '/app/home', { replace: true });
     });
 
     return () => {

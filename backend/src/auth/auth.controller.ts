@@ -58,11 +58,19 @@ export class AuthController {
     @Body('lastName') lastName?: string,
     @Body('profession') profession?: string,
     @Body('npiNumber') npiNumber?: string,
+    @Body('institution') institution?: string,
+    @Body('city') city?: string,
+    @Body('state') state?: string,
+    @Body('zipCode') zipCode?: string,
   ): Promise<{ error?: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) return { error: 'Please enter a valid email address.' };
     if (!password) return { error: 'Password is required.' };
     if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+    if (!firstName?.trim()) return { error: 'First name is required.' };
+    if (!lastName?.trim()) return { error: 'Last name is required.' };
+    if (!profession?.trim()) return { error: 'Profession is required.' };
 
     const npi = (npiNumber || '').replace(/\D/g, '');
     if (npi.length !== 10) return { error: 'NPI number must be 10 digits.' };
@@ -95,6 +103,10 @@ export class AuthController {
             full_name: [firstName, lastName].map((s) => (s || '').trim()).filter(Boolean).join(' '),
             profession,
             npi_number: npi,
+            institution: (institution || '').trim() || undefined,
+            city: (city || '').trim() || undefined,
+            state: (state || '').trim() || undefined,
+            zip_code: (zipCode || '').trim() || undefined,
           },
         }),
         },
@@ -185,6 +197,10 @@ export class AuthController {
       lastName,
       meta.npi_number || null,
       meta.profession || meta.specialty || null,
+      meta.institution || null,
+      meta.city || null,
+      meta.state || null,
+      meta.zip_code || null,
     );
     if (!user) return { error: 'User not found.' };
 
@@ -217,9 +233,9 @@ export class AuthController {
     @Body('password') password: string,
   ): Promise<LoginSuccess | { error: string }> {
     const emailStr = (email || '').trim();
-    if (!emailStr) {
-      return { error: 'Email is required.' };
-    }
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) return { error: 'Please enter a valid email address.' };
+    if (!password) return { error: 'Password is required.' };
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
@@ -281,6 +297,10 @@ export class AuthController {
         lastName,
         npiNumber,
         specialty,
+        metadata.institution || null,
+        metadata.city || null,
+        metadata.state || null,
+        metadata.zip_code || null,
       );
       this.logger.log(`[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`);
 

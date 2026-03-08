@@ -1,4 +1,4 @@
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
   Search,
@@ -8,7 +8,9 @@ import {
   DollarSign,
   Users,
   Settings,
+  LogOut,
 } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 import logoSrc from '../../assets/logo/LOGO.svg';
 
 const nav = [
@@ -23,6 +25,14 @@ const nav = [
 ];
 
 export default function AdminSidebar() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
   return (
     <aside className="hidden md:flex md:flex-col w-[100px] bg-white shrink-0">
       {/* Logo */}
@@ -51,6 +61,18 @@ export default function AdminSidebar() {
           </NavLink>
         ))}
       </nav>
+
+      {/* Logout at bottom */}
+      <div className="pb-6 flex justify-center">
+        <button
+          onClick={handleLogout}
+          className="flex flex-col items-center gap-1.5 w-full py-2 text-center text-gray-400 hover:text-red-500 transition"
+          title="Sign out"
+        >
+          <LogOut className="h-6 w-6 shrink-0" strokeWidth={2} />
+          <span className="text-xs font-medium">Sign out</span>
+        </button>
+      </div>
     </aside>
   );
 }

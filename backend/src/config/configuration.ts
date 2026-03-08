@@ -39,6 +39,7 @@ export default () => ({
     orgId: process.env.BILL_ORG_ID,
     fundingAccountId: process.env.BILL_FUNDING_ACCOUNT_ID,
     apiUrl: process.env.BILL_API_URL,
+    webhookSecret: process.env.BILL_WEBHOOK_SECRET,
   },
 
   // AWS
@@ -134,4 +135,7 @@ export default () => ({
     clientId: process.env.ZOOM_CLIENT_ID,
     clientSecret: process.env.ZOOM_CLIENT_SECRET,
   },
+
+  // Admin bootstrap (one-time first-admin promotion secret)
+  adminBootstrapSecret: process.env.ADMIN_BOOTSTRAP_SECRET,
 });

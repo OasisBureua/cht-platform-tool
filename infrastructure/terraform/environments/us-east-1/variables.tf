@@ -237,6 +237,20 @@ variable "bill_funding_account_id" {
   default     = ""
 }
 
+variable "bill_webhook_secret" {
+  description = "Bill.com webhook signing secret for validating payment events"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "admin_bootstrap_secret" {
+  description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # SQS queue URLs (optional - backend/worker use module.sqs outputs)
 variable "sqs_email_queue_url" {
   description = "SQS email queue URL (unused - module.sqs used)"

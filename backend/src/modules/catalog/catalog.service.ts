@@ -195,6 +195,47 @@ export class CatalogService implements OnModuleInit {
   }
 
   /**
+   * Get random videos from YouTube playlists (for Home page carousel).
+   * Picks random playlists, fetches their first page of videos, returns a shuffled sample.
+   */
+  async getRandomVideos(count = 6): Promise<PlaylistVideo[]> {
+    const apiKey = this.config.get<string>('youtube.apiKey');
+    const playlistIds = this.config.get<string[]>('youtube.playlistIds') || [];
+    if (!apiKey || playlistIds.length === 0) return [];
+
+    // Shuffle playlist IDs and try up to 5 random ones
+    const shuffled = [...playlistIds].sort(() => Math.random() - 0.5).slice(0, 5);
+    const allVideos: PlaylistVideo[] = [];
+
+    for (const playlistId of shuffled) {
+      if (allVideos.length >= count * 3) break;
+      try {
+        const { data } = await firstValueFrom(
+          this.http.get<YouTubePlaylistItemsResponse>(`${this.youtubeBase}/playlistItems`, {
+            params: { part: 'snippet', playlistId, maxResults: 20, key: apiKey },
+          }),
+        );
+        for (const item of data?.items || []) {
+          const videoId = item.snippet?.resourceId?.videoId;
+          if (!videoId) continue;
+          const thumb = item.snippet?.thumbnails?.high || item.snippet?.thumbnails?.medium || item.snippet?.thumbnails?.default;
+          allVideos.push({
+            id: videoId,
+            title: item.snippet?.title || 'Video',
+            thumbnailUrl: thumb?.url || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          });
+        }
+      } catch (err) {
+        this.logger.warn(`Random videos: failed to fetch playlist ${playlistId}: ${err}`);
+      }
+    }
+
+    // Shuffle and return the requested count
+    return allVideos.sort(() => Math.random() - 0.5).slice(0, count);
+  }
+
+  /**
    * Get YouTube playlists (for Catalog page). Returns empty when YouTube not configured.
    */
   async getPlaylists(): Promise<CatalogItem[]> {

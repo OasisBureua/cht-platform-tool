@@ -14,6 +14,36 @@ const PROFESSION_OPTIONS = [
   { value: 'Other HCP', label: 'Other Healthcare Professional' },
 ];
 
+const US_STATES = [
+  { value: '', label: 'Select state' },
+  { value: 'AL', label: 'Alabama' }, { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' }, { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' }, { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' }, { value: 'DE', label: 'Delaware' },
+  { value: 'DC', label: 'District of Columbia' }, { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' }, { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' }, { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' }, { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' }, { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' }, { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' }, { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' }, { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' }, { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' }, { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' }, { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' }, { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' }, { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' }, { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' }, { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' }, { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' }, { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' }, { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' }, { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' }, { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' }, { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' },
+];
+
 const PLATFORM_HOME = '/app/home';
 
 export default function Join() {
@@ -24,6 +54,10 @@ export default function Join() {
   const [password, setPassword] = useState('');
   const [profession, setProfession] = useState('');
   const [npiNumber, setNpiNumber] = useState('');
+  const [institution, setInstitution] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -43,17 +77,41 @@ export default function Join() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!firstName.trim()) { setError('First name is required.'); return; }
+    if (!lastName.trim()) { setError('Last name is required.'); return; }
+    if (!email.trim()) { setError('Email address is required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     if (!password || password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
     }
+    if (!profession) { setError('Please select your profession.'); return; }
     const npi = npiNumber.replace(/\D/g, '');
     if (npi.length !== 10) {
-      setError('NPI number must be 10 digits.');
+      setError('NPI number must be exactly 10 digits.');
       return;
     }
+    const zip = zipCode.replace(/\D/g, '');
+    if (zip && zip.length !== 5 && zip.length !== 9) {
+      setError('ZIP code must be 5 digits (or 9 for ZIP+4).');
+      return;
+    }
+
     setSubmitting(true);
-    const { error: err } = await signUp(email, password, { firstName, lastName, profession, npiNumber: npi });
+    const { error: err } = await signUp(email, password, {
+      firstName,
+      lastName,
+      profession,
+      npiNumber: npi,
+      institution: institution.trim() || undefined,
+      city: city.trim() || undefined,
+      state: state || undefined,
+      zipCode: zipCode.trim() || undefined,
+    });
     setSubmitting(false);
     if (err) {
       setError(err.message || 'Sign up failed. Please try again.');
@@ -229,6 +287,41 @@ export default function Join() {
               required
               maxLength={10}
             />
+
+            <div className="pt-2 border-t border-gray-100">
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+                Practice Location
+              </p>
+              <div className="space-y-4">
+                <Input
+                  label="Institution / Hospital"
+                  placeholder="e.g., Mayo Clinic"
+                  value={institution}
+                  onChange={(e) => setInstitution(e.target.value)}
+                />
+                <Input
+                  label="City"
+                  placeholder="e.g., Rochester"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Select
+                    label="State"
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    options={US_STATES}
+                  />
+                  <Input
+                    label="ZIP code"
+                    placeholder="12345"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
+                  />
+                </div>
+              </div>
+            </div>
 
             <button
               type="submit"

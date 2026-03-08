@@ -5,8 +5,8 @@ import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
 
 export default function Login() {
   const location = useLocation();
-  const { isAuthenticated, isLoading, login } = useAuth();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/app/home';
+  const { user, isAuthenticated, isLoading, login } = useAuth();
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,12 +26,22 @@ export default function Login() {
   // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop
   // where app renders before authHeaderGetter is updated, causing 401 on first API call
   if (isAuthenticated && !isLoading) {
-    return <Navigate to={from} replace />;
+    const dest = from ?? (user?.role === 'ADMIN' ? '/admin' : '/app/home');
+    return <Navigate to={dest} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!email.trim()) { setError('Email address is required.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address.');
+      return;
+    }
+    if (!password) { setError('Password is required.'); return; }
+    if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
+
     setSubmitting(true);
     const { error: err } = await login(email, password);
     setSubmitting(false);

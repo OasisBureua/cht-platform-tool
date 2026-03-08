@@ -12,6 +12,6 @@ import { PrismaModule } from '../../prisma/prisma.module';
   ],
   controllers: [WebinarsController],
   providers: [ZoomService, WebinarsService],
-  exports: [WebinarsService],
+  exports: [WebinarsService, ZoomService],
 })
 export class WebinarsModule {}

@@ -82,6 +82,11 @@ export const catalogApi = {
     return data;
   },
 
+  getRandomVideos: async (count = 6): Promise<{ id: string; title: string; thumbnailUrl: string; youtubeUrl: string }[]> => {
+    const { data } = await apiClient.get('/catalog/random-videos', { params: { count } });
+    return Array.isArray(data) ? data : [];
+  },
+
   getPlaylists: async (): Promise<CatalogItem[]> => {
     const { data } = await apiClient.get<CatalogItem[]>('/catalog/playlists');
     return data || [];

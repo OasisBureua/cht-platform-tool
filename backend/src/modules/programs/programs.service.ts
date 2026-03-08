@@ -56,6 +56,10 @@ export class ProgramsService {
     honorariumAmount?: number;
     startDate?: string;
     endDate?: string;
+    duration?: number;
+    zoomMeetingId?: string;
+    zoomJoinUrl?: string;
+    zoomStartUrl?: string;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -69,6 +73,10 @@ export class ProgramsService {
         honorariumAmount: dto.honorariumAmount != null ? Math.round(dto.honorariumAmount * 100) : null,
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
+        duration: dto.duration ?? null,
+        zoomMeetingId: dto.zoomMeetingId ?? null,
+        zoomJoinUrl: dto.zoomJoinUrl ?? null,
+        zoomStartUrl: dto.zoomStartUrl ?? null,
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);

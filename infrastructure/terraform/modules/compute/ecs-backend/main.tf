@@ -162,6 +162,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "BILL_FUNDING_ACCOUNT_ID"
           valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
+        },
+        {
+          name      = "BILL_WEBHOOK_SECRET"
+          valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
+        },
+        {
+          name      = "ADMIN_BOOTSTRAP_SECRET"
+          valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
         }
       ]
 

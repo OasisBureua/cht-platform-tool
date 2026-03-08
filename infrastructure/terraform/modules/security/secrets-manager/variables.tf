@@ -166,3 +166,17 @@ variable "bill_funding_account_id" {
   sensitive   = true
   default     = ""
 }
+
+variable "bill_webhook_secret" {
+  description = "Bill.com webhook signing secret for validating payment.updated/payment.failed events"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "admin_bootstrap_secret" {
+  description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

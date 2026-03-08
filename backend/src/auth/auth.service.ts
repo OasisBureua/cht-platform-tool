@@ -35,6 +35,10 @@ export class AuthService {
     lastName?: string,
     npiNumber?: string | null,
     specialty?: string | null,
+    institution?: string | null,
+    city?: string | null,
+    state?: string | null,
+    zipCode?: string | null,
   ): Promise<AuthUser | null> {
     let user = await this.prisma.user.findUnique({
       where: { authId },
@@ -51,6 +55,10 @@ export class AuthService {
           lastName: lastName || '',
           npiNumber: npi,
           specialty: specialty?.trim() || undefined,
+          institution: institution?.trim() || undefined,
+          city: city?.trim() || undefined,
+          state: state?.trim() || undefined,
+          zipCode: zipCode?.trim() || undefined,
         },
       });
     }
@@ -159,12 +167,28 @@ export class AuthService {
   /**
    * Get user by DB userId (for /me to return firstName, lastName, profileComplete).
    */
-  async getUserById(
-    userId: string,
-  ): Promise<{ firstName: string; lastName: string; specialty: string | null; npiNumber: string | null } | null> {
+  async getUserById(userId: string): Promise<{
+    firstName: string;
+    lastName: string;
+    specialty: string | null;
+    npiNumber: string | null;
+    institution: string | null;
+    city: string | null;
+    state: string | null;
+    zipCode: string | null;
+  } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { firstName: true, lastName: true, specialty: true, npiNumber: true },
+      select: {
+        firstName: true,
+        lastName: true,
+        specialty: true,
+        npiNumber: true,
+        institution: true,
+        city: true,
+        state: true,
+        zipCode: true,
+      },
     });
     return user;
   }

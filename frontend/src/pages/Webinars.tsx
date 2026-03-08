@@ -1,28 +1,22 @@
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Trophy, Loader2 } from 'lucide-react';
-import { webinarsApi } from '../api/webinars';
+import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react';
+import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { webinarsApi, type WebinarItem } from '../api/webinars';
 
-const STOCK_IMAGES = {
-  featured: 'https://picsum.photos/seed/web-featured/800/450',
-  activity: 'https://picsum.photos/seed/web-activity/400/500',
-  webinar: [
-    'https://picsum.photos/seed/web-w1/400/260',
-    'https://picsum.photos/seed/web-w2/400/260',
-    'https://picsum.photos/seed/web-w3/400/260',
-    'https://picsum.photos/seed/web-w4/400/260',
-    'https://picsum.photos/seed/web-w5/400/260',
-    'https://picsum.photos/seed/web-w6/400/260',
-  ],
-};
+function isExpired(w: WebinarItem): boolean {
+  if (!w.startTime) return false;
+  return isPast(new Date(w.startTime));
+}
 
-const FALLBACK_WEBINARS = Array.from({ length: 6 }, (_, i) => ({
-  id: `w${i + 1}`,
-  title: `Webinar #${i + 1}`,
-  description: 'Lorem ipsum dolor sit amet consectetur. Pulvinar est massa cras tincidunt massa aliquet ultrices.',
-  imageUrl: STOCK_IMAGES.webinar[i],
-  isNew: true,
-}));
+function formatDuration(minutes?: number): string {
+  if (!minutes) return '';
+  if (minutes < 60) return `${minutes} min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m ? `${h}h ${m}m` : `${h}h`;
+}
 
 export default function Webinars() {
   const { data: webinars = [], isLoading } = useQuery({
@@ -31,108 +25,132 @@ export default function Webinars() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const items = webinars.length > 0
-    ? webinars.map((w) => ({
-        id: w.id,
-        title: w.title,
-        description: w.description,
-        imageUrl: w.imageUrl || '',
-        isNew: true,
-      }))
-    : FALLBACK_WEBINARS;
+  const { upcoming, past } = useMemo(() => {
+    const sorted = [...webinars].sort((a, b) => {
+      if (!a.startTime && !b.startTime) return 0;
+      if (!a.startTime) return 1;
+      if (!b.startTime) return -1;
+      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+    });
+    return {
+      upcoming: sorted.filter((w) => !isExpired(w)),
+      past: sorted.filter((w) => isExpired(w)),
+    };
+  }, [webinars]);
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Webinars</h1>
+      <header className="space-y-1">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Webinars</h1>
+        <p className="text-sm text-gray-600">Live and upcoming sessions — click any webinar to register and join.</p>
+      </header>
 
-      {/* Achievements */}
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-3">Achievements</h2>
-        <div className="flex gap-4 mb-4">
-          {[1, 2, 3].map((i) => (
-            <Trophy key={i} className="h-8 w-8 text-gray-400" />
-          ))}
+      {isLoading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
         </div>
-        <div>
-          <p className="font-bold text-gray-900">Milestones</p>
-          <p className="text-sm text-gray-600">Completed 6 Webinar sessions</p>
-          <div className="mt-2 h-1 w-full max-w-xs bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full w-2/3 bg-gray-900 rounded-full" />
-          </div>
+      ) : webinars.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+          <p className="font-semibold text-gray-900">No webinars scheduled</p>
+          <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
         </div>
-      </section>
-
-      {/* Featured Webinar - 2 cards */}
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <Link
-          to={items[0] ? `/app/webinars/${items[0].id}` : '/app/webinars'}
-          className="group relative rounded-2xl overflow-hidden min-h-[280px]"
-        >
-          <img src={items[0]?.imageUrl || STOCK_IMAGES.featured} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
-          <div className="absolute inset-0 p-6 flex flex-col justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">{items[0]?.title || 'Featured Webinar'}</h3>
-              <span className="mt-2 inline-block rounded-full bg-gray-800 px-3 py-1 text-xs font-semibold text-white">New</span>
-            </div>
-            <span className="inline-flex w-fit items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
-              Sign Up
-            </span>
-          </div>
-        </Link>
-        <Link
-          to="/app/webinars"
-          className="group relative rounded-2xl overflow-hidden min-h-[280px]"
-        >
-          <img src={STOCK_IMAGES.activity} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/40 transition-colors" />
-          <div className="absolute inset-0 p-6 flex flex-col justify-between">
-            <h3 className="text-xl font-bold text-white">85 Minutes of Webinar Activity</h3>
-            <p className="text-sm text-white/90">See More</p>
-          </div>
-        </Link>
-      </section>
-
-      {/* Webinar Catalogue */}
-      <section className="space-y-5">
-        <h2 className="text-2xl font-bold text-gray-900 text-center">Webinar Catalogue</h2>
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {items.map((w) => (
-              <div key={w.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-                <div className="relative h-44">
-                  <img src={w.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-                  {w.isNew && (
-                    <span className="absolute top-3 left-3 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white">New</span>
-                  )}
-                </div>
-                <div className="p-4 space-y-3">
-                  <h3 className="font-bold text-gray-900">{w.title}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-3">{w.description}</p>
-                  <Link
-                    to={`/app/webinars/${w.id}`}
-                    className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                  >
-                    Learn More
-                  </Link>
-                </div>
+      ) : (
+        <div className="space-y-8">
+          {/* Upcoming */}
+          {upcoming.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Upcoming · {upcoming.length}
+              </h2>
+              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                {upcoming.map((w) => (
+                  <WebinarRow key={w.id} webinar={w} />
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-        <div className="flex justify-center">
-          <Link
-            to="/app/webinars"
-            className="inline-flex rounded-lg bg-gray-900 px-8 py-3 text-sm font-semibold text-white hover:bg-black"
-          >
-            See More
-          </Link>
+            </section>
+          )}
+
+          {/* Past / Expired */}
+          {past.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Past · {past.length}
+              </h2>
+              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
+                {past.map((w) => (
+                  <WebinarRow key={w.id} webinar={w} expired />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
-      </section>
+      )}
     </div>
+  );
+}
+
+function WebinarRow({ webinar: w, expired = false }: { webinar: WebinarItem; expired?: boolean }) {
+  const date = w.startTime ? new Date(w.startTime) : null;
+
+  return (
+    <Link
+      to={`/app/webinars/${w.id}`}
+      className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
+    >
+      {/* Date block */}
+      <div className="shrink-0 w-12 text-center">
+        {date ? (
+          <>
+            <p className="text-xs font-semibold text-gray-500 uppercase">{format(date, 'MMM')}</p>
+            <p className="text-2xl font-bold text-gray-900 leading-none">{format(date, 'd')}</p>
+          </>
+        ) : (
+          <p className="text-xs text-gray-400">TBD</p>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-10 bg-gray-200 shrink-0" />
+
+      {/* Info */}
+      <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
+            {w.title}
+          </p>
+          {expired && (
+            <span className="shrink-0 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+              Expired
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+          {date && (
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {format(date, 'EEE, MMM d, yyyy')}
+              {!expired && (
+                <span className="text-gray-400">· {formatDistanceToNow(date, { addSuffix: true })}</span>
+              )}
+            </span>
+          )}
+          {date && (
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {format(date, 'h:mm a')}
+            </span>
+          )}
+          {w.duration && (
+            <span>{formatDuration(w.duration)}</span>
+          )}
+        </div>
+        {w.description && (
+          <p className="text-xs text-gray-500 line-clamp-1">{w.description}</p>
+        )}
+      </div>
+
+      {/* Arrow */}
+      <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-gray-600 transition-colors" />
+    </Link>
   );
 }

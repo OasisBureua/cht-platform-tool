@@ -5,7 +5,6 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <p className="text-sm text-gray-600">You have new opportunities to earn rewards today</p>
       </div>
 
       {/* KPI Cards */}
