@@ -1,16 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
-import { CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Clock3, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
-const BILL_BOOTLOADER_PROD = 'https://apps.bill.com/bootloader/index.js';
-const BILL_BOOTLOADER_STAGE = 'https://widgets.stage.bdccdn.net/bootloader/index.js';
-// Use staging in dev/non-prod, production otherwise
-const BILL_BOOTLOADER = import.meta.env.PROD ? BILL_BOOTLOADER_PROD : BILL_BOOTLOADER_STAGE;
 
 function formatMoney(value: number) {
   return `$${value.toFixed(2)}`;
@@ -34,8 +30,8 @@ function statusIcon(status: PaymentStatus) {
 export default function Payments() {
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  
   const queryClient = useQueryClient();
-
   const { data: accountStatus, isLoading: loadingAccount } = useQuery({
     queryKey: ['payments-account-status', userId],
     queryFn: () => paymentsApi.getAccountStatus(userId),
@@ -76,11 +72,10 @@ export default function Payments() {
         </p>
       </header>
 
-      {/* Bill.com embedded vendor setup */}
+      {/* Vendor setup form or confirmation */}
       {needsBankInfo ? (
-        <BillVendorSetup
+        <VendorSetupForm
           userId={userId}
-          vendorId={accountStatus?.accountId}
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
             queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
@@ -139,127 +134,119 @@ export default function Payments() {
   );
 }
 
-function BillVendorSetup({
+function VendorSetupForm({
   userId,
-  vendorId,
   onSuccess,
 }: {
   userId: string;
-  vendorId?: string;
   onSuccess: () => void;
 }) {
-  const [status, setStatus] = useState<'loading' | 'ready' | 'success' | 'error'>('loading');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const bootloaderRef = useRef<{ destroy: (id: string) => void } | null>(null);
+  const [form, setForm] = useState({
+    payeeName: '',
+    addressLine1: '',
+    city: '',
+    state: '',
+    zipCode: '',
+    nameOnAccount: '',
+    accountNumber: '',
+    routingNumber: '',
+  });
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
+  const mutation = useMutation({
+    mutationFn: () => paymentsApi.createConnectAccount(userId, form),
+    onSuccess: () => onSuccess(),
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to save payment details.';
+      setError(msg);
+    },
+  });
 
-    async function mount() {
-      try {
-        // Fetch session credentials from our backend first
-        const session = await paymentsApi.getBillElementSession();
-        if (cancelled) return;
-
-        // Dynamically import the Bill.com bootloader ES module
-        // @vite-ignore tells Vite not to try to bundle this external URL
-        const { init } = await import(/* @vite-ignore */ BILL_BOOTLOADER) as { init: (config: unknown) => unknown };
-        if (cancelled) return;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const bootloader = (init as any)({
-          key: session.devKey,
-          getSessionId: () => Promise.resolve(session.sessionId),
-          getUserContext: () => ({ userId: session.userId, orgId: session.orgId }),
-          onAuthFailed: () => Promise.resolve(),
-          onEvent: (event: unknown) => console.log('[Bill.com]', event),
-        });
-
-        bootloaderRef.current = bootloader as { destroy: (id: string) => void };
-
-        const inputs: Record<string, string> = {};
-        if (vendorId) inputs.vendorId = vendorId;
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (bootloader as any).register({
-          id: 'bill-vendor-setup',
-          name: 'vendorSetupApp',
-          inputs,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (bootloader as any).render('bill-vendor-setup', '#bill-element-container');
-        if (cancelled) return;
-        setStatus('ready');
-
-        // Events are dispatched on window using the element id as the event name
-        const handleEvent = async (e: Event) => {
-          if (cancelled) return;
-          const { name, payload } = (e as CustomEvent).detail || {};
-          if (name === 'vendorSetupSuccess') {
-            const newVendorId: string | undefined = payload?.vendorData?.id;
-            if (newVendorId) {
-              await paymentsApi.saveVendorId(userId, newVendorId).catch(() => {});
-            }
-            setStatus('success');
-            onSuccess();
-          }
-          if (name === 'error') {
-            setErrorMsg(payload?.message || 'An error occurred with payment setup');
-            setStatus('error');
-          }
-        };
-
-        window.addEventListener('bill-vendor-setup', handleEvent);
-        return () => window.removeEventListener('bill-vendor-setup', handleEvent);
-      } catch (err) {
-        if (cancelled) return;
-        setErrorMsg(err instanceof Error ? err.message : 'Failed to load payment setup');
-        setStatus('error');
-      }
-    }
-
-    mount();
-    return () => {
-      cancelled = true;
-      bootloaderRef.current?.destroy('bill-vendor-setup');
-    };
-  }, [userId, vendorId, onSuccess]);
-
-  if (status === 'success') {
-    return (
-      <div className="rounded-3xl border border-green-200 bg-green-50/50 p-6 flex items-center gap-3">
-        <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-        <div>
-          <p className="font-semibold text-green-900">Bank details saved</p>
-          <p className="text-sm text-green-700 mt-0.5">You're set up to receive payouts via Bill.com.</p>
-        </div>
-      </div>
-    );
+  function set(field: keyof typeof form) {
+    return (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((prev) => ({ ...prev, [field]: e.target.value }));
   }
 
-  if (status === 'error') {
-    return (
-      <div className="rounded-3xl border border-red-200 bg-red-50 p-6">
-        <p className="font-semibold text-red-900">Could not load payment setup</p>
-        <p className="text-sm text-red-700 mt-1">{errorMsg}</p>
-        <p className="text-sm text-gray-600 mt-3">
-          Please try refreshing the page or contact support if the issue persists.
-        </p>
-      </div>
-    );
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!form.payeeName.trim()) return setError('Payee name is required.');
+    if (!form.addressLine1.trim()) return setError('Address is required.');
+    if (!form.city.trim()) return setError('City is required.');
+    if (!form.state.trim()) return setError('State is required.');
+    if (!/^\d{5}(-\d{4})?$/.test(form.zipCode.trim())) return setError('Enter a valid ZIP code.');
+    if (!form.nameOnAccount.trim()) return setError('Name on account is required.');
+    if (!/^\d{9}$/.test(form.routingNumber.trim())) return setError('Routing number must be 9 digits.');
+    if (form.accountNumber.trim().length < 4) return setError('Account number is required.');
+    mutation.mutate();
   }
+
+  const field = (
+    label: string,
+    key: keyof typeof form,
+    opts?: { placeholder?: string; maxLength?: number; type?: string },
+  ) => (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-semibold text-gray-700">{label}</label>
+      <input
+        type={opts?.type ?? 'text'}
+        value={form[key]}
+        onChange={set(key)}
+        placeholder={opts?.placeholder}
+        maxLength={opts?.maxLength}
+        className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+        disabled={mutation.isPending}
+      />
+    </div>
+  );
 
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white overflow-hidden min-h-[400px]">
-      {status === 'loading' && (
-        <div className="flex items-center justify-center py-16">
-          <LoadingSpinner />
+    <form onSubmit={handleSubmit} className="rounded-3xl border border-gray-200 bg-white p-6 space-y-6">
+      <div>
+        <h2 className="text-base font-semibold text-gray-900">Set up your payment account</h2>
+        <p className="mt-0.5 text-sm text-gray-600">
+          Enter your US bank details to receive ACH payouts via Bill.com.
+        </p>
+      </div>
+
+      {/* Payee info */}
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payee information</legend>
+        {field('Payee name (as it appears on checks)', 'payeeName', { placeholder: 'Dr. Jane Smith' })}
+      </fieldset>
+
+      {/* Address */}
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">US address</legend>
+        {field('Street address', 'addressLine1', { placeholder: '123 Main St' })}
+        <div className="grid grid-cols-2 gap-3">
+          {field('City', 'city', { placeholder: 'New York' })}
+          {field('State', 'state', { placeholder: 'NY', maxLength: 2 })}
         </div>
+        {field('ZIP code', 'zipCode', { placeholder: '10001', maxLength: 10 })}
+      </fieldset>
+
+      {/* Bank account */}
+      <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bank account (ACH)</legend>
+        {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
+        {field('Routing number', 'routingNumber', { placeholder: '9-digit ABA number', maxLength: 9 })}
+        {field('Account number', 'accountNumber', { placeholder: 'Checking or savings', type: 'password' })}
+      </fieldset>
+
+      {error && (
+        <p className="text-sm text-red-600 font-medium">{error}</p>
       )}
-      <div id="bill-element-container" className={status === 'loading' ? 'hidden' : 'min-h-[400px]'} />
-    </div>
+
+      <button
+        type="submit"
+        disabled={mutation.isPending}
+        className="w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+        {mutation.isPending ? 'Saving…' : 'Save payment details'}
+      </button>
+    </form>
   );
 }
 

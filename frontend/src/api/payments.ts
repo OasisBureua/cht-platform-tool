@@ -44,31 +44,31 @@ export const paymentsApi = {
     }
   },
 
-  /** Submit bank details to create Bill.com vendor (stays on platform) */
+  /** Submit bank + address details to create Bill.com vendor (US only) */
   createConnectAccount: async (
     userId: string,
     bankData: {
       payeeName: string;
+      addressLine1: string;
+      city: string;
+      state: string;
+      zipCode: string;
       nameOnAccount: string;
       accountNumber: string;
       routingNumber: string;
-      addressLine1?: string;
-      city?: string;
-      state?: string;
-      zipCode?: string;
     },
   ) => {
     const { data } = await apiClient.post(`/payments/${userId}/connect-account`, {
       payeeName: bankData.payeeName,
+      addressLine1: bankData.addressLine1,
+      city: bankData.city,
+      state: bankData.state,
+      zipCode: bankData.zipCode,
       bankAccount: {
         nameOnAccount: bankData.nameOnAccount,
         accountNumber: bankData.accountNumber,
         routingNumber: bankData.routingNumber,
       },
-      addressLine1: bankData.addressLine1,
-      city: bankData.city,
-      state: bankData.state,
-      zipCode: bankData.zipCode,
     });
     return data;
   },

@@ -21,14 +21,11 @@ export interface BillPayment {
 export interface CreateVendorInput {
   name: string;
   email: string;
-  accountType: 'PERSON' | 'BUSINESS' | 'NONE';
-  phone?: string;
-  address?: {
+  address: {
     line1: string;
     city: string;
     stateOrProvince?: string;
     zipOrPostalCode: string;
-    country: string;
   };
   paymentInformation?: {
     payeeName: string;
@@ -202,7 +199,9 @@ export class BillService {
   }
 
   /**
-   * Create vendor (HCP) in Bill.com
+   * Create a US vendor (HCP) in Bill.com.
+   * Country is always US. Address is required. Bank account optional at creation
+   * but required before ACH payout.
    */
   async createVendor(input: CreateVendorInput): Promise<BillVendor> {
     this.logger.log(`Creating Bill.com vendor: ${input.email}`);
@@ -210,13 +209,12 @@ export class BillService {
     const payload: Record<string, unknown> = {
       name: input.name,
       email: input.email,
-      accountType: input.accountType,
-      phone: input.phone || '0000000000',
-      address: input.address || {
-        line1: 'TBD',
-        city: 'TBD',
-        stateOrProvince: 'CA',
-        zipOrPostalCode: '00000',
+      accountType: 'PERSON',
+      address: {
+        line1: input.address.line1,
+        city: input.address.city,
+        stateOrProvince: input.address.stateOrProvince ?? '',
+        zipOrPostalCode: input.address.zipOrPostalCode,
         country: 'US',
       },
       billCurrency: 'USD',
@@ -225,7 +223,11 @@ export class BillService {
     if (input.paymentInformation) {
       payload.paymentInformation = {
         payeeName: input.paymentInformation.payeeName,
-        bankAccount: input.paymentInformation.bankAccount,
+        bankAccount: {
+          nameOnAccount: input.paymentInformation.bankAccount.nameOnAccount,
+          accountNumber: input.paymentInformation.bankAccount.accountNumber,
+          routingNumber: input.paymentInformation.bankAccount.routingNumber,
+        },
       };
     }
 

@@ -13,29 +13,24 @@ export class BankAccountDto {
 }
 
 export class CreateVendorDto {
-  @IsOptional()
   @IsString()
-  payeeName?: string;
+  payeeName: string;
+
+  @IsString()
+  addressLine1: string;
+
+  @IsString()
+  city: string;
+
+  @IsString()
+  state: string;
+
+  @IsString()
+  zipCode: string;
 
   @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => BankAccountDto)
   bankAccount?: BankAccountDto;
-
-  @IsOptional()
-  @IsString()
-  addressLine1?: string;
-
-  @IsOptional()
-  @IsString()
-  city?: string;
-
-  @IsOptional()
-  @IsString()
-  state?: string;
-
-  @IsOptional()
-  @IsString()
-  zipCode?: string;
 }

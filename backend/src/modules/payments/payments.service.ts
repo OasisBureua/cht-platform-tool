@@ -74,7 +74,7 @@ export class PaymentsService {
       };
     }
 
-    if (!vendorDto?.payeeName || !vendorDto?.bankAccount) {
+    if (!vendorDto?.payeeName) {
       return {
         accountId: '',
         onboardingUrl: `${this.frontendUrl}/settings/payments`,
@@ -82,23 +82,32 @@ export class PaymentsService {
       };
     }
 
+    const addressLine1 = vendorDto.addressLine1 || '';
+    const city = vendorDto.city || (user as Record<string, unknown>).city as string || '';
+    const stateOrProvince = vendorDto.state || (user as Record<string, unknown>).state as string || '';
+    const zipOrPostalCode = vendorDto.zipCode || (user as Record<string, unknown>).zipCode as string || '';
+
+    if (!addressLine1 || !city || !zipOrPostalCode) {
+      throw new BadRequestException(
+        'Address details (line1, city, zip) are required to create a US vendor account.',
+      );
+    }
+
     const vendor = await this.billService.createVendor({
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
-      accountType: 'PERSON',
-      address: vendorDto.addressLine1
-        ? {
-            line1: vendorDto.addressLine1,
-            city: vendorDto.city || 'TBD',
-            stateOrProvince: vendorDto.state || 'CA',
-            zipOrPostalCode: vendorDto.zipCode || '00000',
-            country: 'US',
-          }
-        : undefined,
-      paymentInformation: {
-        payeeName: vendorDto.payeeName,
-        bankAccount: vendorDto.bankAccount,
+      address: {
+        line1: addressLine1,
+        city,
+        stateOrProvince,
+        zipOrPostalCode,
       },
+      ...(vendorDto.bankAccount && {
+        paymentInformation: {
+          payeeName: vendorDto.payeeName,
+          bankAccount: vendorDto.bankAccount,
+        },
+      }),
     });
 
     await this.prisma.user.update({
