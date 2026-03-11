@@ -24,6 +24,7 @@ export interface Survey {
   required: boolean;
 
   jotformFormId?: string | null;
+  jotformFormUrl?: string | null;
 
   createdAt: string;
   updatedAt: string;

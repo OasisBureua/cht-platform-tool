@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
+import { validateTaxId } from '../utils/w9Validation';
 
 export function W9Modal({
   isOpen,
@@ -24,16 +25,18 @@ export function W9Modal({
     e.preventDefault();
     setError(null);
     const digits = taxId.replace(/\D/g, '');
-    if (digits.length !== 9) {
-      setError(taxIdType === 'SSN' ? 'SSN must be 9 digits' : 'EIN must be 9 digits');
+    const validation = validateTaxId(digits, taxIdType);
+    if (!validation.valid) {
+      setError(validation.error || 'Invalid tax ID');
       return;
     }
+    const sanitizedCompany = companyName.trim().slice(0, 200) || undefined;
     setSubmitting(true);
     try {
       await onSubmit({
         taxId: digits,
         taxIdType,
-        companyName: companyName.trim() || undefined,
+        companyName: sanitizedCompany,
       });
       onClose();
     } catch (err) {
@@ -83,6 +86,11 @@ export function W9Modal({
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 {taxIdType === 'SSN' ? 'SSN (9 digits)' : 'EIN (9 digits)'}
               </label>
+              <p className="text-xs text-gray-500 mb-1">
+                {taxIdType === 'SSN'
+                  ? 'Format: XXX-XX-XXXX. Must be a valid SSN per IRS rules.'
+                  : 'Format: XX-XXXXXXX. Must be a valid EIN per IRS rules.'}
+              </p>
               <input
                 type="password"
                 inputMode="numeric"

@@ -176,9 +176,6 @@ export default function Login() {
               Sign Up
             </Link>
           </p>
-          <p className="mt-2 text-center text-xs text-gray-500">
-            <Link to="/admin/login" className="hover:underline">Admin sign in</Link>
-          </p>
         </div>
       </div>
     </div>

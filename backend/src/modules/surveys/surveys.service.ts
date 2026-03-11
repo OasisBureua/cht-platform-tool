@@ -36,6 +36,7 @@ export class SurveysService {
       type: s.type,
       required: s.required,
       jotformFormId: s.jotformFormId,
+      jotformFormUrl: s.jotformFormId ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}` : null,
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
       program: s.program,
@@ -55,6 +56,9 @@ export class SurveysService {
       },
     });
     if (!survey) throw new NotFoundException('Survey not found');
+    const jotformFormUrl = survey.jotformFormId
+      ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}`
+      : null;
     return {
       id: survey.id,
       programId: survey.programId,
@@ -64,6 +68,7 @@ export class SurveysService {
       type: survey.type,
       required: survey.required,
       jotformFormId: survey.jotformFormId,
+      jotformFormUrl,
       createdAt: survey.createdAt.toISOString(),
       updatedAt: survey.updatedAt.toISOString(),
       program: survey.program,

@@ -1,18 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Monitor, ClipboardList, Loader2, ListVideo } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
-
-function getTabs(isInApp: boolean) {
-  const base = isInApp ? '/app' : '';
-  return [
-    { key: 'catalog', label: 'Catalog', icon: ListVideo, to: base ? '/app/catalog' : '/catalog' },
-    { key: 'webinars', label: 'Webinars', icon: Monitor, to: base ? '/app/webinars' : '/webinars' },
-    { key: 'surveys', label: 'Surveys', icon: ClipboardList, to: base ? '/app/surveys' : '/surveys' },
-  ];
-}
 
 function getEmbedUrl(youtubeUrl: string): string {
   const match = youtubeUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
@@ -24,7 +15,6 @@ export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
   const location = useLocation();
   const isInApp = location.pathname.startsWith('/app');
-  const TABS = getTabs(isInApp);
   const catalogUrl = isInApp ? '/app/catalog' : '/catalog';
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
 
@@ -92,20 +82,6 @@ export default function PlaylistDetail() {
         </Link>
 
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900">{playlist.title}</h1>
-
-        {/* Content type tabs */}
-        <section className="flex flex-wrap gap-4">
-          {TABS.map(({ key, label, icon: Icon, to }) => (
-            <Link
-              key={key}
-              to={to}
-              className="flex flex-col items-center gap-2 text-gray-700 hover:text-gray-900 transition-colors"
-            >
-              <Icon className="h-8 w-8" />
-              <span className="text-sm font-medium">{label}</span>
-            </Link>
-          ))}
-        </section>
 
         {/* Main content: Video player + Recommended sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

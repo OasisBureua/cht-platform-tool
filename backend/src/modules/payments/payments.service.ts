@@ -7,6 +7,7 @@ import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/c
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
+import { validateTaxId, sanitizeCompanyName } from './w9-validation';
 
 @Injectable()
 export class PaymentsService {
@@ -460,17 +461,17 @@ export class PaymentsService {
     if (!user.billVendorId) throw new BadRequestException('Add bank details first before submitting W-9');
 
     const taxId = data.taxId.replace(/\D/g, '');
-    if (data.taxIdType === 'SSN' && taxId.length !== 9) {
-      throw new BadRequestException('SSN must be 9 digits');
+    const validation = validateTaxId(taxId, data.taxIdType);
+    if (!validation.valid) {
+      throw new BadRequestException(validation.error || 'Invalid tax ID format');
     }
-    if (data.taxIdType === 'EIN' && taxId.length !== 9) {
-      throw new BadRequestException('EIN must be 9 digits');
-    }
+
+    const companyName = sanitizeCompanyName(data.companyName);
 
     await this.billService.updateVendorTaxInfo(user.billVendorId, {
       taxId,
       taxIdType: data.taxIdType,
-      companyName: data.companyName?.trim(),
+      companyName,
       track1099: true,
     });
 

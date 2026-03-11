@@ -59,4 +59,5 @@ export const validationSchema = Joi.object({
   ZOOM_ACCOUNT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_SECRET: Joi.string().allow('').optional(),
+  ZOOM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
 });

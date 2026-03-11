@@ -66,7 +66,8 @@ export default function Payments() {
   // Auto-open W-9 modal when user has bank account but hasn't submitted W-9
   useEffect(() => {
     if (needsW9 && !loadingAccount) {
-      setW9ModalOpen(true);
+      const t = setTimeout(() => setW9ModalOpen(true), 100);
+      return () => clearTimeout(t);
     }
   }, [needsW9, loadingAccount]);
 
@@ -88,12 +89,42 @@ export default function Payments() {
           onSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
             queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
+            setW9ModalOpen(true);
           }}
         />
       ) : (
-        <div className="rounded-3xl border border-green-200 bg-green-50/50 p-4 flex items-center gap-3">
-          <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-          <p className="text-sm font-medium text-green-800">Bank details on file. You can receive payouts.</p>
+        <div className="space-y-3">
+          <div className="rounded-3xl border border-green-200 bg-green-50/50 p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+              <p className="text-sm font-medium text-green-800">Bank details on file. You can receive payouts.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setW9ModalOpen(true)}
+              className="shrink-0 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              {accountStatus?.w9Submitted ? 'Update W-9' : 'Complete W-9'}
+            </button>
+          </div>
+          {needsW9 && (
+            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-6 w-6 text-amber-600 shrink-0" />
+                <div>
+                  <p className="font-semibold text-amber-900">W-9 required</p>
+                  <p className="text-sm text-amber-800">Complete the W-9 form to receive payouts.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setW9ModalOpen(true)}
+                className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+              >
+                Complete W-9
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -124,6 +155,15 @@ export default function Payments() {
             >
               <AlertCircle className="h-4 w-4" />
               Complete W-9 to receive payouts
+            </button>
+          )}
+          {accountStatus?.hasAccount && (
+            <button
+              type="button"
+              onClick={() => setW9ModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              {accountStatus?.w9Submitted ? 'Update W-9' : 'Complete W-9'}
             </button>
           )}
         </div>

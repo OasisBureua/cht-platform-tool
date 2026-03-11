@@ -146,6 +146,7 @@ model Program {
   surveys           Survey[]
   payments          Payment[]
   cmeCredits        CMECredit[]
+  webinarParticipantEvents WebinarParticipantEvent[]
 
   @@index([status])
   @@index([startDate])
@@ -392,6 +393,31 @@ model CMECredit {
   @@index([userId])
   @@index([programId])
   @@map("CMECredit")
+}
+
+// ============================================================================
+// WEBINAR PARTICIPANT EVENT (Zoom webhook join/leave tracking)
+// ============================================================================
+model WebinarParticipantEvent {
+  id               String   @id @default(cuid())
+  programId        String
+  program          Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  userId           String?  // Matched CHT user (by email) if found
+  event            String   // "JOINED" | "LEFT"
+  zoomMeetingId    String?  // Zoom meeting ID from webhook
+  zoomParticipantId String? // Zoom participant ID in meeting
+  participantName  String?
+  participantEmail String?
+  isHost           Boolean  @default(false)
+  occurredAt       DateTime @default(now())
+  rawPayload       Json?    // Full webhook payload for debugging
+
+  @@index([programId])
+  @@index([userId])
+  @@index([occurredAt])
+  @@index([event])
+  @@index([zoomMeetingId])
+  @@map("WebinarParticipantEvent")
 }
 
 // ============================================================================

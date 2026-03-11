@@ -103,7 +103,25 @@ export interface PendingPayment {
   program: { id: string; title: string } | null;
 }
 
+export interface AdminStats {
+  activeHcpsCount: number;
+  activeHcpsCountPreviousWeek: number;
+  paymentsPaidCount: number;
+}
+
 export const adminApi = {
+  getStats: async (): Promise<AdminStats> => {
+    try {
+      const { data } = await apiClient.get<AdminStats>('/admin/stats');
+      return data;
+    } catch (err) {
+      if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
+        return { activeHcpsCount: 0, activeHcpsCountPreviousWeek: 0, paymentsPaidCount: 0 };
+      }
+      throw err;
+    }
+  },
+
   getPrograms: async (): Promise<AdminProgram[]> => {
     try {
       const { data } = await apiClient.get<AdminProgram[]>('/admin/programs');

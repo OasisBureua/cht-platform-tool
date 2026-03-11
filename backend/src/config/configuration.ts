@@ -134,6 +134,7 @@ export default () => ({
     accountId: process.env.ZOOM_ACCOUNT_ID,
     clientId: process.env.ZOOM_CLIENT_ID,
     clientSecret: process.env.ZOOM_CLIENT_SECRET,
+    webhookSecret: process.env.ZOOM_WEBHOOK_SECRET,
   },
 
   // Admin bootstrap (one-time first-admin promotion secret)

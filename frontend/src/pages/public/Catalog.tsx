@@ -76,9 +76,9 @@ export default function Catalog() {
               return (
                 <div
                   key={item.id}
-                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col"
                 >
-                  <div className="h-52 relative">
+                  <div className="h-52 relative shrink-0">
                     <Link to={playlistUrl}>
                       <img
                         src={getThumbnail(item)}
@@ -94,12 +94,12 @@ export default function Catalog() {
                       </div>
                     </Link>
                   </div>
-                  <div className="p-5 space-y-4">
+                  <div className="p-5 flex flex-col flex-1 min-h-0">
                     <Link to={playlistUrl} className="block">
                       <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
                     </Link>
                     <p className="text-sm text-gray-600 font-medium">{item.videoCount} video{item.videoCount !== 1 ? 's' : ''}</p>
-                    <ul className="space-y-1">
+                    <ul className="space-y-1 flex-1">
                       {item.videoNames.slice(0, 4).map((v, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
                           <span className="h-1 w-1 rounded-full bg-gray-400" />
@@ -110,7 +110,7 @@ export default function Catalog() {
                         <li className="text-sm text-gray-500">+{item.videoCount - 4} more</li>
                       )}
                     </ul>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-4">
                       <Link
                         to={playlistUrl}
                         className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"

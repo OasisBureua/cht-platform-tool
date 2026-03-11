@@ -2,36 +2,35 @@ import type { Survey } from '../api/surveys';
 
 export const mockSurveys: Survey[] = [
   {
-    id: 'survey-1',
-    programId: 'program-1',
-    title: 'Cardiology Treatment Pre-Test',
-    description: 'Assess baseline knowledge before participating.',
-    type: 'PRE_TEST',
+    id: 'seed-survey-1',
+    programId: 'seed-program-1',
+    title: 'Cardiology Treatment Feedback',
+    description: 'Share your feedback on this activity.',
+    type: 'FEEDBACK',
     required: true,
     questions: {
       questions: [
         {
           id: 'q1',
           type: 'single_choice',
-          prompt: 'How often do you prescribe beta blockers?',
-          options: ['Never', 'Rarely', 'Sometimes', 'Often'],
+          prompt: 'How valuable was this activity?',
+          options: ['Low', 'Medium', 'High'],
           required: true,
         },
         {
           id: 'q2',
-          type: 'rating',
-          prompt: 'How familiar are you with current guidelines?',
-          scaleMin: 1,
-          scaleMax: 5,
+          type: 'text',
+          prompt: 'Any additional comments?',
         },
       ],
     },
-    jotformFormId: null,
+    jotformFormId: '260624911991966', // 2/18 Post Event Survey - communityhealthmedia.jotform.com
+    jotformFormUrl: 'https://communityhealthmedia.jotform.com/260624911991966',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     program: {
-      id: 'program-1',
-      title: 'Modern Cardiology Webinar',
+      id: 'seed-program-1',
+      title: 'Cardiology Treatment Webinar',
       sponsorName: 'Pfizer',
     },
   },
@@ -52,6 +51,7 @@ export const mockSurveys: Survey[] = [
       ],
     },
     jotformFormId: '240123456789012',
+    jotformFormUrl: 'https://communityhealthmedia.jotform.com/240123456789012',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     program: {

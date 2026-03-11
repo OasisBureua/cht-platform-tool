@@ -1,6 +1,34 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { adminApi } from '../../api/admin';
+
+function getPercentChangeLabel(current: number, previous: number): { label: string; colorClass: string } {
+  if (previous === 0) {
+    return { label: current > 0 ? '+100%' : '0%', colorClass: current > 0 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' };
+  }
+  const change = ((current - previous) / previous) * 100;
+  const rounded = Math.round(change);
+  const prefix = rounded > 0 ? '+' : '';
+  if (rounded > 0) return { label: `${prefix}${rounded}%`, colorClass: 'bg-green-100 text-green-700' };
+  if (rounded < 0) return { label: `${rounded}%`, colorClass: 'bg-red-100 text-red-700' };
+  return { label: '0%', colorClass: 'bg-yellow-100 text-yellow-700' };
+}
 
 export default function AdminDashboard() {
+  const { data: stats } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: adminApi.getStats,
+  });
+
+  const { data: pendingPayments } = useQuery({
+    queryKey: ['admin', 'pending-payments'],
+    queryFn: adminApi.getPendingPayments,
+  });
+
+  const activeHcpsChange = stats
+    ? getPercentChangeLabel(stats.activeHcpsCount ?? 0, stats.activeHcpsCountPreviousWeek ?? 0)
+    : null;
+
   return (
     <div className="space-y-8">
       <div>
@@ -9,20 +37,22 @@ export default function AdminDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-6 relative">
+        <Link to="/admin/users" className="group block rounded-2xl border border-blue-200 bg-blue-50/50 p-6 relative hover:border-blue-400 hover:ring-2 hover:ring-blue-200 transition-all">
+          <span className={`absolute top-3 right-3 rounded-full px-2 py-1 text-xs font-semibold ${activeHcpsChange?.colorClass ?? 'bg-gray-100 text-gray-700'}`}>
+            {activeHcpsChange?.label ?? '—'}
+          </span>
+          <p className="text-3xl font-bold text-gray-900">{stats?.activeHcpsCount ?? 0}</p>
+          <p className="mt-2 text-sm font-semibold text-blue-700 group-hover:underline">Active HCPs</p>
+        </Link>
+        <Link to="/admin/rx-analytics" className="group block rounded-2xl border border-purple-200 bg-purple-50/50 p-6 relative hover:border-purple-400 hover:ring-2 hover:ring-purple-200 transition-all">
           <span className="absolute top-3 right-3 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">% change</span>
           <p className="text-3xl font-bold text-gray-400">#</p>
-          <p className="mt-2 text-sm font-semibold text-blue-700">Of Active HCPs</p>
-        </div>
-        <div className="rounded-2xl border border-purple-200 bg-purple-50/50 p-6 relative">
-          <span className="absolute top-3 right-3 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">% change</span>
-          <p className="text-3xl font-bold text-gray-400">#</p>
-          <p className="mt-2 text-sm font-semibold text-purple-700">Engagement Rate</p>
-        </div>
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-6">
-          <p className="text-3xl font-bold text-gray-400">#</p>
-          <p className="mt-2 text-sm font-semibold text-amber-700">Payments Made</p>
-        </div>
+          <p className="mt-2 text-sm font-semibold text-purple-700 group-hover:underline">Engagement Rate</p>
+        </Link>
+        <Link to="/admin/payments" className="group block rounded-2xl border border-amber-200 bg-amber-50/50 p-6 hover:border-amber-400 hover:ring-2 hover:ring-amber-200 transition-all">
+          <p className="text-3xl font-bold text-gray-900">{stats?.paymentsPaidCount ?? 0}</p>
+          <p className="mt-2 text-sm font-semibold text-amber-700 group-hover:underline">Payments Made</p>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -48,13 +78,20 @@ export default function AdminDashboard() {
               <p className="text-sm text-gray-500">Campaign data</p>
             </div>
           </div>
-          <div className="rounded-2xl border border-gray-200 bg-white p-6">
-            <p className="text-3xl font-bold text-amber-600">#</p>
-            <p className="mt-2 text-sm font-semibold text-amber-700">Payments Made</p>
-            <div className="mt-4 h-24 rounded-lg border border-dashed border-gray-200 flex items-center justify-center">
-              <p className="text-sm text-gray-500">Details</p>
+          <Link to="/admin/payments" className="group block rounded-2xl border border-gray-200 bg-white p-6 hover:border-amber-200 hover:ring-2 hover:ring-amber-100 transition-all">
+            <p className="text-3xl font-bold text-amber-600">{stats?.paymentsPaidCount ?? 0}</p>
+            <p className="mt-2 text-sm font-semibold text-amber-700 group-hover:underline">Payments Made</p>
+            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm text-gray-600">
+                {(pendingPayments?.length ?? 0) > 0 ? (
+                  <span className="font-medium text-amber-700">{pendingPayments?.length ?? 0} pending</span>
+                ) : (
+                  'All caught up'
+                )}
+              </p>
+              <p className="mt-1 text-xs font-medium text-amber-600 group-hover:underline">View all payments →</p>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
     </div>

@@ -1,29 +1,29 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 
-// Stock images (Figma node-id=237-4242)
+// Healthcare stock images
 const STOCK_IMAGES = {
-  featuredSurvey: 'https://picsum.photos/seed/pubsurv-featured/800/450',
-  activityCard: 'https://picsum.photos/seed/pubsurv-activity/400/300',
-  newestSurvey: 'https://picsum.photos/seed/pubsurv-newest/600/200',
-  nextActivity: 'https://picsum.photos/seed/pubsurv-next/600/200',
+  featuredSurvey: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
+  activityCard: '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
+  newestSurvey: '/images/iStock-1944379143-2231d19d-d87a-4843-9909-1b44a35f23ed.png',
+  nextActivity: '/images/iStock-1861987830-c4d2cd71-5425-45e5-b008-167e41c1a284.png',
   survey: [
-    'https://picsum.photos/seed/pubsurv-1/400/220',
-    'https://picsum.photos/seed/pubsurv-2/400/220',
-    'https://picsum.photos/seed/pubsurv-3/400/220',
-    'https://picsum.photos/seed/pubsurv-4/400/220',
-    'https://picsum.photos/seed/pubsurv-5/400/220',
-    'https://picsum.photos/seed/pubsurv-6/400/220',
+    '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
+    '/images/iStock-1667819272-cc7e9fde-feb0-4590-bb35-f5a86deba0dd.png',
+    '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
+    '/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png',
+    '/images/iStock-2036497889-fae3ed6e-9859-4983-b3ec-7a489bb6fb95.png',
+    '/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png',
   ],
 } as const;
 
 const SURVEYS = [
-  { id: '1', title: 'Survey #1', imageUrl: STOCK_IMAGES.survey[0], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '2', title: 'Survey #2', imageUrl: STOCK_IMAGES.survey[1], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '3', title: 'Survey #3', imageUrl: STOCK_IMAGES.survey[2], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '4', title: 'Survey #4', imageUrl: STOCK_IMAGES.survey[3], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '5', title: 'Survey #5', imageUrl: STOCK_IMAGES.survey[4], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
-  { id: '6', title: 'Survey #6', imageUrl: STOCK_IMAGES.survey[5], description: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore.' },
+  { id: '1', title: 'Breast Cancer 101: Current Landscape Survey', imageUrl: STOCK_IMAGES.survey[0], description: 'Share your perspectives on current treatment approaches, emerging therapies, and clinical practice patterns in breast cancer care.' },
+  { id: '2', title: 'Patient Care & Communication Survey', imageUrl: STOCK_IMAGES.survey[1], description: 'Help us understand how healthcare providers communicate with patients and what strategies improve shared decision-making.' },
+  { id: '3', title: 'Caregiver Support & Wellness Survey', imageUrl: STOCK_IMAGES.survey[2], description: 'Tell us about the challenges and support needs of caregivers, and how we can better address their wellness and burnout.' },
+  { id: '4', title: 'Clinical Research & Diagnostics Survey', imageUrl: STOCK_IMAGES.survey[3], description: 'Share your experience with diagnostic workflows, imaging protocols, and participation in clinical trials and research.' },
+  { id: '5', title: 'Biomarkers & Precision Medicine Survey', imageUrl: STOCK_IMAGES.survey[4], description: 'Provide feedback on biomarker testing, targeted therapies, and how precision medicine is integrated into your practice.' },
+  { id: '6', title: 'Treatment Adherence & Outcomes Survey', imageUrl: STOCK_IMAGES.survey[5], description: 'Help us learn about factors that influence treatment adherence and how outcomes are measured and reported in real-world settings.' },
 ];
 
 export default function PublicSurveys() {
@@ -63,7 +63,7 @@ export default function PublicSurveys() {
             </span>
             <div className="absolute inset-0 p-6 flex flex-col justify-end">
               <p className="text-xl md:text-2xl font-semibold text-gray-900">
-                Featured Survey Title
+                HER2+ Treatment Sequencing Survey
               </p>
               <span className="mt-3 inline-flex w-fit items-center gap-1 rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
                 Join Now <ArrowRight className="h-4 w-4" />

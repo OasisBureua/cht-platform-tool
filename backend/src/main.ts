@@ -2,12 +2,23 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import multer from 'multer';
+import * as express from 'express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+
+  // Zoom webhook needs raw body for signature verification. Store it before JSON parse.
+  app.use(
+    '/api/webhooks/zoom',
+    express.json({
+      verify: (req: express.Request, _res, buf) => {
+        (req as express.Request & { rawBody?: string }).rawBody = buf.toString('utf8');
+      },
+    }),
+  );
 
   // Jotform sends multipart/form-data with rawRequest field. Parse it for the webhook route.
   const multerUpload = multer();

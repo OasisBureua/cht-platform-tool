@@ -402,9 +402,18 @@ function PaymentSettingsSection({
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span>W-9 on file{accountStatus?.w9SubmittedAt ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})` : ''}</span>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                <span>W-9 on file{accountStatus?.w9SubmittedAt ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})` : ''}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setW9ModalOpen(true)}
+                className="text-sm font-semibold text-gray-700 hover:text-gray-900 hover:underline"
+              >
+                Update W-9
+              </button>
             </div>
           )}
           <W9Modal

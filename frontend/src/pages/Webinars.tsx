@@ -26,16 +26,14 @@ export default function Webinars() {
   });
 
   const { upcoming, past } = useMemo(() => {
-    const sorted = [...webinars].sort((a, b) => {
-      if (!a.startTime && !b.startTime) return 0;
-      if (!a.startTime) return 1;
-      if (!b.startTime) return -1;
-      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-    });
-    return {
-      upcoming: sorted.filter((w) => !isExpired(w)),
-      past: sorted.filter((w) => isExpired(w)),
-    };
+    const withDate = (w: WebinarItem) => (w.startTime ? new Date(w.startTime).getTime() : 0);
+    const upcomingList = webinars
+      .filter((w) => !isExpired(w))
+      .sort((a, b) => withDate(a) - withDate(b));
+    const pastList = webinars
+      .filter((w) => isExpired(w))
+      .sort((a, b) => withDate(b) - withDate(a));
+    return { upcoming: upcomingList, past: pastList };
   }, [webinars]);
 
   return (

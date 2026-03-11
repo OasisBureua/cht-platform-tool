@@ -15,7 +15,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { UserRole } from '@prisma/client';
+import { UserRole, UserStatus, PaymentStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -99,6 +99,37 @@ export class AdminController {
   }
 
   // ─── Protected endpoints (ADMIN role required) ────────────────────────────
+
+  @Get('stats')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Get admin dashboard stats' })
+  @ApiResponse({ status: 200, description: 'Dashboard stats (active HCPs, etc.)' })
+  async getStats() {
+    const now = new Date();
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount] = await Promise.all([
+      this.prisma.user.count({
+        where: {
+          role: UserRole.HCP,
+          status: UserStatus.ACTIVE,
+        },
+      }),
+      this.prisma.user.count({
+        where: {
+          role: UserRole.HCP,
+          status: UserStatus.ACTIVE,
+          createdAt: { lte: oneWeekAgo },
+        },
+      }),
+      this.prisma.payment.count({
+        where: { status: PaymentStatus.PAID },
+      }),
+    ]);
+    return { activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount };
+  }
 
   @Get('programs')
   @UseGuards(JwtAuthGuard, RolesGuard)
