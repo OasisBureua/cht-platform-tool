@@ -42,7 +42,7 @@ export const surveysApi = {
   getAll: async (): Promise<Survey[]> => {
     try {
       const { data } = await apiClient.get('/surveys');
-      return Array.isArray(data) && data.length > 0 ? data : mockSurveys;
+      return Array.isArray(data) && data.length > 0 ? data : (ENABLE_MOCK_FALLBACK ? mockSurveys : []);
     } catch {
       if (ENABLE_MOCK_FALLBACK) return mockSurveys;
       throw new Error('Failed to load surveys');

@@ -23,8 +23,15 @@ interface ZoomParticipantObject {
 
 interface ZoomWebhookPayload {
   event?: string;
+  Event?: string;
   payload?: {
-    plainToken?: string; // For endpoint.url_validation
+    plainToken?: string;
+    PlainToken?: string;
+    object?: ZoomParticipantObject;
+  };
+  Payload?: {
+    plainToken?: string;
+    PlainToken?: string;
     object?: ZoomParticipantObject;
   };
 }
@@ -55,17 +62,23 @@ export class ZoomWebhookService {
     rawBody?: string,
   ): Promise<Record<string, unknown>> {
     const payload = body as ZoomWebhookPayload;
+    const event = payload?.event ?? payload?.Event;
+    const pl = payload?.payload ?? payload?.Payload;
 
     // URL validation (when adding webhook in Zoom App Marketplace)
-    // Zoom requires response: { message: { plainToken, encryptedToken } }
-    if (payload?.event === 'endpoint.url_validation') {
-      const plainToken = payload?.payload?.plainToken;
+    // Zoom requires response: { plainToken, encryptedToken } at top level
+    if (event === 'endpoint.url_validation') {
+      const plainToken = pl?.plainToken ?? pl?.PlainToken;
       if (!plainToken) {
-        this.logger.warn('[Zoom webhook] URL validation missing plainToken');
+        this.logger.warn('[Zoom webhook] URL validation missing plainToken, payload keys:', pl ? Object.keys(pl) : []);
         return { received: true };
       }
       const encryptedToken = this.encryptToken(plainToken);
-      return { message: { plainToken, encryptedToken } };
+      if (!encryptedToken) {
+        this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not set — cannot encrypt token for validation');
+      }
+      this.logger.log('[Zoom webhook] URL validation response sent');
+      return { plainToken, encryptedToken };
     }
 
     // Validate signature for regular events
@@ -77,8 +90,7 @@ export class ZoomWebhookService {
       }
     }
 
-    const event = payload?.event;
-    const obj = payload?.payload?.object;
+    const obj = pl?.object;
 
     if (event === 'meeting.participant_joined' || event === 'meeting.participant_left') {
       await this.handleParticipantEvent(event, obj, payload);

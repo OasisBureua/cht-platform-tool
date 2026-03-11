@@ -7,20 +7,29 @@ import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog'
 import { getShortClipId } from '../utils/clipUrl';
 import { surveysApi } from '../api/surveys';
 
-const STOCK_IMAGE = 'https://via.placeholder.com/400x260?text=Content';
+const FALLBACK_IMAGES = {
+  webinar: '/images/iStock-2230313942-1a0d8644-fc61-4713-972b-53ca638c2a21.png',
+  clip: '/images/iStock-2216489570-5b943c5f-1d37-435a-a309-e39b12f434e0.png',
+  playlist: '/images/iStock-2216587796-60664d42-7776-4b9d-bbd1-5edbcdfee34c.png',
+  survey: '/images/iStock-2233342016-12339015-cb72-4731-bdc1-219dc4810191.png',
+} as const;
 
 function getClipThumbnail(clip: MediaHubClip): string {
   if (clip.thumbnail_url) return clip.thumbnail_url;
   const m = clip.youtube_url?.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
   if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
-  return STOCK_IMAGE;
+  return FALLBACK_IMAGES.clip;
 }
 
 function getPlaylistThumbnail(item: CatalogItem): string {
   if (item.thumbnailUrl) return item.thumbnailUrl;
   const m = item.playUrl?.match(/list=([a-zA-Z0-9_-]+)/);
   if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
-  return STOCK_IMAGE;
+  return FALLBACK_IMAGES.playlist;
+}
+
+function getFallbackImage(type: 'webinar' | 'clip' | 'playlist' | 'survey'): string {
+  return FALLBACK_IMAGES[type];
 }
 
 type Tab = 'best' | 'webinars' | 'videos' | 'surveys';
@@ -213,17 +222,17 @@ export default function ExploreOpportunities() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="h-44">
+            <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+              <div className="h-44 shrink-0">
                 <img
-                  src={item.imageUrl || STOCK_IMAGE}
+                  src={item.imageUrl || getFallbackImage(item.type)}
                   alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div className="p-4 space-y-3">
+              <div className="p-4 flex flex-col flex-1 min-h-0">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
                     {item.type === 'webinar' && 'Webinar'}
@@ -232,24 +241,26 @@ export default function ExploreOpportunities() {
                     {item.type === 'survey' && 'Survey'}
                   </span>
                 </div>
-                <h3 className="font-bold text-gray-900 line-clamp-2">{item.title}</h3>
-                {item.subtitle ? (
-                  <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
-                ) : item.videoNames?.length ? (
-                  <ul className="space-y-1">
-                    {item.videoNames.slice(0, 3).map((v, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="h-1 w-1 rounded-full bg-gray-400" />
-                        {v}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-600 line-clamp-2">{item.description || item.title}</p>
-                )}
+                <h3 className="font-bold text-gray-900 line-clamp-2 mt-1">{item.title}</h3>
+                <div className="flex-1 min-h-0 mt-2">
+                  {item.subtitle ? (
+                    <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
+                  ) : item.videoNames?.length ? (
+                    <ul className="space-y-1">
+                      {item.videoNames.slice(0, 3).map((v, i) => (
+                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                          <span className="h-1 w-1 rounded-full bg-gray-400" />
+                          {v}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-600 line-clamp-2">{item.description || item.title}</p>
+                  )}
+                </div>
                 <Link
                   to={item.href}
-                  className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="mt-4 inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                 >
                   {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'Learn More' : 'Conversations'}
                 </Link>

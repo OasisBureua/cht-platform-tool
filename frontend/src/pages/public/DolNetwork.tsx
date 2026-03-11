@@ -1,17 +1,18 @@
+import { Link } from 'react-router-dom';
 import { dolNetwork } from '../../data/dol-network';
 
 export default function DolNetwork() {
   return (
     <div className="bg-white">
       {/* Hero */}
-      <section className="border-b border-gray-200">
+      <section>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16">
           <div className="max-w-3xl space-y-4">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
               Digital Opinion Leader (DOL) Network
             </h1>
             <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-              Oncology & Breast Cancer Specialists — Organized by Region
+              Oncology & Breast Cancer Specialists
             </p>
           </div>
         </div>
@@ -23,10 +24,14 @@ export default function DolNetwork() {
           {dolNetwork.map((region) => (
             <div key={region.id} className="space-y-6">
               <div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 flex items-center gap-2">
-                  <span>{region.emoji}</span>
-                  {region.title}
-                </h2>
+                <Link
+                  to={`/kol-network/${region.id}`}
+                  className="group block"
+                >
+                  <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 flex items-center gap-2 group-hover:text-blue-600 transition-colors">
+                    {region.title}
+                  </h2>
+                </Link>
                 {region.subtitle && (
                   <p className="mt-1 text-base text-gray-600">{region.subtitle}</p>
                 )}

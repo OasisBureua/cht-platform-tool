@@ -9,18 +9,25 @@ export type DolEntry = {
 
 export type DolRegion = {
   id: string;
-  emoji: string;
   title: string;
   subtitle?: string;
   entries: DolEntry[];
 };
 
+const SLUG_ALIASES: Record<string, string> = {
+  yale: 'ny-northeast', // Yale merged into New York & Northeast
+};
+
+export function getRegionBySlug(slug: string): DolRegion | null {
+  const resolvedSlug = SLUG_ALIASES[slug] ?? slug;
+  return dolNetwork.find((r) => r.id === resolvedSlug) ?? null;
+}
+
 export const dolNetwork: DolRegion[] = [
   {
     id: 'ny-northeast',
-    emoji: '🗽',
     title: 'New York & Northeast',
-    subtitle: 'Memorial Sloan Kettering (MSK)',
+    subtitle: 'Memorial Sloan Kettering (MSK) & Yale',
     entries: [
       {
         id: 'traina',
@@ -58,11 +65,24 @@ export const dolNetwork: DolRegion[] = [
         education: 'Washington and Lee University (BSc); University of Virginia School of Medicine (MD); Walter Reed Army Medical Center (Residency & Fellowship).',
         isNew: true,
       },
+      {
+        id: 'lustberg',
+        name: 'Dr. Maryam Lustberg',
+        role: 'Director, Center for Breast Cancer at Smilow; Chief, Breast Medical Oncology — Yale School of Medicine, New Haven, CT.',
+        bio: 'A world expert in supportive care and patient-reported outcomes, focusing on reducing treatment toxicities.',
+        education: 'University of Maryland (MD); Ohio State (Residency & Fellowship).',
+      },
+      {
+        id: 'krop',
+        name: 'Dr. Ian Krop',
+        role: 'Chief Clinical Research Officer; Director, Clinical Trials Office — Yale School of Medicine, New Haven, CT.',
+        bio: 'A legendary trialist whose research led to the approval of virtually every major HER2-targeted therapy in the last 15 years.',
+        education: 'Johns Hopkins (MD/PhD); Johns Hopkins Hospital (Residency); Dana-Farber (Fellowship).',
+      },
     ],
   },
   {
     id: 'east-coast',
-    emoji: '🏛',
     title: 'East Coast Academic Centers',
     entries: [
       {
@@ -83,7 +103,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'new-england',
-    emoji: '🏛',
     title: 'New England — Dana-Farber / Harvard',
     entries: [
       {
@@ -103,29 +122,7 @@ export const dolNetwork: DolRegion[] = [
     ],
   },
   {
-    id: 'yale',
-    emoji: '🏛',
-    title: 'Yale',
-    entries: [
-      {
-        id: 'lustberg',
-        name: 'Dr. Maryam Lustberg',
-        role: 'Director, Center for Breast Cancer at Smilow; Chief, Breast Medical Oncology — Yale School of Medicine, New Haven, CT.',
-        bio: 'A world expert in supportive care and patient-reported outcomes, focusing on reducing treatment toxicities.',
-        education: 'University of Maryland (MD); Ohio State (Residency & Fellowship).',
-      },
-      {
-        id: 'krop',
-        name: 'Dr. Ian Krop',
-        role: 'Chief Clinical Research Officer; Director, Clinical Trials Office — Yale School of Medicine, New Haven, CT.',
-        bio: 'A legendary trialist whose research led to the approval of virtually every major HER2-targeted therapy in the last 15 years.',
-        education: 'Johns Hopkins (MD/PhD); Johns Hopkins Hospital (Residency); Dana-Farber (Fellowship).',
-      },
-    ],
-  },
-  {
     id: 'midwest-chicago',
-    emoji: '🌾',
     title: 'Midwest — Northwestern, Rush & Chicago Area',
     entries: [
       {
@@ -153,7 +150,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'midwest-indiana',
-    emoji: '🌾',
     title: 'Indiana, Ohio & Upper Midwest',
     entries: [
       {
@@ -182,7 +178,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'kansas',
-    emoji: '🌾',
     title: 'Kansas & Great Plains',
     entries: [
       {
@@ -203,7 +198,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'missouri',
-    emoji: '🌾',
     title: 'Missouri & St. Louis Area',
     entries: [
       {
@@ -218,7 +212,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'tennessee',
-    emoji: '🎵',
     title: 'South & Southeast — Tennessee',
     entries: [
       {
@@ -239,7 +232,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'texas',
-    emoji: '⭐',
     title: 'Texas — MD Anderson & Houston Area',
     entries: [
       {
@@ -288,7 +280,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'colorado',
-    emoji: '⛰️',
     title: 'Mountain West — Colorado',
     entries: [
       {
@@ -302,7 +293,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'florida',
-    emoji: '🌴',
     title: 'Florida — Central Florida',
     entries: [
       {
@@ -316,7 +306,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'california',
-    emoji: '🌊',
     title: 'West Coast — California (Los Angeles & Bay Area)',
     entries: [
       {
@@ -358,7 +347,6 @@ export const dolNetwork: DolRegion[] = [
   },
   {
     id: 'pacific-northwest',
-    emoji: '🌊',
     title: 'Pacific Northwest — Oregon & Washington',
     entries: [
       {

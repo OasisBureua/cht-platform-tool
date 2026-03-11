@@ -7,7 +7,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 if (!supabaseAnonKey) {
   throw new Error('VITE_SUPABASE_ANON_KEY is required. Get valid JWT from MediaHub/CHM team.');
 }
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    detectSessionInUrl: false, // We parse OAuth callback manually in AuthCallback to avoid hash being cleared before we read it
+  },
+});
 
 /** OAuth redirect base - must be in GoTrue's Redirect URLs allowlist. */
 export function getOAuthRedirectBase(): string {
@@ -23,9 +27,13 @@ export function getOAuthRedirectBase(): string {
  * Fix for Google OAuth: GoTrue requires redirect_to to send users back to the CHT platform.
  * @see Sebastien: GET .../auth/v1/authorize?provider=google&redirect_to=https://testapp.communityhealth.media/auth/callback
  */
-export function buildOAuthAuthorizeUrl(provider: 'google' | 'apple', fromPath: string): string {
+export function buildOAuthAuthorizeUrl(provider: 'google' | 'apple', fromPath?: string): string {
   const base = getOAuthRedirectBase();
-  const redirectTo = `${base}/auth/callback?from=${encodeURIComponent(fromPath)}`;
+  const callbackBase = `${base}/auth/callback`;
+  const redirectTo =
+    fromPath && fromPath !== '/' && fromPath !== 'undefined'
+      ? `${callbackBase}?from=${encodeURIComponent(fromPath)}`
+      : callbackBase;
   const params = new URLSearchParams({
     provider,
     redirect_to: redirectTo,

@@ -36,9 +36,15 @@ export class WebinarsService {
   async listWebinars(): Promise<WebinarItem[]> {
     const items: WebinarItem[] = [];
 
-    // 1. Load all published DB programs
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // 1. Load published DB programs from last 30 days onwards
     const programs = await this.prisma.program.findMany({
-      where: { status: 'PUBLISHED' },
+      where: {
+        status: 'PUBLISHED',
+        startDate: { gte: thirtyDaysAgo },
+      },
       include: { videos: { take: 1 } },
       orderBy: { startDate: 'desc' },
       take: 50,
@@ -75,6 +81,8 @@ export class WebinarsService {
         const zoomWebinars = await this.zoom.listWebinars();
         for (const w of zoomWebinars) {
           if (coveredZoomIds.has(String(w.id))) continue; // already covered by DB
+          const startTime = w.startTime ? new Date(w.startTime).getTime() : 0;
+          if (startTime > 0 && startTime < thirtyDaysAgo.getTime()) continue; // skip if older than 30 days
           items.push({
             id: `zoom-${w.id}`,
             title: w.topic,

@@ -128,6 +128,13 @@ export class AdminController {
         where: { status: PaymentStatus.PAID },
       }),
     ]);
+    const pct =
+      activeHcpsCountPreviousWeek === 0
+        ? activeHcpsCount > 0
+          ? '+100%'
+          : '0%'
+        : `${Math.round(((activeHcpsCount - activeHcpsCountPreviousWeek) / activeHcpsCountPreviousWeek) * 100)}%`;
+    this.logger.debug(`[Admin] stats: activeHcps=${activeHcpsCount} activeHcpsPrevWeek=${activeHcpsCountPreviousWeek} change=${pct}`);
     return { activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount };
   }
 

@@ -850,7 +850,17 @@ export default function Home() {
       {/* A media company thats about more than just content - Figma Frame 13 */}
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 text-center">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10">
+          <h2
+            className="mx-auto mb-8 md:mb-10"
+            style={{
+              color: '#000',
+              fontFamily: '"Apple Garamond", Garamond, serif',
+              fontSize: 'clamp(2.5rem, 8vw, 96px)',
+              fontWeight: 400,
+              lineHeight: '98px',
+              maxWidth: '955px',
+            }}
+          >
             A media company thats about more than just content
           </h2>
           <Link

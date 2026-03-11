@@ -11,7 +11,7 @@ const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
 const STOCK_IMAGES = {
   featuredVideo: '/images/resource-watch.png',
   featuredWebinar: '/images/resource-webinars.png',
-  featuredSurvey: '/images/resource-reporting.png',
+  featuredSurvey: '/images/forhcp-featured-survey.png',
   featuredStudy: '/images/resource-clinicals.png',
 } as const;
 
@@ -112,7 +112,7 @@ export default function ForHCPs() {
         {/* Featured content: 2 large + 2 small cards */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <FeaturedCard
-            title="Featured Video Title"
+            title="Clinical Conversations"
             imageUrl={STOCK_IMAGES.featuredVideo}
             cta="Conversations"
             size="large"
@@ -135,11 +135,11 @@ export default function ForHCPs() {
             to="/app/surveys"
           />
           <FeaturedCard
-            title="Newest Study"
+            title="KOL/DOL Network"
             imageUrl={STOCK_IMAGES.featuredStudy}
-            cta="Join Now"
+            cta="View Now"
             size="small"
-            to="/catalog"
+            to="/kol-network"
           />
         </section>
 

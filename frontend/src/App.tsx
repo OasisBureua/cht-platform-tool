@@ -27,6 +27,7 @@ import WhatWeDo from './pages/public/WhatWeDo';
 import Services from './pages/public/Services';
 import Portfolios from './pages/public/Portfolios';
 import DolNetwork from './pages/public/DolNetwork';
+import DolRegionDetail from './pages/public/DolRegionDetail';
 import Terms from './pages/public/Terms';
 
 // App layout (existing)
@@ -113,6 +114,7 @@ function App() {
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
             <Route path="/kol-network" element={<DolNetwork />} />
+            <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
           </Route>
 
           {/* =======================

@@ -10,7 +10,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
 
-  // Zoom webhook needs raw body for signature verification. Store it before JSON parse.
+  // Zoom webhook MUST run first to capture raw body before any other parser consumes the stream.
   app.use(
     '/api/webhooks/zoom',
     express.json({
@@ -19,6 +19,15 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Parse JSON body for auth and other routes (skip Zoom - it has its own parser above).
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.originalUrl?.startsWith('/api/webhooks/zoom')) return next();
+    if (req.headers['content-type']?.includes('application/json')) {
+      return express.json()(req, res, next);
+    }
+    return next();
+  });
 
   // Jotform sends multipart/form-data with rawRequest field. Parse it for the webhook route.
   const multerUpload = multer();
