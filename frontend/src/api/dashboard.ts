@@ -61,7 +61,16 @@ export const dashboardApi = {
 
   updateProfile: async (
     userId: string,
-    updates: { firstName?: string; lastName?: string; specialty?: string; npiNumber?: string },
+    updates: {
+      firstName?: string;
+      lastName?: string;
+      specialty?: string;
+      npiNumber?: string;
+      institution?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    },
   ): Promise<ProfileResponse> => {
     const { data } = await apiClient.patch(`/dashboard/${userId}/profile`, updates);
     return data;

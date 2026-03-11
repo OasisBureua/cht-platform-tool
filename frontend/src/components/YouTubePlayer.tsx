@@ -76,6 +76,7 @@ export function YouTubePlayer({ youtubeUrl, muted = true, autoplay = true, class
           mute: 1,
           enablejsapi: 1,
           origin: window.location.origin,
+          modestbranding: 1,
         },
         events: {
           onReady() {

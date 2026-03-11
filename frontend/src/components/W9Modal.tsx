@@ -1,0 +1,141 @@
+import { useState } from 'react';
+import { X, Loader2 } from 'lucide-react';
+
+export function W9Modal({
+  isOpen,
+  onClose,
+  onSubmit,
+  displayName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string }) => Promise<void>;
+  displayName: string;
+}) {
+  const [taxIdType, setTaxIdType] = useState<'SSN' | 'EIN'>('SSN');
+  const [taxId, setTaxId] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const digits = taxId.replace(/\D/g, '');
+    if (digits.length !== 9) {
+      setError(taxIdType === 'SSN' ? 'SSN must be 9 digits' : 'EIN must be 9 digits');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        taxId: digits,
+        taxIdType,
+        companyName: companyName.trim() || undefined,
+      });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to submit W-9');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">W-9 Tax Form</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">
+            Complete this form so we can process your payouts. Your information is sent securely to Bill.com.
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Tax ID type</label>
+              <select
+                value={taxIdType}
+                onChange={(e) => setTaxIdType(e.target.value as 'SSN' | 'EIN')}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                disabled={submitting}
+              >
+                <option value="SSN">Social Security Number (SSN)</option>
+                <option value="EIN">Employer Identification Number (EIN)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                {taxIdType === 'SSN' ? 'SSN (9 digits)' : 'EIN (9 digits)'}
+              </label>
+              <input
+                type="password"
+                inputMode="numeric"
+                value={taxId}
+                onChange={(e) => setTaxId(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                placeholder={taxIdType === 'SSN' ? 'XXX-XX-XXXX' : 'XX-XXXXXXX'}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                maxLength={9}
+                disabled={submitting}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Business name <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder={displayName}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                disabled={submitting}
+              />
+            </div>
+
+            <p className="text-xs text-gray-500">
+              By submitting, you certify under penalty of perjury that the information is correct and that you are not
+              subject to backup withholding.
+            </p>
+
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="flex-1 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {submitting ? 'Submitting…' : 'Submit W-9'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

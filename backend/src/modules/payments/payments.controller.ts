@@ -10,6 +10,7 @@ import { BillService } from './bill.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
+import { SubmitW9Dto } from './dto/submit-w9.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 
 @Controller('payments')
@@ -143,6 +144,16 @@ export class PaymentsController {
   async createPayout(@Body() dto: CreatePayoutDto): Promise<PayoutResponseDto> {
     this.logger.log(`Creating payout for user: ${dto.userId}`);
     return this.paymentsService.createPayout(dto);
+  }
+
+  /**
+   * POST /api/payments/:userId/w9
+   * Submit W-9 tax form (auth required). User must have Bill.com vendor first.
+   */
+  @Post(':userId/w9')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
+  async submitW9(@Param('userId') userId: string, @Body() body: SubmitW9Dto) {
+    return this.paymentsService.submitW9(userId, body);
   }
 
   /**

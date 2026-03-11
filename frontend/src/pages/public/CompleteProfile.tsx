@@ -18,6 +18,10 @@ export default function CompleteProfile() {
   const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
   const [profession, setProfession] = useState('');
   const [npiNumber, setNpiNumber] = useState('');
+  const [institution, setInstitution] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -46,12 +50,29 @@ export default function CompleteProfile() {
     e.preventDefault();
     setError(null);
     const npi = npiNumber.replace(/\D/g, '');
+    if (!profession) {
+      setError('Please select your profession.');
+      return;
+    }
     if (npi.length !== 10) {
       setError('NPI number must be 10 digits.');
       return;
     }
-    if (!profession || profession === '') {
-      setError('Please select your profession.');
+    if (!institution.trim()) {
+      setError('Institution is required.');
+      return;
+    }
+    if (!city.trim()) {
+      setError('City is required.');
+      return;
+    }
+    if (!state.trim()) {
+      setError('State is required.');
+      return;
+    }
+    const zip = zipCode.replace(/\D/g, '');
+    if (zip.length !== 5 && zip.length !== 9) {
+      setError('ZIP code must be 5 digits (or 9 for ZIP+4).');
       return;
     }
     setSaving(true);
@@ -59,6 +80,10 @@ export default function CompleteProfile() {
       await dashboardApi.updateProfile(userId, {
         specialty: profession,
         npiNumber: npi,
+        institution: institution.trim(),
+        city: city.trim(),
+        state: state.trim().toUpperCase().slice(0, 2),
+        zipCode: zip,
       });
       await refreshProfile();
       navigate('/app/home', { replace: true });
@@ -84,7 +109,7 @@ export default function CompleteProfile() {
           Complete your profile
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          Add your profession and NPI number to access the platform.
+          A few details are needed before you can access the platform.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -93,10 +118,10 @@ export default function CompleteProfile() {
               {error}
             </div>
           )}
+
+          {/* Professional info */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              Profession
-            </label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Profession</label>
             <select
               value={profession}
               onChange={(e) => setProfession(e.target.value)}
@@ -104,16 +129,13 @@ export default function CompleteProfile() {
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
               {PROFESSION_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
           </div>
+
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              NPI number
-            </label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">NPI number</label>
             <input
               type="text"
               value={npiNumber}
@@ -124,6 +146,59 @@ export default function CompleteProfile() {
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Institution</label>
+            <input
+              type="text"
+              value={institution}
+              onChange={(e) => setInstitution(e.target.value)}
+              placeholder="Hospital, clinic, or practice name"
+              required
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            />
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">City</label>
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="New York"
+              required
+              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">State</label>
+              <input
+                type="text"
+                value={state}
+                onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+                placeholder="NY"
+                required
+                maxLength={2}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">ZIP code</label>
+              <input
+                type="text"
+                value={zipCode}
+                onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
+                placeholder="10001"
+                required
+                maxLength={10}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              />
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={saving}

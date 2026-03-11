@@ -244,6 +244,23 @@ export class BillService {
   }
 
   /**
+   * Update vendor with W-9 / tax information
+   */
+  async updateVendorTaxInfo(
+    vendorId: string,
+    data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string; track1099?: boolean },
+  ): Promise<BillVendor> {
+    this.logger.log(`Updating Bill.com vendor tax info: ${vendorId}`);
+    const payload: Record<string, unknown> = {
+      taxId: data.taxId.replace(/\D/g, ''),
+      taxIdType: data.taxIdType,
+      track1099: data.track1099 ?? true,
+    };
+    if (data.companyName?.trim()) payload.companyName = data.companyName.trim();
+    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, payload);
+  }
+
+  /**
    * Create payment to vendor (auto-creates bill when createBill: true)
    */
   async createPayment(

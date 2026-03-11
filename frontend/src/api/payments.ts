@@ -83,6 +83,14 @@ export const paymentsApi = {
     return data;
   },
 
+  submitW9: async (
+    userId: string,
+    data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },
+  ) => {
+    const { data: result } = await apiClient.post(`/payments/${userId}/w9`, data);
+    return result;
+  },
+
   requestPayout: async (userId: string, amount?: number) => {
     try {
       const { data } = await apiClient.post(`/payments/payout`, {

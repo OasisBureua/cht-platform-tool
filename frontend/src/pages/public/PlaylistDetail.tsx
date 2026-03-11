@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Monitor, ClipboardList, Video, Loader2, ListVideo, Mail } from 'lucide-react';
+import { Monitor, ClipboardList, Video, Loader2, ListVideo } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
+import { ShareButtons } from '../../components/ShareButtons';
 
 function getTabs(isInApp: boolean) {
   const base = isInApp ? '/app' : '';
@@ -16,46 +17,8 @@ function getTabs(isInApp: boolean) {
 
 function getEmbedUrl(youtubeUrl: string): string {
   const match = youtubeUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-  if (match) return `https://www.youtube.com/embed/${match[1]}`;
+  if (match) return `https://www.youtube.com/embed/${match[1]}?modestbranding=1`;
   return youtubeUrl;
-}
-
-function ShareButtons({ title, url }: { title: string; url: string }) {
-  const encodedUrl = encodeURIComponent(url);
-  const encodedTitle = encodeURIComponent(title);
-
-  const shareLinks = [
-    { name: 'Facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`, className: 'bg-[#1877f2] hover:bg-[#166fe5] text-white' },
-    { name: 'X', href: `https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`, className: 'bg-black hover:bg-gray-800 text-white' },
-    { name: 'Reddit', href: `https://reddit.com/submit?url=${encodedUrl}&title=${encodedTitle}`, className: 'bg-[#ff4500] hover:bg-[#e03d00] text-white' },
-    { name: 'Pinterest', href: `https://pinterest.com/pin/create/button/?url=${encodedUrl}&description=${encodedTitle}`, className: 'bg-[#bd081c] hover:bg-[#a30718] text-white' },
-  ];
-
-  return (
-    <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Share</h2>
-      <div className="flex flex-wrap gap-2">
-        {shareLinks.map((link) => (
-          <a
-            key={link.name}
-            href={link.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${link.className}`}
-          >
-            {link.name}
-          </a>
-        ))}
-        <a
-          href={`mailto:?subject=${encodedTitle}&body=${encodedUrl}`}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <Mail className="h-4 w-4" />
-          Email
-        </a>
-      </div>
-    </div>
-  );
 }
 
 export default function PlaylistDetail() {

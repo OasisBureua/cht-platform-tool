@@ -6,6 +6,7 @@ import { paymentsApi } from '../api/payments';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
 import { CheckCircle2, AlertCircle, Clock3, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { W9Modal } from '../components/W9Modal';
 
 
 function formatMoney(value: number) {
@@ -30,8 +31,8 @@ function statusIcon(status: PaymentStatus) {
 export default function Payments() {
   const { user } = useAuth();
   const userId = user?.userId ?? '';
-  
   const queryClient = useQueryClient();
+  const [w9ModalOpen, setW9ModalOpen] = useState(false);
   const { data: accountStatus, isLoading: loadingAccount } = useQuery({
     queryKey: ['payments-account-status', userId],
     queryFn: () => paymentsApi.getAccountStatus(userId),
@@ -60,6 +61,7 @@ export default function Payments() {
   }, 0);
 
   const needsBankInfo = !accountStatus?.hasAccount;
+  const needsW9 = accountStatus?.hasAccount && !accountStatus?.w9Submitted;
 
   if (loadingAccount || loadingSummary || loadingHistory) return <LoadingSpinner />;
 
@@ -96,8 +98,8 @@ export default function Payments() {
       </section>
 
       {/* Payout info */}
-      <section className="rounded-3xl border border-gray-200 bg-white p-6">
-        <div className="space-y-1">
+      <section className="rounded-3xl border border-gray-200 bg-white p-6 min-w-0 overflow-hidden">
+        <div className="space-y-2">
           <p className="text-sm font-semibold text-gray-900">Payouts</p>
           <p className="text-sm text-gray-600">
             Last payout:{' '}
@@ -105,9 +107,28 @@ export default function Payments() {
               {summary?.lastPayoutDate ? format(new Date(summary.lastPayoutDate), 'MMM d, yyyy') : '—'}
             </span>
             {' · '}
-            Admins process payouts via Bill.com (ACH). W-9 must be on file.
+            Admins process payouts via Bill.com (ACH).
           </p>
+          {needsW9 && (
+            <button
+              type="button"
+              onClick={() => setW9ModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+            >
+              <AlertCircle className="h-4 w-4" />
+              Complete W-9 to receive payouts
+            </button>
+          )}
         </div>
+        <W9Modal
+          isOpen={w9ModalOpen}
+          onClose={() => setW9ModalOpen(false)}
+          onSubmit={async (data) => {
+            await paymentsApi.submitW9(userId, data);
+            queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
+          }}
+          displayName={user?.name || user?.email || 'User'}
+        />
       </section>
 
       {/* History */}
@@ -201,7 +222,7 @@ function VendorSetupForm({
   );
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-3xl border border-gray-200 bg-white p-6 space-y-6">
+    <form onSubmit={handleSubmit} className="rounded-3xl border border-gray-200 bg-white p-6 space-y-6 min-w-0 overflow-hidden">
       <div>
         <h2 className="text-base font-semibold text-gray-900">Set up your payment account</h2>
         <p className="mt-0.5 text-sm text-gray-600">

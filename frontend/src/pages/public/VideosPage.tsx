@@ -103,7 +103,6 @@ export default function VideosPage() {
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
     staleTime: 10 * 60 * 1000,
-    enabled: !useMediaHub,
   });
 
   const {
@@ -159,7 +158,6 @@ export default function VideosPage() {
 
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
-  const hasPlaylistFallback = !useMediaHub && playlists.length > 0;
 
   return (
     <div className="bg-white min-h-screen min-w-0">
@@ -181,6 +179,50 @@ export default function VideosPage() {
             </Link>
           ))}
         </section>
+
+        {/* Playlists - always visible when available */}
+        {playlists.length > 0 && (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold text-gray-900">Playlists</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {playlists.map((item) => {
+                const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    <div className="h-52 relative">
+                      <Link to={playlistUrl}>
+                        <img
+                          src={item.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          referrerPolicy="no-referrer"
+                        />
+                      </Link>
+                    </div>
+                    <div className="p-5 space-y-4">
+                      <Link to={playlistUrl} className="block">
+                        <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
+                      </Link>
+                      <p className="text-sm text-gray-600">{item.videoCount} videos</p>
+                      <div className="flex justify-end">
+                        <Link
+                          to={playlistUrl}
+                          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                        >
+                          View Playlist
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Search + Filters (MediaHub clips only) */}
         {useMediaHub && (
@@ -254,57 +296,29 @@ export default function VideosPage() {
         </section>
         )}
 
-        {/* Clips grid */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {!useMediaHub && !hasPlaylistFallback ? (
+        {/* Clips grid (MediaHub only) or empty state */}
+        <section className="space-y-4">
+          {useMediaHub && <h2 className="text-xl font-bold text-gray-900">Clips</h2>}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {!useMediaHub && playlists.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
               <p className="text-gray-600 mb-2">Video catalog requires MediaHub API key or YouTube playlists.</p>
               <p className="text-sm text-gray-500 mb-3">Configure mediahub_api_key or youtube_playlist_ids in the backend.</p>
               <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
-                Browse playlists in Catalog
+                Browse Catalog
               </Link>
             </div>
-          ) : hasPlaylistFallback ? (
-            playlists.map((item) => {
-              const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="h-52 relative">
-                    <Link to={playlistUrl}>
-                      <img
-                        src={item.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                      />
-                    </Link>
-                  </div>
-                  <div className="p-5 space-y-4">
-                    <Link to={playlistUrl} className="block">
-                      <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
-                    </Link>
-                    <p className="text-sm text-gray-600">{item.videoCount} videos</p>
-                    <div className="flex justify-end">
-                      <Link
-                        to={playlistUrl}
-                        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                      >
-                        View Playlist
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : isLoading && displayItems.length === 0 ? (
+          ) : useMediaHub && isLoading && displayItems.length === 0 ? (
             <div className="col-span-full flex items-center justify-center py-16">
               <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
             </div>
-          ) : displayItems.length === 0 ? (
+          ) : !useMediaHub && playlists.length > 0 ? (
+            <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
+              <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
+                Explore more in Catalog
+              </Link>
+            </div>
+          ) : useMediaHub && displayItems.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
               <p className="text-gray-600 mb-2">No results found.</p>
               <p className="text-sm text-gray-500">Try adjusting your search or filters.</p>
@@ -358,6 +372,7 @@ export default function VideosPage() {
               {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
             </div>
           )}
+          </div>
         </section>
       </div>
     </div>

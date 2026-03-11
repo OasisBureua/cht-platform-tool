@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { User, LogOut, CreditCard, ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
+import { User, LogOut, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
+import { W9Modal } from '../components/W9Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
@@ -275,15 +276,24 @@ function PaymentSettingsSection({
   onSuccess: () => void;
 }) {
   const [payeeName, setPayeeName] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [nameOnAccount, setNameOnAccount] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [routingNumber, setRoutingNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [w9ModalOpen, setW9ModalOpen] = useState(false);
 
   const connectMutation = useMutation({
     mutationFn: () =>
       paymentsApi.createConnectAccount(userId, {
         payeeName: payeeName.trim(),
+        addressLine1: addressLine1.trim(),
+        city: city.trim(),
+        state: state.trim().toUpperCase().slice(0, 2),
+        zipCode: zipCode.trim().replace(/\D/g, ''),
         nameOnAccount: nameOnAccount.trim(),
         accountNumber: accountNumber.trim(),
         routingNumber: routingNumber.trim(),
@@ -291,6 +301,10 @@ function PaymentSettingsSection({
     onSuccess: () => {
       setError(null);
       setPayeeName('');
+      setAddressLine1('');
+      setCity('');
+      setState('');
+      setZipCode('');
       setNameOnAccount('');
       setAccountNumber('');
       setRoutingNumber('');
@@ -304,8 +318,16 @@ function PaymentSettingsSection({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!payeeName.trim() || !nameOnAccount.trim() || !accountNumber.trim() || !routingNumber.trim()) {
-      setError('All fields are required');
+    if (!payeeName.trim() || !addressLine1.trim() || !city.trim() || !state.trim() || !zipCode.trim()) {
+      setError('Payee name and full address are required');
+      return;
+    }
+    if (!/^\d{5}(-\d{4})?$/.test(zipCode.trim().replace(/\D/g, ''))) {
+      setError('ZIP code must be 5 or 9 digits');
+      return;
+    }
+    if (!nameOnAccount.trim() || !accountNumber.trim() || !routingNumber.trim()) {
+      setError('All bank fields are required');
       return;
     }
     if (routingNumber.replace(/\D/g, '').length !== 9) {
@@ -333,13 +355,13 @@ function PaymentSettingsSection({
   const w9Submitted = accountStatus?.w9Submitted ?? false;
 
   return (
-    <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6">
+    <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6 min-w-0 overflow-hidden">
       <div className="flex items-center gap-2 mb-4">
-        <CreditCard className="h-5 w-5 text-gray-700" />
-        <h2 className="text-lg font-bold text-gray-900">Payment Settings</h2>
+        <CreditCard className="h-5 w-5 text-gray-700 shrink-0" />
+        <h2 className="text-lg font-bold text-gray-900 truncate">Payment Settings</h2>
       </div>
       <p className="text-sm text-gray-600 mb-6">
-        Add your bank details to receive payouts via ACH or check. W-9 must be on file in Bill.com before admins can pay you.
+        Add your bank details to receive payouts via Bill.com (ACH or check). Complete the embedded W-9 form before admins can pay you.
       </p>
 
       {hasAccount ? (
@@ -359,17 +381,15 @@ function PaymentSettingsSection({
                 <div>
                   <p className="font-medium text-amber-900">W-9 required</p>
                   <p className="text-sm text-amber-800 mt-1">
-                    Complete your W-9 form in Bill.com before admins can process your payouts.
+                    Complete the W-9 form to receive payouts.
                   </p>
-                  <a
-                    href="https://app.bill.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() => setW9ModalOpen(true)}
                     className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-amber-900 hover:underline"
                   >
-                    Complete W-9 in Bill.com
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
+                    Complete W-9
+                  </button>
                 </div>
               </div>
             </div>
@@ -379,9 +399,18 @@ function PaymentSettingsSection({
               <span>W-9 on file{accountStatus?.w9SubmittedAt ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})` : ''}</span>
             </div>
           )}
+          <W9Modal
+            isOpen={w9ModalOpen}
+            onClose={() => setW9ModalOpen(false)}
+            onSubmit={async (data) => {
+              await paymentsApi.submitW9(userId, data);
+              onSuccess();
+            }}
+            displayName={displayName}
+          />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 min-w-0">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">Payee name (as on tax forms)</label>
             <input
@@ -389,6 +418,53 @@ function PaymentSettingsSection({
               value={payeeName}
               onChange={(e) => setPayeeName(e.target.value)}
               placeholder={displayName}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Street address</label>
+            <input
+              type="text"
+              value={addressLine1}
+              onChange={(e) => setAddressLine1(e.target.value)}
+              placeholder="123 Main St"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="New York"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
+              <input
+                type="text"
+                value={state}
+                onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+                placeholder="NY"
+                maxLength={2}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">ZIP code</label>
+            <input
+              type="text"
+              value={zipCode}
+              onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
+              placeholder="10001"
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
               required
             />

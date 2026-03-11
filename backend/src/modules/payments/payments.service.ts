@@ -116,8 +116,7 @@ export class PaymentsService {
         billVendorId: vendor.id,
         billVendorStatus: 'active',
         paymentEnabled: true,
-        w9Submitted: true,
-        w9SubmittedAt: new Date(),
+        // W-9 is submitted separately via the embedded W9Modal
       },
     });
 
@@ -447,6 +446,44 @@ export class PaymentsService {
       status: p.status,
       method: 'Bill.com',
     }));
+  }
+
+  /**
+   * Submit W-9 tax information to Bill.com vendor
+   */
+  async submitW9(
+    userId: string,
+    data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },
+  ): Promise<{ success: boolean }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.billVendorId) throw new BadRequestException('Add bank details first before submitting W-9');
+
+    const taxId = data.taxId.replace(/\D/g, '');
+    if (data.taxIdType === 'SSN' && taxId.length !== 9) {
+      throw new BadRequestException('SSN must be 9 digits');
+    }
+    if (data.taxIdType === 'EIN' && taxId.length !== 9) {
+      throw new BadRequestException('EIN must be 9 digits');
+    }
+
+    await this.billService.updateVendorTaxInfo(user.billVendorId, {
+      taxId,
+      taxIdType: data.taxIdType,
+      companyName: data.companyName?.trim(),
+      track1099: true,
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        w9Submitted: true,
+        w9SubmittedAt: new Date(),
+      },
+    });
+
+    this.logger.log(`W-9 submitted for user ${userId}`);
+    return { success: true };
   }
 
   /**

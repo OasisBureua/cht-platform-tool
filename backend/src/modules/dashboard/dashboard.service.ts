@@ -102,18 +102,29 @@ export class DashboardService {
    */
   async updateProfile(
     userId: string,
-    data: { firstName?: string; lastName?: string; specialty?: string; npiNumber?: string },
+    data: {
+      firstName?: string;
+      lastName?: string;
+      specialty?: string;
+      npiNumber?: string;
+      institution?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    },
   ): Promise<ProfileResponseDto> {
     const npi = data.npiNumber !== undefined ? data.npiNumber.replace(/\D/g, '').slice(0, 10) : undefined;
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(data.firstName !== undefined && {
-          firstName: data.firstName.trim() || 'User',
-        }),
+        ...(data.firstName !== undefined && { firstName: data.firstName.trim() || 'User' }),
         ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
         ...(data.specialty !== undefined && { specialty: data.specialty.trim() || null }),
         ...(npi !== undefined && { npiNumber: npi.length === 10 ? npi : null }),
+        ...(data.institution !== undefined && { institution: data.institution.trim() || null }),
+        ...(data.city !== undefined && { city: data.city.trim() || null }),
+        ...(data.state !== undefined && { state: data.state.trim() || null }),
+        ...(data.zipCode !== undefined && { zipCode: data.zipCode.trim() || null }),
       },
     });
     return this.getProfile(userId);
