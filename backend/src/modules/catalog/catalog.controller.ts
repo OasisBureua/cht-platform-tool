@@ -85,11 +85,21 @@ export class CatalogController {
   /**
    * GET /api/catalog/clips/:id
    * MediaHub: Single clip detail.
+   * Accepts full ID (e.g. official:youtube:E1tTwDQgMBc) or short YouTube video ID (e.g. E1tTwDQgMBc).
    */
   @Get('clips/:id')
   async getClip(@Param('id') id: string) {
     if (!this.mediahub.isConfigured()) {
       return null;
+    }
+    // If id looks like a short YouTube video ID (11 alphanumeric chars, no colons), try official:youtube:{id}
+    const shortIdMatch = /^[a-zA-Z0-9_-]{11}$/.exec(id);
+    if (shortIdMatch && !id.includes(':')) {
+      try {
+        return await this.mediahub.getClip(`official:youtube:${id}`);
+      } catch {
+        // Fall through to try raw id
+      }
     }
     return this.mediahub.getClip(id);
   }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -63,6 +63,13 @@ export default function Payments() {
   const needsBankInfo = !accountStatus?.hasAccount;
   const needsW9 = accountStatus?.hasAccount && !accountStatus?.w9Submitted;
 
+  // Auto-open W-9 modal when user has bank account but hasn't submitted W-9
+  useEffect(() => {
+    if (needsW9 && !loadingAccount) {
+      setW9ModalOpen(true);
+    }
+  }, [needsW9, loadingAccount]);
+
   if (loadingAccount || loadingSummary || loadingHistory) return <LoadingSpinner />;
 
   return (
@@ -103,11 +110,11 @@ export default function Payments() {
           <p className="text-sm font-semibold text-gray-900">Payouts</p>
           <p className="text-sm text-gray-600">
             Last payout:{' '}
-            <span className="font-semibold text-gray-900">
-              {summary?.lastPayoutDate ? format(new Date(summary.lastPayoutDate), 'MMM d, yyyy') : '—'}
-            </span>
-            {' · '}
-            Admins process payouts via Bill.com (ACH).
+            {summary?.lastPayoutDate ? (
+              <span className="font-semibold text-gray-900">
+                {format(new Date(summary.lastPayoutDate), 'MMM d, yyyy')}
+              </span>
+            ) : null}
           </p>
           {needsW9 && (
             <button

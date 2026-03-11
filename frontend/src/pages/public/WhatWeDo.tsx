@@ -89,7 +89,7 @@ export default function WhatWeDo() {
               icon={<Play className="h-5 w-5" />}
               title="Short-form Video Learning"
               body="Focused videos designed for busy clinicians—clear takeaways and practical framing."
-              cta={{ label: 'Conversations Demo', to: '/watch' }}
+              cta={{ label: 'Conversations Demo', to: '/catalog' }}
             />
             <Pillar
               icon={<Search className="h-5 w-5" />}

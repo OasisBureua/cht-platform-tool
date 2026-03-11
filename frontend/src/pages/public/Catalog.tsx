@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Monitor, ClipboardList, Video, Loader2, ListVideo, Play } from 'lucide-react';
+import { Monitor, ClipboardList, Loader2, ListVideo, Play } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
 
 function getThumbnail(item: CatalogItem): string {
@@ -16,7 +16,6 @@ function getTabs(isInApp: boolean) {
     { key: 'catalog', label: 'Catalog', icon: ListVideo, to: base ? '/app/catalog' : '/catalog' },
     { key: 'webinars', label: 'Webinars', icon: Monitor, to: base ? '/app/webinars' : '/webinars' },
     { key: 'surveys', label: 'Surveys', icon: ClipboardList, to: base ? '/app/surveys' : '/surveys' },
-    { key: 'videos', label: 'Videos', icon: Video, to: base ? '/app/watch' : '/watch' },
   ];
 }
 
@@ -64,11 +63,10 @@ export default function Catalog() {
                 Configure YouTube API key and playlist IDs in the backend to display playlists.
               </p>
               <Link
-                to={isInApp ? '/app/watch' : '/watch'}
+                to={isInApp ? '/app/catalog' : '/catalog'}
                 className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
-                <Video className="h-4 w-4" />
-                Browse Videos
+                Browse Catalog
               </Link>
             </div>
           ) : (
@@ -100,6 +98,7 @@ export default function Catalog() {
                     <Link to={playlistUrl} className="block">
                       <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
                     </Link>
+                    <p className="text-sm text-gray-600 font-medium">{item.videoCount} video{item.videoCount !== 1 ? 's' : ''}</p>
                     <ul className="space-y-1">
                       {item.videoNames.slice(0, 4).map((v, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm text-gray-600">

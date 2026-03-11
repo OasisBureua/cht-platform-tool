@@ -19,6 +19,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
+import { getShortClipId } from '../../utils/clipUrl';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 
 const resourceImages: Record<string, string> = {
@@ -197,7 +198,7 @@ export default function Home() {
     { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
     { id: 'r2', title: 'Protocols', href: '/catalog', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
     { id: 'r3', title: 'Clinicals', href: '/catalog', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
-    { id: 'r4', title: 'Conversations', href: '/watch', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
+    { id: 'r4', title: 'Conversations', href: '/catalog', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
     { id: 'r5', title: 'Reporting', href: '/catalog', icon: <Clock className="h-10 w-10" />, imageUrl: resourceImages.reporting },
     { id: 'r6', title: 'Data', href: '/catalog', icon: <LayoutGrid className="h-10 w-10" />, imageUrl: resourceImages.data },
     { id: 'r7', title: 'Search', href: '/search', icon: <Search className="h-10 w-10" />, imageUrl: resourceImages.search },
@@ -266,7 +267,7 @@ export default function Home() {
                       </button>
                     ) : (
                       <Link
-                        to={expandedVideo.id.startsWith('f') ? '/watch' : `/catalog/clip/${expandedVideo.id}`}
+                        to={expandedVideo.id.startsWith('f') ? '/catalog' : `/catalog/clip/${getShortClipId(expandedVideo.id)}`}
                         className="h-16 w-16 rounded-full bg-white/90 hover:bg-white flex items-center justify-center text-gray-900 shadow-lg transition-colors"
                         aria-label="Conversations"
                       >

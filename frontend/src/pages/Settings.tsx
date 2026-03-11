@@ -353,6 +353,14 @@ function PaymentSettingsSection({
 
   const hasAccount = accountStatus?.hasAccount ?? false;
   const w9Submitted = accountStatus?.w9Submitted ?? false;
+  const needsW9 = hasAccount && !w9Submitted;
+
+  // Auto-open W-9 modal when user has bank account but hasn't submitted W-9
+  useEffect(() => {
+    if (needsW9 && !isLoading) {
+      setW9ModalOpen(true);
+    }
+  }, [needsW9, isLoading]);
 
   return (
     <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6 min-w-0 overflow-hidden">

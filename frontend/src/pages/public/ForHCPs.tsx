@@ -116,7 +116,7 @@ export default function ForHCPs() {
             imageUrl={STOCK_IMAGES.featuredVideo}
             cta="Conversations"
             size="large"
-            to="/watch"
+            to="/catalog"
             showNew
           />
           <FeaturedCard

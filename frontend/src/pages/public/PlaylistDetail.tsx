@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Monitor, ClipboardList, Video, Loader2, ListVideo } from 'lucide-react';
+import { Monitor, ClipboardList, Loader2, ListVideo } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
 
@@ -11,7 +11,6 @@ function getTabs(isInApp: boolean) {
     { key: 'catalog', label: 'Catalog', icon: ListVideo, to: base ? '/app/catalog' : '/catalog' },
     { key: 'webinars', label: 'Webinars', icon: Monitor, to: base ? '/app/webinars' : '/webinars' },
     { key: 'surveys', label: 'Surveys', icon: ClipboardList, to: base ? '/app/surveys' : '/surveys' },
-    { key: 'videos', label: 'Videos', icon: Video, to: base ? '/app/watch' : '/watch' },
   ];
 }
 
@@ -147,10 +146,11 @@ export default function PlaylistDetail() {
             )}
           </div>
 
-          {/* Right sidebar - Recommended Videos */}
+          {/* Right sidebar - Playlist */}
           <div className="lg:col-span-4">
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 sticky top-24">
-              <h3 className="text-lg font-bold text-gray-900 mb-4">Recommended Videos</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Playlist</h3>
+              <p className="text-sm text-gray-600 mb-4">{videos.length} video{videos.length !== 1 ? 's' : ''}</p>
               {videos.length === 0 ? (
                 <p className="text-sm text-gray-500">No videos in this playlist.</p>
               ) : (

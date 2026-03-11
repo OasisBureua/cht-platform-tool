@@ -160,7 +160,7 @@ export default function PublicWatch() {
                     ))}
                   </ul>
                   <Link
-                    to="/watch"
+                    to="/catalog"
                     className="mt-4 inline-flex rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
                   >
                     View All Videos

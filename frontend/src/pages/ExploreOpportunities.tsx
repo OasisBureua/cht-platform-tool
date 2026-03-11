@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2 } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
+import { getShortClipId } from '../utils/clipUrl';
 import { surveysApi } from '../api/surveys';
 
 const STOCK_IMAGE = 'https://via.placeholder.com/400x260?text=Content';
@@ -112,7 +113,7 @@ export default function ExploreOpportunities() {
           title: c.title,
           description: c.description || '',
           imageUrl: getClipThumbnail(c),
-          href: `/app/clip/${c.id}`,
+          href: `/app/clip/${getShortClipId(c.id)}`,
           subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,
         });
       });

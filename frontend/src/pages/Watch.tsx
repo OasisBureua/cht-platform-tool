@@ -93,7 +93,7 @@ export default function Watch() {
                   <p className="text-sm text-gray-600">{p.desc}</p>
                 )}
                 <Link
-                  to="/app/watch"
+                  to="/app/catalog"
                   className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                 >
                   {p.videoNames ? 'Play all' : 'Play'}

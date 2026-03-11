@@ -88,7 +88,7 @@ export default function DiseaseDetail() {
             imageUrl={page.featuredVideo.imageUrl}
             cta="Conversations"
             size="large"
-            to="/watch"
+            to="/catalog"
           />
           <FeaturedCard
             title={page.featuredWebinar.title}
@@ -184,7 +184,7 @@ function BiomarkerCard({ card }: { card: BiomarkerCard }) {
         </ul>
         <div className="flex justify-end">
           <Link
-            to="/watch"
+            to="/catalog"
             className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
           >
             View All

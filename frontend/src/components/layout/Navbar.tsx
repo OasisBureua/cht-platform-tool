@@ -42,7 +42,7 @@ export default function Navbar() {
                 Surveys
               </NavLink>
 
-              <NavLink to="/watch" className={linkClass}>
+              <NavLink to="/catalog" className={linkClass}>
                 <PlayCircle className="w-4 h-4 mr-2" />
                 Conversations &amp; Earn
               </NavLink>

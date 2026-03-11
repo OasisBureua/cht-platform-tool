@@ -20,7 +20,7 @@ const MOCK_RESULTS: SearchResult[] = [
     subtitle: 'Foundations • 18 min • Dr. Paolo Tarantino',
     type: 'Video',
     tag: 'Breast Cancer',
-    href: '/watch',
+    href: '/catalog',
   },
   {
     id: 'r2',
@@ -28,7 +28,7 @@ const MOCK_RESULTS: SearchResult[] = [
     subtitle: 'HER2+ • 16 min • Dr. Jason Mouabbi',
     type: 'Video',
     tag: 'Breast Cancer',
-    href: '/watch/bc-her2-1',
+    href: '/catalog/clip/bc-her2-1',
   },
   {
     id: 'r3',
@@ -44,7 +44,7 @@ const MOCK_RESULTS: SearchResult[] = [
     subtitle: 'General • 18 min • Biomarkers',
     type: 'Video',
     tag: 'Lung Cancer',
-    href: '/watch',
+    href: '/catalog',
   },
   {
     id: 'r5',

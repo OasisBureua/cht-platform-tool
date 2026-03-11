@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Search, Monitor, ClipboardList, Video, Loader2, ChevronDown, ListVideo } from 'lucide-react';
 import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
+import { getShortClipId } from '../../utils/clipUrl';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -325,7 +326,7 @@ export default function VideosPage() {
             </div>
           ) : (
             displayItems.map((item) => {
-              const detailUrl = isInApp ? `/app/clip/${item.id}` : `/catalog/clip/${item.id}`;
+              const detailUrl = isInApp ? `/app/clip/${getShortClipId(item.id)}` : `/catalog/clip/${getShortClipId(item.id)}`;
               return (
                 <div
                   key={item.id}

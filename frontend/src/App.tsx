@@ -8,7 +8,6 @@ import Home from './pages/public/Home';
 import Catalog from './pages/public/Catalog';
 import ClipDetail from './pages/public/ClipDetail';
 import PlaylistDetail from './pages/public/PlaylistDetail';
-import VideosPage from './pages/public/VideosPage';
 import About from './pages/public/About';
 import Contact from './pages/public/Contact';
 import Join from './pages/public/Join';
@@ -106,7 +105,7 @@ function App() {
             <Route path="/terms" element={<Terms />} />
 
             <Route path="/search" element={<Search />} />
-            <Route path="/watch" element={<VideosPage />} />
+            <Route path="/watch" element={<Navigate to="/catalog" replace />} />
             <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
             <Route path="/webinars" element={<PublicWebinars />} />
             <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
@@ -141,8 +140,8 @@ function App() {
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
-            {/* Watch (same as public /watch - VideosPage with search, tags, clips) */}
-            <Route path="watch" element={<VideosPage />} />
+            {/* Watch redirects to catalog */}
+            <Route path="watch" element={<Navigate to="/app/catalog" replace />} />
             <Route path="watch/:videoId" element={<WatchVideo />} />
 
             {/* Clip detail (MediaHub clips - stays in app) */}
@@ -210,5 +209,5 @@ function SurveyRedirect() {
 
 function WatchVideoRedirect() {
   const { videoId } = useParams<{ videoId: string }>();
-  return <Navigate to={videoId ? `/catalog/clip/${videoId}` : '/watch'} replace />;
+  return <Navigate to={videoId ? `/catalog/clip/${videoId}` : '/catalog'} replace />;
 }
