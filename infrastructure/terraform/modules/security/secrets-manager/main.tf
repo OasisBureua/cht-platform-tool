@@ -85,6 +85,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     zoom_account_id          = var.zoom_account_id
     zoom_client_id           = var.zoom_client_id
     zoom_client_secret       = var.zoom_client_secret
+    zoom_webhook_secret      = var.zoom_webhook_secret
     jotform_api_key          = var.jotform_api_key
     bill_dev_key             = var.bill_dev_key
     bill_username            = var.bill_username

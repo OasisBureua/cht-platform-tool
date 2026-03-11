@@ -193,6 +193,13 @@ variable "zoom_client_secret" {
   default     = ""
 }
 
+variable "zoom_webhook_secret" {
+  description = "Zoom webhook Secret Token (from Event Subscriptions)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
 variable "jotform_api_key" {
   description = "Jotform API key for surveys (from Jotform enterprise account)"
