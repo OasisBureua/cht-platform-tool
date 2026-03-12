@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { JotformService } from '../jotform/jotform.service';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 
@@ -13,6 +14,7 @@ export class SurveysService {
     private prisma: PrismaService,
     private queueService: QueueService,
     private configService: ConfigService,
+    private hubspot: HubSpotService,
     private jotformService: JotformService,
   ) {}
 
@@ -215,6 +217,23 @@ export class SurveysService {
         score: dto.score,
       },
     });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, firstName: true, lastName: true, specialty: true, institution: true, city: true, state: true, zipCode: true },
+    });
+    if (user) {
+      this.hubspot.createOrUpdateContact({
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        jobtitle: user.specialty ?? undefined,
+        company: user.institution ?? undefined,
+        city: user.city ?? undefined,
+        state: user.state ?? undefined,
+        zip: user.zipCode ?? undefined,
+      }).catch(() => {});
+    }
 
     this.logger.log(`Survey ${surveyId} submitted by user ${userId}`);
 

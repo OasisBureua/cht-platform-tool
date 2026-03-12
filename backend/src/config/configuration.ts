@@ -137,4 +137,9 @@ export default () => ({
 
   // Admin bootstrap (one-time first-admin promotion secret)
   adminBootstrapSecret: process.env.ADMIN_BOOTSTRAP_SECRET,
+
+  // HubSpot (CRM contact sync - private app access token)
+  hubspot: {
+    accessToken: process.env.HUBSPOT_ACCESS_TOKEN,
+  },
 });

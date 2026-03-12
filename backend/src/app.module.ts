@@ -20,6 +20,8 @@ import { WebinarsModule } from './modules/webinars/webinars.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { JotformModule } from './modules/jotform/jotform.module';
+import { HubSpotModule } from './modules/hubspot/hubspot.module';
+import { ContactModule } from './modules/contact/contact.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -67,6 +69,8 @@ import { validationSchema } from './config/validation';
     SurveysModule,
     AdminModule,
     JotformModule,
+    HubSpotModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [

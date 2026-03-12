@@ -58,4 +58,7 @@ export const validationSchema = Joi.object({
   ZOOM_CLIENT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_SECRET: Joi.string().allow('').optional(),
   ZOOM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+
+  // HubSpot (optional – CRM contact sync)
+  HUBSPOT_ACCESS_TOKEN: Joi.string().allow('').optional(),
 });

@@ -1,9 +1,41 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Mail, Phone } from 'lucide-react';
+import { submitContact } from '../../api/contact';
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    organization: '',
+    role: '',
+    message: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      await submitContact({
+        email: form.email,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        message: form.message || undefined,
+        organization: form.organization || undefined,
+        role: form.role || undefined,
+      });
+      setSent(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-white">
@@ -38,24 +70,51 @@ export default function Contact() {
                   </div>
                 </div>
               ) : (
-                <form
-                  className="space-y-5"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    // demo-only: no backend yet
-                    setSent(true);
-                  }}
-                >
+                <form className="space-y-5" onSubmit={handleSubmit}>
+                  {error && (
+                    <p className="text-sm text-red-600 bg-red-50 px-4 py-3 rounded-xl">
+                      {error}
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="First name" placeholder="Jane" />
-                    <Field label="Last name" placeholder="Doe" />
+                    <Field
+                      label="First name"
+                      placeholder="Jane"
+                      value={form.firstName}
+                      onChange={(v) => setForm((f) => ({ ...f, firstName: v }))}
+                      required
+                    />
+                    <Field
+                      label="Last name"
+                      placeholder="Doe"
+                      value={form.lastName}
+                      onChange={(v) => setForm((f) => ({ ...f, lastName: v }))}
+                      required
+                    />
                   </div>
 
-                  <Field label="Email" placeholder="you@company.com" type="email" />
+                  <Field
+                    label="Email"
+                    placeholder="you@company.com"
+                    type="email"
+                    value={form.email}
+                    onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+                    required
+                  />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="Organization (optional)" placeholder="Hospital / Clinic / Company" />
-                    <Field label="Role (optional)" placeholder="Physician / Admin / Partner" />
+                    <Field
+                      label="Organization (optional)"
+                      placeholder="Hospital / Clinic / Company"
+                      value={form.organization}
+                      onChange={(v) => setForm((f) => ({ ...f, organization: v }))}
+                    />
+                    <Field
+                      label="Role (optional)"
+                      placeholder="Physician / Admin / Partner"
+                      value={form.role}
+                      onChange={(v) => setForm((f) => ({ ...f, role: v }))}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -67,15 +126,18 @@ export default function Contact() {
                       placeholder="Tell us what you’re looking for..."
                       className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
                       required
+                      value={form.message}
+                      onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                     />
                   </div>
 
                   <div className="pt-1 flex flex-col sm:flex-row gap-3">
                     <button
                       type="submit"
-                      className="inline-flex items-center justify-center rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
+                      disabled={loading}
+                      className="inline-flex items-center justify-center rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Send message
+                      {loading ? 'Sending…' : 'Send message'}
                     </button>
                     <Link
                       to="/about"
@@ -85,9 +147,6 @@ export default function Contact() {
                     </Link>
                   </div>
 
-                  <p className="text-xs text-gray-500">
-                    Demo environment — form does not submit to a backend yet.
-                  </p>
                 </form>
               )}
             </div>
@@ -147,10 +206,16 @@ function Field({
   label,
   placeholder,
   type = 'text',
+  value,
+  onChange,
+  required,
 }: {
   label: string;
   placeholder: string;
   type?: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
@@ -158,6 +223,9 @@ function Field({
       <input
         type={type}
         placeholder={placeholder}
+        value={value ?? ''}
+        onChange={(e) => onChange?.(e.target.value)}
+        required={required}
         className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
       />
     </div>

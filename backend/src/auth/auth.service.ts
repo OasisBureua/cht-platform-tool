@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
+import { HubSpotService } from '../modules/hubspot/hubspot.service';
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -20,6 +21,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private hubspot: HubSpotService,
   ) {}
 
   /**
@@ -61,6 +63,16 @@ export class AuthService {
           zipCode: zipCode?.trim() || undefined,
         },
       });
+      this.hubspot.createOrUpdateContact({
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        jobtitle: user.specialty ?? undefined,
+        company: user.institution ?? undefined,
+        city: user.city ?? undefined,
+        state: user.state ?? undefined,
+        zip: user.zipCode ?? undefined,
+      }).catch(() => {});
     }
     // Do NOT overwrite firstName/lastName for existing users—Settings PATCH is the source of truth.
     // OAuth metadata is only used when creating a new user.

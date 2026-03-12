@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
 import { UpdateVideoProgressDto, VideoProgressResponseDto } from './dto/update-video-progress.dto';
@@ -13,6 +14,7 @@ export class ProgramsService {
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
+    private hubspot: HubSpotService,
   ) {}
 
   /**
@@ -217,6 +219,17 @@ export class ProgramsService {
       },
     });
 
+    this.hubspot.createOrUpdateContact({
+      email: user.email,
+      firstname: user.firstName,
+      lastname: user.lastName,
+      jobtitle: user.specialty ?? undefined,
+      company: user.institution ?? undefined,
+      city: user.city ?? undefined,
+      state: user.state ?? undefined,
+      zip: user.zipCode ?? undefined,
+    }).catch(() => {});
+
     this.logger.log(`User enrolled successfully: ${enrollment.id}`);
 
     return {
@@ -404,6 +417,17 @@ export class ProgramsService {
         enrollment.programId,
       );
     }
+
+    this.hubspot.createOrUpdateContact({
+      email: user.email,
+      firstname: user.firstName,
+      lastname: user.lastName,
+      jobtitle: user.specialty ?? undefined,
+      company: user.institution ?? undefined,
+      city: user.city ?? undefined,
+      state: user.state ?? undefined,
+      zip: user.zipCode ?? undefined,
+    }).catch(() => {});
 
     this.logger.log(`Completion workflow triggered for program ${enrollment.programId}`);
   }

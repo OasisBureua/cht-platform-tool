@@ -6,11 +6,13 @@ import { ZoomWebhookService } from './zoom-webhook.service';
 import { WebinarsService } from './webinars.service';
 import { WebinarsController } from './webinars.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { HubSpotModule } from '../hubspot/hubspot.module';
 
 @Module({
   imports: [
     HttpModule.register({ timeout: 10000, maxRedirects: 5 }),
     PrismaModule,
+    HubSpotModule,
   ],
   controllers: [WebinarsController, ZoomWebhookController],
   providers: [ZoomService, ZoomWebhookService, WebinarsService],

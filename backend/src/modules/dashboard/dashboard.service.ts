@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { EarningsResponseDto, WeeklyEarnings } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
@@ -8,7 +9,10 @@ import { ProfileResponseDto } from './dto/profile-response.dto';
 export class DashboardService {
   private readonly logger = new Logger(DashboardService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private hubspot: HubSpotService,
+  ) {}
 
   /**
    * Get user's earnings breakdown (DB only, no Redis)
@@ -114,7 +118,7 @@ export class DashboardService {
     },
   ): Promise<ProfileResponseDto> {
     const npi = data.npiNumber !== undefined ? data.npiNumber.replace(/\D/g, '').slice(0, 10) : undefined;
-    await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(data.firstName !== undefined && { firstName: data.firstName.trim() || 'User' }),
@@ -127,6 +131,16 @@ export class DashboardService {
         ...(data.zipCode !== undefined && { zipCode: data.zipCode.trim() || null }),
       },
     });
+    this.hubspot.createOrUpdateContact({
+      email: updated.email,
+      firstname: updated.firstName,
+      lastname: updated.lastName,
+      jobtitle: updated.specialty ?? undefined,
+      company: updated.institution ?? undefined,
+      city: updated.city ?? undefined,
+      state: updated.state ?? undefined,
+      zip: updated.zipCode ?? undefined,
+    }).catch(() => {});
     return this.getProfile(userId);
   }
 

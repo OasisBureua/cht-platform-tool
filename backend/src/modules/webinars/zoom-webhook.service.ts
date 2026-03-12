@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { createHmac } from 'crypto';
 
 /**
@@ -44,6 +45,7 @@ export class ZoomWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly hubspot: HubSpotService,
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
@@ -144,6 +146,17 @@ export class ZoomWebhookService {
     }
 
     const eventType = event === 'meeting.participant_joined' ? 'JOINED' : 'LEFT';
+
+    if (eventType === 'JOINED' && participant.email) {
+      const nameParts = (participant.user_name ?? '').trim().split(/\s+/);
+      const firstname = nameParts[0] ?? '';
+      const lastname = nameParts.slice(1).join(' ') ?? '';
+      this.hubspot.createOrUpdateContact({
+        email: participant.email.trim().toLowerCase(),
+        firstname: firstname || undefined,
+        lastname: lastname || undefined,
+      }).catch(() => {});
+    }
 
     await this.prisma.webinarParticipantEvent.create({
       data: {
