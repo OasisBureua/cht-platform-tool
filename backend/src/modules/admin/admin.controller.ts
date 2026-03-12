@@ -27,6 +27,7 @@ import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
+import { UpdateSurveyDto } from './dto/update-survey.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -99,6 +100,17 @@ export class AdminController {
   }
 
   // ─── Protected endpoints (ADMIN role required) ────────────────────────────
+
+  @Get('config')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Get admin config (e.g. Jotform template ID for webinar surveys)' })
+  getAdminConfig() {
+    return {
+      jotformTemplateFormId: this.config.get<string>('jotform.templateFormId') || '260624911991966',
+    };
+  }
 
   @Get('stats')
   @UseGuards(JwtAuthGuard, RolesGuard)

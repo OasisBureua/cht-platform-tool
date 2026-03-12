@@ -72,6 +72,8 @@ export interface CreateSurveyPayload {
   questions: Record<string, unknown>[];
   type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
   required?: boolean;
+  /** Link to an existing Jotform form. When set, the survey will embed this form and receive webhook submissions. */
+  jotformFormId?: string;
 }
 
 export interface AdminUser {
@@ -146,6 +148,16 @@ export const adminApi = {
 
   createSurvey: async (payload: CreateSurveyPayload) => {
     const { data } = await apiClient.post('/admin/surveys', payload);
+    return data;
+  },
+
+  updateSurvey: async (id: string, payload: { jotformFormId?: string }) => {
+    const { data } = await apiClient.patch(`/admin/surveys/${id}`, payload);
+    return data;
+  },
+
+  getAdminConfig: async (): Promise<{ jotformTemplateFormId: string }> => {
+    const { data } = await apiClient.get('/admin/config');
     return data;
   },
 

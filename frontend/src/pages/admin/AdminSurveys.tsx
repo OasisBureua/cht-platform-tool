@@ -63,6 +63,8 @@ export default function AdminSurveys() {
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Survey</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Program</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Type</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">Jotform</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -71,6 +73,28 @@ export default function AdminSurveys() {
                   <td className="px-4 py-3 font-medium text-gray-900">{s.title}</td>
                   <td className="px-4 py-3 text-gray-700">{s.program?.title ?? '-'}</td>
                   <td className="px-4 py-3 text-gray-700">{s.type}</td>
+                  <td className="px-4 py-3 text-gray-700">
+                    {s.jotformFormId ? (
+                      <a
+                        href={`https://communityhealthmedia.jotform.com/${s.jotformFormId}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        {s.jotformFormId}
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      to={`/admin/surveys/${s.id}/edit`}
+                      className="text-sm font-semibold text-gray-900 hover:underline"
+                    >
+                      Edit
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

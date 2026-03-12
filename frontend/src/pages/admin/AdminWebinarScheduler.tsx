@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Video, Calendar } from 'lucide-react';
 import { adminApi, type CreateWebinarPayload } from '../../api/admin';
 
-const JOTFORM_TEMPLATE_ID = '260624911991966';
+const DEFAULT_JOTFORM_TEMPLATE_ID = '260624911991966';
 
 const TIMEZONES = [
   'America/New_York',
@@ -31,6 +31,19 @@ export default function AdminWebinarScheduler() {
   const [timezone, setTimezone] = useState('America/New_York');
   const [duration, setDuration] = useState('60');
   const [createSurvey, setCreateSurvey] = useState(true);
+  const [jotformTemplateId, setJotformTemplateId] = useState(DEFAULT_JOTFORM_TEMPLATE_ID);
+
+  const { data: adminConfig } = useQuery({
+    queryKey: ['admin', 'config'],
+    queryFn: () => adminApi.getAdminConfig(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (adminConfig?.jotformTemplateFormId && jotformTemplateId === DEFAULT_JOTFORM_TEMPLATE_ID) {
+      setJotformTemplateId(adminConfig.jotformTemplateFormId);
+    }
+  }, [adminConfig?.jotformTemplateFormId, jotformTemplateId]);
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
@@ -77,7 +90,7 @@ export default function AdminWebinarScheduler() {
       duration: durationNum,
       timezone,
       status: 'PUBLISHED',
-      createSurveyFromTemplate: createSurvey ? JOTFORM_TEMPLATE_ID : undefined,
+      createSurveyFromTemplate: createSurvey ? jotformTemplateId : undefined,
     };
 
     createMutation.mutate(payload);
@@ -267,17 +280,36 @@ export default function AdminWebinarScheduler() {
           </div>
 
           {/* Survey toggle */}
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={createSurvey}
-              onChange={(e) => setCreateSurvey(e.target.checked)}
-              className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
-            />
-            <span className="text-sm font-medium text-gray-700">
-              Auto-create post-event survey from Jotform template
-            </span>
-          </label>
+          <div className="space-y-3">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={createSurvey}
+                onChange={(e) => setCreateSurvey(e.target.checked)}
+                className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                Auto-create post-event survey from Jotform template
+              </span>
+            </label>
+            {createSurvey && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-900 mb-1">
+                  Jotform template form ID
+                </label>
+                <input
+                  type="text"
+                  value={jotformTemplateId}
+                  onChange={(e) => setJotformTemplateId(e.target.value)}
+                  placeholder={DEFAULT_JOTFORM_TEMPLATE_ID}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Template form to clone. Set via JOTFORM_TEMPLATE_FORM_ID env, or override here. Default: {DEFAULT_JOTFORM_TEMPLATE_ID}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {createMutation.isError && (

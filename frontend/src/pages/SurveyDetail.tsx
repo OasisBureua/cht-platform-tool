@@ -62,9 +62,12 @@ export default function SurveyDetail() {
   }
 
   const hasJotform = Boolean(survey.jotformFormId);
-  const jotformFormUrl = survey.jotformFormUrl ?? (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null);
-  // Use enterprise URL for embed - form.jotform.com may block embedding from localhost
-  const jotformEmbedUrl = jotformFormUrl;
+  const baseUrl = survey.jotformFormUrl ?? (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null);
+  const jotformFormUrl = baseUrl;
+  // Append user_id so Jotform webhook can associate response with logged-in user
+  const jotformEmbedUrl = baseUrl && userId
+    ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(userId)}`
+    : baseUrl;
 
   return (
     <div className="space-y-8">
@@ -125,7 +128,7 @@ export default function SurveyDetail() {
                       <p className="text-sm text-gray-600">
                         If the survey doesn&apos;t load above (e.g. on localhost),{' '}
                         <a
-                          href={jotformFormUrl}
+                          href={jotformEmbedUrl || jotformFormUrl}
                           target="_blank"
                           rel="noreferrer"
                           className="font-semibold text-gray-900 underline hover:text-gray-700"

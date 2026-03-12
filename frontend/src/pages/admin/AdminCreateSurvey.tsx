@@ -11,6 +11,7 @@ export default function AdminCreateSurvey() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [programId, setProgramId] = useState('');
+  const [jotformFormId, setJotformFormId] = useState('');
   const [questions, setQuestions] = useState<{ prompt: string }[]>([
     { prompt: '' },
     { prompt: '' },
@@ -28,6 +29,7 @@ export default function AdminCreateSurvey() {
       title: string;
       description?: string;
       questions: Record<string, unknown>[];
+      jotformFormId?: string;
     }) => adminApi.createSurvey(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
@@ -57,18 +59,20 @@ export default function AdminCreateSurvey() {
     const qs = questions
       .filter((q) => q.prompt.trim())
       .map((q, i) => ({ id: `q${i}`, type: 'text', prompt: q.prompt }));
+    const basePayload = {
+      programId,
+      title: title.trim(),
+      description: description.trim() || undefined,
+      jotformFormId: jotformFormId.trim() || undefined,
+    };
     if (qs.length === 0) {
       createMutation.mutate({
-        programId,
-        title: title.trim(),
-        description: description.trim() || undefined,
+        ...basePayload,
         questions: [{ id: 'q0', type: 'text', prompt: 'Default question' }],
       });
     } else {
       createMutation.mutate({
-        programId,
-        title: title.trim(),
-        description: description.trim() || undefined,
+        ...basePayload,
         questions: qs,
       });
     }
@@ -148,6 +152,21 @@ export default function AdminCreateSurvey() {
                 placeholder="Description of what this survey is about..."
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">
+                Jotform Form ID <span className="font-normal text-gray-500">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={jotformFormId}
+                onChange={(e) => setJotformFormId(e.target.value)}
+                placeholder="e.g., 260698533879881 — from communityhealthmedia.jotform.com/build/..."
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Link an existing Jotform form. Ensure the form has the webhook and Hidden Box (user_id) configured.
+              </p>
             </div>
           </div>
         </div>

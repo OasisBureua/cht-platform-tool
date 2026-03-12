@@ -54,6 +54,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminPrograms from './pages/admin/AdminPrograms';
 import AdminSurveys from './pages/admin/AdminSurveys';
 import AdminCreateSurvey from './pages/admin/AdminCreateSurvey';
+import AdminEditSurvey from './pages/admin/AdminEditSurvey';
 import AdminWebinarScheduler from './pages/admin/AdminWebinarScheduler';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminHcpExplorer from './pages/admin/AdminHcpExplorer';
@@ -188,6 +189,7 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="programs" element={<AdminPrograms />} />
             <Route path="surveys" element={<AdminSurveys />} />
+            <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
             <Route path="create-survey" element={<AdminCreateSurvey />} />
             <Route path="webinar-scheduler" element={<AdminWebinarScheduler />} />
             <Route path="payments" element={<AdminPayments />} />

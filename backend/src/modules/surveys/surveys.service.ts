@@ -85,6 +85,7 @@ export class SurveysService {
     questions: Record<string, unknown>[];
     type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
     required?: boolean;
+    jotformFormId?: string;
   }) {
     const program = await this.prisma.program.findUnique({
       where: { id: dto.programId },
@@ -101,10 +102,30 @@ export class SurveysService {
         questions: dto.questions as object,
         type: dto.type ?? 'POST_TEST',
         required: dto.required ?? true,
+        jotformFormId: dto.jotformFormId?.trim() || null,
       },
     });
     this.logger.log(`Survey created: ${survey.id} - ${survey.title}`);
     return survey;
+  }
+
+  /**
+   * Update survey (admin). Only jotformFormId is updatable for now.
+   */
+  async updateSurvey(id: string, dto: { jotformFormId?: string }) {
+    const survey = await this.prisma.survey.findUnique({ where: { id } });
+    if (!survey) throw new NotFoundException('Survey not found');
+
+    const updated = await this.prisma.survey.update({
+      where: { id },
+      data: {
+        ...(dto.jotformFormId !== undefined && {
+          jotformFormId: dto.jotformFormId?.trim() || null,
+        }),
+      },
+    });
+    this.logger.log(`Survey ${id} updated (jotformFormId: ${updated.jotformFormId ?? 'null'})`);
+    return updated;
   }
 
   /**

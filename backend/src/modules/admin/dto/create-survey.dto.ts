@@ -21,4 +21,9 @@ export class CreateSurveyDto {
   @IsOptional()
   @IsBoolean()
   required?: boolean;
+
+  /** Link to an existing Jotform form. When set, the survey will embed this form and receive webhook submissions. */
+  @IsOptional()
+  @IsString()
+  jotformFormId?: string;
 }
