@@ -60,6 +60,6 @@ domain_name = "communityhealth.media"
 # auth0_audience         = ""
 
 # Monitoring (REQUIRED for production)
-# sns_topic_arn = "arn:aws:sns:us-east-1:233636046512:cht-platform-alerts"
+# alarm_notification_emails = ["ops@example.com"]
 
 # Cost: ~$268/month

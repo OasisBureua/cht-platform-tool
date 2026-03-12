@@ -52,6 +52,12 @@ output "redis_endpoint" {
   value       = module.elasticache.redis_endpoint
 }
 
+# Alerts
+output "sns_alerts_topic_arn" {
+  description = "SNS topic ARN for alarm notifications"
+  value       = module.sns_alerts.topic_arn
+}
+
 # Queues
 output "email_queue_url" {
   description = "Email queue URL"

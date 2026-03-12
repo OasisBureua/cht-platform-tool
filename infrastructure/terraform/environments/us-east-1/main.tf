@@ -140,14 +140,28 @@ module "s3_certificates" {
 }
 
 # ============================================
+# Messaging - SNS Alerts
+# ============================================
+module "sns_alerts" {
+  source = "../../modules/messaging/sns-alerts"
+
+  project                    = var.project
+  environment                = var.environment
+  kms_key_id                 = module.kms.sns_kms_key_id
+  aws_account_id             = data.aws_caller_identity.current.account_id
+  alarm_notification_emails  = var.alarm_notification_emails
+}
+
+# ============================================
 # Messaging - SQS Queues
 # ============================================
 module "sqs" {
   source = "../../modules/messaging/sqs"
 
-  project     = var.project
-  environment = var.environment
-  kms_key_id  = module.kms.sqs_kms_key_id
+  project        = var.project
+  environment    = var.environment
+  kms_key_id     = module.kms.sqs_kms_key_id
+  sns_topic_arn  = module.sns_alerts.topic_arn
 }
 
 # ============================================
@@ -309,6 +323,20 @@ module "ecs_worker" {
 }
 
 # ============================================
+# Security - WAF for CloudFront (must be us-east-1)
+# ============================================
+module "waf_cloudfront" {
+  source = "../../modules/security/waf-cloudfront"
+
+  project              = var.project
+  environment          = var.environment
+  enable_managed_rules  = true
+  enable_rate_limit    = true
+  rate_limit_count     = 2000
+  allowed_countries    = [] # Empty = allow all; set e.g. ["US","CA"] to restrict
+}
+
+# ============================================
 # Networking - CloudFront
 # ============================================
 module "cloudfront" {
@@ -320,9 +348,10 @@ module "cloudfront" {
   s3_bucket_domain_name    = module.s3_frontend.bucket_domain_name
   cloudfront_oai_path      = module.s3_frontend.cloudfront_oai_path
   certificate_arn          = var.cloudfront_certificate_arn
-  domain_aliases    = [var.domain_name]
-  api_origin_domain = module.alb.alb_dns_name
-  price_class       = "PriceClass_100"
+  domain_aliases           = [var.domain_name]
+  api_origin_domain        = module.alb.alb_dns_name
+  price_class              = "PriceClass_100"
+  web_acl_id               = module.waf_cloudfront.web_acl_id
 }
 
 # ============================================
@@ -340,7 +369,7 @@ module "route53" {
   primary_cloudfront_dns     = module.cloudfront.distribution_domain_name
   primary_cloudfront_zone_id = module.cloudfront.distribution_hosted_zone_id
 
-  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+  alarm_actions = [module.sns_alerts.topic_arn]
 }
 
 # ============================================
@@ -356,5 +385,5 @@ module "cloudwatch" {
   db_instance_id = split(":", module.rds.db_endpoint)[0]
   alb_arn_suffix = split("/", module.alb.alb_arn)[3]
   log_group_name = module.ecs_cluster.log_group_name
-  sns_topic_arn  = var.sns_topic_arn
+  sns_topic_arn  = module.sns_alerts.topic_arn
 }

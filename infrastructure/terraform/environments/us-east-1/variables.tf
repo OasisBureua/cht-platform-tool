@@ -122,10 +122,10 @@ variable "cloudfront_certificate_arn" {
 }
 
 # Monitoring
-variable "sns_topic_arn" {
-  description = "SNS topic ARN for alarms"
-  type        = string
-  default     = ""
+variable "alarm_notification_emails" {
+  description = "Email addresses to receive alarm notifications (DLQ, ECS, RDS, ALB, etc.). Must confirm subscription via email."
+  type        = list(string)
+  default     = []
 }
 
 # Application secrets

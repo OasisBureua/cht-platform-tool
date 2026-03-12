@@ -57,3 +57,13 @@ output "cloudwatch_kms_key_arn" {
   description = "CloudWatch KMS key ARN"
   value       = aws_kms_key.cloudwatch.arn
 }
+
+output "sns_kms_key_id" {
+  description = "SNS KMS key ID"
+  value       = aws_kms_key.sns.id
+}
+
+output "sns_kms_key_arn" {
+  description = "SNS KMS key ARN"
+  value       = aws_kms_key.sns.arn
+}

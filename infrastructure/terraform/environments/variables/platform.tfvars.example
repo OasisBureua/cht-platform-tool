@@ -72,4 +72,4 @@ youtube_playlist_ids = ""
 # zoom_client_secret = ""
 
 # Optional: SNS for alerts
-# sns_topic_arn = ""
+# alarm_notification_emails = ["ops@example.com"]

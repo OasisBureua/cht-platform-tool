@@ -66,7 +66,7 @@ resource "aws_sqs_queue" "payment" {
   max_message_size          = 262144
   message_retention_seconds = 345600
   receive_wait_time_seconds = 20
-  visibility_timeout_seconds = 600  # 10 minutes for payment processing
+  visibility_timeout_seconds = 600  # 10 minutes for payment processing (worker)
   
   kms_master_key_id       = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
@@ -137,6 +137,8 @@ resource "aws_cloudwatch_metric_alarm" "email_dlq" {
   alarm_description   = "Alert when messages appear in email DLQ"
   treat_missing_data  = "notBreaching"
 
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+
   dimensions = {
     QueueName = aws_sqs_queue.email_dlq.name
   }
@@ -159,6 +161,8 @@ resource "aws_cloudwatch_metric_alarm" "payment_dlq" {
   alarm_description   = "Alert when messages appear in payment DLQ"
   treat_missing_data  = "notBreaching"
 
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+
   dimensions = {
     QueueName = aws_sqs_queue.payment_dlq.name
   }
@@ -180,6 +184,8 @@ resource "aws_cloudwatch_metric_alarm" "cme_dlq" {
   threshold           = 0
   alarm_description   = "Alert when messages appear in CME DLQ"
   treat_missing_data  = "notBreaching"
+
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
 
   dimensions = {
     QueueName = aws_sqs_queue.cme_dlq.name

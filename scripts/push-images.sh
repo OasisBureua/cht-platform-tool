@@ -7,7 +7,6 @@ AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
 ECR_BACKEND="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/cht-platform-backend"
 ECR_WORKER="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/cht-platform-worker"
-
 echo "🚀 Pushing Docker images to ECR"
 echo "Version: $VERSION"
 echo "Region: $AWS_REGION"
@@ -40,9 +39,8 @@ echo ""
 
 echo "✅ All images pushed successfully!"
 echo ""
-echo "Backend: $ECR_BACKEND:$VERSION"
-echo "Worker:  $ECR_WORKER:$VERSION"
-echo ""
+echo "Backend:  $ECR_BACKEND:$VERSION"
+echo "Worker:   $ECR_WORKER:$VERSION"
 echo "Update your terraform.tfvars:"
 echo "backend_image = \"$ECR_BACKEND:$VERSION\""
 echo "worker_image  = \"$ECR_WORKER:$VERSION\""

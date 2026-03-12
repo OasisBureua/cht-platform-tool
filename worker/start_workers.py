@@ -59,8 +59,8 @@ def start_consumers():
         processes.append(p)
         time.sleep(1)  # Stagger startup
     
-    logger.info(f'✅ All {len(consumers)} workers started successfully')
-    logger.info('Press Ctrl+C to stop all workers')
+    logger.info(f'All {len(consumers)} workers started successfully')
+    #logger.info('Press Ctrl+C to stop all workers')
     
     # Wait for all processes
     for p in processes:

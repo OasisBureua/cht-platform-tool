@@ -12,3 +12,9 @@ variable "kms_key_id" {
   description = "KMS key ID for queue encryption"
   type        = string
 }
+
+variable "sns_topic_arn" {
+  description = "SNS topic ARN for DLQ alarm notifications"
+  type        = string
+  default     = ""
+}

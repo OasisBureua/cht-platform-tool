@@ -46,3 +46,9 @@ variable "price_class" {
   type        = string
   default     = "PriceClass_100" # US, Canada, Europe
 }
+
+variable "web_acl_id" {
+  description = "WAF Web ACL ID for CloudFront (optional)"
+  type        = string
+  default     = ""
+}

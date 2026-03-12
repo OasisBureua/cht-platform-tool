@@ -58,6 +58,6 @@ domain_name = "testapp.communityhealth.media"
 # auth0_audience         = ""
 
 # Optional: SNS for alerts
-# sns_topic_arn = ""
+# alarm_notification_emails = ["ops@example.com"]
 
 # Cost: ~$145/month

@@ -2,6 +2,37 @@ locals {
   prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
 }
 
+# Security headers policy - X-Frame-Options, HSTS, etc.
+resource "aws_cloudfront_response_headers_policy" "security_headers" {
+  name    = "${local.prefix}-security-headers"
+  comment = "Security headers for ${local.prefix}"
+
+  security_headers_config {
+    content_type_options {
+      override = true
+    }
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+    xss_protection {
+      mode_block  = true
+      protection  = true
+      override    = true
+    }
+    strict_transport_security {
+      access_control_max_age_sec = 63072000 # 2 years
+      include_subdomains        = true
+      preload                   = true
+      override                  = true
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
@@ -9,6 +40,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_root_object = "index.html"
   price_class         = var.price_class
   aliases             = var.domain_aliases
+  web_acl_id          = var.web_acl_id != "" ? var.web_acl_id : null
 
   origin {
     domain_name = var.s3_bucket_domain_name
@@ -56,12 +88,13 @@ resource "aws_cloudfront_distribution" "frontend" {
   dynamic "ordered_cache_behavior" {
     for_each = var.api_origin_domain != "" ? ["/health*"] : []
     content {
-      path_pattern           = ordered_cache_behavior.value
-      allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-      cached_methods         = ["GET", "HEAD"]
-      target_origin_id       = "ALB-API"
-      compress               = true
-      viewer_protocol_policy = "redirect-to-https"
+      path_pattern               = ordered_cache_behavior.value
+      allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+      cached_methods             = ["GET", "HEAD"]
+      target_origin_id           = "ALB-API"
+      compress                   = true
+      viewer_protocol_policy      = "redirect-to-https"
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
       forwarded_values {
         query_string = true
         headers      = ["Host"]
@@ -78,12 +111,13 @@ resource "aws_cloudfront_distribution" "frontend" {
   dynamic "ordered_cache_behavior" {
     for_each = var.api_origin_domain != "" ? ["/api*"] : []
     content {
-      path_pattern           = ordered_cache_behavior.value
-      allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-      cached_methods         = ["GET", "HEAD"]
-      target_origin_id       = "ALB-API"
-      compress               = true
-      viewer_protocol_policy = "redirect-to-https"
+      path_pattern               = ordered_cache_behavior.value
+      allowed_methods            = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+      cached_methods             = ["GET", "HEAD"]
+      target_origin_id           = "ALB-API"
+      compress                   = true
+      viewer_protocol_policy     = "redirect-to-https"
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
 
       forwarded_values {
         query_string = true

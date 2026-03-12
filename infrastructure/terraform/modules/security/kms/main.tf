@@ -144,3 +144,21 @@ resource "aws_kms_alias" "cloudwatch" {
   name          = "alias/${local.prefix}-cloudwatch"
   target_key_id = aws_kms_key.cloudwatch.key_id
 }
+
+# KMS Key for SNS Alerts
+resource "aws_kms_key" "sns" {
+  description             = "${local.prefix} SNS encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
+
+  tags = {
+    Name        = "${local.prefix}-sns-key"
+    Environment = var.environment
+    Service     = "sns"
+  }
+}
+
+resource "aws_kms_alias" "sns" {
+  name          = "alias/${local.prefix}-sns"
+  target_key_id = aws_kms_key.sns.key_id
+}
