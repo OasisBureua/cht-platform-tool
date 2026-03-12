@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Mail, Phone } from 'lucide-react';
+import { ArrowRight, Mail } from 'lucide-react';
 import { submitContact } from '../../api/contact';
 
 export default function Contact() {
@@ -164,16 +164,6 @@ export default function Contact() {
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Email</p>
                   <p className="text-sm text-gray-600">info@communityhealth.media</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-full border border-gray-200 bg-white flex items-center justify-center">
-                  <Phone className="h-5 w-5 text-gray-900" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">Phone</p>
-                  <p className="text-sm text-gray-600">+1 (000) 000-0000 (placeholder)</p>
                 </div>
               </div>
 

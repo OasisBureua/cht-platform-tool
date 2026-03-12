@@ -58,12 +58,11 @@ export class HubSpotService {
     };
 
     const body = {
-      idProperty: 'email',
       inputs: [{ id: email, properties: contactProperties }],
     };
 
     try {
-      const res = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/contacts/batch/upsert`, {
+      const res = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/contacts/batch/upsert?idProperty=email`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
