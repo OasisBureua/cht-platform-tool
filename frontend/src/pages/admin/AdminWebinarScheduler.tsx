@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Video, Calendar } from 'lucide-react';
 import { adminApi, type CreateWebinarPayload } from '../../api/admin';
 
-const DEFAULT_JOTFORM_TEMPLATE_ID = '260624911991966';
+const DEFAULT_JOTFORM_TEMPLATE_ID = '260698533879881';
 
 const TIMEZONES = [
   'America/New_York',

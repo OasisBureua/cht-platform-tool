@@ -4,12 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
-
-function getEmbedUrl(youtubeUrl: string): string {
-  const match = youtubeUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-  if (match) return `https://www.youtube.com/embed/${match[1]}?modestbranding=1`;
-  return youtubeUrl;
-}
+import { YouTubePlayer } from '../../components/YouTubePlayer';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -93,14 +88,13 @@ export default function PlaylistDetail() {
               </div>
             ) : (
               <>
-                {/* Embedded video player - stays in app */}
-                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
-                  <iframe
-                    key={selectedVideo.id}
-                    src={getEmbedUrl(selectedVideo.youtubeUrl)}
+                {/* Embedded video player - IFrame API with GA4 events */}
+                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black" key={selectedVideo.id}>
+                  <YouTubePlayer
+                    youtubeUrl={selectedVideo.youtubeUrl}
                     title={selectedVideo.title}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
+                    autoplay={false}
+                    muted={false}
                     className="w-full h-full"
                   />
                 </div>

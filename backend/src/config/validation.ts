@@ -30,10 +30,8 @@ export const validationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
 
-  // SQS (optional - empty strings allowed)
-  SQS_EMAIL_QUEUE_URL: Joi.string().allow('').optional(),
+  // SQS (payment queue - optional for local dev)
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
-  SQS_CME_QUEUE_URL: Joi.string().allow('').optional(),
 
   // Redis
   REDIS_HOST: Joi.string().default('localhost'),

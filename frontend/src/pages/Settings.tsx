@@ -27,6 +27,10 @@ export default function Settings() {
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [institution, setInstitution] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -55,11 +59,24 @@ export default function Settings() {
     }
   }, [profile]);
 
-  const handleSaveName = async () => {
+  const handleSaveProfile = async () => {
     setSaveError(null);
     setSaving(true);
     try {
-      await dashboardApi.updateProfile(userId, { firstName: firstName.trim(), lastName: lastName.trim() });
+      const zip = zipCode.replace(/\D/g, '');
+      if (zip && zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
+        setSaveError('ZIP code must be 5 digits (or 9 for ZIP+4).');
+        setSaving(false);
+        return;
+      }
+      await dashboardApi.updateProfile(userId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        institution: institution.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim().toUpperCase().slice(0, 2) || undefined,
+        zipCode: zip || undefined,
+      });
       await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       await refreshProfile();
     } catch (err) {
@@ -151,13 +168,59 @@ export default function Settings() {
               </div>
               <div className="md:col-span-2 flex items-center gap-3">
                 <button
-                  onClick={handleSaveName}
+                  onClick={handleSaveProfile}
                   disabled={saving}
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {saving ? 'Saving...' : 'Save Name'}
+                  {saving ? 'Saving...' : 'Save Profile'}
                 </button>
                 {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+              </div>
+              <div className="md:col-span-2 pt-2 border-t border-gray-100">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Practice Location</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">Institution</label>
+                    <input
+                      type="text"
+                      value={institution}
+                      onChange={(e) => setInstitution(e.target.value)}
+                      placeholder="Hospital, clinic, or practice"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                    <input
+                      type="text"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      placeholder="e.g., New York"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
+                    <input
+                      type="text"
+                      value={state}
+                      onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
+                      placeholder="e.g., NY"
+                      maxLength={2}
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">ZIP code</label>
+                    <input
+                      type="text"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
+                      placeholder="e.g., 10001"
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>

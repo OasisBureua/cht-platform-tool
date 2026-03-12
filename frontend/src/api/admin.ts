@@ -156,6 +156,10 @@ export const adminApi = {
     return data;
   },
 
+  deleteSurvey: async (id: string) => {
+    await apiClient.delete(`/admin/surveys/${id}`);
+  },
+
   getAdminConfig: async (): Promise<{ jotformTemplateFormId: string }> => {
     const { data } = await apiClient.get('/admin/config');
     return data;

@@ -50,17 +50,9 @@ resource "aws_ecs_task_definition" "worker" {
           {
             name  = "AWS_REGION"
             value = var.aws_region
-          },
-          {
-            name  = "SES_FROM_EMAIL"
-            value = var.ses_from_email
           }
         ],
-        concat(
-          var.sqs_email_queue_url != "" ? [{ name = "SQS_EMAIL_QUEUE_URL", value = var.sqs_email_queue_url }] : [],
-          var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : [],
-          var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : []
-        )
+        var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : []
       )
 
       secrets = [

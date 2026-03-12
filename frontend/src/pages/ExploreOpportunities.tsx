@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2 } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
@@ -42,11 +42,11 @@ type UnifiedItem =
 
 function matchesQuery(item: UnifiedItem, q: string): boolean {
   if (!q) return true;
-  const lower = q.toLowerCase();
-  return (
-    item.title.toLowerCase().includes(lower) ||
-    (item.description?.toLowerCase().includes(lower) ?? false)
-  );
+  const lower = (q || '').trim().toLowerCase();
+  if (!lower) return true;
+  const title = (item.title ?? '').toLowerCase();
+  const desc = (item.description ?? '').toLowerCase();
+  return title.includes(lower) || desc.includes(lower);
 }
 
 export default function ExploreOpportunities() {
@@ -73,7 +73,7 @@ export default function ExploreOpportunities() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: clipsData, isLoading: clipsLoading } = useQuery({
+  const { data: clipsData, isLoading: clipsLoading, isError: clipsError } = useQuery({
     queryKey: ['catalog', 'clips', debouncedQuery],
     queryFn: () =>
       useMediaHub
@@ -85,6 +85,8 @@ export default function ExploreOpportunities() {
         : Promise.resolve({ items: [], total: 0 }),
     enabled: useMediaHub,
     staleTime: 2 * 60 * 1000,
+    retry: false,
+    placeholderData: keepPreviousData,
   });
 
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
@@ -115,14 +117,15 @@ export default function ExploreOpportunities() {
     });
 
     if (useMediaHub && clipsData?.items) {
-      clipsData.items.forEach((c) => {
+      const validClips = clipsData.items.filter((c) => c && (c.id || c.title));
+      validClips.forEach((c) => {
         out.push({
           type: 'clip',
-          id: `clip-${c.id}`,
-          title: c.title,
-          description: c.description || '',
+          id: `clip-${c.id ?? ''}`,
+          title: c.title ?? '',
+          description: c.description ?? '',
           imageUrl: getClipThumbnail(c),
-          href: `/app/clip/${getShortClipId(c.id)}`,
+          href: `/app/clip/${getShortClipId(c.id ?? '')}`,
           subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,
         });
       });
@@ -166,6 +169,7 @@ export default function ExploreOpportunities() {
   }, [items, debouncedQuery, tab]);
 
   const isLoading = webinarsLoading || surveysLoading || (useMediaHub ? clipsLoading : playlistsLoading);
+  const showClipsError = useMediaHub && clipsError;
 
   const tabs = [
     { key: 'best' as Tab, label: 'Best Match', icon: Zap },
@@ -208,7 +212,12 @@ export default function ExploreOpportunities() {
       </div>
 
       {/* Content grid */}
-      {isLoading ? (
+      {showClipsError ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-12 text-center">
+          <p className="text-amber-800 font-medium mb-2">Search temporarily unavailable</p>
+          <p className="text-sm text-amber-700">Try a shorter search term or try again in a moment.</p>
+        </div>
+      ) : isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
         </div>

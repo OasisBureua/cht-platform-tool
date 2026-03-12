@@ -37,6 +37,10 @@ export interface ProfileResponse {
   name: string;
   specialty?: string;
   npiNumber?: string;
+  institution?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
   role: string;
   createdAt: string;
   totalEarnings: number;

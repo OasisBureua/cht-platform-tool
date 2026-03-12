@@ -11,6 +11,7 @@ const PROFESSION_OPTIONS = [
   { value: 'Physician Assistant', label: 'Physician Assistant (PA)' },
   { value: 'Pharmacist', label: 'Pharmacist' },
   { value: 'Nurse', label: 'Nurse (RN/LPN)' },
+  { value: 'Pharmaceuticals', label: 'Pharmaceuticals' },
   { value: 'Other HCP', label: 'Other Healthcare Professional' },
 ];
 
@@ -91,12 +92,13 @@ export default function Join() {
     }
     if (!profession) { setError('Please select your profession.'); return; }
     const npi = npiNumber.replace(/\D/g, '');
-    if (npi.length !== 10) {
+    const isPharmaceuticals = profession === 'Pharmaceuticals';
+    if (!isPharmaceuticals && npi.length !== 10) {
       setError('NPI number must be exactly 10 digits.');
       return;
     }
     const zip = zipCode.replace(/\D/g, '');
-    if (zip && zip.length !== 5 && zip.length !== 9) {
+    if (zip && zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
       setError('ZIP code must be 5 digits (or 9 for ZIP+4).');
       return;
     }
@@ -106,7 +108,7 @@ export default function Join() {
       firstName,
       lastName,
       profession,
-      npiNumber: npi,
+      npiNumber: isPharmaceuticals ? undefined : (npi || undefined),
       institution: institution.trim() || undefined,
       city: city.trim() || undefined,
       state: state || undefined,
@@ -281,16 +283,16 @@ export default function Join() {
             <Input
               label="NPI number"
               type="text"
-              placeholder="10-digit National Provider Identifier"
+              placeholder={profession === 'Pharmaceuticals' ? 'Not required for Pharmaceuticals' : '10-digit National Provider Identifier'}
               value={npiNumber}
               onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              required
+              required={profession !== 'Pharmaceuticals'}
               maxLength={10}
             />
 
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-                Practice Location
+                Practice Location <span className="font-normal normal-case">(optional)</span>
               </p>
               <div className="space-y-4">
                 <Input

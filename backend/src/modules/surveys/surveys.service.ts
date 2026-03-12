@@ -129,6 +129,18 @@ export class SurveysService {
   }
 
   /**
+   * Delete survey (admin). Cascades to SurveyResponse records.
+   */
+  async deleteSurvey(id: string) {
+    const survey = await this.prisma.survey.findUnique({ where: { id } });
+    if (!survey) throw new NotFoundException('Survey not found');
+
+    await this.prisma.survey.delete({ where: { id } });
+    this.logger.log(`Survey deleted: ${id} - ${survey.title}`);
+    return { deleted: true, id };
+  }
+
+  /**
    * Create a Survey from a Jotform template: clone form, add webhook, create Survey.
    * Use when creating a new webinar/program that needs a unique survey.
    */

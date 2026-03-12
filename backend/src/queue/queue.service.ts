@@ -26,11 +26,9 @@ export class QueueService {
       this.logger.log('SQS client initialized (default credential chain)');
     }
 
-    // Map queue names to URLs
+    // Map queue names to URLs (payment only for now)
     this.queueUrls = new Map([
-      ['EMAIL_QUEUE', this.configService.get<string>('sqs.emailQueueUrl') || ''],
       ['PAYMENT_QUEUE', this.configService.get<string>('sqs.paymentQueueUrl') || ''],
-      ['CME_QUEUE', this.configService.get<string>('sqs.cmeQueueUrl') || ''],
     ]);
   }
 
@@ -64,19 +62,6 @@ export class QueueService {
   }
 
   /**
-   * Send email job to queue
-   */
-  async sendEmail(to: string, subject: string, body: string): Promise<void> {
-    await this.sendMessage('EMAIL_QUEUE', {
-      type: 'SEND_EMAIL',
-      to,
-      subject,
-      body,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  /**
    * Process payment job
    */
   async processPayment(
@@ -91,23 +76,6 @@ export class QueueService {
       amount,
       paymentType: type,
       programId,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  /**
-   * Generate CME certificate job
-   */
-  async generateCertificate(
-    userId: string,
-    programId: string,
-    credits: number,
-  ): Promise<void> {
-    await this.sendMessage('CME_QUEUE', {
-      type: 'GENERATE_CERTIFICATE',
-      userId,
-      programId,
-      credits,
       timestamp: new Date().toISOString(),
     });
   }

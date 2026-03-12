@@ -2,6 +2,7 @@ import { useParams, Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Clock, Eye, ThumbsUp, MessageCircle, Loader2, Calendar } from 'lucide-react';
 import { ShareButtons } from '../../components/ShareButtons';
+import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { format } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
 
@@ -49,12 +50,6 @@ function formatCount(n: number): string {
   return String(n);
 }
 
-function getEmbedUrl(youtubeUrl: string): string {
-  const match = youtubeUrl.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-  if (match) return `https://www.youtube.com/embed/${match[1]}?modestbranding=1`;
-  return youtubeUrl;
-}
-
 export default function ClipDetail() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -100,7 +95,6 @@ export default function ClipDetail() {
     );
   }
 
-  const embedUrl = getEmbedUrl(clip.youtube_url);
   const meta = normalizeClip(clip as unknown as Record<string, unknown>);
 
   return (
@@ -113,13 +107,13 @@ export default function ClipDetail() {
           <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Conversations' : 'Back to catalog'}
         </Link>
 
-        {/* Video embed */}
+        {/* Video embed - IFrame API with GA4 events */}
         <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
-          <iframe
-            src={embedUrl}
+          <YouTubePlayer
+            youtubeUrl={clip.youtube_url}
             title={clip.title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+            autoplay={false}
+            muted={false}
             className="w-full h-full"
           />
         </div>

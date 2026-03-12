@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Trash2 } from 'lucide-react';
 import { surveysApi } from '../../api/surveys';
+import { adminApi } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminSurveys() {
+  const queryClient = useQueryClient();
   const { data: surveys, isLoading, error } = useQuery({
     queryKey: ['admin', 'surveys'],
     queryFn: () => surveysApi.getAll(),
@@ -30,6 +32,18 @@ export default function AdminSurveys() {
 
   return (
     <div className="space-y-6">
+      {deleteMutation.isError && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 flex items-center justify-between">
+          <span>Failed to delete survey. Please try again.</span>
+          <button
+            type="button"
+            onClick={() => deleteMutation.reset()}
+            className="text-sm font-semibold text-red-700 underline"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Surveys</h1>
         <Link
@@ -88,12 +102,23 @@ export default function AdminSurveys() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      to={`/admin/surveys/${s.id}/edit`}
-                      className="text-sm font-semibold text-gray-900 hover:underline"
-                    >
-                      Edit
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        to={`/admin/surveys/${s.id}/edit`}
+                        className="text-sm font-semibold text-gray-900 hover:underline"
+                      >
+                        Edit
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(s.id, s.title)}
+                        disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
+                        className="text-sm font-semibold text-red-600 hover:underline disabled:opacity-50"
+                        title="Delete survey"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

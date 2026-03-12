@@ -22,6 +22,22 @@ export class ProfileResponseDto {
   npiNumber?: string;
 
   @IsString()
+  @IsOptional()
+  institution?: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @IsString()
+  @IsOptional()
+  zipCode?: string;
+
+  @IsString()
   role: string;
 
   @IsDateString()

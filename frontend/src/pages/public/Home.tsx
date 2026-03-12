@@ -677,8 +677,8 @@ export default function Home() {
 
       {/* About Us teaser */}
       <section className="py-10 sm:py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 items-start">
-          <div className="space-y-5">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 flex justify-center">
+          <div className="space-y-5 max-w-2xl text-center">
             <h4 className="text-3xl font-semibold text-gray-900">About Us</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
               Built by veterans from Live Nation, Lionsgate, television production, and health insurance—not traditional pharma agencies—we apply proven entertainment and media strategies to healthcare marketing and medical education.
@@ -692,22 +692,6 @@ export default function Home() {
             >
               Learn More
             </Link>
-          </div>
-          <div className="grid grid-cols-2 gap-5">
-            <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-[3/4] max-h-[320px]">
-              <img
-                src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=900&q=80"
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            </div>
-            <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-[3/4] max-h-[320px]">
-              <img
-                src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&w=900&q=80"
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            </div>
           </div>
         </div>
       </section>

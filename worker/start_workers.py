@@ -46,9 +46,7 @@ def start_consumers():
     env['PYTHONPATH'] = worker_dir
     
     consumers = [
-        ('Email Consumer', 'consumers/email_consumer.py'),
         ('Payment Consumer', 'consumers/payment_consumer.py'),
-        ('CME Consumer', 'consumers/cme_consumer.py'),
     ]
     
     for name, script in consumers:

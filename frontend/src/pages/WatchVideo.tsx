@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { YouTubePlayer } from '../components/YouTubePlayer';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi, type Program, type Video } from '../api/programs';
 import { ChevronLeft, RotateCcw, CheckCircle2, ExternalLink } from 'lucide-react';
@@ -339,15 +340,15 @@ export default function WatchVideo() {
         </div>
       </section>
 
-      {/* Video player */}
+      {/* Video player - IFrame API with GA4 events */}
       <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
         <div className="aspect-video w-full bg-black">
-          <iframe
+          <YouTubePlayer
+            youtubeUrl={video.embedUrl}
             title={video.title}
-            src={video.embedUrl}
+            autoplay={false}
+            muted={false}
             className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
           />
         </div>
       </section>

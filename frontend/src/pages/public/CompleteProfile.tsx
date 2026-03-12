@@ -10,6 +10,7 @@ const PROFESSION_OPTIONS = [
   { value: 'Physician Assistant', label: 'Physician Assistant (PA)' },
   { value: 'Pharmacist', label: 'Pharmacist' },
   { value: 'Nurse', label: 'Nurse (RN/LPN)' },
+  { value: 'Pharmaceuticals', label: 'Pharmaceuticals' },
   { value: 'Other HCP', label: 'Other Healthcare Professional' },
 ];
 
@@ -43,6 +44,10 @@ export default function CompleteProfile() {
     dashboardApi.getProfile(userId).then((p) => {
       if (p.specialty) setProfession(p.specialty);
       if (p.npiNumber) setNpiNumber(p.npiNumber);
+      if (p.institution) setInstitution(p.institution);
+      if (p.city) setCity(p.city);
+      if (p.state) setState(p.state);
+      if (p.zipCode) setZipCode(p.zipCode);
     }).catch(() => {});
   }, [userId]);
 
@@ -54,24 +59,13 @@ export default function CompleteProfile() {
       setError('Please select your profession.');
       return;
     }
-    if (npi.length !== 10) {
+    const isPharmaceuticals = profession === 'Pharmaceuticals';
+    if (!isPharmaceuticals && npi.length !== 10) {
       setError('NPI number must be 10 digits.');
       return;
     }
-    if (!institution.trim()) {
-      setError('Institution is required.');
-      return;
-    }
-    if (!city.trim()) {
-      setError('City is required.');
-      return;
-    }
-    if (!state.trim()) {
-      setError('State is required.');
-      return;
-    }
     const zip = zipCode.replace(/\D/g, '');
-    if (zip.length !== 5 && zip.length !== 9) {
+    if (zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
       setError('ZIP code must be 5 digits (or 9 for ZIP+4).');
       return;
     }
@@ -79,11 +73,11 @@ export default function CompleteProfile() {
     try {
       await dashboardApi.updateProfile(userId, {
         specialty: profession,
-        npiNumber: npi,
-        institution: institution.trim(),
-        city: city.trim(),
-        state: state.trim().toUpperCase().slice(0, 2),
-        zipCode: zip,
+        npiNumber: isPharmaceuticals ? undefined : (npi || undefined),
+        institution: institution.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim().toUpperCase().slice(0, 2) || undefined,
+        zipCode: zip || undefined,
       });
       await refreshProfile();
       navigate('/app/home', { replace: true });
@@ -135,64 +129,62 @@ export default function CompleteProfile() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">NPI number</label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">
+              NPI number {profession === 'Pharmaceuticals' && <span className="font-normal text-gray-500">(optional)</span>}
+            </label>
             <input
               type="text"
               value={npiNumber}
               onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder="10-digit National Provider Identifier"
-              required
+              placeholder={profession === 'Pharmaceuticals' ? 'Not required for Pharmaceuticals' : '10-digit National Provider Identifier'}
+              required={profession !== 'Pharmaceuticals'}
               maxLength={10}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Institution</label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Institution <span className="font-normal text-gray-500">(optional)</span></label>
             <input
               type="text"
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
               placeholder="Hospital, clinic, or practice name"
-              required
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
 
           {/* Location */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">City</label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">City <span className="font-normal text-gray-500">(optional)</span></label>
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="New York"
-              required
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">State</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">State <span className="font-normal text-gray-500">(optional)</span></label>
               <input
                 type="text"
                 value={state}
                 onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
                 placeholder="NY"
-                required
                 maxLength={2}
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">ZIP code</label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">ZIP code <span className="font-normal text-gray-500">(optional)</span></label>
               <input
                 type="text"
                 value={zipCode}
                 onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
                 placeholder="10001"
-                required
                 maxLength={10}
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />

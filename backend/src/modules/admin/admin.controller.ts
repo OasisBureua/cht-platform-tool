@@ -1,9 +1,9 @@
 import {
   Controller,
-  Get,
-  Post,
-  Patch,
   Delete,
+  Get,
+  Patch,
+  Post,
   Body,
   Param,
   Query,
@@ -108,7 +108,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Get admin config (e.g. Jotform template ID for webinar surveys)' })
   getAdminConfig() {
     return {
-      jotformTemplateFormId: this.config.get<string>('jotform.templateFormId') || '260624911991966',
+      jotformTemplateFormId: this.config.get<string>('jotform.templateFormId') || '260698533879881',
     };
   }
 
@@ -206,6 +206,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Clone a Jotform template and create a Survey' })
   createSurveyFromJotformTemplate(@Body() dto: CreateSurveyFromJotformDto) {
     return this.surveysService.createSurveyFromJotformTemplate(dto);
+  }
+
+  @Delete('surveys/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Delete a survey' })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  deleteSurvey(@Param('id') id: string) {
+    return this.surveysService.deleteSurvey(id);
   }
 
   @Get('users')

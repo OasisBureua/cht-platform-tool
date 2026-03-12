@@ -49,11 +49,9 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 
-  // SQS
+  // SQS (payment queue only for now)
   sqs: {
-    emailQueueUrl: process.env.SQS_EMAIL_QUEUE_URL,
     paymentQueueUrl: process.env.SQS_PAYMENT_QUEUE_URL,
-    cmeQueueUrl: process.env.SQS_CME_QUEUE_URL,
   },
 
   // Redis
@@ -121,7 +119,7 @@ export default () => ({
   jotform: {
     apiKey: process.env.JOTFORM_API_KEY,
     baseUrl: process.env.JOTFORM_BASE_URL || 'https://communityhealthmedia.jotform.com/API',
-    templateFormId: process.env.JOTFORM_TEMPLATE_FORM_ID || '260624911991966',
+    templateFormId: process.env.JOTFORM_TEMPLATE_FORM_ID || '260698533879881',
     webhookUrl:
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL

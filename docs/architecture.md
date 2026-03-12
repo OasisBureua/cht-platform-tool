@@ -8,12 +8,10 @@ User → CloudFront → Frontend (React)
                    ├── Auth0 (JWT)
                    ├── Redis (Cache)
                    ├── RDS (Database)
-                   └── SQS (Jobs)
+                   └── SQS (Payment Queue)
                         ↓
                    Worker (Python)
-                   ├── Email Jobs
-                   ├── Payment Jobs
-                   └── CME Jobs
+                   └── Payment Jobs
 ```
 
 ## Data Flow
@@ -22,12 +20,8 @@ User → CloudFront → Frontend (React)
 
 1. User completes last video
 2. Backend updates enrollment (completed=true)
-3. Backend sends 3 SQS messages:
-   - Email: Completion notification
-   - Payment: Process honorarium
-   - CME: Generate certificate
-4. Workers process jobs independently
-5. User receives email + payment + certificate
+3. Backend sends payment job to SQS (honorarium if applicable)
+4. Worker records payment as PENDING for admin review
 
 ## Technology Decisions
 

@@ -2,7 +2,6 @@ import { Injectable, Logger, BadRequestException, NotFoundException } from '@nes
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
-import { QueueService } from '../../queue/queue.service';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
@@ -18,7 +17,6 @@ export class PaymentsService {
     private prisma: PrismaService,
     private billService: BillService,
     private configService: ConfigService,
-    private queueService: QueueService,
   ) {
     this.frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
   }
@@ -247,11 +245,6 @@ export class PaymentsService {
 
     if (!user.billVendorId) {
       this.logger.warn(`Pay now blocked: user ${user.id} has no Bill.com vendor`);
-      await this.queueService.sendEmail(
-        user.email,
-        'Add bank details to receive your payout',
-        `You have a pending payout of $${amountDollars} waiting. Please add your bank details at ${this.frontendUrl}/app/payments to receive payment.`,
-      );
       throw new BadRequestException(
         'HCP has not added bank details. Notification sent to complete setup before getting paid.',
       );
@@ -259,11 +252,6 @@ export class PaymentsService {
 
     if (!user.w9Submitted) {
       this.logger.warn(`Pay now blocked: user ${user.id} has not completed W9`);
-      await this.queueService.sendEmail(
-        user.email,
-        'Complete W-9 to receive your payout',
-        `You have a pending payout of $${amountDollars} waiting. Please complete your W-9 at ${this.frontendUrl}/app/payments before we can process your payment.`,
-      );
       throw new BadRequestException(
         'HCP has not completed W-9. Notification sent to complete before getting paid.',
       );

@@ -217,13 +217,6 @@ export class ProgramsService {
       },
     });
 
-    // Send welcome email
-    await this.queueService.sendEmail(
-      user.email,
-      `Welcome to ${program.title}`,
-      `You have successfully enrolled in ${program.title}. Start learning now to earn ${program.creditAmount} CME credits!`,
-    );
-
     this.logger.log(`User enrolled successfully: ${enrollment.id}`);
 
     return {
@@ -401,20 +394,6 @@ export class ProgramsService {
         activitiesCompleted: { increment: 1 },
       },
     });
-
-    // Send completion email
-    await this.queueService.sendEmail(
-      user.email,
-      `Congratulations! You completed ${program.title}`,
-      `You have earned ${program.creditAmount} CME credits. Your certificate will be available shortly.`,
-    );
-
-    // Generate CME certificate
-    await this.queueService.generateCertificate(
-      enrollment.userId,
-      enrollment.programId,
-      program.creditAmount,
-    );
 
     // Process honorarium payment if applicable
     if (program.honorariumAmount) {

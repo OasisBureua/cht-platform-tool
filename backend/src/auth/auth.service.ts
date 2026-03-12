@@ -194,12 +194,14 @@ export class AuthService {
   }
 
   /**
-   * Check if user has completed required profile (specialty + 10-digit NPI).
+   * Check if user has completed required profile.
+   * Requires: specialty. NPI required unless profession is Pharmaceuticals.
    */
   isProfileComplete(user: { specialty: string | null; npiNumber: string | null } | null): boolean {
-    if (!user) return false;
+    if (!user || !user.specialty?.trim()) return false;
+    if (user.specialty.trim() === 'Pharmaceuticals') return true;
     const npi = (user.npiNumber || '').replace(/\D/g, '');
-    return !!(user.specialty?.trim() && npi.length === 10);
+    return npi.length === 10;
   }
 
   /**
