@@ -258,6 +258,13 @@ variable "admin_bootstrap_secret" {
   default     = ""
 }
 
+variable "hubspot_access_token" {
+  description = "HubSpot private app or Service Key token for CRM contact sync"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # SQS queue URLs (optional - backend/worker use module.sqs outputs)
 variable "sqs_email_queue_url" {
   description = "SQS email queue URL (unused - module.sqs used)"

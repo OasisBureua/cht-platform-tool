@@ -187,3 +187,10 @@ variable "admin_bootstrap_secret" {
   sensitive   = true
   default     = ""
 }
+
+variable "hubspot_access_token" {
+  description = "HubSpot private app or Service Key token for CRM contact sync"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

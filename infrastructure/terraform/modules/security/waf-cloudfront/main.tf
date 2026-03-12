@@ -20,8 +20,8 @@ resource "aws_wafv2_web_acl" "cloudfront" {
       name     = "${local.prefix}-rate-limit"
       priority = 1
 
-      override_action {
-        none {}
+      action {
+        block {}
       }
 
       statement {

@@ -174,6 +174,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "ADMIN_BOOTSTRAP_SECRET"
           valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
+        },
+        {
+          name      = "HUBSPOT_ACCESS_TOKEN"
+          valueFrom = "${var.app_secrets_arn}:hubspot_access_token::"
         }
       ]
 

@@ -94,5 +94,6 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     bill_funding_account_id  = var.bill_funding_account_id
     bill_webhook_secret      = var.bill_webhook_secret
     admin_bootstrap_secret   = var.admin_bootstrap_secret
+    hubspot_access_token     = var.hubspot_access_token
   })
 }

@@ -145,11 +145,11 @@ module "s3_certificates" {
 module "sns_alerts" {
   source = "../../modules/messaging/sns-alerts"
 
-  project                    = var.project
-  environment                = var.environment
-  kms_key_id                 = module.kms.sns_kms_key_id
-  aws_account_id             = data.aws_caller_identity.current.account_id
-  alarm_notification_emails  = var.alarm_notification_emails
+  project                   = var.project
+  environment               = var.environment
+  kms_key_id                = module.kms.sns_kms_key_id
+  aws_account_id            = data.aws_caller_identity.current.account_id
+  alarm_notification_emails = var.alarm_notification_emails
 }
 
 # ============================================
@@ -158,10 +158,10 @@ module "sns_alerts" {
 module "sqs" {
   source = "../../modules/messaging/sqs"
 
-  project        = var.project
-  environment    = var.environment
-  kms_key_id     = module.kms.sqs_kms_key_id
-  sns_topic_arn  = module.sns_alerts.topic_arn
+  project       = var.project
+  environment   = var.environment
+  kms_key_id    = module.kms.sqs_kms_key_id
+  sns_topic_arn = module.sns_alerts.topic_arn
 }
 
 # ============================================
@@ -203,6 +203,7 @@ module "secrets" {
   bill_funding_account_id  = var.bill_funding_account_id
   bill_webhook_secret      = var.bill_webhook_secret
   admin_bootstrap_secret   = var.admin_bootstrap_secret
+  hubspot_access_token     = var.hubspot_access_token
 }
 
 # ============================================
@@ -351,7 +352,7 @@ module "cloudfront" {
   domain_aliases           = [var.domain_name]
   api_origin_domain        = module.alb.alb_dns_name
   price_class              = "PriceClass_100"
-  web_acl_id               = module.waf_cloudfront.web_acl_id
+  web_acl_id               = module.waf_cloudfront.web_acl_arn
 }
 
 # ============================================
