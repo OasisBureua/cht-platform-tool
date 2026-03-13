@@ -10,8 +10,12 @@ export default function WhatWeDo() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-3">
-                <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
-                  We organize clinical education into focused, easy-to-navigate experiences
+                <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight max-w-2xl">
+                  We organize clinical education
+                  <br />
+                  into focused, easy-to-navigate
+                  <br />
+                  experiences
                 </h1>
                 <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
                   CHT helps clinicians discover treatment-specific content, learn quickly through short-form videos,
@@ -73,7 +77,7 @@ export default function WhatWeDo() {
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">
               Our platform focuses on four things
             </h2>
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
+            <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl md:whitespace-nowrap">
               A simple, structured system to make clinical learning easier to discover and faster to consume.
             </p>
           </div>
@@ -101,7 +105,7 @@ export default function WhatWeDo() {
               icon={<Users className="h-5 w-5" />}
               title="Sharing & Team Learning"
               body="Make it easy to share relevant resources across your clinical team."
-              cta={{ label: 'Explore Collections', to: '/catalog/breast-cancer' }}
+              cta={{ label: 'Explore Collections', to: '/catalog' }}
             />
           </div>
         </div>
@@ -134,8 +138,10 @@ export default function WhatWeDo() {
                 <Shield className="h-5 w-5" />
                 <p className="text-sm font-semibold">Built with clarity in mind</p>
               </div>
-              <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
-                Structured content experiences, ready to scale
+              <h3 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900 max-w-md">
+                Structured content experiences,
+                <br />
+                ready to scale
               </h3>
               <p className="text-sm md:text-base text-gray-600 leading-relaxed">
                 This page is a demo-friendly placeholder. Swap in approved copy, compliance language, and

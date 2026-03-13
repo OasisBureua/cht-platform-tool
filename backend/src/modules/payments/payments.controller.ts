@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Body, Param, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Param, Query, Logger, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
@@ -82,6 +83,24 @@ export class PaymentsController {
   }
 
   /**
+   * DELETE /api/payments/by-user-program?userId=xxx&programId=yyy
+   * Delete payments by userId and programId (admin/dev only). For cleaning up test entries.
+   */
+  @Delete('by-user-program')
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Delete payments by userId and programId (admin/dev only)' })
+  @ApiQuery({ name: 'userId', required: true, description: 'User ID' })
+  @ApiQuery({ name: 'programId', required: false, description: 'Program ID (omit to delete all payments for user)' })
+  @ApiResponse({ status: 200, description: 'Returns count of deleted payments' })
+  async deleteByUserAndProgram(
+    @Query('userId') userId: string,
+    @Query('programId') programId?: string,
+  ) {
+    return this.paymentsService.deleteByUserAndProgram(userId, programId);
+  }
+
+  /**
    * GET /api/payments/pending
    * List pending payments for admin "Pay now" flow (admin only)
    */
@@ -90,6 +109,19 @@ export class PaymentsController {
   @Roles(UserRole.ADMIN)
   async getPendingPayments() {
     return this.paymentsService.getPendingPayments();
+  }
+
+  /**
+   * DELETE /api/payments/:paymentId
+   * Delete a payment by ID (admin/dev only). For removing test entries.
+   */
+  @Delete(':paymentId')
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Delete payment by ID (admin/dev only)' })
+  @ApiResponse({ status: 200, description: 'Payment deleted' })
+  async deletePayment(@Param('paymentId') paymentId: string) {
+    return this.paymentsService.deletePaymentById(paymentId);
   }
 
   /**

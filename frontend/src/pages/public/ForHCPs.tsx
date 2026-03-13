@@ -246,11 +246,13 @@ function FeaturedCard({
           New
         </span>
       )}
-      <div className="absolute inset-0 p-5 flex flex-col justify-end">
-        <p className="text-lg font-semibold text-gray-900">{title}</p>
-        <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
-          {cta} →
-        </span>
+      <div className="absolute inset-0 flex flex-col justify-end">
+        <div className="bg-black px-5 py-5">
+          <p className="text-lg font-semibold text-white">{title}</p>
+          <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
+            {cta} →
+          </span>
+        </div>
       </div>
     </Link>
   );

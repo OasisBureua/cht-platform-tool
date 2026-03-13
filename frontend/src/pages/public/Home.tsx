@@ -297,7 +297,7 @@ export default function Home() {
           <div className="relative h-full min-h-[400px] sm:min-h-[460px] md:min-h-[520px] mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-center text-center">
             <div className="max-w-3xl space-y-6">
               <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">
-                The future of healthcare marketing and education
+                The Future of Healthcare Marketing and Education
               </h1>
               <p className="text-sm md:text-base text-white/90 leading-relaxed">
                 Community Health Technologies is redefining how pharma reaches healthcare audiences—and educates them where they actively consume and trust information.
@@ -377,7 +377,7 @@ export default function Home() {
                     onClick={() => setExpandedVideoId(video.id)}
                     onKeyDown={(e) => e.key === 'Enter' && setExpandedVideoId(video.id)}
                     data-video-card
-                    className={`shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] block relative transition-[height] duration-300 cursor-pointer ${isSelected ? selectedH : baseH}`}
+                    className={`shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] block relative transition-[height] duration-300 cursor-pointer shadow-lg ${isSelected ? selectedH : baseH}`}
                   >
                     {isPlayingInline && video.youtubeUrl ? (
                       <div
@@ -491,7 +491,7 @@ export default function Home() {
             <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
               Biomarker Playlists
             </h3>
-            <p className="text-lg md:text-xl font-medium text-gray-900">HER2+</p>
+            <p className="text-lg md:text-xl font-medium text-gray-900 line-clamp-3">HER2+</p>
           </div>
           <div className="relative">
             {playlistsLoading && playlists.length === 0 ? (
@@ -522,14 +522,14 @@ export default function Home() {
                 <div
                   key={t.id}
                   data-treatment-card
-                  className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm flex flex-col"
+                  className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-lg flex flex-col"
                 >
                   <Link to={t.playlistUrl} className="aspect-video w-full bg-gray-200 overflow-hidden block">
                     <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   </Link>
                   <div className="p-5 flex flex-col flex-1">
                     <Link to={t.playlistUrl} className="block mb-3">
-                      <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline">{t.title}</h4>
+                      <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline line-clamp-3">{t.title}</h4>
                     </Link>
                     <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
                       {(t.videoNames.length > 0 ? t.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((label, i) => (
@@ -584,9 +584,9 @@ export default function Home() {
       {/* Biomarker Playlists - HR+ */}
       <section className="py-10 sm:py-14 overflow-hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
-          <h3 className="text-3xl md:text-4xl font-semibold text-center text-gray-900">
+          <p className="text-lg md:text-xl font-medium text-center text-gray-900 line-clamp-3">
             HR+
-          </h3>
+          </p>
           <div className="relative">
             {playlistsLoading && playlists.length === 0 ? (
               <div className="flex justify-center py-16">
@@ -616,14 +616,14 @@ export default function Home() {
                 <div
                   key={t.id}
                   data-hr-card
-                  className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-sm flex flex-col"
+                  className="shrink-0 snap-center w-[280px] sm:w-[320px] md:w-[360px] rounded-2xl overflow-hidden bg-white border border-gray-200 shadow-lg flex flex-col"
                 >
                   <Link to={t.playlistUrl} className="aspect-video w-full bg-gray-200 overflow-hidden block">
                     <img src={t.imageUrl} alt={t.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                   </Link>
                   <div className="p-5 flex flex-col flex-1">
                     <Link to={t.playlistUrl} className="block mb-3">
-                      <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline">{t.title}</h4>
+                      <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline line-clamp-3">{t.title}</h4>
                     </Link>
                     <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
                       {(t.videoNames.length > 0 ? t.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((label, i) => (
@@ -699,7 +699,7 @@ export default function Home() {
       {/* Who We Reach */}
       <section className="py-10 sm:py-14 border-t border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h4 className="text-3xl font-semibold text-gray-900 mb-8">Who We Reach</h4>
+          <h4 className="text-3xl font-semibold text-gray-900 mb-8 text-center">Who We Reach</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="rounded-2xl border border-gray-200 bg-white p-6">
               <p className="font-semibold text-gray-900 mb-2">HCPs</p>
@@ -720,7 +720,7 @@ export default function Home() {
       {/* Resources */}
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6">
-          <div className="space-y-2">
+          <div className="space-y-2 text-center">
             <h5 className="text-4xl md:text-5xl font-semibold text-gray-900">Resources</h5>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
@@ -745,7 +745,7 @@ export default function Home() {
       {/* How We Help Pharma - FAQ accordion */}
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10 tracking-tighter text-center">
             How We Help Pharma Educate Healthcare Audiences
           </h2>
           <div>
@@ -759,7 +759,7 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
                 Turn one medical webinar or clinical presentation into 20+ platform-specific assets—social posts, podcast clips, infographics, and more.
               </p>
             </details>
@@ -773,7 +773,7 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
                 Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
               </p>
             </details>
@@ -787,7 +787,7 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
                 Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
@@ -801,7 +801,7 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
                 Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
               </p>
             </details>
@@ -815,12 +815,12 @@ export default function Home() {
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-sm text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
                 Move beyond impressions. Track who watched, who shared, and who took meaningful action.
               </p>
             </details>
           </div>
-          <div className="mt-10">
+          <div className="mt-10 flex justify-center">
             <Link
               to="/join"
               className="inline-flex items-center justify-center rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
@@ -835,17 +835,17 @@ export default function Home() {
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 text-center">
           <h2
-            className="mx-auto mb-8 md:mb-10"
+            className="mx-auto mb-6 md:mb-8"
             style={{
               color: '#000',
               fontFamily: '"Apple Garamond", Garamond, serif',
               fontSize: 'clamp(2.5rem, 8vw, 96px)',
               fontWeight: 400,
-              lineHeight: '98px',
+              lineHeight: 1.15,
               maxWidth: '955px',
             }}
           >
-            A media company thats about more than just content
+            A Media Company That&apos;s About More Than Just Content
           </h2>
           <Link
             to="/join"

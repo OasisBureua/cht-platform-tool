@@ -221,4 +221,9 @@ export const adminApi = {
     const { data } = await apiClient.post(`/payments/${paymentId}/pay-now`);
     return data;
   },
+
+  deletePayment: async (paymentId: string) => {
+    const { data } = await apiClient.delete(`/payments/${paymentId}`);
+    return data;
+  },
 };

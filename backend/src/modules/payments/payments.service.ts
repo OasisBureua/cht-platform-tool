@@ -208,6 +208,37 @@ export class PaymentsService {
   }
 
   /**
+   * Delete a payment by ID (admin/dev only). For removing test entries.
+   */
+  async deletePaymentById(paymentId: string): Promise<{ deleted: boolean }> {
+    const result = await this.prisma.payment.deleteMany({
+      where: { id: paymentId },
+    });
+    if (result.count === 0) {
+      throw new NotFoundException('Payment not found');
+    }
+    this.logger.log(`Deleted payment ${paymentId}`);
+    return { deleted: true };
+  }
+
+  /**
+   * Delete payments by userId and optional programId (admin/dev only). For cleaning up test entries.
+   * If programId omitted, deletes all payments for the user.
+   */
+  async deleteByUserAndProgram(userId: string, programId?: string): Promise<{ deleted: number }> {
+    if (!userId?.trim()) {
+      throw new BadRequestException('userId is required');
+    }
+    const where: { userId: string; programId?: string } = { userId: userId.trim() };
+    if (programId?.trim()) {
+      where.programId = programId.trim();
+    }
+    const result = await this.prisma.payment.deleteMany({ where });
+    this.logger.log(`Deleted ${result.count} payment(s) for userId=${userId}${programId ? ` programId=${programId}` : ''}`);
+    return { deleted: result.count };
+  }
+
+  /**
    * List pending payments (admin only). Used for admin "Pay now" flow.
    */
   async getPendingPayments() {

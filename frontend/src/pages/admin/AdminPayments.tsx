@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, type PendingPayment } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -19,6 +19,13 @@ export default function AdminPayments() {
 
   const payNowMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.payNow(paymentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (paymentId: string) => adminApi.deletePayment(paymentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
     },
@@ -72,7 +79,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Pay now</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -81,7 +88,9 @@ export default function AdminPayments() {
                   key={p.id}
                   payment={p}
                   onPayNow={() => payNowMutation.mutate(p.id)}
+                  onDelete={() => deleteMutation.mutate(p.id)}
                   isPaying={payNowMutation.isPending && payNowMutation.variables === p.id}
+                  isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
                 />
               ))}
             </tbody>
@@ -114,10 +123,10 @@ export default function AdminPayments() {
         )}
       </section>
 
-      {payNowMutation.isError && (
+      {(payNowMutation.isError || deleteMutation.isError) && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertCircle className="h-5 w-5 shrink-0" />
-          {String(payNowMutation.error)}
+          {String(payNowMutation.error ?? deleteMutation.error)}
         </div>
       )}
     </div>
@@ -137,11 +146,15 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
 function PendingRow({
   payment,
   onPayNow,
+  onDelete,
   isPaying,
+  isDeleting,
 }: {
   payment: PendingPayment;
   onPayNow: () => void;
+  onDelete: () => void;
   isPaying: boolean;
+  isDeleting: boolean;
 }) {
   const canPay = !!payment.user.billVendorId;
 
@@ -158,20 +171,31 @@ function PendingRow({
       <td className="px-4 py-3 text-sm text-gray-600">{payment.program?.title ?? '—'}</td>
       <td className="px-4 py-3 text-sm text-gray-500">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
-        <button
-          type="button"
-          onClick={onPayNow}
-          disabled={!canPay || isPaying}
-          className={[
-            'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
-            canPay && !isPaying
-              ? 'bg-gray-900 text-white hover:bg-black'
-              : 'bg-gray-200 text-gray-500 cursor-not-allowed',
-          ].join(' ')}
-        >
-          <DollarSign className="h-4 w-4" aria-hidden />
-          {isPaying ? 'Processing…' : 'Pay now'}
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onPayNow}
+            disabled={!canPay || isPaying}
+            className={[
+              'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
+              canPay && !isPaying
+                ? 'bg-gray-900 text-white hover:bg-black'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed',
+            ].join(' ')}
+          >
+            <DollarSign className="h-4 w-4" aria-hidden />
+            {isPaying ? 'Processing…' : 'Pay now'}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={isDeleting}
+            title="Delete (remove test entry)"
+            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
         {!canPay && (
           <p className="mt-1 text-xs text-amber-600">No Bill.com vendor</p>
         )}
