@@ -163,11 +163,11 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {/* Description */}
-        {clip.description && (
+        {/* Description (prefer ai_summary when available) */}
+        {(clip.ai_summary ?? clip.description) && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-            <p className="text-gray-600 whitespace-pre-wrap">{clip.description}</p>
+            <p className="text-gray-600 whitespace-pre-wrap">{clip.ai_summary ?? clip.description}</p>
           </div>
         )}
 

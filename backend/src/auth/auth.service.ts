@@ -72,6 +72,7 @@ export class AuthService {
         city: user.city ?? undefined,
         state: user.state ?? undefined,
         zip: user.zipCode ?? undefined,
+        npi_number: user.npiNumber ?? undefined,
       }).catch(() => {});
     }
     // Do NOT overwrite firstName/lastName for existing users—Settings PATCH is the source of truth.

@@ -140,6 +140,7 @@ export class DashboardService {
       city: updated.city ?? undefined,
       state: updated.state ?? undefined,
       zip: updated.zipCode ?? undefined,
+      npi_number: updated.npiNumber ?? undefined,
     }).catch(() => {});
     return this.getProfile(userId);
   }

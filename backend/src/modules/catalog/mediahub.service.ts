@@ -13,6 +13,7 @@ export interface MediaHubClip {
   id: string;
   title: string;
   description: string;
+  ai_summary?: string;
   tags: string[];
   doctors: string[];
   thumbnail_url: string;

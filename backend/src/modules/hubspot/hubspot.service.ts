@@ -13,6 +13,7 @@ export interface HubSpotContactProperties {
   state?: string;
   zip?: string;
   jobtitle?: string;
+  npi_number?: string;
   [key: string]: string | undefined;
 }
 
@@ -55,6 +56,7 @@ export class HubSpotService {
       ...(properties.state && { state: properties.state.trim() }),
       ...(properties.zip && { zip: properties.zip.trim() }),
       ...(properties.jobtitle && { jobtitle: properties.jobtitle.trim() }),
+      ...(properties.npi_number && { npi_number: String(properties.npi_number).trim() }),
     };
 
     const body = {

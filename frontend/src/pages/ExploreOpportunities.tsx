@@ -123,7 +123,7 @@ export default function ExploreOpportunities() {
           type: 'clip',
           id: `clip-${c.id ?? ''}`,
           title: c.title ?? '',
-          description: c.description ?? '',
+          description: (c.ai_summary ?? c.description) ?? '',
           imageUrl: getClipThumbnail(c),
           href: `/app/clip/${getShortClipId(c.id ?? '')}`,
           subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,
