@@ -16,6 +16,17 @@
   }
 }
 
+@layer utilities {
+  /* Hide scrollbars on horizontal carousels (still scrollable / swipeable) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors;

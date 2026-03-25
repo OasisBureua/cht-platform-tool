@@ -3,6 +3,7 @@ import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
 import { Shield } from 'lucide-react';
+import { getPostLoginPath } from '../../utils/postLoginRedirect';
 
 export default function AdminLogin() {
   const location = useLocation();
@@ -22,11 +23,9 @@ export default function AdminLogin() {
   };
 
   if (isAuthenticated && !isLoading) {
-    // Admin login page: only allow admins to proceed to /admin
     if (user?.role === 'ADMIN') {
-      return <Navigate to={from} replace />;
+      return <Navigate to={getPostLoginPath(user.role, from)} replace />;
     }
-    // Non-admin logged in: redirect to app
     return <Navigate to="/app/home" replace />;
   }
 

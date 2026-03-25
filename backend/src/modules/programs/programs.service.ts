@@ -62,6 +62,7 @@ export class ProgramsService {
     zoomMeetingId?: string;
     zoomJoinUrl?: string;
     zoomStartUrl?: string;
+    zoomSessionType?: 'WEBINAR' | 'MEETING';
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -76,6 +77,7 @@ export class ProgramsService {
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         duration: dto.duration ?? null,
+        zoomSessionType: dto.zoomSessionType ?? 'WEBINAR',
         zoomMeetingId: dto.zoomMeetingId ?? null,
         zoomJoinUrl: dto.zoomJoinUrl ?? null,
         zoomStartUrl: dto.zoomStartUrl ?? null,

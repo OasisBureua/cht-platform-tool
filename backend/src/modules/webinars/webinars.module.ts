@@ -5,6 +5,7 @@ import { ZoomWebhookController } from './zoom-webhook.controller';
 import { ZoomWebhookService } from './zoom-webhook.service';
 import { WebinarsService } from './webinars.service';
 import { WebinarsController } from './webinars.controller';
+import { OfficeHoursController } from './office-hours.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { HubSpotModule } from '../hubspot/hubspot.module';
 
@@ -14,7 +15,7 @@ import { HubSpotModule } from '../hubspot/hubspot.module';
     PrismaModule,
     HubSpotModule,
   ],
-  controllers: [WebinarsController, ZoomWebhookController],
+  controllers: [WebinarsController, OfficeHoursController, ZoomWebhookController],
   providers: [ZoomService, ZoomWebhookService, WebinarsService],
   exports: [WebinarsService, ZoomService],
 })

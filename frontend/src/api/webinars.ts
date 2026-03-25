@@ -21,4 +21,15 @@ export const webinarsApi = {
     const { data } = await apiClient.get<WebinarItem>(`/webinars/${encodeURIComponent(id)}`);
     return data;
   },
+
+  /** Zoom Meeting Office Hours (published programs with zoomSessionType MEETING). */
+  listOfficeHours: async (): Promise<WebinarItem[]> => {
+    const { data } = await apiClient.get<WebinarItem[]>('/office-hours');
+    return data || [];
+  },
+
+  getOfficeHoursById: async (id: string): Promise<WebinarItem> => {
+    const { data } = await apiClient.get<WebinarItem>(`/office-hours/${encodeURIComponent(id)}`);
+    return data;
+  },
 };

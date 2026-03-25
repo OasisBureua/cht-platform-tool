@@ -109,13 +109,12 @@ export default function ForHCPs() {
           </h1>
         </header>
 
-        {/* Featured content: 2 large + 2 small cards */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Featured grid — equal cells, light overlay, pill CTAs */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
           <FeaturedCard
             title="Clinical Conversations"
             imageUrl={STOCK_IMAGES.featuredVideo}
             cta="Conversations"
-            size="large"
             to="/catalog"
             showNew
           />
@@ -123,7 +122,6 @@ export default function ForHCPs() {
             title={firstWebinar?.title || 'Featured Webinar'}
             imageUrl={firstWebinar?.imageUrl || STOCK_IMAGES.featuredWebinar}
             cta="Join Now"
-            size="large"
             to={firstWebinar ? `/webinars/${firstWebinar.id}` : '/webinars'}
             showNew
           />
@@ -131,14 +129,12 @@ export default function ForHCPs() {
             title="Newest Survey"
             imageUrl={STOCK_IMAGES.featuredSurvey}
             cta="Join Now"
-            size="small"
-            to="/app/surveys"
+            to="/surveys"
           />
           <FeaturedCard
-            title="KOL/DOL Network"
+            title="KOL Network"
             imageUrl={STOCK_IMAGES.featuredStudy}
-            cta="View Now"
-            size="small"
+            cta="View directory"
             to="/kol-network"
           />
         </section>
@@ -156,7 +152,7 @@ export default function ForHCPs() {
               <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
               {hrPlusPlaylists.slice(0, 3).map((card) => (
                 <BiomarkerPlaylistCard key={card.id} card={card} />
               ))}
@@ -220,39 +216,32 @@ function FeaturedCard({
   title,
   imageUrl,
   cta,
-  size,
   to,
   showNew,
 }: {
   title: string;
   imageUrl: string;
   cta: string;
-  size: 'large' | 'small';
   to: string;
   showNew?: boolean;
 }) {
-  const isLarge = size === 'large';
   return (
     <Link
       to={to}
-      className={`group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 ${
-        isLarge ? 'min-h-[220px] md:min-h-[260px]' : 'min-h-[160px]'
-      }`}
+      className="group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 min-h-[240px] md:min-h-[280px] h-full flex flex-col"
     >
       <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/[0.28] transition-colors pointer-events-none" />
       {showNew && (
-        <span className="absolute left-3 top-3 rounded bg-[#000000] px-2.5 py-1 text-xs font-semibold text-white">
+        <span className="absolute left-3 top-3 z-10 rounded-full bg-black/90 px-2.5 py-1 text-xs font-semibold text-white">
           New
         </span>
       )}
-      <div className="absolute inset-0 flex flex-col justify-end">
-        <div className="bg-black px-5 py-5">
-          <p className="text-lg font-semibold text-white">{title}</p>
-          <span className="mt-2 inline-flex w-fit items-center gap-1 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
-            {cta} →
-          </span>
-        </div>
+      <div className="relative mt-auto flex flex-col justify-end p-5 md:p-6 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
+        <p className="text-base md:text-lg font-semibold text-white line-clamp-2">{title}</p>
+        <span className="mt-3 inline-flex w-fit items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-md group-hover:bg-gray-100 transition-colors">
+          {cta} →
+        </span>
       </div>
     </Link>
   );
@@ -260,25 +249,28 @@ function FeaturedCard({
 
 
 function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
+  const names = card.videoNames.length > 0 ? card.videoNames : ['Video', 'Video', 'Video', 'Video'];
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col">
-      <div className="relative h-[140px] shrink-0">
-        <img src={card.imageUrl} alt={card.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col h-full min-h-[380px]">
+      <div className="relative aspect-video shrink-0 bg-gray-100">
+        <img src={card.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
       </div>
-      <div className="p-5 flex flex-col flex-1">
-        <h4 className="font-bold text-gray-900">{card.title}</h4>
-        <ul className="mt-3 space-y-2 flex-1">
-          {(card.videoNames.length > 0 ? card.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((name, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+      <div className="p-5 flex flex-col flex-1 min-h-0 min-w-0">
+        <h4 className="font-bold text-gray-900 line-clamp-2 min-h-[3.25rem]">{card.title}</h4>
+        <ul className="mt-3 space-y-1.5 flex-1 min-h-0">
+          {names.slice(0, 4).map((name, i) => (
+            <li key={i} className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
               <span className="h-1 w-1 rounded-full bg-gray-400 shrink-0" />
-              {name}
+              <span className="truncate" title={name}>
+                {name}
+              </span>
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end pt-2 border-t border-gray-100">
           <Link
             to={card.playlistUrl}
-            className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+            className="rounded-full bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
           >
             Play all
           </Link>

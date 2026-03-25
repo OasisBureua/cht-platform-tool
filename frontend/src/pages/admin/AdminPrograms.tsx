@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -13,17 +13,21 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { adminApi, type AdminWebinar, type UpdateWebinarPayload } from '../../api/admin';
+import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminPrograms() {
+  const location = useLocation();
+  const isOfficeHours = location.pathname.includes('/office-hours');
+  const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
+
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const { data: webinars, isLoading, error } = useQuery({
-    queryKey: ['admin', 'webinars'],
-    queryFn: adminApi.getWebinars,
+    queryKey: ['admin', 'webinars', zoomFilter],
+    queryFn: () => adminApi.getWebinars({ zoomSessionType: zoomFilter }),
     staleTime: 30 * 1000,
   });
 
@@ -46,7 +50,7 @@ export default function AdminPrograms() {
   if (error) {
     return (
       <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
-        Failed to load webinars. Please try again.
+        Failed to load {isOfficeHours ? 'Office Hours' : 'webinars'}. Please try again.
       </div>
     );
   }
@@ -56,20 +60,41 @@ export default function AdminPrograms() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Webinars</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {isOfficeHours ? 'Office Hours' : 'Webinars'}
+          </h1>
           <p className="text-sm text-gray-600">
-            Schedule and manage live webinars — synced with Zoom.
+            {isOfficeHours
+              ? 'Zoom Meetings for live Q&A — waiting room on; host admits participants, similar to in-person Office Hours.'
+              : 'Schedule and manage live webinars — synced with Zoom.'}
           </p>
         </div>
-        <Link
-          to="/admin/webinar-scheduler"
-          className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
-        >
-          <Calendar className="h-4 w-4" />
-          Schedule Webinar
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {isOfficeHours ? (
+            <Link
+              to="/admin/programs"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+              Webinars
+            </Link>
+          ) : (
+            <Link
+              to="/admin/office-hours"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+              Office Hours
+            </Link>
+          )}
+          <Link
+            to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
+          >
+            <Calendar className="h-4 w-4" />
+            {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
+          </Link>
+        </div>
       </div>
 
       {/* Delete confirmation overlay */}
@@ -78,7 +103,9 @@ export default function AdminPrograms() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="font-semibold text-gray-900">Delete webinar?</h2>
+                <h2 className="font-semibold text-gray-900">
+                  Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
+                </h2>
                 <p className="text-sm text-gray-500 mt-1">
                   This will remove it from Zoom and the platform. This action cannot be undone.
                 </p>
@@ -126,15 +153,19 @@ export default function AdminPrograms() {
       {items.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center">
           <Video className="h-12 w-12 text-gray-200 mx-auto mb-4" />
-          <p className="font-semibold text-gray-900">No webinars yet</p>
+          <p className="font-semibold text-gray-900">
+            {isOfficeHours ? 'No Office Hours scheduled' : 'No webinars yet'}
+          </p>
           <p className="text-sm text-gray-500 mt-1">
-            Schedule your first webinar — it will sync to Zoom automatically.
+            {isOfficeHours
+              ? 'Create a Zoom Meeting session for interactive Q&A.'
+              : 'Schedule your first webinar — it will sync to Zoom automatically.'}
           </p>
           <Link
-            to="/admin/webinar-scheduler"
+            to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
-            <Calendar className="h-4 w-4" /> Schedule Webinar
+            <Calendar className="h-4 w-4" /> {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
           </Link>
         </div>
       ) : (
@@ -142,7 +173,9 @@ export default function AdminPrograms() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Webinar</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  {isOfficeHours ? 'Session' : 'Webinar'}
+                </th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden sm:table-cell">Date & Time</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden md:table-cell">Sponsor</th>
                 <th className="px-4 py-3 text-left font-semibold text-gray-600">Status</th>
@@ -307,6 +340,7 @@ function EditWebinarModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const sessionKind = webinar.zoomSessionType ?? 'WEBINAR';
   const localDate = webinar.startDate
     ? format(parseISO(webinar.startDate), "yyyy-MM-dd'T'HH:mm")
     : '';
@@ -356,7 +390,9 @@ function EditWebinarModal({
       <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Edit Webinar</h2>
+          <h2 className="font-semibold text-gray-900">
+            {sessionKind === 'MEETING' ? 'Edit Office Hours' : 'Edit webinar'}
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="h-5 w-5" />
           </button>
@@ -432,7 +468,8 @@ function EditWebinarModal({
 
           {webinar.zoomMeetingId && (
             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
-              Changes to title, date, and duration will also be synced to Zoom meeting #{webinar.zoomMeetingId}.
+              Changes to title, date, and duration will also be synced to Zoom{' '}
+              {sessionKind === 'MEETING' ? 'Meeting' : 'webinar'} #{webinar.zoomMeetingId}.
             </p>
           )}
 

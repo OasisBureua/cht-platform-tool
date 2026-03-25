@@ -37,6 +37,8 @@ import Layout from './components/layout/Layout';
 import ExploreOpportunities from './pages/ExploreOpportunities';
 import Webinars from './pages/Webinars';
 import WebinarDetail from './pages/WebinarDetail';
+import OfficeHours from './pages/OfficeHours';
+import OfficeHoursDetail from './pages/OfficeHoursDetail';
 import Surveys from './pages/Surveys';
 import SurveyDetail from './pages/SurveyDetail';
 import Watch from './pages/Watch';
@@ -138,6 +140,8 @@ function App() {
             {/* Webinars */}
             <Route path="webinars" element={<Webinars />} />
             <Route path="webinars/:id" element={<WebinarDetail />} />
+            <Route path="office-hours" element={<OfficeHours />} />
+            <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
             {/* Surveys */}
             <Route path="surveys" element={<Surveys />} />
@@ -188,10 +192,15 @@ function App() {
           >
             <Route index element={<AdminDashboard />} />
             <Route path="programs" element={<AdminPrograms />} />
+            <Route path="office-hours" element={<AdminPrograms />} />
             <Route path="surveys" element={<AdminSurveys />} />
             <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
             <Route path="create-survey" element={<AdminCreateSurvey />} />
-            <Route path="webinar-scheduler" element={<AdminWebinarScheduler />} />
+            <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
+            <Route
+              path="office-hours-scheduler"
+              element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" />}
+            />
             <Route path="payments" element={<AdminPayments />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="hcp-explorer" element={<AdminHcpExplorer />} />

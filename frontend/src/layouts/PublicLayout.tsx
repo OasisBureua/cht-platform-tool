@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Outlet, Link, NavLink } from 'react-router-dom';
+import { useState, useEffect, FormEvent } from 'react';
+import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, Instagram, Menu, X } from 'lucide-react';
 import logoSrc from '../assets/logo/LOGO.svg';
 
@@ -8,125 +8,180 @@ const navLinks = [
   { to: '/what-we-do', label: 'What We Do' },
   { to: '/catalog', label: 'Content Library' },
   { to: '/for-hcps', label: 'For HCPs' },
+  { to: '/kol-network', label: 'KOL Network' },
   { to: '/contact', label: 'Contact' },
 ];
 
 export default function PublicLayout() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [headerQuery, setHeaderQuery] = useState('');
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDrawerOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [drawerOpen]);
+
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const q = headerQuery.trim();
+    setDrawerOpen(false);
+    if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
+    else navigate('/search');
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col min-w-0">
-      {/* Header */}
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex h-14 sm:h-16 items-center justify-between gap-2">
-            {/* Logo from assets */}
+        <div className="mx-auto max-w-7xl px-3 sm:px-6">
+          <div className="flex h-14 sm:h-16 items-center gap-2 sm:gap-3 min-w-0">
             <Link to="/" className="flex items-center shrink-0">
               <img src={logoSrc} alt="CHT" className="h-7 sm:h-8 w-auto" />
             </Link>
 
-            {/* Nav links - desktop */}
-            <nav className="hidden md:flex items-center gap-6 lg:gap-8">
-              {navLinks.map(({ to, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    `text-sm font-medium transition-colors ${
-                      isActive ? 'text-gray-900' : 'text-gray-600 hover:text-gray-900'
-                    }`
-                  }
+            {/* YouTube-style centered search (desktop) */}
+            <form
+              onSubmit={submitSearch}
+              className="hidden sm:flex flex-1 justify-center min-w-0 max-w-2xl mx-2 lg:mx-6"
+            >
+              <div className="flex w-full rounded-full border border-gray-300 overflow-hidden bg-gray-50 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900">
+                <input
+                  type="search"
+                  name="q"
+                  value={headerQuery}
+                  onChange={(e) => setHeaderQuery(e.target.value)}
+                  placeholder="Search"
+                  className="flex-1 min-w-0 bg-transparent pl-4 pr-2 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                  aria-label="Search site"
+                />
+                <button
+                  type="submit"
+                  className="shrink-0 px-4 py-2 bg-gray-100 border-l border-gray-300 hover:bg-gray-200 transition-colors"
+                  aria-label="Submit search"
                 >
-                  {label}
-                </NavLink>
-              ))}
-            </nav>
+                  <Search className="h-5 w-5 text-gray-700" />
+                </button>
+              </div>
+            </form>
 
-            {/* Right: Search, Login/Get Started, mobile menu */}
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
               <Link
                 to="/search"
-                className="p-2 min-w-[44px] min-h-[44px] md:min-w-0 md:min-h-0 flex items-center justify-center text-gray-600 hover:text-gray-900 transition-colors"
+                className="sm:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
                 aria-label="Search"
               >
                 <Search className="h-5 w-5" />
               </Link>
-              <div className="hidden sm:inline-flex items-center rounded-full bg-[#000000] p-1 gap-0.5 sm:gap-1">
+              <div className="hidden sm:inline-flex items-center rounded-full bg-[#000000] p-1 gap-0.5">
                 <Link
                   to="/login"
-                  className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                 >
                   Login
                 </Link>
                 <Link
                   to="/join"
-                  className="rounded-full bg-white px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-[#000000] hover:bg-white/90 transition-colors"
+                  className="rounded-full bg-white px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-[#000000] hover:bg-white/90 transition-colors"
                 >
                   Get Started
                 </Link>
               </div>
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={mobileMenuOpen}
+                onClick={() => setDrawerOpen(true)}
+                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-700 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Open menu"
+                aria-expanded={drawerOpen}
               >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                <Menu className="h-6 w-6" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Mobile menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <nav className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-1">
+        {/* Slide-in drawer (Hims-style ease) */}
+        <div
+          className={`fixed inset-0 z-[60] sm:z-[60] transition-opacity duration-300 ease-out ${
+            drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          aria-hidden={!drawerOpen}
+        >
+          <button
+            type="button"
+            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
+              drawerOpen ? 'opacity-100' : 'opacity-0'
+            }`}
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Close menu"
+          />
+          <nav
+            className={`absolute top-0 right-0 h-full w-[min(100%,20rem)] bg-white shadow-2xl border-l border-gray-200 flex flex-col transition-transform duration-300 ease-out ${
+              drawerOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+            aria-label="Site navigation"
+          >
+            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
+              <span className="text-sm font-semibold text-gray-900">Menu</span>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto py-2 px-2">
               {navLinks.map(({ to, label }) => (
                 <NavLink
                   key={to}
                   to={to}
-                  onClick={() => setMobileMenuOpen(false)}
+                  onClick={() => setDrawerOpen(false)}
                   className={({ isActive }) =>
-                    `block py-3 px-4 text-base font-medium rounded-lg transition-colors ${
-                      isActive ? 'text-gray-900 bg-gray-100' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    `block py-3 px-4 text-base font-medium rounded-xl transition-colors ${
+                      isActive ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'
                     }`
                   }
                 >
                   {label}
                 </NavLink>
               ))}
-              <div className="flex gap-2 pt-4 mt-2 border-t border-gray-200">
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-3 text-center text-sm font-semibold text-gray-900 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/join"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-3 text-center text-sm font-semibold text-white bg-gray-900 rounded-lg hover:bg-black transition-colors"
-                >
-                  Get Started
-                </Link>
-              </div>
-            </nav>
-          </div>
-        )}
+            </div>
+            <div className="p-4 border-t border-gray-100 space-y-2 sm:hidden">
+              <Link
+                to="/login"
+                onClick={() => setDrawerOpen(false)}
+                className="block w-full py-3 text-center text-sm font-semibold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200"
+              >
+                Login
+              </Link>
+              <Link
+                to="/join"
+                onClick={() => setDrawerOpen(false)}
+                className="block w-full py-3 text-center text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-black"
+              >
+                Get Started
+              </Link>
+            </div>
+          </nav>
+        </div>
       </header>
 
-      {/* Main content - responsive, no horizontal overflow */}
       <main className="flex-1 min-w-0 overflow-x-hidden">
         <Outlet />
       </main>
 
-      {/* Footer - Figma design (node-id=237-8879) */}
       <footer className="bg-[#000000] text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-16">
-            {/* Left: Logo, address, contact, social */}
             <div className="space-y-6 max-w-md">
               <Link to="/" className="inline-flex">
                 <img src={logoSrc} alt="CHT" className="h-7 w-auto brightness-0 invert" />
@@ -162,7 +217,6 @@ export default function PublicLayout() {
               </div>
             </div>
 
-            {/* Right: Quick Links + Legal */}
             <div className="flex flex-col sm:flex-row gap-10 sm:gap-16">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Quick Links</p>

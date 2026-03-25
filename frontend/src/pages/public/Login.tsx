@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
+import { getPostLoginPath } from '../../utils/postLoginRedirect';
 
 export default function Login() {
   const location = useLocation();
@@ -26,8 +27,7 @@ export default function Login() {
   // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop
   // where app renders before authHeaderGetter is updated, causing 401 on first API call
   if (isAuthenticated && !isLoading) {
-    const dest = from ?? (user?.role === 'ADMIN' ? '/admin' : '/app/home');
-    return <Navigate to={dest} replace />;
+    return <Navigate to={getPostLoginPath(user?.role, from)} replace />;
   }
 
   const handleLogin = async (e: React.FormEvent) => {

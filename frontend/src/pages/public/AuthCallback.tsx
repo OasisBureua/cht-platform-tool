@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { getPostLoginPath } from '../../utils/postLoginRedirect';
 
 /**
  * OAuth callback page. GoTrue redirects here after Google/Apple sign-in.
@@ -48,12 +49,9 @@ export default function AuthCallback() {
         navigate('/complete-profile', { replace: true });
         return;
       }
-      const from = searchParams.get('from');
-      if (from && from !== 'undefined') {
-        navigate(from, { replace: true });
-        return;
-      }
-      navigate(result.role === 'ADMIN' ? '/admin' : '/app/home', { replace: true });
+      const fromParam = searchParams.get('from');
+      const fromPath = fromParam && fromParam !== 'undefined' ? fromParam : undefined;
+      navigate(getPostLoginPath(result.role, fromPath), { replace: true });
     });
 
     return () => {

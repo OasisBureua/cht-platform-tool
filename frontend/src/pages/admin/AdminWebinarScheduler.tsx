@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Video, Calendar } from 'lucide-react';
-import { adminApi, type CreateWebinarPayload } from '../../api/admin';
+import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 
 const DEFAULT_JOTFORM_TEMPLATE_ID = '260698533879881';
 
@@ -17,9 +17,21 @@ const TIMEZONES = [
   'UTC',
 ];
 
-export default function AdminWebinarScheduler() {
+export type AdminWebinarSchedulerProps = {
+  /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
+  defaultZoomSessionType?: ZoomSessionType;
+};
+
+export default function AdminWebinarScheduler({
+  defaultZoomSessionType = 'WEBINAR',
+}: AdminWebinarSchedulerProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
+  useEffect(() => {
+    setZoomSessionType(defaultZoomSessionType);
+  }, [defaultZoomSessionType]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -48,14 +60,17 @@ export default function AdminWebinarScheduler() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
 
+  const successPath = zoomSessionType === 'MEETING' ? '/admin/office-hours' : '/admin/programs';
+  const isWebinar = zoomSessionType === 'WEBINAR';
+
   const createMutation = useMutation({
     mutationFn: (payload: CreateWebinarPayload) => adminApi.createWebinar(payload),
-    onSuccess: (data: { zoomWarning?: string }) => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       if (data?.zoomWarning) {
         setZoomWarning(data.zoomWarning);
       } else {
-        navigate('/admin/programs');
+        navigate(successPath);
       }
     },
   });
@@ -64,13 +79,28 @@ export default function AdminWebinarScheduler() {
     e.preventDefault();
     setValidationError(null);
 
-    if (!title.trim()) { setValidationError('Webinar title is required.'); return; }
-    if (!date) { setValidationError('Date is required.'); return; }
-    if (!time) { setValidationError('Time is required.'); return; }
+    if (!title.trim()) {
+      setValidationError(isWebinar ? 'Title is required.' : 'Session title is required.');
+      return;
+    }
+    if (!date) {
+      setValidationError('Date is required.');
+      return;
+    }
+    if (!time) {
+      setValidationError('Time is required.');
+      return;
+    }
 
     const startDateTime = new Date(`${date}T${time}:00`);
-    if (isNaN(startDateTime.getTime())) { setValidationError('Invalid date or time.'); return; }
-    if (startDateTime <= new Date()) { setValidationError('Start date and time must be in the future.'); return; }
+    if (isNaN(startDateTime.getTime())) {
+      setValidationError('Invalid date or time.');
+      return;
+    }
+    if (startDateTime <= new Date()) {
+      setValidationError('Start date and time must be in the future.');
+      return;
+    }
 
     const durationNum = parseInt(duration, 10);
     if (isNaN(durationNum) || durationNum < 15 || durationNum > 480) {
@@ -89,8 +119,9 @@ export default function AdminWebinarScheduler() {
       startDate: `${date}T${time}:00`,
       duration: durationNum,
       timezone,
+      zoomSessionType,
       status: 'PUBLISHED',
-      createSurveyFromTemplate: createSurvey ? jotformTemplateId : undefined,
+      createSurveyFromTemplate: isWebinar && createSurvey ? jotformTemplateId : undefined,
     };
 
     createMutation.mutate(payload);
@@ -98,43 +129,43 @@ export default function AdminWebinarScheduler() {
 
   return (
     <div className="space-y-8 max-w-3xl">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Webinar Scheduler</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          {isWebinar ? 'Webinar scheduler' : 'Office Hours scheduler'}
+        </h1>
         <p className="text-sm text-gray-600 mt-1">
-          Schedule a live webinar — it will be created on Zoom and published on the platform automatically.
+          {isWebinar
+            ? 'Creates a Zoom Webinar and publishes it. Optional Jotform post-event survey when enabled below.'
+            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). No Jotform survey — backend only creates surveys for webinars.'}
         </p>
       </div>
 
-      {/* Zoom sync warning — shown when webinar saved but Zoom failed */}
       {zoomWarning && (
         <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
           <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-yellow-800">Webinar saved — Zoom sync failed</p>
+            <p className="text-sm font-semibold text-yellow-800">Saved — Zoom sync failed</p>
             <p className="text-sm text-yellow-700 mt-0.5">
-              The webinar was saved to the platform and is visible on the public page, but could not be created on Zoom.
-              Fix the Zoom app scopes in the Zoom Marketplace, then edit the webinar to retry.
+              The session was saved but could not be created on Zoom. Fix Zoom app scopes, then edit the session to
+              retry.
             </p>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => navigate('/admin/programs')}
-              className="text-xs font-semibold text-yellow-800 underline"
-            >
-              View webinars
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate(successPath)}
+            className="text-xs font-semibold text-yellow-800 underline shrink-0"
+          >
+            View list
+          </button>
         </div>
       )}
 
-      {/* Zoom note */}
       {!zoomWarning && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            When Zoom credentials are configured, submitting this form will create the meeting on Zoom and generate a join link automatically. The webinar will also appear on the public Webinars page.
+            Choose <strong>Session type</strong> below. Webinars use Zoom Webinars; Office Hours use Zoom Meetings with
+            waiting room (host admits attendees).
           </p>
         </div>
       )}
@@ -149,58 +180,67 @@ export default function AdminWebinarScheduler() {
         <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-gray-700" />
-            <h2 className="text-lg font-bold text-gray-900">Schedule New Webinar</h2>
+            <h2 className="text-lg font-bold text-gray-900">Schedule session</h2>
           </div>
 
-          {/* Title + Sponsor */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Session type *</label>
+            <select
+              value={zoomSessionType}
+              onChange={(e) => {
+                const v = e.target.value as ZoomSessionType;
+                setZoomSessionType(v);
+                if (v === 'MEETING') setCreateSurvey(false);
+              }}
+              className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            >
+              <option value="WEBINAR">Webinar (Zoom Webinar — CME-style, optional Jotform survey)</option>
+              <option value="MEETING">Office Hours (Zoom Meeting — Q&A, waiting room)</option>
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Webinar Title *
+                {isWebinar ? 'Webinar title *' : 'Session title *'}
               </label>
               <input
                 type="text"
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Advanced Cardiology Techniques"
+                placeholder={isWebinar ? 'e.g., Advanced Cardiology Update' : 'e.g., Breast oncology Office Hours'}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Sponsor / Category
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Sponsor / category</label>
               <input
                 type="text"
                 value={sponsorName}
                 onChange={(e) => setSponsorName(e.target.value)}
-                placeholder="e.g., Cardiology Dept."
+                placeholder="e.g., Medical Affairs"
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
           </div>
 
-          {/* Description */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              Description
-            </label>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">Description</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="What will be covered in this webinar…"
+              placeholder={
+                isWebinar ? 'What will be covered…' : 'Topics, who will host, what to bring…'
+              }
               className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
           </div>
 
-          {/* Speaker */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Speaker Name
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Host / speaker name</label>
               <input
                 type="text"
                 value={speakerName}
@@ -210,25 +250,20 @@ export default function AdminWebinarScheduler() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Speaker Bio
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Host note / bio</label>
               <input
                 type="text"
                 value={speakerBio}
                 onChange={(e) => setSpeakerBio(e.target.value)}
-                placeholder="Brief bio…"
+                placeholder="Brief note…"
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
           </div>
 
-          {/* Date / Time / Timezone / Duration */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Date *
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Date *</label>
               <input
                 type="date"
                 required
@@ -238,9 +273,7 @@ export default function AdminWebinarScheduler() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Time *
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Time *</label>
               <input
                 type="time"
                 required
@@ -250,23 +283,21 @@ export default function AdminWebinarScheduler() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Timezone
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Timezone</label>
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               >
                 {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>{tz.replace('America/', '').replace('_', ' ')}</option>
+                  <option key={tz} value={tz}>
+                    {tz.replace('America/', '').replace('_', ' ')}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Duration (min)
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Duration (min)</label>
               <input
                 type="number"
                 min="15"
@@ -279,50 +310,55 @@ export default function AdminWebinarScheduler() {
             </div>
           </div>
 
-          {/* Survey toggle */}
-          <div className="space-y-3">
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={createSurvey}
-                onChange={(e) => setCreateSurvey(e.target.checked)}
-                className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                Auto-create post-event survey from Jotform template
-              </span>
-            </label>
-            {createSurvey && (
-              <div>
-                <label className="block text-sm font-semibold text-gray-900 mb-1">
-                  Jotform template form ID
-                </label>
+          {isWebinar && (
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer">
                 <input
-                  type="text"
-                  value={jotformTemplateId}
-                  onChange={(e) => setJotformTemplateId(e.target.value)}
-                  placeholder={DEFAULT_JOTFORM_TEMPLATE_ID}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  type="checkbox"
+                  checked={createSurvey}
+                  onChange={(e) => setCreateSurvey(e.target.checked)}
+                  className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                 />
-                <p className="mt-1 text-xs text-gray-500">
-                  Template form to clone. Set via JOTFORM_TEMPLATE_FORM_ID env, or override here. Default: {DEFAULT_JOTFORM_TEMPLATE_ID}
-                </p>
-              </div>
-            )}
-          </div>
+                <span className="text-sm font-medium text-gray-700">
+                  Auto-create post-event survey from Jotform template
+                </span>
+              </label>
+              {createSurvey && (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-1">Jotform template form ID</label>
+                  <input
+                    type="text"
+                    value={jotformTemplateId}
+                    onChange={(e) => setJotformTemplateId(e.target.value)}
+                    placeholder={DEFAULT_JOTFORM_TEMPLATE_ID}
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Not used for Office Hours (MEETING). Template: {DEFAULT_JOTFORM_TEMPLATE_ID}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!isWebinar && (
+            <p className="text-sm text-gray-600 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
+              Jotform surveys are only created for <strong>Webinar</strong> sessions. Office Hours are Zoom Meetings
+              only.
+            </p>
+          )}
         </div>
 
         {createMutation.isError && (
           <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
-            Failed to schedule webinar. Please check the details and try again.
+            Failed to schedule. Please check the details and try again.
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex gap-4">
           <button
             type="button"
-            onClick={() => navigate('/admin/programs')}
+            onClick={() => navigate(successPath)}
             className="rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
           >
             Cancel
@@ -335,7 +371,7 @@ export default function AdminWebinarScheduler() {
             {createMutation.isPending && (
               <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
             )}
-            {createMutation.isPending ? 'Scheduling…' : 'Schedule Webinar'}
+            {createMutation.isPending ? 'Scheduling…' : isWebinar ? 'Schedule webinar' : 'Schedule Office Hours'}
           </button>
         </div>
       </form>

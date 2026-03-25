@@ -11,6 +11,8 @@ export interface WebinarItem {
   duration?: number;
   joinUrl?: string;
   source: 'zoom' | 'program';
+  /** Present when sourced from our DB — distinguishes CME webinars vs Zoom Meeting office hours. */
+  sessionKind?: 'WEBINAR' | 'MEETING';
 }
 
 /**
@@ -43,6 +45,7 @@ export class WebinarsService {
     const programs = await this.prisma.program.findMany({
       where: {
         status: 'PUBLISHED',
+        zoomSessionType: 'WEBINAR',
         startDate: { gte: thirtyDaysAgo },
       },
       include: { videos: { take: 1 } },
@@ -72,6 +75,7 @@ export class WebinarsService {
         duration: p.duration ?? undefined,
         joinUrl: p.zoomJoinUrl || undefined,
         source: 'program',
+        sessionKind: 'WEBINAR',
       });
     }
 
@@ -102,6 +106,48 @@ export class WebinarsService {
     return items;
   }
 
+  /**
+   * Published office hours (Zoom Meetings) — interactive drop-in sessions.
+   */
+  async listOfficeHours(): Promise<WebinarItem[]> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const programs = await this.prisma.program.findMany({
+      where: {
+        status: 'PUBLISHED',
+        zoomSessionType: 'MEETING',
+        startDate: { gte: thirtyDaysAgo },
+      },
+      include: { videos: { take: 1 } },
+      orderBy: { startDate: 'desc' },
+      take: 50,
+    });
+
+    const items: WebinarItem[] = [];
+    for (const p of programs) {
+      const firstVideo = p.videos[0];
+      const imageUrl =
+        p.thumbnailUrl ||
+        (firstVideo?.platform === 'YOUTUBE'
+          ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
+          : undefined);
+
+      items.push({
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        imageUrl: imageUrl || undefined,
+        startTime: p.startDate?.toISOString(),
+        duration: p.duration ?? undefined,
+        joinUrl: p.zoomJoinUrl || undefined,
+        source: 'program',
+        sessionKind: 'MEETING',
+      });
+    }
+    return items;
+  }
+
   async getWebinarById(id: string): Promise<WebinarItem | null> {
     // Zoom-only IDs (not yet in DB)
     if (id.startsWith('zoom-')) {
@@ -120,7 +166,7 @@ export class WebinarsService {
     }
 
     const program = await this.prisma.program.findFirst({
-      where: { id, status: 'PUBLISHED' },
+      where: { id, status: 'PUBLISHED', zoomSessionType: 'WEBINAR' },
       include: { videos: { take: 1 } },
     });
     if (!program) return null;
@@ -141,6 +187,34 @@ export class WebinarsService {
       duration: program.duration ?? undefined,
       joinUrl: program.zoomJoinUrl || undefined,
       source: program.zoomMeetingId ? 'zoom' : 'program',
+      sessionKind: 'WEBINAR',
+    };
+  }
+
+  async getOfficeHoursById(id: string): Promise<WebinarItem | null> {
+    const program = await this.prisma.program.findFirst({
+      where: { id, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
+      include: { videos: { take: 1 } },
+    });
+    if (!program) return null;
+
+    const firstVideo = program.videos[0];
+    const imageUrl =
+      program.thumbnailUrl ||
+      (firstVideo?.platform === 'YOUTUBE'
+        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
+        : undefined);
+
+    return {
+      id: program.id,
+      title: program.title,
+      description: program.description,
+      imageUrl: imageUrl || undefined,
+      startTime: program.startDate?.toISOString(),
+      duration: program.duration ?? undefined,
+      joinUrl: program.zoomJoinUrl || undefined,
+      source: 'program',
+      sessionKind: 'MEETING',
     };
   }
 }

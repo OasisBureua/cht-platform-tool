@@ -12,6 +12,18 @@ export default function AdminSurveys() {
     queryFn: () => surveysApi.getAll(),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => adminApi.deleteSurvey(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
+    },
+  });
+
+  const handleDelete = (id: string, title: string) => {
+    if (!window.confirm(`Delete survey "${title}"? This cannot be undone.`)) return;
+    deleteMutation.mutate(id);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">

@@ -1,10 +1,21 @@
-import { Link, useParams, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useParams, Navigate, useLocation } from 'react-router-dom';
 import { dolNetwork, getRegionBySlug } from '../../data/dol-network';
 import { ChevronLeft } from 'lucide-react';
 
 export default function DolRegionDetail() {
   const { regionSlug } = useParams<{ regionSlug: string }>();
+  const location = useLocation();
   const region = regionSlug ? getRegionBySlug(regionSlug) : null;
+
+  useEffect(() => {
+    const id = location.hash.replace(/^#/, '');
+    if (!id) return;
+    const t = requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    return () => cancelAnimationFrame(t);
+  }, [location.hash, region?.id]);
 
   if (!region) {
     return <Navigate to="/kol-network" replace />;
@@ -48,7 +59,8 @@ export default function DolRegionDetail() {
             {region.entries.map((entry) => (
               <div
                 key={entry.id}
-                className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 space-y-3"
+                id={entry.id}
+                className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 space-y-3 scroll-mt-24"
               >
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="text-lg font-semibold text-gray-900">

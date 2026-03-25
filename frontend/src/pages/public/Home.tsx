@@ -321,8 +321,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Videos */}
-      <section className="py-10 sm:py-14 overflow-hidden">
+      {/* Featured Videos — full-bleed carousel, scrollbar hidden (swipe / trackpad only) */}
+      <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-8 sm:space-y-10">
           <h2 className="text-3xl md:text-4xl font-semibold text-center text-gray-900">
             Featured Videos
@@ -330,7 +330,7 @@ export default function Home() {
 
           {/* Loading skeleton — shown only while random videos are fetching */}
           {randomVideosLoading && (
-            <div className="flex items-center justify-center gap-4 sm:gap-6 -mx-4 sm:-mx-6 px-4 sm:px-6 overflow-hidden">
+            <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 flex items-center justify-center gap-4 sm:gap-6 px-4 sm:px-6 overflow-hidden">
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
@@ -341,8 +341,8 @@ export default function Home() {
           )}
 
           {!randomVideosLoading && featuredVideos.length > 0 && (
-          <div className="relative">
-            {/* Scrollable carousel - selected video centered */}
+          <>
+          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
             <div
               ref={videoScrollRef}
               onScroll={() => {
@@ -360,8 +360,8 @@ export default function Home() {
                 if (newIdx !== featuredVideoIndex) setInlinePlayingId(null);
                 setFeaturedVideoIndex(newIdx);
               }}
-              className="flex items-center gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-4 sm:-mx-6 px-4 sm:px-6"
-              style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+              className="scrollbar-hide flex items-center gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory px-4 sm:px-6"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
               {featuredVideos.map((video, idx) => {
@@ -411,7 +411,9 @@ export default function Home() {
               })}
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
             </div>
-            {/* Video controls - Figma design: pill-shaped bar with Play, Prev, Next, Volume */}
+          </div>
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            {/* Video controls - pill-shaped bar with Play, Prev, Next, Volume */}
             <div className="mt-5 flex items-center justify-center overflow-x-auto">
               <div className="inline-flex items-center rounded-full bg-gray-200/80 px-2 py-2 gap-1.5 sm:gap-2">
                 <button
@@ -480,12 +482,13 @@ export default function Home() {
               ))}
             </div>
           </div>
+          </>
           )}
         </div>
       </section>
 
       {/* Biomarker Playlists - treatment specific content */}
-      <section className="py-10 sm:py-14 overflow-hidden">
+      <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
           <div className="text-center space-y-2">
             <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
@@ -493,7 +496,7 @@ export default function Home() {
             </h3>
             <p className="text-lg md:text-xl font-medium text-gray-900 line-clamp-3">HER2+</p>
           </div>
-          <div className="relative">
+          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
             {playlistsLoading && playlists.length === 0 ? (
               <div className="flex justify-center py-16">
                 <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
@@ -514,8 +517,8 @@ export default function Home() {
                 });
                 setPlaylistIndex(newIdx);
               }}
-              className="flex gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-4 sm:-mx-6 px-4 sm:px-6"
-              style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+              className="scrollbar-hide flex gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory px-4 sm:px-6"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
               {biomarkerPlaylists.map((t) => (
@@ -582,12 +585,12 @@ export default function Home() {
       </section>
 
       {/* Biomarker Playlists - HR+ */}
-      <section className="py-10 sm:py-14 overflow-hidden">
+      <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
           <p className="text-lg md:text-xl font-medium text-center text-gray-900 line-clamp-3">
             HR+
           </p>
-          <div className="relative">
+          <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
             {playlistsLoading && playlists.length === 0 ? (
               <div className="flex justify-center py-16">
                 <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
@@ -608,8 +611,8 @@ export default function Home() {
                 });
                 setHrPlaylistIndex(newIdx);
               }}
-              className="flex gap-6 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory -mx-6 px-6"
-              style={{ scrollbarWidth: 'thin', WebkitOverflowScrolling: 'touch' }}
+              className="scrollbar-hide flex gap-6 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory px-4 sm:px-6"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
               {hrPlusPlaylists.map((t) => (

@@ -15,6 +15,8 @@ export interface AdminProgram {
   surveysCount: number;
 }
 
+export type ZoomSessionType = 'WEBINAR' | 'MEETING';
+
 export interface AdminWebinar {
   id: string;
   title: string;
@@ -22,6 +24,8 @@ export interface AdminWebinar {
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   startDate: string | null;
   duration: number | null;
+  /** Defaults to WEBINAR when omitted (legacy programs). */
+  zoomSessionType?: ZoomSessionType;
   zoomMeetingId: string | null;
   zoomJoinUrl: string | null;
   zoomStartUrl: string | null;
@@ -37,6 +41,8 @@ export interface CreateWebinarPayload {
   startDate: string;
   duration: number;
   timezone?: string;
+  /** WEBINAR = Zoom Webinar + optional Jotform survey; MEETING = Zoom Meeting (Office Hours). */
+  zoomSessionType?: ZoomSessionType;
   createSurveyFromTemplate?: string;
   status?: 'DRAFT' | 'PUBLISHED';
 }
@@ -167,9 +173,9 @@ export const adminApi = {
 
   // ─── Webinar CRUD (Zoom-backed) ──────────────────────────────────────────
 
-  getWebinars: async (): Promise<AdminWebinar[]> => {
+  getWebinars: async (params?: { zoomSessionType?: ZoomSessionType }): Promise<AdminWebinar[]> => {
     try {
-      const { data } = await apiClient.get<AdminWebinar[]>('/admin/webinars');
+      const { data } = await apiClient.get<AdminWebinar[]>('/admin/webinars', { params });
       return data;
     } catch (err) {
       if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
@@ -179,8 +185,10 @@ export const adminApi = {
     }
   },
 
-  createWebinar: async (payload: CreateWebinarPayload): Promise<AdminWebinar> => {
-    const { data } = await apiClient.post<AdminWebinar>('/admin/webinars', payload);
+  createWebinar: async (
+    payload: CreateWebinarPayload,
+  ): Promise<AdminWebinar & { zoomWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string }>('/admin/webinars', payload);
     return data;
   },
 

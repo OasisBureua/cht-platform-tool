@@ -130,6 +130,7 @@ model Program {
   honorariumAmount  Int?     // Amount in cents (e.g., 50000 = $500)
   
   // Zoom Events integration
+  zoomSessionType   ProgramZoomSessionType @default(WEBINAR)
   zoomMeetingId     String?
   zoomMeetingPassword String?
   zoomJoinUrl       String?
@@ -157,6 +158,12 @@ enum ProgramStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+/// Zoom: WEBINAR = formal CME-style webinar; MEETING = interactive office hours (drop-in Q&A).
+enum ProgramZoomSessionType {
+  WEBINAR
+  MEETING
 }
 
 // ============================================================================

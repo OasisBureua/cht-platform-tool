@@ -301,22 +301,40 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List all webinars (Zoom + Programs) for admin' })
-  async listAdminWebinars() {
+  @ApiOperation({ summary: 'List webinars or office hours (Zoom + Programs) for admin' })
+  @ApiQuery({
+    name: 'zoomSessionType',
+    required: false,
+    enum: ['WEBINAR', 'MEETING'],
+    description: 'Filter by session type (default: all)',
+  })
+  async listAdminWebinars(@Query('zoomSessionType') zoomSessionType?: 'WEBINAR' | 'MEETING') {
     const programs = await this.prisma.program.findMany({
+      where:
+        zoomSessionType === 'WEBINAR' || zoomSessionType === 'MEETING'
+          ? { zoomSessionType }
+          : undefined,
       orderBy: { startDate: 'desc' },
       take: 100,
     });
 
     let zoomWebinars: Awaited<ReturnType<ZoomService['listWebinars']>> = [];
+    let zoomMeetings: Awaited<ReturnType<ZoomService['listScheduledMeetings']>> = [];
     if (this.zoom.isConfigured()) {
       zoomWebinars = await this.zoom.listWebinars();
+      zoomMeetings = await this.zoom.listScheduledMeetings();
     }
 
-    const zoomById = new Map(zoomWebinars.map((w) => [w.id, w]));
+    const webinarById = new Map(zoomWebinars.map((w) => [w.id, w]));
+    const meetingById = new Map(zoomMeetings.map((m) => [m.id, m]));
 
     const result = programs.map((p) => {
-      const zoom = p.zoomMeetingId ? zoomById.get(p.zoomMeetingId) : undefined;
+      const zoom =
+        p.zoomMeetingId && p.zoomSessionType === 'MEETING'
+          ? meetingById.get(p.zoomMeetingId)
+          : p.zoomMeetingId
+            ? webinarById.get(p.zoomMeetingId)
+            : undefined;
       return {
         id: p.id,
         title: p.title,
@@ -324,6 +342,7 @@ export class AdminController {
         status: p.status,
         startDate: p.startDate?.toISOString() ?? null,
         duration: p.duration ?? null,
+        zoomSessionType: p.zoomSessionType,
         zoomMeetingId: p.zoomMeetingId ?? null,
         zoomJoinUrl: zoom?.joinUrl ?? p.zoomJoinUrl ?? null,
         zoomStartUrl: zoom?.startUrl ?? p.zoomStartUrl ?? null,
@@ -354,6 +373,7 @@ export class AdminController {
         timezone: { type: 'string', default: 'America/New_York' },
         createSurveyFromTemplate: { type: 'string' },
         status: { type: 'string', enum: ['DRAFT', 'PUBLISHED'], default: 'PUBLISHED' },
+        zoomSessionType: { type: 'string', enum: ['WEBINAR', 'MEETING'], default: 'WEBINAR' },
       },
     },
   })
@@ -367,11 +387,14 @@ export class AdminController {
       timezone?: string;
       createSurveyFromTemplate?: string;
       status?: 'DRAFT' | 'PUBLISHED';
+      zoomSessionType?: 'WEBINAR' | 'MEETING';
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
     if (!body.startDate) throw new BadRequestException('startDate is required');
     if (!body.duration || body.duration < 1) throw new BadRequestException('duration (minutes) is required');
+
+    const sessionType = body.zoomSessionType ?? 'WEBINAR';
 
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
@@ -380,19 +403,32 @@ export class AdminController {
 
     if (this.zoom.isConfigured()) {
       try {
-        const created = await this.zoom.createWebinar({
-          topic: body.title.trim(),
-          agenda: body.description?.trim(),
-          startTime: body.startDate,
-          duration: body.duration,
-          timezone: body.timezone,
-        });
-        zoomMeetingId = created.id;
-        zoomJoinUrl = created.joinUrl;
-        zoomStartUrl = created.startUrl;
+        if (sessionType === 'MEETING') {
+          const created = await this.zoom.createMeetingForOfficeHours({
+            topic: body.title.trim(),
+            agenda: body.description?.trim(),
+            startTime: body.startDate,
+            duration: body.duration,
+            timezone: body.timezone,
+          });
+          zoomMeetingId = created.id;
+          zoomJoinUrl = created.joinUrl;
+          zoomStartUrl = created.startUrl;
+        } else {
+          const created = await this.zoom.createWebinar({
+            topic: body.title.trim(),
+            agenda: body.description?.trim(),
+            startTime: body.startDate,
+            duration: body.duration,
+            timezone: body.timezone,
+          });
+          zoomMeetingId = created.id;
+          zoomJoinUrl = created.joinUrl;
+          zoomStartUrl = created.startUrl;
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`Zoom createWebinar failed (saving to DB without Zoom): ${msg}`);
+        this.logger.warn(`Zoom create (${sessionType}) failed (saving to DB without Zoom): ${msg}`);
         zoomError = msg;
       }
     }
@@ -407,9 +443,10 @@ export class AdminController {
       zoomJoinUrl,
       zoomStartUrl,
       status: body.status ?? 'PUBLISHED',
+      zoomSessionType: sessionType,
     });
 
-    if (body.createSurveyFromTemplate?.trim()) {
+    if (sessionType === 'WEBINAR' && body.createSurveyFromTemplate?.trim()) {
       await this.surveysService.createSurveyFromJotformTemplate({
         programId: program.id,
         templateFormId: body.createSurveyFromTemplate.trim(),
@@ -423,7 +460,7 @@ export class AdminController {
       zoomMeetingId: zoomMeetingId ?? null,
       zoomJoinUrl: zoomJoinUrl ?? null,
       zoomStartUrl: zoomStartUrl ?? null,
-      ...(zoomError ? { zoomWarning: `Webinar saved but Zoom sync failed: ${zoomError}` } : {}),
+      ...(zoomError ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` } : {}),
     };
   }
 
@@ -448,12 +485,21 @@ export class AdminController {
     if (!existing) throw new NotFoundException('Webinar not found');
 
     if (existing.zoomMeetingId && this.zoom.isConfigured()) {
-      await this.zoom.updateWebinar(existing.zoomMeetingId, {
-        topic: body.title,
-        agenda: body.description,
-        startTime: body.startDate,
-        duration: body.duration,
-      });
+      if (existing.zoomSessionType === 'MEETING') {
+        await this.zoom.updateMeeting(existing.zoomMeetingId, {
+          topic: body.title,
+          agenda: body.description,
+          startTime: body.startDate,
+          duration: body.duration,
+        });
+      } else {
+        await this.zoom.updateWebinar(existing.zoomMeetingId, {
+          topic: body.title,
+          agenda: body.description,
+          startTime: body.startDate,
+          duration: body.duration,
+        });
+      }
     }
 
     const updateData: Record<string, unknown> = {};
@@ -461,7 +507,7 @@ export class AdminController {
     if (body.description !== undefined) updateData.description = body.description.trim();
     if (body.sponsorName) updateData.sponsorName = body.sponsorName.trim();
     if (body.startDate) updateData.startDate = new Date(body.startDate);
-    if (body.duration !== undefined) updateData.duration = body.duration * 60;
+    if (body.duration !== undefined) updateData.duration = body.duration;
     if (body.status) updateData.status = body.status;
 
     const updated = await this.prisma.program.update({ where: { id }, data: updateData });
@@ -479,7 +525,11 @@ export class AdminController {
     if (!existing) throw new NotFoundException('Webinar not found');
 
     if (existing.zoomMeetingId && this.zoom.isConfigured()) {
-      await this.zoom.deleteWebinar(existing.zoomMeetingId);
+      if (existing.zoomSessionType === 'MEETING') {
+        await this.zoom.deleteMeeting(existing.zoomMeetingId);
+      } else {
+        await this.zoom.deleteWebinar(existing.zoomMeetingId);
+      }
     }
 
     await this.prisma.program.delete({ where: { id } });
