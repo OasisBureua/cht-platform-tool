@@ -24,7 +24,7 @@ export default function AdminLayout() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0 pb-16 md:pb-0">
-        <header className="h-14 md:h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 shrink-0">
+        <header className="sticky top-0 z-30 h-14 md:h-16 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2 min-w-0">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 shrink-0">Admin Console</span>
             <span className="text-gray-300 shrink-0">·</span>

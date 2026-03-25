@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Search,
@@ -149,7 +149,6 @@ export default function Home() {
   const [inlinePlayingId, setInlinePlayingId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const videoScrollRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
   const treatmentScrollRef = useRef<HTMLDivElement>(null);
   const hrScrollRef = useRef<HTMLDivElement>(null);
 

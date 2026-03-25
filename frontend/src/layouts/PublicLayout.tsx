@@ -42,37 +42,38 @@ export default function PublicLayout() {
     <div className="min-h-screen bg-white flex flex-col min-w-0">
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
-          <div className="flex h-14 sm:h-16 items-center gap-2 sm:gap-3 min-w-0">
-            <Link to="/" className="flex items-center shrink-0">
-              <img src={logoSrc} alt="CHT" className="h-7 sm:h-8 w-auto" />
-            </Link>
+          {/* Balanced 3-column row so the search bar is truly centered between logo and actions */}
+          <div className="grid h-14 sm:h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex justify-start min-w-0">
+              <Link to="/" className="flex items-center shrink-0">
+                <img src={logoSrc} alt="CHT" className="h-7 sm:h-8 w-auto" />
+              </Link>
+            </div>
 
-            {/* YouTube-style centered search (desktop) */}
-            <form
-              onSubmit={submitSearch}
-              className="hidden sm:flex flex-1 justify-center min-w-0 max-w-2xl mx-2 lg:mx-6"
-            >
-              <div className="flex w-full rounded-full border border-gray-300 overflow-hidden bg-gray-50 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900">
-                <input
-                  type="search"
-                  name="q"
-                  value={headerQuery}
-                  onChange={(e) => setHeaderQuery(e.target.value)}
-                  placeholder="Search"
-                  className="flex-1 min-w-0 bg-transparent pl-4 pr-2 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-                  aria-label="Search site"
-                />
-                <button
-                  type="submit"
-                  className="shrink-0 px-4 py-2 bg-gray-100 border-l border-gray-300 hover:bg-gray-200 transition-colors"
-                  aria-label="Submit search"
-                >
-                  <Search className="h-5 w-5 text-gray-700" />
-                </button>
-              </div>
-            </form>
+            <div className="hidden sm:flex justify-center min-w-0 px-1">
+              <form onSubmit={submitSearch} className="w-full max-w-xl lg:max-w-2xl">
+                <div className="flex w-full rounded-full border border-gray-300 overflow-hidden bg-gray-50 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900">
+                  <input
+                    type="search"
+                    name="q"
+                    value={headerQuery}
+                    onChange={(e) => setHeaderQuery(e.target.value)}
+                    placeholder="Search"
+                    className="flex-1 min-w-0 bg-transparent pl-4 pr-2 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    aria-label="Search site"
+                  />
+                  <button
+                    type="submit"
+                    className="shrink-0 px-4 py-2 bg-gray-100 border-l border-gray-300 hover:bg-gray-200 transition-colors"
+                    aria-label="Submit search"
+                  >
+                    <Search className="h-5 w-5 text-gray-700" />
+                  </button>
+                </div>
+              </form>
+            </div>
 
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+            <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
               <Link
                 to="/search"
                 className="sm:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
@@ -123,13 +124,13 @@ export default function PublicLayout() {
             aria-label="Close menu"
           />
           <nav
-            className={`absolute top-0 right-0 h-full w-[min(100%,20rem)] bg-white shadow-2xl border-l border-gray-200 flex flex-col transition-transform duration-300 ease-out ${
+            className={`absolute top-0 right-0 h-full w-[min(100%,22rem)] bg-white shadow-2xl border-l border-gray-200 flex flex-col transition-transform duration-300 ease-out ${
               drawerOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
             aria-label="Site navigation"
           >
             <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-              <span className="text-sm font-semibold text-gray-900">Menu</span>
+              <span className="text-lg font-semibold text-gray-900">Menu</span>
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
@@ -146,7 +147,7 @@ export default function PublicLayout() {
                   to={to}
                   onClick={() => setDrawerOpen(false)}
                   className={({ isActive }) =>
-                    `block py-3 px-4 text-base font-medium rounded-xl transition-colors ${
+                    `block py-3.5 px-4 text-lg font-medium rounded-xl transition-colors ${
                       isActive ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'
                     }`
                   }
@@ -159,14 +160,14 @@ export default function PublicLayout() {
               <Link
                 to="/login"
                 onClick={() => setDrawerOpen(false)}
-                className="block w-full py-3 text-center text-sm font-semibold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200"
+                className="block w-full py-3.5 text-center text-base font-semibold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200"
               >
                 Login
               </Link>
               <Link
                 to="/join"
                 onClick={() => setDrawerOpen(false)}
-                className="block w-full py-3 text-center text-sm font-semibold text-white bg-gray-900 rounded-xl hover:bg-black"
+                className="block w-full py-3.5 text-center text-base font-semibold text-white bg-gray-900 rounded-xl hover:bg-black"
               >
                 Get Started
               </Link>
