@@ -1,9 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { Search, Monitor, ClipboardList, Video, Loader2, ChevronDown, ListVideo } from 'lucide-react';
+import { Search, Loader2, ChevronDown, Play } from 'lucide-react';
 import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
+import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { doctorLabelFromSlug } from '../../utils/doctorLabel';
+import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
+import { PlaylistGrid } from '../../components/content/PlaylistGrid';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -12,17 +16,6 @@ const SORT_OPTIONS = [
   { value: 'views', label: 'Most views' },
   { value: 'likes', label: 'Most likes' },
 ];
-
-function getThumbnail(clip: MediaHubClip): string {
-  if (clip.thumbnail_url) return clip.thumbnail_url;
-  const m = clip.youtube_url?.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-  if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
-  return 'https://via.placeholder.com/400x260?text=Video';
-}
-
-function getSubtitle(clip: MediaHubClip): string[] {
-  return clip.doctors?.length ? clip.doctors : [clip.title];
-}
 
 function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
@@ -39,39 +32,17 @@ function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function getDoctorOptions(tags: MediaHubTags, doctors: { slug: string }[]): { value: string; label: string }[] {
-  const doctorTags = tags.doctor;
-  if (Array.isArray(doctorTags) && doctorTags.length > 0) {
-    return doctorTags
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b))
-      .map((name) => ({ value: name, label: `Dr. ${name}` }));
-  }
-  const slugToDisplayName = (slug: string) => {
-    const cleaned = slug.replace(/^dr-?/i, '').replace(/-/g, ' ');
-    const parts = cleaned.split(/\s+/).map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
-    return `Dr. ${parts.join(' ')}`;
-  };
-  return doctors.map((d) => ({ value: d.slug, label: slugToDisplayName(d.slug) }));
+function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: string }[] {
+  return doctors.map((d) => ({ value: d.slug, label: doctorLabelFromSlug(d.slug) }));
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
 const CLIPS_PAGE_SIZE = 24;
 
-function getTabs(isInApp: boolean) {
-  const base = isInApp ? '/app' : '';
-  return [
-    { key: 'catalog', label: 'Catalog', icon: ListVideo, to: base ? '/app/catalog' : '/catalog' },
-    { key: 'webinars', label: 'Webinars', icon: Monitor, to: base ? '/app/webinars' : '/webinars' },
-    { key: 'surveys', label: 'Surveys', icon: ClipboardList, to: base ? '/app/surveys' : '/surveys' },
-    { key: 'videos', label: 'Videos', icon: Video, to: base ? '/app/watch' : '/watch' },
-  ];
-}
-
 export default function VideosPage() {
   const location = useLocation();
   const isInApp = location.pathname.startsWith('/app');
-  const TABS = getTabs(isInApp);
+  const [libraryView, setLibraryView] = useState<'clips' | 'playlists'>('clips');
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
@@ -97,7 +68,7 @@ export default function VideosPage() {
   });
 
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
-  const doctorOptions = useMemo(() => getDoctorOptions(tags, doctors), [tags, doctors]);
+  const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
   const useMediaHub = tagOptions.length > 0;
 
   const { data: playlists = [] } = useQuery({
@@ -128,7 +99,7 @@ export default function VideosPage() {
       return lastPage.items.length === CLIPS_PAGE_SIZE ? loaded : undefined;
     },
     initialPageParam: 0,
-    enabled: useMediaHub,
+    enabled: useMediaHub && libraryView === 'clips',
     staleTime: 2 * 60 * 1000,
   });
 
@@ -160,221 +131,213 @@ export default function VideosPage() {
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
 
+  const playlistDescription = (p: (typeof playlists)[0]) =>
+    p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
+
   return (
     <div className="bg-white min-h-screen min-w-0">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900">Videos</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-gray-900">Explore our Catalogue</h1>
 
-        {/* Content type tabs */}
-        <section className="flex flex-wrap gap-4">
-          {TABS.map(({ key, label, icon: Icon, to }) => (
-            <Link
-              key={key}
-              to={to}
-              className={`flex flex-col items-center gap-2 transition-colors ${
-                location.pathname === to ? 'text-gray-900 font-medium' : 'text-gray-700 hover:text-gray-900'
-              }`}
+        <ContentLibraryNavTabs
+          isInApp={isInApp}
+          libraryView={libraryView}
+          playlistsAvailable={playlists.length > 0}
+          onSelectClips={() => setLibraryView('clips')}
+          onSelectPlaylists={() => setLibraryView('playlists')}
+        />
+
+        {libraryView === 'clips' && useMediaHub && (
+          <section className="flex flex-col md:flex-row gap-3 flex-wrap">
+            <div className="flex-1 min-w-[200px] relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search..."
+                className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              />
+            </div>
+
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 min-w-[160px]"
             >
-              <Icon className="h-8 w-8" />
-              <span className="text-sm font-medium">{label}</span>
-            </Link>
-          ))}
-        </section>
+              <option value="">All tags</option>
+              {tagOptions.slice(0, 100).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
 
-        {/* Playlists - always visible when available */}
-        {playlists.length > 0 && (
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">Playlists</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {playlists.map((item) => {
-                const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
-                return (
-                  <div
-                    key={item.id}
-                    className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-                  >
-                    <div className="h-52 relative">
-                      <Link to={playlistUrl}>
-                        <img
-                          src={item.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                          referrerPolicy="no-referrer"
-                        />
-                      </Link>
-                    </div>
-                    <div className="p-5 space-y-4">
-                      <Link to={playlistUrl} className="block">
-                        <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
-                      </Link>
-                      <p className="text-sm text-gray-600">{item.videoCount} videos</p>
-                      <div className="flex justify-end">
-                        <Link
-                          to={playlistUrl}
-                          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                        >
-                          View Playlist
-                        </Link>
-                      </div>
-                    </div>
+            <select
+              value={doctorFilter}
+              onChange={(e) => setDoctorFilter(e.target.value)}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 min-w-[160px]"
+            >
+              <option value="">All doctors</option>
+              {doctorOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSortOpen(!sortOpen)}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 inline-flex items-center gap-2 min-w-[140px] justify-between"
+              >
+                {SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort by'}
+                <ChevronDown className={`h-4 w-4 transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {sortOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
+                  <div className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-gray-200 bg-white py-1 shadow-lg min-w-[160px]">
+                    {SORT_OPTIONS.filter((o) => o.value !== '').map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          setSortBy(opt.value);
+                          setSortOpen(false);
+                        }}
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
+                          sortBy === opt.value ? 'font-medium text-gray-900 bg-gray-50' : 'text-gray-600'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
                   </div>
-                );
-              })}
+                </>
+              )}
             </div>
           </section>
         )}
 
-        {/* Search + Filters (MediaHub clips only) */}
-        {useMediaHub && (
-        <section className="flex flex-col md:flex-row gap-3 flex-wrap">
-          <div className="flex-1 min-w-[200px] relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search..."
-              className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            />
-          </div>
-
-          <select
-            value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 min-w-[160px]"
-          >
-            <option value="">All tags</option>
-            {tagOptions.slice(0, 100).map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={doctorFilter}
-            onChange={(e) => setDoctorFilter(e.target.value)}
-            className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 min-w-[160px]"
-          >
-            <option value="">All doctors</option>
-            {doctorOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-
-          <div className="relative">
-            <button
-              onClick={() => setSortOpen(!sortOpen)}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 inline-flex items-center gap-2 min-w-[140px] justify-between"
-            >
-              {SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort by'}
-              <ChevronDown className={`h-4 w-4 transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
-            </button>
-            {sortOpen && (
-              <>
-                <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-gray-200 bg-white py-1 shadow-lg min-w-[160px]">
-                  {SORT_OPTIONS.filter((o) => o.value !== '').map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => {
-                        setSortBy(opt.value);
-                        setSortOpen(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-                        sortBy === opt.value ? 'font-medium text-gray-900 bg-gray-50' : 'text-gray-600'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </>
+        {libraryView === 'playlists' ? (
+          <section className="space-y-4">
+            <h2 className="text-xl font-bold text-gray-900">YouTube playlists</h2>
+            <PlaylistGrid playlists={playlists} isInApp={isInApp} descriptionForItem={playlistDescription} />
+            {playlists.length === 0 ? (
+              <p className="text-sm text-gray-600">No playlists configured. Add YouTube playlist IDs on the server.</p>
+            ) : null}
+          </section>
+        ) : (
+          <section className="space-y-4">
+            {useMediaHub && (
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900 text-balance break-words max-w-full">
+                Videos
+              </h2>
             )}
-          </div>
-        </section>
-        )}
-
-        {/* Clips grid (MediaHub only) or empty state */}
-        <section className="space-y-4">
-          {useMediaHub && <h2 className="text-xl font-bold text-gray-900">Clips</h2>}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {!useMediaHub && playlists.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-gray-600 mb-2">Video catalog requires MediaHub API key or YouTube playlists.</p>
-              <p className="text-sm text-gray-500 mb-3">Configure mediahub_api_key or youtube_playlist_ids in the backend.</p>
-              <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
-                Browse Catalog
-              </Link>
-            </div>
-          ) : useMediaHub && isLoading && displayItems.length === 0 ? (
-            <div className="col-span-full flex items-center justify-center py-16">
-              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
-            </div>
-          ) : !useMediaHub && playlists.length > 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-8 text-center">
-              <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
-                Explore more in Catalog
-              </Link>
-            </div>
-          ) : useMediaHub && displayItems.length === 0 ? (
-            <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-gray-600 mb-2">No results found.</p>
-              <p className="text-sm text-gray-500">Try adjusting your search or filters.</p>
-            </div>
-          ) : (
-            displayItems.map((item) => {
-              const detailUrl = isInApp ? `/app/clip/${getShortClipId(item.id)}` : `/catalog/clip/${getShortClipId(item.id)}`;
-              return (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
-                >
-                  <div className="h-52 relative">
-                    <Link to={detailUrl}>
-                      <img
-                        src={getThumbnail(item)}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                      />
-                    </Link>
-                  </div>
-                  <div className="p-5 space-y-4">
-                    <Link to={detailUrl} className="block">
-                      <h3 className="font-bold text-gray-900 hover:underline">{item.title}</h3>
-                    </Link>
-                    <ul className="space-y-1">
-                      {getSubtitle(item).slice(0, 4).map((v, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                          <span className="h-1 w-1 rounded-full bg-gray-400" />
-                          {v}
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex justify-end">
-                      <Link
-                        to={detailUrl}
-                        className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                      >
-                        Conversations
-                      </Link>
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-0">
+              {!useMediaHub && playlists.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="text-gray-600 mb-2">Video catalog requires MediaHub API key or YouTube playlists.</p>
+                  <p className="text-sm text-gray-500 mb-3">
+                    Configure mediahub_api_key or youtube_playlist_ids in the backend.
+                  </p>
+                  <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
+                    Browse Catalog
+                  </Link>
                 </div>
-              );
-            })
-          )}
-          {useMediaHub && (
-            <div ref={loadMoreRef} className="col-span-full flex justify-center py-8">
-              {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+              ) : !useMediaHub && playlists.length > 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-8 text-center space-y-4">
+                  <p className="text-gray-600">MediaHub is not configured. Open Playlists above or browse the catalog.</p>
+                  <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
+                    Explore catalog
+                  </Link>
+                </div>
+              ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+                <div className="col-span-full flex items-center justify-center py-16">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                </div>
+              ) : useMediaHub && displayItems.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="text-gray-600 mb-2">No results found.</p>
+                  <p className="text-sm text-gray-500">Try adjusting your search or filters.</p>
+                </div>
+              ) : (
+                displayItems.map((item) => {
+                  const detailUrl = isInApp ? `/app/clip/${getShortClipId(item.id)}` : `/catalog/clip/${getShortClipId(item.id)}`;
+                  const summary = clipDisplaySummary(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-shadow flex flex-col h-full min-h-[280px] min-w-0"
+                    >
+                      <div className="aspect-video relative shrink-0 bg-gray-100 overflow-hidden rounded-t-2xl">
+                        <Link to={detailUrl} className="block h-full">
+                          <img
+                            src={getMediaHubThumbnail(item)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
+                            <div className="rounded-full bg-white/90 p-4">
+                              <Play className="h-10 w-10 text-gray-900 ml-1" fill="currentColor" />
+                            </div>
+                          </div>
+                        </Link>
+                      </div>
+                      <div className="p-4 sm:p-5 flex flex-col flex-1 min-w-0 gap-2">
+                        <Link to={detailUrl} className="block min-w-0">
+                          <h3 className="font-bold text-gray-900 hover:underline line-clamp-3 sm:line-clamp-2 break-words [overflow-wrap:anywhere]">
+                            {item.title}
+                          </h3>
+                        </Link>
+                        {item.doctors?.length > 0 && (
+                          <p className="text-xs font-medium text-gray-500 line-clamp-2 break-words [overflow-wrap:anywhere]">
+                            {item.doctors.join(', ')}
+                          </p>
+                        )}
+                        {summary ? (
+                          <p className="text-sm text-gray-600 line-clamp-4 sm:line-clamp-3 leading-relaxed break-words [overflow-wrap:anywhere]">
+                            {summary}
+                          </p>
+                        ) : null}
+                        {item.tags && item.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {item.tags.slice(0, 3).map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 max-w-full break-words text-left [overflow-wrap:anywhere]"
+                                title={tag}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex justify-end mt-auto pt-4 border-t border-gray-100 shrink-0">
+                          <Link
+                            to={detailUrl}
+                            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                          >
+                            <Play className="h-4 w-4" />
+                            Watch
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-          )}
-          </div>
-        </section>
+            {useMediaHub && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   );

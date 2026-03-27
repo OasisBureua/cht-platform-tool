@@ -1,6 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { AuthUser } from '../../auth/auth.service';
 import { ZoomService } from './zoom.service';
+import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
+
+export interface OfficeHoursMeetingSdkAuthDto {
+  signature: string;
+  sdkKey: string;
+  meetingNumber: string;
+  password: string;
+  userName: string;
+  userEmail: string;
+}
 
 export interface WebinarItem {
   id: string;
@@ -33,6 +50,7 @@ export class WebinarsService {
   constructor(
     private zoom: ZoomService,
     private prisma: PrismaService,
+    private zoomMeetingSdk: ZoomMeetingSdkService,
   ) {}
 
   async listWebinars(): Promise<WebinarItem[]> {
@@ -215,6 +233,50 @@ export class WebinarsService {
       joinUrl: program.zoomJoinUrl || undefined,
       source: 'program',
       sessionKind: 'MEETING',
+    };
+  }
+
+  /**
+   * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
+   * Requires published office-hours program, Zoom meeting id, and enrollment.
+   */
+  async getOfficeHoursMeetingSdkAuth(authUser: AuthUser, programId: string): Promise<OfficeHoursMeetingSdkAuthDto> {
+    if (!this.zoomMeetingSdk.isConfigured()) {
+      throw new ServiceUnavailableException(
+        'In-browser Zoom is not configured. Set ZOOM_SDK_KEY and ZOOM_SDK_SECRET from a Zoom Meeting SDK app.',
+      );
+    }
+
+    const userId = authUser.userId;
+
+    const enrollment = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!enrollment) {
+      throw new ForbiddenException('Register for this session before joining in the app.');
+    }
+
+    const program = await this.prisma.program.findFirst({
+      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
+    });
+    if (!program?.zoomMeetingId) {
+      throw new BadRequestException('This session has no Zoom meeting ID yet.');
+    }
+
+    const userName = (authUser.name?.trim() || authUser.email || 'Participant').slice(0, 200);
+    const userEmail = (authUser.email || '').trim();
+
+    const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');
+    const password = program.zoomMeetingPassword?.trim() ?? '';
+    const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, 0);
+
+    return {
+      signature,
+      sdkKey: this.zoomMeetingSdk.getSdkKey(),
+      meetingNumber,
+      password,
+      userName,
+      userEmail,
     };
   }
 }

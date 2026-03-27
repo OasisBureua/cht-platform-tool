@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
@@ -53,11 +54,79 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const DISABLE_AUTH_FEATURE_MSG = 'Not available while VITE_DISABLE_AUTH is enabled.';
+
+/**
+ * When VITE_DISABLE_AUTH=true, ProtectedRoute still skips checks, but login forms need a real
+ * isAuthenticated transition. This provider sets a mock user after submit (ADMIN on /admin/login).
+ */
+function DisabledAuthProvider({ children }: { children: ReactNode }) {
+  const [bypassUser, setBypassUser] = useState<AuthUser | null>(null);
+
+  const login = useCallback(async (email: string, password: string) => {
+    void password;
+    const trimmed = (email || '').trim();
+    const adminPath =
+      typeof window !== 'undefined' && window.location.pathname.includes('/admin/login');
+    setBypassUser({
+      userId: 'dev-auth-bypass',
+      email: trimmed || 'dev@local',
+      name: 'Dev (auth bypass)',
+      role: adminPath ? 'ADMIN' : 'USER',
+      profileComplete: true,
+    });
+    return {};
+  }, []);
+
+  const logout = useCallback(() => {
+    setBypassUser(null);
+  }, []);
+
+  const getAuthHeaders = useCallback(async () => ({}), []);
+
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user: bypassUser,
+      isAuthenticated: !!bypassUser,
+      isLoading: false,
+      accessToken: null,
+      login,
+      loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      signUp: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      resetPasswordForEmail: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      logout,
+      getAuthHeaders,
+      refreshProfile: async () => {},
+    }),
+    [bypassUser, login, logout, getAuthHeaders],
+  );
+
+  useEffect(() => {
+    setAuthHeaderGetter(getAuthHeaders);
+    return () => setAuthHeaderGetter(null);
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    const on401 = () => {
+      logout();
+      window.location.href = '/login';
+    };
+    setUnauthorizedHandler(on401);
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
 const SESSION_TOKEN_KEY = 'cht-session-token';
 const DEV_USER_KEY = 'cht-dev-user-id';
 const ACCESS_TOKEN_KEY = 'cht-access-token';
 
 function BackendAuthProvider({ children }: { children: ReactNode }) {
+  if (import.meta.env.VITE_DISABLE_AUTH === 'true') {
+    return <DisabledAuthProvider>{children}</DisabledAuthProvider>;
+  }
+
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
     try {
@@ -82,7 +151,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   });
   const [profile, setProfile] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
 
   const userId = sessionToken ? 'session' : devUserId;
 
@@ -451,28 +519,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(handleUnauthorized);
     return () => setUnauthorizedHandler(null);
   }, [handleUnauthorized]);
-
-  if (DISABLE_AUTH) {
-    return (
-      <AuthContext.Provider
-        value={{
-          user: null,
-          isAuthenticated: false,
-          isLoading: false,
-          accessToken: null,
-          login: async () => ({}),
-          loginOAuth: async () => ({}),
-          signUp: async () => ({}),
-          resetPasswordForEmail: async () => ({}),
-          logout: () => {},
-          getAuthHeaders: async () => ({}),
-          refreshProfile: async () => {},
-        }}
-      >
-        {children}
-      </AuthContext.Provider>
-    );
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

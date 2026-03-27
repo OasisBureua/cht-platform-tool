@@ -63,10 +63,11 @@ export class CatalogController {
       return { items: [], total: 0 };
     }
     try {
-      const doctorTag = doctor ? `doctor:${doctor}` : undefined;
+      // MediaHub supports dedicated `doctor` and `tag` query params; pass both through (do not fold doctor into tag only).
       return await this.mediahub.getClips({
         q,
-        tag: doctorTag || tag,
+        tag,
+        doctor,
         platform,
         sort_by: sortBy,
         limit: limit ? parseInt(limit, 10) : undefined,

@@ -4,7 +4,8 @@ import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2 } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
-import { getShortClipId } from '../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
+import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { surveysApi } from '../api/surveys';
 
 const FALLBACK_IMAGES = {
@@ -13,13 +14,6 @@ const FALLBACK_IMAGES = {
   playlist: '/images/iStock-2216587796-60664d42-7776-4b9d-bbd1-5edbcdfee34c.png',
   survey: '/images/iStock-2233342016-12339015-cb72-4731-bdc1-219dc4810191.png',
 } as const;
-
-function getClipThumbnail(clip: MediaHubClip): string {
-  if (clip.thumbnail_url) return clip.thumbnail_url;
-  const m = clip.youtube_url?.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-  if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
-  return FALLBACK_IMAGES.clip;
-}
 
 function getPlaylistThumbnail(item: CatalogItem): string {
   if (item.thumbnailUrl) return item.thumbnailUrl;
@@ -46,7 +40,9 @@ function matchesQuery(item: UnifiedItem, q: string): boolean {
   if (!lower) return true;
   const title = (item.title ?? '').toLowerCase();
   const desc = (item.description ?? '').toLowerCase();
-  return title.includes(lower) || desc.includes(lower);
+  const sub =
+    item.type === 'clip' && item.subtitle ? item.subtitle.toLowerCase() : '';
+  return title.includes(lower) || desc.includes(lower) || sub.includes(lower);
 }
 
 export default function ExploreOpportunities() {
@@ -123,8 +119,8 @@ export default function ExploreOpportunities() {
           type: 'clip',
           id: `clip-${c.id ?? ''}`,
           title: c.title ?? '',
-          description: (c.ai_summary ?? c.description) ?? '',
-          imageUrl: getClipThumbnail(c),
+          description: clipDisplaySummary(c),
+          imageUrl: getMediaHubThumbnail(c) || FALLBACK_IMAGES.clip,
           href: `/app/clip/${getShortClipId(c.id ?? '')}`,
           subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,
         });
@@ -263,7 +259,7 @@ export default function ExploreOpportunities() {
                         </li>
                       ))}
                     </ul>
-                  ) : (
+                  ) : item.type === 'clip' ? null : (
                     <p className="text-sm text-gray-600 line-clamp-2">{item.description || item.title}</p>
                   )}
                 </div>

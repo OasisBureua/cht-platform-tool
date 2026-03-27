@@ -5,7 +5,6 @@ import ScrollToTop from './components/ScrollToTop';
 // Public layout + pages
 import PublicLayout from './layouts/PublicLayout';
 import Home from './pages/public/Home';
-import Catalog from './pages/public/Catalog';
 import ClipDetail from './pages/public/ClipDetail';
 import PlaylistDetail from './pages/public/PlaylistDetail';
 import About from './pages/public/About';
@@ -18,6 +17,7 @@ import AuthCallback from './pages/public/AuthCallback';
 import CompleteProfile from './pages/public/CompleteProfile';
 import Privacy from './pages/public/Privacy';
 import DiseaseDetail from './pages/public/DiseaseDetail';
+import VideosPage from './pages/public/VideosPage';
 import Search from './pages/public/Search';
 import ForHCPs from './pages/public/ForHCPs';
 import PublicWebinars from './pages/public/PublicWebinars';
@@ -90,10 +90,10 @@ function App() {
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Navigate to="/home" replace />} />
             <Route path="/home" element={<Home />} />
-            <Route path="/catalog" element={<Catalog />} />
             <Route path="/catalog/clip/:id" element={<ClipDetail />} />
             <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
             <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
+            <Route path="/catalog" element={<VideosPage />} />
 
             <Route path="/about" element={<About />} />
             <Route path="/services" element={<Services />} />
@@ -109,8 +109,8 @@ function App() {
             <Route path="/terms" element={<Terms />} />
 
             <Route path="/search" element={<Search />} />
-            <Route path="/watch" element={<Navigate to="/catalog" replace />} />
             <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
+            <Route path="/watch" element={<Navigate to="/catalog" replace />} />
             <Route path="/webinars" element={<PublicWebinars />} />
             <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
             <Route path="/surveys" element={<PublicSurveys />} />
@@ -147,17 +147,16 @@ function App() {
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
-            {/* Watch redirects to catalog */}
-            <Route path="watch" element={<Navigate to="/app/catalog" replace />} />
             <Route path="watch/:videoId" element={<WatchVideo />} />
+            <Route path="watch" element={<Navigate to="/app/catalog" replace />} />
 
             {/* Clip detail (MediaHub clips - stays in app) */}
             <Route path="clip/:id" element={<ClipDetail />} />
 
             {/* Catalog (YouTube playlists - same as public, stays in app) */}
-            <Route path="catalog" element={<Catalog />} />
             <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
             <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
+            <Route path="catalog" element={<VideosPage />} />
 
             {/* Earnings + ChatBot + Settings (Payments moved to admin) */}
             <Route path="earnings" element={<Earnings />} />

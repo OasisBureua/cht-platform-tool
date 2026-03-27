@@ -299,7 +299,7 @@ export default function Home() {
                 The Future of Healthcare Marketing and Education
               </h1>
               <p className="text-sm md:text-base text-white/90 leading-relaxed">
-                Community Health Technologies is redefining how pharma reaches healthcare audiences—and educates them where they actively consume and trust information.
+                Community Health Technologies is redefining how pharma reaches healthcare audiences, and educates them where they actively consume and trust information.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
@@ -320,14 +320,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Videos — full-bleed carousel, scrollbar hidden (swipe / trackpad only) */}
+      {/* Featured Videos: full-bleed carousel, scrollbar hidden (swipe / trackpad only) */}
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-8 sm:space-y-10">
           <h2 className="text-3xl md:text-4xl font-semibold text-center text-gray-900">
             Featured Videos
           </h2>
 
-          {/* Loading skeleton — shown only while random videos are fetching */}
+          {/* Loading skeleton: shown only while random videos are fetching */}
           {randomVideosLoading && (
             <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 flex items-center justify-center gap-4 sm:gap-6 px-4 sm:px-6 overflow-hidden">
               {[0, 1, 2].map((i) => (
@@ -683,10 +683,12 @@ export default function Home() {
           <div className="space-y-5 max-w-2xl text-center">
             <h4 className="text-3xl font-semibold text-gray-900">About Us</h4>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Built by veterans from Live Nation, Lionsgate, television production, and health insurance—not traditional pharma agencies—we apply proven entertainment and media strategies to healthcare marketing and medical education.
+              Community Health Media (CHM) is a full-service medical communications partner: expert-led content,
+              strategic distribution, and multichannel campaigns for healthcare. We help organizations connect with HCPs,
+              KOLs, and patient communities through clinically credible communication.
             </p>
             <p className="text-sm text-gray-700 leading-relaxed">
-              We don&apos;t just create content. We ensure it reaches the right audiences where they&apos;re already paying attention.
+              Learn more about what we stand for, who we serve, and how our platform supports clinical learning.
             </p>
             <Link
               to="/about"
@@ -755,21 +757,21 @@ export default function Home() {
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
-                  <span className="text-base font-medium text-gray-900">AI-Powered Content Automation</span>
+                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">AI-Powered Content Automation</span>
                 </span>
                 <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
               <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
-                Turn one medical webinar or clinical presentation into 20+ platform-specific assets—social posts, podcast clips, infographics, and more.
+                Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.
               </p>
             </details>
             <details className="group">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
-                  <span className="text-base font-medium text-gray-900">Multi-Audience Reach</span>
+                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">Multi-Audience Reach</span>
                 </span>
                 <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
@@ -783,7 +785,7 @@ export default function Home() {
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
-                  <span className="text-base font-medium text-gray-900">Entertainment-Grade Distribution</span>
+                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">Entertainment-Grade Distribution</span>
                 </span>
                 <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
@@ -797,7 +799,7 @@ export default function Home() {
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
-                  <span className="text-base font-medium text-gray-900">First-Party HCP Intelligence</span>
+                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">First-Party HCP Intelligence</span>
                 </span>
                 <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
@@ -811,7 +813,7 @@ export default function Home() {
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
-                  <span className="text-base font-medium text-gray-900">Real Engagement Analytics</span>
+                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">Real Engagement Analytics</span>
                 </span>
                 <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>

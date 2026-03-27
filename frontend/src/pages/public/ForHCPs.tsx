@@ -160,10 +160,10 @@ export default function ForHCPs() {
           )}
         </section>
 
-        {/* Webinar Catalogue */}
+        {/* Webinars */}
         <section className="space-y-6">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
-            Webinar Catalogue
+            Webinars
           </h2>
           {isLoading ? (
             <div className="flex justify-center py-12">

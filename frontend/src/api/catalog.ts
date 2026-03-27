@@ -57,7 +57,9 @@ export const catalogApi = {
   },
 
   getClip: async (id: string): Promise<MediaHubClip | null> => {
-    const { data } = await apiClient.get<MediaHubClip | null>(`/catalog/clips/${id}`);
+    const { data } = await apiClient.get<MediaHubClip | null>(
+      `/catalog/clips/${encodeURIComponent(id)}`,
+    );
     return data;
   },
 

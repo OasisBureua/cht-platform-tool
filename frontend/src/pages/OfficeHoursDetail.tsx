@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { OfficeHoursZoomEmbed } from '../components/zoom/OfficeHoursZoomEmbed';
 import { ChevronLeft, Video } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -121,6 +122,16 @@ export default function OfficeHoursDetail() {
 
         {!enrolled && userId && (
           <p className="text-xs text-gray-500">Register once, then use Join Zoom to open the meeting.</p>
+        )}
+
+        {enrolled && session.joinUrl && id && (
+          <div className="border-t border-gray-200 pt-6">
+            <OfficeHoursZoomEmbed
+              programId={id}
+              joinUrlFallback={session.joinUrl}
+              disabled={programLoading}
+            />
+          </div>
         )}
       </div>
     </div>

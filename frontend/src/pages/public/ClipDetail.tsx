@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Clock, Eye, ThumbsUp, MessageCircle, Loader2, Calendar } from 'lucide-react';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
+import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 
 /** Normalize clip from API (handles snake_case and camelCase) */
 function normalizeClip(raw: Record<string, unknown>): {
@@ -96,6 +97,7 @@ export default function ClipDetail() {
   }
 
   const meta = normalizeClip(clip as unknown as Record<string, unknown>);
+  const descriptionBody = clipDisplaySummary(clip);
 
   return (
     <div className="min-h-screen bg-white min-w-0">
@@ -141,11 +143,15 @@ export default function ClipDetail() {
                 <MessageCircle className="h-4 w-4" /> {formatCount(meta.commentCount)} comments
               </span>
             )}
-            {meta.postedAt && (
-              <span className="flex items-center gap-1">
-                <Calendar className="h-4 w-4" /> Posted {format(new Date(meta.postedAt), 'MMM d, yyyy')}
-              </span>
-            )}
+            {meta.postedAt && (() => {
+              const posted = new Date(meta.postedAt);
+              if (!isValid(posted)) return null;
+              return (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-4 w-4" /> Posted {format(posted, 'MMM d, yyyy')}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
@@ -163,11 +169,10 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {/* Description (prefer ai_summary when available) */}
-        {(clip.ai_summary ?? clip.description) && (
+        {descriptionBody && (
           <div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-            <p className="text-gray-600 whitespace-pre-wrap">{clip.ai_summary ?? clip.description}</p>
+            <p className="text-gray-600 whitespace-pre-wrap">{descriptionBody}</p>
           </div>
         )}
 
