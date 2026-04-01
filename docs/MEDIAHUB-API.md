@@ -47,15 +47,21 @@ The backend proxies MediaHub and keeps the API key server-side. All requests go 
 
 ## Clip Response Shape
 
+Upstream **`GET /api/public/clips`** (list) and **`GET /api/public/clips/{id}`** (detail) return the same clip object shape. The CHT backend proxies these at **`GET /api/catalog/clips`** and **`GET /api/catalog/clips/:id`** and forwards the JSON as-is (snake_case field names).
+
+- **`description`** – Long-form text (e.g. YouTube description).
+- **`ai_summary`** – Short editorial / AI summary for cards and the clip detail **Summary** section. The app prefers this over `description` when present and not boilerplate refusal text.
+
 ```json
 {
-  "id": "abc123",
-  "title": "Dr. Mouabbi on HER2-Low Treatment Sequencing",
-  "description": "...",
-  "tags": ["doctor:Mouabbi", "drug:Enhertu", "biomarker:HER2-low"],
-  "doctors": ["Mouabbi"],
-  "thumbnail_url": "https://i.ytimg.com/vi/VIDEO_ID/hqdefault.jpg",
-  "youtube_url": "https://www.youtube.com/watch?v=VIDEO_ID",
+  "id": "official:youtube:E1tTwDQgMBc",
+  "title": "Dr. Aditya Bardia and Dr. Reena Callahan - Redefining HER2...",
+  "description": "In this insightful CHM Conversations episode... [long YouTube description]",
+  "ai_summary": "Drs. Bardia and Callahan examine the evolving HER2 classification framework...",
+  "tags": ["doctor:Bardia", "biomarker:HER2", "..."],
+  "doctors": ["Bardia", "Callahan"],
+  "thumbnail_url": "https://i.ytimg.com/vi/E1tTwDQgMBc/hqdefault.jpg",
+  "youtube_url": "https://www.youtube.com/watch?v=E1tTwDQgMBc",
   "duration_seconds": 342,
   "is_short": false,
   "posted_at": "2025-11-15T00:00:00",
@@ -63,7 +69,7 @@ The backend proxies MediaHub and keeps the API key server-side. All requests go 
   "like_count": 45,
   "comment_count": 3,
   "shoot_id": "shoot_abc",
-  "shoot_name": "Mouabbi Nov 2025"
+  "shoot_name": "Optional shoot label"
 }
 ```
 

@@ -22,6 +22,8 @@ import Search from './pages/public/Search';
 import ForHCPs from './pages/public/ForHCPs';
 import PublicWebinars from './pages/public/PublicWebinars';
 import PublicWebinarDetail from './pages/public/PublicWebinarDetail';
+import PublicOfficeHours from './pages/public/PublicOfficeHours';
+import PublicOfficeHoursDetail from './pages/public/PublicOfficeHoursDetail';
 import PublicSurveys from './pages/public/PublicSurveys';
 import WhatWeDo from './pages/public/WhatWeDo';
 import Services from './pages/public/Services';
@@ -39,6 +41,7 @@ import Webinars from './pages/Webinars';
 import WebinarDetail from './pages/WebinarDetail';
 import OfficeHours from './pages/OfficeHours';
 import OfficeHoursDetail from './pages/OfficeHoursDetail';
+import ProgramRegisterWizard from './pages/ProgramRegisterWizard';
 import Surveys from './pages/Surveys';
 import SurveyDetail from './pages/SurveyDetail';
 import Watch from './pages/Watch';
@@ -63,6 +66,7 @@ import AdminHcpExplorer from './pages/admin/AdminHcpExplorer';
 import AdminRxAnalytics from './pages/admin/AdminRxAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminProgramHub from './pages/admin/AdminProgramHub';
 
 // optional legacy page
 import Dashboard from './pages/Dashboard';
@@ -113,6 +117,8 @@ function App() {
             <Route path="/watch" element={<Navigate to="/catalog" replace />} />
             <Route path="/webinars" element={<PublicWebinars />} />
             <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
+            <Route path="/office-hours/:id" element={<PublicOfficeHoursDetail />} />
+            <Route path="/office-hours" element={<PublicOfficeHours />} />
             <Route path="/surveys" element={<PublicSurveys />} />
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
@@ -139,8 +145,10 @@ function App() {
 
             {/* Webinars */}
             <Route path="webinars" element={<Webinars />} />
+            <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="webinars/:id" element={<WebinarDetail />} />
             <Route path="office-hours" element={<OfficeHours />} />
+            <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
             {/* Surveys */}
@@ -191,6 +199,7 @@ function App() {
           >
             <Route index element={<AdminDashboard />} />
             <Route path="programs" element={<AdminPrograms />} />
+            <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
             <Route path="office-hours" element={<AdminPrograms />} />
             <Route path="surveys" element={<AdminSurveys />} />
             <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />

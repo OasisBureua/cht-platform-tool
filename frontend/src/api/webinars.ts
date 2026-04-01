@@ -19,6 +19,11 @@ export interface WebinarItem {
   duration?: number;
   joinUrl?: string;
   source: 'zoom' | 'program';
+  sessionKind?: 'WEBINAR' | 'MEETING';
+  hostDisplayName?: string;
+  calendlySchedulingUrl?: string;
+  jotformIntakeFormUrl?: string;
+  registrationRequiresApproval?: boolean;
 }
 
 export const webinarsApi = {

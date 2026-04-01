@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Video } from 'lucide-react';
+import { ChevronLeft, Video, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function OfficeHoursDetail() {
@@ -28,6 +28,18 @@ export default function OfficeHoursDetail() {
     retry: false,
   });
 
+  const { data: slots = [] } = useQuery({
+    queryKey: ['program-slots', id],
+    queryFn: () => programsApi.getSlots(id!),
+    enabled: !!id && !!program,
+  });
+
+  const { data: myRegistration } = useQuery({
+    queryKey: ['program', id, 'registration'],
+    queryFn: () => programsApi.getMyRegistration(id!),
+    enabled: !!userId && !!id && !!program && program.registrationRequiresApproval,
+  });
+
   const { data: enrollments } = useQuery({
     queryKey: ['enrollments', userId],
     queryFn: () => programsApi.getEnrollments(userId),
@@ -36,11 +48,26 @@ export default function OfficeHoursDetail() {
 
   const enrolled = enrollments?.some((e) => e.programId === id) ?? false;
 
+  const needsRegistrationWizard =
+    !!program &&
+    (program.registrationRequiresApproval ||
+      !!program.jotformIntakeFormUrl?.trim() ||
+      !!program.jotformPreEventUrl?.trim() ||
+      slots.length > 0);
+
   const enrollMutation = useMutation({
     mutationFn: () => programsApi.enroll(userId, id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
+      queryClient.invalidateQueries({ queryKey: ['program', id, 'calendly-scheduling'] });
     },
+  });
+
+  const { data: calendlyScheduling } = useQuery({
+    queryKey: ['program', id, 'calendly-scheduling'],
+    queryFn: () => programsApi.getCalendlyScheduling(id!),
+    enabled: !!userId && !!id && enrolled && program?.zoomSessionType === 'MEETING',
+    retry: false,
   });
 
   if (sessionLoading) return <LoadingSpinner />;
@@ -77,6 +104,9 @@ export default function OfficeHoursDetail() {
           Office Hours · Zoom Meeting
         </span>
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{session.title}</h1>
+        {session.hostDisplayName ? (
+          <p className="text-sm font-medium text-gray-800">Get time with {session.hostDisplayName}</p>
+        ) : null}
         {start && (
           <p className="text-sm text-gray-600">
             {format(start, 'EEEE, MMMM d, yyyy · h:mm a')}
@@ -90,11 +120,52 @@ export default function OfficeHoursDetail() {
           you — similar to an in-person Office Hours line.
         </div>
 
+        {!programLoading && program?.hasCalendlyScheduling && !enrolled && program.registrationRequiresApproval ? (
+          <p className="text-sm text-gray-600 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+            One-on-one scheduling (Calendly) is available here in the app after you register and an administrator
+            approves your request.
+          </p>
+        ) : null}
+        {!programLoading &&
+        program?.hasCalendlyScheduling &&
+        !enrolled &&
+        !program.registrationRequiresApproval ? (
+          <p className="text-sm text-gray-600 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+            Complete registration for this session to open your Calendly scheduling link.
+          </p>
+        ) : null}
+
+        {enrolled && calendlyScheduling?.calendlySchedulingUrl ? (
+          <a
+            href={calendlyScheduling.calendlySchedulingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900"
+          >
+            Schedule with Calendly
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        ) : null}
+
         {programLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
         ) : (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
-            {!enrolled ? (
+            {myRegistration?.status === 'PENDING' ? (
+              <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Registration pending admin approval.
+                {program?.hasCalendlyScheduling
+                  ? ' If approved, a Calendly link will appear on this page for one-on-one scheduling.'
+                  : ''}
+              </p>
+            ) : !enrolled && needsRegistrationWizard ? (
+              <Link
+                to={`/app/office-hours/${id}/register`}
+                className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+              >
+                Register for this session
+              </Link>
+            ) : !enrolled ? (
               <button
                 type="button"
                 onClick={() => enrollMutation.mutate()}
@@ -122,6 +193,20 @@ export default function OfficeHoursDetail() {
         {!enrolled && userId && (
           <p className="text-xs text-gray-500">Register once, then use Join Zoom to open the meeting.</p>
         )}
+
+        {enrolled && program?.jotformSurveyUrl?.trim() ? (
+          <div className="border-t border-gray-200 pt-6 space-y-3">
+            <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
+            <div className="min-h-[360px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+              <iframe
+                title="Post-event survey"
+                src={program.jotformSurveyUrl}
+                className="w-full h-[420px]"
+                allow="camera; microphone"
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

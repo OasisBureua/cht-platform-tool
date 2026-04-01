@@ -201,6 +201,92 @@ export const adminApi = {
     await apiClient.delete(`/admin/webinars/${id}`);
   },
 
+  getProgram: async (id: string): Promise<Record<string, unknown>> => {
+    const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(id)}`);
+    return data;
+  },
+
+  patchProgramRegistrationSettings: async (
+    id: string,
+    body: {
+      jotformIntakeFormUrl?: string | null;
+      jotformPreEventUrl?: string | null;
+      hostDisplayName?: string | null;
+      calendlySchedulingUrl?: string | null;
+      registrationRequiresApproval?: boolean;
+    },
+  ) => {
+    const { data } = await apiClient.patch(`/admin/programs/${encodeURIComponent(id)}/registration-settings`, body);
+    return data;
+  },
+
+  listProgramRegistrations: async (programId: string) => {
+    const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/registrations`);
+    return data as Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+      user: { id: string; email: string; firstName: string; lastName: string };
+      slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
+    }>;
+  },
+
+  updateProgramRegistration: async (
+    registrationId: string,
+    body: { status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED'; adminNotes?: string },
+  ) => {
+    const { data } = await apiClient.patch(`/admin/registrations/${encodeURIComponent(registrationId)}`, body);
+    return data;
+  },
+
+  downloadRegistrationIcsBlob: async (registrationId: string): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/ics`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+
+  markRegistrationCalendarSent: async (registrationId: string) => {
+    const { data } = await apiClient.post(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/mark-calendar-sent`,
+    );
+    return data;
+  },
+
+  createOfficeHoursSlot: async (
+    programId: string,
+    body: { startsAt: string; endsAt: string; label?: string; maxAttendees?: number; sortOrder?: number },
+  ) => {
+    const { data } = await apiClient.post(`/admin/programs/${encodeURIComponent(programId)}/slots`, body);
+    return data;
+  },
+
+  deleteOfficeHoursSlot: async (programId: string, slotId: string) => {
+    const { data } = await apiClient.delete(
+      `/admin/programs/${encodeURIComponent(programId)}/slots/${encodeURIComponent(slotId)}`,
+    );
+    return data;
+  },
+
+  listProgramFormLinks: async (programId: string) => {
+    const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/form-links`);
+    return data as Array<{ id: string; kind: string; label: string; jotformUrl: string; sortOrder: number }>;
+  },
+
+  addProgramFormLink: async (
+    programId: string,
+    body: { kind: 'INTAKE' | 'PRE_EVENT' | 'POST_EVENT' | 'CUSTOM'; label: string; jotformUrl: string; sortOrder?: number },
+  ) => {
+    const { data } = await apiClient.post(`/admin/programs/${encodeURIComponent(programId)}/form-links`, body);
+    return data;
+  },
+
+  deleteProgramFormLink: async (linkId: string) => {
+    const { data } = await apiClient.delete(`/admin/program-form-links/${encodeURIComponent(linkId)}`);
+    return data;
+  },
+
   // ─── Users ───────────────────────────────────────────────────────────────
 
   getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {

@@ -178,7 +178,41 @@ export class ProgramsService {
         duration: v.duration,
         order: v.order,
       })),
+      zoomSessionType: program.zoomSessionType,
+      zoomJoinUrl: program.zoomJoinUrl || undefined,
+      startDate: program.startDate?.toISOString(),
+      duration: program.duration ?? undefined,
+      jotformSurveyUrl: program.jotformSurveyUrl || undefined,
+      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      jotformPreEventUrl: program.jotformPreEventUrl || undefined,
+      registrationRequiresApproval: program.registrationRequiresApproval,
+      hostDisplayName: program.hostDisplayName || undefined,
+      hasCalendlyScheduling: !!program.calendlySchedulingUrl?.trim(),
     };
+  }
+
+  /**
+   * Office-hours Calendly URL — only for enrolled users (after admin approval when registrationRequiresApproval is on).
+   */
+  async getCalendlySchedulingForEnrolledUser(
+    userId: string,
+    programId: string,
+  ): Promise<{ calendlySchedulingUrl: string | null }> {
+    const program = await this.prisma.program.findFirst({
+      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
+      select: { calendlySchedulingUrl: true },
+    });
+    const url = program?.calendlySchedulingUrl?.trim();
+    if (!url) {
+      return { calendlySchedulingUrl: null };
+    }
+    const enrollment = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!enrollment) {
+      return { calendlySchedulingUrl: null };
+    }
+    return { calendlySchedulingUrl: url };
   }
 
   /**
@@ -186,6 +220,13 @@ export class ProgramsService {
    */
   async enrollUser(dto: EnrollUserDto): Promise<EnrollmentResponseDto> {
     this.logger.log(`Enrolling user ${dto.userId} in program ${dto.programId}`);
+
+    const programRow = await this.prisma.program.findUnique({ where: { id: dto.programId } });
+    if (programRow?.registrationRequiresApproval) {
+      throw new BadRequestException(
+        'This program uses admin-approved registration. Complete the registration flow instead of quick enroll.',
+      );
+    }
 
     // Check if already enrolled
     const existing = await this.prisma.programEnrollment.findUnique({

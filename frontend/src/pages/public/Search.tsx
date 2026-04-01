@@ -139,10 +139,14 @@ export default function Search() {
     <div className="bg-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16 space-y-8">
         <header className="space-y-3">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Search</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Explore catalog</h1>
           <p className="text-sm md:text-base text-gray-600 leading-relaxed max-w-2xl">
-            Find videos, collections, and educational resources across the content library. Results include live catalog
-            matches when you type at least 2 characters.
+            Quick clip search (type at least 2 characters for live catalog matches). For filters and playlists, open
+            the{' '}
+            <Link to="/catalog" className="font-semibold text-gray-900 underline underline-offset-2">
+              content library
+            </Link>
+            .
           </p>
         </header>
 

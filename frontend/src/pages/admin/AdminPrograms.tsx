@@ -310,6 +310,13 @@ function WebinarRow({
             style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
             className="w-36 rounded-xl border border-gray-200 bg-white shadow-lg py-1"
           >
+            <Link
+              to={`/admin/programs/${webinar.id}/hub`}
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Program hub
+            </Link>
             <button
               onClick={() => { setMenuOpen(false); onEdit(); }}
               className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"

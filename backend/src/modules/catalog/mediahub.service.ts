@@ -9,11 +9,14 @@ export interface MediaHubTag {
   [category: string]: string[];
 }
 
+/** Mirrors MediaHub public clips list/detail: description + optional ai_summary (snake_case). */
 export interface MediaHubClip {
   id: string;
   title: string;
   description: string;
   ai_summary?: string;
+  /** Some gateways may emit camelCase; prefer ai_summary from /api/public/clips. */
+  aiSummary?: string;
   tags: string[];
   doctors: string[];
   thumbnail_url: string;

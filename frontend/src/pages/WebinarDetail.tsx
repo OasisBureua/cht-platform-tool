@@ -61,6 +61,19 @@ export default function WebinarDetail() {
     enabled: !!userId,
   });
 
+  const { data: slots = [] } = useQuery({
+    queryKey: ['program-slots', id],
+    queryFn: () => programsApi.getSlots(id!),
+    enabled: !!id && !isZoomWebinar && program?.zoomSessionType === 'MEETING',
+  });
+
+  const { data: myRegistration } = useQuery({
+    queryKey: ['program', id, 'registration'],
+    queryFn: () => programsApi.getMyRegistration(id!),
+    enabled:
+      !!userId && !!id && !isZoomWebinar && !!program && program.registrationRequiresApproval,
+  });
+
   const enrolledProgramIds = useMemo(
     () => new Set(enrollments?.map((e) => e.programId) || []),
     [enrollments]
@@ -152,6 +165,14 @@ export default function WebinarDetail() {
   }
 
   const enrolled = enrolledProgramIds.has(program.id);
+
+  const needsRegistrationWizard =
+    !!program &&
+    (program.registrationRequiresApproval ||
+      !!program.jotformIntakeFormUrl?.trim() ||
+      !!program.jotformPreEventUrl?.trim() ||
+      (program.zoomSessionType === 'MEETING' && slots.length > 0));
+
   const hasVideos = (program.videos?.length || 0) > 0;
   const firstVideo = hasVideos
     ? program.videos.slice().sort((a, b) => a.order - b.order)[0]
@@ -163,7 +184,10 @@ export default function WebinarDetail() {
     ? 'Registering…'
     : 'Register Now';
 
-  const ctaDisabled = enrolled || enrollMutation.isPending;
+  const ctaDisabled =
+    enrolled ||
+    enrollMutation.isPending ||
+    myRegistration?.status === 'PENDING';
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
@@ -224,29 +248,41 @@ export default function WebinarDetail() {
           </div>
 
           {/* CTA (desktop) */}
-          <div className="hidden md:block md:pt-1">
-            <button
-              onClick={() => enrollMutation.mutate({ programId: program.id })}
-              disabled={ctaDisabled}
-              className={[
-                'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
-                ctaDisabled
-                  ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-900 text-white hover:bg-black',
-              ].join(' ')}
-            >
-              {ctaLabel}
-            </button>
+          <div className="hidden md:block md:pt-1 space-y-2">
+            {myRegistration?.status === 'PENDING' ? (
+              <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Registration submitted — waiting for admin approval before you are enrolled.
+              </p>
+            ) : needsRegistrationWizard && !enrolled ? (
+              <Link
+                to={`/app/webinars/${program.id}/register`}
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+              >
+                Register (forms & checkout)
+              </Link>
+            ) : (
+              <button
+                onClick={() => enrollMutation.mutate({ programId: program.id })}
+                disabled={ctaDisabled}
+                className={[
+                  'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
+                  ctaDisabled
+                    ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                    : 'bg-gray-900 text-white hover:bg-black',
+                ].join(' ')}
+              >
+                {ctaLabel}
+              </button>
+            )}
 
-            {!enrolled ? (
+            {!enrolled && myRegistration?.status !== 'PENDING' ? (
               <p className="mt-2 text-xs text-gray-600">
                 Register to unlock video playback and earn rewards.
               </p>
-            ) : (
-              <p className="mt-2 text-xs text-gray-600">
-                Complete required steps to earn rewards.
-              </p>
-            )}
+            ) : null}
+            {enrolled ? (
+              <p className="mt-2 text-xs text-gray-600">Complete required steps to earn rewards.</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -437,6 +473,23 @@ export default function WebinarDetail() {
         </div>
       </section>
 
+      {enrolled && program.jotformSurveyUrl?.trim() ? (
+        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+          <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
+          <p className="text-sm text-gray-600">
+            Complete this Jotform after the live session (your team can trigger workflows from Jotform).
+          </p>
+          <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+            <iframe
+              title="Post-event survey"
+              src={program.jotformSurveyUrl}
+              className="w-full h-[480px]"
+              allow="camera; microphone"
+            />
+          </div>
+        </section>
+      ) : null}
+
       {/* Sticky CTA (mobile) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-3">
         <div className="mx-auto max-w-7xl px-2 flex items-center gap-3">
@@ -448,18 +501,29 @@ export default function WebinarDetail() {
             </p>
           </div>
 
-          <button
-            onClick={() => enrollMutation.mutate({ programId: program.id })}
-            disabled={ctaDisabled}
-            className={[
-              'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
-              ctaDisabled
-                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-900 text-white hover:bg-black',
-            ].join(' ')}
-          >
-            {ctaLabel}
-          </button>
+          {myRegistration?.status === 'PENDING' ? (
+            <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
+          ) : needsRegistrationWizard && !enrolled ? (
+            <Link
+              to={`/app/webinars/${program.id}/register`}
+              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
+            >
+              Register
+            </Link>
+          ) : (
+            <button
+              onClick={() => enrollMutation.mutate({ programId: program.id })}
+              disabled={ctaDisabled}
+              className={[
+                'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
+                ctaDisabled
+                  ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                  : 'bg-gray-900 text-white hover:bg-black',
+              ].join(' ')}
+            >
+              {ctaLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

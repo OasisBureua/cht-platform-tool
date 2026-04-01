@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
-import { webinarsApi, type WebinarItem } from '../api/webinars';
+import { webinarsApi, type WebinarItem } from '../../api/webinars';
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
@@ -18,72 +18,69 @@ function formatDuration(minutes?: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-export default function OfficeHours() {
+export default function PublicOfficeHours() {
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ['office-hours'],
+    queryKey: ['office-hours', 'public'],
     queryFn: webinarsApi.listOfficeHours,
     staleTime: 5 * 60 * 1000,
   });
 
   const { upcoming, past } = useMemo(() => {
     const withDate = (w: WebinarItem) => (w.startTime ? new Date(w.startTime).getTime() : 0);
-    const upcomingList = sessions
-      .filter((w) => !isExpired(w))
-      .sort((a, b) => withDate(a) - withDate(b));
-    const pastList = sessions
-      .filter((w) => isExpired(w))
-      .sort((a, b) => withDate(b) - withDate(a));
+    const upcomingList = sessions.filter((w) => !isExpired(w)).sort((a, b) => withDate(a) - withDate(b));
+    const pastList = sessions.filter((w) => isExpired(w)).sort((a, b) => withDate(b) - withDate(a));
     return { upcoming: upcomingList, past: pastList };
   }, [sessions]);
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Office Hours</h1>
-        <p className="text-sm text-gray-600">
-          Get time with our experts — live Zoom meetings for Q&A. You may wait in the waiting room until the host
-          admits you.
-        </p>
-      </header>
+    <div className="bg-white min-h-screen">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-8">
+        <header className="space-y-1">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">Office Hours</h1>
+          <p className="text-sm text-gray-600 max-w-2xl">
+            Live Zoom sessions — click any session to register and join.
+          </p>
+        </header>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
-        </div>
-      ) : sessions.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-          <p className="font-semibold text-gray-900">No Office Hours scheduled</p>
-          <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {upcoming.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Upcoming · {upcoming.length}
-              </h2>
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-                {upcoming.map((w) => (
-                  <SessionRow key={w.id} session={w} />
-                ))}
-              </div>
-            </section>
-          )}
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+          </div>
+        ) : sessions.length === 0 ? (
+          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+            <p className="font-semibold text-gray-900">No Office Hours scheduled</p>
+            <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {upcoming.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  Upcoming · {upcoming.length}
+                </h2>
+                <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                  {upcoming.map((w) => (
+                    <SessionRow key={w.id} session={w} />
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {past.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Past · {past.length}
-              </h2>
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
-                {past.map((w) => (
-                  <SessionRow key={w.id} session={w} expired />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+            {past.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                  Past · {past.length}
+                </h2>
+                <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
+                  {past.map((w) => (
+                    <SessionRow key={w.id} session={w} expired />
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -93,7 +90,7 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
 
   return (
     <Link
-      to={`/app/office-hours/${w.id}`}
+      to={`/office-hours/${w.id}`}
       className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
     >
       <div className="shrink-0 w-12 text-center">

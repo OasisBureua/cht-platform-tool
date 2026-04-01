@@ -27,6 +27,34 @@ export interface Program {
   sponsorLogo?: string;
   honorariumAmount?: number;
   videos: Video[];
+  zoomSessionType?: 'WEBINAR' | 'MEETING';
+  zoomJoinUrl?: string;
+  startDate?: string;
+  duration?: number;
+  jotformSurveyUrl?: string;
+  jotformIntakeFormUrl?: string;
+  jotformPreEventUrl?: string;
+  registrationRequiresApproval?: boolean;
+  hostDisplayName?: string;
+  /** Configured in admin; actual URL only after enrollment via getCalendlyScheduling (app + signed in). */
+  hasCalendlyScheduling?: boolean;
+}
+
+export interface OfficeHoursSlotOption {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  label?: string;
+  maxAttendees: number;
+  remaining: number;
+}
+
+export interface ProgramRegistrationState {
+  id: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
+  officeHoursSlotId?: string;
+  createdAt: string;
+  reviewedAt?: string;
 }
 
 export interface Enrollment {
@@ -139,5 +167,33 @@ export const programsApi = {
       completed,
     });
     return data;
+  },
+
+  getSlots: async (programId: string): Promise<OfficeHoursSlotOption[]> => {
+    const { data } = await apiClient.get<OfficeHoursSlotOption[]>(`/programs/${encodeURIComponent(programId)}/slots`);
+    return data ?? [];
+  },
+
+  getMyRegistration: async (programId: string): Promise<ProgramRegistrationState | null> => {
+    const { data } = await apiClient.get<ProgramRegistrationState | null>(
+      `/programs/${encodeURIComponent(programId)}/registration`,
+    );
+    return data ?? null;
+  },
+
+  submitRegistration: async (
+    programId: string,
+    body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
+  ): Promise<{ id: string; status: string; enrolled: boolean }> => {
+    const { data } = await apiClient.post(`/programs/${encodeURIComponent(programId)}/registration`, body);
+    return data;
+  },
+
+  /** Enrolled users only; returns null if not enrolled or no URL configured. */
+  getCalendlyScheduling: async (programId: string): Promise<{ calendlySchedulingUrl: string | null }> => {
+    const { data } = await apiClient.get<{ calendlySchedulingUrl: string | null }>(
+      `/programs/${encodeURIComponent(programId)}/calendly-scheduling`,
+    );
+    return data ?? { calendlySchedulingUrl: null };
   },
 };

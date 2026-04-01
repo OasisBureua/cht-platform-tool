@@ -53,6 +53,7 @@ model User {
   
   // Relations
   enrollments     ProgramEnrollment[]
+  programRegistrations ProgramRegistration[]
   videoViews      VideoView[]
   surveyResponses SurveyResponse[]
   payments        Payment[]
@@ -125,6 +126,16 @@ model Program {
   jotformSurveyId   String?
   jotformSurveyUrl  String?
   requiresSurvey    Boolean @default(false)
+  /// Intake / registration form (workflow trigger); embed on branded register page
+  jotformIntakeFormUrl String?
+  /// Pre-event questionnaire URL (iframe on program register flow)
+  jotformPreEventUrl   String?
+  /// KOL / host display name for office hours marketing ("Get time with …")
+  hostDisplayName      String?
+  /// Optional Calendly (or other) scheduling link for office hours
+  calendlySchedulingUrl String?
+  /// When true, users submit registration; admin approves before enrollment
+  registrationRequiresApproval Boolean @default(false)
   
   // Payment configuration
   honorariumAmount  Int?     // Amount in cents (e.g., 50000 = $500)
@@ -144,6 +155,9 @@ model Program {
   // Relations
   videos            Video[]
   enrollments       ProgramEnrollment[]
+  programRegistrations ProgramRegistration[]
+  officeHoursSlots OfficeHoursSlot[]
+  programFormLinks  ProgramFormLink[]
   surveys           Survey[]
   payments          Payment[]
   cmeCredits        CMECredit[]
@@ -164,6 +178,81 @@ enum ProgramStatus {
 enum ProgramZoomSessionType {
   WEBINAR
   MEETING
+}
+
+enum ProgramRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+enum ProgramFormLinkKind {
+  INTAKE
+  PRE_EVENT
+  POST_EVENT
+  CUSTOM
+}
+
+/// Application / sign-up for a program (uncapped); admin approves → enrollment created
+model ProgramRegistration {
+  id                        String                    @id @default(cuid())
+  userId                    String
+  programId                 String
+  status                    ProgramRegistrationStatus   @default(PENDING)
+  intakeJotformSubmissionId String?
+  officeHoursSlotId         String?
+  adminNotes                String?                   @db.Text
+  reviewedAt                DateTime?
+  reviewedByUserId          String?
+  calendarInviteSentAt      DateTime?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  slot    OfficeHoursSlot? @relation(fields: [officeHoursSlotId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, programId])
+  @@index([programId])
+  @@index([status])
+  @@map("ProgramRegistration")
+}
+
+/// Optional time blocks for office hours (aligned with meeting duration); users pick one at registration
+model OfficeHoursSlot {
+  id           String   @id @default(cuid())
+  programId    String
+  startsAt     DateTime
+  endsAt       DateTime
+  label        String?
+  maxAttendees Int      @default(8)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  program       Program               @relation(fields: [programId], references: [id], onDelete: Cascade)
+  registrations ProgramRegistration[]
+
+  @@index([programId])
+  @@map("OfficeHoursSlot")
+}
+
+/// Extra self-serve Jotform links per program (beyond Program scalar URLs)
+model ProgramFormLink {
+  id         String              @id @default(cuid())
+  programId  String
+  kind       ProgramFormLinkKind
+  label      String
+  jotformUrl String
+  sortOrder  Int                 @default(0)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@map("ProgramFormLink")
 }
 
 // ============================================================================

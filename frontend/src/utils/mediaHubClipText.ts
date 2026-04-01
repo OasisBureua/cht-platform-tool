@@ -25,11 +25,24 @@ function stripRefusal(text: string | undefined | null): string {
   return s;
 }
 
+function clipAiSummaryRaw(clip: Record<string, unknown>): string | undefined {
+  const v = clip.ai_summary ?? clip.aiSummary;
+  return typeof v === 'string' ? v : undefined;
+}
+
+function clipDescriptionRaw(clip: Record<string, unknown>): string | undefined {
+  const v = clip.description;
+  return typeof v === 'string' ? v : undefined;
+}
+
 /**
- * Card / list preview: prefer usable ai_summary, else description (if not refusal). Empty = show title only.
+ * Card / list preview: prefer usable ai_summary (or aiSummary), else description (if not refusal). Empty = show title only.
  */
-export function clipDisplaySummary(clip: { ai_summary?: string; description?: string }): string {
-  const fromAi = stripRefusal(clip.ai_summary);
+export function clipDisplaySummary(
+  clip: { ai_summary?: string; aiSummary?: string; description?: string } | Record<string, unknown>,
+): string {
+  const raw = clip as Record<string, unknown>;
+  const fromAi = stripRefusal(clipAiSummaryRaw(raw));
   if (fromAi) return fromAi;
-  return stripRefusal(clip.description);
+  return stripRefusal(clipDescriptionRaw(raw));
 }

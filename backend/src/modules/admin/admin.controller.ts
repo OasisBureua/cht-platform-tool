@@ -12,14 +12,19 @@ import {
   ForbiddenException,
   NotFoundException,
   Logger,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { UserRole, UserStatus, PaymentStatus } from '@prisma/client';
+import { UserRole, UserStatus, PaymentStatus, ProgramRegistrationStatus } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { AuthUser } from '../../auth/auth.service';
 import { ProgramsService } from '../programs/programs.service';
+import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
@@ -36,6 +41,7 @@ export class AdminController {
 
   constructor(
     private programsService: ProgramsService,
+    private programRegistrations: ProgramRegistrationsService,
     private surveysService: SurveysService,
     private prisma: PrismaService,
     private config: ConfigService,
@@ -175,6 +181,24 @@ export class AdminController {
       });
     }
     return program;
+  }
+
+  @Get('programs/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Single program (admin hub — forms, registration counts)' })
+  async getProgramByIdForAdmin(@Param('id') id: string) {
+    const p = await this.prisma.program.findUnique({
+      where: { id },
+      include: {
+        surveys: { select: { id: true, title: true, jotformFormId: true, type: true } },
+        officeHoursSlots: { orderBy: [{ sortOrder: 'asc' }, { startsAt: 'asc' }] },
+        _count: { select: { enrollments: true, programRegistrations: true, officeHoursSlots: true } },
+      },
+    });
+    if (!p) throw new NotFoundException('Program not found');
+    return p;
   }
 
   @Patch('programs/:id/status')
@@ -462,6 +486,174 @@ export class AdminController {
       zoomStartUrl: zoomStartUrl ?? null,
       ...(zoomError ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` } : {}),
     };
+  }
+
+  // ─── Program hub: Jotform URLs, Calendly, approvals, slots, ICS invites ───
+
+  @Patch('programs/:id/registration-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Update program intake/pre-event forms, host label, Calendly, approval gate' })
+  async patchProgramRegistrationSettings(
+    @Param('id') id: string,
+    @Body()
+    body: {
+      jotformIntakeFormUrl?: string | null;
+      jotformPreEventUrl?: string | null;
+      hostDisplayName?: string | null;
+      calendlySchedulingUrl?: string | null;
+      registrationRequiresApproval?: boolean;
+    },
+  ) {
+    const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) throw new NotFoundException('Program not found');
+    const data: Record<string, unknown> = {};
+    if (body.jotformIntakeFormUrl !== undefined) data.jotformIntakeFormUrl = body.jotformIntakeFormUrl;
+    if (body.jotformPreEventUrl !== undefined) data.jotformPreEventUrl = body.jotformPreEventUrl;
+    if (body.hostDisplayName !== undefined) data.hostDisplayName = body.hostDisplayName;
+    if (body.calendlySchedulingUrl !== undefined) data.calendlySchedulingUrl = body.calendlySchedulingUrl;
+    if (body.registrationRequiresApproval !== undefined) {
+      data.registrationRequiresApproval = body.registrationRequiresApproval;
+    }
+    return this.prisma.program.update({ where: { id }, data });
+  }
+
+  @Get('programs/:id/registrations')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List registration requests for a program (approve / pick invitees)' })
+  async listProgramRegistrations(@Param('id') id: string) {
+    const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) throw new NotFoundException('Program not found');
+    const rows = await this.programRegistrations.listRegistrationsForAdmin(id);
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      reviewedAt: r.reviewedAt?.toISOString(),
+      calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
+      adminNotes: r.adminNotes,
+      intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+      user: r.user,
+      slot: r.slot
+        ? {
+            id: r.slot.id,
+            startsAt: r.slot.startsAt.toISOString(),
+            endsAt: r.slot.endsAt.toISOString(),
+            label: r.slot.label,
+          }
+        : null,
+    }));
+  }
+
+  @Patch('registrations/:registrationId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Approve, reject, or waitlist a registration (approve creates enrollment)' })
+  async adminUpdateRegistration(
+    @Param('registrationId') registrationId: string,
+    @Body() body: { status: ProgramRegistrationStatus; adminNotes?: string },
+    @CurrentUser() admin: AuthUser,
+  ) {
+    if (!body?.status || !Object.values(ProgramRegistrationStatus).includes(body.status)) {
+      throw new BadRequestException('status must be a valid ProgramRegistrationStatus');
+    }
+    return this.programRegistrations.adminSetRegistrationStatus(
+      admin.userId,
+      registrationId,
+      body.status,
+      body.adminNotes,
+    );
+  }
+
+  @Get('registrations/:registrationId/ics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Download .ics calendar invite for an approved registration' })
+  async downloadRegistrationIcs(
+    @Param('registrationId') registrationId: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const { filename, body } = await this.programRegistrations.buildIcsForRegistration(registrationId);
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(body);
+  }
+
+  @Post('registrations/:registrationId/mark-calendar-sent')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Record that a calendar invite was sent to the registrant' })
+  async markCalendarInviteSent(@Param('registrationId') registrationId: string) {
+    return this.programRegistrations.markCalendarInviteSent(registrationId);
+  }
+
+  @Post('programs/:id/slots')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Add an office-hours time slot (aligned with Zoom meeting duration)' })
+  async createOfficeHoursSlot(
+    @Param('id') id: string,
+    @Body() body: { startsAt: string; endsAt: string; label?: string; maxAttendees?: number; sortOrder?: number },
+  ) {
+    if (!body?.startsAt || !body?.endsAt) {
+      throw new BadRequestException('startsAt and endsAt (ISO) are required');
+    }
+    return this.programRegistrations.createSlot(id, body);
+  }
+
+  @Delete('programs/:programId/slots/:slotId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Delete an office-hours slot' })
+  async deleteOfficeHoursSlot(
+    @Param('programId') programId: string,
+    @Param('slotId') slotId: string,
+  ) {
+    const slot = await this.prisma.officeHoursSlot.findFirst({
+      where: { id: slotId, programId },
+    });
+    if (!slot) throw new NotFoundException('Slot not found');
+    return this.programRegistrations.deleteSlot(slotId);
+  }
+
+  @Get('programs/:id/form-links')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  async listProgramFormLinks(@Param('id') id: string) {
+    const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) throw new NotFoundException('Program not found');
+    return this.programRegistrations.listFormLinks(id);
+  }
+
+  @Post('programs/:id/form-links')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  async addProgramFormLink(
+    @Param('id') id: string,
+    @Body() body: { kind: 'INTAKE' | 'PRE_EVENT' | 'POST_EVENT' | 'CUSTOM'; label: string; jotformUrl: string; sortOrder?: number },
+  ) {
+    if (!body?.label?.trim() || !body?.jotformUrl?.trim()) {
+      throw new BadRequestException('label and jotformUrl are required');
+    }
+    return this.programRegistrations.addFormLink(id, body);
+  }
+
+  @Delete('program-form-links/:linkId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  async deleteProgramFormLink(@Param('linkId') linkId: string) {
+    return this.programRegistrations.deleteFormLink(linkId);
   }
 
   @Patch('webinars/:id')

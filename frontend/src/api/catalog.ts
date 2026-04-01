@@ -9,12 +9,17 @@ export interface CatalogItem {
   playUrl?: string;
 }
 
-/** MediaHub clip (from /clips, /clips/:id) */
+/**
+ * MediaHub clip from GET /api/catalog/clips and GET /api/catalog/clips/:id
+ * (proxied from MediaHub /api/public/clips list + detail; includes description + ai_summary).
+ */
 export interface MediaHubClip {
   id: string;
   title: string;
   description: string;
   ai_summary?: string;
+  /** Same as ai_summary when API returns camelCase */
+  aiSummary?: string;
   tags: string[];
   doctors: string[];
   thumbnail_url: string;

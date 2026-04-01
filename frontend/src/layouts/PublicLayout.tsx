@@ -30,19 +30,19 @@ export default function PublicLayout() {
     };
   }, [drawerOpen]);
 
-  const submitSearch = (e: FormEvent) => {
+  const submitBrowse = (e: FormEvent) => {
     e.preventDefault();
     const q = headerQuery.trim();
     setDrawerOpen(false);
-    if (q) navigate(`/search?q=${encodeURIComponent(q)}`);
-    else navigate('/search');
+    if (q) navigate(`/catalog?q=${encodeURIComponent(q)}`);
+    else navigate('/catalog');
   };
 
   return (
     <div className="min-h-screen bg-white flex flex-col min-w-0">
       <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
-          {/* Balanced 3-column row so the search bar is truly centered between logo and actions */}
+          {/* Center: quick entry to content library (filters live on /catalog) */}
           <div className="grid h-14 sm:h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 min-w-0">
             <div className="flex justify-start min-w-0">
               <Link to="/" className="flex items-center shrink-0">
@@ -51,21 +51,21 @@ export default function PublicLayout() {
             </div>
 
             <div className="hidden sm:flex justify-center min-w-0 px-1">
-              <form onSubmit={submitSearch} className="w-full max-w-xl lg:max-w-2xl">
+              <form onSubmit={submitBrowse} className="w-full max-w-xl lg:max-w-2xl">
                 <div className="flex w-full rounded-full border border-gray-300 overflow-hidden bg-gray-50 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900">
                   <input
                     type="search"
                     name="q"
                     value={headerQuery}
                     onChange={(e) => setHeaderQuery(e.target.value)}
-                    placeholder="Search"
+                    placeholder="Browse library…"
                     className="flex-1 min-w-0 bg-transparent pl-4 pr-2 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
-                    aria-label="Search site"
+                    aria-label="Browse content library"
                   />
                   <button
                     type="submit"
                     className="shrink-0 px-4 py-2 bg-gray-100 border-l border-gray-300 hover:bg-gray-200 transition-colors"
-                    aria-label="Submit search"
+                    aria-label="Go to library"
                   >
                     <Search className="h-5 w-5 text-gray-700" />
                   </button>
@@ -75,9 +75,9 @@ export default function PublicLayout() {
 
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
               <Link
-                to="/search"
+                to="/catalog"
                 className="sm:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
-                aria-label="Search"
+                aria-label="Browse library"
               >
                 <Search className="h-5 w-5" />
               </Link>

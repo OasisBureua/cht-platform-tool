@@ -171,7 +171,7 @@ export default function ClipDetail() {
 
         {descriptionBody && (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
             <p className="text-gray-600 whitespace-pre-wrap">{descriptionBody}</p>
           </div>
         )}

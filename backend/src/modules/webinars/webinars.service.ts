@@ -30,6 +30,10 @@ export interface WebinarItem {
   source: 'zoom' | 'program';
   /** Present when sourced from our DB — distinguishes CME webinars vs Zoom Meeting office hours. */
   sessionKind?: 'WEBINAR' | 'MEETING';
+  hostDisplayName?: string;
+  calendlySchedulingUrl?: string;
+  jotformIntakeFormUrl?: string;
+  registrationRequiresApproval?: boolean;
 }
 
 /**
@@ -94,6 +98,10 @@ export class WebinarsService {
         joinUrl: p.zoomJoinUrl || undefined,
         source: 'program',
         sessionKind: 'WEBINAR',
+        hostDisplayName: p.hostDisplayName || undefined,
+        calendlySchedulingUrl: p.calendlySchedulingUrl || undefined,
+        jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
+        registrationRequiresApproval: p.registrationRequiresApproval,
       });
     }
 
@@ -161,6 +169,9 @@ export class WebinarsService {
         joinUrl: p.zoomJoinUrl || undefined,
         source: 'program',
         sessionKind: 'MEETING',
+        hostDisplayName: p.hostDisplayName || undefined,
+        jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
+        registrationRequiresApproval: p.registrationRequiresApproval,
       });
     }
     return items;
@@ -204,8 +215,12 @@ export class WebinarsService {
       startTime: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
       joinUrl: program.zoomJoinUrl || undefined,
-      source: program.zoomMeetingId ? 'zoom' : 'program',
+      source: 'program',
       sessionKind: 'WEBINAR',
+      hostDisplayName: program.hostDisplayName || undefined,
+      calendlySchedulingUrl: program.calendlySchedulingUrl || undefined,
+      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      registrationRequiresApproval: program.registrationRequiresApproval,
     };
   }
 
@@ -233,6 +248,9 @@ export class WebinarsService {
       joinUrl: program.zoomJoinUrl || undefined,
       source: 'program',
       sessionKind: 'MEETING',
+      hostDisplayName: program.hostDisplayName || undefined,
+      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      registrationRequiresApproval: program.registrationRequiresApproval,
     };
   }
 

@@ -127,7 +127,7 @@ export default function PublicWatch() {
             <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 space-y-4 sticky top-24">
               <h3 className="font-bold text-gray-900">Video Information</h3>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</p>
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Summary</p>
                 <p className="text-sm text-gray-700 leading-relaxed">{data.description}</p>
               </div>
               <div className="space-y-2 pt-2 border-t border-gray-200">

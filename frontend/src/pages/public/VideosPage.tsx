@@ -50,6 +50,13 @@ export default function VideosPage() {
   const [sortBy, setSortBy] = useState('');
   const [sortOpen, setSortOpen] = useState(false);
 
+  // Use location.search so /catalog and /app/catalog behave the same under nested <Outlet /> (avoids useSearchParams edge cases).
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get('q');
+    if (q != null && q !== '') setQuery(q);
+  }, [location.search]);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
@@ -95,8 +102,9 @@ export default function VideosPage() {
         offset: pageParam,
       }),
     getNextPageParam: (lastPage, allPages) => {
-      const loaded = allPages.reduce((acc, p) => acc + p.items.length, 0);
-      return lastPage.items.length === CLIPS_PAGE_SIZE ? loaded : undefined;
+      const lastItems = lastPage?.items ?? [];
+      const loaded = allPages.reduce((acc, p) => acc + (p?.items?.length ?? 0), 0);
+      return lastItems.length === CLIPS_PAGE_SIZE ? loaded : undefined;
     },
     initialPageParam: 0,
     enabled: useMediaHub && libraryView === 'clips',
@@ -124,7 +132,7 @@ export default function VideosPage() {
   }, [handleObserver]);
 
   const mediaHubItems = useMemo(
-    () => clipsData?.pages?.flatMap((p) => p.items) ?? [],
+    () => clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? [],
     [clipsData?.pages],
   );
 

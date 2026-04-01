@@ -11,7 +11,6 @@ const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
 const STOCK_IMAGES = {
   featuredVideo: '/images/resource-watch.png',
   featuredWebinar: '/images/resource-webinars.png',
-  featuredSurvey: '/images/forhcp-featured-survey.png',
   featuredStudy: '/images/resource-clinicals.png',
 } as const;
 
@@ -126,10 +125,11 @@ export default function ForHCPs() {
             showNew
           />
           <FeaturedCard
-            title="Newest Survey"
-            imageUrl={STOCK_IMAGES.featuredSurvey}
-            cta="Join Now"
-            to="/surveys"
+            title="Office Hours"
+            imageUrl={STOCK_IMAGES.featuredWebinar}
+            cta="View sessions"
+            to="/office-hours"
+            showNew
           />
           <FeaturedCard
             title="KOL Network"
