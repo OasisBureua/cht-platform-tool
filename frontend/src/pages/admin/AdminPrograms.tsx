@@ -67,8 +67,8 @@ export default function AdminPrograms() {
           </h1>
           <p className="text-sm text-gray-600">
             {isOfficeHours
-              ? 'Zoom Meetings for live Q&A — waiting room on; host admits participants, similar to in-person Office Hours.'
-              : 'Schedule and manage live webinars — synced with Zoom.'}
+              ? 'Live sessions for Q&A — host admits participants. Manage CHM Office Hours here.'
+              : 'Schedule and manage LIVE sessions.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -107,7 +107,7 @@ export default function AdminPrograms() {
                   Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  This will remove it from Zoom and the platform. This action cannot be undone.
+                  This will permanently remove the session. This action cannot be undone.
                 </p>
               </div>
               <button
@@ -158,8 +158,8 @@ export default function AdminPrograms() {
           </p>
           <p className="text-sm text-gray-500 mt-1">
             {isOfficeHours
-              ? 'Create a Zoom Meeting session for interactive Q&A.'
-              : 'Schedule your first webinar — it will sync to Zoom automatically.'}
+              ? 'Create a new CHM Office Hours session for interactive Q&A.'
+              : 'Schedule your first LIVE session.'}
           </p>
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}

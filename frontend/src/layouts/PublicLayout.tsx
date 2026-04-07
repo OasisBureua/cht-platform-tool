@@ -2,13 +2,16 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, Instagram, Menu, X } from 'lucide-react';
 import logoSrc from '../assets/logo/LOGO.svg';
+import ChatBubble from '../components/ChatBubble';
 
 const navLinks = [
   { to: '/about', label: 'About' },
   { to: '/what-we-do', label: 'What We Do' },
   { to: '/catalog', label: 'Content Library' },
+  { to: '/live', label: 'LIVE' },
+  { to: '/chm-office-hours', label: 'CHM Office Hours' },
   { to: '/for-hcps', label: 'For HCPs' },
-  { to: '/kol-network', label: 'KOL Network' },
+  { to: '/kol-network', label: "CHM DOC's" },
   { to: '/contact', label: 'Contact' },
 ];
 
@@ -179,6 +182,7 @@ export default function PublicLayout() {
       <main className="flex-1 min-w-0 overflow-x-hidden">
         <Outlet />
       </main>
+      <ChatBubble />
 
       <footer className="bg-[#000000] text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-12 md:py-16">

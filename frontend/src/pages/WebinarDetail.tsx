@@ -92,9 +92,9 @@ export default function WebinarDetail() {
     if (!zoomWebinar) {
       return (
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-          <p className="font-semibold text-gray-900">Webinar not found</p>
-          <Link to="/app/webinars" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
-            Back to webinars
+          <p className="font-semibold text-gray-900">Session not found</p>
+          <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+            Back to LIVE
           </Link>
         </div>
       );
@@ -106,7 +106,7 @@ export default function WebinarDetail() {
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to Webinars
+          Back to LIVE
         </button>
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <h1 className="text-2xl font-bold text-gray-900">{zoomWebinar.title}</h1>
@@ -118,7 +118,7 @@ export default function WebinarDetail() {
               rel="noopener noreferrer"
               className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
             >
-              Join Webinar
+              Join Session
             </a>
           )}
         </div>
@@ -131,16 +131,16 @@ export default function WebinarDetail() {
   if (isError) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">We couldn’t load this webinar.</p>
+        <p className="font-semibold text-gray-900">We could not load this session.</p>
         <p className="mt-1 text-sm text-gray-600">
           {String((error as any)?.message || 'Please try again.')}
         </p>
         <div className="mt-5">
           <Link
-            to="/app/webinars"
+            to="/app/live"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
-            Back to webinars
+            Back to LIVE
           </Link>
         </div>
       </div>
@@ -150,14 +150,14 @@ export default function WebinarDetail() {
   if (!program) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Webinar not found</p>
+        <p className="font-semibold text-gray-900">Session not found</p>
         <p className="mt-1 text-sm text-gray-600">That link may be invalid.</p>
         <div className="mt-5">
           <Link
-            to="/app/webinars"
+            to="/app/live"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
-            Back to webinars
+            Back to LIVE
           </Link>
         </div>
       </div>
@@ -198,7 +198,7 @@ export default function WebinarDetail() {
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to Webinars
+          Back to LIVE
         </button>
       </div>
 
@@ -232,7 +232,7 @@ export default function WebinarDetail() {
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-                Webinar
+                LIVE
               </span>
 
               <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
@@ -255,7 +255,7 @@ export default function WebinarDetail() {
               </p>
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
-                to={`/app/webinars/${program.id}/register`}
+                to={`/app/live/${program.id}/register`}
                 className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
                 Register (forms & checkout)
@@ -505,7 +505,7 @@ export default function WebinarDetail() {
             <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
-              to={`/app/webinars/${program.id}/register`}
+              to={`/app/live/${program.id}/register`}
               className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
             >
               Register

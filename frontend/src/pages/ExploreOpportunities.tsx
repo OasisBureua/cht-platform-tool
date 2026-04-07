@@ -108,7 +108,7 @@ export default function ExploreOpportunities() {
         title: w.title,
         description: w.description || '',
         imageUrl: w.imageUrl || '',
-        href: `/app/webinars/${w.id}`,
+        href: `/app/live/${w.id}`,
       });
     });
 
@@ -169,7 +169,7 @@ export default function ExploreOpportunities() {
 
   const tabs = [
     { key: 'best' as Tab, label: 'Best Match', icon: Zap },
-    { key: 'webinars' as Tab, label: 'Webinars', icon: Presentation },
+    { key: 'webinars' as Tab, label: 'LIVE', icon: Presentation },
     { key: 'videos' as Tab, label: 'Videos', icon: PlayCircle },
     { key: 'surveys' as Tab, label: 'Surveys', icon: ClipboardList },
   ];
@@ -240,7 +240,7 @@ export default function ExploreOpportunities() {
               <div className="p-4 flex flex-col flex-1 min-h-0">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                    {item.type === 'webinar' && 'Webinar'}
+                    {item.type === 'webinar' && 'LIVE'}
                     {item.type === 'clip' && 'Video'}
                     {item.type === 'playlist' && 'Playlist'}
                     {item.type === 'survey' && 'Survey'}
@@ -267,7 +267,7 @@ export default function ExploreOpportunities() {
                   to={item.href}
                   className="mt-4 inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                 >
-                  {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'Learn More' : 'Conversations'}
+                  {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'View Session' : 'Conversations'}
                 </Link>
               </div>
             </div>

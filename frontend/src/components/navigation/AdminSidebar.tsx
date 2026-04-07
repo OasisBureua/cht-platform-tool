@@ -2,8 +2,8 @@ import { NavLink, Link, useNavigate } from 'react-router-dom';
 import {
   Home,
   Search,
-  Presentation,
-  Headphones,
+  Radio,
+  CalendarClock,
   ClipboardList,
   PlayCircle,
   DollarSign,
@@ -17,8 +17,8 @@ import logoSrc from '../../assets/logo/LOGO.svg';
 const nav = [
   { to: '/admin', label: 'Home', icon: Home, end: true },
   { to: '/admin/hcp-explorer', label: 'Search', icon: Search, end: false },
-  { to: '/admin/programs', label: 'Webinars', icon: Presentation, end: false },
-  { to: '/admin/office-hours', label: 'Office Hours', icon: Headphones, end: false },
+  { to: '/admin/programs', label: 'LIVE', icon: Radio, end: false },
+  { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/admin/programs', label: 'Conversations', icon: PlayCircle, end: false },
   { to: '/admin/payments', label: 'Earnings', icon: DollarSign, end: false },
@@ -37,14 +37,12 @@ export default function AdminSidebar() {
 
   return (
     <aside className="hidden md:flex md:flex-col w-[100px] bg-white shrink-0">
-      {/* Logo */}
       <div className="flex w-full h-[82px] justify-center items-center shrink-0" style={{ aspectRatio: '50/41' }}>
         <Link to="/admin" className="flex w-full h-full justify-center items-center">
           <img src={logoSrc} alt="CHT" className="max-w-[60px] max-h-[50px] object-contain" />
         </Link>
       </div>
 
-      {/* Nav - icon above label */}
       <nav className="flex-1 flex flex-col items-center py-4 gap-6">
         {nav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
@@ -64,7 +62,6 @@ export default function AdminSidebar() {
         ))}
       </nav>
 
-      {/* Logout at bottom */}
       <div className="pb-6 flex justify-center">
         <button
           onClick={handleLogout}

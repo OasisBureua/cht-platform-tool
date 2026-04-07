@@ -75,12 +75,12 @@ export default function OfficeHoursDetail() {
   if (sessionError || !session) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Office Hours not found</p>
+        <p className="font-semibold text-gray-900">Session not found</p>
         <Link
-          to="/app/office-hours"
+          to="/app/chm-office-hours"
           className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white"
         >
-          Back to Office Hours
+          Back to CHM Office Hours
         </Link>
       </div>
     );
@@ -101,7 +101,7 @@ export default function OfficeHoursDetail() {
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
         <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
-          Office Hours · Zoom Meeting
+          CHM Office Hours
         </span>
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{session.title}</h1>
         {session.hostDisplayName ? (
@@ -116,8 +116,8 @@ export default function OfficeHoursDetail() {
         <p className="text-gray-600 whitespace-pre-wrap">{session.description}</p>
 
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>How it works:</strong> After you join Zoom, you may wait in the waiting room until the host admits
-          you — similar to an in-person Office Hours line.
+          <strong>How it works:</strong> After registration, join your session directly from this page when
+          it&apos;s time. You may wait briefly until the host admits you.
         </div>
 
         {!programLoading && program?.hasCalendlyScheduling && !enrolled && program.registrationRequiresApproval ? (
@@ -160,7 +160,7 @@ export default function OfficeHoursDetail() {
               </p>
             ) : !enrolled && needsRegistrationWizard ? (
               <Link
-                to={`/app/office-hours/${id}/register`}
+                to={`/app/chm-office-hours/${id}/register`}
                 className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
               >
                 Register for this session
@@ -182,7 +182,7 @@ export default function OfficeHoursDetail() {
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
               >
                 <Video className="h-4 w-4" />
-                Join Zoom
+                Join Session
               </a>
             ) : (
               <p className="text-sm text-gray-500">Join link will appear here when available.</p>
@@ -191,7 +191,7 @@ export default function OfficeHoursDetail() {
         )}
 
         {!enrolled && userId && (
-          <p className="text-xs text-gray-500">Register once, then use Join Zoom to open the meeting.</p>
+          <p className="text-xs text-gray-500">Register once, then join your session directly from here.</p>
         )}
 
         {enrolled && program?.jotformSurveyUrl?.trim() ? (

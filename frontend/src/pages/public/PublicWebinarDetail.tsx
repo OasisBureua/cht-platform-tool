@@ -50,14 +50,14 @@ export default function PublicWebinarDetail() {
     return (
       <div className="min-h-[50vh] flex items-center justify-center px-6">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900">Webinar not found</h2>
+          <h2 className="text-xl font-bold text-gray-900">Session not found</h2>
           <p className="mt-2 text-sm text-gray-600">That link may be invalid or expired.</p>
           <Link
-            to="/webinars"
+            to="/live"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Webinars
+            Back to LIVE
           </Link>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function PublicWebinarDetail() {
   }
 
   if (isAuthenticated && user && isProgram) {
-    navigate(`/app/webinars/${webinar.id}`, { replace: true });
+    navigate(`/app/live/${webinar.id}`, { replace: true });
     return null;
   }
 
@@ -75,11 +75,11 @@ export default function PublicWebinarDetail() {
     <div className="bg-white min-h-screen">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
         <Link
-          to="/webinars"
+          to="/live"
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to Webinars
+          Back to LIVE
         </Link>
 
         <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
@@ -123,7 +123,7 @@ export default function PublicWebinarDetail() {
                 <div className="flex flex-wrap gap-3">
                   <Link
                     to="/login"
-                    state={{ from: { pathname: isProgram ? `/app/webinars/${webinar.id}` : `/webinars/${id}` } }}
+                    state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}` : `/live/${id}` } }}
                     className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
                   >
                     <LogIn className="h-4 w-4" />
@@ -131,7 +131,7 @@ export default function PublicWebinarDetail() {
                   </Link>
                   <Link
                     to="/join"
-                    state={{ from: { pathname: isProgram ? `/app/webinars/${webinar.id}` : `/webinars/${id}` } }}
+                    state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}` : `/live/${id}` } }}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                   >
                     <UserPlus className="h-4 w-4" />
@@ -147,7 +147,7 @@ export default function PublicWebinarDetail() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
                 >
-                  Join Webinar
+                  Join Session
                 </a>
               </div>
             ) : null}

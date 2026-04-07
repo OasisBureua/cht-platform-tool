@@ -23,8 +23,8 @@ export default function ProgramRegisterWizard() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-  const isOfficeHours = location.pathname.includes('/office-hours/');
-  const backHref = isOfficeHours ? `/app/office-hours/${id}` : `/app/webinars/${id}`;
+  const isOfficeHours = location.pathname.includes('/office-hours/') || location.pathname.includes('/chm-office-hours/');
+  const backHref = isOfficeHours ? `/app/chm-office-hours/${id}` : `/app/live/${id}`;
 
   const returnUrl =
     typeof window !== 'undefined'
@@ -111,7 +111,7 @@ export default function ProgramRegisterWizard() {
 
       <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {program.zoomSessionType === 'MEETING' ? 'Office hours' : 'Webinar'} registration
+          {program.zoomSessionType === 'MEETING' ? 'CHM Office Hours' : 'LIVE'} registration
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
         <p className="mt-2 text-sm text-gray-600">

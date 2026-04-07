@@ -22,7 +22,7 @@ export default function AppWelcomeBanner() {
             You’re now in the participant experience
           </p>
           <p className="text-sm text-gray-600">
-            Register for activities, conversations content, complete surveys, and earn CME
+            Register for LIVE sessions, explore conversations, complete surveys, and earn CME
             credits and honoraria.
           </p>
         </div>

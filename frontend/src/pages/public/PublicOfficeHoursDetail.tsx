@@ -50,14 +50,14 @@ export default function PublicOfficeHoursDetail() {
     return (
       <div className="min-h-[50vh] flex items-center justify-center px-6">
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-900">Office Hours not found</h2>
+          <h2 className="text-xl font-bold text-gray-900">Session not found</h2>
           <p className="mt-2 text-sm text-gray-600">That link may be invalid or expired.</p>
           <Link
-            to="/office-hours"
+            to="/chm-office-hours"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white"
           >
             <ChevronLeft className="h-4 w-4" />
-            Back to Office Hours
+            Back to CHM Office Hours
           </Link>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default function PublicOfficeHoursDetail() {
   }
 
   if (isAuthenticated && user && isProgram) {
-    navigate(`/app/office-hours/${session.id}`, { replace: true });
+    navigate(`/app/chm-office-hours/${session.id}`, { replace: true });
     return null;
   }
 
@@ -75,11 +75,11 @@ export default function PublicOfficeHoursDetail() {
     <div className="bg-white min-h-screen">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
         <Link
-          to="/office-hours"
+          to="/chm-office-hours"
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to Office Hours
+          Back to CHM Office Hours
         </Link>
 
         <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
@@ -96,7 +96,7 @@ export default function PublicOfficeHoursDetail() {
           )}
           <div className="p-6 md:p-8 space-y-6">
             <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
-              Office Hours · Zoom Meeting
+              CHM Office Hours
             </span>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{session.title}</h1>
             {session.hostDisplayName ? (
@@ -121,21 +121,21 @@ export default function PublicOfficeHoursDetail() {
             <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">{session.description}</p>
 
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <strong>How it works:</strong> After you join Zoom, you may wait in the waiting room until the host admits
-              you.
+              <strong>How it works:</strong> After registration, join the session directly from the platform when
+              it&apos;s time.
             </div>
 
             {showLoginPrompt ? (
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm font-semibold text-gray-900 mb-3">Sign in to join this office hours session</p>
+                <p className="text-sm font-semibold text-gray-900 mb-3">Sign in to join this session</p>
                 <p className="text-sm text-gray-600 mb-4">
-                  Create an account or sign in to register, get reminders, and access the live Zoom session.
+                  Create an account or sign in to register, get reminders, and access the live session.
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
                     to="/login"
                     state={{
-                      from: { pathname: isProgram ? `/app/office-hours/${session.id}` : `/office-hours/${id}` },
+                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}` : `/chm-office-hours/${id}` },
                     }}
                     className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
                   >
@@ -145,7 +145,7 @@ export default function PublicOfficeHoursDetail() {
                   <Link
                     to="/join"
                     state={{
-                      from: { pathname: isProgram ? `/app/office-hours/${session.id}` : `/office-hours/${id}` },
+                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}` : `/chm-office-hours/${id}` },
                     }}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                   >
@@ -163,7 +163,7 @@ export default function PublicOfficeHoursDetail() {
                   className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
                 >
                   <Video className="h-4 w-4" />
-                  Open Zoom
+                  Join Session
                 </a>
               </div>
             ) : null}

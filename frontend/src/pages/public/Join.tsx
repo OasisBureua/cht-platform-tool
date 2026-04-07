@@ -5,15 +5,24 @@ import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
 
 const PROFESSION_OPTIONS = [
-  { value: '', label: 'Select your profession' },
+  { value: '', label: 'Select your role' },
   { value: 'Physician', label: 'Physician (MD/DO)' },
   { value: 'Nurse Practitioner', label: 'Nurse Practitioner (NP)' },
   { value: 'Physician Assistant', label: 'Physician Assistant (PA)' },
   { value: 'Pharmacist', label: 'Pharmacist' },
   { value: 'Nurse', label: 'Nurse (RN/LPN)' },
-  { value: 'Pharmaceuticals', label: 'Pharmaceuticals' },
   { value: 'Other HCP', label: 'Other Healthcare Professional' },
+  { value: 'Pharmaceuticals', label: 'Pharmaceuticals / Industry' },
+  { value: 'Researcher', label: 'Researcher / Scientist' },
+  { value: 'Patient Advocate', label: 'Patient / Patient Advocate' },
+  { value: 'Caregiver', label: 'Caregiver' },
+  { value: 'Student', label: 'Student' },
+  { value: 'Other', label: 'Other' },
 ];
+
+const NPI_REQUIRED_PROFESSIONS = new Set([
+  'Physician', 'Nurse Practitioner', 'Physician Assistant', 'Pharmacist', 'Nurse', 'Other HCP',
+]);
 
 const US_STATES = [
   { value: '', label: 'Select state' },
@@ -63,6 +72,10 @@ export default function Join() {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [npiVerifying, setNpiVerifying] = useState(false);
+  const [npiVerified, setNpiVerified] = useState<boolean | null>(null);
+
+  const requiresNpi = NPI_REQUIRED_PROFESSIONS.has(profession);
 
   if (isAuthenticated) {
     return <Navigate to={PLATFORM_HOME} replace />;
@@ -90,11 +103,14 @@ export default function Join() {
       setError('Password must be at least 8 characters.');
       return;
     }
-    if (!profession) { setError('Please select your profession.'); return; }
+    if (!profession) { setError('Please select your role.'); return; }
     const npi = npiNumber.replace(/\D/g, '');
-    const isPharmaceuticals = profession === 'Pharmaceuticals';
-    if (!isPharmaceuticals && npi.length !== 10) {
+    if (requiresNpi && npi.length !== 10) {
       setError('NPI number must be exactly 10 digits.');
+      return;
+    }
+    if (requiresNpi && npiVerified === false) {
+      setError('We could not verify this NPI. Please double-check and try again.');
       return;
     }
     const zip = zipCode.replace(/\D/g, '');
@@ -187,7 +203,7 @@ export default function Join() {
           </h2>
 
           <p className="mt-1 text-sm text-gray-600 leading-relaxed">
-            For healthcare professionals only.
+            Join the Community Health platform.
           </p>
 
           {/* OAuth sign-up — creates CHT account and redirects to platform */}
@@ -274,21 +290,54 @@ export default function Join() {
               minLength={8}
             />
             <Select
-              label="Profession"
+              label="I am a…"
               value={profession}
-              onChange={(e) => setProfession(e.target.value)}
+              onChange={(e) => { setProfession(e.target.value); setNpiVerified(null); }}
               options={PROFESSION_OPTIONS}
               required
             />
-            <Input
-              label="NPI number"
-              type="text"
-              placeholder={profession === 'Pharmaceuticals' ? 'Not required for Pharmaceuticals' : '10-digit National Provider Identifier'}
-              value={npiNumber}
-              onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              required={profession !== 'Pharmaceuticals'}
-              maxLength={10}
-            />
+            {requiresNpi && (
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-900">NPI number</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="10-digit National Provider Identifier"
+                    value={npiNumber}
+                    onChange={(e) => { setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10)); setNpiVerified(null); }}
+                    required
+                    maxLength={10}
+                    className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                  />
+                  <button
+                    type="button"
+                    disabled={npiNumber.replace(/\D/g, '').length !== 10 || npiVerifying}
+                    onClick={async () => {
+                      setNpiVerifying(true);
+                      setNpiVerified(null);
+                      try {
+                        const res = await fetch(`https://npiregistry.cms.hhs.gov/api/?number=${npiNumber.replace(/\D/g, '')}&version=2.1`);
+                        const data = await res.json();
+                        setNpiVerified(data.result_count > 0);
+                      } catch {
+                        setNpiVerified(null);
+                      } finally {
+                        setNpiVerifying(false);
+                      }
+                    }}
+                    className="shrink-0 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+                  >
+                    {npiVerifying ? 'Verifying…' : 'Verify'}
+                  </button>
+                </div>
+                {npiVerified === true && (
+                  <p className="text-xs text-green-700 font-medium">NPI verified successfully.</p>
+                )}
+                {npiVerified === false && (
+                  <p className="text-xs text-red-600 font-medium">NPI not found in the NPPES registry. Please check and try again.</p>
+                )}
+              </div>
+            )}
 
             <div className="pt-2 border-t border-gray-100">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">

@@ -1,23 +1,23 @@
 import { NavLink } from 'react-router-dom';
 import {
   Home,
-  Search,
-  Presentation,
-  Headphones,
+  Radio,
+  CalendarClock,
   MonitorPlay,
-  Banknote,
-  Bot,
+  ClipboardList,
+  Mic2,
+  Stethoscope,
   Settings,
 } from 'lucide-react';
 
 const nav = [
   { to: '/app/home', label: 'Home', icon: Home, end: true },
-  { to: '/app/search', label: 'Search', icon: Search, end: false },
-  { to: '/app/webinars', label: 'Webinars', icon: Presentation, end: false },
-  { to: '/app/office-hours', label: 'Office Hours', icon: Headphones, end: false },
-  { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
-  { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
-  { to: '/app/chatbot', label: 'Chat', icon: Bot, end: false },
+  { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
+  { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
+  { to: '/app/chm-docs', label: "DOC's", icon: Stethoscope, end: false },
+  { to: '/app/catalog', label: 'Convos', icon: MonitorPlay, end: false },
+  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
+  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },
 ];
 
@@ -28,10 +28,10 @@ export default function AppBottomNav() {
       aria-label="App navigation"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
     >
-      <div className="flex items-center justify-around h-14">
+      <div className="flex items-center justify-around h-14 overflow-x-auto">
         {nav.map(({ to, label, icon: Icon, end }) => (
           <NavLink
-            key={label}
+            key={to}
             to={to}
             end={end}
             className={({ isActive }) =>

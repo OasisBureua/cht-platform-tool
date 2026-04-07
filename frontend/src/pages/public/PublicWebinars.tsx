@@ -43,7 +43,7 @@ export default function PublicWebinars() {
     <div className="bg-white min-h-screen">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-10 md:space-y-14">
         <header>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">Webinars</h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">LIVE</h1>
           <p className="mt-2 text-sm text-gray-600">Live and upcoming sessions — click any webinar to register and join.</p>
         </header>
 
@@ -53,7 +53,7 @@ export default function PublicWebinars() {
           </div>
         ) : upcoming.length === 0 && recent.length === 0 ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-            <p className="font-semibold text-gray-900">No webinars available</p>
+            <p className="font-semibold text-gray-900">No LIVE sessions available</p>
             <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
           </div>
         ) : (
@@ -95,7 +95,7 @@ function WebinarCard({ webinar, past = false }: { webinar: WebinarRow; past?: bo
 
   return (
     <Link
-      to={`/webinars/${webinar.id}`}
+      to={`/live/${webinar.id}`}
       className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
     >
       {/* Date block */}

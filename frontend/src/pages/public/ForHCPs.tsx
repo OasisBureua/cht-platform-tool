@@ -125,10 +125,10 @@ export default function ForHCPs() {
             showNew
           />
           <FeaturedCard
-            title="Office Hours"
+            title="CHM Office Hours"
             imageUrl={STOCK_IMAGES.featuredWebinar}
             cta="View sessions"
-            to="/office-hours"
+            to="/chm-office-hours"
             showNew
           />
           <FeaturedCard

@@ -50,6 +50,9 @@ import Earnings from './pages/Earnings';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
+import ChmDocs from './pages/ChmDocs';
+import Podcasts from './pages/Podcasts';
+import DiseaseAreas from './pages/DiseaseAreas';
 
 // =======================
 // ADMIN ROUTES
@@ -115,10 +118,14 @@ function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
             <Route path="/watch" element={<Navigate to="/catalog" replace />} />
-            <Route path="/webinars" element={<PublicWebinars />} />
+            <Route path="/live" element={<PublicWebinars />} />
+            <Route path="/live/:id" element={<PublicWebinarDetail />} />
+            <Route path="/webinars" element={<Navigate to="/live" replace />} />
             <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
-            <Route path="/office-hours/:id" element={<PublicOfficeHoursDetail />} />
-            <Route path="/office-hours" element={<PublicOfficeHours />} />
+            <Route path="/chm-office-hours/:id" element={<PublicOfficeHoursDetail />} />
+            <Route path="/chm-office-hours" element={<PublicOfficeHours />} />
+            <Route path="/office-hours/:id" element={<Navigate to="/chm-office-hours/:id" replace />} />
+            <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
             <Route path="/surveys" element={<PublicSurveys />} />
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
@@ -143,17 +150,34 @@ function App() {
             <Route path="home" element={<Dashboard />} />
             <Route path="search" element={<ExploreOpportunities />} />
 
-            {/* Webinars */}
-            <Route path="webinars" element={<Webinars />} />
+            {/* LIVE (formerly Webinars) */}
+            <Route path="live" element={<Webinars />} />
+            <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
+            <Route path="live/:id" element={<WebinarDetail />} />
+            <Route path="webinars" element={<Navigate to="/app/live" replace />} />
             <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="webinars/:id" element={<WebinarDetail />} />
-            <Route path="office-hours" element={<OfficeHours />} />
+
+            {/* CHM Office Hours */}
+            <Route path="chm-office-hours" element={<OfficeHours />} />
+            <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
+            <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
+            <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
             <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
+
+            {/* CHM DOC's */}
+            <Route path="chm-docs" element={<ChmDocs />} />
+
+            {/* Disease Areas */}
+            <Route path="disease-areas" element={<DiseaseAreas />} />
 
             {/* Surveys */}
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
+
+            {/* Podcasts */}
+            <Route path="podcasts" element={<Podcasts />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />
             <Route path="watch" element={<Navigate to="/app/catalog" replace />} />

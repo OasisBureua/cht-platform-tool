@@ -36,9 +36,9 @@ function getLatestWebinar(webinars: WebinarItem[]): WebinarItem | null {
 }
 
 const QUICK_ACCESS = [
-  { title: 'Join Webinars', desc: 'Attend live medical education sessions and earn $500-$1,000 per webinar', icon: Presentation, to: '/app/webinars' },
+  { title: 'LIVE Sessions', desc: 'Attend live medical education sessions and earn $500-$1,000 per session', icon: Presentation, to: '/app/live' },
   { title: 'Complete Surveys', desc: 'Share your insights through voice-based surveys in just 5-10 minutes', icon: ClipboardList, to: '/app/surveys' },
-  { title: 'Conversations or Listen Content', desc: 'View educational videos and earn rewards for staying engaged', icon: PlayCircle, to: '/app/catalog' },
+  { title: 'Conversations', desc: 'View educational videos and earn rewards for staying engaged', icon: PlayCircle, to: '/app/catalog' },
 ];
 
 export default function Dashboard() {
@@ -95,7 +95,7 @@ export default function Dashboard() {
                     </p>
                   )}
                   <Link
-                    to={latestWebinar.id ? `/app/webinars/${latestWebinar.id}` : '/app/webinars'}
+                    to={latestWebinar.id ? `/app/live/${latestWebinar.id}` : '/app/live'}
                     className="inline-flex rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
                   >
                     Sign Up
@@ -105,7 +105,7 @@ export default function Dashboard() {
                 <>
                   <p className="text-sm text-gray-600">No webinars scheduled.</p>
                   <Link
-                    to="/app/webinars"
+                    to="/app/live"
                     className="inline-flex rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
                   >
                     View Webinars
@@ -163,7 +163,7 @@ export default function Dashboard() {
             <p className="font-semibold text-gray-900">No webinars scheduled</p>
             <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
             <Link
-              to="/app/webinars"
+              to="/app/live"
               className="mt-4 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
             >
               View Webinars
@@ -178,7 +178,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-center">
               <Link
-                to="/app/webinars"
+                to="/app/live"
                 className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-8 py-3 text-sm font-semibold text-white hover:bg-black"
               >
                 See More <ArrowRight className="h-4 w-4" />
@@ -195,7 +195,7 @@ function WebinarCard({ webinar, imageIndex }: { webinar: WebinarItem; imageIndex
   const imgSrc = webinar.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[imageIndex % WEBINAR_PLACEHOLDER_IMAGES.length];
   return (
     <Link
-      to="/app/webinars"
+      to="/app/live"
       className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow block flex flex-col"
     >
       <div className="relative h-40">

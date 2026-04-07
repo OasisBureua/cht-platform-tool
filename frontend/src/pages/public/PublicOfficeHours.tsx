@@ -36,9 +36,9 @@ export default function PublicOfficeHours() {
     <div className="bg-white min-h-screen">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-8">
         <header className="space-y-1">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">Office Hours</h1>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">CHM Office Hours</h1>
           <p className="text-sm text-gray-600 max-w-2xl">
-            Live Zoom sessions — click any session to register and join.
+            Live sessions — click any session to register and join.
           </p>
         </header>
 
@@ -48,7 +48,7 @@ export default function PublicOfficeHours() {
           </div>
         ) : sessions.length === 0 ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-            <p className="font-semibold text-gray-900">No Office Hours scheduled</p>
+            <p className="font-semibold text-gray-900">No CHM Office Hours scheduled</p>
             <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
           </div>
         ) : (
@@ -90,7 +90,7 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
 
   return (
     <Link
-      to={`/office-hours/${w.id}`}
+      to={`/chm-office-hours/${w.id}`}
       className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
     >
       <div className="shrink-0 w-12 text-center">

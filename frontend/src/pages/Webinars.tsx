@@ -39,8 +39,8 @@ export default function Webinars() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Webinars</h1>
-        <p className="text-sm text-gray-600">Live and upcoming sessions — click any webinar to register and join.</p>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">LIVE</h1>
+        <p className="text-sm text-gray-600">Real-time sessions — register and join directly from the platform.</p>
       </header>
 
       {isLoading ? (
@@ -49,7 +49,7 @@ export default function Webinars() {
         </div>
       ) : webinars.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-          <p className="font-semibold text-gray-900">No webinars scheduled</p>
+          <p className="font-semibold text-gray-900">No LIVE sessions scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
         </div>
       ) : (
@@ -92,7 +92,7 @@ function WebinarRow({ webinar: w, expired = false }: { webinar: WebinarItem; exp
 
   return (
     <Link
-      to={`/app/webinars/${w.id}`}
+      to={`/app/live/${w.id}`}
       className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
     >
       {/* Date block */}

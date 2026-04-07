@@ -39,10 +39,10 @@ export default function OfficeHours() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Office Hours</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">CHM Office Hours</h1>
         <p className="text-sm text-gray-600">
-          Get time with our experts — live Zoom meetings for Q&A. You may wait in the waiting room until the host
-          admits you.
+          Get time with our experts — live sessions for Q&A. Select an available time slot and join from here when
+          it&apos;s time.
         </p>
       </header>
 
@@ -52,7 +52,7 @@ export default function OfficeHours() {
         </div>
       ) : sessions.length === 0 ? (
         <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-          <p className="font-semibold text-gray-900">No Office Hours scheduled</p>
+          <p className="font-semibold text-gray-900">No CHM Office Hours scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
         </div>
       ) : (
@@ -93,7 +93,7 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
 
   return (
     <Link
-      to={`/app/office-hours/${w.id}`}
+      to={`/app/chm-office-hours/${w.id}`}
       className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
     >
       <div className="shrink-0 w-12 text-center">
