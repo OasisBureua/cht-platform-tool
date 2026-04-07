@@ -9,6 +9,7 @@ import {
   Banknote,
   Mic2,
   Stethoscope,
+  Dna,
   Bot,
   Settings,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ const nav = [
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
   { to: '/app/chm-docs', label: "CHM DOC's", icon: Stethoscope, end: false },
+  { to: '/app/disease-areas', label: 'Diseases', icon: Dna, end: false },
   { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },

@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Mic2,
   Stethoscope,
+  Dna,
   Settings,
 } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const nav = [
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
   { to: '/app/chm-docs', label: "DOC's", icon: Stethoscope, end: false },
+  { to: '/app/disease-areas', label: 'Diseases', icon: Dna, end: false },
   { to: '/app/catalog', label: 'Convos', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },

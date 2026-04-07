@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -17,10 +17,12 @@ import {
   Clock,
   LayoutGrid,
   Loader2,
+  ArrowRight,
 } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
 import { getShortClipId } from '../../utils/clipUrl';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
+import DISEASE_AREAS from '../../data/disease-areas';
 
 const resourceImages: Record<string, string> = {
   webinars: '/images/resource-webinars.png',
@@ -486,6 +488,9 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Disease Areas — horizontal carousel */}
+      <DiseaseAreasCarousel />
+
       {/* Biomarker Playlists - treatment specific content */}
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
@@ -860,5 +865,113 @@ export default function Home() {
         </div>
       </section>
     </div>
+  );
+}
+
+function DiseaseAreasCarousel() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const mid = Math.floor(DISEASE_AREAS.length / 2);
+    const cards = el.querySelectorAll('[data-disease-card]');
+    cards[mid]?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+    setActiveIdx(mid);
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cards = el.querySelectorAll('[data-disease-card]');
+    const containerCenter = el.scrollLeft + el.clientWidth / 2;
+    let closest = 0;
+    cards.forEach((card, i) => {
+      const rect = (card as HTMLElement).getBoundingClientRect();
+      const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
+      if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + 24)) closest = i;
+    });
+    setActiveIdx(closest);
+  }, []);
+
+  const scrollTo = useCallback((idx: number) => {
+    setActiveIdx(idx);
+    scrollRef.current?.querySelectorAll('[data-disease-card]')[idx]?.scrollIntoView({
+      behavior: 'smooth', block: 'nearest', inline: 'center',
+    });
+  }, []);
+
+  return (
+    <section className="py-10 sm:py-14">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
+        <div className="text-center space-y-2">
+          <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
+            View Treatment Specific Content
+          </h3>
+          <p className="text-sm text-gray-600 max-w-xl mx-auto">
+            Explore content by therapeutic area — expert-led education, conversations, and resources.
+          </p>
+        </div>
+
+        <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="scrollbar-hide flex gap-5 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory px-4 sm:px-6"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            <div className="shrink-0 w-[max(1rem,calc(50%-180px))] sm:w-[max(1rem,calc(50%-200px))] md:w-[max(1rem,calc(50%-220px))]" aria-hidden />
+            {DISEASE_AREAS.map((area) => {
+              const card = (
+                <div
+                  data-disease-card
+                  className={[
+                    'shrink-0 snap-center w-[300px] sm:w-[340px] md:w-[400px] rounded-2xl overflow-hidden flex flex-col shadow-lg',
+                    area.active ? 'bg-white' : 'bg-gray-50',
+                  ].join(' ')}
+                >
+                  <div className="relative h-[200px] sm:h-[220px] bg-gray-100">
+                    <img src={area.image} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                    {!area.active && (
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span className="text-white text-lg font-bold tracking-wide uppercase">Coming Soon</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-5 flex items-center justify-between">
+                    <h4 className="text-lg font-bold text-gray-900">{area.title}</h4>
+                    {area.active ? (
+                      <span className="rounded-full bg-green-100 text-green-800 text-[10px] font-bold px-2.5 py-0.5 uppercase">Active</span>
+                    ) : (
+                      <span className="rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold px-2.5 py-0.5 uppercase">Soon</span>
+                    )}
+                  </div>
+                </div>
+              );
+              return area.active ? (
+                <Link key={area.slug} to={`/catalog/${area.slug}`} className="shrink-0 snap-center">{card}</Link>
+              ) : (
+                <div key={area.slug} className="shrink-0 snap-center">{card}</div>
+              );
+            })}
+            <div className="shrink-0 w-[max(1rem,calc(50%-180px))] sm:w-[max(1rem,calc(50%-200px))] md:w-[max(1rem,calc(50%-220px))]" aria-hidden />
+          </div>
+        </div>
+
+        {/* Dots only */}
+        <div className="flex items-center justify-center gap-2">
+          {DISEASE_AREAS.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => scrollTo(idx)}
+              className={`h-2.5 w-2.5 rounded-full transition-colors ${idx === activeIdx ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400'}`}
+              aria-label={`Go to disease area ${idx + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

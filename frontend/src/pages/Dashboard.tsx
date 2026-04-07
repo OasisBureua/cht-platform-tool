@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Presentation, ClipboardList, PlayCircle, ArrowRight, Loader2, Dna } from 'lucide-react';
+import { Presentation, ClipboardList, PlayCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { format, isPast, startOfWeek, endOfWeek } from 'date-fns';
 
@@ -188,94 +188,8 @@ export default function Dashboard() {
         )}
       </section>
 
-      {/* Disease Areas */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Dna className="h-5 w-5 text-gray-900" />
-            <h2 className="text-xl font-bold text-gray-900">Disease Areas</h2>
-          </div>
-          <Link
-            to="/app/disease-areas"
-            className="text-sm font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-1"
-          >
-            View all <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {DISEASE_AREAS.map((area) => (
-            <DiseaseAreaCard key={area.slug} area={area} />
-          ))}
-        </div>
-      </section>
     </div>
   );
-}
-
-const DISEASE_AREAS = [
-  {
-    slug: 'breast-cancer',
-    title: 'Breast Cancer',
-    image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
-    active: true,
-  },
-  {
-    slug: 'lung-cancer',
-    title: 'Lung Cancer',
-    image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
-    active: false,
-  },
-  {
-    slug: 'weight-loss',
-    title: 'Weight Loss',
-    image: '/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png',
-    active: false,
-  },
-];
-
-function DiseaseAreaCard({ area }: { area: (typeof DISEASE_AREAS)[number] }) {
-  const inner = (
-    <div
-      className={[
-        'rounded-2xl border overflow-hidden flex flex-col',
-        area.active
-          ? 'border-gray-200 bg-white hover:shadow-md transition-shadow'
-          : 'border-dashed border-gray-300 bg-gray-50',
-      ].join(' ')}
-    >
-      <div className="relative h-36 bg-gray-100">
-        <img
-          src={area.image}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-        />
-        {!area.active && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white text-sm font-bold tracking-wide uppercase">Coming Soon</span>
-          </div>
-        )}
-      </div>
-      <div className="p-4 flex items-center justify-between">
-        <h3 className="font-bold text-gray-900">{area.title}</h3>
-        {area.active && (
-          <span className="rounded-full bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 uppercase">
-            Active
-          </span>
-        )}
-      </div>
-    </div>
-  );
-
-  if (area.active) {
-    return (
-      <Link to={`/app/catalog/${area.slug}`} className="block">
-        {inner}
-      </Link>
-    );
-  }
-  return inner;
 }
 
 function WebinarCard({ webinar, imageIndex }: { webinar: WebinarItem; imageIndex: number }) {
