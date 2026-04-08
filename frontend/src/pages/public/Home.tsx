@@ -887,10 +887,13 @@ function DiseaseAreasCarousel() {
     const cards = el.querySelectorAll('[data-disease-card]');
     const containerCenter = el.scrollLeft + el.clientWidth / 2;
     let closest = 0;
+    let closestDist = Infinity;
     cards.forEach((card, i) => {
       const rect = (card as HTMLElement).getBoundingClientRect();
-      const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
-      if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + 24)) closest = i;
+      const elRect = el.getBoundingClientRect();
+      const cardCenter = rect.left - elRect.left + el.scrollLeft + rect.width / 2;
+      const dist = Math.abs(containerCenter - cardCenter);
+      if (dist < closestDist) { closestDist = dist; closest = i; }
     });
     setActiveIdx(closest);
   }, []);
@@ -906,10 +909,10 @@ function DiseaseAreasCarousel() {
     <section className="py-10 sm:py-14">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
         <div className="text-center space-y-2">
-          <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
-            View Treatment Specific Content
+          <h3 className="text-2xl sm:text-3xl md:text-4xl font-medium text-black tracking-tight">
+            View treatment specific content
           </h3>
-          <p className="text-sm text-gray-600 max-w-xl mx-auto">
+          <p className="text-sm sm:text-base text-black/50 max-w-xl mx-auto">
             Explore content by therapeutic area — expert-led education, conversations, and resources.
           </p>
         </div>
@@ -918,55 +921,55 @@ function DiseaseAreasCarousel() {
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="scrollbar-hide flex gap-5 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory px-4 sm:px-6"
+            className="scrollbar-hide flex gap-5 overflow-x-auto overflow-y-hidden scroll-smooth snap-x snap-mandatory"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
-            <div className="shrink-0 w-[max(1rem,calc(50%-180px))] sm:w-[max(1rem,calc(50%-200px))] md:w-[max(1rem,calc(50%-220px))]" aria-hidden />
+            <div className="shrink-0 w-[max(1rem,calc(50%-280px))] sm:w-[max(1rem,calc(50%-300px))] md:w-[max(1rem,calc(50%-340px))] lg:w-[max(1rem,calc(50%-360px))]" aria-hidden />
             {DISEASE_AREAS.map((area) => {
-              const card = (
+              const inner = (
                 <div
                   data-disease-card
-                  className={[
-                    'shrink-0 snap-center w-[300px] sm:w-[340px] md:w-[400px] rounded-2xl overflow-hidden flex flex-col shadow-lg',
-                    area.active ? 'bg-white' : 'bg-gray-50',
-                  ].join(' ')}
+                  className="shrink-0 snap-center w-[280px] sm:w-[420px] md:w-[560px] lg:w-[640px] h-[180px] sm:h-[260px] md:h-[320px] lg:h-[340px] rounded-[20px] overflow-hidden relative shadow-[0px_4px_4px_rgba(0,0,0,0.25)] group"
                 >
-                  <div className="relative h-[200px] sm:h-[220px] bg-gray-100">
-                    <img src={area.image} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                    {!area.active && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white text-lg font-bold tracking-wide uppercase">Coming Soon</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-5 flex items-center justify-between">
-                    <h4 className="text-lg font-bold text-gray-900">{area.title}</h4>
-                    {area.active ? (
-                      <span className="rounded-full bg-green-100 text-green-800 text-[10px] font-bold px-2.5 py-0.5 uppercase">Active</span>
-                    ) : (
-                      <span className="rounded-full bg-gray-200 text-gray-600 text-[10px] font-bold px-2.5 py-0.5 uppercase">Soon</span>
-                    )}
+                  <img
+                    src={area.image}
+                    alt={area.title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-black/30 rounded-[20px]" />
+                  <div className="absolute inset-0 flex items-center justify-between px-5 sm:px-8 md:px-10">
+                    <h4 className="text-2xl sm:text-3xl md:text-4xl text-white font-normal">
+                      {area.title}
+                    </h4>
+                    <span className="text-sm sm:text-base md:text-xl text-white underline decoration-solid underline-offset-4 whitespace-nowrap group-hover:opacity-80 transition-opacity">
+                      Explore Treatment
+                    </span>
                   </div>
                 </div>
               );
               return area.active ? (
-                <Link key={area.slug} to={`/catalog/${area.slug}`} className="shrink-0 snap-center">{card}</Link>
+                <Link key={area.slug} to={`/catalog/${area.slug}`} className="shrink-0 snap-center">
+                  {inner}
+                </Link>
               ) : (
-                <div key={area.slug} className="shrink-0 snap-center">{card}</div>
+                <div key={area.slug} className="shrink-0 snap-center cursor-default">
+                  {inner}
+                </div>
               );
             })}
-            <div className="shrink-0 w-[max(1rem,calc(50%-180px))] sm:w-[max(1rem,calc(50%-200px))] md:w-[max(1rem,calc(50%-220px))]" aria-hidden />
+            <div className="shrink-0 w-[max(1rem,calc(50%-280px))] sm:w-[max(1rem,calc(50%-300px))] md:w-[max(1rem,calc(50%-340px))] lg:w-[max(1rem,calc(50%-360px))]" aria-hidden />
           </div>
         </div>
 
-        {/* Dots only */}
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2.5">
           {DISEASE_AREAS.map((_, idx) => (
             <button
               key={idx}
               type="button"
               onClick={() => scrollTo(idx)}
-              className={`h-2.5 w-2.5 rounded-full transition-colors ${idx === activeIdx ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400'}`}
+              className={`h-2.5 w-2.5 rounded-full transition-colors ${idx === activeIdx ? 'bg-black' : 'bg-black/25 hover:bg-black/40'}`}
               aria-label={`Go to disease area ${idx + 1}`}
             />
           ))}
