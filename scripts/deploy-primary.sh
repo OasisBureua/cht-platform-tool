@@ -6,21 +6,17 @@ echo "========================================"
 echo ""
 
 # Check which environment
-if [ -z "$1" ]; then
-    echo "Usage: ./deploy-primary.sh [dev|prod]"
-    exit 1
-fi
-
-ENV=$1
-VAR_FILE="environments/variables/${ENV}.tfvars"
-
-if [ ! -f "infrastructure/terraform/$VAR_FILE" ]; then
+ENV=${1:-platform}
+VAR_FILE="infrastructure/terraform/environments/variables/${ENV}.tfvars"
+if [ ! -f "$VAR_FILE" ]; then
     echo "❌ Variable file not found: $VAR_FILE"
+    echo "Usage: ./deploy-primary.sh [platform|dev|prod]"
+    echo "  platform = single consolidated account (default)"
     exit 1
 fi
 
 echo "📦 Environment: $ENV"
-echo "📄 Variables: $VAR_FILE"
+echo "📄 Variables: ../variables/${ENV}.tfvars"
 echo ""
 
 cd infrastructure/terraform/environments/us-east-1
@@ -37,7 +33,7 @@ terraform validate
 # Plan
 echo ""
 echo "📋 Planning deployment..."
-terraform plan -var-file="../$VAR_FILE" -out=tfplan
+terraform plan -var-file="../variables/${ENV}.tfvars" -out=tfplan
 
 # Show plan summary
 echo ""
@@ -77,4 +73,4 @@ echo "📋 Next steps:"
 echo "1. Add Route53 NS records to your DNS provider"
 echo "2. Deploy frontend: ./deploy-frontend.sh $ENV"
 echo "3. Run database migrations: ./run-migrations.sh $ENV"
-echo "4. Test: curl https://api.communityhealth.media/health/ready"
+echo "4. Test: curl https://testapp.communityhealth.media/health/ready"

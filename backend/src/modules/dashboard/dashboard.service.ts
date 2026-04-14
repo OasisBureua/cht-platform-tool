@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RedisService } from '../../redis/redis.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { EarningsResponseDto, WeeklyEarnings } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
+import { ProfileResponseDto } from './dto/profile-response.dto';
 
 @Injectable()
 export class DashboardService {
@@ -10,23 +11,14 @@ export class DashboardService {
 
   constructor(
     private prisma: PrismaService,
-    private redis: RedisService,
+    private hubspot: HubSpotService,
   ) {}
 
   /**
-   * Get user's earnings breakdown (with caching)
+   * Get user's earnings breakdown (DB only, no Redis)
    */
   async getEarnings(userId: string): Promise<EarningsResponseDto> {
-    // Check cache first (5 minute TTL)
-    const cacheKey = this.redis.keys.dashboardEarnings(userId);
-    const cached = await this.redis.get<EarningsResponseDto>(cacheKey);
-    
-    if (cached) {
-      this.logger.log(`✅ CACHE HIT - Returning cached earnings for user: ${userId}`);
-      return cached;
-    }
-
-    this.logger.log(`❌ CACHE MISS - Fetching earnings from database for user: ${userId}`);
+    this.logger.log(`Fetching earnings from database for user: ${userId}`);
 
     // Get all payments for user
     const payments = await this.prisma.payment.findMany({
@@ -55,35 +47,20 @@ export class DashboardService {
     const currentWeekEarnings =
       weeklyEarnings.find((w) => w.weekStartDate === currentWeekStart.toISOString())?.amount || 0;
 
-    const result = {
+    return {
       totalEarnings,
       weeklyEarnings,
       pendingPayments,
       lastPaymentDate,
       currentWeekEarnings,
     };
-
-    // Cache for 5 minutes
-    await this.redis.set(cacheKey, result, this.redis.ttl.dashboard);
-    this.logger.log(`💾 Cached earnings for user: ${userId} (TTL: ${this.redis.ttl.dashboard}s)`);
-
-    return result;
   }
 
   /**
-   * Get user's activity statistics (with caching)
+   * Get user's activity statistics (DB only, no Redis)
    */
   async getStats(userId: string): Promise<StatsResponseDto> {
-    // Check cache first (5 minute TTL)
-    const cacheKey = this.redis.keys.dashboardStats(userId);
-    const cached = await this.redis.get<StatsResponseDto>(cacheKey);
-    
-    if (cached) {
-      this.logger.log(`✅ CACHE HIT - Returning cached stats for user: ${userId}`);
-      return cached;
-    }
-
-    this.logger.log(`❌ CACHE MISS - Fetching stats from database for user: ${userId}`);
+    this.logger.log(`Fetching stats from database for user: ${userId}`);
 
     // Get enrollments
     const enrollments = await this.prisma.programEnrollment.findMany({
@@ -114,7 +91,7 @@ export class DashboardService {
     // Get peer benchmark (anonymized)
     const peerBenchmark = await this.calculatePeerBenchmark(userId);
 
-    const result = {
+    return {
       activitiesCompleted,
       activitiesInProgress,
       surveysCompleted,
@@ -122,12 +99,82 @@ export class DashboardService {
       completionRate: Math.round(completionRate),
       peerBenchmark,
     };
+  }
 
-    // Cache for 5 minutes
-    await this.redis.set(cacheKey, result, this.redis.ttl.dashboard);
-    this.logger.log(`💾 Cached stats for user: ${userId} (TTL: ${this.redis.ttl.dashboard}s)`);
+  /**
+   * Update user profile (firstName, lastName, specialty, npiNumber)
+   */
+  async updateProfile(
+    userId: string,
+    data: {
+      firstName?: string;
+      lastName?: string;
+      specialty?: string;
+      npiNumber?: string;
+      institution?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    },
+  ): Promise<ProfileResponseDto> {
+    const npi = data.npiNumber !== undefined ? data.npiNumber.replace(/\D/g, '').slice(0, 10) : undefined;
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.firstName !== undefined && { firstName: data.firstName.trim() || 'User' }),
+        ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
+        ...(data.specialty !== undefined && { specialty: data.specialty.trim() || null }),
+        ...(npi !== undefined && { npiNumber: npi.length === 10 ? npi : null }),
+        ...(data.institution !== undefined && { institution: data.institution.trim() || null }),
+        ...(data.city !== undefined && { city: data.city.trim() || null }),
+        ...(data.state !== undefined && { state: data.state.trim() || null }),
+        ...(data.zipCode !== undefined && { zipCode: data.zipCode.trim() || null }),
+      },
+    });
+    this.hubspot.createOrUpdateContact({
+      email: updated.email,
+      firstname: updated.firstName,
+      lastname: updated.lastName,
+      jobtitle: updated.specialty ?? undefined,
+      company: updated.institution ?? undefined,
+      city: updated.city ?? undefined,
+      state: updated.state ?? undefined,
+      zip: updated.zipCode ?? undefined,
+      npi_number: updated.npiNumber ?? undefined,
+    }).catch(() => {});
+    return this.getProfile(userId);
+  }
 
-    return result;
+  /**
+   * Get user profile for Settings page
+   */
+  async getProfile(userId: string): Promise<ProfileResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const stats = await this.getStats(userId);
+    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+
+    return {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      name,
+      specialty: user.specialty ?? undefined,
+      npiNumber: user.npiNumber ?? undefined,
+      institution: user.institution ?? undefined,
+      city: user.city ?? undefined,
+      state: user.state ?? undefined,
+      zipCode: user.zipCode ?? undefined,
+      role: user.role,
+      createdAt: user.createdAt.toISOString(),
+      totalEarnings: user.totalEarnings / 100,
+      activitiesCompleted: stats.activitiesCompleted,
+    };
   }
 
   /**

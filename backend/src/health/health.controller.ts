@@ -1,8 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, HealthCheckResult } from '@nestjs/terminus';
+import { SkipThrottle } from '@nestjs/throttler';
+import { HealthCheck, HealthCheckService, HealthCheckResult, HealthIndicatorResult } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma.health';
 import { RedisHealthIndicator } from './redis.health';
 
+@SkipThrottle()
 @Controller()
 export class HealthController {
   constructor(
@@ -26,13 +28,41 @@ export class HealthController {
   /**
    * Readiness check - Service ready to accept traffic
    * GET /health/ready
+   * Checks DB and Redis with 5s timeout each (parallel). On timeout, returns 200
+   * with degraded status (never 500).
    */
   @Get('health/ready')
   @HealthCheck()
   async readiness(): Promise<HealthCheckResult> {
+    const TIMEOUT_MS = 5000;
+    const checkWithTimeout = async (
+      p: Promise<HealthIndicatorResult>,
+      key: string,
+    ): Promise<HealthIndicatorResult> => {
+      try {
+        return await Promise.race([
+          p,
+          new Promise<HealthIndicatorResult>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), TIMEOUT_MS),
+          ),
+        ]);
+      } catch {
+        return {
+          [key]: {
+            status: 'up',
+            message: 'degraded (check timed out)',
+            degraded: true,
+          },
+        };
+      }
+    };
+    const [dbResult, redisResult] = await Promise.all([
+      checkWithTimeout(this.prismaHealth.isHealthy('database'), 'database'),
+      checkWithTimeout(this.redisHealth.isHealthy('redis'), 'redis'),
+    ]);
     return this.health.check([
-      async () => this.prismaHealth.isHealthy('database'),
-      async () => this.redisHealth.isHealthy('redis'),
+      () => Promise.resolve(dbResult),
+      () => Promise.resolve(redisResult),
     ]);
   }
 

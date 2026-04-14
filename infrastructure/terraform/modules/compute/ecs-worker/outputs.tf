@@ -15,5 +15,5 @@ output "task_definition_arn" {
 
 output "security_group_id" {
   description = "Worker security group ID"
-  value       = aws_security_group.worker.id
+  value       = one(local.worker_security_sgs)
 }

@@ -9,29 +9,26 @@ export class QueueService {
   private queueUrls: Map<string, string>;
 
   constructor(private configService: ConfigService) {
-    // Initialize SQS client
+    // Initialize SQS client - use explicit credentials when set (local dev), else default chain (ECS task role)
     const region = this.configService.get<string>('aws.region') || 'us-east-1';
     const accessKeyId = this.configService.get<string>('aws.accessKeyId');
     const secretAccessKey = this.configService.get<string>('aws.secretAccessKey');
 
+    this.sqsClient = new SQSClient({
+      region,
+      ...(accessKeyId && secretAccessKey
+        ? { credentials: { accessKeyId, secretAccessKey } }
+        : {}),
+    });
     if (accessKeyId && secretAccessKey) {
-      this.sqsClient = new SQSClient({
-        region,
-        credentials: {
-          accessKeyId,
-          secretAccessKey,
-        },
-      });
-      this.logger.log('SQS client initialized');
+      this.logger.log('SQS client initialized (explicit credentials)');
     } else {
-      this.logger.warn('AWS credentials not configured - SQS disabled');
+      this.logger.log('SQS client initialized (default credential chain)');
     }
 
-    // Map queue names to URLs
+    // Map queue names to URLs (payment only for now)
     this.queueUrls = new Map([
-      ['EMAIL_QUEUE', this.configService.get<string>('sqs.emailQueueUrl') || ''],
       ['PAYMENT_QUEUE', this.configService.get<string>('sqs.paymentQueueUrl') || ''],
-      ['CME_QUEUE', this.configService.get<string>('sqs.cmeQueueUrl') || ''],
     ]);
   }
 
@@ -56,22 +53,12 @@ export class QueueService {
       const response = await this.sqsClient.send(command);
       this.logger.log(`Message sent to ${queueName}: ${response.MessageId}`);
     } catch (error) {
-      this.logger.error(`Failed to send message to ${queueName}:`, error);
-      throw error;
+      this.logger.error(
+        `Failed to send message to ${queueName} - business operation will succeed but job may need retry:`,
+        error,
+      );
+      // Do not rethrow - allow survey/program completion to succeed; queue can be retried manually or via DLQ
     }
-  }
-
-  /**
-   * Send email job to queue
-   */
-  async sendEmail(to: string, subject: string, body: string): Promise<void> {
-    await this.sendMessage('EMAIL_QUEUE', {
-      type: 'SEND_EMAIL',
-      to,
-      subject,
-      body,
-      timestamp: new Date().toISOString(),
-    });
   }
 
   /**
@@ -89,23 +76,6 @@ export class QueueService {
       amount,
       paymentType: type,
       programId,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  /**
-   * Generate CME certificate job
-   */
-  async generateCertificate(
-    userId: string,
-    programId: string,
-    credits: number,
-  ): Promise<void> {
-    await this.sendMessage('CME_QUEUE', {
-      type: 'GENERATE_CERTIFICATE',
-      userId,
-      programId,
-      credits,
       timestamp: new Date().toISOString(),
     });
   }

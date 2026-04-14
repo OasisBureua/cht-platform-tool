@@ -59,47 +59,138 @@ variable "redis_port" {
 }
 
 # Application secrets
-variable "stripe_secret_key" {
-  description = "Stripe secret key"
+variable "supabase_url" {
+  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
+  type        = string
+}
+
+variable "supabase_anon_key" {
+  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via platform.tfvars or TF_VAR)"
+  type        = string
+  sensitive   = true
+}
+
+variable "gotrue_jwt_secret" {
+  description = "GoTrue JWT secret for validating tokens (set via platform.tfvars or TF_VAR)"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "stripe_publishable_key" {
-  description = "Stripe publishable key"
+variable "mediahub_base_url" {
+  description = "MediaHub Public API base URL"
   type        = string
-  default     = ""
+  default     = "https://mediahub.communityhealth.media/api/public"
 }
 
-variable "stripe_webhook_secret" {
-  description = "Stripe webhook secret"
+variable "mediahub_api_key" {
+  description = "MediaHub Public API key for catalog (clips, tags, doctors, search)"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "sendgrid_api_key" {
-  description = "SendGrid API key"
+variable "youtube_api_key" {
+  description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
+  type        = string
+  sensitive   = true
+}
+
+variable "youtube_playlist_ids" {
+  description = "Comma-separated YouTube playlist IDs for catalog (set via platform.tfvars or TF_VAR_youtube_playlist_ids)"
+  type        = string
+}
+
+# Zoom (Server-to-Server OAuth for webinars)
+variable "zoom_account_id" {
+  description = "Zoom Account ID (from Server-to-Server OAuth app at marketplace.zoom.us)"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "auth0_domain" {
-  description = "Auth0 domain"
+variable "zoom_client_id" {
+  description = "Zoom OAuth Client ID"
   type        = string
+  sensitive   = true
   default     = ""
 }
 
-variable "auth0_client_id" {
-  description = "Auth0 client ID"
+variable "zoom_client_secret" {
+  description = "Zoom OAuth Client Secret"
   type        = string
+  sensitive   = true
   default     = ""
 }
 
-variable "auth0_audience" {
-  description = "Auth0 audience"
+variable "zoom_webhook_secret" {
+  description = "Zoom webhook Secret Token (from Event Subscriptions - for URL validation)"
   type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
+variable "jotform_api_key" {
+  description = "Jotform API key for surveys (from Jotform enterprise account)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Bill.com (payment processing - HCP payouts via ACH/check)
+variable "bill_dev_key" {
+  description = "Bill.com developer key (from Settings > Sync & Integrations > Manage Developer Keys)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_username" {
+  description = "Bill.com account email for API login"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_password" {
+  description = "Bill.com account password for API login"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_org_id" {
+  description = "Bill.com organization ID (from Sync & Integrations page)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_funding_account_id" {
+  description = "Bill.com funding account ID (bank account for payouts)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_webhook_secret" {
+  description = "Bill.com webhook signing secret for validating payment.updated/payment.failed events"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "admin_bootstrap_secret" {
+  description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "hubspot_access_token" {
+  description = "HubSpot private app or Service Key token for CRM contact sync"
+  type        = string
+  sensitive   = true
   default     = ""
 }

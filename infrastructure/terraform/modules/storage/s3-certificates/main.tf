@@ -1,8 +1,12 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 resource "aws_s3_bucket" "certificates" {
-  bucket = "${var.project}-${var.environment}-certificates"
+  bucket = "${local.prefix}-certificates"
 
   tags = {
-    Name        = "${var.project}-${var.environment}-certificates"
+    Name        = "${local.prefix}-certificates"
     Environment = var.environment
     Purpose     = "CME certificates storage"
   }
@@ -44,6 +48,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "certificates" {
   rule {
     id     = "archive-old-certificates"
     status = "Enabled"
+
+    filter {}
 
     transition {
       days          = 90

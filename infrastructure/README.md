@@ -137,7 +137,7 @@ nano terraform.tfvars
 Sensitive values can be set via environment variables:
 ```bash
 export TF_VAR_stripe_secret_key="sk_test_..."
-export TF_VAR_sendgrid_api_key="SG...."
+# Email via Amazon SES - worker uses IAM role, verify domain in SES
 ```
 
 ## Outputs

@@ -1,15 +1,19 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 resource "aws_elasticache_subnet_group" "main" {
-  name       = "${var.project}-${var.environment}-redis-subnet"
+  name       = "${local.prefix}-redis-subnet"
   subnet_ids = var.private_subnet_ids
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis-subnet-group"
+    Name        = "${local.prefix}-redis-subnet-group"
     Environment = var.environment
   }
 }
 
 resource "aws_security_group" "redis" {
-  name        = "${var.project}-${var.environment}-redis-sg"
+  name        = "${local.prefix}-redis-sg"
   description = "Security group for ElastiCache Redis"
   vpc_id      = var.vpc_id
 
@@ -30,13 +34,13 @@ resource "aws_security_group" "redis" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis-sg"
+    Name        = "${local.prefix}-redis-sg"
     Environment = var.environment
   }
 }
 
 resource "aws_elasticache_parameter_group" "main" {
-  name        = "${var.project}-${var.environment}-redis"
+  name        = "${local.prefix}-redis"
   family      = "redis7"
   description = "Custom parameter group for ${var.project} ${var.environment}"
 
@@ -51,13 +55,13 @@ resource "aws_elasticache_parameter_group" "main" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis-params"
+    Name        = "${local.prefix}-redis-params"
     Environment = var.environment
   }
 }
 
 resource "aws_elasticache_replication_group" "main" {
-  replication_group_id = "${var.project}-${var.environment}-redis"
+  replication_group_id = "${local.prefix}-redis"
   description          = "Redis cluster for ${var.project} ${var.environment}"
   
   engine               = "redis"
@@ -98,7 +102,7 @@ resource "aws_elasticache_replication_group" "main" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis"
+    Name        = "${local.prefix}-redis"
     Environment = var.environment
   }
 }
@@ -109,7 +113,7 @@ resource "aws_cloudwatch_log_group" "redis_slow_log" {
   kms_key_id        = var.cloudwatch_kms_key_arn
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis-slow-log"
+    Name        = "${local.prefix}-redis-slow-log"
     Environment = var.environment
   }
 }
@@ -120,7 +124,7 @@ resource "aws_cloudwatch_log_group" "redis_engine_log" {
   kms_key_id        = var.cloudwatch_kms_key_arn
 
   tags = {
-    Name        = "${var.project}-${var.environment}-redis-engine-log"
+    Name        = "${local.prefix}-redis-engine-log"
     Environment = var.environment
   }
 }

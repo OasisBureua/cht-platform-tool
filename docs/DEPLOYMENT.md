@@ -104,7 +104,7 @@ domain_aliases = ["app.example.com"]
 
 # Secrets (or use environment variables)
 stripe_secret_key = "sk_test_..."
-sendgrid_api_key  = "SG...."
+# Email via Amazon SES - verify domain in SES, worker uses IAM role
 ```
 
 ### 7. Deploy Infrastructure

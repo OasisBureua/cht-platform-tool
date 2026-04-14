@@ -65,13 +65,6 @@ variable "stripe_webhook_secret" {
   default     = ""
 }
 
-variable "sendgrid_api_key" {
-  description = "SendGrid API key"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "auth0_domain" {
   description = "Auth0 domain"
   type        = string

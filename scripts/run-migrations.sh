@@ -21,10 +21,11 @@ cd infrastructure/terraform/environments/us-east-1
 CLUSTER=$(terraform output -raw cluster_name)
 cd ../../../..
 
+TASK_FAMILY=$([ "$ENV" == "platform" ] && echo "cht-platform-backend" || echo "cht-platform-${ENV}-backend")
 echo "🔍 Finding backend task..."
 TASK_ARN=$(aws ecs list-tasks \
   --cluster $CLUSTER \
-  --family cht-platform-${ENV}-backend \
+  --family $TASK_FAMILY \
   --region us-east-1 \
   --query 'taskArns[0]' \
   --output text)

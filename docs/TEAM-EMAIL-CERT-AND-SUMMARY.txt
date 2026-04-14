@@ -1,0 +1,44 @@
+To: [team distribution list]
+Subject: CHT Platform – Summary of Changes + URGENT: Add CNAME in GoDaddy for SSL Certificate
+
+---
+
+Hi team,
+
+Here's a summary of recent changes and an urgent action item that needs to be done as soon as possible.
+
+SUMMARY OF CHANGES
+
+• YouTube API: Integrated for the catalog. Videos are pulled from YouTube playlists on the public watch page as intended. Please see image beloow
+
+• Catalog: Content Library at /catalog shows YouTube thumbnails and playlists; no login required.
+
+• Auth bypass (dev): Dev auth bypass is available for quick testing without logging in.
+
+• ACM certificate: An SSL certificate has been requested for testapp.communityhealth.media. Validation is pending DNS.
+
+• Supabase login: We are working to fix the Supabase email send error that is affecting testing of the login flow. Once resolved, full end-to-end login testing will be possible.
+
+• Zoom integration: Pending credentials (Account ID, Client ID, Client Secret) from a Server-to-Server OAuth app at marketplace.zoom.us.
+
+URGENT: ADD CNAME IN GODADDY (ASAP)
+
+The SSL certificate for testapp.communityhealth.media will time out in 72 hours if the DNS record is not added. Please add the following CNAME record in GoDaddy as soon as possible.
+
+1. Go to dns.godaddy.com and select communityhealth.media
+2. Click Add → CNAME
+3. Add this record:
+
+   Type:  CNAME
+   Name:  _fb1d8de4d40845f88926d93a34520cbf.testapp.communityhealth.media
+   Value: _97091cfa219ab4981c187326b5d72c2b.jkddzztszm.acm-validations.aws.
+   TTL:   600
+
+Use the full record name above. If GoDaddy's UI only accepts the host part, use: _fb1d8de4d40845f88926d93a34520cbf.testapp
+
+WHY THIS MATTERS
+
+Without this CNAME, the certificate will not validate and HTTPS for testapp.communityhealth.media will not work. The request will expire if the record is not added in time.
+
+Thanks,
+[Your name]

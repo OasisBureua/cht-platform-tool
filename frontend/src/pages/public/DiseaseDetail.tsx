@@ -1,195 +1,166 @@
-import { Link, useParams } from 'react-router-dom';
-
-// Stock images for all catalog cards (consistent across disease pages)
-const STOCK_IMAGES = {
-  featuredVideo: 'https://picsum.photos/seed/catalog-video/800/500',
-  featuredWebinar: 'https://picsum.photos/seed/catalog-webinar/800/500',
-  featuredSurvey: 'https://picsum.photos/seed/catalog-survey/800/400',
-  featuredStudy: 'https://picsum.photos/seed/catalog-study/800/400',
-  biomarker: [
-    'https://picsum.photos/seed/catalog-bio1/600/360',
-    'https://picsum.photos/seed/catalog-bio2/600/360',
-    'https://picsum.photos/seed/catalog-bio3/600/360',
-  ],
-} as const;
-
-type BiomarkerCard = {
-  id: string;
-  title: string;
-  contentTypes: string[];
-  imageUrl: string;
-};
-
-type BiomarkerSection = {
-  key: string;
-  title: string;
-  cards: BiomarkerCard[];
-};
-
-type DiseasePageData = {
-  slug: string;
-  title: string;
-  featuredVideo: { title: string; imageUrl: string };
-  featuredWebinar: { title: string; imageUrl: string };
-  featuredSurvey: { title: string; imageUrl: string };
-  featuredStudy: { title: string; imageUrl: string };
-  biomarkerSections: BiomarkerSection[];
-};
-
-function getPageData(slug: string | undefined): DiseasePageData {
-  const title = slug ? slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Content Library';
-  const biomarkerCards: BiomarkerCard[] = [
-    { id: '1', title: 'Biologic Process Change', contentTypes: ['Video', 'Audio', 'White Paper'], imageUrl: STOCK_IMAGES.biomarker[0] },
-    { id: '2', title: 'ADC-Conjugate Considerations', contentTypes: ['Case Study', 'Journal Article'], imageUrl: STOCK_IMAGES.biomarker[1] },
-    { id: '3', title: 'Expert Conversations & Group Dives', contentTypes: ['Podcast', 'Interview'], imageUrl: STOCK_IMAGES.biomarker[2] },
-  ];
-
-  const sections: BiomarkerSection[] = [
-    { key: 'her2', title: 'HER2+', cards: biomarkerCards },
-    { key: 'hr', title: 'HR+', cards: biomarkerCards },
-    { key: 'tnbc', title: 'Triple Negative', cards: biomarkerCards },
-    { key: 'her2low', title: 'HER2 Low/Ultralow', cards: biomarkerCards },
-    { key: 'highrisk', title: 'High Risk', cards: biomarkerCards },
-  ];
-
-  return {
-    slug: slug || 'catalog',
-    title,
-    featuredVideo: { title: 'Featured Video Title', imageUrl: STOCK_IMAGES.featuredVideo },
-    featuredWebinar: { title: 'Featured Webinar Title', imageUrl: STOCK_IMAGES.featuredWebinar },
-    featuredSurvey: { title: 'Featured Survey', imageUrl: STOCK_IMAGES.featuredSurvey },
-    featuredStudy: { title: 'Featured Study', imageUrl: STOCK_IMAGES.featuredStudy },
-    biomarkerSections: sections,
-  };
-}
+import { Link, useParams, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Loader2, Play, ArrowRight } from 'lucide-react';
+import { catalogApi } from '../../api/catalog';
+import { webinarsApi } from '../../api/webinars';
+import DISEASE_AREAS from '../../data/disease-areas';
 
 export default function DiseaseDetail() {
   const { diseaseSlug } = useParams<{ diseaseSlug?: string }>();
-  const page = getPageData(diseaseSlug);
+  const location = useLocation();
+  const isApp = location.pathname.startsWith('/app');
+  const basePath = isApp ? '/app' : '';
+
+  const area = DISEASE_AREAS.find((a) => a.slug === diseaseSlug);
+  const title = area?.title ?? (diseaseSlug ? diseaseSlug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : 'Disease Area');
+  const tagRegex = area ? new RegExp(area.searchTags.join('|'), 'i') : null;
+
+  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+    queryKey: ['catalog', 'playlists'],
+    queryFn: catalogApi.getPlaylists,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: clips, isLoading: clipsLoading } = useQuery({
+    queryKey: ['catalog', 'clips', 'disease', diseaseSlug],
+    queryFn: () => catalogApi.getClips({ limit: 50, sort_by: 'recent' }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: webinars = [] } = useQuery({
+    queryKey: ['webinars'],
+    queryFn: webinarsApi.list,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const matchedPlaylists = tagRegex ? playlists.filter((p) => tagRegex.test(p.title)) : playlists;
+  const matchedClips = tagRegex
+    ? (clips?.items ?? []).filter((c) => tagRegex.test(c.title) || c.tags?.some((t) => tagRegex.test(t)))
+    : (clips?.items ?? []);
+  const matchedWebinars = tagRegex
+    ? webinars.filter((w) => tagRegex.test(w.title) || tagRegex.test(w.description))
+    : webinars;
+
+  const isLoading = playlistsLoading || clipsLoading;
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="mx-auto max-w-7xl px-6 py-10 space-y-10">
-        {/* Hero: Title + View All Biomarkers */}
+    <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-white min-h-screen'}>
+      <div className={isApp ? '' : 'mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-8'}>
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900">{page.title}</h1>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{title}</h1>
+            {area && <p className="text-sm text-gray-500 mt-1">{area.description}</p>}
+          </div>
           <Link
-            to="/catalog"
+            to={`${basePath}/catalog`}
             className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors w-fit"
           >
-            View All Biomarkers
+            All Content
           </Link>
         </header>
 
-        {/* Featured content: 2 large + 2 small cards */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <FeaturedCard
-            title={page.featuredVideo.title}
-            imageUrl={page.featuredVideo.imageUrl}
-            cta="Watch Now"
-            size="large"
-            to="/watch"
-          />
-          <FeaturedCard
-            title={page.featuredWebinar.title}
-            imageUrl={page.featuredWebinar.imageUrl}
-            cta="Join Now"
-            size="large"
-            to="/catalog"
-          />
-          <FeaturedCard
-            title={page.featuredSurvey.title}
-            imageUrl={page.featuredSurvey.imageUrl}
-            cta="View Now"
-            size="small"
-            to="/catalog"
-          />
-          <FeaturedCard
-            title={page.featuredStudy.title}
-            imageUrl={page.featuredStudy.imageUrl}
-            cta="View Now"
-            size="small"
-            to="/catalog"
-          />
-        </section>
+        {isLoading && (
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+          </div>
+        )}
 
-        {/* Biomarker Playlists */}
-        <section className="space-y-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Biomarker Playlists</h2>
+        {!isLoading && (
+          <div className="space-y-10">
+            {/* LIVE sessions */}
+            {matchedWebinars.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">LIVE Sessions</h2>
+                  <Link to={`${basePath}/live`} className="text-sm font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-1">
+                    View all <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {matchedWebinars.slice(0, 6).map((w) => (
+                    <Link
+                      key={w.id}
+                      to={isApp ? `/app/live/${w.id}` : `/live/${w.id}`}
+                      className="rounded-2xl border border-gray-200 bg-white p-5 hover:shadow-md transition-shadow"
+                    >
+                      <p className="font-bold text-gray-900 line-clamp-2">{w.title}</p>
+                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{w.description}</p>
+                      {w.startTime && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          {new Date(w.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {w.duration ? ` · ${w.duration} min` : ''}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
 
-          {page.biomarkerSections.map((sec) => (
-            <div key={sec.key} className="space-y-5">
-              <h3 className="text-xl font-bold text-gray-900">{sec.title}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {sec.cards.map((card) => (
-                  <BiomarkerCard key={card.id} card={card} />
-                ))}
+            {/* Playlists */}
+            {matchedPlaylists.length > 0 && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900">Playlists</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {matchedPlaylists.slice(0, 9).map((p) => (
+                    <Link
+                      key={p.id}
+                      to={`${basePath}/catalog/playlist/${p.id}`}
+                      className="rounded-2xl border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
+                    >
+                      <div className="aspect-video bg-gray-100">
+                        <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                      </div>
+                      <div className="p-4">
+                        <p className="font-bold text-gray-900 line-clamp-2">{p.title}</p>
+                        <p className="text-xs text-gray-500 mt-1">{p.videoCount} videos</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Clips */}
+            {matchedClips.length > 0 && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-bold text-gray-900">Conversations</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {matchedClips.slice(0, 12).map((c) => (
+                    <Link
+                      key={c.id}
+                      to={`${basePath}/catalog/clip/${c.id}`}
+                      className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-sm transition-shadow group"
+                    >
+                      <div className="aspect-video bg-gray-100 relative">
+                        <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                          <Play className="h-8 w-8 text-white" fill="white" />
+                        </div>
+                      </div>
+                      <div className="p-2.5">
+                        <p className="font-medium text-gray-900 text-xs line-clamp-2">{c.title}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {matchedWebinars.length === 0 && matchedPlaylists.length === 0 && matchedClips.length === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
+                <p className="font-semibold text-gray-900">No content available yet for {title}</p>
+                <p className="mt-1 text-sm text-gray-600">Check back soon or browse the full content library.</p>
+                <Link
+                  to={`${basePath}/catalog`}
+                  className="mt-4 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                >
+                  Browse Library
+                </Link>
               </div>
-            </div>
-          ))}
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function FeaturedCard({
-  title,
-  imageUrl,
-  cta,
-  size,
-  to,
-}: {
-  title: string;
-  imageUrl: string;
-  cta: string;
-  size: 'large' | 'small';
-  to: string;
-}) {
-  const isLarge = size === 'large';
-  return (
-    <Link
-      to={to}
-      className={`group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 ${
-        isLarge ? 'min-h-[220px] md:min-h-[260px]' : 'min-h-[160px]'
-      }`}
-    >
-      <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
-      <div className="absolute inset-0 p-5 flex flex-col justify-end">
-        <p className="text-lg font-semibold text-gray-900">{title}</p>
-        <span className="mt-2 inline-flex w-fit rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
-          {cta}
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-function BiomarkerCard({ card }: { card: BiomarkerCard }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-      <div className="relative h-[180px]">
-        <img src={card.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-      </div>
-      <div className="p-5 space-y-4">
-        <h4 className="font-bold text-gray-900">{card.title}</h4>
-        <ul className="space-y-1">
-          {card.contentTypes.map((t) => (
-            <li key={t} className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="h-1 w-1 rounded-full bg-gray-400" />
-              {t}
-            </li>
-          ))}
-        </ul>
-        <div className="flex justify-end">
-          <Link
-            to="/watch"
-            className="rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
-          >
-            View All
-          </Link>
-        </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

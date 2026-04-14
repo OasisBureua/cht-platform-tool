@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
 import { UpdateVideoProgressDto, VideoProgressResponseDto } from './dto/update-video-progress.dto';
@@ -12,7 +14,93 @@ export class ProgramsService {
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
+    private hubspot: HubSpotService,
   ) {}
+
+  /**
+   * Get all programs for admin (any status)
+   */
+  async getAllProgramsForAdmin() {
+    const programs = await this.prisma.program.findMany({
+      include: {
+        videos: { orderBy: { order: 'asc' } },
+        _count: { select: { enrollments: true, surveys: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return programs.map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      sponsorName: p.sponsorName,
+      sponsorLogo: p.sponsorLogo || undefined,
+      status: p.status,
+      creditAmount: p.creditAmount,
+      honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
+      startDate: p.startDate?.toISOString(),
+      endDate: p.endDate?.toISOString(),
+      enrollmentsCount: p._count.enrollments,
+      surveysCount: p._count.surveys,
+    }));
+  }
+
+  /**
+   * Create program (admin). honorariumAmount in dollars, stored as cents.
+   */
+  async createProgram(dto: {
+    title: string;
+    description: string;
+    sponsorName: string;
+    sponsorLogo?: string;
+    creditAmount?: number;
+    accreditationBody?: string;
+    status?: 'DRAFT' | 'PUBLISHED';
+    honorariumAmount?: number;
+    startDate?: string;
+    endDate?: string;
+    duration?: number;
+    zoomMeetingId?: string;
+    zoomJoinUrl?: string;
+    zoomStartUrl?: string;
+    zoomSessionType?: 'WEBINAR' | 'MEETING';
+  }) {
+    const program = await this.prisma.program.create({
+      data: {
+        title: dto.title,
+        description: dto.description,
+        sponsorName: dto.sponsorName,
+        sponsorLogo: dto.sponsorLogo,
+        creditAmount: dto.creditAmount ?? 0,
+        accreditationBody: dto.accreditationBody,
+        status: dto.status ?? 'DRAFT',
+        honorariumAmount: dto.honorariumAmount != null ? Math.round(dto.honorariumAmount * 100) : null,
+        startDate: dto.startDate ? new Date(dto.startDate) : null,
+        endDate: dto.endDate ? new Date(dto.endDate) : null,
+        duration: dto.duration ?? null,
+        zoomSessionType: dto.zoomSessionType ?? 'WEBINAR',
+        zoomMeetingId: dto.zoomMeetingId ?? null,
+        zoomJoinUrl: dto.zoomJoinUrl ?? null,
+        zoomStartUrl: dto.zoomStartUrl ?? null,
+      },
+    });
+    this.logger.log(`Program created: ${program.id} - ${program.title}`);
+    return program;
+  }
+
+  /**
+   * Update program status (admin)
+   */
+  async updateProgramStatus(id: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') {
+    const program = await this.prisma.program.update({
+      where: { id },
+      data: {
+        status,
+        publishedAt: status === 'PUBLISHED' ? new Date() : undefined,
+      },
+    });
+    this.logger.log(`Program ${id} status updated to ${status}`);
+    return program;
+  }
 
   /**
    * Get all published programs
@@ -90,7 +178,41 @@ export class ProgramsService {
         duration: v.duration,
         order: v.order,
       })),
+      zoomSessionType: program.zoomSessionType,
+      zoomJoinUrl: program.zoomJoinUrl || undefined,
+      startDate: program.startDate?.toISOString(),
+      duration: program.duration ?? undefined,
+      jotformSurveyUrl: program.jotformSurveyUrl || undefined,
+      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      jotformPreEventUrl: program.jotformPreEventUrl || undefined,
+      registrationRequiresApproval: program.registrationRequiresApproval,
+      hostDisplayName: program.hostDisplayName || undefined,
+      hasCalendlyScheduling: !!program.calendlySchedulingUrl?.trim(),
     };
+  }
+
+  /**
+   * Office-hours Calendly URL — only for enrolled users (after admin approval when registrationRequiresApproval is on).
+   */
+  async getCalendlySchedulingForEnrolledUser(
+    userId: string,
+    programId: string,
+  ): Promise<{ calendlySchedulingUrl: string | null }> {
+    const program = await this.prisma.program.findFirst({
+      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
+      select: { calendlySchedulingUrl: true },
+    });
+    const url = program?.calendlySchedulingUrl?.trim();
+    if (!url) {
+      return { calendlySchedulingUrl: null };
+    }
+    const enrollment = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!enrollment) {
+      return { calendlySchedulingUrl: null };
+    }
+    return { calendlySchedulingUrl: url };
   }
 
   /**
@@ -98,6 +220,13 @@ export class ProgramsService {
    */
   async enrollUser(dto: EnrollUserDto): Promise<EnrollmentResponseDto> {
     this.logger.log(`Enrolling user ${dto.userId} in program ${dto.programId}`);
+
+    const programRow = await this.prisma.program.findUnique({ where: { id: dto.programId } });
+    if (programRow?.registrationRequiresApproval) {
+      throw new BadRequestException(
+        'This program uses admin-approved registration. Complete the registration flow instead of quick enroll.',
+      );
+    }
 
     // Check if already enrolled
     const existing = await this.prisma.programEnrollment.findUnique({
@@ -133,12 +262,16 @@ export class ProgramsService {
       },
     });
 
-    // Send welcome email
-    await this.queueService.sendEmail(
-      user.email,
-      `Welcome to ${program.title}`,
-      `You have successfully enrolled in ${program.title}. Start learning now to earn ${program.creditAmount} CME credits!`,
-    );
+    this.hubspot.createOrUpdateContact({
+      email: user.email,
+      firstname: user.firstName,
+      lastname: user.lastName,
+      jobtitle: user.specialty ?? undefined,
+      company: user.institution ?? undefined,
+      city: user.city ?? undefined,
+      state: user.state ?? undefined,
+      zip: user.zipCode ?? undefined,
+    }).catch(() => {});
 
     this.logger.log(`User enrolled successfully: ${enrollment.id}`);
 
@@ -301,7 +434,11 @@ export class ProgramsService {
   /**
    * Handle program completion (send emails, process payments, generate certificate)
    */
-  private async handleProgramCompletion(enrollment: any): Promise<void> {
+  private async handleProgramCompletion(
+    enrollment: Prisma.ProgramEnrollmentGetPayload<{
+      include: { program: true; user: true };
+    }>,
+  ): Promise<void> {
     this.logger.log(`Program completed: ${enrollment.programId} by user ${enrollment.userId}`);
 
     const { user, program } = enrollment;
@@ -314,20 +451,6 @@ export class ProgramsService {
       },
     });
 
-    // Send completion email
-    await this.queueService.sendEmail(
-      user.email,
-      `Congratulations! You completed ${program.title}`,
-      `You have earned ${program.creditAmount} CME credits. Your certificate will be available shortly.`,
-    );
-
-    // Generate CME certificate
-    await this.queueService.generateCertificate(
-      enrollment.userId,
-      enrollment.programId,
-      program.creditAmount,
-    );
-
     // Process honorarium payment if applicable
     if (program.honorariumAmount) {
       await this.queueService.processPayment(
@@ -337,6 +460,17 @@ export class ProgramsService {
         enrollment.programId,
       );
     }
+
+    this.hubspot.createOrUpdateContact({
+      email: user.email,
+      firstname: user.firstName,
+      lastname: user.lastName,
+      jobtitle: user.specialty ?? undefined,
+      company: user.institution ?? undefined,
+      city: user.city ?? undefined,
+      state: user.state ?? undefined,
+      zip: user.zipCode ?? undefined,
+    }).catch(() => {});
 
     this.logger.log(`Completion workflow triggered for program ${enrollment.programId}`);
   }

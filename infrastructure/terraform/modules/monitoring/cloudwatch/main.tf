@@ -1,6 +1,10 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 # CloudWatch Dashboard
 resource "aws_cloudwatch_dashboard" "main" {
-  dashboard_name = "${var.project}-${var.environment}-dashboard"
+  dashboard_name = "${local.prefix}-dashboard"
 
   dashboard_body = jsonencode({
     widgets = [
@@ -82,7 +86,7 @@ resource "aws_cloudwatch_dashboard" "main" {
 
 # Alarms for critical metrics
 resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
-  alarm_name          = "${var.project}-${var.environment}-ecs-cpu-high"
+  alarm_name          = "${local.prefix}-ecs-cpu-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -100,13 +104,13 @@ resource "aws_cloudwatch_metric_alarm" "ecs_cpu_high" {
   alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
 
   tags = {
-    Name        = "${var.project}-${var.environment}-ecs-cpu-alarm"
+    Name        = "${local.prefix}-ecs-cpu-alarm"
     Environment = var.environment
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
-  alarm_name          = "${var.project}-${var.environment}-rds-cpu-high"
+  alarm_name          = "${local.prefix}-rds-cpu-high"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
   metric_name         = "CPUUtilization"
@@ -124,13 +128,13 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
   alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
 
   tags = {
-    Name        = "${var.project}-${var.environment}-rds-cpu-alarm"
+    Name        = "${local.prefix}-rds-cpu-alarm"
     Environment = var.environment
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
-  alarm_name          = "${var.project}-${var.environment}-alb-5xx-errors"
+  alarm_name          = "${local.prefix}-alb-5xx-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "HTTPCode_Target_5XX_Count"
@@ -148,14 +152,14 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx_errors" {
   alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
 
   tags = {
-    Name        = "${var.project}-${var.environment}-alb-5xx-alarm"
+    Name        = "${local.prefix}-alb-5xx-alarm"
     Environment = var.environment
   }
 }
 
 # Log Metric Filters
 resource "aws_cloudwatch_log_metric_filter" "error_count" {
-  name           = "${var.project}-${var.environment}-error-count"
+  name           = "${local.prefix}-error-count"
   log_group_name = var.log_group_name
   pattern        = "[time, request_id, level = ERROR*, ...]"
 
@@ -167,7 +171,7 @@ resource "aws_cloudwatch_log_metric_filter" "error_count" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "application_errors" {
-  alarm_name          = "${var.project}-${var.environment}-application-errors"
+  alarm_name          = "${local.prefix}-application-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "ErrorCount"
@@ -181,7 +185,7 @@ resource "aws_cloudwatch_metric_alarm" "application_errors" {
   alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
 
   tags = {
-    Name        = "${var.project}-${var.environment}-app-errors-alarm"
+    Name        = "${local.prefix}-app-errors-alarm"
     Environment = var.environment
   }
 }

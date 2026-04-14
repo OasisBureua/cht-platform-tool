@@ -106,7 +106,7 @@ US_EAST_2_CF=$(terraform output -raw cloudfront_domain_name)
 
 # Update DNS records (manual via AWS Console or CLI)
 # Point api.communityhealth.media → $US_EAST_2_ALB
-# Point app.communityhealth.media → $US_EAST_2_CF
+# Point testapp.communityhealth.media → $US_EAST_2_CF
 ```
 
 ### Step 6: Verify Services (10 minutes)
@@ -115,7 +115,7 @@ US_EAST_2_CF=$(terraform output -raw cloudfront_domain_name)
 curl https://api.communityhealth.media/health/ready
 
 # Test frontend
-open https://app.communityhealth.media
+open https://testapp.communityhealth.media
 
 # Monitor logs
 aws logs tail /ecs/cht-platform-prod-failover --follow --region us-east-2

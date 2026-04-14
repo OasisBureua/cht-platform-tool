@@ -1,0 +1,2 @@
+certificate_arn="arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
+testapp_domain="testapp.communityhealth.media"

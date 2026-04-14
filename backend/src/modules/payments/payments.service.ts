@@ -1,10 +1,12 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { StripeService } from './stripe.service';
+import { BillService } from './bill.service';
 import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
+import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
+import { validateTaxId, sanitizeCompanyName } from './w9-validation';
 
 @Injectable()
 export class PaymentsService {
@@ -13,17 +15,46 @@ export class PaymentsService {
 
   constructor(
     private prisma: PrismaService,
-    private stripeService: StripeService,
+    private billService: BillService,
     private configService: ConfigService,
   ) {
     this.frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
   }
 
   /**
-   * Create Stripe Connect account for user
+   * Save Bill.com vendorId after frontend Elements SDK vendorSetupSuccess event.
    */
-  async createConnectAccount(userId: string): Promise<CreateConnectAccountResponseDto> {
-    this.logger.log(`Creating Connect account for user: ${userId}`);
+  async saveVendorId(userId: string, vendorId: string): Promise<{ saved: boolean }> {
+    if (!vendorId?.trim()) throw new BadRequestException('vendorId is required');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        billVendorId: vendorId.trim(),
+        billVendorStatus: 'active',
+        paymentEnabled: true,
+      },
+    });
+    this.logger.log(`Saved Bill.com vendorId=${vendorId} for user=${userId}`);
+    return { saved: true };
+  }
+
+  /**
+   * Test Bill.com API connection (login only). Does not require funding account ID.
+   */
+  async testBillConnection(): Promise<{ success: true; organizationId: string }> {
+    return this.billService.testConnection();
+  }
+
+  /**
+   * Create Bill.com vendor for user (with bank details)
+   */
+  async createConnectAccount(
+    userId: string,
+    vendorDto?: CreateVendorDto,
+  ): Promise<CreateConnectAccountResponseDto> {
+    this.logger.log(`Creating Bill.com vendor for user: ${userId}`);
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -33,66 +64,83 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
-    // If user already has account, return existing
-    if (user.stripeAccountId) {
-      this.logger.log(`User already has Stripe account: ${user.stripeAccountId}`);
-      
-      const accountLink = await this.createAccountLink(userId);
-      
+    if (user.billVendorId) {
+      this.logger.log(`User already has Bill.com vendor: ${user.billVendorId}`);
       return {
-        accountId: user.stripeAccountId,
-        onboardingUrl: accountLink.url,
-        accountStatus: user.stripeAccountStatus ?? 'incomplete',
+        accountId: user.billVendorId,
+        onboardingUrl: `${this.frontendUrl}/settings/payments`,
+        accountStatus: user.billVendorStatus ?? 'active',
       };
     }
 
-    // Create new Stripe account
-    const account = await this.stripeService.createConnectAccount(user.email, userId);
+    if (!vendorDto?.payeeName) {
+      return {
+        accountId: '',
+        onboardingUrl: `${this.frontendUrl}/settings/payments`,
+        accountStatus: 'onboarding_incomplete',
+      };
+    }
 
-    // Save account ID to database
+    const addressLine1 = vendorDto.addressLine1 || '';
+    const city = vendorDto.city || (user as Record<string, unknown>).city as string || '';
+    const stateOrProvince = vendorDto.state || (user as Record<string, unknown>).state as string || '';
+    const zipOrPostalCode = vendorDto.zipCode || (user as Record<string, unknown>).zipCode as string || '';
+
+    if (!addressLine1 || !city || !zipOrPostalCode) {
+      throw new BadRequestException(
+        'Address details (line1, city, zip) are required to create a US vendor account.',
+      );
+    }
+
+    const vendor = await this.billService.createVendor({
+      name: `${user.firstName} ${user.lastName}`,
+      email: user.email,
+      address: {
+        line1: addressLine1,
+        city,
+        stateOrProvince,
+        zipOrPostalCode,
+      },
+      ...(vendorDto.bankAccount && {
+        paymentInformation: {
+          payeeName: vendorDto.payeeName,
+          bankAccount: vendorDto.bankAccount,
+        },
+      }),
+    });
+
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        stripeAccountId: account.id,
-        stripeAccountStatus: 'onboarding_incomplete',
+        billVendorId: vendor.id,
+        billVendorStatus: 'active',
+        paymentEnabled: true,
+        // W-9 is submitted separately via the embedded W9Modal
       },
     });
 
-    // Create onboarding link
-    const accountLink = await this.stripeService.createAccountLink(
-      account.id,
-      `${this.frontendUrl}/settings/payments/refresh`,
-      `${this.frontendUrl}/settings/payments/complete`,
-    );
-
     return {
-      accountId: account.id,
-      onboardingUrl: accountLink.url,
-      accountStatus: 'onboarding_incomplete',
+      accountId: vendor.id,
+      onboardingUrl: `${this.frontendUrl}/settings/payments`,
+      accountStatus: 'active',
     };
   }
 
   /**
-   * Create new account link (refresh onboarding)
+   * Get payment settings URL (Bill.com - no external onboarding link)
    */
   async createAccountLink(userId: string): Promise<AccountLinkResponseDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
-    if (!user?.stripeAccountId) {
-      throw new BadRequestException('User does not have a Stripe account');
+    if (!user?.billVendorId) {
+      throw new BadRequestException('User does not have a Bill.com vendor account');
     }
 
-    const accountLink = await this.stripeService.createAccountLink(
-      user.stripeAccountId,
-      `${this.frontendUrl}/settings/payments/refresh`,
-      `${this.frontendUrl}/settings/payments/complete`,
-    );
-
     return {
-      url: accountLink.url,
-      expiresAt: accountLink.expires_at,
+      url: `${this.frontendUrl}/settings/payments`,
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
     };
   }
 
@@ -103,8 +151,8 @@ export class PaymentsService {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
-        stripeAccountId: true,
-        stripeAccountStatus: true,
+        billVendorId: true,
+        billVendorStatus: true,
         paymentEnabled: true,
         w9Submitted: true,
         w9SubmittedAt: true,
@@ -116,7 +164,7 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
-    if (!user.stripeAccountId) {
+    if (!user.billVendorId) {
       return {
         hasAccount: false,
         accountStatus: undefined,
@@ -129,25 +177,165 @@ export class PaymentsService {
       };
     }
 
-    // Get account details from Stripe
-    const account = await this.stripeService.getAccount(user.stripeAccountId);
-
-    return {
-      hasAccount: true,
-      accountId: user.stripeAccountId,
-      accountStatus: user.stripeAccountStatus ?? undefined,
-      paymentEnabled: user.paymentEnabled,
-      w9Submitted: user.w9Submitted,
-      w9SubmittedAt: user.w9SubmittedAt?.toISOString(),
-      totalEarnings: user.totalEarnings / 100, // Convert to dollars
-      chargesEnabled: account.charges_enabled,
-      payoutsEnabled: account.payouts_enabled,
-      detailsSubmitted: account.details_submitted,
-    };
+    try {
+      const vendor = await this.billService.getVendor(user.billVendorId);
+      return {
+        hasAccount: true,
+        accountId: user.billVendorId,
+        accountStatus: user.billVendorStatus ?? undefined,
+        paymentEnabled: user.paymentEnabled,
+        w9Submitted: user.w9Submitted,
+        w9SubmittedAt: user.w9SubmittedAt?.toISOString(),
+        totalEarnings: user.totalEarnings / 100,
+        chargesEnabled: true,
+        payoutsEnabled: user.paymentEnabled,
+        detailsSubmitted: !!vendor,
+      };
+    } catch {
+      return {
+        hasAccount: true,
+        accountId: user.billVendorId,
+        accountStatus: user.billVendorStatus ?? undefined,
+        paymentEnabled: user.paymentEnabled,
+        w9Submitted: user.w9Submitted,
+        w9SubmittedAt: user.w9SubmittedAt?.toISOString(),
+        totalEarnings: user.totalEarnings / 100,
+        chargesEnabled: false,
+        payoutsEnabled: user.paymentEnabled,
+        detailsSubmitted: false,
+      };
+    }
   }
 
   /**
-   * Create payout to user
+   * Delete a payment by ID (admin/dev only). For removing test entries.
+   */
+  async deletePaymentById(paymentId: string): Promise<{ deleted: boolean }> {
+    const result = await this.prisma.payment.deleteMany({
+      where: { id: paymentId },
+    });
+    if (result.count === 0) {
+      throw new NotFoundException('Payment not found');
+    }
+    this.logger.log(`Deleted payment ${paymentId}`);
+    return { deleted: true };
+  }
+
+  /**
+   * Delete payments by userId and optional programId (admin/dev only). For cleaning up test entries.
+   * If programId omitted, deletes all payments for the user.
+   */
+  async deleteByUserAndProgram(userId: string, programId?: string): Promise<{ deleted: number }> {
+    if (!userId?.trim()) {
+      throw new BadRequestException('userId is required');
+    }
+    const where: { userId: string; programId?: string } = { userId: userId.trim() };
+    if (programId?.trim()) {
+      where.programId = programId.trim();
+    }
+    const result = await this.prisma.payment.deleteMany({ where });
+    this.logger.log(`Deleted ${result.count} payment(s) for userId=${userId}${programId ? ` programId=${programId}` : ''}`);
+    return { deleted: result.count };
+  }
+
+  /**
+   * List pending payments (admin only). Used for admin "Pay now" flow.
+   */
+  async getPendingPayments() {
+    const payments = await this.prisma.payment.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        user: { select: { id: true, email: true, firstName: true, lastName: true, billVendorId: true } },
+        program: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return payments;
+  }
+
+  /**
+   * Pay a specific PENDING payment via Bill.com (admin only). "Pay now" button flow.
+   * Checks W9 before paying; sends email notification if HCP must complete setup.
+   */
+  async payNow(paymentId: string): Promise<PayoutResponseDto> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: { user: true },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
+
+    if (payment.status !== 'PENDING') {
+      throw new BadRequestException(`Payment is not pending (status: ${payment.status})`);
+    }
+
+    const user = payment.user;
+    const amountDollars = (payment.amount / 100).toFixed(2);
+
+    if (!user.billVendorId) {
+      this.logger.warn(`Pay now blocked: user ${user.id} has no Bill.com vendor`);
+      throw new BadRequestException(
+        'HCP has not added bank details. Notification sent to complete setup before getting paid.',
+      );
+    }
+
+    if (!user.w9Submitted) {
+      this.logger.warn(`Pay now blocked: user ${user.id} has not completed W9`);
+      throw new BadRequestException(
+        'HCP has not completed W-9. Notification sent to complete before getting paid.',
+      );
+    }
+
+    try {
+      const billPayment = await this.billService.createPayment(
+        user.billVendorId,
+        payment.amount,
+        payment.description || `${payment.type} payment`,
+      );
+
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'PAID',
+          billPaymentId: billPayment.id,
+          paidAt: new Date(),
+        },
+      });
+
+      await this.prisma.user.update({
+        where: { id: payment.userId },
+        data: { totalEarnings: { increment: payment.amount } },
+      });
+
+      this.logger.log(`Pay now successful: ${paymentId} -> Bill.com ${billPayment.id}`);
+
+      return {
+        paymentId: payment.id,
+        amount: payment.amount,
+        status: 'PAID',
+        transferId: billPayment.id,
+      };
+    } catch (error) {
+      this.logger.error(`Pay now failed: ${error.message}`);
+
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          failureReason: error.message,
+        },
+      });
+
+      throw new BadRequestException(`Pay now failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create payout to user via Bill.com (admin only).
+   * Admins decide who gets paid, choose ACH or check in Bill.com, and verify W-9 before paying.
    */
   async createPayout(dto: CreatePayoutDto): Promise<PayoutResponseDto> {
     this.logger.log(`Creating payout for user ${dto.userId}: $${dto.amount / 100}`);
@@ -164,11 +352,10 @@ export class PaymentsService {
       throw new BadRequestException('User is not enabled for payments. Complete onboarding first.');
     }
 
-    if (!user.stripeAccountId) {
-      throw new BadRequestException('User does not have a Stripe account');
+    if (!user.billVendorId) {
+      throw new BadRequestException('User does not have a Bill.com vendor account');
     }
 
-    // Create payment record
     const payment = await this.prisma.payment.create({
       data: {
         userId: dto.userId,
@@ -181,24 +368,21 @@ export class PaymentsService {
     });
 
     try {
-      // Create Stripe transfer
-      const transfer = await this.stripeService.createTransfer(
-        user.stripeAccountId,
+      const billPayment = await this.billService.createPayment(
+        user.billVendorId,
         dto.amount,
         dto.description || 'Honorarium payment',
       );
 
-      // Update payment record
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
           status: 'PAID',
-          stripeTransferId: transfer.id,
+          billPaymentId: billPayment.id,
           paidAt: new Date(),
         },
       });
 
-      // Update user total earnings
       await this.prisma.user.update({
         where: { id: dto.userId },
         data: {
@@ -212,12 +396,11 @@ export class PaymentsService {
         paymentId: payment.id,
         amount: dto.amount,
         status: 'PAID',
-        transferId: transfer.id,
+        transferId: billPayment.id,
       };
     } catch (error) {
       this.logger.error(`Payout failed: ${error.message}`);
 
-      // Mark payment as failed
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
@@ -232,7 +415,99 @@ export class PaymentsService {
   }
 
   /**
-   * Sync account status from Stripe (for testing without webhooks)
+   * Get payment summary for user (available balance, pending, lifetime earnings)
+   */
+  async getSummary(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { billVendorId: true, totalEarnings: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const payments = await this.prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const paid = payments.filter((p) => p.status === 'PAID');
+    const pending = payments.filter((p) => p.status === 'PENDING' || p.status === 'PROCESSING');
+    const availableBalance = paid.reduce((s, p) => s + p.amount, 0) / 100;
+    const pendingBalance = pending.reduce((s, p) => s + p.amount, 0) / 100;
+    const lifetimeEarnings = (user.totalEarnings || 0) / 100;
+    const lastPaid = paid[0];
+    const lastPayoutDate = lastPaid?.paidAt?.toISOString() ?? null;
+
+    return {
+      availableBalance,
+      pendingBalance,
+      lifetimeEarnings,
+      lastPayoutDate,
+      billConnected: !!user.billVendorId,
+      billVendorId: user.billVendorId,
+    };
+  }
+
+  /**
+   * Get payment history for user
+   */
+  async getHistory(userId: string) {
+    const payments = await this.prisma.payment.findMany({
+      where: { userId },
+      include: { program: { select: { title: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return payments.map((p) => ({
+      id: p.id,
+      date: (p.paidAt || p.createdAt).toISOString(),
+      title: p.description || p.program?.title || p.type.replace(/_/g, ' '),
+      amount: p.amount / 100,
+      status: p.status,
+      method: 'Bill.com',
+    }));
+  }
+
+  /**
+   * Submit W-9 tax information to Bill.com vendor
+   */
+  async submitW9(
+    userId: string,
+    data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },
+  ): Promise<{ success: boolean }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (!user.billVendorId) throw new BadRequestException('Add bank details first before submitting W-9');
+
+    const taxId = data.taxId.replace(/\D/g, '');
+    const validation = validateTaxId(taxId, data.taxIdType);
+    if (!validation.valid) {
+      throw new BadRequestException(validation.error || 'Invalid tax ID format');
+    }
+
+    const companyName = sanitizeCompanyName(data.companyName);
+
+    await this.billService.updateVendorTaxInfo(user.billVendorId, {
+      taxId,
+      taxIdType: data.taxIdType,
+      companyName,
+      track1099: true,
+    });
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        w9Submitted: true,
+        w9SubmittedAt: new Date(),
+      },
+    });
+
+    this.logger.log(`W-9 submitted for user ${userId}`);
+    return { success: true };
+  }
+
+  /**
+   * Sync account status from Bill.com
    */
   async syncAccountStatus(userId: string) {
     this.logger.log(`Syncing account status for user: ${userId}`);
@@ -241,44 +516,38 @@ export class PaymentsService {
       where: { id: userId },
     });
 
-    if (!user?.stripeAccountId) {
-      throw new NotFoundException('User does not have a Stripe account');
+    if (!user?.billVendorId) {
+      throw new NotFoundException('User does not have a Bill.com vendor account');
     }
 
-    const account = await this.stripeService.getAccount(user.stripeAccountId);
+    try {
+      const vendor = await this.billService.getVendor(user.billVendorId);
+      const status = vendor ? 'active' : 'onboarding_incomplete';
+      const paymentEnabled = !!vendor;
 
-    let status = 'onboarding_incomplete';
-    let paymentEnabled = false;
-    let w9Submitted = false;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          billVendorStatus: status,
+          paymentEnabled,
+          w9Submitted: paymentEnabled,
+          w9SubmittedAt: paymentEnabled && !user.w9SubmittedAt ? new Date() : user.w9SubmittedAt,
+        },
+      });
 
-    if (account.details_submitted && account.charges_enabled) {
-      status = 'active';
-      paymentEnabled = true;
-      w9Submitted = true;
-    } else if (account.details_submitted) {
-      status = 'pending';
-      w9Submitted = true;
-    }
+      this.logger.log(`Synced user ${userId}: status=${status}, paymentEnabled=${paymentEnabled}`);
 
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        stripeAccountStatus: status,
+      return {
+        userId,
+        billVendorId: user.billVendorId,
+        previousStatus: user.billVendorStatus,
+        newStatus: status,
         paymentEnabled,
-        w9Submitted,
-        w9SubmittedAt: w9Submitted && !user.w9SubmittedAt ? new Date() : user.w9SubmittedAt,
-      },
-    });
-
-    this.logger.log(`Synced user ${userId}: status=${status}, paymentEnabled=${paymentEnabled}`);
-
-    return {
-      userId,
-      stripeAccountId: user.stripeAccountId,
-      previousStatus: user.stripeAccountStatus,
-      newStatus: status,
-      paymentEnabled,
-      w9Submitted,
-    };
+        w9Submitted: paymentEnabled,
+      };
+    } catch (error) {
+      this.logger.error(`Sync failed: ${error.message}`);
+      throw new BadRequestException(`Sync failed: ${error.message}`);
+    }
   }
 }

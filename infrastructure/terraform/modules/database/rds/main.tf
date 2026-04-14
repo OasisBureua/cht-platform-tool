@@ -1,15 +1,19 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 resource "aws_db_subnet_group" "main" {
-  name       = "${var.project}-${var.environment}-db-subnet"
+  name       = "${local.prefix}-db-subnet"
   subnet_ids = var.private_subnet_ids
 
   tags = {
-    Name        = "${var.project}-${var.environment}-db-subnet-group"
+    Name        = "${local.prefix}-db-subnet-group"
     Environment = var.environment
   }
 }
 
 resource "aws_security_group" "rds" {
-  name        = "${var.project}-${var.environment}-rds-sg"
+  name        = "${local.prefix}-rds-sg"
   description = "Security group for RDS PostgreSQL"
   vpc_id      = var.vpc_id
 
@@ -30,7 +34,7 @@ resource "aws_security_group" "rds" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-rds-sg"
+    Name        = "${local.prefix}-rds-sg"
     Environment = var.environment
   }
 }
@@ -42,7 +46,7 @@ resource "random_password" "db_password" {
 }
 
 resource "aws_db_parameter_group" "main" {
-  name        = "${var.project}-${var.environment}-postgres"
+  name        = "${local.prefix}-postgres"
   family      = "postgres15"
   description = "Custom parameter group for ${var.project} ${var.environment}"
 
@@ -67,13 +71,13 @@ resource "aws_db_parameter_group" "main" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-postgres-params"
+    Name        = "${local.prefix}-postgres-params"
     Environment = var.environment
   }
 }
 
 resource "aws_db_instance" "main" {
-  identifier     = "${var.project}-${var.environment}-db"
+  identifier     = "${local.prefix}-db"
   engine         = "postgres"
   engine_version = var.engine_version
 
@@ -97,9 +101,9 @@ resource "aws_db_instance" "main" {
 
   multi_az               = var.multi_az
   publicly_accessible    = false
-  deletion_protection    = var.environment == "prod" ? true : false
+  deletion_protection    = (var.environment == "prod" || var.environment == "platform") ? true : false
   skip_final_snapshot    = var.environment == "dev" ? true : false
-  final_snapshot_identifier = var.environment == "dev" ? null : "${var.project}-${var.environment}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  final_snapshot_identifier = var.environment == "dev" ? null : "${local.prefix}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
 
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
   performance_insights_enabled    = true
@@ -109,7 +113,12 @@ resource "aws_db_instance" "main" {
   copy_tags_to_snapshot      = true
 
   tags = {
-    Name        = "${var.project}-${var.environment}-db"
+    Name        = "${local.prefix}-db"
     Environment = var.environment
+  }
+
+  lifecycle {
+    # RDS does not allow changing subnet group or parameter group on existing instances
+    ignore_changes = [db_subnet_group_name, parameter_group_name]
   }
 }

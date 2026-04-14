@@ -13,7 +13,7 @@ export class RedisService implements OnModuleDestroy {
 
   private initializeRedis() {
     const redisHost = this.configService.get<string>('redis.host');
-    const redisPort = this.configService.get<number>('redis.port');
+    const redisPort = this.configService.get<number>('redis.port') ?? 6379;
 
     if (!redisHost) {
       this.logger.warn('⚠️  Redis not configured - caching disabled');
@@ -21,15 +21,32 @@ export class RedisService implements OnModuleDestroy {
     }
 
     try {
+      const useTls =
+        this.configService.get<boolean>('redis.tls') ??
+        redisHost?.includes('.cache.amazonaws.com');
+      // Elasticache TLS often fails cert verification; allow bypass via REDIS_TLS_REJECT_UNAUTHORIZED=false
+      const rejectUnauthorized =
+        this.configService.get<boolean>('redis.tlsRejectUnauthorized') ?? true;
       this.client = new Redis({
         host: redisHost,
         port: redisPort,
+        tls: useTls
+          ? {
+              rejectUnauthorized,
+              checkServerIdentity: () => undefined,
+            }
+          : undefined,
+        connectTimeout: 20000,
+        commandTimeout: 20000,
+        lazyConnect: true,
+        enableReadyCheck: true,
         retryStrategy: (times) => {
-          if (times > 3) {
-            this.logger.error('❌ Redis connection failed after 3 retries');
-            return null; // Stop retrying
+          if (times > 10) {
+            this.logger.error('❌ Redis connection failed after 10 retries');
+            return null;
           }
-          return Math.min(times * 50, 2000);
+          this.logger.debug(`Redis retry ${times}/10`);
+          return Math.min(times * 100, 3000);
         },
       });
 
@@ -121,6 +138,7 @@ export class RedisService implements OnModuleDestroy {
   keys = {
     session: (sessionId: string) => `session:${sessionId}`,
     user: (userId: string) => `user:${userId}`,
+    authUser: (authId: string) => `auth:user:${authId}`,
     dashboardEarnings: (userId: string) => `dashboard:earnings:${userId}`,
     dashboardStats: (userId: string) => `dashboard:stats:${userId}`,
     programs: () => 'programs:list',

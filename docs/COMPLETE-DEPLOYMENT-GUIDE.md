@@ -178,7 +178,7 @@ Value: [nameservers from above]
 ### Step 3: Wait for DNS Propagation
 ```bash
 # Test DNS (may take 5-30 minutes)
-watch -n 60 'dig api.communityhealth.media && dig app.communityhealth.media'
+watch -n 60 'dig api.communityhealth.media && dig testapp.communityhealth.media'
 ```
 
 ---
@@ -225,7 +225,7 @@ curl https://api.communityhealth.media/health/ready
 
 ### Step 2: Test Frontend
 ```bash
-open https://app.communityhealth.media
+open https://testapp.communityhealth.media
 ```
 
 **Expected:**
@@ -256,7 +256,7 @@ Look for:
 ### Step 1: Add Login Button to Main Site
 Provide to website team:
 ```html
-<a href="https://app.communityhealth.media" class="btn btn-primary">
+<a href="https://testapp.communityhealth.media" class="btn btn-primary">
   Healthcare Professional Login →
 </a>
 ```

@@ -30,6 +30,23 @@ export interface StatsResponse {
   peerBenchmark?: PeerBenchmark;
 }
 
+export interface ProfileResponse {
+  firstName: string;
+  lastName: string;
+  email: string;
+  name: string;
+  specialty?: string;
+  npiNumber?: string;
+  institution?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  role: string;
+  createdAt: string;
+  totalEarnings: number;
+  activitiesCompleted: number;
+}
+
 export const dashboardApi = {
   getEarnings: async (userId: string): Promise<EarningsResponse> => {
     const { data } = await apiClient.get(`/dashboard/${userId}/earnings`);
@@ -38,6 +55,28 @@ export const dashboardApi = {
 
   getStats: async (userId: string): Promise<StatsResponse> => {
     const { data } = await apiClient.get(`/dashboard/${userId}/stats`);
+    return data;
+  },
+
+  getProfile: async (userId: string): Promise<ProfileResponse> => {
+    const { data } = await apiClient.get(`/dashboard/${userId}/profile`);
+    return data;
+  },
+
+  updateProfile: async (
+    userId: string,
+    updates: {
+      firstName?: string;
+      lastName?: string;
+      specialty?: string;
+      npiNumber?: string;
+      institution?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    },
+  ): Promise<ProfileResponse> => {
+    const { data } = await apiClient.patch(`/dashboard/${userId}/profile`, updates);
     return data;
   },
 };

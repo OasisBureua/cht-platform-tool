@@ -1,6 +1,10 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 # ECS Task Execution Role (used by ECS to pull images, get secrets, etc.)
 resource "aws_iam_role" "ecs_task_execution" {
-  name = "${var.project}-${var.environment}-ecs-task-execution"
+  name = "${local.prefix}-ecs-task-execution"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -16,7 +20,7 @@ resource "aws_iam_role" "ecs_task_execution" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-ecs-task-execution"
+    Name        = "${local.prefix}-ecs-task-execution"
     Environment = var.environment
   }
 }
@@ -28,7 +32,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution" {
 
 # Additional permissions for Secrets Manager and KMS
 resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
-  name = "${var.project}-${var.environment}-ecs-secrets-policy"
+  name = "${local.prefix}-ecs-secrets-policy"
   role = aws_iam_role.ecs_task_execution.id
 
   policy = jsonencode({
@@ -54,7 +58,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
 
 # ECS Task Role (used by application code running in containers)
 resource "aws_iam_role" "ecs_task" {
-  name = "${var.project}-${var.environment}-ecs-task"
+  name = "${local.prefix}-ecs-task"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -70,14 +74,14 @@ resource "aws_iam_role" "ecs_task" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-ecs-task"
+    Name        = "${local.prefix}-ecs-task"
     Environment = var.environment
   }
 }
 
 # Backend task permissions
 resource "aws_iam_role_policy" "backend_task" {
-  name = "${var.project}-${var.environment}-backend-task-policy"
+  name = "${local.prefix}-backend-task-policy"
   role = aws_iam_role.ecs_task.id
 
   policy = jsonencode({
@@ -105,7 +109,7 @@ resource "aws_iam_role_policy" "backend_task" {
 
 # Worker task permissions
 resource "aws_iam_role" "worker_task" {
-  name = "${var.project}-${var.environment}-worker-task"
+  name = "${local.prefix}-worker-task"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -121,18 +125,26 @@ resource "aws_iam_role" "worker_task" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-worker-task"
+    Name        = "${local.prefix}-worker-task"
     Environment = var.environment
   }
 }
 
 resource "aws_iam_role_policy" "worker_task" {
-  name = "${var.project}-${var.environment}-worker-task-policy"
+  name = "${local.prefix}-worker-task-policy"
   role = aws_iam_role.worker_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      },
       {
         Effect = "Allow"
         Action = [

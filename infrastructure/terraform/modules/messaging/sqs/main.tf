@@ -1,5 +1,9 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 resource "aws_sqs_queue" "email_dlq" {
-    name                        = "${var.project}-${var.environment}-email-dlq"
+    name                        = "${local.prefix}-email-dlq"
     delay_seconds               = 0
     max_message_size            = 262144 # 256 KB
     message_retention_seconds   = 1209600 # 14 days
@@ -9,14 +13,14 @@ resource "aws_sqs_queue" "email_dlq" {
     kms_data_key_reuse_period_seconds   = 300
 
     tags = {
-        Name        = "${var.project}-${var.environment}-email-dlq"
+        Name        = "${local.prefix}-email-dlq"
         Environment = var.environment
         Purpose     = "Email dead letter queue"
     }
 }
 
 resource "aws_sqs_queue" "email" {
-  name                      = "${var.project}-${var.environment}-email-queue"
+  name                      = "${local.prefix}-email-queue"
   delay_seconds             = 0
   max_message_size          = 262144
   message_retention_seconds = 345600  # 4 days
@@ -32,7 +36,7 @@ resource "aws_sqs_queue" "email" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-email-queue"
+    Name        = "${local.prefix}-email-queue"
     Environment = var.environment
     Purpose     = "Email processing queue"
   }
@@ -40,7 +44,7 @@ resource "aws_sqs_queue" "email" {
 
 # Payment Queue
 resource "aws_sqs_queue" "payment_dlq" {
-  name                      = "${var.project}-${var.environment}-payment-dlq"
+  name                      = "${local.prefix}-payment-dlq"
   delay_seconds             = 0
   max_message_size          = 262144
   message_retention_seconds = 1209600
@@ -50,19 +54,19 @@ resource "aws_sqs_queue" "payment_dlq" {
   kms_data_key_reuse_period_seconds = 300
 
   tags = {
-    Name        = "${var.project}-${var.environment}-payment-dlq"
+    Name        = "${local.prefix}-payment-dlq"
     Environment = var.environment
     Purpose     = "Payment dead letter queue"
   }
 }
 
 resource "aws_sqs_queue" "payment" {
-  name                      = "${var.project}-${var.environment}-payment-queue"
+  name                      = "${local.prefix}-payment-queue"
   delay_seconds             = 0
   max_message_size          = 262144
   message_retention_seconds = 345600
   receive_wait_time_seconds = 20
-  visibility_timeout_seconds = 600  # 10 minutes for payment processing
+  visibility_timeout_seconds = 600  # 10 minutes for payment processing (worker)
   
   kms_master_key_id       = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
@@ -73,7 +77,7 @@ resource "aws_sqs_queue" "payment" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-payment-queue"
+    Name        = "${local.prefix}-payment-queue"
     Environment = var.environment
     Purpose     = "Payment processing queue"
   }
@@ -81,7 +85,7 @@ resource "aws_sqs_queue" "payment" {
 
 # CME Queue
 resource "aws_sqs_queue" "cme_dlq" {
-  name                      = "${var.project}-${var.environment}-cme-dlq"
+  name                      = "${local.prefix}-cme-dlq"
   delay_seconds             = 0
   max_message_size          = 262144
   message_retention_seconds = 1209600
@@ -91,14 +95,14 @@ resource "aws_sqs_queue" "cme_dlq" {
   kms_data_key_reuse_period_seconds = 300
 
   tags = {
-    Name        = "${var.project}-${var.environment}-cme-dlq"
+    Name        = "${local.prefix}-cme-dlq"
     Environment = var.environment
     Purpose     = "CME dead letter queue"
   }
 }
 
 resource "aws_sqs_queue" "cme" {
-  name                      = "${var.project}-${var.environment}-cme-queue"
+  name                      = "${local.prefix}-cme-queue"
   delay_seconds             = 0
   max_message_size          = 262144
   message_retention_seconds = 345600
@@ -114,7 +118,7 @@ resource "aws_sqs_queue" "cme" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-cme-queue"
+    Name        = "${local.prefix}-cme-queue"
     Environment = var.environment
     Purpose     = "CME certificate generation queue"
   }
@@ -122,7 +126,7 @@ resource "aws_sqs_queue" "cme" {
 
 # CloudWatch Alarms for DLQs
 resource "aws_cloudwatch_metric_alarm" "email_dlq" {
-  alarm_name          = "${var.project}-${var.environment}-email-dlq-messages"
+  alarm_name          = "${local.prefix}-email-dlq-messages"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "ApproximateNumberOfMessagesVisible"
@@ -133,18 +137,20 @@ resource "aws_cloudwatch_metric_alarm" "email_dlq" {
   alarm_description   = "Alert when messages appear in email DLQ"
   treat_missing_data  = "notBreaching"
 
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+
   dimensions = {
     QueueName = aws_sqs_queue.email_dlq.name
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-email-dlq-alarm"
+    Name        = "${local.prefix}-email-dlq-alarm"
     Environment = var.environment
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "payment_dlq" {
-  alarm_name          = "${var.project}-${var.environment}-payment-dlq-messages"
+  alarm_name          = "${local.prefix}-payment-dlq-messages"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "ApproximateNumberOfMessagesVisible"
@@ -155,18 +161,20 @@ resource "aws_cloudwatch_metric_alarm" "payment_dlq" {
   alarm_description   = "Alert when messages appear in payment DLQ"
   treat_missing_data  = "notBreaching"
 
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+
   dimensions = {
     QueueName = aws_sqs_queue.payment_dlq.name
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-payment-dlq-alarm"
+    Name        = "${local.prefix}-payment-dlq-alarm"
     Environment = var.environment
   }
 }
 
 resource "aws_cloudwatch_metric_alarm" "cme_dlq" {
-  alarm_name          = "${var.project}-${var.environment}-cme-dlq-messages"
+  alarm_name          = "${local.prefix}-cme-dlq-messages"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 1
   metric_name         = "ApproximateNumberOfMessagesVisible"
@@ -177,12 +185,14 @@ resource "aws_cloudwatch_metric_alarm" "cme_dlq" {
   alarm_description   = "Alert when messages appear in CME DLQ"
   treat_missing_data  = "notBreaching"
 
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+
   dimensions = {
     QueueName = aws_sqs_queue.cme_dlq.name
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-cme-dlq-alarm"
+    Name        = "${local.prefix}-cme-dlq-alarm"
     Environment = var.environment
   }
 }

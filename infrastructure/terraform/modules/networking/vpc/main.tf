@@ -1,10 +1,14 @@
+locals {
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+}
+
 resource "aws_vpc" "main" {
     cidr_block              = var.vpc_cidr
     enable_dns_hostnames    = true
     enable_dns_support      = true
 
     tags = {
-        Name            = "${var.project}-${var.environment}-vpc"
+        Name            = "${local.prefix}-vpc"
         Environment     = var.environment
         Project         = var.project
     }
@@ -14,7 +18,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name        = "${var.project}-${var.environment}-igw"
+    Name        = "${local.prefix}-igw"
     Environment = var.environment
   }
 }
@@ -28,7 +32,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "${var.project}-${var.environment}-public-${var.availability_zones[count.index]}"
+    Name        = "${local.prefix}-public-${var.availability_zones[count.index]}"
     Environment = var.environment
     Type        = "public"
   }
@@ -42,7 +46,7 @@ resource "aws_subnet" "private" {
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name        = "${var.project}-${var.environment}-private-${var.availability_zones[count.index]}"
+    Name        = "${local.prefix}-private-${var.availability_zones[count.index]}"
     Environment = var.environment
     Type        = "private"
   }
@@ -54,7 +58,7 @@ resource "aws_eip" "nat" {
   domain = "vpc"
 
   tags = {
-    Name        = "${var.project}-${var.environment}-nat-eip-${count.index + 1}"
+    Name        = "${local.prefix}-nat-eip-${count.index + 1}"
     Environment = var.environment
   }
 
@@ -67,7 +71,7 @@ resource "aws_nat_gateway" "main" {
   allocation_id = aws_eip.nat[count.index].id
 
   tags = {
-    Name        = "${var.project}-${var.environment}-nat-${count.index + 1}"
+    Name        = "${local.prefix}-nat-${count.index + 1}"
     Environment = var.environment
   }
 
@@ -84,7 +88,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-public-rt"
+    Name        = "${local.prefix}-public-rt"
     Environment = var.environment
   }
 }
@@ -103,7 +107,7 @@ resource "aws_route_table" "private" {
   }
 
   tags = {
-    Name        = "${var.project}-${var.environment}-private-rt-${count.index + 1}"
+    Name        = "${local.prefix}-private-rt-${count.index + 1}"
     Environment = var.environment
   }
 }
@@ -131,7 +135,7 @@ resource "aws_flow_log" "main" {
   vpc_id          = aws_vpc.main.id
 
   tags = {
-    Name        = "${var.project}-${var.environment}-flow-logs"
+    Name        = "${local.prefix}-flow-logs"
     Environment = var.environment
   }
 }
@@ -139,12 +143,12 @@ resource "aws_flow_log" "main" {
 resource "aws_cloudwatch_log_group" "flow_logs" {
   count = var.enable_flow_logs ? 1 : 0
 
-  name              = "/aws/vpc/${var.project}-${var.environment}-flow-logs"
+  name              = "/aws/vpc/${local.prefix}-flow-logs"
   retention_in_days = 7
   kms_key_id        = var.cloudwatch_kms_key_arn
 
   tags = {
-    Name        = "${var.project}-${var.environment}-flow-logs"
+    Name        = "${local.prefix}-flow-logs"
     Environment = var.environment
   }
 }
@@ -152,7 +156,7 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
 resource "aws_iam_role" "flow_logs" {
   count = var.enable_flow_logs ? 1 : 0
 
-  name = "${var.project}-${var.environment}-flow-logs-role"
+  name = "${local.prefix}-flow-logs-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -168,7 +172,7 @@ resource "aws_iam_role" "flow_logs" {
   })
 
   tags = {
-    Name        = "${var.project}-${var.environment}-flow-logs-role"
+    Name        = "${local.prefix}-flow-logs-role"
     Environment = var.environment
   }
 }
@@ -176,7 +180,7 @@ resource "aws_iam_role" "flow_logs" {
 resource "aws_iam_role_policy" "flow_logs" {
   count = var.enable_flow_logs ? 1 : 0
 
-  name = "${var.project}-${var.environment}-flow-logs-policy"
+  name = "${local.prefix}-flow-logs-policy"
   role = aws_iam_role.flow_logs[0].id
 
   policy = jsonencode({

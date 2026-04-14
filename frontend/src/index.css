@@ -4,11 +4,27 @@
 
 @layer base {
   html {
-    @apply overflow-x-hidden;
+    /* clip avoids creating a scroll box that breaks position:sticky on descendants */
+    @apply overflow-x-clip;
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-gray-50 text-gray-900 antialiased overflow-x-hidden min-w-0;
+    @apply bg-gray-50 text-gray-900 antialiased overflow-x-clip min-w-0;
+  }
+  /* Prevent horizontal overflow on mobile */
+  #root {
+    @apply min-w-0 overflow-x-clip max-w-full;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbars on horizontal carousels (still scrollable / swipeable) */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }
 

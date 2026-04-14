@@ -64,4 +64,45 @@ export class ProgramResponseDto {
 
   @IsArray()
   videos: VideoDto[];
+
+  @IsString()
+  @IsOptional()
+  zoomSessionType?: string;
+
+  @IsString()
+  @IsOptional()
+  zoomJoinUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  startDate?: string;
+
+  @IsNumber()
+  @IsOptional()
+  duration?: number;
+
+  @IsString()
+  @IsOptional()
+  jotformSurveyUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  jotformIntakeFormUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  jotformPreEventUrl?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  registrationRequiresApproval?: boolean;
+
+  @IsString()
+  @IsOptional()
+  hostDisplayName?: string;
+
+  /** True when a Calendly URL is configured; actual URL is only returned after enrollment via GET .../calendly-scheduling. */
+  @IsBoolean()
+  @IsOptional()
+  hasCalendlyScheduling?: boolean;
 }

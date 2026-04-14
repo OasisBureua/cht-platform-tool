@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
+import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
   Award,
@@ -14,8 +16,6 @@ import {
   ArrowRight,
   ClipboardList,
 } from 'lucide-react';
-
-const TEMP_USER_ID = '1234567890';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -32,6 +32,16 @@ export default function WebinarDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.userId ?? '';
+  const isZoomWebinar = id?.startsWith('zoom-') ?? false;
+
+  const { data: zoomWebinar, isLoading: zoomLoading } = useQuery({
+    queryKey: ['webinar', id],
+    queryFn: () => webinarsApi.getById(id!),
+    enabled: !!id && isZoomWebinar,
+    retry: false,
+  });
 
   const {
     data: program,
@@ -41,13 +51,27 @@ export default function WebinarDetail() {
   } = useQuery({
     queryKey: ['program', id],
     queryFn: () => programsApi.getById(id!),
-    enabled: !!id,
+    enabled: !!id && !isZoomWebinar,
     retry: false,
   });
 
   const { data: enrollments } = useQuery({
-    queryKey: ['enrollments', TEMP_USER_ID],
-    queryFn: () => programsApi.getEnrollments(TEMP_USER_ID),
+    queryKey: ['enrollments', userId],
+    queryFn: () => programsApi.getEnrollments(userId),
+    enabled: !!userId,
+  });
+
+  const { data: slots = [] } = useQuery({
+    queryKey: ['program-slots', id],
+    queryFn: () => programsApi.getSlots(id!),
+    enabled: !!id && !isZoomWebinar && program?.zoomSessionType === 'MEETING',
+  });
+
+  const { data: myRegistration } = useQuery({
+    queryKey: ['program', id, 'registration'],
+    queryFn: () => programsApi.getMyRegistration(id!),
+    enabled:
+      !!userId && !!id && !isZoomWebinar && !!program && program.registrationRequiresApproval,
   });
 
   const enrolledProgramIds = useMemo(
@@ -57,27 +81,66 @@ export default function WebinarDetail() {
 
   const enrollMutation = useMutation({
     mutationFn: ({ programId }: { programId: string }) =>
-      programsApi.enroll(TEMP_USER_ID, programId),
+      programsApi.enroll(userId, programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['enrollments', TEMP_USER_ID] });
+      queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
     },
   });
+
+  if (isZoomWebinar) {
+    if (zoomLoading) return <LoadingSpinner />;
+    if (!zoomWebinar) {
+      return (
+        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
+          <p className="font-semibold text-gray-900">Session not found</p>
+          <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+            Back to LIVE
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-8 pb-24 md:pb-0">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to LIVE
+        </button>
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <h1 className="text-2xl font-bold text-gray-900">{zoomWebinar.title}</h1>
+          <p className="mt-3 text-gray-600">{zoomWebinar.description}</p>
+          {zoomWebinar.joinUrl && (
+            <a
+              href={zoomWebinar.joinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            >
+              Join Session
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) return <LoadingSpinner />;
 
   if (isError) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">We couldn’t load this webinar.</p>
+        <p className="font-semibold text-gray-900">We could not load this session.</p>
         <p className="mt-1 text-sm text-gray-600">
           {String((error as any)?.message || 'Please try again.')}
         </p>
         <div className="mt-5">
           <Link
-            to="/app/webinars"
+            to="/app/live"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
-            Back to webinars
+            Back to LIVE
           </Link>
         </div>
       </div>
@@ -87,14 +150,14 @@ export default function WebinarDetail() {
   if (!program) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Webinar not found</p>
+        <p className="font-semibold text-gray-900">Session not found</p>
         <p className="mt-1 text-sm text-gray-600">That link may be invalid.</p>
         <div className="mt-5">
           <Link
-            to="/app/webinars"
+            to="/app/live"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
-            Back to webinars
+            Back to LIVE
           </Link>
         </div>
       </div>
@@ -102,6 +165,14 @@ export default function WebinarDetail() {
   }
 
   const enrolled = enrolledProgramIds.has(program.id);
+
+  const needsRegistrationWizard =
+    !!program &&
+    (program.registrationRequiresApproval ||
+      !!program.jotformIntakeFormUrl?.trim() ||
+      !!program.jotformPreEventUrl?.trim() ||
+      (program.zoomSessionType === 'MEETING' && slots.length > 0));
+
   const hasVideos = (program.videos?.length || 0) > 0;
   const firstVideo = hasVideos
     ? program.videos.slice().sort((a, b) => a.order - b.order)[0]
@@ -113,7 +184,10 @@ export default function WebinarDetail() {
     ? 'Registering…'
     : 'Register Now';
 
-  const ctaDisabled = enrolled || enrollMutation.isPending;
+  const ctaDisabled =
+    enrolled ||
+    enrollMutation.isPending ||
+    myRegistration?.status === 'PENDING';
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
@@ -124,7 +198,7 @@ export default function WebinarDetail() {
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to Webinars
+          Back to LIVE
         </button>
       </div>
 
@@ -158,7 +232,7 @@ export default function WebinarDetail() {
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-                Webinar
+                LIVE
               </span>
 
               <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
@@ -174,29 +248,41 @@ export default function WebinarDetail() {
           </div>
 
           {/* CTA (desktop) */}
-          <div className="hidden md:block md:pt-1">
-            <button
-              onClick={() => enrollMutation.mutate({ programId: program.id })}
-              disabled={ctaDisabled}
-              className={[
-                'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
-                ctaDisabled
-                  ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-900 text-white hover:bg-black',
-              ].join(' ')}
-            >
-              {ctaLabel}
-            </button>
+          <div className="hidden md:block md:pt-1 space-y-2">
+            {myRegistration?.status === 'PENDING' ? (
+              <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Registration submitted — waiting for admin approval before you are enrolled.
+              </p>
+            ) : needsRegistrationWizard && !enrolled ? (
+              <Link
+                to={`/app/live/${program.id}/register`}
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+              >
+                Register (forms & checkout)
+              </Link>
+            ) : (
+              <button
+                onClick={() => enrollMutation.mutate({ programId: program.id })}
+                disabled={ctaDisabled}
+                className={[
+                  'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
+                  ctaDisabled
+                    ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                    : 'bg-gray-900 text-white hover:bg-black',
+                ].join(' ')}
+              >
+                {ctaLabel}
+              </button>
+            )}
 
-            {!enrolled ? (
+            {!enrolled && myRegistration?.status !== 'PENDING' ? (
               <p className="mt-2 text-xs text-gray-600">
                 Register to unlock video playback and earn rewards.
               </p>
-            ) : (
-              <p className="mt-2 text-xs text-gray-600">
-                Complete required steps to earn rewards.
-              </p>
-            )}
+            ) : null}
+            {enrolled ? (
+              <p className="mt-2 text-xs text-gray-600">Complete required steps to earn rewards.</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -219,7 +305,7 @@ export default function WebinarDetail() {
                 active={!enrolled}
               />
               <StepCard
-                title="Watch"
+                title="Conversations"
                 subtitle={hasVideos ? `${program.videos.length} video(s)` : 'Video coming soon'}
                 done={false}
                 active={enrolled}
@@ -255,7 +341,7 @@ export default function WebinarDetail() {
                   onClick={() => navigate(`/app/watch/${firstVideo.id}`)}
                   className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
                 >
-                  Continue Watching
+                  Continue in Conversations
                   <ArrowRight className="h-4 w-4" />
                 </button>
               ) : null}
@@ -304,14 +390,14 @@ export default function WebinarDetail() {
                                 ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
                                 : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
                             ].join(' ')}
-                            title={disabled ? 'Register to unlock playback' : 'Watch'}
+                            title={disabled ? 'Register to unlock playback' : 'Conversations'}
                           >
                             {disabled ? (
                               <Lock className="h-4 w-4" />
                             ) : (
                               <Play className="h-4 w-4" />
                             )}
-                            {disabled ? 'Locked' : 'Watch'}
+                            {disabled ? 'Locked' : 'Conversations'}
                           </button>
                         </div>
                       );
@@ -365,7 +451,7 @@ export default function WebinarDetail() {
                 done={enrolled}
               />
               <RequirementRow
-                label="Watch all required videos"
+                label="Complete all required videos in Conversations"
                 done={false}
                 disabled={!enrolled}
               />
@@ -379,13 +465,30 @@ export default function WebinarDetail() {
             {!enrolled ? (
               <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3">
                 <p className="text-xs text-gray-600">
-                  Register to unlock watching and survey completion.
+                  Register to unlock content and survey completion.
                 </p>
               </div>
             ) : null}
           </div>
         </div>
       </section>
+
+      {enrolled && program.jotformSurveyUrl?.trim() ? (
+        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+          <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
+          <p className="text-sm text-gray-600">
+            Complete this Jotform after the live session (your team can trigger workflows from Jotform).
+          </p>
+          <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+            <iframe
+              title="Post-event survey"
+              src={program.jotformSurveyUrl}
+              className="w-full h-[480px]"
+              allow="camera; microphone"
+            />
+          </div>
+        </section>
+      ) : null}
 
       {/* Sticky CTA (mobile) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 border-t border-gray-200 bg-white p-3">
@@ -398,18 +501,29 @@ export default function WebinarDetail() {
             </p>
           </div>
 
-          <button
-            onClick={() => enrollMutation.mutate({ programId: program.id })}
-            disabled={ctaDisabled}
-            className={[
-              'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
-              ctaDisabled
-                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                : 'bg-gray-900 text-white hover:bg-black',
-            ].join(' ')}
-          >
-            {ctaLabel}
-          </button>
+          {myRegistration?.status === 'PENDING' ? (
+            <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
+          ) : needsRegistrationWizard && !enrolled ? (
+            <Link
+              to={`/app/live/${program.id}/register`}
+              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
+            >
+              Register
+            </Link>
+          ) : (
+            <button
+              onClick={() => enrollMutation.mutate({ programId: program.id })}
+              disabled={ctaDisabled}
+              className={[
+                'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
+                ctaDisabled
+                  ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                  : 'bg-gray-900 text-white hover:bg-black',
+              ].join(' ')}
+            >
+              {ctaLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

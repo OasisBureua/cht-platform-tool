@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 .Python
 venv/
+.venv/
 env/
 
 # Environment variables
@@ -28,6 +29,9 @@ build/
 *.tfstate.*
 .terraform/
 .terraform.lock.hcl
+*.tfplan
+# Platform tfvars contains API keys - use platform.tfvars.example as template
+infrastructure/terraform/environments/variables/platform.tfvars
 
 # Testing
 coverage/

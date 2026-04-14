@@ -35,8 +35,20 @@ variable "domain_aliases" {
   default     = []
 }
 
+variable "api_origin_domain" {
+  description = "ALB domain for /api/* and /health/* paths (optional, set to empty to disable)"
+  type        = string
+  default     = ""
+}
+
 variable "price_class" {
   description = "CloudFront price class"
   type        = string
-  default     = "PriceClass_100"  # US, Canada, Europe
+  default     = "PriceClass_100" # US, Canada, Europe
+}
+
+variable "web_acl_id" {
+  description = "WAF Web ACL ID for CloudFront (optional)"
+  type        = string
+  default     = ""
 }

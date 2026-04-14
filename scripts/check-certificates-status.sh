@@ -5,18 +5,28 @@ ENV=${1:-dev}
 echo "🔍 Checking certificate status for: $ENV"
 echo ""
 
-if [ ! -f "infrastructure/terraform/environments/variables/.cert-arns-$ENV" ]; then
+# Support testapp cert file
+CERT_FILE="infrastructure/terraform/environments/variables/.cert-arns-$ENV"
+if [ "$ENV" == "testapp" ]; then
+    CERT_FILE="infrastructure/terraform/environments/variables/.cert-arns-testapp"
+fi
+
+if [ ! -f "$CERT_FILE" ]; then
     echo "❌ No certificates found for $ENV"
-    echo "   Run: ./scripts/request-certificates.sh $ENV"
+    echo "   Run: ./scripts/request-certificate-testapp.sh (for testapp)"
+    echo "   Or:  ./scripts/request-certificates.sh $ENV (for dev/prod)"
     exit 1
 fi
 
-source infrastructure/terraform/environments/variables/.cert-arns-$ENV
+source "$CERT_FILE"
 
-if [ "$ENV" == "dev" ]; then
+# Use certificate_arn for testapp, us_east_1_cert_arn for dev/prod
+CERT_ARN="${certificate_arn:-$us_east_1_cert_arn}"
+
+if [ "$ENV" == "dev" ] || [ "$ENV" == "testapp" ]; then
     echo "📍 us-east-1 Certificate:"
     aws acm describe-certificate \
-        --certificate-arn "$us_east_1_cert_arn" \
+        --certificate-arn "$CERT_ARN" \
         --region us-east-1 \
         --query 'Certificate.Status' \
         --output text

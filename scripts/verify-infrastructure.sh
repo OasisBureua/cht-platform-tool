@@ -77,18 +77,17 @@ fi
 if [ -d "infrastructure/terraform/environments/variables" ]; then
   echo "  ✅ environments/variables"
   
-  if [ -f "infrastructure/terraform/environments/variables/dev.tfvars" ]; then
-    echo "    ✅ dev.tfvars"
+  if [ -f "infrastructure/terraform/environments/variables/platform.tfvars" ]; then
+    echo "    ✅ platform.tfvars"
   else
-    echo "    ❌ dev.tfvars (missing)"
+    echo "    ❌ platform.tfvars (missing)"
     ERRORS=$((ERRORS + 1))
   fi
   
   if [ -f "infrastructure/terraform/environments/variables/prod.tfvars" ]; then
-    echo "    ✅ prod.tfvars"
+    echo "    ✅ prod.tfvars (optional)"
   else
-    echo "    ❌ prod.tfvars (missing)"
-    ERRORS=$((ERRORS + 1))
+    echo "    ⏳ prod.tfvars (optional, not used with platform)"
   fi
 else
   echo "  ❌ environments/variables (missing)"
@@ -174,7 +173,7 @@ if [ $ERRORS -eq 0 ]; then
   echo "1. Request SSL certificates: ./scripts/request-certificates-communityhealth.sh"
   echo "2. Build images: ./scripts/build-images.sh v1.0.0"
   echo "3. Push images: ./scripts/push-images.sh v1.0.0 us-east-1"
-  echo "4. Deploy: ./scripts/deploy-primary.sh dev"
+  echo "4. Deploy: ./scripts/deploy-primary.sh platform"
   exit 0
 else
   echo "❌ Found $ERRORS error(s). Please fix before deploying."

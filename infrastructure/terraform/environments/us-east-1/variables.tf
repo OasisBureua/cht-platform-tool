@@ -122,54 +122,164 @@ variable "cloudfront_certificate_arn" {
 }
 
 # Monitoring
-variable "sns_topic_arn" {
-  description = "SNS topic ARN for alarms"
-  type        = string
-  default     = ""
+variable "alarm_notification_emails" {
+  description = "Email addresses to receive alarm notifications (DLQ, ECS, RDS, ALB, etc.). Must confirm subscription via email."
+  type        = list(string)
+  default     = []
 }
 
 # Application secrets
-variable "stripe_secret_key" {
-  description = "Stripe secret key"
+variable "supabase_url" {
+  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
+  type        = string
+}
+
+variable "supabase_anon_key" {
+  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via platform.tfvars or TF_VAR)"
+  type        = string
+  sensitive   = true
+}
+
+variable "gotrue_jwt_secret" {
+  description = "GoTrue JWT secret for validating tokens (set via platform.tfvars or TF_VAR)"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "stripe_publishable_key" {
-  description = "Stripe publishable key"
+variable "mediahub_base_url" {
+  description = "MediaHub Public API base URL"
   type        = string
-  default     = ""
+  default     = "https://mediahub.communityhealth.media/api/public"
 }
 
-variable "stripe_webhook_secret" {
-  description = "Stripe webhook secret"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "sendgrid_api_key" {
-  description = "SendGrid API key"
+variable "mediahub_api_key" {
+  description = "MediaHub Public API key for catalog"
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "auth0_domain" {
-  description = "Auth0 domain"
+variable "youtube_api_key" {
+  description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
+  type        = string
+  sensitive   = true
+}
+
+variable "youtube_playlist_ids" {
+  description = "Comma-separated YouTube playlist IDs for catalog (set via platform.tfvars or TF_VAR_youtube_playlist_ids)"
+  type        = string
+}
+
+# Zoom (Server-to-Server OAuth for webinars)
+variable "zoom_account_id" {
+  description = "Zoom Account ID (from Server-to-Server OAuth app at marketplace.zoom.us)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_client_id" {
+  description = "Zoom OAuth Client ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_client_secret" {
+  description = "Zoom OAuth Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_webhook_secret" {
+  description = "Zoom webhook Secret Token (from Event Subscriptions)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
+variable "jotform_api_key" {
+  description = "Jotform API key for surveys (from Jotform enterprise account)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# Bill.com (payment processing - set via TF_VAR_* or dev.tfvars)
+variable "bill_dev_key" {
+  description = "Bill.com developer key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_username" {
+  description = "Bill.com account email"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_password" {
+  description = "Bill.com account password"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_org_id" {
+  description = "Bill.com organization ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_funding_account_id" {
+  description = "Bill.com funding account ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_webhook_secret" {
+  description = "Bill.com webhook signing secret for validating payment events"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "admin_bootstrap_secret" {
+  description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "hubspot_access_token" {
+  description = "HubSpot private app or Service Key token for CRM contact sync"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+# SQS queue URLs (optional - backend/worker use module.sqs outputs)
+variable "sqs_email_queue_url" {
+  description = "SQS email queue URL (unused - module.sqs used)"
   type        = string
   default     = ""
 }
 
-variable "auth0_client_id" {
-  description = "Auth0 client ID"
+variable "sqs_payment_queue_url" {
+  description = "SQS payment queue URL (unused - module.sqs used)"
   type        = string
   default     = ""
 }
 
-variable "auth0_audience" {
-  description = "Auth0 audience"
+variable "sqs_cme_queue_url" {
+  description = "SQS CME queue URL (unused - module.sqs used)"
   type        = string
   default     = ""
 }

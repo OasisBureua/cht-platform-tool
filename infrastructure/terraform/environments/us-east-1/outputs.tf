@@ -52,6 +52,12 @@ output "redis_endpoint" {
   value       = module.elasticache.redis_endpoint
 }
 
+# Alerts
+output "sns_alerts_topic_arn" {
+  description = "SNS topic ARN for alarm notifications"
+  value       = module.sns_alerts.topic_arn
+}
+
 # Queues
 output "email_queue_url" {
   description = "Email queue URL"
@@ -79,14 +85,14 @@ output "route53_nameservers" {
   value       = module.route53.name_servers
 }
 
-output "api_url" {
-  description = "API URL"
-  value       = "https://${module.route53.api_fqdn}"
+output "platform_url" {
+  description = "Platform URL (single domain)"
+  value       = "https://${module.route53.root_fqdn}"
 }
 
-output "app_url" {
-  description = "App URL"
-  value       = "https://${module.route53.app_fqdn}"
+output "api_url" {
+  description = "API URL (path-based: /api/*)"
+  value       = "https://${module.route53.root_fqdn}/api"
 }
 
 # Cluster
@@ -102,19 +108,20 @@ output "next_steps" {
     
     ✅ us-east-1 (Primary) deployed successfully!
     
-    📋 Add these NS records to your DNS provider (where communityhealth.media is registered):
+    📋 Add NS records in your DNS provider (GoDaddy for communityhealth.media):
     
     Type: NS
-    Name: api
-    Value: ${join("\n           ", module.route53.name_servers)}
+    Name: testapp
+    Value: Add 4 records, one per line:
+    ${join("\n    ", module.route53.name_servers)}
     
-    Type: NS
-    Name: app
-    Value: ${join("\n           ", module.route53.name_servers)}
+    This delegates ${var.domain_name} to Route53.
+    
+    🌐 URL: https://${var.domain_name}
+    API:  https://${var.domain_name}/api/*
     
     🧪 Test your deployment:
-    Backend:  curl ${module.route53.api_fqdn}/health/ready
-    Frontend: open ${module.route53.app_fqdn}
+    curl https://${var.domain_name}/health/ready
     
     💰 Current cost: ~$273/month
     
