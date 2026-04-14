@@ -149,12 +149,12 @@ export default function AdminProgramHub() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Program hub — Jotform URLs, Calendly, approval queue, office-hours slots, extra form links, and calendar
+          Program hub, Jotform URLs, Calendly, approval queue, office-hours slots, extra form links, and calendar
           invites.
         </p>
         <p className="mt-2 text-xs text-gray-500">
-          Enrollments: {String((p._count as { enrollments?: number })?.enrollments ?? '—')} · Registrations:{' '}
-          {String((p._count as { programRegistrations?: number })?.programRegistrations ?? '—')}
+          Enrollments: {String((p._count as { enrollments?: number })?.enrollments ?? '-')} · Registrations:{' '}
+          {String((p._count as { programRegistrations?: number })?.programRegistrations ?? '-')}
         </p>
       </header>
 
@@ -366,7 +366,7 @@ export default function AdminProgramHub() {
                     <td className="py-2 pr-4 text-gray-600">
                       {r.slot
                         ? `${format(parseISO(r.slot.startsAt), 'MMM d h:mm a')}`
-                        : '—'}
+                        : '-'}
                     </td>
                     <td className="py-2 pr-4">
                       <div className="flex flex-wrap gap-2">

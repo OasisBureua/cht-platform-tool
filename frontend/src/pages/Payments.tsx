@@ -335,7 +335,7 @@ function HistoryRow({ item }: { item: PaymentItem }) {
       <div className="min-w-0">
         <p className="font-medium text-gray-900 truncate">{item.title}</p>
         <p className="text-sm text-gray-600 truncate">
-          {format(new Date(item.date), 'MMM d, yyyy')} • {item.method || '—'}
+          {format(new Date(item.date), 'MMM d, yyyy')} • {item.method || '-'}
         </p>
       </div>
       <div className="shrink-0 flex items-center gap-3">

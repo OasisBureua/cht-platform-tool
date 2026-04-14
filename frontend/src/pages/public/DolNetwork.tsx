@@ -9,6 +9,13 @@ type FlatKol = DolEntry & {
   regionSubtitle?: string;
 };
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+function isRecentlyNew(k: { isNew?: boolean; addedAt?: string }): boolean {
+  if (!k.isNew) return false;
+  if (!k.addedAt) return false;
+  return Date.now() - new Date(k.addedAt).getTime() <= SEVEN_DAYS_MS;
+}
+
 function flattenNetwork(regions: DolRegion[]): FlatKol[] {
   return regions.flatMap((r) =>
     r.entries.map((e) => ({
@@ -72,7 +79,7 @@ export default function DolNetwork() {
       if (!matchesQuery(k, search)) return false;
       if (regionId && k.regionId !== regionId) return false;
       if (institution && institutionHint(k) !== institution) return false;
-      if (newOnly && !k.isNew) return false;
+      if (newOnly && !isRecentlyNew(k)) return false;
       return true;
     });
   }, [flat, search, regionId, institution, newOnly]);
@@ -86,7 +93,9 @@ export default function DolNetwork() {
       out.sort((a, b) => last(b.name).localeCompare(last(a.name), undefined, { sensitivity: 'base' }));
     } else if (sortMode === 'new-first') {
       out.sort((a, b) => {
-        if (!!a.isNew !== !!b.isNew) return a.isNew ? -1 : 1;
+        const aNew = isRecentlyNew(a);
+        const bNew = isRecentlyNew(b);
+        if (aNew !== bNew) return aNew ? -1 : 1;
         return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
       });
     } else {
@@ -128,7 +137,7 @@ export default function DolNetwork() {
           <p className="text-xs font-semibold uppercase tracking-wider text-[#0d4f6c]">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
-            Oncology & breast cancer specialists — filter by region, institution, or text; sort by name, region, or newest.
+            Oncology & breast cancer specialists. Filter by region, institution, or text; sort by name, region, or newest.
           </p>
         </header>
 
@@ -283,7 +292,7 @@ export default function DolNetwork() {
         </main>
 
         <p className="mt-12 text-center text-xs text-gray-500 border-t border-gray-200 pt-8">
-          Community Health Technologies — KOL Network | ★ = Newly added
+          Community Health Technologies - KOL Network | ★ = Newly added
         </p>
       </div>
     </div>
@@ -298,7 +307,7 @@ function KolCard({ k }: { k: FlatKol }) {
   return (
     <article className="rounded-2xl border border-black/[0.08] bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
       <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-100 relative overflow-hidden">
-        {k.isNew && (
+        {isRecentlyNew(k) && (
           <span className="absolute top-2 right-2 z-10 rounded-md bg-orange-700/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             New
           </span>

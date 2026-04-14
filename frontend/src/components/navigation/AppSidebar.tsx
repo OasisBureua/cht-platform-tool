@@ -20,7 +20,7 @@ const nav = [
   { to: '/app/search', label: 'Search', icon: Search, end: false },
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
-  { to: '/app/chm-docs', label: "CHM DOC's", icon: Stethoscope, end: false },
+  { to: '/app/chm-docs', label: 'CHM Docs', icon: Stethoscope, end: false },
   { to: '/app/disease-areas', label: 'Diseases', icon: Dna, end: false },
   { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
@@ -32,7 +32,7 @@ const nav = [
 
 export default function AppSidebar() {
   return (
-    <aside className="hidden md:flex md:flex-col w-[100px] bg-white shrink-0">
+    <aside className="hidden md:flex md:flex-col w-[100px] bg-white shrink-0 sticky top-0 h-screen overflow-y-auto">
       <div className="flex w-full h-[82px] justify-center items-center shrink-0" style={{ aspectRatio: '50/41' }}>
         <Link to="/app/home" className="flex w-full h-full justify-center items-center">
           <img src={logoSrc} alt="CHT" className="max-w-[60px] max-h-[50px] object-contain" />

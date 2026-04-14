@@ -5,7 +5,7 @@ import { Search, Loader2, ChevronDown, Play } from 'lucide-react';
 import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
 import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
-import { doctorLabelFromSlug } from '../../utils/doctorLabel';
+
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistGrid } from '../../components/content/PlaylistGrid';
 
@@ -17,23 +17,47 @@ const SORT_OPTIONS = [
   { value: 'likes', label: 'Most likes' },
 ];
 
+function stripTagPrefix(tag: string): string {
+  return tag.replace(/^[a-z_]+:/i, '');
+}
+
+/**
+ * Build tag filter options from the /tags endpoint.
+ * The API returns `{ biomarker: ["HER2+", ...], drug: ["Enhertu", ...] }` (no prefix in values),
+ * but the /clips?tag= filter expects the prefixed form `biomarker:HER2+`.
+ * We store `category:value` as the option value and show just `value` as the label.
+ * Doctor tags are excluded here — they have a dedicated filter.
+ */
 function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
   const seen = new Set<string>();
   for (const [category, values] of Object.entries(tags)) {
+    if (category === 'doctor') continue;
     if (!Array.isArray(values)) continue;
     for (const v of values) {
-      if (v && !seen.has(v)) {
-        seen.add(v);
-        out.push({ value: v, label: v });
+      if (!v) continue;
+      const apiValue = `${category}:${v}`;
+      if (!seen.has(apiValue)) {
+        seen.add(apiValue);
+        out.push({ value: apiValue, label: v });
       }
     }
   }
   return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: string }[] {
-  return doctors.map((d) => ({ value: d.slug, label: doctorLabelFromSlug(d.slug) }));
+/**
+ * Build doctor filter options from the /tags "doctor" category.
+ * The /clips?doctor= filter expects the short name (e.g. "Mouabbi"), which is
+ * exactly what /tags returns under the "doctor" key.
+ */
+function getDoctorOptionsFromTags(tags: MediaHubTags): { value: string; label: string }[] {
+  const doctors = tags['doctor'];
+  if (!Array.isArray(doctors)) return [];
+  return doctors
+    .filter(Boolean)
+    .map((name) => ({ value: name, label: `Dr. ${name}` }))
+    .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -68,15 +92,9 @@ export default function VideosPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const { data: doctors = [] } = useQuery({
-    queryKey: ['catalog', 'doctors'],
-    queryFn: catalogApi.getDoctors,
-    staleTime: 10 * 60 * 1000,
-  });
-
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
-  const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
-  const useMediaHub = tagOptions.length > 0;
+  const doctorOptions = useMemo(() => getDoctorOptionsFromTags(tags), [tags]);
+  const useMediaHub = tagOptions.length > 0 || doctorOptions.length > 0;
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -317,9 +335,9 @@ export default function VideosPage() {
                               <span
                                 key={tag}
                                 className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 max-w-full break-words text-left [overflow-wrap:anywhere]"
-                                title={tag}
+                                title={stripTagPrefix(tag)}
                               >
-                                {tag}
+                                {stripTagPrefix(tag)}
                               </span>
                             ))}
                           </div>

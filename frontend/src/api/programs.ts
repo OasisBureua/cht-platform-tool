@@ -83,7 +83,7 @@ export const programsApi = {
       return data;
     } catch (err) {
       if (ENABLE_MOCK_FALLBACK) {
-        console.warn('[Programs] API failed — using mock programs');
+        console.warn('[Programs] API failed - using mock programs');
         return mockPrograms;
       }
       throw err;
@@ -111,7 +111,7 @@ export const programsApi = {
     return data;
   } catch (err) {
     if (ENABLE_MOCK_FALLBACK) {
-      console.warn('[Programs] enroll API failed — using demo enrollment');
+      console.warn('[Programs] enroll API failed - using demo enrollment');
       const program =
         mockPrograms.find((p) => p.id === programId) ??
         (await (async () => {
@@ -145,7 +145,7 @@ export const programsApi = {
     return data;
   } catch (err) {
     if (ENABLE_MOCK_FALLBACK) {
-      console.warn('[Programs] enrollments API failed — using demo enrollments');
+      console.warn('[Programs] enrollments API failed - using demo enrollments');
       return demoEnrollmentsStore.getAll(userId);
     }
     throw err;

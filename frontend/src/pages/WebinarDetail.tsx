@@ -23,7 +23,7 @@ function formatMoney(value?: number | null) {
 }
 
 function formatDuration(seconds?: number) {
-  if (!seconds || seconds <= 0) return '—';
+  if (!seconds || seconds <= 0) return '-';
   const mins = Math.max(1, Math.round(seconds / 60));
   return `${mins} min`;
 }
@@ -251,7 +251,7 @@ export default function WebinarDetail() {
           <div className="hidden md:block md:pt-1 space-y-2">
             {myRegistration?.status === 'PENDING' ? (
               <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Registration submitted — waiting for admin approval before you are enrolled.
+                Registration submitted. Waiting for admin approval before you are enrolled.
               </p>
             ) : needsRegistrationWizard && !enrolled ? (
               <Link

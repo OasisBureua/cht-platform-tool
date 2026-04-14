@@ -222,7 +222,7 @@ export default function WatchVideo() {
   }
 
   const { program, video } = found;
-  const totalLabel = duration ? formatTime(duration) : '—';
+  const totalLabel = duration ? formatTime(duration) : '-';
   const watchedLabel = formatTime(watchedSeconds);
 
   const canResume = watchedSeconds > 0 && watchedSeconds < duration;

@@ -49,7 +49,7 @@ export default function DiseaseDetail() {
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{title}</h1>
-            {area && <p className="text-sm text-gray-500 mt-1">{area.description}</p>}
+            {area && <p className="text-sm text-gray-600 mt-1">{area.description}</p>}
           </div>
           <Link
             to={`${basePath}/catalog`}
@@ -86,7 +86,7 @@ export default function DiseaseDetail() {
                       <p className="font-bold text-gray-900 line-clamp-2">{w.title}</p>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">{w.description}</p>
                       {w.startTime && (
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-2 text-xs text-gray-600">
                           {new Date(w.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           {w.duration ? ` · ${w.duration} min` : ''}
                         </p>
@@ -109,11 +109,11 @@ export default function DiseaseDetail() {
                       className="rounded-2xl border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
                     >
                       <div className="aspect-video bg-gray-100">
-                        <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                        <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                       </div>
                       <div className="p-4">
                         <p className="font-bold text-gray-900 line-clamp-2">{p.title}</p>
-                        <p className="text-xs text-gray-500 mt-1">{p.videoCount} videos</p>
+                        <p className="text-xs text-gray-600 mt-1">{p.videoCount} videos</p>
                       </div>
                     </Link>
                   ))}
@@ -130,10 +130,10 @@ export default function DiseaseDetail() {
                     <Link
                       key={c.id}
                       to={`${basePath}/catalog/clip/${c.id}`}
-                      className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-sm transition-shadow group"
+                      className="rounded-2xl border border-gray-200 bg-white overflow-hidden hover:shadow-sm transition-shadow group"
                     >
                       <div className="aspect-video bg-gray-100 relative">
-                        <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                        <img src={c.thumbnail_url} alt={c.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
                           <Play className="h-8 w-8 text-white" fill="white" />
                         </div>

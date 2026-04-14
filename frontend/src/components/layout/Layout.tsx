@@ -20,8 +20,8 @@ export default function Layout() {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-30 h-14 lg:h-16 shrink-0 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 lg:px-8">
           <div>
-            <h1 className="text-lg md:text-xl font-bold text-gray-900">Welcome, {displayName}!</h1>
-            <p className="text-sm text-gray-600 hidden sm:block">You have new opportunities to earn rewards today</p>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Welcome, {displayName}!</h1>
+            <p className="text-base text-gray-600 hidden sm:block">You have new opportunities to earn rewards today</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <button className="p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100" aria-label="Notifications">
@@ -39,7 +39,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-x-hidden text-[130%]">
           <Outlet />
         </main>
       </div>

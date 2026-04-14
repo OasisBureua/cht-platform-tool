@@ -4,21 +4,21 @@ import { Stethoscope, ArrowRight } from 'lucide-react';
 const FEATURED_DOCS = [
   {
     name: 'Dr. Sara Tolaney',
-    specialty: 'Medical Oncology — Breast Cancer',
+    specialty: 'Medical Oncology - Breast Cancer',
     image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
     slug: 'sara-tolaney',
     bio: 'Leading expert in HER2+ and triple-negative breast cancer with extensive clinical trial experience.',
   },
   {
     name: 'Dr. Fatima Cardoso',
-    specialty: 'Medical Oncology — Breast Cancer',
+    specialty: 'Medical Oncology - Breast Cancer',
     image: '/images/iStock-1667819272-cc7e9fde-feb0-4590-bb35-f5a86deba0dd.png',
     slug: 'fatima-cardoso',
     bio: 'Internationally recognized for guidelines in metastatic breast cancer and patient advocacy.',
   },
   {
     name: 'Dr. Heather Wakelee',
-    specialty: 'Thoracic Oncology — Lung Cancer',
+    specialty: 'Thoracic Oncology - Lung Cancer',
     image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
     slug: 'heather-wakelee',
     bio: 'Expert in early-stage and locally advanced NSCLC clinical trials and novel therapeutics.',
@@ -34,7 +34,7 @@ export default function ChmDocs() {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">CHM DOC&apos;s</h1>
         </div>
         <p className="text-sm text-gray-600 max-w-2xl">
-          Doctor-led conversations and expert insights. Ongoing engagement beyond live events — hear directly from the
+          Doctor-led conversations and expert insights. Ongoing engagement beyond live events. Hear directly from the
           physicians shaping clinical practice.
         </p>
       </header>

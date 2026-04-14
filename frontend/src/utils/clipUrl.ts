@@ -14,5 +14,5 @@ export function getMediaHubThumbnail(clip: { thumbnail_url?: string; youtube_url
   if (clip.thumbnail_url) return clip.thumbnail_url;
   const m = clip.youtube_url?.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
   if (m) return `https://img.youtube.com/vi/${m[1]}/hqdefault.jpg`;
-  return 'https://via.placeholder.com/400x260?text=Video';
+  return '/images/placeholder-playlist.svg';
 }

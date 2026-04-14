@@ -41,7 +41,7 @@ export default function OfficeHours() {
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">CHM Office Hours</h1>
         <p className="text-sm text-gray-600">
-          Get time with our experts — live sessions for Q&A. Select an available time slot and join from here when
+          Get time with our experts. Live sessions for Q&A. Select an available time slot and join from here when
           it&apos;s time.
         </p>
       </header>

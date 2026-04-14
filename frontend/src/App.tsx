@@ -166,7 +166,7 @@ function App() {
             <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
-            {/* CHM DOC's */}
+            {/* CHM Docs */}
             <Route path="chm-docs" element={<ChmDocs />} />
 
             {/* Disease Areas */}

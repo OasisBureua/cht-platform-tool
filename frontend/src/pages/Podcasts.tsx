@@ -4,7 +4,7 @@ const SHOWS = [
   {
     id: 'breast-friends',
     title: 'Breast Friends',
-    tagline: 'Real conversations about breast cancer — unfiltered, expert-led, and community-driven.',
+    tagline: 'Real conversations about breast cancer, unfiltered, expert-led, and community-driven.',
     image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
     active: true,
     episodes: [

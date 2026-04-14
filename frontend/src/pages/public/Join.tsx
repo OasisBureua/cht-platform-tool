@@ -171,7 +171,7 @@ export default function Join() {
 
           <p className="text-sm md:text-base text-gray-600 leading-relaxed">
             CHT is a platform for healthcare professionals to participate in
-            accredited education, surveys, and research opportunities — and
+            accredited education, surveys, and research opportunities, and
             earn CME credits and honoraria.
           </p>
 
@@ -206,7 +206,7 @@ export default function Join() {
             Join the Community Health platform.
           </p>
 
-          {/* OAuth sign-up — creates CHT account and redirects to platform */}
+          {/* OAuth sign-up - creates CHT account and redirects to platform */}
           <div className="mt-6 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <button

@@ -28,7 +28,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Link to="/admin/users" className="group block rounded-2xl border border-blue-200 bg-blue-50/50 p-6 relative hover:border-blue-400 hover:ring-2 hover:ring-blue-200 transition-all">
           <span className={`absolute top-3 right-3 rounded-full px-2 py-1 text-xs font-semibold ${activeHcpsChange?.colorClass ?? 'bg-gray-100 text-gray-700'}`}>
-            {activeHcpsChange?.label ?? '—'}
+            {activeHcpsChange?.label ?? '-'}
           </span>
           <p className="text-3xl font-bold text-gray-900">{stats?.activeHcpsCount ?? 0}</p>
           <p className="mt-2 text-sm font-semibold text-blue-700 group-hover:underline">Active HCPs</p>

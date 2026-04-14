@@ -20,7 +20,7 @@ function getInitials(name: string, email?: string): string {
 }
 
 export default function Settings() {
-  const { user, logout, refreshProfile } = useAuth();
+  const { user, logout, refreshProfile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const userId = user?.userId ?? '';
@@ -91,13 +91,13 @@ export default function Settings() {
     navigate('/login');
   };
 
-  if (isLoading) return <LoadingSpinner />;
+  if (authLoading || isLoading) return <LoadingSpinner />;
 
   const displayName = profile?.name || user?.name || user?.email || 'User';
   const initials = getInitials(displayName, profile?.email || user?.email);
   const memberSince = profile?.createdAt
     ? format(new Date(profile.createdAt), 'MMM yyyy')
-    : '—';
+    : '-';
   const totalEarnings = profile?.totalEarnings ?? 0;
   const completionRate = stats?.completionRate ?? 0;
 
@@ -127,7 +127,7 @@ export default function Settings() {
                 {profile?.specialty ? (
                   <span className="text-sm text-gray-600">{profile.specialty}</span>
                 ) : (
-                  <span className="text-sm text-gray-500">—</span>
+                  <span className="text-sm text-gray-500">-</span>
                 )}
               </div>
             </div>

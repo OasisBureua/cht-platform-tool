@@ -54,6 +54,7 @@ type Treatment = {
 type Resource = {
   id: string;
   title: string;
+  description: string;
   href: string;
   icon: ReactNode;
   imageUrl: string;
@@ -63,17 +64,8 @@ function getMiddleIndex(length: number) {
   return length > 0 ? Math.floor(length / 2) : 0;
 }
 
-function shuffleArray<T>(arr: T[]): T[] {
-  const out = [...arr];
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
 function catalogToTreatment(p: CatalogItem): Treatment {
-  const thumb = p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist';
+  const thumb = p.thumbnailUrl || '/images/placeholder-playlist.svg';
   return {
     id: p.id,
     title: p.title,
@@ -85,15 +77,15 @@ function catalogToTreatment(p: CatalogItem): Treatment {
 }
 
 const FALLBACK_HER2: Treatment[] = [
-  { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80', videoNames: ['', '', '', ''], playlistUrl: '/catalog' },
+  { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', videoNames: ['', '', '', ''], playlistUrl: '/catalog' },
+  { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80', videoNames: ['', '', '', ''], playlistUrl: '/catalog' },
 ];
 
 const FALLBACK_HR: Treatment[] = [
-  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['', '', '', ''], playlistUrl: '/catalog' },
+  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['', '', '', ''], playlistUrl: '/catalog' },
+  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['', '', '', ''], playlistUrl: '/catalog' },
 ];
 
 export default function Home() {
@@ -195,14 +187,40 @@ export default function Home() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [expandedVideoId]);
 
+  useEffect(() => {
+    if (!expandedVideoId) return;
+    const modal = document.querySelector('[role="dialog"]') as HTMLElement;
+    if (!modal) return;
+    const focusable = modal.querySelectorAll<HTMLElement>(
+      'button, [href], input, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    first?.focus();
+    const trap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      if (e.shiftKey) {
+        if (document.activeElement === first) {
+          e.preventDefault(); last?.focus();
+        }
+      } else {
+        if (document.activeElement === last) {
+          e.preventDefault(); first?.focus();
+        }
+      }
+    };
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, [expandedVideoId]);
+
   const resources: Resource[] = [
-    { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
-    { id: 'r2', title: 'Protocols', href: '/catalog', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
-    { id: 'r3', title: 'Clinicals', href: '/catalog', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
-    { id: 'r4', title: 'Conversations', href: '/catalog', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
-    { id: 'r5', title: 'Reporting', href: '/catalog', icon: <Clock className="h-10 w-10" />, imageUrl: resourceImages.reporting },
-    { id: 'r6', title: 'Data', href: '/catalog', icon: <LayoutGrid className="h-10 w-10" />, imageUrl: resourceImages.data },
-    { id: 'r7', title: 'Library', href: '/catalog', icon: <Search className="h-10 w-10" />, imageUrl: resourceImages.search },
+    { id: 'r1', title: 'Webinars', description: 'Live expert sessions', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
+    { id: 'r2', title: 'Protocols', description: 'Treatment guidelines', href: '/catalog?type=protocols', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
+    { id: 'r3', title: 'Clinicals', description: 'Trial data & results', href: '/catalog?type=clinicals', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
+    { id: 'r4', title: 'Conversations', description: 'Peer-to-peer interviews', href: '/catalog', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
+    { id: 'r5', title: 'Reporting', description: 'Analytics & outcomes', href: '/catalog?type=reporting', icon: <Clock className="h-10 w-10" />, imageUrl: resourceImages.reporting },
+    { id: 'r6', title: 'Data', description: 'Biomarker & RWE data', href: '/catalog?type=data', icon: <LayoutGrid className="h-10 w-10" />, imageUrl: resourceImages.data },
+    { id: 'r7', title: 'Library', description: 'Full content catalog', href: '/catalog', icon: <Search className="h-10 w-10" />, imageUrl: resourceImages.search },
   ];
 
   const expandedVideo = expandedVideoId ? featuredVideos.find((v) => v.id === expandedVideoId) : null;
@@ -254,7 +272,7 @@ export default function Home() {
                   <img
                     src={expandedVideo.imageUrl}
                     alt={expandedVideo.title}
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                     {expandedVideo.youtubeUrl ? (
@@ -279,8 +297,9 @@ export default function Home() {
                 </>
               )}
             </div>
-            <div className="p-4 bg-gray-900 text-white">
+            <div className="px-5 py-4 bg-gray-900 text-white flex items-center justify-between">
               <h3 className="text-lg font-semibold">{expandedVideo.title}</h3>
+              <span className="text-xs text-gray-400 shrink-0 ml-4">Press Esc to close</span>
             </div>
           </div>
         </div>
@@ -289,19 +308,19 @@ export default function Home() {
       {/* Hero */}
       <section className="relative">
         <div
-          className="min-h-[400px] sm:min-h-[460px] md:h-[520px] w-full bg-cover bg-center bg-gray-800"
+          className="h-[calc(100svh-3.5rem-4rem)] sm:h-[calc(100svh-4rem-4rem)] min-h-[400px] w-full bg-cover bg-center bg-gray-900"
           style={{
             backgroundImage: "url('/images/hero-bg.png')",
           }}
         >
-          <div className="absolute inset-0 bg-black/45" />
-          <div className="relative h-full min-h-[400px] sm:min-h-[460px] md:min-h-[520px] mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-center text-center">
-            <div className="max-w-3xl space-y-6">
-              <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-white">
-                The Future of Healthcare Marketing and Education
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative h-full mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-center text-center">
+            <div className="max-w-4xl space-y-8">
+              <h1 className="text-5xl md:text-[4.25rem] lg:text-7xl font-semibold tracking-tight text-white leading-[1.1]">
+                Peer-to-Peer Oncology Education, On Your Terms
               </h1>
-              <p className="text-sm md:text-base text-white/90 leading-relaxed">
-                Community Health Technologies is redefining how pharma reaches healthcare audiences, and educates them where they actively consume and trust information.
+              <p className="text-base md:text-lg lg:text-xl text-white/90 leading-relaxed">
+                Community Health Technologies connects oncologists with the peer-driven clinical conversations, trials, and data that matter most to their practice.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
@@ -315,6 +334,12 @@ export default function Home() {
                   className="rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors inline-flex items-center gap-2"
                 >
                   Learn More
+                </Link>
+                <Link
+                  to="/catalog"
+                  className="rounded-full border border-white/60 px-6 py-2.5 text-sm font-semibold text-white hover:bg-white/10 transition-colors inline-flex items-center gap-2"
+                >
+                  Browse Content Library <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -333,10 +358,9 @@ export default function Home() {
           {randomVideosLoading && (
             <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 flex items-center justify-center gap-4 sm:gap-6 px-4 sm:px-6 overflow-hidden">
               {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className={`shrink-0 rounded-2xl bg-gray-200 animate-pulse w-[280px] sm:w-[360px] md:w-[460px] ${i === 1 ? 'h-[200px] sm:h-[240px] md:h-[300px]' : 'h-[180px] sm:h-[220px] md:h-[280px]'}`}
-                />
+                <div key={i} className={`shrink-0 rounded-2xl overflow-hidden bg-gray-100 w-[280px] sm:w-[360px] md:w-[460px] ${i === 1 ? 'h-[200px] sm:h-[240px] md:h-[300px]' : 'h-[180px] sm:h-[220px] md:h-[280px]'} relative`}>
+                  <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+                </div>
               ))}
             </div>
           )}
@@ -347,19 +371,21 @@ export default function Home() {
             <div
               ref={videoScrollRef}
               onScroll={() => {
-                const el = videoScrollRef.current;
-                if (!el) return;
-                const cards = el.querySelectorAll('[data-video-card]');
-                const gap = 24;
-                let newIdx = 0;
-                const containerCenter = el.scrollLeft + el.clientWidth / 2;
-                cards.forEach((card, i) => {
-                  const rect = (card as HTMLElement).getBoundingClientRect();
-                  const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
-                  if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + gap)) newIdx = i;
+                requestAnimationFrame(() => {
+                  const el = videoScrollRef.current;
+                  if (!el) return;
+                  const cards = el.querySelectorAll('[data-video-card]');
+                  const gap = 24;
+                  let newIdx = 0;
+                  const containerCenter = el.scrollLeft + el.clientWidth / 2;
+                  cards.forEach((card, i) => {
+                    const rect = (card as HTMLElement).getBoundingClientRect();
+                    const cardCenter = rect.left - el.getBoundingClientRect().left + el.scrollLeft + rect.width / 2;
+                    if (Math.abs(containerCenter - cardCenter) < (rect.width / 2 + gap)) newIdx = i;
+                  });
+                  if (newIdx !== featuredVideoIndex) setInlinePlayingId(null);
+                  setFeaturedVideoIndex(newIdx);
                 });
-                if (newIdx !== featuredVideoIndex) setInlinePlayingId(null);
-                setFeaturedVideoIndex(newIdx);
               }}
               className="scrollbar-hide flex items-center gap-4 sm:gap-6 overflow-x-auto overflow-y-hidden pb-2 scroll-smooth snap-x snap-mandatory px-4 sm:px-6"
               style={{ WebkitOverflowScrolling: 'touch' }}
@@ -371,14 +397,12 @@ export default function Home() {
                 const baseH = 'h-[180px] sm:h-[220px] md:h-[280px]';
                 const selectedH = 'h-[200px] sm:h-[240px] md:h-[300px]';
                 return (
-                  <div
+                  <button
                     key={video.id}
-                    role="button"
-                    tabIndex={0}
+                    type="button"
                     onClick={() => setExpandedVideoId(video.id)}
-                    onKeyDown={(e) => e.key === 'Enter' && setExpandedVideoId(video.id)}
                     data-video-card
-                    className={`shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] block relative transition-[height] duration-300 cursor-pointer shadow-lg ${isSelected ? selectedH : baseH}`}
+                    className={`shrink-0 snap-center rounded-2xl overflow-hidden bg-gray-200 w-[280px] sm:w-[360px] md:w-[460px] block relative transition-[height] duration-300 cursor-pointer shadow-lg text-left ${isSelected ? selectedH : baseH}`}
                   >
                     {isPlayingInline && video.youtubeUrl ? (
                       <div
@@ -394,20 +418,15 @@ export default function Home() {
                         />
                       </div>
                     ) : (
-                      <img src={video.imageUrl} alt={video.title} className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
+                      <img src={video.imageUrl} alt={video.title} className="h-full w-full object-cover" loading={idx === midVideo ? 'eager' : 'lazy'} referrerPolicy="no-referrer" />
                     )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setExpandedVideoId(video.id);
-                      }}
+                    <span
                       className="absolute top-3 right-3 h-9 w-9 rounded-lg bg-black/50 hover:bg-black/70 flex items-center justify-center text-white transition-colors"
-                      aria-label="Play full screen"
+                      aria-hidden="true"
                     >
                       <Maximize2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                    </span>
+                  </button>
                 );
               })}
               <div className="shrink-0 w-[max(1rem,calc(50%-150px))] min-w-[max(1rem,calc(50%-140px))] sm:min-w-[max(1rem,calc(50%-180px))] md:min-w-[max(1rem,calc(50%-230px))]" aria-hidden />
@@ -488,7 +507,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Disease Areas — horizontal carousel */}
+      {/* Disease Areas - horizontal carousel */}
       <DiseaseAreasCarousel />
 
       {/* Biomarker Playlists - treatment specific content */}
@@ -496,9 +515,11 @@ export default function Home() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
           <div className="text-center space-y-2">
             <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
-              Biomarker Playlists
+              HER2+ Breast Cancer
             </h3>
-            <p className="text-lg md:text-xl font-medium text-gray-900 line-clamp-3">HER2+</p>
+            <p className="text-base text-gray-600">
+              DESTINY-Breast trials, sequencing decisions, and CNS disease management
+            </p>
           </div>
           <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
             {playlistsLoading && playlists.length === 0 ? (
@@ -538,14 +559,21 @@ export default function Home() {
                     <Link to={t.playlistUrl} className="block mb-3">
                       <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline line-clamp-3">{t.title}</h4>
                     </Link>
-                    <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
-                      {(t.videoNames.length > 0 ? t.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((label, i) => (
+                    {t.videoNames.filter(v => v !== '').length > 0 && (
+                    <>
+                    <span className="text-xs text-gray-500 mt-1 block">
+                      {t.videoNames.filter(v => v !== '').length} videos
+                    </span>
+                    <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600 mt-2">
+                      {t.videoNames.filter(v => v !== '').slice(0, 4).map((label, i) => (
                         <li key={i} className="flex items-center gap-2">
                           <span className="text-gray-400">•</span>
                           <span className="truncate">{label}</span>
                         </li>
                       ))}
                     </ul>
+                    </>
+                    )}
                     <Link
                       to={t.playlistUrl}
                       className="inline-flex self-end rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
@@ -585,15 +613,29 @@ export default function Home() {
               </button>
             </div>
           </div>
+          {!playlistsLoading && biomarkerPlaylists.length === 0 && (
+            <div className="rounded-2xl bg-gray-50 border border-gray-200 py-10 text-center">
+              <p className="font-semibold text-gray-900 text-sm">Content coming soon</p>
+              <p className="text-sm text-gray-500 mt-1">
+                HER2+ playlists are being curated.
+                <Link to="/catalog" className="text-gray-900 underline ml-1">Browse the full library</Link>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
       {/* Biomarker Playlists - HR+ */}
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6 sm:space-y-8">
-          <p className="text-lg md:text-xl font-medium text-center text-gray-900 line-clamp-3">
-            HR+
-          </p>
+          <div className="text-center space-y-2">
+            <h3 className="text-3xl md:text-4xl font-semibold text-gray-900">
+              HR+ &amp; Triple-Negative Breast Cancer
+            </h3>
+            <p className="text-base text-gray-600">
+              Endocrine therapy, CDK4/6 inhibition, and mTNBC treatment strategies
+            </p>
+          </div>
           <div className="relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2">
             {playlistsLoading && playlists.length === 0 ? (
               <div className="flex justify-center py-16">
@@ -632,14 +674,21 @@ export default function Home() {
                     <Link to={t.playlistUrl} className="block mb-3">
                       <h4 className="text-base md:text-lg font-semibold text-gray-900 hover:underline line-clamp-3">{t.title}</h4>
                     </Link>
-                    <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600">
-                      {(t.videoNames.length > 0 ? t.videoNames : ['Video Name', 'Video Name', 'Video Name', 'Video Name']).slice(0, 4).map((label, i) => (
+                    {t.videoNames.filter(v => v !== '').length > 0 && (
+                    <>
+                    <span className="text-xs text-gray-500 mt-1 block">
+                      {t.videoNames.filter(v => v !== '').length} videos
+                    </span>
+                    <ul className="space-y-1.5 mb-4 flex-1 text-sm text-gray-600 mt-2">
+                      {t.videoNames.filter(v => v !== '').slice(0, 4).map((label, i) => (
                         <li key={i} className="flex items-center gap-2">
                           <span className="text-gray-400">•</span>
                           <span className="truncate">{label}</span>
                         </li>
                       ))}
                     </ul>
+                    </>
+                    )}
                     <Link
                       to={t.playlistUrl}
                       className="inline-flex self-end rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
@@ -679,25 +728,34 @@ export default function Home() {
               </button>
             </div>
           </div>
+          {!playlistsLoading && hrPlusPlaylists.length === 0 && (
+            <div className="rounded-2xl bg-gray-50 border border-gray-200 py-10 text-center">
+              <p className="font-semibold text-gray-900 text-sm">Content coming soon</p>
+              <p className="text-sm text-gray-500 mt-1">
+                HR+/TNBC playlists are being curated.
+                <Link to="/catalog" className="text-gray-900 underline ml-1">Browse the full library</Link>
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
       {/* About Us teaser */}
-      <section className="py-10 sm:py-14">
+      <section className="py-14 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 flex justify-center">
-          <div className="space-y-5 max-w-2xl text-center">
-            <h4 className="text-3xl font-semibold text-gray-900">About Us</h4>
-            <p className="text-sm text-gray-700 leading-relaxed">
+          <div className="space-y-7 max-w-[55rem] text-center">
+            <h4 className="text-4xl md:text-5xl font-semibold text-gray-900">About Us</h4>
+            <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
               Community Health Media (CHM) is a full-service medical communications partner: expert-led content,
               strategic distribution, and multichannel campaigns for healthcare. We help organizations connect with HCPs,
               KOLs, and patient communities through clinically credible communication.
             </p>
-            <p className="text-sm text-gray-700 leading-relaxed">
+            <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
               Learn more about what we stand for, who we serve, and how our platform supports clinical learning.
             </p>
             <Link
               to="/about"
-              className="inline-flex rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
+              className="inline-flex rounded-full bg-gray-900 px-8 py-3 text-base font-semibold text-white hover:bg-black transition-colors"
             >
               Learn More
             </Link>
@@ -706,21 +764,21 @@ export default function Home() {
       </section>
 
       {/* Who We Reach */}
-      <section className="py-10 sm:py-14 border-t border-gray-200">
+      <section className="py-14 sm:py-20 border-t border-gray-200">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h4 className="text-3xl font-semibold text-gray-900 mb-8 text-center">Who We Reach</h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <p className="font-semibold text-gray-900 mb-2">HCPs</p>
-              <p className="text-sm text-gray-600 leading-relaxed">Beyond conferences and CME, where they actually consume content</p>
+          <h4 className="text-4xl md:text-5xl font-semibold text-gray-900 mb-10 text-center">Who We Reach</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="rounded-2xl border border-gray-200 bg-white p-8">
+              <p className="text-lg font-semibold text-gray-900 mb-3">HCPs</p>
+              <p className="text-base text-gray-600 leading-relaxed">Beyond conferences and CME, where they actually consume content</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <p className="font-semibold text-gray-900 mb-2">Patients</p>
-              <p className="text-sm text-gray-600 leading-relaxed">Pre or active treatment, searching for credible information</p>
+            <div className="rounded-2xl border border-gray-200 bg-white p-8">
+              <p className="text-lg font-semibold text-gray-900 mb-3">Patients</p>
+              <p className="text-base text-gray-600 leading-relaxed">Pre or active treatment, searching for credible information</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-6">
-              <p className="font-semibold text-gray-900 mb-2">Caregivers</p>
-              <p className="text-sm text-gray-600 leading-relaxed">Making decisions, seeking guidance, needing support</p>
+            <div className="rounded-2xl border border-gray-200 bg-white p-8">
+              <p className="text-lg font-semibold text-gray-900 mb-3">Caregivers</p>
+              <p className="text-base text-gray-600 leading-relaxed">Making decisions, seeking guidance, needing support</p>
             </div>
           </div>
         </div>
@@ -730,7 +788,10 @@ export default function Home() {
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-6">
           <div className="space-y-2 text-center">
-            <h5 className="text-4xl md:text-5xl font-semibold text-gray-900">Resources</h5>
+            <h5 className="text-4xl md:text-5xl font-semibold text-gray-900">Everything in One Place</h5>
+            <p className="text-center text-gray-600 text-lg md:text-xl mt-3 max-w-2xl mx-auto">
+              Clinical conversations, live sessions, trial data, and reporting, all organized by therapeutic area.
+            </p>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {resources.map((r) => (
@@ -743,7 +804,10 @@ export default function Home() {
                 <div className="absolute inset-0 bg-black/45 group-hover:bg-black/55 transition-colors" />
                 <div className="relative h-full p-4 flex flex-col justify-between min-h-[140px] md:min-h-[160px]">
                   <span className="text-white/95 group-hover:text-white transition-colors">{r.icon}</span>
-                  <p className="text-sm font-semibold text-white">{r.title}</p>
+                  <div>
+                    <p className="text-sm font-semibold text-white">{r.title}</p>
+                    <p className="text-xs text-white/70 mt-0.5">{r.description}</p>
+                  </div>
                 </div>
               </Link>
             ))}
@@ -752,87 +816,87 @@ export default function Home() {
       </section>
 
       {/* How We Help Pharma - FAQ accordion */}
-      <section className="py-12 sm:py-16">
+      <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-8 md:mb-10 tracking-tighter text-center">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 mb-10 md:mb-14 tracking-tighter text-center">
             How We Help Pharma Educate Healthcare Audiences
           </h2>
           <div>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">AI-Powered Content Automation</span>
+              <summary className="list-none flex items-center justify-between cursor-pointer py-6 border-b border-gray-200 group-open:border-b-0">
+                <span className="flex items-center gap-3">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <span className="text-2xl md:text-[1.75rem] font-medium text-gray-900 leading-snug">AI-Powered Content Automation</span>
                 </span>
-                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
+                <span className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-5 group-open:rotate-45">
+                  <span className="text-xl font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-6 pr-5 pl-5 text-xl text-gray-600 leading-relaxed">
                 Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">Multi-Audience Reach</span>
+              <summary className="list-none flex items-center justify-between cursor-pointer py-6 border-b border-gray-200 group-open:border-b-0">
+                <span className="flex items-center gap-3">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <span className="text-2xl md:text-[1.75rem] font-medium text-gray-900 leading-snug">Multi-Audience Reach</span>
                 </span>
-                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
+                <span className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-5 group-open:rotate-45">
+                  <span className="text-xl font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-6 pr-5 pl-5 text-xl text-gray-600 leading-relaxed">
                 Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">Entertainment-Grade Distribution</span>
+              <summary className="list-none flex items-center justify-between cursor-pointer py-6 border-b border-gray-200 group-open:border-b-0">
+                <span className="flex items-center gap-3">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <span className="text-2xl md:text-[1.75rem] font-medium text-gray-900 leading-snug">Entertainment-Grade Distribution</span>
                 </span>
-                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
+                <span className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-5 group-open:rotate-45">
+                  <span className="text-xl font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-6 pr-5 pl-5 text-xl text-gray-600 leading-relaxed">
                 Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">First-Party HCP Intelligence</span>
+              <summary className="list-none flex items-center justify-between cursor-pointer py-6 border-b border-gray-200 group-open:border-b-0">
+                <span className="flex items-center gap-3">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <span className="text-2xl md:text-[1.75rem] font-medium text-gray-900 leading-snug">First-Party HCP Intelligence</span>
                 </span>
-                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
+                <span className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-5 group-open:rotate-45">
+                  <span className="text-xl font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-6 pr-5 pl-5 text-xl text-gray-600 leading-relaxed">
                 Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
               </p>
             </details>
             <details className="group">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-xl md:text-[1.375rem] font-medium text-gray-900 leading-snug">Real Engagement Analytics</span>
+              <summary className="list-none flex items-center justify-between cursor-pointer py-6 border-b border-gray-200 group-open:border-b-0">
+                <span className="flex items-center gap-3">
+                  <span className="text-green-600 text-lg">✓</span>
+                  <span className="text-2xl md:text-[1.75rem] font-medium text-gray-900 leading-snug">Real Engagement Analytics</span>
                 </span>
-                <span className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-4 group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
+                <span className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-900 shrink-0 ml-5 group-open:rotate-45">
+                  <span className="text-xl font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="pt-2 pb-5 pr-4 pl-4 text-base text-gray-600 leading-relaxed">
+              <p className="pt-2 pb-6 pr-5 pl-5 text-xl text-gray-600 leading-relaxed">
                 Move beyond impressions. Track who watched, who shared, and who took meaningful action.
               </p>
             </details>
           </div>
-          <div className="mt-10 flex justify-center">
+          <div className="mt-12 flex justify-center">
             <Link
               to="/join"
-              className="inline-flex items-center justify-center rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
+              className="inline-flex items-center justify-center rounded-full bg-gray-900 px-10 py-3 text-base font-semibold text-white hover:bg-black transition-colors"
             >
               Get Started
             </Link>
@@ -912,8 +976,8 @@ function DiseaseAreasCarousel() {
           <h3 className="text-2xl sm:text-3xl md:text-4xl font-medium text-black tracking-tight">
             View treatment specific content
           </h3>
-          <p className="text-sm sm:text-base text-black/50 max-w-xl mx-auto">
-            Explore content by therapeutic area — expert-led education, conversations, and resources.
+          <p className="text-base sm:text-lg text-black/50 max-w-none mx-auto whitespace-nowrap">
+            Explore content by therapeutic area, expert-led education, conversations, and resources.
           </p>
         </div>
 
@@ -925,8 +989,8 @@ function DiseaseAreasCarousel() {
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             <div className="shrink-0 w-[max(1rem,calc(50%-280px))] sm:w-[max(1rem,calc(50%-300px))] md:w-[max(1rem,calc(50%-340px))] lg:w-[max(1rem,calc(50%-360px))]" aria-hidden />
-            {DISEASE_AREAS.map((area) => {
-              const inner = (
+            {DISEASE_AREAS.map((area) => (
+              <Link key={area.slug} to={`/catalog/${area.slug}`} className="shrink-0 snap-center">
                 <div
                   data-disease-card
                   className="shrink-0 snap-center w-[280px] sm:w-[420px] md:w-[560px] lg:w-[640px] h-[180px] sm:h-[260px] md:h-[320px] lg:h-[340px] rounded-[20px] overflow-hidden relative shadow-[0px_4px_4px_rgba(0,0,0,0.25)] group"
@@ -948,17 +1012,8 @@ function DiseaseAreasCarousel() {
                     </span>
                   </div>
                 </div>
-              );
-              return area.active ? (
-                <Link key={area.slug} to={`/catalog/${area.slug}`} className="shrink-0 snap-center">
-                  {inner}
-                </Link>
-              ) : (
-                <div key={area.slug} className="shrink-0 snap-center cursor-default">
-                  {inner}
-                </div>
-              );
-            })}
+              </Link>
+            ))}
             <div className="shrink-0 w-[max(1rem,calc(50%-280px))] sm:w-[max(1rem,calc(50%-300px))] md:w-[max(1rem,calc(50%-340px))] lg:w-[max(1rem,calc(50%-360px))]" aria-hidden />
           </div>
         </div>

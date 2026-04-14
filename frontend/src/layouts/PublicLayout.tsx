@@ -11,7 +11,7 @@ const navLinks = [
   { to: '/live', label: 'LIVE' },
   { to: '/chm-office-hours', label: 'CHM Office Hours' },
   { to: '/for-hcps', label: 'For HCPs' },
-  { to: '/kol-network', label: "CHM DOC's" },
+  { to: '/kol-network', label: 'CHM Docs' },
   { to: '/contact', label: 'Contact' },
 ];
 
@@ -53,7 +53,7 @@ export default function PublicLayout() {
               </Link>
             </div>
 
-            <div className="hidden sm:flex justify-center min-w-0 px-1">
+            <div className="flex justify-center min-w-0 px-1">
               <form onSubmit={submitBrowse} className="w-full max-w-xl lg:max-w-2xl">
                 <div className="flex w-full rounded-full border border-gray-300 overflow-hidden bg-gray-50 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900">
                   <input
@@ -77,13 +77,6 @@ export default function PublicLayout() {
             </div>
 
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
-              <Link
-                to="/catalog"
-                className="sm:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
-                aria-label="Browse library"
-              >
-                <Search className="h-5 w-5" />
-              </Link>
               <div className="hidden sm:inline-flex items-center rounded-full bg-[#000000] p-1 gap-0.5">
                 <Link
                   to="/login"

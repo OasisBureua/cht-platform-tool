@@ -27,7 +27,7 @@ function catalogToTreatment(p: CatalogItem): Treatment {
   return {
     id: p.id,
     title: p.title,
-    imageUrl: p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist',
+    imageUrl: p.thumbnailUrl || '/images/placeholder-playlist.svg',
     slug: p.id,
     videoNames: p.videoNames || [],
     playlistUrl: `/catalog/playlist/${p.id}`,
@@ -108,7 +108,7 @@ export default function ForHCPs() {
           </h1>
         </header>
 
-        {/* Featured grid — equal cells, light overlay, pill CTAs */}
+        {/* Featured grid - equal cells, light overlay, pill CTAs */}
         <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
           <FeaturedCard
             title="Clinical Conversations"
@@ -139,7 +139,7 @@ export default function ForHCPs() {
           />
         </section>
 
-        {/* Featured Biomarker Playlists — HR+ */}
+        {/* Featured Biomarker Playlists - HR+ */}
         <section className="space-y-5">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">

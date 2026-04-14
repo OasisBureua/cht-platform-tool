@@ -145,7 +145,7 @@ export default function PlaylistDetail() {
                           <div className="w-32 shrink-0 aspect-video bg-gray-200">
                             <img
                               src={video.thumbnailUrl}
-                              alt=""
+                              alt={video.title}
                               className="w-full h-full object-cover"
                               loading="lazy"
                               referrerPolicy="no-referrer"

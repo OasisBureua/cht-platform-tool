@@ -256,7 +256,7 @@ export default function Search() {
               </span>
             )}
             {debouncedQ.length >= 2 && apiError && (
-              <span className="text-amber-700">Catalog search unavailable — showing curated matches only.</span>
+              <span className="text-amber-700">Catalog search unavailable. Showing curated matches only.</span>
             )}
           </div>
         </section>

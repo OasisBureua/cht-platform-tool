@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Presentation, ClipboardList, PlayCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
+import { useAuth } from '../contexts/AuthContext';
 import { format, isPast, startOfWeek, endOfWeek } from 'date-fns';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -41,19 +42,38 @@ const QUICK_ACCESS = [
   { title: 'Conversations', desc: 'View educational videos and earn rewards for staying engaged', icon: PlayCircle, to: '/app/catalog' },
 ];
 
+const QUICK_ACCESS_SEEN_PREFIX = 'cht-quick-access-seen:';
+
 export default function Dashboard() {
+  const { user } = useAuth();
   const { data: webinars = [], isLoading } = useQuery({
     queryKey: ['webinars'],
     queryFn: webinarsApi.list,
     staleTime: 5 * 60 * 1000,
   });
 
+  const [showQuickAccess, setShowQuickAccess] = useState(false);
+
+  useEffect(() => {
+    if (!user?.userId) return;
+    const key = `${QUICK_ACCESS_SEEN_PREFIX}${user.userId}`;
+    try {
+      if (!localStorage.getItem(key)) {
+        setShowQuickAccess(true);
+        localStorage.setItem(key, '1');
+      }
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [user?.userId]);
+
   const featuredWebinars = webinars.slice(0, 6);
   const latestWebinar = useMemo(() => getLatestWebinar(webinars), [webinars]);
 
   return (
     <div className="space-y-8">
-      {/* Quick Access - dark cards */}
+      {/* Quick Access - dark cards (shown only on first visit after onboarding) */}
+      {showQuickAccess && (
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {QUICK_ACCESS.map((item) => (
           <Link
@@ -69,6 +89,7 @@ export default function Dashboard() {
           </Link>
         ))}
       </section>
+      )}
 
       {/* Recommended Activity */}
       <section className="rounded-2xl overflow-hidden bg-white border border-gray-200">

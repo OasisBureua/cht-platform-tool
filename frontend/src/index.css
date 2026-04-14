@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-surface: #f9fafb;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
 @layer base {
   html {
     /* clip avoids creating a scroll box that breaks position:sticky on descendants */
