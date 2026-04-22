@@ -238,6 +238,8 @@ export const adminApi = {
       status: string;
       createdAt: string;
       intakeJotformSubmissionId?: string | null;
+      intakeRequired?: boolean;
+      intakeComplete?: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;
       user: { id: string; email: string; firstName: string; lastName: string };
       slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
@@ -262,6 +264,7 @@ export const adminApi = {
       status: string;
       createdAt: string;
       intakeJotformSubmissionId: string | null;
+      intakeRequired: boolean;
       intakeComplete: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;
       user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };

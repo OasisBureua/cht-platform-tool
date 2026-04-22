@@ -53,7 +53,8 @@ export default function AdminProgramHub() {
   useEffect(() => {
     if (!program) return;
     const pr = program as Record<string, unknown>;
-    setIntakeUrl(String(pr.jotformIntakeFormUrl ?? ''));
+    const zt = String(pr.zoomSessionType || 'WEBINAR');
+    setIntakeUrl(zt === 'MEETING' ? '' : String(pr.jotformIntakeFormUrl ?? ''));
     setHostName(String(pr.hostDisplayName ?? ''));
     setRequireApproval(Boolean(pr.registrationRequiresApproval));
   }, [program]);
@@ -61,7 +62,8 @@ export default function AdminProgramHub() {
   const settingsMutation = useMutation({
     mutationFn: () =>
       adminApi.patchProgramRegistrationSettings(programId!, {
-        jotformIntakeFormUrl: intakeUrl.trim() || null,
+        jotformIntakeFormUrl:
+          zoomTypeForQueries === 'MEETING' ? null : intakeUrl.trim() || null,
         hostDisplayName: hostName.trim() || null,
         registrationRequiresApproval: requireApproval,
       }),
@@ -193,9 +195,9 @@ export default function AdminProgramHub() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Program hub: intake Jotform, office-hours slots, registration queue, enrollments, extra form links, and
-          calendar invites. Post-event surveys are FEEDBACK-type surveys (learners complete them on the Surveys tab after
-          the session).
+          Program hub: webinar intake Jotform (LIVE only), office-hours slots, registration queue, enrollments, extra form
+          links, and calendar invites. Post-event surveys are FEEDBACK-type surveys (learners complete them on the Surveys
+          tab after the session).
         </p>
         <p className="mt-2 text-xs text-gray-500">
           Enrollments: {String((p._count as { enrollments?: number })?.enrollments ?? '-')} · Registrations:{' '}
@@ -206,18 +208,32 @@ export default function AdminProgramHub() {
       <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Registration & forms</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block text-sm md:col-span-2">
-            <span className="font-medium text-gray-700">Jotform intake URL (registration)</span>
-            <input
-              value={intakeUrl}
-              onChange={(e) => setIntakeUrl(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              placeholder="https://form.jotform.com/..."
-            />
-            <span className="mt-1 block text-xs text-gray-500">
-              Pre-event forms are deprecated — use this intake for registration; use a FEEDBACK survey for post-event.
-            </span>
-          </label>
+          {zoomType === 'MEETING' ? (
+            <div className="md:col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <strong>CHM Office Hours</strong> do not use a Jotform intake form. Learners register and pick a time slot
+              when you offer slots; use <strong>Require admin approval</strong> below to review each request before they are
+              enrolled. Saving settings clears any stored intake URL for this office-hours program.
+            </div>
+          ) : (
+            <label className="block text-sm md:col-span-2">
+              <span className="font-medium text-gray-700">Jotform intake URL (LIVE webinars only)</span>
+              <input
+                value={intakeUrl}
+                onChange={(e) => setIntakeUrl(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                placeholder="https://form.jotform.com/..."
+              />
+              <span className="mt-1 block text-xs text-gray-500">
+                Pre-event forms are deprecated — use this intake for registration; use a FEEDBACK survey for post-event. In
+                Jotform, set the thank-you redirect to this app&apos;s registration URL for this program (…/register) and
+                append the submission id (merge tag), e.g. …/register?submissionID={'{submission_id}'} — learners need that
+                id on file to finish signing up. Add hidden fields <strong>user_id</strong> and <strong>program_id</strong>{' '}
+                (the app pre-fills them when the form opens). Point the Jotform form webhook to your API{' '}
+                <code className="text-xs bg-gray-100 px-1 rounded">POST /api/webhooks/jotform</code> so submissions are
+                recorded even if the learner does not land on the thank-you URL.
+              </span>
+            </label>
+          )}
           <label className="block text-sm">
             <span className="font-medium text-gray-700">Host display name</span>
             <input
@@ -240,7 +256,7 @@ export default function AdminProgramHub() {
           <span className="text-xs font-normal text-gray-600 pl-6">
             {zoomType === 'WEBINAR'
               ? 'Learners complete registration (and intake Jotform when configured); after you approve, they are enrolled and the in-app Zoom join appears on the webinar page. Rejected learners may register again (their row goes back to pending when they resubmit).'
-              : 'Uncapped sign-ups; you pick who to invite before they are enrolled. Rejected learners may register again (pending on resubmit).'}
+              : 'No Jotform intake for office hours. Learners submit registration (and a time slot when configured). With approval on, you review each request before they are enrolled. Rejected learners may register again (pending on resubmit).'}
           </span>
         </label>
         {settingsMessage.ok && (
@@ -432,8 +448,8 @@ export default function AdminProgramHub() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {registrations.map((r) => {
-                        const intakeRequired = !!intakeUrl.trim();
-                        const intakeOk = !!r.intakeJotformSubmissionId?.trim();
+                        const intakeRequired = r.intakeRequired ?? false;
+                        const intakeOk = r.intakeComplete ?? false;
                         const canApprove = !intakeRequired || intakeOk;
                         return (
                           <tr key={r.id}>
@@ -614,8 +630,8 @@ export default function AdminProgramHub() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {registrations.map((r) => {
-                      const intakeRequired = !!intakeUrl.trim();
-                      const intakeOk = !!r.intakeJotformSubmissionId?.trim();
+                      const intakeRequired = r.intakeRequired ?? false;
+                      const intakeOk = r.intakeComplete ?? false;
                       const canApprove = !intakeRequired || intakeOk;
                       return (
                         <tr key={r.id}>

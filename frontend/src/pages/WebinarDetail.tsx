@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useMemo, useEffect } from 'react';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Video,
 } from 'lucide-react';
+import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -38,10 +39,20 @@ function buildPostEventSurveyEmbedSrc(formUrl: string, userId: string, programId
 export default function WebinarDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
   const isZoomWebinar = id?.startsWith('zoom-') ?? false;
+
+  /** Intake often redirects to the session page; forward submission id to the registration wizard. */
+  useEffect(() => {
+    if (!id || isZoomWebinar) return;
+    const sid = readIntakeSubmissionIdFromSearch(location.search);
+    if (!sid) return;
+    const reg = buildProgramRegisterHref(id, location.pathname);
+    navigate(`${reg}${location.search}`, { replace: true });
+  }, [id, isZoomWebinar, location.pathname, location.search, navigate]);
 
   const { data: zoomWebinar, isLoading: zoomLoading } = useQuery({
     queryKey: ['webinar', id],
@@ -245,7 +256,7 @@ export default function WebinarDetail() {
               Surveys
             </Link>{' '}
             tab (or below on this page). Ensure <strong>Payments</strong> is up to date for honorarium processing. This
-            reminder also appears under the header bell.
+            also appears under the header notifications (bell) for enrolled participants.
           </p>
         </div>
       ) : null}

@@ -1,4 +1,5 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
@@ -7,13 +8,23 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { ChevronLeft, Video } from 'lucide-react';
 import { format } from 'date-fns';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
+import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 
 export default function OfficeHoursDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+
+  useEffect(() => {
+    if (!id) return;
+    const sid = readIntakeSubmissionIdFromSearch(location.search);
+    if (!sid) return;
+    const reg = buildProgramRegisterHref(id, location.pathname);
+    navigate(`${reg}${location.search}`, { replace: true });
+  }, [id, location.pathname, location.search, navigate]);
 
   const { data: session, isLoading: sessionLoading, isError: sessionError } = useQuery({
     queryKey: ['office-hours', id],

@@ -35,6 +35,7 @@ import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -645,19 +646,28 @@ export class AdminController {
   @ApiOperation({ summary: 'Pending LIVE webinar and Office Hours registration requests (all programs)' })
   async listPendingWebinarRegistrations() {
     const rows = await this.programRegistrations.listPendingWebinarRegistrationsForAdmin();
-    return rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      createdAt: r.createdAt.toISOString(),
-      intakeJotformSubmissionId: r.intakeJotformSubmissionId,
-      intakeComplete: !!r.intakeJotformSubmissionId?.trim(),
-      jotformIntakeSubmissionViewUrl: buildJotformIntakeSubmissionViewUrl(
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+    return rows.map((r) => {
+      const intakeRequired = !!effectiveWebinarIntakeFormUrl(
+        r.program.zoomSessionType,
         r.program.jotformIntakeFormUrl,
-        r.intakeJotformSubmissionId,
-      ),
-      user: r.user,
-      program: r.program,
-    }));
+        defaultIntake,
+      );
+      const intakeComplete = !intakeRequired || !!r.intakeJotformSubmissionId?.trim();
+      return {
+        id: r.id,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+        intakeRequired,
+        intakeComplete,
+        jotformIntakeSubmissionViewUrl: intakeRequired
+          ? buildJotformIntakeSubmissionViewUrl(r.program.jotformIntakeFormUrl, r.intakeJotformSubmissionId)
+          : null,
+        user: r.user,
+        program: r.program,
+      };
+    });
   }
 
   @Get('programs/:id/enrollments')
@@ -687,28 +697,38 @@ export class AdminController {
     const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
     if (!exists) throw new NotFoundException('Program not found');
     const rows = await this.programRegistrations.listRegistrationsForAdmin(id);
-    return rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      createdAt: r.createdAt.toISOString(),
-      reviewedAt: r.reviewedAt?.toISOString(),
-      calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
-      adminNotes: r.adminNotes,
-      intakeJotformSubmissionId: r.intakeJotformSubmissionId,
-      jotformIntakeSubmissionViewUrl: buildJotformIntakeSubmissionViewUrl(
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+    return rows.map((r) => {
+      const intakeRequired = !!effectiveWebinarIntakeFormUrl(
+        r.program.zoomSessionType,
         r.program.jotformIntakeFormUrl,
-        r.intakeJotformSubmissionId,
-      ),
-      user: r.user,
-      slot: r.slot
-        ? {
-            id: r.slot.id,
-            startsAt: r.slot.startsAt.toISOString(),
-            endsAt: r.slot.endsAt.toISOString(),
-            label: r.slot.label,
-          }
-        : null,
-    }));
+        defaultIntake,
+      );
+      const intakeComplete = !intakeRequired || !!r.intakeJotformSubmissionId?.trim();
+      return {
+        id: r.id,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        reviewedAt: r.reviewedAt?.toISOString(),
+        calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
+        adminNotes: r.adminNotes,
+        intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+        intakeRequired,
+        intakeComplete,
+        jotformIntakeSubmissionViewUrl: intakeRequired
+          ? buildJotformIntakeSubmissionViewUrl(r.program.jotformIntakeFormUrl, r.intakeJotformSubmissionId)
+          : null,
+        user: r.user,
+        slot: r.slot
+          ? {
+              id: r.slot.id,
+              startsAt: r.slot.startsAt.toISOString(),
+              endsAt: r.slot.endsAt.toISOString(),
+              label: r.slot.label,
+            }
+          : null,
+      };
+    });
   }
 
   @Patch('registrations/:registrationId')

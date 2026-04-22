@@ -5,18 +5,11 @@ import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { ChevronLeft, ExternalLink, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
+import { useAuth } from '../contexts/AuthContext';
+import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
+import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 
 type StepKey = 'intake' | 'bill' | 'slot' | 'submit';
-
-/** Jotform thank-you / redirect URLs often pass one of these query keys with the submission id. */
-function readIntakeSubmissionIdFromSearch(search: string): string | undefined {
-  const q = new URLSearchParams(search);
-  for (const key of ['submission_id', 'submissionId', 'submissionID', 'jid']) {
-    const v = q.get(key)?.trim();
-    if (v) return v;
-  }
-  return undefined;
-}
 
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
@@ -32,14 +25,16 @@ export default function ProgramRegisterWizard() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.userId;
   const [intakeSubmissionId, setIntakeSubmissionId] = useState<string | undefined>();
   const isOfficeHours = location.pathname.includes('/office-hours/') || location.pathname.includes('/chm-office-hours/');
   const backHref = isOfficeHours ? `/app/chm-office-hours/${id}` : `/app/live/${id}`;
 
+  /** Jotform must redirect here (with submission id) so this page can read it — not the session detail URL. */
+  const registerHref = id ? buildProgramRegisterHref(id, location.pathname) : '';
   const returnUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}${backHref}?registered=1`
-      : '';
+    typeof window !== 'undefined' && registerHref ? `${window.location.origin}${registerHref}` : '';
 
   const { data: program, isLoading, isError } = useQuery({
     queryKey: ['program', id],
@@ -52,6 +47,27 @@ export default function ProgramRegisterWizard() {
     const fromUrl = readIntakeSubmissionIdFromSearch(location.search);
     if (fromUrl) setIntakeSubmissionId(fromUrl);
   }, [location.search]);
+
+  const intakeFromUrl = !!readIntakeSubmissionIdFromSearch(location.search);
+  const pollRegistration =
+    !!userId &&
+    !!id &&
+    !!program?.jotformIntakeFormUrl?.trim() &&
+    !intakeSubmissionId &&
+    !intakeFromUrl;
+
+  const { data: myRegistration } = useQuery({
+    queryKey: ['program', id, 'registration'],
+    queryFn: () => programsApi.getMyRegistration(id!),
+    enabled: pollRegistration,
+    refetchInterval: pollRegistration ? 3000 : false,
+  });
+
+  useEffect(() => {
+    if (myRegistration?.intakeJotformSubmissionId?.trim()) {
+      setIntakeSubmissionId(myRegistration.intakeJotformSubmissionId.trim());
+    }
+  }, [myRegistration?.intakeJotformSubmissionId]);
 
   const { data: slots = [] } = useQuery({
     queryKey: ['program-slots', id],
@@ -104,15 +120,13 @@ export default function ProgramRegisterWizard() {
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   };
 
-  const jotformAppendReturn = (url: string) => {
-    try {
-      const u = new URL(url);
-      u.searchParams.set('redirect', returnUrl);
-      return u.toString();
-    } catch {
-      return url;
-    }
-  };
+  const intakeFormSrc = program.jotformIntakeFormUrl
+    ? buildIntakeFormUrl(program.jotformIntakeFormUrl, {
+        returnRedirect: returnUrl || undefined,
+        userId: userId || undefined,
+        programId: program.id,
+      })
+    : '';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-8">
@@ -130,10 +144,9 @@ export default function ProgramRegisterWizard() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Complete intake (if required), then <strong>Payments</strong> (W-9 and bank details for honoraria), then time
-          slot when applicable. Post-event surveys are available on the <strong>Surveys</strong> tab after the live
-          session. Embed this URL in Jotform thank-you pages to return here:{' '}
-          <span className="font-mono text-xs break-all">{returnUrl}</span>
+          Complete intake (if this step appears), then <strong>Payments</strong> for W-9 and payout details when
+          applicable, then pick a time slot if required. After the live session, post-event feedback is under{' '}
+          <strong>Surveys</strong>.
         </p>
 
         <ol className="mt-6 flex flex-wrap gap-2 text-xs">
@@ -156,26 +169,33 @@ export default function ProgramRegisterWizard() {
             <div className="space-y-3">
               <p className="text-sm font-semibold text-gray-900">Your information</p>
               <p className="text-xs text-gray-600">
-                Submit the form below. Set the Jotform thank-you page to this app URL and append the submission id, e.g.{' '}
-                <span className="font-mono break-all">
-                  …/register?submissionID={'{submission_id}'}
-                </span>{' '}
-                (Jotform merge tags). We need that id to complete registration.
+                Submit the form below, or{' '}
+                <a
+                  href={intakeFormSrc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-gray-900 underline"
+                >
+                  open it in a new tab
+                </a>
+                . After submit, this page usually updates from the return link; our system may also record your answers
+                automatically in the background. You still need to finish the steps below (payments, time slot if offered,
+                then submit).
               </p>
               {intakeSubmissionId ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  Intake submission recorded ({intakeSubmissionId.slice(0, 12)}…). Continue to finish registration.
+                  We received your form. Continue to the next step.
                 </p>
               ) : (
                 <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  After you submit the form, you must land back here with a submission ID in the URL before you can
-                  submit registration.
+                  If nothing changes here after you submit, go back to this registration page from your confirmation or try
+                  the new-tab link above.
                 </p>
               )}
               <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                 <iframe
                   title="Intake form"
-                  src={jotformAppendReturn(program.jotformIntakeFormUrl)}
+                  src={intakeFormSrc}
                   className="h-[480px] w-full"
                   allow="camera; microphone; payment"
                 />

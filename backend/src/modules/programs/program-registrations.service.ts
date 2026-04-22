@@ -316,7 +316,7 @@ export class ProgramRegistrationsService {
       include: {
         user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
         slot: true,
-        program: { select: { jotformIntakeFormUrl: true } },
+        program: { select: { jotformIntakeFormUrl: true, zoomSessionType: true } },
       },
       orderBy: { createdAt: 'desc' },
     });

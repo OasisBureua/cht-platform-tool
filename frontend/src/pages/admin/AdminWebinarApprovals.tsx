@@ -77,7 +77,7 @@ export default function AdminWebinarApprovals() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((r) => {
-              const intakeRequired = !!r.program.jotformIntakeFormUrl?.trim();
+              const intakeRequired = r.intakeRequired ?? false;
               const canApprove = !intakeRequired || r.intakeComplete;
               return (
                 <tr key={r.id}>

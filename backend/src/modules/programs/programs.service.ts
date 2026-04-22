@@ -498,8 +498,9 @@ export class ProgramsService {
 
   /**
    * Derived LIVE webinar reminders (no persisted Notification rows).
-   * Invitation: not enrolled, intake URL configured, no intake submission yet.
-   * Post-event: enrolled, session end passed, FEEDBACK survey exists, no response yet.
+   * Post-enrollment only: invitation / intake nudges are not shown here so the bell does not prompt
+   * users before signup and admin approval are complete. Post-event: enrolled, session end passed,
+   * FEEDBACK survey exists, no response yet.
    */
   async getLiveWebinarActionItems(userId: string): Promise<
     Array<{
@@ -526,9 +527,6 @@ export class ProgramsService {
         startDate: true,
         duration: true,
         zoomSessionEndedAt: true,
-        jotformIntakeFormUrl: true,
-        jotformPreEventUrl: true,
-        jotformSurveyUrl: true,
       },
       orderBy: { startDate: 'desc' },
       take: 50,
@@ -537,16 +535,11 @@ export class ProgramsService {
     if (programs.length === 0) return [];
 
     const programIds = programs.map((p) => p.id);
-    const defaultIntake =
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
 
-    const [enrollments, registrations, surveys] = await Promise.all([
+    const [enrollments, surveys] = await Promise.all([
       this.prisma.programEnrollment.findMany({
         where: { userId, programId: { in: programIds } },
         select: { programId: true },
-      }),
-      this.prisma.programRegistration.findMany({
-        where: { userId, programId: { in: programIds } },
       }),
       this.prisma.survey.findMany({
         where: {
@@ -558,7 +551,6 @@ export class ProgramsService {
     ]);
 
     const enrolledSet = new Set(enrollments.map((e) => e.programId));
-    const regByProgram = new Map(registrations.map((r) => [r.programId, r]));
     const feedbackByProgram = new Map(surveys.map((s) => [s.programId, s.id]));
 
     const feedbackIds = surveys.map((s) => s.id);
@@ -581,23 +573,9 @@ export class ProgramsService {
     }> = [];
 
     for (const p of programs) {
-      const intakeUrl = effectiveWebinarIntakeFormUrl('WEBINAR', p.jotformIntakeFormUrl, defaultIntake);
       const enrolled = enrolledSet.has(p.id);
-      const reg = regByProgram.get(p.id);
 
       if (!enrolled) {
-        if (!intakeUrl) continue;
-        if (reg?.status === 'REJECTED') continue;
-        if (reg?.status === 'APPROVED') continue;
-        if (reg?.intakeJotformSubmissionId) continue;
-        items.push({
-          id: `invite-${p.id}`,
-          kind: 'WEBINAR_INVITATION_SURVEY',
-          title: 'Complete invitation survey',
-          body: `LIVE webinar: ${p.title}`,
-          programId: p.id,
-          href: `/app/live/${p.id}`,
-        });
         continue;
       }
 

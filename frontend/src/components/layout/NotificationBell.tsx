@@ -57,9 +57,12 @@ export function NotificationBell() {
       </button>
       {open ? (
         <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-96 overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg z-50 text-[100%]">
-          <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">LIVE reminders</p>
+          <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">LIVE follow-ups</p>
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-gray-600">No pending webinar surveys.</p>
+            <p className="px-4 py-6 text-sm text-gray-600">
+              No items yet. Reminders appear here after you are registered for a LIVE session (including admin approval
+              when required), usually for post-event feedback.
+            </p>
           ) : (
             <ul className="divide-y divide-gray-100">
               {items.map((it) => (
