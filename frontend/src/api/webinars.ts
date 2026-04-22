@@ -8,6 +8,8 @@ export interface MeetingSdkAuth {
   password: string;
   userName: string;
   userEmail: string;
+  /** Webinar registration token from join URL, when present */
+  tk?: string;
 }
 
 export interface WebinarItem {
@@ -21,7 +23,6 @@ export interface WebinarItem {
   source: 'zoom' | 'program';
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
-  calendlySchedulingUrl?: string;
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
 }

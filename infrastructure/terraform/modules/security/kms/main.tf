@@ -4,33 +4,33 @@ locals {
 
 # KMS Key for RDS Database Encryption
 resource "aws_kms_key" "rds" {
-    description             = "${local.prefix} RDS encryption key"
-    deletion_window_in_days = var.deletion_window_in_days
-    enable_key_rotation     = true
+  description             = "${local.prefix} RDS encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
 
-    tags = {
-        Name        = "${local.prefix}-rds-key"
-        Environment = var.environment
-        Service     = "rds"
-    }
+  tags = {
+    Name        = "${local.prefix}-rds-key"
+    Environment = var.environment
+    Service     = "rds"
+  }
 }
 
 resource "aws_kms_alias" "rds" {
-    name           = "alias/${local.prefix}-rds"
-    target_key_id  = aws_kms_key.rds.id
+  name          = "alias/${local.prefix}-rds"
+  target_key_id = aws_kms_key.rds.id
 }
 
 # KMS Key for Elasticache Redis Encryption
 resource "aws_kms_key" "elasticache" {
-    description             = "${local.prefix} Elasticache encryption key"
-    deletion_window_in_days = var.deletion_window_in_days
-    enable_key_rotation     = true
+  description             = "${local.prefix} Elasticache encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
 
-    tags = {
-        Name        = "${local.prefix}-elasticache-key"
-        Environment = var.environment
-        Service     = "elasticache"
-    }
+  tags = {
+    Name        = "${local.prefix}-elasticache-key"
+    Environment = var.environment
+    Service     = "elasticache"
+  }
 }
 
 resource "aws_kms_alias" "elasticache" {
@@ -39,20 +39,20 @@ resource "aws_kms_alias" "elasticache" {
 }
 
 resource "aws_kms_key" "s3" {
-   description             = "${local.prefix} S3 encryption key"
-   deletion_window_in_days = var.deletion_window_in_days
-   enable_key_rotation     = true
+  description             = "${local.prefix} S3 encryption key"
+  deletion_window_in_days = var.deletion_window_in_days
+  enable_key_rotation     = true
 
-   tags = {
+  tags = {
     Name        = "${local.prefix}-s3-key"
     Environment = var.environment
     Service     = "s3"
-  } 
+  }
 }
 
 resource "aws_kms_alias" "s3" {
-    name          = "alias/${local.prefix}-s3"
-    target_key_id = aws_kms_key.s3.key_id
+  name          = "alias/${local.prefix}-s3"
+  target_key_id = aws_kms_key.s3.key_id
 }
 
 # KMS Key for Secrets Manager

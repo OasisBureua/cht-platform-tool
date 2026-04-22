@@ -429,10 +429,11 @@ function PaymentSettingsSection({
     <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6 min-w-0 overflow-hidden">
       <div className="flex items-center gap-2 mb-4">
         <CreditCard className="h-5 w-5 text-gray-700 shrink-0" />
-        <h2 className="text-lg font-bold text-gray-900 truncate">Payment Settings</h2>
+        <h2 className="text-lg font-bold text-gray-900 truncate">Bill.com — payouts</h2>
       </div>
       <p className="text-sm text-gray-600 mb-6">
-        Add your bank details to receive payouts via Bill.com (ACH or check). Complete the embedded W-9 form before admins can pay you.
+        Bill.com is how you get paid. Add bank details in your Bill.com vendor profile (ACH or check). Complete the
+        embedded W-9 before admins can pay you in Bill.com.
       </p>
 
       {hasAccount ? (
@@ -440,8 +441,8 @@ function PaymentSettingsSection({
           <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
             <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
             <div>
-              <p className="font-medium text-green-900">Bank account connected</p>
-              <p className="text-sm text-green-700">Admins will process payouts via Bill.com (ACH or check)</p>
+              <p className="font-medium text-green-900">Bill.com vendor connected</p>
+              <p className="text-sm text-green-700">Admins send payouts from Bill.com (ACH or check)</p>
             </div>
           </div>
 
@@ -452,7 +453,7 @@ function PaymentSettingsSection({
                 <div>
                   <p className="font-medium text-amber-900">W-9 required</p>
                   <p className="text-sm text-amber-800 mt-1">
-                    Complete the W-9 form to receive payouts.
+                    Complete the W-9 in Bill.com so admins can issue payouts.
                   </p>
                   <button
                     type="button"

@@ -70,6 +70,7 @@ import AdminRxAnalytics from './pages/admin/AdminRxAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminProgramHub from './pages/admin/AdminProgramHub';
+import AdminWebinarApprovals from './pages/admin/AdminWebinarApprovals';
 
 // optional legacy page
 import Dashboard from './pages/Dashboard';
@@ -224,6 +225,7 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="programs" element={<AdminPrograms />} />
             <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
+            <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
             <Route path="office-hours" element={<AdminPrograms />} />
             <Route path="surveys" element={<AdminSurveys />} />
             <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />

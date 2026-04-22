@@ -3,31 +3,31 @@ locals {
 }
 
 resource "aws_sqs_queue" "email_dlq" {
-    name                        = "${local.prefix}-email-dlq"
-    delay_seconds               = 0
-    max_message_size            = 262144 # 256 KB
-    message_retention_seconds   = 1209600 # 14 days
-    receive_wait_time_seconds   = 0
+  name                      = "${local.prefix}-email-dlq"
+  delay_seconds             = 0
+  max_message_size          = 262144  # 256 KB
+  message_retention_seconds = 1209600 # 14 days
+  receive_wait_time_seconds = 0
 
-    kms_master_key_id                   = var.kms_key_id
-    kms_data_key_reuse_period_seconds   = 300
+  kms_master_key_id                 = var.kms_key_id
+  kms_data_key_reuse_period_seconds = 300
 
-    tags = {
-        Name        = "${local.prefix}-email-dlq"
-        Environment = var.environment
-        Purpose     = "Email dead letter queue"
-    }
+  tags = {
+    Name        = "${local.prefix}-email-dlq"
+    Environment = var.environment
+    Purpose     = "Email dead letter queue"
+  }
 }
 
 resource "aws_sqs_queue" "email" {
-  name                      = "${local.prefix}-email-queue"
-  delay_seconds             = 0
-  max_message_size          = 262144
-  message_retention_seconds = 345600  # 4 days
-  receive_wait_time_seconds = 20      # Long polling
+  name                       = "${local.prefix}-email-queue"
+  delay_seconds              = 0
+  max_message_size           = 262144
+  message_retention_seconds  = 345600 # 4 days
+  receive_wait_time_seconds  = 20     # Long polling
   visibility_timeout_seconds = 300    # 5 minutes
-  
-  kms_master_key_id       = var.kms_key_id
+
+  kms_master_key_id                 = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
 
   redrive_policy = jsonencode({
@@ -49,8 +49,8 @@ resource "aws_sqs_queue" "payment_dlq" {
   max_message_size          = 262144
   message_retention_seconds = 1209600
   receive_wait_time_seconds = 0
-  
-  kms_master_key_id       = var.kms_key_id
+
+  kms_master_key_id                 = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
 
   tags = {
@@ -61,14 +61,14 @@ resource "aws_sqs_queue" "payment_dlq" {
 }
 
 resource "aws_sqs_queue" "payment" {
-  name                      = "${local.prefix}-payment-queue"
-  delay_seconds             = 0
-  max_message_size          = 262144
-  message_retention_seconds = 345600
-  receive_wait_time_seconds = 20
-  visibility_timeout_seconds = 600  # 10 minutes for payment processing (worker)
-  
-  kms_master_key_id       = var.kms_key_id
+  name                       = "${local.prefix}-payment-queue"
+  delay_seconds              = 0
+  max_message_size           = 262144
+  message_retention_seconds  = 345600
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 600 # 10 minutes for payment processing (worker)
+
+  kms_master_key_id                 = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
 
   redrive_policy = jsonencode({
@@ -90,8 +90,8 @@ resource "aws_sqs_queue" "cme_dlq" {
   max_message_size          = 262144
   message_retention_seconds = 1209600
   receive_wait_time_seconds = 0
-  
-  kms_master_key_id       = var.kms_key_id
+
+  kms_master_key_id                 = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
 
   tags = {
@@ -102,14 +102,14 @@ resource "aws_sqs_queue" "cme_dlq" {
 }
 
 resource "aws_sqs_queue" "cme" {
-  name                      = "${local.prefix}-cme-queue"
-  delay_seconds             = 0
-  max_message_size          = 262144
-  message_retention_seconds = 345600
-  receive_wait_time_seconds = 20
+  name                       = "${local.prefix}-cme-queue"
+  delay_seconds              = 0
+  max_message_size           = 262144
+  message_retention_seconds  = 345600
+  receive_wait_time_seconds  = 20
   visibility_timeout_seconds = 300
-  
-  kms_master_key_id       = var.kms_key_id
+
+  kms_master_key_id                 = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300
 
   redrive_policy = jsonencode({

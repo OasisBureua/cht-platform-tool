@@ -4,6 +4,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Clock3, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { W9Modal } from '../components/W9Modal';
@@ -76,9 +77,15 @@ export default function Payments() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payments</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Bill.com</h1>
         <p className="text-sm text-gray-600">
-          Set up your bank details to receive payouts via ACH. Admins process payments via Bill.com.
+          Bill.com pays honoraria and survey bonuses. Set up your bank details in Bill.com (ACH or check); admins send
+          payouts from Bill.com.
+        </p>
+        <p className="text-sm text-gray-600">
+          <Link to="/app/earnings" className="font-medium text-gray-900 underline hover:no-underline">
+            Earnings summary and charts
+          </Link>
         </p>
       </header>
 
@@ -97,7 +104,7 @@ export default function Payments() {
           <div className="rounded-3xl border border-green-200 bg-green-50/50 p-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-              <p className="text-sm font-medium text-green-800">Bank details on file. You can receive payouts.</p>
+              <p className="text-sm font-medium text-green-800">Bill.com vendor on file. You can receive payouts.</p>
             </div>
             <button
               type="button"
@@ -273,7 +280,7 @@ function VendorSetupForm({
       <div>
         <h2 className="text-base font-semibold text-gray-900">Set up your payment account</h2>
         <p className="mt-0.5 text-sm text-gray-600">
-          Enter your US bank details to receive ACH payouts via Bill.com.
+          Enter your US bank details for your Bill.com vendor profile (ACH payouts from Bill.com).
         </p>
       </div>
 
@@ -296,7 +303,7 @@ function VendorSetupForm({
 
       {/* Bank account */}
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bank account (ACH)</legend>
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bill.com — bank account (ACH)</legend>
         {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
         {field('Routing number', 'routingNumber', { placeholder: '9-digit ABA number', maxLength: 9 })}
         {field('Account number', 'accountNumber', { placeholder: 'Checking or savings', type: 'password' })}

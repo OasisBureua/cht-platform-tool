@@ -9,6 +9,7 @@ import {
   Users,
   Settings,
   LogOut,
+  UserCheck,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import logoSrc from '../../assets/logo/LOGO.svg';
@@ -17,6 +18,7 @@ const nav = [
   { to: '/admin', label: 'Home', icon: Home, end: true },
   { to: '/admin/hcp-explorer', label: 'Search', icon: Search, end: false },
   { to: '/admin/programs', label: 'LIVE', icon: Radio, end: false },
+  { to: '/admin/webinar-approvals', label: 'Approvals', icon: UserCheck, end: false },
   { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/admin/payments', label: 'Earnings', icon: DollarSign, end: false },

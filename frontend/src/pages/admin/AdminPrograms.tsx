@@ -11,6 +11,7 @@ import {
   X,
   Check,
   Loader2,
+  Download,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
@@ -24,6 +25,16 @@ export default function AdminPrograms() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [importZoomId, setImportZoomId] = useState('');
+  const [importSponsor, setImportSponsor] = useState('');
+  const [importCloneSurvey, setImportCloneSurvey] = useState(true);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const { data: adminConfig } = useQuery({
+    queryKey: ['admin', 'config'],
+    queryFn: () => adminApi.getAdminConfig(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: webinars, isLoading, error } = useQuery({
     queryKey: ['admin', 'webinars', zoomFilter],
@@ -36,6 +47,35 @@ export default function AdminPrograms() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       setDeleteConfirmId(null);
+    },
+  });
+
+  const importZoomMutation = useMutation({
+    mutationFn: () =>
+      adminApi.importZoomSession({
+        zoomId: importZoomId.trim(),
+        zoomSessionType: zoomFilter,
+        sponsorName: importSponsor.trim() || undefined,
+        createSurveyFromTemplate:
+          zoomFilter === 'WEBINAR' && importCloneSurvey && adminConfig?.jotformTemplateFormId
+            ? adminConfig.jotformTemplateFormId
+            : undefined,
+      }),
+    onSuccess: (data) => {
+      setImportError(null);
+      setImportZoomId('');
+      setImportSponsor('');
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+      const id = typeof data?.id === 'string' ? data.id : '';
+      if (id) {
+        queryClient.invalidateQueries({ queryKey: ['webinars'] });
+      }
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+        (err instanceof Error ? err.message : 'Import failed.');
+      setImportError(msg);
     },
   });
 
@@ -95,6 +135,79 @@ export default function AdminPrograms() {
             {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
           </Link>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <Download className="h-5 w-5 text-gray-700 shrink-0 mt-0.5" />
+          <div className="min-w-0 space-y-1">
+            <h2 className="text-sm font-semibold text-gray-900">Import from Zoom</h2>
+            <p className="text-sm text-gray-600">
+              If you scheduled a {isOfficeHours ? 'meeting' : 'webinar'} in Zoom outside this app, paste its numeric ID
+              to create a platform program with the same registration flow (Jotform intake, admin approval, in-app join).
+              The Zoom Server-to-Server app must be on the <strong>same Zoom account</strong> as the session.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
+          <label className="block min-w-[12rem] flex-1 space-y-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+              Zoom {isOfficeHours ? 'meeting' : 'webinar'} ID
+            </span>
+            <input
+              value={importZoomId}
+              onChange={(e) => setImportZoomId(e.target.value.replace(/\D/g, ''))}
+              placeholder="e.g. 81234567890"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="block min-w-[10rem] flex-1 space-y-1">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Sponsor (optional)</span>
+            <input
+              value={importSponsor}
+              onChange={(e) => setImportSponsor(e.target.value)}
+              placeholder="e.g. Medical Affairs"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </label>
+          {!isOfficeHours && (
+            <label className="inline-flex items-center gap-2 text-sm text-gray-800 cursor-pointer pb-2">
+              <input
+                type="checkbox"
+                checked={importCloneSurvey}
+                onChange={(e) => setImportCloneSurvey(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Clone post-event survey (Jotform template)
+            </label>
+          )}
+          <button
+            type="button"
+            disabled={!importZoomId.trim() || importZoomMutation.isPending}
+            onClick={() => {
+              importZoomMutation.reset();
+              setImportError(null);
+              importZoomMutation.mutate();
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {importZoomMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            Import
+          </button>
+        </div>
+        {importError && (
+          <p className="text-sm text-red-700 rounded-lg bg-red-50 border border-red-200 px-3 py-2">{importError}</p>
+        )}
+        {importZoomMutation.isSuccess && (
+          <p className="text-sm text-green-800 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
+            Imported. The session appears in this list and under LIVE
+            {!isOfficeHours ? '' : ' / Office Hours'} with full registration controls in Program hub.
+          </p>
+        )}
       </div>
 
       {/* Delete confirmation overlay */}

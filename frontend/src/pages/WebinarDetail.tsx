@@ -9,23 +9,43 @@ import {
   Award,
   DollarSign,
   ChevronLeft,
-  Play,
-  Lock,
   CheckCircle2,
   Circle,
-  ArrowRight,
-  ClipboardList,
+  ExternalLink,
 } from 'lucide-react';
+import { OfficeHoursZoomEmbed } from '../components/zoom/OfficeHoursZoomEmbed';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
   return `$${value.toLocaleString()}`;
 }
 
-function formatDuration(seconds?: number) {
-  if (!seconds || seconds <= 0) return '-';
-  const mins = Math.max(1, Math.round(seconds / 60));
-  return `${mins} min`;
+/** Prefill hidden Jotform fields `user_id` and `program_id` (must exist on the form). */
+function buildWebinarIntakeLink(formUrl: string, userId: string, programId: string): string {
+  const raw = formUrl.trim();
+  try {
+    const u = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+    u.searchParams.set('user_id', userId);
+    u.searchParams.set('program_id', programId);
+    return u.toString();
+  } catch {
+    const sep = raw.includes('?') ? '&' : '?';
+    return `${raw}${sep}user_id=${encodeURIComponent(userId)}&program_id=${encodeURIComponent(programId)}`;
+  }
+}
+
+/** Post-event Jotform: pass `user_id` for webhook attribution (and `program_id` when the form includes it). */
+function buildPostEventSurveyEmbedSrc(formUrl: string, userId: string, programId: string): string {
+  const raw = formUrl.trim();
+  try {
+    const u = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+    u.searchParams.set('user_id', userId);
+    u.searchParams.set('program_id', programId);
+    return u.toString();
+  } catch {
+    const sep = raw.includes('?') ? '&' : '?';
+    return `${raw}${sep}user_id=${encodeURIComponent(userId)}&program_id=${encodeURIComponent(programId)}`;
+  }
 }
 
 export default function WebinarDetail() {
@@ -55,12 +75,6 @@ export default function WebinarDetail() {
     retry: false,
   });
 
-  const { data: enrollments } = useQuery({
-    queryKey: ['enrollments', userId],
-    queryFn: () => programsApi.getEnrollments(userId),
-    enabled: !!userId,
-  });
-
   const { data: slots = [] } = useQuery({
     queryKey: ['program-slots', id],
     queryFn: () => programsApi.getSlots(id!),
@@ -70,8 +84,17 @@ export default function WebinarDetail() {
   const { data: myRegistration } = useQuery({
     queryKey: ['program', id, 'registration'],
     queryFn: () => programsApi.getMyRegistration(id!),
-    enabled:
-      !!userId && !!id && !isZoomWebinar && !!program && program.registrationRequiresApproval,
+    enabled: !!userId && !!id && !isZoomWebinar && !!program && program.zoomSessionType === 'WEBINAR',
+    refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
+  });
+
+  const pollWhileRegistrationPending = myRegistration?.status === 'PENDING';
+
+  const { data: enrollments } = useQuery({
+    queryKey: ['enrollments', userId],
+    queryFn: () => programsApi.getEnrollments(userId),
+    enabled: !!userId,
+    refetchInterval: pollWhileRegistrationPending ? 4000 : false,
   });
 
   const enrolledProgramIds = useMemo(
@@ -82,8 +105,9 @@ export default function WebinarDetail() {
   const enrollMutation = useMutation({
     mutationFn: ({ programId }: { programId: string }) =>
       programsApi.enroll(userId, programId),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
+      queryClient.invalidateQueries({ queryKey: ['program', vars.programId, 'registration'] });
     },
   });
 
@@ -108,19 +132,29 @@ export default function WebinarDetail() {
           <ChevronLeft className="h-4 w-4" />
           Back to LIVE
         </button>
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
           <h1 className="text-2xl font-bold text-gray-900">{zoomWebinar.title}</h1>
           <p className="mt-3 text-gray-600">{zoomWebinar.description}</p>
-          {zoomWebinar.joinUrl && (
-            <a
-              href={zoomWebinar.joinUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-            >
-              Join Session
-            </a>
-          )}
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p className="font-semibold">Use a scheduled LIVE webinar in the app</p>
+            <p className="mt-1 text-amber-900">
+              CME registration, admin approval, and Bill.com honorarium run through platform webinars. Raw Zoom-only
+              listings do not support that workflow.
+            </p>
+          </div>
+          {zoomWebinar.joinUrl ? (
+            <p className="text-xs text-gray-600">
+              If you were given a direct host or panel link:{' '}
+              <a
+                href={zoomWebinar.joinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-gray-900 underline"
+              >
+                Open in Zoom
+              </a>
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -166,17 +200,21 @@ export default function WebinarDetail() {
 
   const enrolled = enrolledProgramIds.has(program.id);
 
+  /** Webinar registration survey opens directly in Jotform (webhook writes DB); wizard only if pre-event or slots. */
+  const webinarIntakeOnly =
+    program.zoomSessionType === 'WEBINAR' &&
+    !!program.jotformIntakeFormUrl?.trim() &&
+    !program.jotformPreEventUrl?.trim();
+
+  const intakeSurveyHref =
+    webinarIntakeOnly && userId ? buildWebinarIntakeLink(program.jotformIntakeFormUrl!, userId, program.id) : null;
+
   const needsRegistrationWizard =
     !!program &&
-    (program.registrationRequiresApproval ||
-      !!program.jotformIntakeFormUrl?.trim() ||
-      !!program.jotformPreEventUrl?.trim() ||
-      (program.zoomSessionType === 'MEETING' && slots.length > 0));
-
-  const hasVideos = (program.videos?.length || 0) > 0;
-  const firstVideo = hasVideos
-    ? program.videos.slice().sort((a, b) => a.order - b.order)[0]
-    : null;
+    (!!program.jotformPreEventUrl?.trim() ||
+      (program.zoomSessionType === 'MEETING' && slots.length > 0) ||
+      (!webinarIntakeOnly && !!program.jotformIntakeFormUrl?.trim()) ||
+      (!!program.registrationRequiresApproval && !webinarIntakeOnly));
 
   const ctaLabel = enrolled
     ? 'Registered'
@@ -250,9 +288,31 @@ export default function WebinarDetail() {
           {/* CTA (desktop) */}
           <div className="hidden md:block md:pt-1 space-y-2">
             {myRegistration?.status === 'PENDING' ? (
-              <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Registration submitted. Waiting for admin approval before you are enrolled.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  {myRegistration.intakeJotformSubmissionId
+                    ? 'Your registration survey was received. Waiting for an administrator to approve you before you can join the webinar in the app.'
+                    : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'}
+                </p>
+              </div>
+            ) : webinarIntakeOnly && !enrolled && !userId ? (
+              <Link
+                to="/login"
+                state={{ from: { pathname: `/app/live/${program.id}` } }}
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+              >
+                Sign in to register
+              </Link>
+            ) : webinarIntakeOnly && !enrolled && intakeSurveyHref ? (
+              <a
+                href={intakeSurveyHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+              >
+                Register for session (Jotform)
+                <ExternalLink className="h-4 w-4" />
+              </a>
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
                 to={`/app/live/${program.id}/register`}
@@ -275,7 +335,13 @@ export default function WebinarDetail() {
               </button>
             )}
 
-            {!enrolled && myRegistration?.status !== 'PENDING' ? (
+            {webinarIntakeOnly && !enrolled && userId ? (
+              <p className="mt-2 text-xs text-gray-600">
+                Opens your registration survey in a new tab. When you submit, your response is saved automatically;
+                return here and you will see approval status update shortly.
+              </p>
+            ) : null}
+            {!enrolled && myRegistration?.status !== 'PENDING' && !webinarIntakeOnly ? (
               <p className="mt-2 text-xs text-gray-600">
                 Register to unlock video playback and earn rewards.
               </p>
@@ -287,202 +353,66 @@ export default function WebinarDetail() {
         </div>
       </section>
 
-      {/* Stepper + Cards */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          {/* Stepper */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <h2 className="text-base font-semibold text-gray-900">How this works</h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Complete the steps below to unlock CME credit and rewards.
-            </p>
+      {enrolled && program.zoomSessionType === 'WEBINAR' ? (
+        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+          <h2 className="text-base font-semibold text-gray-900">Live webinar</h2>
+          <p className="text-sm text-gray-600">
+            After an administrator approves your registration, use <strong>Join session</strong> below. This uses
+            Zoom&apos;s in-browser client; if it does not load, use Open in Zoom instead.
+          </p>
+          <OfficeHoursZoomEmbed programId={program.id} joinUrlFallback={program.zoomJoinUrl} />
+        </section>
+      ) : null}
 
-            <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
-              <StepCard
-                title="Register"
-                subtitle="Join the activity"
-                done={enrolled}
-                active={!enrolled}
-              />
-              <StepCard
-                title="Conversations"
-                subtitle={hasVideos ? `${program.videos.length} video(s)` : 'Video coming soon'}
-                done={false}
-                active={enrolled}
-                disabled={!enrolled}
-              />
-              <StepCard
-                title="Survey"
-                subtitle="Required questionnaire"
-                done={false}
-                active={enrolled}
-                disabled={!enrolled}
-              />
-              <StepCard
-                title="Earn"
-                subtitle="Get paid + credits"
-                done={false}
-                active={enrolled}
-                disabled={!enrolled}
-              />
-            </div>
+      {enrolled && program.honorariumAmount ? (
+        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+          <h2 className="text-base font-semibold text-gray-900">Bill.com — honorarium</h2>
+          <p className="text-sm text-gray-600">
+            Payouts are processed through <strong>Bill.com</strong>. Complete your Bill.com vendor profile and W-9 so
+            admins can pay you after you finish the activity.
+          </p>
+          <Link
+            to="/app/payments"
+            className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+          >
+            Open Bill.com setup
+          </Link>
+        </section>
+      ) : null}
 
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                to="/app/surveys"
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                <ClipboardList className="h-4 w-4" />
-                View Surveys
-              </Link>
+      <section className="max-w-2xl">
+        <div className="bg-white border border-gray-200 rounded-xl p-6">
+          <p className="text-xs font-semibold text-gray-600">Requirements</p>
 
-              {enrolled && firstVideo ? (
-                <button
-                  onClick={() => navigate(`/app/watch/${firstVideo.id}`)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                >
-                  Continue in Conversations
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              ) : null}
-            </div>
-          </div>
+          <ul className="mt-4 space-y-3">
+            <RequirementRow label="Register for the activity" done={enrolled} />
+            <RequirementRow
+              label="Complete all required videos in Conversations"
+              done={false}
+              disabled={!enrolled}
+            />
+            <RequirementRow label="Complete required survey" done={false} disabled={!enrolled} />
+          </ul>
 
-          {/* Program Videos */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">Program Videos</h2>
-              <button className="text-sm font-medium text-gray-700 hover:text-gray-900">
-                View all
-              </button>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-              <div className="divide-y divide-gray-200">
-                {hasVideos ? (
-                  program.videos
-                    .slice()
-                    .sort((a, b) => a.order - b.order)
-                    .map((video) => {
-                      const disabled = !enrolled;
-                      const meta =
-                        video.description ||
-                        `${formatDuration(video.duration)} • ${video.platform}`;
-
-                      return (
-                        <div
-                          key={video.id}
-                          className="flex items-center justify-between gap-4 px-4 py-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate">
-                              {video.title}
-                            </p>
-                            <p className="text-sm text-gray-600 truncate">{meta}</p>
-                          </div>
-
-                          <button
-                            onClick={() => navigate(`/app/watch/${video.id}`)}
-                            disabled={disabled}
-                            className={[
-                              'shrink-0 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold border',
-                              disabled
-                                ? 'border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed'
-                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
-                            ].join(' ')}
-                            title={disabled ? 'Register to unlock playback' : 'Conversations'}
-                          >
-                            {disabled ? (
-                              <Lock className="h-4 w-4" />
-                            ) : (
-                              <Play className="h-4 w-4" />
-                            )}
-                            {disabled ? 'Locked' : 'Conversations'}
-                          </button>
-                        </div>
-                      );
-                    })
-                ) : (
-                  <div className="p-8 text-center">
-                    <p className="text-sm font-semibold text-gray-900">No videos available</p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      This program will be updated with videos soon.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right rail */}
-        <div className="space-y-6">
-          {/* What you'll earn */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <p className="text-xs font-semibold text-gray-600">What you’ll earn</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900">
-              {program.honorariumAmount ? formatMoney(program.honorariumAmount) : '$0'}
-            </p>
-            <p className="mt-1 text-sm text-gray-600">
-              Honorarium for completion
-            </p>
-
-            <div className="mt-4 flex items-center gap-2 text-sm text-gray-700">
-              <Award className="h-4 w-4" />
-              <span className="font-semibold text-gray-900">{program.creditAmount}</span>{' '}
-              CME credits
-            </div>
-
+          {!enrolled ? (
             <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-xs font-semibold text-gray-700">Tip</p>
-              <p className="mt-1 text-xs text-gray-600">
-                Rewards typically process after required steps are completed.
-              </p>
+              <p className="text-xs text-gray-600">Register to unlock content and survey completion.</p>
             </div>
-          </div>
-
-          {/* Requirements */}
-          <div className="bg-white border border-gray-200 rounded-xl p-6">
-            <p className="text-xs font-semibold text-gray-600">Requirements</p>
-
-            <ul className="mt-4 space-y-3">
-              <RequirementRow
-                label="Register for the activity"
-                done={enrolled}
-              />
-              <RequirementRow
-                label="Complete all required videos in Conversations"
-                done={false}
-                disabled={!enrolled}
-              />
-              <RequirementRow
-                label="Complete required survey"
-                done={false}
-                disabled={!enrolled}
-              />
-            </ul>
-
-            {!enrolled ? (
-              <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs text-gray-600">
-                  Register to unlock content and survey completion.
-                </p>
-              </div>
-            ) : null}
-          </div>
+          ) : null}
         </div>
       </section>
 
-      {enrolled && program.jotformSurveyUrl?.trim() ? (
+      {enrolled && program.jotformSurveyUrl?.trim() && userId ? (
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
           <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
           <p className="text-sm text-gray-600">
-            Complete this Jotform after the live session (your team can trigger workflows from Jotform).
+            Complete this Jotform after the live session. Responses are tied to your account for credit and honorarium
+            follow-up through Bill.com.
           </p>
           <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
             <iframe
               title="Post-event survey"
-              src={program.jotformSurveyUrl}
+              src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl, userId, program.id)}
               className="w-full h-[480px]"
               allow="camera; microphone"
             />
@@ -503,6 +433,24 @@ export default function WebinarDetail() {
 
           {myRegistration?.status === 'PENDING' ? (
             <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
+          ) : webinarIntakeOnly && !enrolled && !userId ? (
+            <Link
+              to="/login"
+              state={{ from: { pathname: `/app/live/${program.id}` } }}
+              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
+            >
+              Sign in
+            </Link>
+          ) : webinarIntakeOnly && !enrolled && intakeSurveyHref ? (
+            <a
+              href={intakeSurveyHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
+            >
+              Jotform
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
               to={`/app/live/${program.id}/register`}
@@ -525,38 +473,6 @@ export default function WebinarDetail() {
             </button>
           )}
         </div>
-      </div>
-    </div>
-  );
-}
-
-function StepCard(props: {
-  title: string;
-  subtitle: string;
-  done?: boolean;
-  active?: boolean;
-  disabled?: boolean;
-}) {
-  const { title, subtitle, done, active, disabled } = props;
-
-  return (
-    <div
-      className={[
-        'rounded-xl border p-4',
-        disabled ? 'border-gray-200 bg-gray-50' : 'border-gray-200 bg-white',
-        active ? 'ring-1 ring-gray-900/10' : '',
-      ].join(' ')}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-900">{title}</p>
-          <p className="mt-1 text-xs text-gray-600">{subtitle}</p>
-        </div>
-        {done ? (
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-        ) : (
-          <Circle className="h-5 w-5 text-gray-300" />
-        )}
       </div>
     </div>
   );

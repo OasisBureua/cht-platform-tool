@@ -5,9 +5,10 @@ import { JotformWebhookController } from './jotform-webhook.controller';
 import { JotformWebhookService } from './jotform-webhook.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { QueueModule } from '../../queue/queue.module';
+import { ProgramsModule } from '../programs/programs.module';
 
 @Module({
-  imports: [PrismaModule, QueueModule],
+  imports: [PrismaModule, QueueModule, ProgramsModule],
   controllers: [JotformController, JotformWebhookController],
   providers: [JotformService, JotformWebhookService],
   exports: [JotformService],

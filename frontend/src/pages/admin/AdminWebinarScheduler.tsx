@@ -135,8 +135,8 @@ export default function AdminWebinarScheduler({
         </h1>
         <p className="text-sm text-gray-600 mt-1">
           {isWebinar
-            ? 'Creates a Zoom Webinar and publishes it. Optional Jotform post-event survey when enabled below.'
-            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). No Jotform survey. Backend only creates surveys for webinars.'}
+            ? 'Creates a Zoom Webinar and publishes it. Learners register via the platform Jotform intake (admin approves before Join session). Optional cloned post-event survey when enabled below. Honorarium uses Bill.com.'
+            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). Registrations require admin approval before learners can join. No Jotform survey clone; backend only creates surveys for webinars.'}
         </p>
       </div>
 

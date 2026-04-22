@@ -192,6 +192,17 @@ export const adminApi = {
     return data;
   },
 
+  /** Link a Zoom webinar/meeting created outside the app to a Program (Jotform + approval + in-app join). */
+  importZoomSession: async (body: {
+    zoomId: string;
+    zoomSessionType?: ZoomSessionType;
+    sponsorName?: string;
+    createSurveyFromTemplate?: string;
+  }): Promise<Record<string, unknown>> => {
+    const { data } = await apiClient.post('/admin/webinars/import-from-zoom', body);
+    return data as Record<string, unknown>;
+  },
+
   updateWebinar: async (id: string, payload: UpdateWebinarPayload): Promise<AdminWebinar> => {
     const { data } = await apiClient.patch<AdminWebinar>(`/admin/webinars/${id}`, payload);
     return data;
@@ -212,7 +223,6 @@ export const adminApi = {
       jotformIntakeFormUrl?: string | null;
       jotformPreEventUrl?: string | null;
       hostDisplayName?: string | null;
-      calendlySchedulingUrl?: string | null;
       registrationRequiresApproval?: boolean;
     },
   ) => {
@@ -226,8 +236,38 @@ export const adminApi = {
       id: string;
       status: string;
       createdAt: string;
+      intakeJotformSubmissionId?: string | null;
       user: { id: string; email: string; firstName: string; lastName: string };
       slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
+    }>;
+  },
+
+  listProgramEnrollments: async (programId: string) => {
+    const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/enrollments`);
+    return data as Array<{
+      id: string;
+      enrolledAt: string;
+      completed: boolean;
+      overallProgress: number;
+      user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
+    }>;
+  },
+
+  listPendingWebinarRegistrations: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/pending');
+    return data as Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+      intakeJotformSubmissionId: string | null;
+      intakeComplete: boolean;
+      user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
+      program: {
+        id: string;
+        title: string;
+        jotformIntakeFormUrl: string | null;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+      };
     }>;
   },
 

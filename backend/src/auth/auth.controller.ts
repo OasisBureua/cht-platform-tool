@@ -72,8 +72,22 @@ export class AuthController {
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
 
+    const professionTrim = profession.trim();
+    /** Same role list as Join.tsx NPI_REQUIRED_PROFESSIONS */
+    const npiRequiredProfessions = new Set([
+      'Physician',
+      'Nurse Practitioner',
+      'Physician Assistant',
+      'Pharmacist',
+      'Nurse',
+      'Other HCP',
+    ]);
+    const npiOptional = !npiRequiredProfessions.has(professionTrim);
     const npi = (npiNumber || '').replace(/\D/g, '');
-    if (npi.length !== 10) return { error: 'NPI number must be 10 digits.' };
+    if (!npiOptional && npi.length !== 10) return { error: 'NPI number must be 10 digits.' };
+    if (npiOptional && npi.length > 0 && npi.length !== 10) {
+      return { error: 'If provided, NPI must be exactly 10 digits.' };
+    }
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
@@ -102,7 +116,7 @@ export class AuthController {
             last_name: (lastName || '').trim(),
             full_name: [firstName, lastName].map((s) => (s || '').trim()).filter(Boolean).join(' '),
             profession,
-            npi_number: npi,
+            npi_number: npiOptional ? (npi || undefined) : npi,
             institution: (institution || '').trim() || undefined,
             city: (city || '').trim() || undefined,
             state: (state || '').trim() || undefined,

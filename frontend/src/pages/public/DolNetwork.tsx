@@ -46,7 +46,7 @@ function matchesQuery(k: FlatKol, q: string): boolean {
   return hay.includes(q.trim().toLowerCase());
 }
 
-export default function DolNetwork() {
+export default function DolNetwork({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState('');
   const [regionId, setRegionId] = useState('');
   const [institution, setInstitution] = useState('');
@@ -131,8 +131,14 @@ export default function DolNetwork() {
   };
 
   return (
-    <div className="bg-[#f5f5f7] min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 md:py-14">
+    <div className={embedded ? 'min-w-0' : 'bg-[#f5f5f7] min-h-screen'}>
+      <div
+        className={
+          embedded
+            ? 'mx-auto max-w-6xl py-2 sm:py-4 md:py-6'
+            : 'mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 md:py-14'
+        }
+      >
         <header className="mb-8 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#0d4f6c]">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>

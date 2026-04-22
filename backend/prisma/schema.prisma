@@ -132,9 +132,7 @@ model Program {
   jotformPreEventUrl   String?
   /// KOL / host display name for office hours marketing ("Get time with …")
   hostDisplayName      String?
-  /// Optional Calendly (or other) scheduling link for office hours
-  calendlySchedulingUrl String?
-  /// When true, users submit registration; admin approves before enrollment
+  /// When true, users submit registration; admin approves before enrollment (webinars and office hours).
   registrationRequiresApproval Boolean @default(false)
   
   // Payment configuration

@@ -70,16 +70,6 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/:id/calendly-scheduling
-   * Calendly URL for published office-hours programs — enrolled users only (sign-in + /app).
-   */
-  @Get(':id/calendly-scheduling')
-  @UseGuards(JwtAuthGuard)
-  async getCalendlyScheduling(@Param('id') id: string, @CurrentUser() user: AuthUser) {
-    return this.programsService.getCalendlySchedulingForEnrolledUser(user.userId, id);
-  }
-
-  /**
    * GET /api/programs/:id
    * Get single program by ID (public)
    */

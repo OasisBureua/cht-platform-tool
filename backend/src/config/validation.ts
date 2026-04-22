@@ -52,6 +52,8 @@ export const validationSchema = Joi.object({
   // Jotform (optional – for surveys)
   JOTFORM_API_KEY: Joi.string().allow('').optional(),
   JOTFORM_BASE_URL: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_DEFAULT_INTAKE_URL: Joi.string().allow('').optional(),
+  WEBINARS_LIST_ZOOM_FALLBACK: Joi.string().valid('true', 'false', '1', '0').optional(),
 
   // Zoom (optional – for webinars)
   ZOOM_ACCOUNT_ID: Joi.string().allow('').optional(),

@@ -40,7 +40,11 @@ export default function Webinars() {
     <div className="space-y-8">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">LIVE</h1>
-        <p className="text-sm text-gray-600">Real-time sessions. Register and join directly from the platform.</p>
+        <p className="text-sm text-gray-600">
+          Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator
+          approves you, use <span className="font-medium text-gray-800">Join session</span> in the app. Honorarium
+          payouts use Bill.com.
+        </p>
       </header>
 
       {isLoading ? (

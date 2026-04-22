@@ -36,8 +36,6 @@ export interface Program {
   jotformPreEventUrl?: string;
   registrationRequiresApproval?: boolean;
   hostDisplayName?: string;
-  /** Configured in admin; actual URL only after enrollment via getCalendlyScheduling (app + signed in). */
-  hasCalendlyScheduling?: boolean;
 }
 
 export interface OfficeHoursSlotOption {
@@ -53,6 +51,8 @@ export interface ProgramRegistrationState {
   id: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
   officeHoursSlotId?: string;
+  /** Present when intake Jotform redirect included a submission id */
+  intakeJotformSubmissionId?: string;
   createdAt: string;
   reviewedAt?: string;
 }
@@ -187,13 +187,5 @@ export const programsApi = {
   ): Promise<{ id: string; status: string; enrolled: boolean }> => {
     const { data } = await apiClient.post(`/programs/${encodeURIComponent(programId)}/registration`, body);
     return data;
-  },
-
-  /** Enrolled users only; returns null if not enrolled or no URL configured. */
-  getCalendlyScheduling: async (programId: string): Promise<{ calendlySchedulingUrl: string | null }> => {
-    const { data } = await apiClient.get<{ calendlySchedulingUrl: string | null }>(
-      `/programs/${encodeURIComponent(programId)}/calendly-scheduling`,
-    );
-    return data ?? { calendlySchedulingUrl: null };
   },
 };

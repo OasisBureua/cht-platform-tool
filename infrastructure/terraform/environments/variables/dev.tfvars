@@ -8,27 +8,27 @@ backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backe
 worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.8"
 
 # Database
-rds_instance_class      = "db.t3.micro"
-rds_allocated_storage   = 20
-rds_multi_az            = false
-rds_backup_retention    = 7
+rds_instance_class    = "db.t3.micro"
+rds_allocated_storage = 20
+rds_multi_az          = false
+rds_backup_retention  = 7
 
 # Cache
-redis_node_type         = "cache.t3.micro"
-redis_num_nodes         = 1
+redis_node_type = "cache.t3.micro"
+redis_num_nodes = 1
 
 # Compute
-backend_task_cpu        = 256
-backend_task_memory     = 512
-backend_desired_count   = 2
-backend_min_capacity    = 1
-backend_max_capacity    = 4
+backend_task_cpu      = 256
+backend_task_memory   = 512
+backend_desired_count = 2
+backend_min_capacity  = 1
+backend_max_capacity  = 4
 
-worker_task_cpu         = 256
-worker_task_memory      = 512
-worker_desired_count    = 1
-worker_min_capacity     = 1
-worker_max_capacity     = 10
+worker_task_cpu      = 256
+worker_task_memory   = 512
+worker_desired_count = 1
+worker_min_capacity  = 1
+worker_max_capacity  = 10
 
 # SSL Certificates (testapp - issued)
 acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"

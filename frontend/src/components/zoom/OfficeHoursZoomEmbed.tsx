@@ -13,8 +13,9 @@ function isSdkFailure(r: unknown): r is { type: string; reason: string } {
 }
 
 /**
- * Zoom Meeting SDK (component view) for Office Hours - keeps the session inside the app shell.
- * Requires Zoom Marketplace **Meeting SDK** credentials on the server (not S2S OAuth alone).
+ * Zoom Meeting SDK (component view) for office hours and CME webinars — keeps the session inside the app shell.
+ * Requires Zoom Marketplace **Meeting SDK** credentials on the server (not S2S OAuth alone). Webinars use the same
+ * join API once the program has a Zoom webinar/meeting number.
  */
 export function OfficeHoursZoomEmbed({
   programId,
@@ -86,6 +87,7 @@ export function OfficeHoursZoomEmbed({
         password: creds.password || '',
         userName: creds.userName,
         userEmail: creds.userEmail || undefined,
+        ...(creds.tk ? { tk: creds.tk } : {}),
       });
       if (isSdkFailure(joinResult)) {
         setError(joinResult.reason || 'Could not join the meeting.');
@@ -118,7 +120,7 @@ export function OfficeHoursZoomEmbed({
           className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MonitorPlay className="h-4 w-4" />}
-          Join in browser
+          Join session
         </button>
         {open && (
           <button

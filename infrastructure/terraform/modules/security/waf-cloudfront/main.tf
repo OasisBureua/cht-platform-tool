@@ -33,8 +33,8 @@ resource "aws_wafv2_web_acl" "cloudfront" {
 
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name               = "${local.prefix}-rate-limit"
-        sampled_requests_enabled  = true
+        metric_name                = "${local.prefix}-rate-limit"
+        sampled_requests_enabled   = true
       }
     }
   }
@@ -59,8 +59,8 @@ resource "aws_wafv2_web_acl" "cloudfront" {
 
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name               = "${local.prefix}-aws-common-rules"
-        sampled_requests_enabled  = true
+        metric_name                = "${local.prefix}-aws-common-rules"
+        sampled_requests_enabled   = true
       }
     }
   }
@@ -85,8 +85,8 @@ resource "aws_wafv2_web_acl" "cloudfront" {
 
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name               = "${local.prefix}-known-bad-inputs"
-        sampled_requests_enabled  = true
+        metric_name                = "${local.prefix}-known-bad-inputs"
+        sampled_requests_enabled   = true
       }
     }
   }
@@ -114,16 +114,16 @@ resource "aws_wafv2_web_acl" "cloudfront" {
 
       visibility_config {
         cloudwatch_metrics_enabled = true
-        metric_name               = "${local.prefix}-geo-block"
-        sampled_requests_enabled  = true
+        metric_name                = "${local.prefix}-geo-block"
+        sampled_requests_enabled   = true
       }
     }
   }
 
   visibility_config {
     cloudwatch_metrics_enabled = true
-    metric_name               = "${local.prefix}-cloudfront-waf"
-    sampled_requests_enabled  = true
+    metric_name                = "${local.prefix}-cloudfront-waf"
+    sampled_requests_enabled   = true
   }
 
   tags = {

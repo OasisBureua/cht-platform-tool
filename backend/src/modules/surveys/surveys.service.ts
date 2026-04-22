@@ -173,10 +173,16 @@ export class SurveysService {
       },
     });
 
+    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
+    await this.prisma.program.update({
+      where: { id: dto.programId },
+      data: { jotformSurveyUrl: jotformFormUrl },
+    });
+
     this.logger.log(`Survey created from Jotform template: ${survey.id} (form ${formId})`);
     return {
       ...survey,
-      jotformFormUrl: `https://communityhealthmedia.jotform.com/${formId}`,
+      jotformFormUrl,
     };
   }
 

@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Video, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Video } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function OfficeHoursDetail() {
@@ -38,12 +38,16 @@ export default function OfficeHoursDetail() {
     queryKey: ['program', id, 'registration'],
     queryFn: () => programsApi.getMyRegistration(id!),
     enabled: !!userId && !!id && !!program && program.registrationRequiresApproval,
+    refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
   });
+
+  const pollWhileRegistrationPending = myRegistration?.status === 'PENDING';
 
   const { data: enrollments } = useQuery({
     queryKey: ['enrollments', userId],
     queryFn: () => programsApi.getEnrollments(userId),
     enabled: !!userId,
+    refetchInterval: pollWhileRegistrationPending ? 4000 : false,
   });
 
   const enrolled = enrollments?.some((e) => e.programId === id) ?? false;
@@ -59,15 +63,7 @@ export default function OfficeHoursDetail() {
     mutationFn: () => programsApi.enroll(userId, id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
-      queryClient.invalidateQueries({ queryKey: ['program', id, 'calendly-scheduling'] });
     },
-  });
-
-  const { data: calendlyScheduling } = useQuery({
-    queryKey: ['program', id, 'calendly-scheduling'],
-    queryFn: () => programsApi.getCalendlyScheduling(id!),
-    enabled: !!userId && !!id && enrolled && program?.zoomSessionType === 'MEETING',
-    retry: false,
   });
 
   if (sessionLoading) return <LoadingSpinner />;
@@ -116,36 +112,10 @@ export default function OfficeHoursDetail() {
         <p className="text-gray-600 whitespace-pre-wrap">{session.description}</p>
 
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>How it works:</strong> After registration, join your session directly from this page when
-          it&apos;s time. You may wait briefly until the host admits you.
+          <strong>How it works:</strong> Complete registration (and pick a time slot if offered). An administrator
+          approves your request; then join from this page via Zoom when it&apos;s time. You may wait briefly until the
+          host admits you.
         </div>
-
-        {!programLoading && program?.hasCalendlyScheduling && !enrolled && program.registrationRequiresApproval ? (
-          <p className="text-sm text-gray-600 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-            One-on-one scheduling (Calendly) is available here in the app after you register and an administrator
-            approves your request.
-          </p>
-        ) : null}
-        {!programLoading &&
-        program?.hasCalendlyScheduling &&
-        !enrolled &&
-        !program.registrationRequiresApproval ? (
-          <p className="text-sm text-gray-600 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
-            Complete registration for this session to open your Calendly scheduling link.
-          </p>
-        ) : null}
-
-        {enrolled && calendlyScheduling?.calendlySchedulingUrl ? (
-          <a
-            href={calendlyScheduling.calendlySchedulingUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900"
-          >
-            Schedule with Calendly
-            <ExternalLink className="h-4 w-4" />
-          </a>
-        ) : null}
 
         {programLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
@@ -153,10 +123,8 @@ export default function OfficeHoursDetail() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2">
             {myRegistration?.status === 'PENDING' ? (
               <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Registration pending admin approval.
-                {program?.hasCalendlyScheduling
-                  ? ' If approved, a Calendly link will appear on this page for one-on-one scheduling.'
-                  : ''}
+                Your registration is waiting for an administrator to approve it. This page will update when you can join
+                in Zoom.
               </p>
             ) : !enrolled && needsRegistrationWizard ? (
               <Link

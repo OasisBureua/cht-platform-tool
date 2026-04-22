@@ -120,11 +120,26 @@ export default () => ({
     apiKey: process.env.JOTFORM_API_KEY,
     baseUrl: process.env.JOTFORM_BASE_URL || 'https://communityhealthmedia.jotform.com/API',
     templateFormId: process.env.JOTFORM_TEMPLATE_FORM_ID || '260698533879881',
+    /**
+     * When a WEBINAR program has no `jotformIntakeFormUrl` in DB, expose this URL to learners.
+     * Default matches the platform post-event / registration survey clone used for LIVE webinars.
+     */
+    webinarDefaultIntakeUrl:
+      process.env.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL?.trim() ||
+      'https://communityhealthmedia.jotform.com/261101336364043',
     webhookUrl:
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL
         ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/webhooks/jotform`
         : 'https://testapp.communityhealth.media/api/webhooks/jotform'),
+  },
+
+  /**
+   * When false (default), LIVE listing only shows DB-published webinars (Jotform + approval flow).
+   * Set WEBINARS_LIST_ZOOM_FALLBACK=true to also list raw Zoom webinars not yet imported into the DB.
+   */
+  webinars: {
+    listZoomFallback: process.env.WEBINARS_LIST_ZOOM_FALLBACK === 'true',
   },
 
   // Zoom (Server-to-Server OAuth for webinars)

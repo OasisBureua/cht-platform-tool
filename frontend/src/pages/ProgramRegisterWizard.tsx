@@ -1,12 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { ChevronLeft, ExternalLink, Loader2 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 
 type StepKey = 'intake' | 'pre' | 'bill' | 'slot' | 'submit';
+
+/** Jotform thank-you / redirect URLs often pass one of these query keys with the submission id. */
+function readIntakeSubmissionIdFromSearch(search: string): string | undefined {
+  const q = new URLSearchParams(search);
+  for (const key of ['submission_id', 'submissionId', 'submissionID', 'jid']) {
+    const v = q.get(key)?.trim();
+    if (v) return v;
+  }
+  return undefined;
+}
 
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
@@ -23,6 +33,7 @@ export default function ProgramRegisterWizard() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
+  const [intakeSubmissionId, setIntakeSubmissionId] = useState<string | undefined>();
   const isOfficeHours = location.pathname.includes('/office-hours/') || location.pathname.includes('/chm-office-hours/');
   const backHref = isOfficeHours ? `/app/chm-office-hours/${id}` : `/app/live/${id}`;
 
@@ -37,6 +48,11 @@ export default function ProgramRegisterWizard() {
     enabled: !!id,
     retry: false,
   });
+
+  useEffect(() => {
+    const fromUrl = readIntakeSubmissionIdFromSearch(location.search);
+    if (fromUrl) setIntakeSubmissionId(fromUrl);
+  }, [location.search]);
 
   const { data: slots = [] } = useQuery({
     queryKey: ['program-slots', id],
@@ -56,11 +72,11 @@ export default function ProgramRegisterWizard() {
     mutationFn: () =>
       programsApi.submitRegistration(id!, {
         officeHoursSlotId: selectedSlotId,
+        intakeJotformSubmissionId: intakeSubmissionId,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
-      queryClient.invalidateQueries({ queryKey: ['program', id, 'calendly-scheduling'] });
       navigate(`${backHref}?registered=1`);
     },
   });
@@ -129,7 +145,8 @@ export default function ProgramRegisterWizard() {
                 i === stepIndex ? 'bg-gray-900 text-white' : i < stepIndex ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600',
               ].join(' ')}
             >
-              {i + 1}. {s === 'intake' ? 'Intake' : s === 'pre' ? 'Pre-event' : s === 'bill' ? 'Bill.com' : s === 'slot' ? 'Time slot' : 'Submit'}
+              {i + 1}.{' '}
+              {s === 'intake' ? 'Intake' : s === 'pre' ? 'Pre-event' : s === 'bill' ? 'Bill.com' : s === 'slot' ? 'Pick a time' : 'Submit'}
             </li>
           ))}
         </ol>
@@ -139,9 +156,22 @@ export default function ProgramRegisterWizard() {
             <div className="space-y-3">
               <p className="text-sm font-semibold text-gray-900">Your information (Jotform)</p>
               <p className="text-xs text-gray-600">
-                Submit the form below. Configure Jotform to redirect to the return URL above to land back in the app
-                after submit.
+                Submit the form below. Set the Jotform thank-you page to this app URL and append the submission id, e.g.{' '}
+                <span className="font-mono break-all">
+                  …/register?submissionID={'{submission_id}'}
+                </span>{' '}
+                (Jotform merge tags). We need that id to complete registration.
               </p>
+              {intakeSubmissionId ? (
+                <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  Intake submission recorded ({intakeSubmissionId.slice(0, 12)}…). Continue to finish registration.
+                </p>
+              ) : (
+                <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  After you submit the form, you must land back here with a submission ID in the URL before you can
+                  submit registration.
+                </p>
+              )}
               <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                 <iframe
                   title="Intake form"
@@ -187,33 +217,13 @@ export default function ProgramRegisterWizard() {
           )}
 
           {current === 'slot' && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Choose a time</p>
-              <p className="text-xs text-gray-600">Slots match the scheduled session length set for this program.</p>
-              <ul className="space-y-2">
-                {slots.map((s) => (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSlotId(s.id)}
-                      disabled={s.remaining <= 0}
-                      className={[
-                        'w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors',
-                        selectedSlotId === s.id ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white hover:bg-gray-50',
-                        s.remaining <= 0 ? 'opacity-50 cursor-not-allowed' : '',
-                      ].join(' ')}
-                    >
-                      <span className="font-semibold">
-                        {format(parseISO(s.startsAt), 'EEE MMM d, h:mm a')} – {format(parseISO(s.endsAt), 'h:mm a')}
-                      </span>
-                      {s.label ? <span className="ml-2 text-xs opacity-80">{s.label}</span> : null}
-                      <span className="mt-1 block text-xs opacity-80">
-                        {s.remaining} spot{s.remaining === 1 ? '' : 's'} left
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
+              <OfficeHoursSlotPicker
+                slots={slots}
+                selectedId={selectedSlotId}
+                onSelect={setSelectedSlotId}
+                subtitle="Each row is one bookable start time (e.g. 12:00pm, then 12:30pm). After registration, open your session page and use Zoom — the same meeting link the host shared for office hours."
+              />
             </div>
           )}
 
@@ -256,7 +266,10 @@ export default function ProgramRegisterWizard() {
             onClick={goNext}
             disabled={
               submitMut.isPending ||
-              (current === 'slot' && slots.length > 0 && !selectedSlotId)
+              (current === 'slot' && slots.length > 0 && !selectedSlotId) ||
+              (isLastStep &&
+                !!program.jotformIntakeFormUrl?.trim() &&
+                !intakeSubmissionId?.trim())
             }
             className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >

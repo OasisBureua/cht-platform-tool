@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
@@ -15,6 +17,7 @@ export class ProgramsService {
     private prisma: PrismaService,
     private queueService: QueueService,
     private hubspot: HubSpotService,
+    private config: ConfigService,
   ) {}
 
   /**
@@ -63,6 +66,7 @@ export class ProgramsService {
     zoomJoinUrl?: string;
     zoomStartUrl?: string;
     zoomSessionType?: 'WEBINAR' | 'MEETING';
+    registrationRequiresApproval?: boolean;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -81,6 +85,10 @@ export class ProgramsService {
         zoomMeetingId: dto.zoomMeetingId ?? null,
         zoomJoinUrl: dto.zoomJoinUrl ?? null,
         zoomStartUrl: dto.zoomStartUrl ?? null,
+        ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
+        ...(dto.registrationRequiresApproval !== undefined
+          ? { registrationRequiresApproval: dto.registrationRequiresApproval }
+          : {}),
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);
@@ -157,6 +165,29 @@ export class ProgramsService {
       throw new NotFoundException('Program not found');
     }
 
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl');
+    const intakeForClient = effectiveWebinarIntakeFormUrl(
+      program.zoomSessionType,
+      program.jotformIntakeFormUrl,
+      defaultIntake,
+    );
+
+    let jotformSurveyUrl = program.jotformSurveyUrl?.trim() || undefined;
+    if (!jotformSurveyUrl && program.zoomSessionType === 'WEBINAR') {
+      const feedback = await this.prisma.survey.findFirst({
+        where: {
+          programId: program.id,
+          type: 'FEEDBACK',
+          jotformFormId: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { jotformFormId: true },
+      });
+      if (feedback?.jotformFormId) {
+        jotformSurveyUrl = `https://communityhealthmedia.jotform.com/${feedback.jotformFormId}`;
+      }
+    }
+
     return {
       id: program.id,
       title: program.title,
@@ -182,37 +213,12 @@ export class ProgramsService {
       zoomJoinUrl: program.zoomJoinUrl || undefined,
       startDate: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
-      jotformSurveyUrl: program.jotformSurveyUrl || undefined,
-      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      jotformSurveyUrl,
+      jotformIntakeFormUrl: intakeForClient,
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,
-      hasCalendlyScheduling: !!program.calendlySchedulingUrl?.trim(),
     };
-  }
-
-  /**
-   * Office-hours Calendly URL — only for enrolled users (after admin approval when registrationRequiresApproval is on).
-   */
-  async getCalendlySchedulingForEnrolledUser(
-    userId: string,
-    programId: string,
-  ): Promise<{ calendlySchedulingUrl: string | null }> {
-    const program = await this.prisma.program.findFirst({
-      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
-      select: { calendlySchedulingUrl: true },
-    });
-    const url = program?.calendlySchedulingUrl?.trim();
-    if (!url) {
-      return { calendlySchedulingUrl: null };
-    }
-    const enrollment = await this.prisma.programEnrollment.findUnique({
-      where: { userId_programId: { userId, programId } },
-    });
-    if (!enrollment) {
-      return { calendlySchedulingUrl: null };
-    }
-    return { calendlySchedulingUrl: url };
   }
 
   /**
@@ -222,7 +228,8 @@ export class ProgramsService {
     this.logger.log(`Enrolling user ${dto.userId} in program ${dto.programId}`);
 
     const programRow = await this.prisma.program.findUnique({ where: { id: dto.programId } });
-    if (programRow?.registrationRequiresApproval) {
+    const approvalBlocksQuickEnroll = programRow?.registrationRequiresApproval === true;
+    if (approvalBlocksQuickEnroll) {
       throw new BadRequestException(
         'This program uses admin-approved registration. Complete the registration flow instead of quick enroll.',
       );
@@ -473,5 +480,18 @@ export class ProgramsService {
     }).catch(() => {});
 
     this.logger.log(`Completion workflow triggered for program ${enrollment.programId}`);
+  }
+
+  /** Admin hub — who is enrolled (e.g. webinars). */
+  async listProgramEnrollmentsForAdmin(programId: string) {
+    return this.prisma.programEnrollment.findMany({
+      where: { programId },
+      include: {
+        user: {
+          select: { id: true, email: true, firstName: true, lastName: true, specialty: true },
+        },
+      },
+      orderBy: { enrolledAt: 'desc' },
+    });
   }
 }

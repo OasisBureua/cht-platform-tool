@@ -5,8 +5,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ProgramRegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { HubSpotService } from '../hubspot/hubspot.service';
 
@@ -17,6 +19,7 @@ export class ProgramRegistrationsService {
   constructor(
     private prisma: PrismaService,
     private hubspot: HubSpotService,
+    private config: ConfigService,
   ) {}
 
   async listSlotsForProgram(programId: string) {
@@ -66,6 +69,7 @@ export class ProgramRegistrationsService {
       id: reg.id,
       status: reg.status,
       officeHoursSlotId: reg.officeHoursSlotId ?? undefined,
+      intakeJotformSubmissionId: reg.intakeJotformSubmissionId ?? undefined,
       createdAt: reg.createdAt.toISOString(),
       reviewedAt: reg.reviewedAt?.toISOString(),
     };
@@ -111,6 +115,17 @@ export class ProgramRegistrationsService {
       if (used >= slot.maxAttendees) {
         throw new BadRequestException('This time slot is full');
       }
+    }
+
+    const intakeUrlConfigured = !!effectiveWebinarIntakeFormUrl(
+      program.zoomSessionType,
+      program.jotformIntakeFormUrl,
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+    );
+    if (intakeUrlConfigured && !body.intakeJotformSubmissionId?.trim()) {
+      throw new BadRequestException(
+        'Intake form must be completed first. Submit the Jotform and return to this app using the thank-you redirect URL that includes your submission ID.',
+      );
     }
 
     const requiresApproval = program.registrationRequiresApproval;
@@ -163,6 +178,114 @@ export class ProgramRegistrationsService {
     };
   }
 
+  /**
+   * Jotform webhook: published webinar intake submitted — persist submission id and optionally enroll.
+   */
+  async recordWebinarIntakeFromJotformWebhook(
+    userId: string,
+    programId: string,
+    submissionId: string,
+  ): Promise<boolean> {
+    const program = await this.prisma.program.findFirst({
+      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'WEBINAR' },
+    });
+    if (!program) {
+      this.logger.warn(`Intake webhook: program ${programId} is not a published webinar`);
+      return false;
+    }
+    const intakeEffective = effectiveWebinarIntakeFormUrl(
+      program.zoomSessionType,
+      program.jotformIntakeFormUrl,
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+    );
+    if (!intakeEffective) {
+      this.logger.warn(`Intake webhook: program ${programId} has no intake URL configured`);
+      return false;
+    }
+
+    const enrolled = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (enrolled) {
+      await this.prisma.programRegistration.upsert({
+        where: { userId_programId: { userId, programId } },
+        create: {
+          userId,
+          programId,
+          status: ProgramRegistrationStatus.APPROVED,
+          intakeJotformSubmissionId: submissionId,
+        },
+        update: { intakeJotformSubmissionId: submissionId },
+      });
+      return true;
+    }
+
+    const existing = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+
+    if (existing?.status === ProgramRegistrationStatus.APPROVED) {
+      await this.prisma.programRegistration.update({
+        where: { id: existing.id },
+        data: { intakeJotformSubmissionId: submissionId },
+      });
+      await this.ensureEnrollment(userId, programId);
+      return true;
+    }
+
+    const requiresApproval = program.registrationRequiresApproval;
+    const approvedNow = !requiresApproval;
+
+    if (!existing) {
+      await this.prisma.programRegistration.create({
+        data: {
+          userId,
+          programId,
+          status: approvedNow
+            ? ProgramRegistrationStatus.APPROVED
+            : ProgramRegistrationStatus.PENDING,
+          intakeJotformSubmissionId: submissionId,
+        },
+      });
+    } else {
+      const nextStatus =
+        approvedNow
+          ? ProgramRegistrationStatus.APPROVED
+          : existing.status === ProgramRegistrationStatus.REJECTED
+            ? ProgramRegistrationStatus.PENDING
+            : existing.status;
+      await this.prisma.programRegistration.update({
+        where: { id: existing.id },
+        data: {
+          intakeJotformSubmissionId: submissionId,
+          status: nextStatus,
+        },
+      });
+    }
+
+    if (approvedNow) {
+      await this.ensureEnrollment(userId, programId);
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      this.hubspot
+        .createOrUpdateContact({
+          email: user.email,
+          firstname: user.firstName,
+          lastname: user.lastName,
+          jobtitle: user.specialty ?? undefined,
+          company: user.institution ?? undefined,
+        })
+        .catch(() => {});
+    }
+
+    this.logger.log(
+      `Intake webhook: user ${userId} program ${programId} submission ${submissionId} approvedNow=${approvedNow}`,
+    );
+    return true;
+  }
+
   private async ensureEnrollment(userId: string, programId: string) {
     await this.prisma.programEnrollment.upsert({
       where: { userId_programId: { userId, programId } },
@@ -188,6 +311,25 @@ export class ProgramRegistrationsService {
     });
   }
 
+  /** All pending registrations for published LIVE webinars and office hours (cross-program admin queue). */
+  async listPendingWebinarRegistrationsForAdmin() {
+    return this.prisma.programRegistration.findMany({
+      where: {
+        status: ProgramRegistrationStatus.PENDING,
+        program: {
+          zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+          status: 'PUBLISHED',
+          registrationRequiresApproval: true,
+        },
+      },
+      include: {
+        user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
+        program: { select: { id: true, title: true, jotformIntakeFormUrl: true, zoomSessionType: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async adminSetRegistrationStatus(
     adminUserId: string,
     registrationId: string,
@@ -199,6 +341,21 @@ export class ProgramRegistrationsService {
       include: { program: true },
     });
     if (!reg) throw new NotFoundException('Registration not found');
+
+    const intakeRequiredForApproval = !!effectiveWebinarIntakeFormUrl(
+      reg.program.zoomSessionType,
+      reg.program.jotformIntakeFormUrl,
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+    );
+    if (
+      status === ProgramRegistrationStatus.APPROVED &&
+      intakeRequiredForApproval &&
+      !reg.intakeJotformSubmissionId?.trim()
+    ) {
+      throw new BadRequestException(
+        'Cannot approve: intake Jotform is not recorded for this registration (missing submission ID). Ask the learner to complete intake and submit registration again, or remove the intake URL if not required.',
+      );
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.programRegistration.update({

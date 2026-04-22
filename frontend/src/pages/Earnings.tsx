@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -48,7 +49,13 @@ export default function Earnings() {
     <div className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Your Earnings</h1>
-        <p className="text-sm text-gray-600">Track your income and payment history</p>
+        <p className="text-sm text-gray-600">
+          Balances and activity. Actual payouts are sent through{' '}
+          <Link to="/app/payments" className="font-medium text-gray-900 underline hover:no-underline">
+            Bill.com
+          </Link>
+          .
+        </p>
       </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
