@@ -179,9 +179,7 @@ export default function AdminWebinarScheduler({
             <select
               value={zoomSessionType}
               onChange={(e) => {
-                const v = e.target.value as ZoomSessionType;
-                setZoomSessionType(v);
-                if (v === 'MEETING') setCreateSurvey(false);
+                setZoomSessionType(e.target.value as ZoomSessionType);
               }}
               className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             >

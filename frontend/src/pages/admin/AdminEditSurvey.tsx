@@ -11,6 +11,7 @@ export default function AdminEditSurvey() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [jotformFormId, setJotformFormId] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { data: survey, isLoading, isError } = useQuery({
     queryKey: ['survey', id],
@@ -27,10 +28,19 @@ export default function AdminEditSurvey() {
   const updateMutation = useMutation({
     mutationFn: (payload: { jotformFormId?: string }) =>
       adminApi.updateSurvey(id!, payload),
+    onMutate: () => setSaveError(null),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id] });
       navigate('/admin/surveys');
+    },
+    onError: (err: unknown) => {
+      const ax = err as { response?: { data?: { message?: string | string[] } } };
+      const m = ax.response?.data?.message;
+      setSaveError(
+        (Array.isArray(m) ? m.join('; ') : m) ||
+          (err instanceof Error ? err.message : 'Failed to update survey.'),
+      );
     },
   });
 
@@ -91,10 +101,8 @@ export default function AdminEditSurvey() {
           </div>
         </div>
 
-        {updateMutation.isError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
-            Failed to update survey. Please try again.
-          </div>
+        {saveError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">{saveError}</div>
         )}
 
         <div className="flex gap-4">

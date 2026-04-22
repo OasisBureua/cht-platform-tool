@@ -502,8 +502,7 @@ export default function WebinarDetail() {
         <section className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
           <p className="font-medium text-gray-900">Post-event survey</p>
           <p className="mt-1">
-            The post-event survey will unlock here after the live session ends (or shortly after the scheduled end time
-            if Zoom webhooks are not configured).
+            The post-event survey will unlock here after the live session ends.
           </p>
         </section>
       ) : null}

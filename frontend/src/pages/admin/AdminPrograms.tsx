@@ -498,7 +498,12 @@ function EditWebinarModal({
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),
     onSuccess: onSaved,
-    onError: (err: Error) => setError(err.message || 'Failed to save. Please try again.'),
+    onError: (err: unknown) => {
+      const ax = err as { response?: { data?: { message?: string | string[] } } };
+      const m = ax.response?.data?.message;
+      const msg = Array.isArray(m) ? m.join('; ') : m;
+      setError(msg || (err instanceof Error ? err.message : 'Failed to save. Please try again.'));
+    },
   });
 
   const handleSave = () => {

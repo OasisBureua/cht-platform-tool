@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, Loader2 } from 'lucide-react';
 import { validateTaxId } from '../utils/w9Validation';
+import { getApiErrorMessage } from '../api/client';
 
 export function W9Modal({
   isOpen,
@@ -40,7 +41,7 @@ export function W9Modal({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit W-9');
+      setError(getApiErrorMessage(err, 'Failed to submit W-9'));
     } finally {
       setSubmitting(false);
     }

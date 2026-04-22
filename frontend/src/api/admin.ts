@@ -284,10 +284,21 @@ export const adminApi = {
 
   updateProgramRegistration: async (
     registrationId: string,
-    body: { status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED'; adminNotes?: string },
+    body: {
+      status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
+      adminNotes?: string;
+      bypassIntakeRequirement?: boolean;
+    },
   ) => {
     const { data } = await apiClient.patch(`/admin/registrations/${encodeURIComponent(registrationId)}`, body);
     return data;
+  },
+
+  removeProgramEnrollment: async (programId: string, enrollmentId: string) => {
+    const { data } = await apiClient.delete(
+      `/admin/programs/${encodeURIComponent(programId)}/enrollments/${encodeURIComponent(enrollmentId)}`,
+    );
+    return data as { removed: boolean };
   },
 
   downloadRegistrationIcsBlob: async (registrationId: string): Promise<Blob> => {

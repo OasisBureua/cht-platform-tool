@@ -7,6 +7,7 @@ import { W9Modal } from '../components/W9Modal';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
+import { getApiErrorMessage } from '../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 
 function getInitials(name: string, email?: string): string {
@@ -32,6 +33,7 @@ export default function Settings() {
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveOk, setSaveOk] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
@@ -56,15 +58,21 @@ export default function Settings() {
     if (profile) {
       setFirstName(profile.firstName ?? '');
       setLastName(profile.lastName ?? '');
+      setInstitution(profile.institution ?? '');
+      setCity(profile.city ?? '');
+      setState(profile.state ?? '');
+      setZipCode(profile.zipCode ?? '');
     }
   }, [profile]);
 
   const handleSaveProfile = async () => {
     setSaveError(null);
+    setSaveOk(false);
     setSaving(true);
     try {
       const zip = zipCode.replace(/\D/g, '');
       if (zip && zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
+        setSaveOk(false);
         setSaveError('ZIP code must be 5 digits (or 9 for ZIP+4).');
         setSaving(false);
         return;
@@ -79,6 +87,8 @@ export default function Settings() {
       });
       await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       await refreshProfile();
+      setSaveOk(true);
+      window.setTimeout(() => setSaveOk(false), 3000);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
@@ -166,16 +176,6 @@ export default function Settings() {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                 />
               </div>
-              <div className="md:col-span-2 flex items-center gap-3">
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={saving}
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {saving ? 'Saving...' : 'Save Profile'}
-                </button>
-                {saveError && <span className="text-sm text-red-600">{saveError}</span>}
-              </div>
               <div className="md:col-span-2 pt-2 border-t border-gray-100">
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Practice Location</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,6 +250,18 @@ export default function Settings() {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
                 />
               </div>
+              <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save Profile'}
+                </button>
+                {saveOk && <span className="text-sm font-medium text-green-600">Saved</span>}
+                {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+              </div>
             </div>
           </div>
 
@@ -259,7 +271,15 @@ export default function Settings() {
             accountStatus={accountStatus}
             isLoading={loadingAccount}
             displayName={displayName}
-            onSuccess={() => queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] })}
+            profileCity={profile?.city}
+            profileState={profile?.state}
+            profileZip={profile?.zipCode}
+            onSuccess={() => {
+              void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
+              void queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
+              void queryClient.invalidateQueries({ queryKey: ['payments-history', userId] });
+              void queryClient.invalidateQueries({ queryKey: ['earnings', userId] });
+            }}
           />
         </div>
 
@@ -324,6 +344,9 @@ function PaymentSettingsSection({
   accountStatus,
   isLoading,
   displayName,
+  profileCity,
+  profileState,
+  profileZip,
   onSuccess,
 }: {
   userId: string;
@@ -336,6 +359,9 @@ function PaymentSettingsSection({
   };
   isLoading: boolean;
   displayName: string;
+  profileCity?: string;
+  profileState?: string;
+  profileZip?: string;
   onSuccess: () => void;
 }) {
   const [payeeName, setPayeeName] = useState('');
@@ -348,6 +374,14 @@ function PaymentSettingsSection({
   const [routingNumber, setRoutingNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [w9ModalOpen, setW9ModalOpen] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ ok?: string; err?: string }>({});
+
+  useEffect(() => {
+    if (accountStatus?.hasAccount) return;
+    setCity((c) => (c.trim() ? c : profileCity?.trim() || ''));
+    setState((s) => (s.trim() ? s : profileState?.trim().toUpperCase().slice(0, 2) || ''));
+    setZipCode((z) => (z.trim() ? z : profileZip?.trim() || ''));
+  }, [accountStatus?.hasAccount, profileCity, profileState, profileZip]);
 
   const connectMutation = useMutation({
     mutationFn: () =>
@@ -373,8 +407,21 @@ function PaymentSettingsSection({
       setRoutingNumber('');
       onSuccess();
     },
-    onError: (err: Error) => {
-      setError(err.message || 'Failed to add bank account');
+    onError: (err: unknown) => {
+      setError(getApiErrorMessage(err, 'Failed to add bank account'));
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: () => paymentsApi.syncAccountStatus(userId),
+    onMutate: () => setSyncMessage({}),
+    onSuccess: () => {
+      setSyncMessage({ ok: 'Status refreshed from Bill.com.' });
+      window.setTimeout(() => setSyncMessage({}), 4000);
+      onSuccess();
+    },
+    onError: (err: unknown) => {
+      setSyncMessage({ err: getApiErrorMessage(err, 'Could not sync with Bill.com.') });
     },
   });
 
@@ -438,13 +485,25 @@ function PaymentSettingsSection({
 
       {hasAccount ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
-            <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
-            <div>
-              <p className="font-medium text-green-900">Bill.com vendor connected</p>
-              <p className="text-sm text-green-700">Admins send payouts from Bill.com (ACH or check)</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+              <div>
+                <p className="font-medium text-green-900">Bill.com vendor connected</p>
+                <p className="text-sm text-green-700">Admins send payouts from Bill.com (ACH or check)</p>
+              </div>
             </div>
+            <button
+              type="button"
+              disabled={syncMutation.isPending}
+              onClick={() => syncMutation.mutate()}
+              className="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
+            >
+              {syncMutation.isPending ? 'Syncing…' : 'Refresh from Bill.com'}
+            </button>
           </div>
+          {syncMessage.ok && <p className="text-sm text-green-700">{syncMessage.ok}</p>}
+          {syncMessage.err && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{syncMessage.err}</p>}
 
           {!w9Submitted ? (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">

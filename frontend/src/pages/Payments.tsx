@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
+import { getApiErrorMessage } from '../api/client';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Clock3, Loader2 } from 'lucide-react';
@@ -94,8 +95,10 @@ export default function Payments() {
         <VendorSetupForm
           userId={userId}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
-            queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['payments-history', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['earnings', userId] });
             setW9ModalOpen(true);
           }}
         />
@@ -179,14 +182,17 @@ export default function Payments() {
           onClose={() => setW9ModalOpen(false)}
           onSubmit={async (data) => {
             await paymentsApi.submitW9(userId, data);
-            queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['payments-history', userId] });
+            void queryClient.invalidateQueries({ queryKey: ['earnings', userId] });
           }}
           displayName={user?.name || user?.email || 'User'}
         />
       </section>
 
       {/* History */}
-      <section className="space-y-3">
+      <section id="payment-history" className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-900">Payment history</h2>
           <span className="text-sm text-gray-600">{(history || []).length} items</span>
@@ -229,11 +235,22 @@ function VendorSetupForm({
   const [error, setError] = useState<string | null>(null);
 
   const mutation = useMutation({
-    mutationFn: () => paymentsApi.createConnectAccount(userId, form),
+    mutationFn: () => {
+      const zipDigits = form.zipCode.replace(/\D/g, '');
+      return paymentsApi.createConnectAccount(userId, {
+        payeeName: form.payeeName.trim(),
+        addressLine1: form.addressLine1.trim(),
+        city: form.city.trim(),
+        state: form.state.trim().toUpperCase().slice(0, 2),
+        zipCode: zipDigits,
+        nameOnAccount: form.nameOnAccount.trim(),
+        accountNumber: form.accountNumber.trim(),
+        routingNumber: form.routingNumber.replace(/\D/g, ''),
+      });
+    },
     onSuccess: () => onSuccess(),
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Failed to save payment details.';
-      setError(msg);
+      setError(getApiErrorMessage(err, 'Failed to save payment details.'));
     },
   });
 
@@ -249,7 +266,8 @@ function VendorSetupForm({
     if (!form.addressLine1.trim()) return setError('Address is required.');
     if (!form.city.trim()) return setError('City is required.');
     if (!form.state.trim()) return setError('State is required.');
-    if (!/^\d{5}(-\d{4})?$/.test(form.zipCode.trim())) return setError('Enter a valid ZIP code.');
+    const zipDigits = form.zipCode.replace(/\D/g, '');
+    if (zipDigits.length !== 5 && zipDigits.length !== 9) return setError('Enter a valid ZIP code (5 or 9 digits).');
     if (!form.nameOnAccount.trim()) return setError('Name on account is required.');
     if (!/^\d{9}$/.test(form.routingNumber.trim())) return setError('Routing number must be 9 digits.');
     if (form.accountNumber.trim().length < 4) return setError('Account number is required.');

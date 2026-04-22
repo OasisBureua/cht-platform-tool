@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
+import { paymentsApi } from '../api/payments';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import {
@@ -31,6 +32,12 @@ export default function Earnings() {
     enabled: !!userId,
   });
 
+  const { data: paymentHistory = [], isLoading: loadingHistory } = useQuery({
+    queryKey: ['payments-history', userId],
+    queryFn: () => paymentsApi.getHistory(userId),
+    enabled: !!userId,
+  });
+
   const chartData = useMemo(() => {
     return (
       earnings?.weeklyEarnings.map((w) => ({
@@ -40,7 +47,7 @@ export default function Earnings() {
     );
   }, [earnings]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading || loadingHistory) return <LoadingSpinner />;
 
   const total = earnings?.totalEarnings ?? 0;
   const points = dollarsToPoints(total);
@@ -114,17 +121,39 @@ export default function Earnings() {
       </section>
 
       <section className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Payment History</h2>
-          <button className="text-sm font-medium text-gray-700 hover:text-gray-900">View all</button>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-gray-900">Payment history</h2>
+          <Link
+            to="/app/payments#payment-history"
+            className="text-sm font-medium text-gray-900 underline hover:no-underline shrink-0"
+          >
+            Full payment history
+          </Link>
         </div>
 
-        <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
-          <p className="text-sm font-semibold text-gray-900">No Activity Yet</p>
-          <p className="mt-1 text-sm text-gray-600">
-            Recent payments and withdrawals will appear here.
-          </p>
-        </div>
+        {paymentHistory.length === 0 ? (
+          <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
+            <p className="text-sm font-semibold text-gray-900">No payments yet</p>
+            <p className="mt-1 text-sm text-gray-600">
+              Completed honoraria and bonuses appear here after admins process them in Bill.com.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+            {paymentHistory.slice(0, 8).map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{row.title}</p>
+                  <p className="text-xs text-gray-500">{format(new Date(row.date), 'MMM d, yyyy')}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-semibold text-gray-900">${row.amount.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">{row.status}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

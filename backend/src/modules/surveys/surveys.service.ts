@@ -126,6 +126,15 @@ export class SurveysService {
         }),
       },
     });
+    if (survey.type === 'FEEDBACK' && dto.jotformFormId !== undefined) {
+      const fid = dto.jotformFormId?.trim();
+      await this.prisma.program.update({
+        where: { id: survey.programId },
+        data: {
+          jotformSurveyUrl: fid ? `https://communityhealthmedia.jotform.com/${fid}` : null,
+        },
+      });
+    }
     this.logger.log(`Survey ${id} updated (jotformFormId: ${updated.jotformFormId ?? 'null'})`);
     return updated;
   }

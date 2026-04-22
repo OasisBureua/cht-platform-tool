@@ -96,6 +96,10 @@ export class ProgramRegistrationsService {
       throw new BadRequestException('Already enrolled in this program');
     }
 
+    const existingRegistration = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+
     const slotCount = await this.prisma.officeHoursSlot.count({ where: { programId } });
     if (program.zoomSessionType === 'MEETING' && slotCount > 0 && !body.officeHoursSlotId) {
       throw new BadRequestException('Select a time slot for this office hours session');
@@ -147,6 +151,12 @@ export class ProgramRegistrationsService {
         officeHoursSlotId: body.officeHoursSlotId ?? undefined,
         intakeJotformSubmissionId: body.intakeJotformSubmissionId ?? undefined,
         updatedAt: new Date(),
+        // Fresh pending request after rejection — clear last review so admins see a new queue item.
+        ...(requiresApproval &&
+        status === ProgramRegistrationStatus.PENDING &&
+        existingRegistration?.status === ProgramRegistrationStatus.REJECTED
+          ? { reviewedAt: null, reviewedByUserId: null }
+          : {}),
       },
     });
 
@@ -335,6 +345,7 @@ export class ProgramRegistrationsService {
     registrationId: string,
     status: ProgramRegistrationStatus,
     adminNotes?: string,
+    options?: { bypassIntakeRequirement?: boolean },
   ) {
     const reg = await this.prisma.programRegistration.findUnique({
       where: { id: registrationId },
@@ -350,10 +361,21 @@ export class ProgramRegistrationsService {
     if (
       status === ProgramRegistrationStatus.APPROVED &&
       intakeRequiredForApproval &&
-      !reg.intakeJotformSubmissionId?.trim()
+      !reg.intakeJotformSubmissionId?.trim() &&
+      !options?.bypassIntakeRequirement
     ) {
       throw new BadRequestException(
         'Cannot approve: intake Jotform is not recorded for this registration (missing submission ID). Ask the learner to complete intake and submit registration again, or remove the intake URL if not required.',
+      );
+    }
+    if (
+      status === ProgramRegistrationStatus.APPROVED &&
+      intakeRequiredForApproval &&
+      !reg.intakeJotformSubmissionId?.trim() &&
+      options?.bypassIntakeRequirement
+    ) {
+      this.logger.warn(
+        `Admin ${adminUserId} approved registration ${registrationId} without intake submission id (override)`,
       );
     }
 
@@ -392,6 +414,39 @@ export class ProgramRegistrationsService {
     });
 
     return updated;
+  }
+
+  /**
+   * Remove a user's enrollment from a program and mark their registration rejected so they may register again.
+   */
+  async adminRemoveEnrollment(adminUserId: string, programId: string, enrollmentId: string) {
+    const enrollment = await this.prisma.programEnrollment.findUnique({
+      where: { id: enrollmentId },
+    });
+    if (!enrollment || enrollment.programId !== programId) {
+      throw new NotFoundException('Enrollment not found');
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.programEnrollment.delete({ where: { id: enrollmentId } });
+      const reg = await tx.programRegistration.findUnique({
+        where: { userId_programId: { userId: enrollment.userId, programId: enrollment.programId } },
+      });
+      if (reg) {
+        await tx.programRegistration.update({
+          where: { id: reg.id },
+          data: {
+            status: ProgramRegistrationStatus.REJECTED,
+            reviewedAt: new Date(),
+            reviewedByUserId: adminUserId,
+            adminNotes: 'Enrollment removed by admin; learner may register again.',
+          },
+        });
+      }
+    });
+
+    this.logger.log(`Admin ${adminUserId} removed enrollment ${enrollmentId} (program ${programId})`);
+    return { removed: true };
   }
 
   async markCalendarInviteSent(registrationId: string) {

@@ -238,6 +238,16 @@ export class AdminController {
     return this.surveysService.createSurveyFromJotformTemplate(dto);
   }
 
+  @Patch('surveys/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Update survey (Jotform form ID); FEEDBACK surveys also update program post-event URL' })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  updateSurvey(@Param('id') id: string, @Body() dto: UpdateSurveyDto) {
+    return this.surveysService.updateSurvey(id, dto);
+  }
+
   @Delete('surveys/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -691,7 +701,13 @@ export class AdminController {
   @ApiOperation({ summary: 'Approve, reject, or waitlist a registration (approve creates enrollment)' })
   async adminUpdateRegistration(
     @Param('registrationId') registrationId: string,
-    @Body() body: { status: ProgramRegistrationStatus; adminNotes?: string },
+    @Body()
+    body: {
+      status: ProgramRegistrationStatus;
+      adminNotes?: string;
+      /** When true, approve even if intake Jotform submission id is missing (admin override). */
+      bypassIntakeRequirement?: boolean;
+    },
     @CurrentUser() admin: AuthUser,
   ) {
     if (!body?.status || !Object.values(ProgramRegistrationStatus).includes(body.status)) {
@@ -702,7 +718,23 @@ export class AdminController {
       registrationId,
       body.status,
       body.adminNotes,
+      body.bypassIntakeRequirement ? { bypassIntakeRequirement: true } : undefined,
     );
+  }
+
+  @Delete('programs/:programId/enrollments/:enrollmentId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Remove a learner enrollment (revokes access); sets registration to rejected so they may re-register',
+  })
+  async adminRemoveProgramEnrollment(
+    @Param('programId') programId: string,
+    @Param('enrollmentId') enrollmentId: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.programRegistrations.adminRemoveEnrollment(admin.userId, programId, enrollmentId);
   }
 
   @Get('registrations/:registrationId/ics')

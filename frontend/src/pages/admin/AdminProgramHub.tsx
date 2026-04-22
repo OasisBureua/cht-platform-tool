@@ -36,7 +36,7 @@ export default function AdminProgramHub() {
   const { data: enrollments = [], isLoading: eLoading } = useQuery({
     queryKey: ['admin', 'program', programId, 'enrollments'],
     queryFn: () => adminApi.listProgramEnrollments(programId!),
-    enabled: !!programId && !!program && zoomTypeForQueries === 'WEBINAR',
+    enabled: !!programId && !!program,
   });
 
   const { data: formLinks = [], isLoading: fLoading } = useQuery({
@@ -49,11 +49,11 @@ export default function AdminProgramHub() {
   const [preUrl, setPreUrl] = useState('');
   const [hostName, setHostName] = useState('');
   const [requireApproval, setRequireApproval] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState<{ ok?: boolean; err?: string }>({});
 
   useEffect(() => {
     if (!program) return;
     const pr = program as Record<string, unknown>;
-    const zt = String(pr.zoomSessionType || 'WEBINAR');
     setIntakeUrl(String(pr.jotformIntakeFormUrl ?? ''));
     setPreUrl(String(pr.jotformPreEventUrl ?? ''));
     setHostName(String(pr.hostDisplayName ?? ''));
@@ -63,24 +63,56 @@ export default function AdminProgramHub() {
   const settingsMutation = useMutation({
     mutationFn: () =>
       adminApi.patchProgramRegistrationSettings(programId!, {
-        jotformIntakeFormUrl: intakeUrl || null,
-        jotformPreEventUrl: preUrl || null,
-        hostDisplayName: hostName || null,
+        jotformIntakeFormUrl: intakeUrl.trim() || null,
+        jotformPreEventUrl: preUrl.trim() || null,
+        hostDisplayName: hostName.trim() || null,
         registrationRequiresApproval: requireApproval,
       }),
     onSuccess: () => {
+      setSettingsMessage({ ok: true });
+      window.setTimeout(() => setSettingsMessage({}), 4000);
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
     },
+    onError: (err: unknown) => {
+      const ax = err as { response?: { data?: { message?: string | string[] } } };
+      const m = ax.response?.data?.message;
+      const msg = Array.isArray(m) ? m.join('; ') : m;
+      setSettingsMessage({
+        err: msg || (err instanceof Error ? err.message : 'Could not save settings.'),
+      });
+    },
   });
 
   const approveMut = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' | 'WAITLISTED' }) =>
-      adminApi.updateProgramRegistration(id, { status }),
+    mutationFn: ({
+      id,
+      status,
+      bypassIntakeRequirement,
+    }: {
+      id: string;
+      status: 'APPROVED' | 'REJECTED' | 'WAITLISTED';
+      bypassIntakeRequirement?: boolean;
+    }) =>
+      adminApi.updateProgramRegistration(id, {
+        status,
+        ...(bypassIntakeRequirement ? { bypassIntakeRequirement: true } : {}),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
+    },
+  });
+
+  const removeEnrollmentMut = useMutation({
+    mutationFn: ({ enrollmentId }: { enrollmentId: string }) =>
+      adminApi.removeProgramEnrollment(programId!, enrollmentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
     },
@@ -215,13 +247,26 @@ export default function AdminProgramHub() {
           </span>
           <span className="text-xs font-normal text-gray-600 pl-6">
             {zoomType === 'WEBINAR'
-              ? 'Learners complete registration (and intake Jotform when configured); after you approve, they are enrolled and the in-app Zoom join appears on the webinar page.'
-              : 'Uncapped sign-ups; you pick who to invite before they are enrolled.'}
+              ? 'Learners complete registration (and intake Jotform when configured); after you approve, they are enrolled and the in-app Zoom join appears on the webinar page. Rejected learners may register again (their row goes back to pending when they resubmit).'
+              : 'Uncapped sign-ups; you pick who to invite before they are enrolled. Rejected learners may register again (pending on resubmit).'}
           </span>
         </label>
+        {settingsMessage.ok && (
+          <p className="text-sm font-medium text-green-700" role="status">
+            Settings saved.
+          </p>
+        )}
+        {settingsMessage.err && (
+          <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2" role="alert">
+            {settingsMessage.err}
+          </p>
+        )}
         <button
           type="button"
-          onClick={() => settingsMutation.mutate()}
+          onClick={() => {
+            setSettingsMessage({});
+            settingsMutation.mutate();
+          }}
           disabled={settingsMutation.isPending}
           className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
         >
@@ -278,7 +323,9 @@ export default function AdminProgramHub() {
             {slots.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
                 <span>
-                  {format(parseISO(s.startsAt), 'MMM d, h:mm a')} – {format(parseISO(s.endsAt), 'h:mm a')}
+                  {format(typeof s.startsAt === 'string' ? parseISO(s.startsAt) : new Date(s.startsAt), 'MMM d, h:mm a')}{' '}
+                  –{' '}
+                  {format(typeof s.endsAt === 'string' ? parseISO(s.endsAt) : new Date(s.endsAt), 'h:mm a')}
                   {s.label ? ` · ${s.label}` : ''}
                 </span>
                 <button
@@ -423,6 +470,30 @@ export default function AdminProgramHub() {
                                     >
                                       Approve
                                     </button>
+                                    {intakeRequired && !intakeOk && (
+                                      <button
+                                        type="button"
+                                        disabled={approveMut.isPending}
+                                        title="Supersede intake requirement and approve without a Jotform submission ID on file"
+                                        onClick={() => {
+                                          if (
+                                            !window.confirm(
+                                              'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
+                                            )
+                                          ) {
+                                            return;
+                                          }
+                                          approveMut.mutate({
+                                            id: r.id,
+                                            status: 'APPROVED',
+                                            bypassIntakeRequirement: true,
+                                          });
+                                        }}
+                                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
+                                      >
+                                        Supersede &amp; approve anyway
+                                      </button>
+                                    )}
                                     <button
                                       type="button"
                                       onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
@@ -455,6 +526,10 @@ export default function AdminProgramHub() {
           ) : (
             <>
               <h2 className="text-lg font-semibold text-gray-900">Who is enrolled</h2>
+              <p className="text-sm text-gray-600">
+                Remove a learner to revoke in-app access. Their registration is marked rejected so they can request
+                access again if needed.
+              </p>
               {eLoading ? (
                 <p className="text-sm text-gray-500">Loading…</p>
               ) : (
@@ -465,6 +540,7 @@ export default function AdminProgramHub() {
                         <th className="py-2 pr-4">User</th>
                         <th className="py-2 pr-4">Enrolled</th>
                         <th className="py-2 pr-4">Progress</th>
+                        <th className="py-2 pr-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -475,10 +551,34 @@ export default function AdminProgramHub() {
                             <div className="text-xs text-gray-500">{row.user.email}</div>
                           </td>
                           <td className="py-2 pr-4 text-gray-600">
-                            {format(parseISO(row.enrolledAt), 'MMM d, yyyy h:mm a')}
+                            {format(
+                              typeof row.enrolledAt === 'string'
+                                ? parseISO(row.enrolledAt)
+                                : new Date(row.enrolledAt),
+                              'MMM d, yyyy h:mm a',
+                            )}
                           </td>
                           <td className="py-2 pr-4 text-gray-600">
                             {Math.round(row.overallProgress)}%{row.completed ? ' · done' : ''}
+                          </td>
+                          <td className="py-2 pr-4 text-right">
+                            <button
+                              type="button"
+                              disabled={removeEnrollmentMut.isPending}
+                              onClick={() => {
+                                if (
+                                  !window.confirm(
+                                    `Remove ${row.user.firstName} ${row.user.lastName} from this program? They will lose in-app access and may register again.`,
+                                  )
+                                ) {
+                                  return;
+                                }
+                                removeEnrollmentMut.mutate({ enrollmentId: row.id });
+                              }}
+                              className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+                            >
+                              Remove enrollment
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -491,86 +591,184 @@ export default function AdminProgramHub() {
           )}
         </section>
       ) : (
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Registration queue</h2>
-          {rLoading ? (
-            <p className="text-sm text-gray-500">Loading…</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-gray-600">
-                    <th className="py-2 pr-4">User</th>
-                    <th className="py-2 pr-4">Status</th>
-                    <th className="py-2 pr-4">Slot</th>
-                    <th className="py-2 pr-4">Intake</th>
-                    <th className="py-2 pr-4">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {registrations.map((r) => {
-                    const intakeRequired = !!intakeUrl.trim();
-                    const intakeOk = !!r.intakeJotformSubmissionId?.trim();
-                    const canApprove = !intakeRequired || intakeOk;
-                    return (
-                      <tr key={r.id}>
-                        <td className="py-2 pr-4">
-                          {r.user.firstName} {r.user.lastName}
-                          <div className="text-xs text-gray-500">{r.user.email}</div>
-                        </td>
-                        <td className="py-2 pr-4 font-medium">{r.status}</td>
-                        <td className="py-2 pr-4 text-gray-600">
-                          {r.slot ? `${format(parseISO(r.slot.startsAt), 'MMM d h:mm a')}` : '-'}
-                        </td>
-                        <td className="py-2 pr-4 text-gray-600">
-                          {!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}
-                        </td>
-                        <td className="py-2 pr-4">
-                          <div className="flex flex-wrap gap-2">
-                            {r.status === 'PENDING' && (
-                              <>
+        <>
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Registration queue</h2>
+            {rLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-gray-600">
+                      <th className="py-2 pr-4">User</th>
+                      <th className="py-2 pr-4">Status</th>
+                      <th className="py-2 pr-4">Slot</th>
+                      <th className="py-2 pr-4">Intake</th>
+                      <th className="py-2 pr-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {registrations.map((r) => {
+                      const intakeRequired = !!intakeUrl.trim();
+                      const intakeOk = !!r.intakeJotformSubmissionId?.trim();
+                      const canApprove = !intakeRequired || intakeOk;
+                      return (
+                        <tr key={r.id}>
+                          <td className="py-2 pr-4">
+                            {r.user.firstName} {r.user.lastName}
+                            <div className="text-xs text-gray-500">{r.user.email}</div>
+                          </td>
+                          <td className="py-2 pr-4 font-medium">{r.status}</td>
+                          <td className="py-2 pr-4 text-gray-600">
+                            {r.slot
+                              ? format(
+                                  typeof r.slot.startsAt === 'string'
+                                    ? parseISO(r.slot.startsAt)
+                                    : new Date(r.slot.startsAt),
+                                  'MMM d h:mm a',
+                                )
+                              : '-'}
+                          </td>
+                          <td className="py-2 pr-4 text-gray-600">
+                            {!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}
+                          </td>
+                          <td className="py-2 pr-4">
+                            <div className="flex flex-wrap gap-2">
+                              {r.status === 'PENDING' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    disabled={!canApprove || approveMut.isPending}
+                                    title={
+                                      !canApprove
+                                        ? 'Intake Jotform submission ID required before approval'
+                                        : undefined
+                                    }
+                                    onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
+                                    className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                                  >
+                                    Approve
+                                  </button>
+                                  {intakeRequired && !intakeOk && (
+                                    <button
+                                      type="button"
+                                      disabled={approveMut.isPending}
+                                      title="Supersede intake requirement and approve without a Jotform submission ID on file"
+                                      onClick={() => {
+                                        if (
+                                          !window.confirm(
+                                            'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
+                                          )
+                                        ) {
+                                          return;
+                                        }
+                                        approveMut.mutate({
+                                          id: r.id,
+                                          status: 'APPROVED',
+                                          bypassIntakeRequirement: true,
+                                        });
+                                      }}
+                                      className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
+                                    >
+                                      Supersede &amp; approve anyway
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
+                                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {r.status === 'APPROVED' && (
                                 <button
                                   type="button"
-                                  disabled={!canApprove || approveMut.isPending}
-                                  title={
-                                    !canApprove
-                                      ? 'Intake Jotform submission ID required before approval'
-                                      : undefined
-                                  }
-                                  onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
-                                  className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                                  onClick={() => void downloadIcs(r.id)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
                                 >
-                                  Approve
+                                  <Download className="h-3 w-3" /> ICS invite
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
-                                  className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
-                                >
-                                  Reject
-                                </button>
-                              </>
-                            )}
-                            {r.status === 'APPROVED' && (
-                              <button
-                                type="button"
-                                onClick={() => void downloadIcs(r.id)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
-                              >
-                                <Download className="h-3 w-3" /> ICS invite
-                              </button>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Who is enrolled</h2>
+            <p className="text-sm text-gray-600">
+              Remove a learner to revoke in-app access. Their registration is marked rejected so they can request access
+              again if needed.
+            </p>
+            {eLoading ? (
+              <p className="text-sm text-gray-500">Loading…</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-gray-600">
+                      <th className="py-2 pr-4">User</th>
+                      <th className="py-2 pr-4">Enrolled</th>
+                      <th className="py-2 pr-4">Progress</th>
+                      <th className="py-2 pr-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {enrollments.map((row) => (
+                      <tr key={row.id}>
+                        <td className="py-2 pr-4">
+                          {row.user.firstName} {row.user.lastName}
+                          <div className="text-xs text-gray-500">{row.user.email}</div>
+                        </td>
+                        <td className="py-2 pr-4 text-gray-600">
+                          {format(
+                            typeof row.enrolledAt === 'string'
+                              ? parseISO(row.enrolledAt)
+                              : new Date(row.enrolledAt),
+                            'MMM d, yyyy h:mm a',
+                          )}
+                        </td>
+                        <td className="py-2 pr-4 text-gray-600">
+                          {Math.round(row.overallProgress)}%{row.completed ? ' · done' : ''}
+                        </td>
+                        <td className="py-2 pr-4 text-right">
+                          <button
+                            type="button"
+                            disabled={removeEnrollmentMut.isPending}
+                            onClick={() => {
+                              if (
+                                !window.confirm(
+                                  `Remove ${row.user.firstName} ${row.user.lastName} from this program? They will lose in-app access and may register again.`,
+                                )
+                              ) {
+                                return;
+                              }
+                              removeEnrollmentMut.mutate({ enrollmentId: row.id });
+                            }}
+                            className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50"
+                          >
+                            Remove enrollment
+                          </button>
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-              {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
-            </div>
-          )}
-        </section>
+                    ))}
+                  </tbody>
+                </table>
+                {enrollments.length === 0 && <p className="text-sm text-gray-500 py-4">No enrollments yet.</p>}
+              </div>
+            )}
+          </section>
+        </>
       )}
     </div>
   );
