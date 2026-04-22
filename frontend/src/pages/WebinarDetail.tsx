@@ -209,9 +209,6 @@ export default function WebinarDetail() {
 
   const enrolled = enrolledProgramIds.has(program.id);
 
-  const invitationReminder = liveActionItems.find(
-    (a) => a.programId === program.id && a.kind === 'WEBINAR_INVITATION_SURVEY',
-  );
   const postEventReminder = liveActionItems.find(
     (a) => a.programId === program.id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
   );
@@ -231,10 +228,6 @@ export default function WebinarDetail() {
       (program.zoomSessionType === 'MEETING' && slots.length > 0) ||
       (!webinarIntakeOnly && !!program.jotformIntakeFormUrl?.trim()) ||
       (!!program.registrationRequiresApproval && !webinarIntakeOnly));
-
-  /** Avoid competing with the full registration wizard (intake + pre-event / approval). */
-  const suppressInvitationNudge =
-    needsRegistrationWizard && !webinarIntakeOnly && !enrolled;
 
   const ctaLabel = enrolled
     ? 'Registered'
@@ -265,34 +258,6 @@ export default function WebinarDetail() {
           Back to LIVE
         </button>
       </div>
-
-      {program.zoomSessionType === 'WEBINAR' && invitationReminder && !suppressInvitationNudge ? (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
-          <p className="font-semibold">Invitation survey required</p>
-          <p className="mt-1 text-blue-900">
-            Complete the invitation survey to register for this session. You&apos;ll also see this under the bell icon
-            in the header.
-          </p>
-          {intakeSurveyHref ? (
-            <a
-              href={intakeSurveyHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-950"
-            >
-              Open invitation survey
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          ) : needsRegistrationWizard && !enrolled ? (
-            <Link
-              to={`/app/live/${program.id}/register`}
-              className="mt-3 inline-flex rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-950"
-            >
-              Continue registration
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
 
       {program.zoomSessionType === 'WEBINAR' && postEventReminder && enrolled && showPostEventSurvey ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -374,7 +339,7 @@ export default function WebinarDetail() {
                 rel="noopener noreferrer"
                 className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
-                Register for session (Jotform)
+                Register for session
                 <ExternalLink className="h-4 w-4" />
               </a>
             ) : needsRegistrationWizard && !enrolled ? (
@@ -535,7 +500,7 @@ export default function WebinarDetail() {
               rel="noopener noreferrer"
               className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
             >
-              Jotform
+              Register
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           ) : needsRegistrationWizard && !enrolled ? (

@@ -154,7 +154,7 @@ export default function ProgramRegisterWizard() {
         <div className="mt-8 space-y-4">
           {current === 'intake' && program.jotformIntakeFormUrl && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Your information (Jotform)</p>
+              <p className="text-sm font-semibold text-gray-900">Your information</p>
               <p className="text-xs text-gray-600">
                 Submit the form below. Set the Jotform thank-you page to this app URL and append the submission id, e.g.{' '}
                 <span className="font-mono break-all">

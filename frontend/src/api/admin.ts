@@ -204,16 +204,6 @@ export const adminApi = {
     return data;
   },
 
-  /** Link a Zoom webinar/meeting created outside the app to a Program (Jotform + approval + in-app join). */
-  importZoomSession: async (body: {
-    zoomId: string;
-    zoomSessionType?: ZoomSessionType;
-    sponsorName?: string;
-  }): Promise<Record<string, unknown>> => {
-    const { data } = await apiClient.post('/admin/webinars/import-from-zoom', body);
-    return data as Record<string, unknown>;
-  },
-
   updateWebinar: async (id: string, payload: UpdateWebinarPayload): Promise<AdminWebinar> => {
     const { data } = await apiClient.patch<AdminWebinar>(`/admin/webinars/${id}`, payload);
     return data;
