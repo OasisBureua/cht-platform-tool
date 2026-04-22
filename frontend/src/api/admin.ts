@@ -41,9 +41,8 @@ export interface CreateWebinarPayload {
   startDate: string;
   duration: number;
   timezone?: string;
-  /** WEBINAR = Zoom Webinar + optional Jotform survey; MEETING = Zoom Meeting (Office Hours). */
+  /** WEBINAR = Zoom Webinar + Jotform invitation & post-event clones from env; MEETING = Office Hours. */
   zoomSessionType?: ZoomSessionType;
-  createSurveyFromTemplate?: string;
   status?: 'DRAFT' | 'PUBLISHED';
 }
 
@@ -67,8 +66,6 @@ export interface CreateProgramPayload {
   honorariumAmount?: number;
   startDate?: string;
   endDate?: string;
-  /** Jotform template form ID – when set, clones form, adds webhook, creates Survey */
-  createSurveyFromTemplate?: string;
 }
 
 export interface CreateSurveyPayload {
@@ -166,9 +163,21 @@ export const adminApi = {
     await apiClient.delete(`/admin/surveys/${id}`);
   },
 
-  getAdminConfig: async (): Promise<{ jotformTemplateFormId: string }> => {
+  getAdminConfig: async (): Promise<{
+    jotformInvitationTemplateFormId: string;
+    jotformPostEventTemplateFormId: string;
+    jotformPostEventSharedFormId: string;
+    jotformTemplateFormId: string;
+    webinarJotformTemplatesConfigured: boolean;
+  }> => {
     const { data } = await apiClient.get('/admin/config');
-    return data;
+    return data as {
+      jotformInvitationTemplateFormId: string;
+      jotformPostEventTemplateFormId: string;
+      jotformPostEventSharedFormId: string;
+      jotformTemplateFormId: string;
+      webinarJotformTemplatesConfigured: boolean;
+    };
   },
 
   // ─── Webinar CRUD (Zoom-backed) ──────────────────────────────────────────
@@ -187,8 +196,11 @@ export const adminApi = {
 
   createWebinar: async (
     payload: CreateWebinarPayload,
-  ): Promise<AdminWebinar & { zoomWarning?: string }> => {
-    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string }>('/admin/webinars', payload);
+  ): Promise<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }>(
+      '/admin/webinars',
+      payload,
+    );
     return data;
   },
 
@@ -197,7 +209,6 @@ export const adminApi = {
     zoomId: string;
     zoomSessionType?: ZoomSessionType;
     sponsorName?: string;
-    createSurveyFromTemplate?: string;
   }): Promise<Record<string, unknown>> => {
     const { data } = await apiClient.post('/admin/webinars/import-from-zoom', body);
     return data as Record<string, unknown>;

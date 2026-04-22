@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
+import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
@@ -12,8 +13,8 @@ import {
   CheckCircle2,
   Circle,
   ExternalLink,
+  Video,
 } from 'lucide-react';
-import { OfficeHoursZoomEmbed } from '../components/zoom/OfficeHoursZoomEmbed';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -108,7 +109,15 @@ export default function WebinarDetail() {
     onSuccess: (_data, vars) => {
       queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
       queryClient.invalidateQueries({ queryKey: ['program', vars.programId, 'registration'] });
+      queryClient.invalidateQueries({ queryKey: ['programs', 'live-action-items'] });
     },
+  });
+
+  const { data: liveActionItems = [] } = useQuery({
+    queryKey: ['programs', 'live-action-items'],
+    queryFn: () => programsApi.getLiveActionItems(),
+    enabled: !!userId && !isZoomWebinar,
+    staleTime: 30_000,
   });
 
   if (isZoomWebinar) {
@@ -200,6 +209,13 @@ export default function WebinarDetail() {
 
   const enrolled = enrolledProgramIds.has(program.id);
 
+  const invitationReminder = liveActionItems.find(
+    (a) => a.programId === program.id && a.kind === 'WEBINAR_INVITATION_SURVEY',
+  );
+  const postEventReminder = liveActionItems.find(
+    (a) => a.programId === program.id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
+  );
+
   /** Webinar registration survey opens directly in Jotform (webhook writes DB); wizard only if pre-event or slots. */
   const webinarIntakeOnly =
     program.zoomSessionType === 'WEBINAR' &&
@@ -216,6 +232,10 @@ export default function WebinarDetail() {
       (!webinarIntakeOnly && !!program.jotformIntakeFormUrl?.trim()) ||
       (!!program.registrationRequiresApproval && !webinarIntakeOnly));
 
+  /** Avoid competing with the full registration wizard (intake + pre-event / approval). */
+  const suppressInvitationNudge =
+    needsRegistrationWizard && !webinarIntakeOnly && !enrolled;
+
   const ctaLabel = enrolled
     ? 'Registered'
     : enrollMutation.isPending
@@ -226,6 +246,12 @@ export default function WebinarDetail() {
     enrolled ||
     enrollMutation.isPending ||
     myRegistration?.status === 'PENDING';
+
+  const showPostEventSurvey =
+    enrolled &&
+    !!program.jotformSurveyUrl?.trim() &&
+    !!userId &&
+    isPostEventSurveyUnlocked(program);
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
@@ -239,6 +265,44 @@ export default function WebinarDetail() {
           Back to LIVE
         </button>
       </div>
+
+      {program.zoomSessionType === 'WEBINAR' && invitationReminder && !suppressInvitationNudge ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+          <p className="font-semibold">Invitation survey required</p>
+          <p className="mt-1 text-blue-900">
+            Complete the invitation survey to register for this session. You&apos;ll also see this under the bell icon
+            in the header.
+          </p>
+          {intakeSurveyHref ? (
+            <a
+              href={intakeSurveyHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-950"
+            >
+              Open invitation survey
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ) : needsRegistrationWizard && !enrolled ? (
+            <Link
+              to={`/app/live/${program.id}/register`}
+              className="mt-3 inline-flex rounded-lg bg-blue-900 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-950"
+            >
+              Continue registration
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+
+      {program.zoomSessionType === 'WEBINAR' && postEventReminder && enrolled && showPostEventSurvey ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-semibold">Post-event survey</p>
+          <p className="mt-1 text-amber-900">
+            Please complete the post-event survey for this webinar. This reminder also appears in the header
+            notifications.
+          </p>
+        </div>
+      ) : null}
 
       {/* Header / Overview */}
       <section className="bg-white border border-gray-200 rounded-xl p-6">
@@ -357,10 +421,26 @@ export default function WebinarDetail() {
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
           <h2 className="text-base font-semibold text-gray-900">Live webinar</h2>
           <p className="text-sm text-gray-600">
-            After an administrator approves your registration, use <strong>Join session</strong> below. This uses
-            Zoom&apos;s in-browser client; if it does not load, use Open in Zoom instead.
+            After an administrator approves your registration, use <strong>Join session</strong> to open Zoom the usual
+            way (browser or Zoom app).
           </p>
-          <OfficeHoursZoomEmbed programId={program.id} joinUrlFallback={program.zoomJoinUrl} />
+          {program.zoomJoinUrl?.trim() ? (
+            <a
+              href={program.zoomJoinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            >
+              <Video className="h-4 w-4" />
+              Join session
+              <ExternalLink className="h-4 w-4 opacity-90" />
+            </a>
+          ) : (
+            <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              A join link is not available yet. If this persists, contact support so an admin can confirm the Zoom
+              webinar is linked to this program.
+            </p>
+          )}
         </section>
       ) : null}
 
@@ -402,7 +482,7 @@ export default function WebinarDetail() {
         </div>
       </section>
 
-      {enrolled && program.jotformSurveyUrl?.trim() && userId ? (
+      {showPostEventSurvey ? (
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
           <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
           <p className="text-sm text-gray-600">
@@ -412,11 +492,19 @@ export default function WebinarDetail() {
           <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
             <iframe
               title="Post-event survey"
-              src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl, userId, program.id)}
+              src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
               className="w-full h-[480px]"
               allow="camera; microphone"
             />
           </div>
+        </section>
+      ) : enrolled && program.jotformSurveyUrl?.trim() && program.zoomSessionType === 'WEBINAR' ? (
+        <section className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+          <p className="font-medium text-gray-900">Post-event survey</p>
+          <p className="mt-1">
+            The post-event survey will unlock here after the live session ends (or shortly after the scheduled end time
+            if Zoom webhooks are not configured).
+          </p>
         </section>
       ) : null}
 

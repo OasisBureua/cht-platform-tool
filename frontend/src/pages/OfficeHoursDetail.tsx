@@ -6,6 +6,7 @@ import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { ChevronLeft, Video } from 'lucide-react';
 import { format } from 'date-fns';
+import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 
 export default function OfficeHoursDetail() {
   const { id } = useParams<{ id: string }>();
@@ -162,7 +163,7 @@ export default function OfficeHoursDetail() {
           <p className="text-xs text-gray-500">Register once, then join your session directly from here.</p>
         )}
 
-        {enrolled && program?.jotformSurveyUrl?.trim() ? (
+        {enrolled && program?.jotformSurveyUrl?.trim() && program && isPostEventSurveyUnlocked(program) ? (
           <div className="border-t border-gray-200 pt-6 space-y-3">
             <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
             <div className="min-h-[360px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
@@ -173,6 +174,13 @@ export default function OfficeHoursDetail() {
                 allow="camera; microphone"
               />
             </div>
+          </div>
+        ) : enrolled && program?.jotformSurveyUrl?.trim() ? (
+          <div className="border-t border-gray-200 pt-6 text-sm text-gray-600">
+            <p className="font-medium text-gray-900">Post-event survey</p>
+            <p className="mt-1">
+              Unlocks after this office hours session ends in Zoom (or right away if no end time was recorded yet).
+            </p>
           </div>
         ) : null}
       </div>

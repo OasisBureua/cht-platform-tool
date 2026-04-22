@@ -186,6 +186,111 @@ export class SurveysService {
     };
   }
 
+  webinarJotformTemplateConfigMessage(): string {
+    return (
+      'Set JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID (or JOTFORM_WEBINAR_INTAKE_TEMPLATE_FORM_ID), ' +
+      'JOTFORM_API_KEY, and either JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID (single shared post-event form) or ' +
+      'JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID (or legacy JOTFORM_TEMPLATE_FORM_ID) to clone post-event forms per webinar.'
+    );
+  }
+
+  assertJotformConfiguredForWebinarClones(): void {
+    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')?.trim();
+    const postTemplate = this.configService.get<string>('jotform.postEventTemplateFormId')?.trim();
+    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
+    const apiKey = this.configService.get<string>('jotform.apiKey')?.trim();
+    if (!inv || (!sharedPost && !postTemplate)) {
+      throw new BadRequestException(this.webinarJotformTemplateConfigMessage());
+    }
+    if (!apiKey) {
+      throw new BadRequestException(
+        'JOTFORM_API_KEY is required to clone invitation Jotform forms for webinars.',
+      );
+    }
+  }
+
+  /**
+   * Clone invitation + post-event forms from env template IDs, add webhooks, set program intake URL + FEEDBACK survey.
+   */
+  async createWebinarJotformPairFromTemplates(programId: string, programTitle: string) {
+    this.assertJotformConfiguredForWebinarClones();
+    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')!.trim();
+    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
+    await this.createInvitationFormFromJotformTemplate(programId, inv, `${programTitle} - Invitation`);
+    if (sharedPost) {
+      await this.attachSharedPostEventSurvey(programId, programTitle, sharedPost);
+    } else {
+      const post = this.configService.get<string>('jotform.postEventTemplateFormId')!.trim();
+      await this.createSurveyFromJotformTemplate({
+        programId,
+        templateFormId: post,
+        title: `${programTitle} - Post Event Survey`,
+        type: 'FEEDBACK',
+      });
+    }
+  }
+
+  /**
+   * Link program to an existing Jotform for post-event (no clone; webhook should be configured on that form if needed).
+   */
+  private async attachSharedPostEventSurvey(programId: string, programTitle: string, formIdRaw: string) {
+    const program = await this.prisma.program.findUnique({ where: { id: programId } });
+    if (!program) throw new BadRequestException('Program not found');
+
+    const formId = this.normalizeJotformFormId(formIdRaw);
+    if (!formId) {
+      throw new BadRequestException('Invalid JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID');
+    }
+
+    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
+    await this.prisma.survey.create({
+      data: {
+        programId,
+        title: `${programTitle} - Post Event Survey`,
+        jotformFormId: formId,
+        questions: { source: 'jotform', formId, sharedPostEvent: true },
+        type: 'FEEDBACK',
+        required: true,
+      },
+    });
+    await this.prisma.program.update({
+      where: { id: programId },
+      data: { jotformSurveyUrl: jotformFormUrl },
+    });
+    this.logger.log(`Shared post-event Jotform for program ${programId}: form ${formId}`);
+  }
+
+  /** Accepts a numeric id or a full Jotform URL. */
+  private normalizeJotformFormId(raw: string): string {
+    const s = raw.trim();
+    if (!s) return '';
+    const fromUrl = s.match(/jotform\.com\/+(\d+)/i);
+    if (fromUrl?.[1]) return fromUrl[1];
+    return /^\d+$/.test(s) ? s : '';
+  }
+
+  /** Clone a Jotform template for webinar invitation/registration; webhook matches intakes to this program. */
+  async createInvitationFormFromJotformTemplate(
+    programId: string,
+    templateFormId: string,
+    titleHint?: string,
+  ) {
+    const program = await this.prisma.program.findUnique({ where: { id: programId } });
+    if (!program) throw new BadRequestException('Program not found');
+
+    const { formId, title: clonedTitle } = await this.jotformService.cloneForm(templateFormId);
+    await this.jotformService.addWebhook(formId);
+    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
+    await this.prisma.program.update({
+      where: { id: programId },
+      data: { jotformIntakeFormUrl: jotformFormUrl },
+    });
+    this.logger.log(
+      `Invitation Jotform for program ${programId}: form ${formId} (${titleHint ?? clonedTitle})`,
+    );
+    return { formId, jotformFormUrl };
+  }
+
   /**
    * Submit a survey response.
    * Creates SurveyResponse in DB and sends SURVEY_BONUS payment message if configured.

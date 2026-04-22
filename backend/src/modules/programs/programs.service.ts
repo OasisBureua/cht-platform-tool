@@ -165,7 +165,7 @@ export class ProgramsService {
       throw new NotFoundException('Program not found');
     }
 
-    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl');
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
     const intakeForClient = effectiveWebinarIntakeFormUrl(
       program.zoomSessionType,
       program.jotformIntakeFormUrl,
@@ -213,6 +213,7 @@ export class ProgramsService {
       zoomJoinUrl: program.zoomJoinUrl || undefined,
       startDate: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
+      zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),
       jotformSurveyUrl,
       jotformIntakeFormUrl: intakeForClient,
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
@@ -493,5 +494,138 @@ export class ProgramsService {
       },
       orderBy: { enrolledAt: 'desc' },
     });
+  }
+
+  /**
+   * Derived LIVE webinar reminders (no persisted Notification rows).
+   * Invitation: not enrolled, intake URL configured, no intake submission yet.
+   * Post-event: enrolled, session end passed, FEEDBACK survey exists, no response yet.
+   */
+  async getLiveWebinarActionItems(userId: string): Promise<
+    Array<{
+      id: string;
+      kind: 'WEBINAR_INVITATION_SURVEY' | 'WEBINAR_POST_EVENT_SURVEY';
+      title: string;
+      body: string;
+      programId: string;
+      href: string;
+    }>
+  > {
+    const since = new Date();
+    since.setDate(since.getDate() - 90);
+
+    const programs = await this.prisma.program.findMany({
+      where: {
+        status: 'PUBLISHED',
+        zoomSessionType: 'WEBINAR',
+        OR: [{ startDate: null }, { startDate: { gte: since } }],
+      },
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        duration: true,
+        zoomSessionEndedAt: true,
+        jotformIntakeFormUrl: true,
+        jotformPreEventUrl: true,
+        jotformSurveyUrl: true,
+      },
+      orderBy: { startDate: 'desc' },
+      take: 50,
+    });
+
+    if (programs.length === 0) return [];
+
+    const programIds = programs.map((p) => p.id);
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+
+    const [enrollments, registrations, surveys] = await Promise.all([
+      this.prisma.programEnrollment.findMany({
+        where: { userId, programId: { in: programIds } },
+        select: { programId: true },
+      }),
+      this.prisma.programRegistration.findMany({
+        where: { userId, programId: { in: programIds } },
+      }),
+      this.prisma.survey.findMany({
+        where: {
+          programId: { in: programIds },
+          type: 'FEEDBACK',
+        },
+        select: { id: true, programId: true },
+      }),
+    ]);
+
+    const enrolledSet = new Set(enrollments.map((e) => e.programId));
+    const regByProgram = new Map(registrations.map((r) => [r.programId, r]));
+    const feedbackByProgram = new Map(surveys.map((s) => [s.programId, s.id]));
+
+    const feedbackIds = surveys.map((s) => s.id);
+    const responses =
+      feedbackIds.length === 0
+        ? []
+        : await this.prisma.surveyResponse.findMany({
+            where: { userId, surveyId: { in: feedbackIds } },
+            select: { surveyId: true },
+          });
+    const respondedSurveyIds = new Set(responses.map((r) => r.surveyId));
+
+    const items: Array<{
+      id: string;
+      kind: 'WEBINAR_INVITATION_SURVEY' | 'WEBINAR_POST_EVENT_SURVEY';
+      title: string;
+      body: string;
+      programId: string;
+      href: string;
+    }> = [];
+
+    for (const p of programs) {
+      const intakeUrl = effectiveWebinarIntakeFormUrl('WEBINAR', p.jotformIntakeFormUrl, defaultIntake);
+      const enrolled = enrolledSet.has(p.id);
+      const reg = regByProgram.get(p.id);
+
+      if (!enrolled) {
+        if (p.jotformPreEventUrl?.trim()) continue;
+        if (!intakeUrl) continue;
+        if (reg?.status === 'REJECTED') continue;
+        if (reg?.status === 'APPROVED') continue;
+        if (reg?.intakeJotformSubmissionId) continue;
+        items.push({
+          id: `invite-${p.id}`,
+          kind: 'WEBINAR_INVITATION_SURVEY',
+          title: 'Complete invitation survey',
+          body: `LIVE webinar: ${p.title}`,
+          programId: p.id,
+          href: `/app/live/${p.id}`,
+        });
+        continue;
+      }
+
+      const surveyId = feedbackByProgram.get(p.id);
+      if (!surveyId) continue;
+      if (respondedSurveyIds.has(surveyId)) continue;
+
+      const now = new Date();
+      let postSurveyAllowed = false;
+      if (p.zoomSessionEndedAt) {
+        postSurveyAllowed = now >= p.zoomSessionEndedAt;
+      } else if (p.startDate) {
+        const durationMin = p.duration ?? 60;
+        postSurveyAllowed = now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
+      }
+      if (!postSurveyAllowed) continue;
+
+      items.push({
+        id: `post-${p.id}`,
+        kind: 'WEBINAR_POST_EVENT_SURVEY',
+        title: 'Complete post-event survey',
+        body: `Thanks for attending: ${p.title}`,
+        programId: p.id,
+        href: `/app/live/${p.id}`,
+      });
+    }
+
+    return items;
   }
 }

@@ -4,8 +4,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Video, Calendar } from 'lucide-react';
 import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 
-const DEFAULT_JOTFORM_TEMPLATE_ID = '260698533879881';
-
 const TIMEZONES = [
   'America/New_York',
   'America/Chicago',
@@ -42,20 +40,12 @@ export default function AdminWebinarScheduler({
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
   const [duration, setDuration] = useState('60');
-  const [createSurvey, setCreateSurvey] = useState(true);
-  const [jotformTemplateId, setJotformTemplateId] = useState(DEFAULT_JOTFORM_TEMPLATE_ID);
 
   const { data: adminConfig } = useQuery({
     queryKey: ['admin', 'config'],
     queryFn: () => adminApi.getAdminConfig(),
     staleTime: 5 * 60 * 1000,
   });
-
-  useEffect(() => {
-    if (adminConfig?.jotformTemplateFormId && jotformTemplateId === DEFAULT_JOTFORM_TEMPLATE_ID) {
-      setJotformTemplateId(adminConfig.jotformTemplateFormId);
-    }
-  }, [adminConfig?.jotformTemplateFormId, jotformTemplateId]);
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
@@ -69,9 +59,11 @@ export default function AdminWebinarScheduler({
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       if (data?.zoomWarning) {
         setZoomWarning(data.zoomWarning);
-      } else {
-        navigate(successPath);
+        return;
       }
+      navigate(successPath, {
+        state: data?.jotformFormsWarning ? { jotformFormsWarning: data.jotformFormsWarning } : undefined,
+      });
     },
   });
 
@@ -121,7 +113,6 @@ export default function AdminWebinarScheduler({
       timezone,
       zoomSessionType,
       status: 'PUBLISHED',
-      createSurveyFromTemplate: isWebinar && createSurvey ? jotformTemplateId : undefined,
     };
 
     createMutation.mutate(payload);
@@ -135,8 +126,8 @@ export default function AdminWebinarScheduler({
         </h1>
         <p className="text-sm text-gray-600 mt-1">
           {isWebinar
-            ? 'Creates a Zoom Webinar and publishes it. Learners register via the platform Jotform intake (admin approves before Join session). Optional cloned post-event survey when enabled below. Honorarium uses Bill.com.'
-            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). Registrations require admin approval before learners can join. No Jotform survey clone; backend only creates surveys for webinars.'}
+            ? 'Creates a Zoom Webinar and publishes it. The server clones a unique invitation Jotform and post-event Jotform from your template form IDs in environment variables, then wires webhooks. Learners complete invitation before approval; post-event reminders appear after the session. Honorarium uses Bill.com.'
+            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). Registrations require admin approval before learners can join. No automatic Jotform clone for meetings.'}
         </p>
       </div>
 
@@ -311,40 +302,44 @@ export default function AdminWebinarScheduler({
           </div>
 
           {isWebinar && (
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={createSurvey}
-                  onChange={(e) => setCreateSurvey(e.target.checked)}
-                  className="rounded border-gray-300 text-gray-900 focus:ring-gray-900"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  Auto-create post-event survey from Jotform template
-                </span>
-              </label>
-              {createSurvey && (
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-1">Jotform template form ID</label>
-                  <input
-                    type="text"
-                    value={jotformTemplateId}
-                    onChange={(e) => setJotformTemplateId(e.target.value)}
-                    placeholder={DEFAULT_JOTFORM_TEMPLATE_ID}
-                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Not used for Office Hours (MEETING). Template: {DEFAULT_JOTFORM_TEMPLATE_ID}
-                  </p>
-                </div>
+            <div className="text-sm text-gray-700 border border-gray-200 rounded-xl bg-gray-50 px-4 py-3 space-y-2">
+              <p className="font-semibold text-gray-900">Jotform templates (server env)</p>
+              <p>
+                Each new webinar clones an <strong>invitation</strong> form. Post-event can be a{' '}
+                <strong>shared</strong> form (<code className="text-xs bg-white px-1 rounded border">
+                  JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID
+                </code>
+                ) or cloned from{' '}
+                <code className="text-xs bg-white px-1 rounded border">JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID</code>{' '}
+                (legacy <code className="text-xs bg-white px-1 rounded border">JOTFORM_TEMPLATE_FORM_ID</code>). Also set{' '}
+                <code className="text-xs bg-white px-1 rounded border">JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID</code>{' '}
+                and <code className="text-xs bg-white px-1 rounded border">JOTFORM_API_KEY</code>.
+              </p>
+              {adminConfig?.webinarJotformTemplatesConfigured ? (
+                <p className="text-xs text-green-800">
+                  Config detected: invitation{' '}
+                  <span className="font-mono">{adminConfig.jotformInvitationTemplateFormId || '—'}</span>, post-event{' '}
+                  {adminConfig.jotformPostEventSharedFormId ? (
+                    <>
+                      shared <span className="font-mono">{adminConfig.jotformPostEventSharedFormId}</span>
+                    </>
+                  ) : (
+                    <>
+                      clone template <span className="font-mono">{adminConfig.jotformPostEventTemplateFormId || '—'}</span>
+                    </>
+                  )}
+                </p>
+              ) : (
+                <p className="text-xs text-amber-800">
+                  Missing template IDs in server config — scheduling a webinar will return an error until they are set.
+                </p>
               )}
             </div>
           )}
 
           {!isWebinar && (
             <p className="text-sm text-gray-600 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
-              Jotform surveys are only created for <strong>Webinar</strong> sessions. Office Hours are Zoom Meetings
-              only.
+              Office Hours use Zoom Meetings only. Attach optional Jotforms manually in the program hub if needed.
             </p>
           )}
         </div>

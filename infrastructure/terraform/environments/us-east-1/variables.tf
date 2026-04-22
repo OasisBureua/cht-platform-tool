@@ -229,6 +229,13 @@ variable "jotform_webinar_default_intake_url" {
   default     = ""
 }
 
+variable "jotform_webinar_post_event_shared_form_id" {
+  description = "Optional Jotform form ID for shared post-event survey (JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID on ECS)"
+  type        = string
+  sensitive   = false
+  default     = ""
+}
+
 # Bill.com (payment processing - set via TF_VAR_* or dev.tfvars)
 variable "bill_dev_key" {
   description = "Bill.com developer key"

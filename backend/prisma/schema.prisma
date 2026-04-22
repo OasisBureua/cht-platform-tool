@@ -144,7 +144,9 @@ model Program {
   zoomMeetingPassword String?
   zoomJoinUrl       String?
   zoomStartUrl      String?  // For host/KOL
-  
+  /// Set from Zoom meeting.ended / webinar.ended webhooks when configured (preferred for post-event survey timing).
+  zoomSessionEndedAt DateTime?
+
   // Timestamps
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

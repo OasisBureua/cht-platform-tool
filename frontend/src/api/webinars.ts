@@ -1,17 +1,5 @@
 import apiClient from './client';
 
-/** Response from POST /office-hours/:id/meeting-sdk-auth (Zoom embedded join). */
-export interface MeetingSdkAuth {
-  signature: string;
-  sdkKey: string;
-  meetingNumber: string;
-  password: string;
-  userName: string;
-  userEmail: string;
-  /** Webinar registration token from join URL, when present */
-  tk?: string;
-}
-
 export interface WebinarItem {
   id: string;
   title: string;
@@ -46,15 +34,6 @@ export const webinarsApi = {
 
   getOfficeHoursById: async (id: string): Promise<WebinarItem> => {
     const { data } = await apiClient.get<WebinarItem>(`/office-hours/${encodeURIComponent(id)}`);
-    return data;
-  },
-
-  /** Zoom Meeting SDK - enrolled users only; requires backend ZOOM_SDK_KEY / ZOOM_SDK_SECRET. */
-  getMeetingSdkAuth: async (programId: string): Promise<MeetingSdkAuth> => {
-    const { data } = await apiClient.post<MeetingSdkAuth>(
-      `/office-hours/${encodeURIComponent(programId)}/meeting-sdk-auth`,
-      {},
-    );
     return data;
   },
 };

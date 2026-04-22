@@ -83,6 +83,10 @@ export class ProgramResponseDto {
 
   @IsString()
   @IsOptional()
+  zoomSessionEndedAt?: string;
+
+  @IsString()
+  @IsOptional()
   jotformSurveyUrl?: string;
 
   @IsString()

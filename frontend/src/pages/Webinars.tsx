@@ -42,8 +42,8 @@ export default function Webinars() {
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">LIVE</h1>
         <p className="text-sm text-gray-600">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator
-          approves you, use <span className="font-medium text-gray-800">Join session</span> in the app. Honorarium
-          payouts use Bill.com.
+          approves you, use <span className="font-medium text-gray-800">Join session</span> to open Zoom in your browser
+          or the Zoom app. Honorarium payouts use Bill.com.
         </p>
       </header>
 

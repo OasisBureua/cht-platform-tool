@@ -40,8 +40,4 @@ export class CreateProgramDto {
   @IsDateString()
   endDate?: string;
 
-  /** When set, creates a Survey from this Jotform template form ID (clone + webhook). Use for webinars. */
-  @IsOptional()
-  @IsString()
-  createSurveyFromTemplate?: string;
 }

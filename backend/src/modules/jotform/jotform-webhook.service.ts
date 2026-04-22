@@ -188,7 +188,7 @@ export class JotformWebhookService {
     const effective = effectiveWebinarIntakeFormUrl(
       p.zoomSessionType,
       p.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
     );
     if (!effective) return null;
     const parsed = extractJotformFormIdFromUrl(effective);

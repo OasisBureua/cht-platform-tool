@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -19,6 +19,8 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminPrograms() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const jotformScheduleFlash = (location.state as { jotformFormsWarning?: string } | null)?.jotformFormsWarning;
   const isOfficeHours = location.pathname.includes('/office-hours');
   const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
 
@@ -27,8 +29,8 @@ export default function AdminPrograms() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [importZoomId, setImportZoomId] = useState('');
   const [importSponsor, setImportSponsor] = useState('');
-  const [importCloneSurvey, setImportCloneSurvey] = useState(true);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importFormsNotice, setImportFormsNotice] = useState<string | null>(null);
 
   const { data: adminConfig } = useQuery({
     queryKey: ['admin', 'config'],
@@ -56,13 +58,12 @@ export default function AdminPrograms() {
         zoomId: importZoomId.trim(),
         zoomSessionType: zoomFilter,
         sponsorName: importSponsor.trim() || undefined,
-        createSurveyFromTemplate:
-          zoomFilter === 'WEBINAR' && importCloneSurvey && adminConfig?.jotformTemplateFormId
-            ? adminConfig.jotformTemplateFormId
-            : undefined,
       }),
     onSuccess: (data) => {
       setImportError(null);
+      setImportFormsNotice(
+        typeof data?.jotformFormsWarning === 'string' ? data.jotformFormsWarning : null,
+      );
       setImportZoomId('');
       setImportSponsor('');
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
@@ -99,6 +100,18 @@ export default function AdminPrograms() {
 
   return (
     <div className="space-y-6">
+      {jotformScheduleFlash ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>{jotformScheduleFlash}</span>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold text-amber-900 underline"
+            onClick={() => navigate(location.pathname, { replace: true, state: {} })}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -146,7 +159,21 @@ export default function AdminPrograms() {
               If you scheduled a {isOfficeHours ? 'meeting' : 'webinar'} in Zoom outside this app, paste its numeric ID
               to create a platform program with the same registration flow (Jotform intake, admin approval, in-app join).
               The Zoom Server-to-Server app must be on the <strong>same Zoom account</strong> as the session.
+              {!isOfficeHours && (
+                <>
+                  {' '}
+                  For <strong>webinars</strong>, the backend also clones invitation and post-event forms from your Jotform
+                  template env vars (same as scheduling a new webinar).
+                </>
+              )}
             </p>
+            {!isOfficeHours && adminConfig && !adminConfig.webinarJotformTemplatesConfigured ? (
+              <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                Set <code className="text-xs">JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID</code> and{' '}
+                <code className="text-xs">JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID</code> (plus{' '}
+                <code className="text-xs">JOTFORM_API_KEY</code>) before importing webinars.
+              </p>
+            ) : null}
           </div>
         </div>
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
@@ -170,23 +197,13 @@ export default function AdminPrograms() {
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             />
           </label>
-          {!isOfficeHours && (
-            <label className="inline-flex items-center gap-2 text-sm text-gray-800 cursor-pointer pb-2">
-              <input
-                type="checkbox"
-                checked={importCloneSurvey}
-                onChange={(e) => setImportCloneSurvey(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              Clone post-event survey (Jotform template)
-            </label>
-          )}
           <button
             type="button"
             disabled={!importZoomId.trim() || importZoomMutation.isPending}
             onClick={() => {
               importZoomMutation.reset();
               setImportError(null);
+              setImportFormsNotice(null);
               importZoomMutation.mutate();
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
@@ -201,6 +218,11 @@ export default function AdminPrograms() {
         </div>
         {importError && (
           <p className="text-sm text-red-700 rounded-lg bg-red-50 border border-red-200 px-3 py-2">{importError}</p>
+        )}
+        {importFormsNotice && (
+          <p className="text-sm text-amber-900 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+            {importFormsNotice}
+          </p>
         )}
         {importZoomMutation.isSuccess && (
           <p className="text-sm text-green-800 rounded-lg bg-green-50 border border-green-200 px-3 py-2">

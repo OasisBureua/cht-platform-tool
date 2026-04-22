@@ -31,6 +31,8 @@ export interface Program {
   zoomJoinUrl?: string;
   startDate?: string;
   duration?: number;
+  /** ISO timestamp from Zoom session-ended webhooks (preferred for showing post-event survey). */
+  zoomSessionEndedAt?: string;
   jotformSurveyUrl?: string;
   jotformIntakeFormUrl?: string;
   jotformPreEventUrl?: string;
@@ -57,6 +59,15 @@ export interface ProgramRegistrationState {
   reviewedAt?: string;
 }
 
+export type LiveWebinarActionItem = {
+  id: string;
+  kind: 'WEBINAR_INVITATION_SURVEY' | 'WEBINAR_POST_EVENT_SURVEY';
+  title: string;
+  body: string;
+  programId: string;
+  href: string;
+};
+
 export interface Enrollment {
   id: string;
   userId: string;
@@ -77,6 +88,11 @@ export interface Enrollment {
 }
 
 export const programsApi = {
+  getLiveActionItems: async (): Promise<LiveWebinarActionItem[]> => {
+    const { data } = await apiClient.get<LiveWebinarActionItem[]>('/programs/live-action-items');
+    return data ?? [];
+  },
+
   getAll: async (): Promise<Program[]> => {
     try {
       const { data } = await apiClient.get('/programs');

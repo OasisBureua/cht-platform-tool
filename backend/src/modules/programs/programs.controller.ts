@@ -40,6 +40,16 @@ export class ProgramsController {
   }
 
   /**
+   * GET /api/programs/live-action-items
+   * Derived webinar reminders (invitation + post-event Jotform) for the current user.
+   */
+  @Get('live-action-items')
+  @UseGuards(JwtAuthGuard)
+  async getLiveActionItems(@CurrentUser() user: AuthUser) {
+    return this.programsService.getLiveWebinarActionItems(user.userId);
+  }
+
+  /**
    * GET /api/programs/:id/slots — published office-hours time slots (public)
    */
   @Get(':id/slots')

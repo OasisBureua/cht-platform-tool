@@ -112,10 +112,22 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Get admin config (e.g. Jotform template ID for webinar surveys)' })
+  @ApiOperation({
+    summary: 'Get admin config (Jotform webinar template form IDs from env — used when scheduling webinars)',
+  })
   getAdminConfig() {
+    const invitation =
+      this.config.get<string>('jotform.invitationTemplateFormId')?.trim() || '';
+    const postEvent = this.config.get<string>('jotform.postEventTemplateFormId')?.trim() || '';
+    const postEventShared =
+      this.config.get<string>('jotform.postEventSharedFormId')?.trim() || '';
     return {
-      jotformTemplateFormId: this.config.get<string>('jotform.templateFormId') || '260698533879881',
+      jotformInvitationTemplateFormId: invitation,
+      jotformPostEventTemplateFormId: postEvent,
+      jotformPostEventSharedFormId: postEventShared,
+      /** @deprecated use jotformPostEventTemplateFormId */
+      jotformTemplateFormId: postEvent,
+      webinarJotformTemplatesConfigured: !!(invitation && (postEvent || postEventShared)),
     };
   }
 
@@ -173,14 +185,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Create a new program' })
   async createProgram(@Body() dto: CreateProgramDto) {
     const program = await this.programsService.createProgram(dto);
-    if (dto.createSurveyFromTemplate?.trim()) {
-      await this.surveysService.createSurveyFromJotformTemplate({
-        programId: program.id,
-        templateFormId: dto.createSurveyFromTemplate.trim(),
-        title: `${program.title} - Post Event Survey`,
-        type: 'FEEDBACK',
-      });
-    }
+    // Webinar invitation + post-event Jotform clones are created via POST /admin/webinars or Zoom import (WEBINAR).
     return program;
   }
 
@@ -396,7 +401,6 @@ export class AdminController {
         startDate: { type: 'string', description: 'ISO 8601 datetime' },
         duration: { type: 'number', description: 'Duration in minutes' },
         timezone: { type: 'string', default: 'America/New_York' },
-        createSurveyFromTemplate: { type: 'string' },
         status: { type: 'string', enum: ['DRAFT', 'PUBLISHED'], default: 'PUBLISHED' },
         zoomSessionType: { type: 'string', enum: ['WEBINAR', 'MEETING'], default: 'WEBINAR' },
       },
@@ -410,7 +414,6 @@ export class AdminController {
       startDate: string;
       duration: number;
       timezone?: string;
-      createSurveyFromTemplate?: string;
       status?: 'DRAFT' | 'PUBLISHED';
       zoomSessionType?: 'WEBINAR' | 'MEETING';
     },
@@ -458,6 +461,8 @@ export class AdminController {
       }
     }
 
+    let jotformFormsWarning: string | undefined;
+
     const program = await this.programsService.createProgram({
       title: body.title.trim(),
       description: body.description?.trim() || body.title.trim(),
@@ -472,13 +477,14 @@ export class AdminController {
       registrationRequiresApproval: true,
     });
 
-    if (sessionType === 'WEBINAR' && body.createSurveyFromTemplate?.trim()) {
-      await this.surveysService.createSurveyFromJotformTemplate({
-        programId: program.id,
-        templateFormId: body.createSurveyFromTemplate.trim(),
-        title: `${program.title} - Post Event Survey`,
-        type: 'FEEDBACK',
-      });
+    if (sessionType === 'WEBINAR') {
+      try {
+        await this.surveysService.createWebinarJotformPairFromTemplates(program.id, program.title);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Webinar Jotform clone failed for program ${program.id}: ${msg}`);
+        jotformFormsWarning = `Invitation/post-event Jotform forms were not created: ${msg}. Add form URLs in Program hub or fix JOTFORM_* env and retry. Learner signup is not blocked.`;
+      }
     }
 
     return {
@@ -487,6 +493,7 @@ export class AdminController {
       zoomJoinUrl: zoomJoinUrl ?? null,
       zoomStartUrl: zoomStartUrl ?? null,
       ...(zoomError ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` } : {}),
+      ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
     };
   }
 
@@ -507,7 +514,6 @@ export class AdminController {
         zoomId: { type: 'string', description: 'Numeric Zoom webinar or meeting ID' },
         zoomSessionType: { type: 'string', enum: ['WEBINAR', 'MEETING'], default: 'WEBINAR' },
         sponsorName: { type: 'string' },
-        createSurveyFromTemplate: { type: 'string', description: 'Jotform template form ID for cloned post-event survey' },
       },
     },
   })
@@ -517,7 +523,6 @@ export class AdminController {
       zoomId: string;
       zoomSessionType?: 'WEBINAR' | 'MEETING';
       sponsorName?: string;
-      createSurveyFromTemplate?: string;
     },
   ) {
     if (!this.zoom.isConfigured()) {
@@ -564,13 +569,15 @@ export class AdminController {
       registrationRequiresApproval: true,
     });
 
-    if (sessionType === 'WEBINAR' && body.createSurveyFromTemplate?.trim()) {
-      await this.surveysService.createSurveyFromJotformTemplate({
-        programId: program.id,
-        templateFormId: body.createSurveyFromTemplate.trim(),
-        title: `${program.title} - Post Event Survey`,
-        type: 'FEEDBACK',
-      });
+    let jotformFormsWarning: string | undefined;
+    if (sessionType === 'WEBINAR') {
+      try {
+        await this.surveysService.createWebinarJotformPairFromTemplates(program.id, program.title);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Webinar Jotform clone failed for imported program ${program.id}: ${msg}`);
+        jotformFormsWarning = `Invitation/post-event Jotform forms were not created: ${msg}. Add form URLs in Program hub or fix JOTFORM_* env. Learner signup is not blocked.`;
+      }
     }
 
     this.logger.log(`Imported Zoom ${sessionType} ${zoomId} → program ${program.id}`);
@@ -579,6 +586,7 @@ export class AdminController {
       zoomMeetingId: zoomData.id,
       zoomJoinUrl: zoomData.joinUrl,
       zoomStartUrl: zoomData.startUrl,
+      ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
     };
   }
 

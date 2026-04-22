@@ -160,6 +160,10 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.app_secrets_arn}:jotform_webinar_default_intake_url::"
         },
         {
+          name      = "JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID"
+          valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
+        },
+        {
           name      = "BILL_DEV_KEY"
           valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
         },

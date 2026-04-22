@@ -120,7 +120,7 @@ export class ProgramRegistrationsService {
     const intakeUrlConfigured = !!effectiveWebinarIntakeFormUrl(
       program.zoomSessionType,
       program.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
     );
     if (intakeUrlConfigured && !body.intakeJotformSubmissionId?.trim()) {
       throw new BadRequestException(
@@ -196,7 +196,7 @@ export class ProgramRegistrationsService {
     const intakeEffective = effectiveWebinarIntakeFormUrl(
       program.zoomSessionType,
       program.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
     );
     if (!intakeEffective) {
       this.logger.warn(`Intake webhook: program ${programId} has no intake URL configured`);
@@ -345,7 +345,7 @@ export class ProgramRegistrationsService {
     const intakeRequiredForApproval = !!effectiveWebinarIntakeFormUrl(
       reg.program.zoomSessionType,
       reg.program.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl'),
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
     );
     if (
       status === ProgramRegistrationStatus.APPROVED &&

@@ -119,14 +119,25 @@ export default () => ({
   jotform: {
     apiKey: process.env.JOTFORM_API_KEY,
     baseUrl: process.env.JOTFORM_BASE_URL || 'https://communityhealthmedia.jotform.com/API',
-    templateFormId: process.env.JOTFORM_TEMPLATE_FORM_ID || '260698533879881',
+    /** Master Jotform form ID to clone per webinar for invitation / registration (set in env; no hardcoded default). */
+    invitationTemplateFormId:
+      process.env.JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID?.trim() ||
+      process.env.JOTFORM_WEBINAR_INTAKE_TEMPLATE_FORM_ID?.trim() ||
+      '',
+    /** Master Jotform form ID to clone per webinar for post-event survey (ignored when postEventSharedFormId is set). */
+    postEventTemplateFormId:
+      process.env.JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID?.trim() ||
+      process.env.JOTFORM_TEMPLATE_FORM_ID?.trim() ||
+      '',
     /**
-     * When a WEBINAR program has no `jotformIntakeFormUrl` in DB, expose this URL to learners.
-     * Default matches the platform post-event / registration survey clone used for LIVE webinars.
+     * When set, webinars reuse this Jotform form ID for post-event FEEDBACK (no clone/webhook from our API).
+     * Prefer this for a single org-wide post-event form; leave empty to clone from postEventTemplateFormId instead.
      */
-    webinarDefaultIntakeUrl:
-      process.env.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL?.trim() ||
-      'https://communityhealthmedia.jotform.com/261101336364043',
+    postEventSharedFormId: process.env.JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID?.trim() || '',
+    /**
+     * Optional fallback intake URL when a WEBINAR has no per-program `jotformIntakeFormUrl` (prefer per-webinar clones).
+     */
+    webinarDefaultIntakeUrl: process.env.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL?.trim() || '',
     webhookUrl:
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL
@@ -148,9 +159,6 @@ export default () => ({
     clientId: process.env.ZOOM_CLIENT_ID,
     clientSecret: process.env.ZOOM_CLIENT_SECRET,
     webhookSecret: process.env.ZOOM_WEBHOOK_SECRET,
-    /** Meeting SDK (embed in browser) — separate Zoom Marketplace "Meeting SDK" app */
-    sdkKey: process.env.ZOOM_SDK_KEY,
-    sdkSecret: process.env.ZOOM_SDK_SECRET,
   },
 
   // Admin bootstrap (one-time first-admin promotion secret)

@@ -1,27 +1,8 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthUser } from '../../auth/auth.service';
 import { ZoomService } from './zoom.service';
-import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
-
-export interface OfficeHoursMeetingSdkAuthDto {
-  signature: string;
-  sdkKey: string;
-  meetingNumber: string;
-  password: string;
-  userName: string;
-  userEmail: string;
-  /** From join URL when webinar uses registration (`tk` query param). */
-  tk?: string;
-}
 
 export interface WebinarItem {
   id: string;
@@ -57,7 +38,6 @@ export class WebinarsService {
   constructor(
     private zoom: ZoomService,
     private prisma: PrismaService,
-    private zoomMeetingSdk: ZoomMeetingSdkService,
     private config: ConfigService,
   ) {}
 
@@ -92,7 +72,7 @@ export class WebinarsService {
           ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
           : undefined);
 
-      const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl');
+      const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
       items.push({
         id: p.id,
         title: p.title,
@@ -212,7 +192,7 @@ export class WebinarsService {
         ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
         : undefined);
 
-    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl');
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
     return {
       id: program.id,
       title: program.title,
@@ -261,66 +241,4 @@ export class WebinarsService {
     };
   }
 
-  /**
-   * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
-   * Requires published program (webinar or office hours), Zoom meeting/webinar id, and enrollment.
-   */
-  async getOfficeHoursMeetingSdkAuth(authUser: AuthUser, programId: string): Promise<OfficeHoursMeetingSdkAuthDto> {
-    if (!this.zoomMeetingSdk.isConfigured()) {
-      throw new ServiceUnavailableException(
-        'In-browser Zoom is not configured. Set ZOOM_SDK_KEY and ZOOM_SDK_SECRET from a Zoom Meeting SDK app.',
-      );
-    }
-
-    const userId = authUser.userId;
-
-    const enrollment = await this.prisma.programEnrollment.findUnique({
-      where: { userId_programId: { userId, programId } },
-    });
-    if (!enrollment) {
-      throw new ForbiddenException('Register for this session before joining in the app.');
-    }
-
-    const program = await this.prisma.program.findFirst({
-      where: {
-        id: programId,
-        status: 'PUBLISHED',
-        zoomSessionType: { in: ['MEETING', 'WEBINAR'] },
-      },
-    });
-    if (!program?.zoomMeetingId) {
-      throw new BadRequestException('This session has no Zoom meeting ID yet.');
-    }
-
-    const userName = (authUser.name?.trim() || authUser.email || 'Participant').slice(0, 200);
-    const userEmail = (authUser.email || '').trim();
-
-    const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');
-    const password = program.zoomMeetingPassword?.trim() ?? '';
-    const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, 0);
-    const tk = WebinarsService.zoomRegistrationTokenFromJoinUrl(program.zoomJoinUrl);
-
-    return {
-      signature,
-      sdkKey: this.zoomMeetingSdk.getSdkKey(),
-      meetingNumber,
-      password,
-      userName,
-      userEmail,
-      ...(tk ? { tk } : {}),
-    };
-  }
-
-  /** Zoom join links for registered webinars often include `?tk=...`. */
-  private static zoomRegistrationTokenFromJoinUrl(joinUrl: string | null | undefined): string | undefined {
-    if (!joinUrl?.trim()) return undefined;
-    try {
-      const u = new URL(joinUrl.trim());
-      const tk = u.searchParams.get('tk')?.trim();
-      return tk || undefined;
-    } catch {
-      const m = joinUrl.match(/[?&]tk=([^&]+)/i);
-      return m ? decodeURIComponent(m[1]) : undefined;
-    }
-  }
 }

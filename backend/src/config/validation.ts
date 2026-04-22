@@ -53,6 +53,11 @@ export const validationSchema = Joi.object({
   JOTFORM_API_KEY: Joi.string().allow('').optional(),
   JOTFORM_BASE_URL: Joi.string().allow('').optional(),
   JOTFORM_WEBINAR_DEFAULT_INTAKE_URL: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_INTAKE_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
   WEBINARS_LIST_ZOOM_FALLBACK: Joi.string().valid('true', 'false', '1', '0').optional(),
 
   // Zoom (optional – for webinars)
@@ -60,8 +65,6 @@ export const validationSchema = Joi.object({
   ZOOM_CLIENT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_SECRET: Joi.string().allow('').optional(),
   ZOOM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
-  ZOOM_SDK_KEY: Joi.string().allow('').optional(),
-  ZOOM_SDK_SECRET: Joi.string().allow('').optional(),
 
   // HubSpot (optional – CRM contact sync)
   HUBSPOT_ACCESS_TOKEN: Joi.string().allow('').optional(),
