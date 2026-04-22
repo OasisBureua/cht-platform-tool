@@ -162,16 +162,16 @@ export default function AdminPrograms() {
               {!isOfficeHours && (
                 <>
                   {' '}
-                  For <strong>webinars</strong>, the backend also clones invitation and post-event forms from your Jotform
-                  template env vars (same as scheduling a new webinar).
+                  For <strong>webinars</strong>, we create the invitation and post-event Jotforms the same way as when you
+                  schedule a new webinar here, using your organization&apos;s Jotform setup on the server.
                 </>
               )}
             </p>
             {!isOfficeHours && adminConfig && !adminConfig.webinarJotformTemplatesConfigured ? (
               <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Set <code className="text-xs">JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID</code> and{' '}
-                <code className="text-xs">JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID</code> (plus{' '}
-                <code className="text-xs">JOTFORM_API_KEY</code>) before importing webinars.
+                Webinar import isn&apos;t available yet: invitation and post-event Jotform templates (and API access for
+                this environment) need to be configured first. Your technical administrator can set these in deployment
+                settings—the same items required to schedule a new webinar from this admin.
               </p>
             ) : null}
           </div>

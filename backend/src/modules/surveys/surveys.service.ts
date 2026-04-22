@@ -197,9 +197,8 @@ export class SurveysService {
 
   webinarJotformTemplateConfigMessage(): string {
     return (
-      'Set JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID (or JOTFORM_WEBINAR_INTAKE_TEMPLATE_FORM_ID), ' +
-      'JOTFORM_API_KEY, and either JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID (single shared post-event form) or ' +
-      'JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID (or legacy JOTFORM_TEMPLATE_FORM_ID) to clone post-event forms per webinar.'
+      'Webinars need invitation and post-event Jotform setup (or a shared post-event form) plus Jotform API access ' +
+      'configured on the server. Ask your technical administrator to complete this in the deployment environment.'
     );
   }
 
@@ -213,7 +212,7 @@ export class SurveysService {
     }
     if (!apiKey) {
       throw new BadRequestException(
-        'JOTFORM_API_KEY is required to clone invitation Jotform forms for webinars.',
+        'A Jotform API key is required to create webinar invitation forms. Ask your technical administrator to configure it.',
       );
     }
   }

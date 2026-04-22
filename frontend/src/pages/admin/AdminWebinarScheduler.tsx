@@ -301,35 +301,32 @@ export default function AdminWebinarScheduler({
 
           {isWebinar && (
             <div className="text-sm text-gray-700 border border-gray-200 rounded-xl bg-gray-50 px-4 py-3 space-y-2">
-              <p className="font-semibold text-gray-900">Jotform templates (server env)</p>
+              <p className="font-semibold text-gray-900">Registration forms (Jotform)</p>
               <p>
-                Each new webinar clones an <strong>invitation</strong> form. Post-event can be a{' '}
-                <strong>shared</strong> form (<code className="text-xs bg-white px-1 rounded border">
-                  JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID
-                </code>
-                ) or cloned from{' '}
-                <code className="text-xs bg-white px-1 rounded border">JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID</code>{' '}
-                (legacy <code className="text-xs bg-white px-1 rounded border">JOTFORM_TEMPLATE_FORM_ID</code>). Also set{' '}
-                <code className="text-xs bg-white px-1 rounded border">JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID</code>{' '}
-                and <code className="text-xs bg-white px-1 rounded border">JOTFORM_API_KEY</code>.
+                Each webinar gets its own copy of your <strong>invitation</strong> form. The <strong>after-session</strong>{' '}
+                survey is either one <strong>shared</strong> form for every webinar or a new copy from your post-event
+                template—whichever your technical administrator configured. We also need Jotform API access on the server so
+                those forms can be created automatically.
               </p>
               {adminConfig?.webinarJotformTemplatesConfigured ? (
                 <p className="text-xs text-green-800">
-                  Config detected: invitation{' '}
-                  <span className="font-mono">{adminConfig.jotformInvitationTemplateFormId || '—'}</span>, post-event{' '}
+                  This environment looks ready. Invitation template form ID{' '}
+                  <span className="font-mono">{adminConfig.jotformInvitationTemplateFormId || '—'}</span>; post-event{' '}
                   {adminConfig.jotformPostEventSharedFormId ? (
                     <>
-                      shared <span className="font-mono">{adminConfig.jotformPostEventSharedFormId}</span>
+                      using shared form <span className="font-mono">{adminConfig.jotformPostEventSharedFormId}</span>
                     </>
                   ) : (
                     <>
-                      clone template <span className="font-mono">{adminConfig.jotformPostEventTemplateFormId || '—'}</span>
+                      cloning from template <span className="font-mono">{adminConfig.jotformPostEventTemplateFormId || '—'}</span>
                     </>
                   )}
+                  .
                 </p>
               ) : (
                 <p className="text-xs text-amber-800">
-                  Missing template IDs in server config — scheduling a webinar will return an error until they are set.
+                  Jotform templates or API access are not fully configured for this environment. Scheduling a webinar will
+                  fail until your technical administrator finishes setup in deployment settings.
                 </p>
               )}
             </div>

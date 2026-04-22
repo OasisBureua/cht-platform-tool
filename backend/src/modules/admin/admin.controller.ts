@@ -493,7 +493,11 @@ export class AdminController {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(`Webinar Jotform clone failed for program ${program.id}: ${msg}`);
-        jotformFormsWarning = `Invitation/post-event Jotform forms were not created: ${msg}. Add form URLs in Program hub or fix JOTFORM_* env and retry. Learner signup is not blocked.`;
+        jotformFormsWarning =
+          'The webinar was saved, but the invitation and post-event Jotforms were not created automatically. ' +
+          'This usually means Jotform templates or API access still need to be configured for this environment. ' +
+          'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
+          'Learner signup is not blocked.';
       }
     }
 
@@ -586,7 +590,11 @@ export class AdminController {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(`Webinar Jotform clone failed for imported program ${program.id}: ${msg}`);
-        jotformFormsWarning = `Invitation/post-event Jotform forms were not created: ${msg}. Add form URLs in Program hub or fix JOTFORM_* env. Learner signup is not blocked.`;
+        jotformFormsWarning =
+          'The webinar was saved, but the invitation and post-event Jotforms were not created automatically. ' +
+          'This usually means Jotform templates or API access still need to be configured for this environment. ' +
+          'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
+          'Learner signup is not blocked.';
       }
     }
 
