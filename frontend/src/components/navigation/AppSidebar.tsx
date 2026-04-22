@@ -27,7 +27,7 @@ const nav = [
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
-  { to: '/app/payments', label: 'Bill.com', icon: Landmark, end: false },
+  { to: '/app/payments', label: 'Payments', icon: Landmark, end: false },
   { to: '/app/chatbot', label: 'ChatBot', icon: Bot, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },
 ];

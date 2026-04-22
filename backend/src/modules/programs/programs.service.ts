@@ -586,7 +586,6 @@ export class ProgramsService {
       const reg = regByProgram.get(p.id);
 
       if (!enrolled) {
-        if (p.jotformPreEventUrl?.trim()) continue;
         if (!intakeUrl) continue;
         if (reg?.status === 'REJECTED') continue;
         if (reg?.status === 'APPROVED') continue;
@@ -620,9 +619,9 @@ export class ProgramsService {
         id: `post-${p.id}`,
         kind: 'WEBINAR_POST_EVENT_SURVEY',
         title: 'Complete post-event survey',
-        body: `Thanks for attending: ${p.title}`,
+        body: `Open Surveys to finish feedback for: ${p.title}`,
         programId: p.id,
-        href: `/app/live/${p.id}`,
+        href: `/app/surveys/${surveyId}`,
       });
     }
 

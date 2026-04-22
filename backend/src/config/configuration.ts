@@ -115,10 +115,10 @@ export default () => ({
     };
   })(),
 
-  // Jotform (surveys - enterprise at communityhealthmedia.jotform.com; note /API is uppercase)
+  // Jotform — REST API per https://api.jotform.com/docs/ (use EU/HIPAA host or Enterprise …/API via JOTFORM_BASE_URL when required)
   jotform: {
     apiKey: process.env.JOTFORM_API_KEY,
-    baseUrl: process.env.JOTFORM_BASE_URL || 'https://communityhealthmedia.jotform.com/API',
+    baseUrl: process.env.JOTFORM_BASE_URL?.trim() || 'https://api.jotform.com',
     /** Master Jotform form ID to clone per webinar for invitation / registration (set in env; no hardcoded default). */
     invitationTemplateFormId:
       process.env.JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID?.trim() ||

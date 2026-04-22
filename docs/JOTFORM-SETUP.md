@@ -28,7 +28,7 @@ The template (260624911991966) stays unchanged for future clones.
 ## Andrew's Answers (Summary)
 
 1. **Webhooks:** Add `https://testapp.communityhealth.media/api/webhooks/jotform` in Jotform settings to create `SurveyResponse` records.
-2. **API base:** Use **Standard** (`https://api.jotform.com`). Enterprise subdomain is `https://communityhealthmedia.jotform.com` — **not** HIPAA compliant.
+2. **API base:** Per [Jotform API](https://api.jotform.com/docs/), use **`https://api.jotform.com`** (set `JOTFORM_BASE_URL` if empty). EU: `https://eu-api.jotform.com`; Enterprise: `https://<team>.jotform.com/API` when your account requires it.
 3. **Test form:** Andrew created a test form for embed, webhook, and API verification.
 4. **API seat:** Invite sent for separate API integration seat.
 5. **Transaction emails:** No dedicated sending domain yet. Consider subdomain (e.g. `noreply@testapp.communityhealth.media`) or AWS SES short-term.
@@ -53,7 +53,7 @@ https://testapp.communityhealth.media/api/webhooks/jotform
 ### Environment variables
 
 - `JOTFORM_API_KEY` — API key for Jotform (from Andrew).
-- `JOTFORM_BASE_URL` — Optional; defaults to `https://communityhealthmedia.jotform.com/API` for enterprise (note uppercase `/API`).
+- `JOTFORM_BASE_URL` — Optional; defaults to **`https://api.jotform.com`**. Override for EU/HIPAA/Enterprise hosts (see API docs).
 
 ---
 

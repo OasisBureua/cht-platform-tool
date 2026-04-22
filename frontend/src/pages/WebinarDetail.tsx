@@ -21,20 +21,6 @@ function formatMoney(value?: number | null) {
   return `$${value.toLocaleString()}`;
 }
 
-/** Prefill hidden Jotform fields `user_id` and `program_id` (must exist on the form). */
-function buildWebinarIntakeLink(formUrl: string, userId: string, programId: string): string {
-  const raw = formUrl.trim();
-  try {
-    const u = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
-    u.searchParams.set('user_id', userId);
-    u.searchParams.set('program_id', programId);
-    return u.toString();
-  } catch {
-    const sep = raw.includes('?') ? '&' : '?';
-    return `${raw}${sep}user_id=${encodeURIComponent(userId)}&program_id=${encodeURIComponent(programId)}`;
-  }
-}
-
 /** Post-event Jotform: pass `user_id` for webhook attribution (and `program_id` when the form includes it). */
 function buildPostEventSurveyEmbedSrc(formUrl: string, userId: string, programId: string): string {
   const raw = formUrl.trim();
@@ -147,7 +133,7 @@ export default function WebinarDetail() {
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             <p className="font-semibold">Use a scheduled LIVE webinar in the app</p>
             <p className="mt-1 text-amber-900">
-              CME registration, admin approval, and Bill.com honorarium run through platform webinars. Raw Zoom-only
+              CME registration, admin approval, and honorarium payouts run through platform webinars. Raw Zoom-only
               listings do not support that workflow.
             </p>
           </div>
@@ -213,21 +199,12 @@ export default function WebinarDetail() {
     (a) => a.programId === program.id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
   );
 
-  /** Webinar registration survey opens directly in Jotform (webhook writes DB); wizard only if pre-event or slots. */
-  const webinarIntakeOnly =
-    program.zoomSessionType === 'WEBINAR' &&
-    !!program.jotformIntakeFormUrl?.trim() &&
-    !program.jotformPreEventUrl?.trim();
-
-  const intakeSurveyHref =
-    webinarIntakeOnly && userId ? buildWebinarIntakeLink(program.jotformIntakeFormUrl!, userId, program.id) : null;
-
+  /** Intake + payments + approval use the registration wizard; post-event survey unlocks after the live session. */
   const needsRegistrationWizard =
     !!program &&
-    (!!program.jotformPreEventUrl?.trim() ||
-      (program.zoomSessionType === 'MEETING' && slots.length > 0) ||
-      (!webinarIntakeOnly && !!program.jotformIntakeFormUrl?.trim()) ||
-      (!!program.registrationRequiresApproval && !webinarIntakeOnly));
+    ((program.zoomSessionType === 'MEETING' && slots.length > 0) ||
+      !!program.jotformIntakeFormUrl?.trim() ||
+      !!program.registrationRequiresApproval);
 
   const ctaLabel = enrolled
     ? 'Registered'
@@ -263,8 +240,12 @@ export default function WebinarDetail() {
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <p className="font-semibold">Post-event survey</p>
           <p className="mt-1 text-amber-900">
-            Please complete the post-event survey for this webinar. This reminder also appears in the header
-            notifications.
+            Complete the post-event survey on the{' '}
+            <Link to="/app/surveys" className="font-semibold underline">
+              Surveys
+            </Link>{' '}
+            tab (or below on this page). Ensure <strong>Payments</strong> is up to date for honorarium processing. This
+            reminder also appears under the header bell.
           </p>
         </div>
       ) : null}
@@ -324,7 +305,7 @@ export default function WebinarDetail() {
                     : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'}
                 </p>
               </div>
-            ) : webinarIntakeOnly && !enrolled && !userId ? (
+            ) : needsRegistrationWizard && !enrolled && !userId ? (
               <Link
                 to="/login"
                 state={{ from: { pathname: `/app/live/${program.id}` } }}
@@ -332,22 +313,12 @@ export default function WebinarDetail() {
               >
                 Sign in to register
               </Link>
-            ) : webinarIntakeOnly && !enrolled && intakeSurveyHref ? (
-              <a
-                href={intakeSurveyHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-              >
-                Register for session
-                <ExternalLink className="h-4 w-4" />
-              </a>
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
                 to={`/app/live/${program.id}/register`}
                 className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
-                Register (forms & checkout)
+                Register (intake &amp; payments)
               </Link>
             ) : (
               <button
@@ -364,16 +335,14 @@ export default function WebinarDetail() {
               </button>
             )}
 
-            {webinarIntakeOnly && !enrolled && userId ? (
+            {!enrolled && myRegistration?.status !== 'PENDING' && needsRegistrationWizard ? (
               <p className="mt-2 text-xs text-gray-600">
-                Opens your registration survey in a new tab. When you submit, your response is saved automatically;
-                return here and you will see approval status update shortly.
+                Registration includes intake and payout setup (W-9) where applicable. Post-event surveys appear on the
+                Surveys tab after the live session.
               </p>
             ) : null}
-            {!enrolled && myRegistration?.status !== 'PENDING' && !webinarIntakeOnly ? (
-              <p className="mt-2 text-xs text-gray-600">
-                Register to unlock video playback and earn rewards.
-              </p>
+            {!enrolled && myRegistration?.status !== 'PENDING' && !needsRegistrationWizard ? (
+              <p className="mt-2 text-xs text-gray-600">Register to unlock video playback and earn rewards.</p>
             ) : null}
             {enrolled ? (
               <p className="mt-2 text-xs text-gray-600">Complete required steps to earn rewards.</p>
@@ -411,16 +380,16 @@ export default function WebinarDetail() {
 
       {enrolled && program.honorariumAmount ? (
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
-          <h2 className="text-base font-semibold text-gray-900">Bill.com — honorarium</h2>
+          <h2 className="text-base font-semibold text-gray-900">Payments — honorarium</h2>
           <p className="text-sm text-gray-600">
-            Payouts are processed through <strong>Bill.com</strong>. Complete your Bill.com vendor profile and W-9 so
-            admins can pay you after you finish the activity.
+            Complete your <strong>W-9</strong> and payout profile under Payments so admins can send your honorarium after
+            you finish the activity.
           </p>
           <Link
             to="/app/payments"
             className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
           >
-            Open Bill.com setup
+            Open Payments
           </Link>
         </section>
       ) : null}
@@ -451,8 +420,8 @@ export default function WebinarDetail() {
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
           <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
           <p className="text-sm text-gray-600">
-            Complete this Jotform after the live session. Responses are tied to your account for credit and honorarium
-            follow-up through Bill.com.
+            Complete this survey after the live session. Responses are tied to your account for credit and honorarium
+            follow-up (complete W-9 under Payments if you have not already).
           </p>
           <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
             <iframe
@@ -485,7 +454,7 @@ export default function WebinarDetail() {
 
           {myRegistration?.status === 'PENDING' ? (
             <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
-          ) : webinarIntakeOnly && !enrolled && !userId ? (
+          ) : needsRegistrationWizard && !enrolled && !userId ? (
             <Link
               to="/login"
               state={{ from: { pathname: `/app/live/${program.id}` } }}
@@ -493,16 +462,6 @@ export default function WebinarDetail() {
             >
               Sign in
             </Link>
-          ) : webinarIntakeOnly && !enrolled && intakeSurveyHref ? (
-            <a
-              href={intakeSurveyHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
-            >
-              Register
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
               to={`/app/live/${program.id}/register`}

@@ -57,7 +57,6 @@ export default function OfficeHoursDetail() {
     !!program &&
     (program.registrationRequiresApproval ||
       !!program.jotformIntakeFormUrl?.trim() ||
-      !!program.jotformPreEventUrl?.trim() ||
       slots.length > 0);
 
   const enrollMutation = useMutation({

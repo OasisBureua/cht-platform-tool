@@ -25,7 +25,15 @@ export class SurveysService {
     const surveys = await this.prisma.survey.findMany({
       include: {
         program: {
-          select: { id: true, title: true, sponsorName: true },
+          select: {
+            id: true,
+            title: true,
+            sponsorName: true,
+            honorariumAmount: true,
+            creditAmount: true,
+            zoomSessionType: true,
+            startDate: true,
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -53,7 +61,15 @@ export class SurveysService {
       where: { id },
       include: {
         program: {
-          select: { id: true, title: true, sponsorName: true },
+          select: {
+            id: true,
+            title: true,
+            sponsorName: true,
+            honorariumAmount: true,
+            creditAmount: true,
+            zoomSessionType: true,
+            startDate: true,
+          },
         },
       },
     });
@@ -168,7 +184,9 @@ export class SurveysService {
       throw new BadRequestException('Program not found');
     }
 
-    const { formId, title: clonedTitle } = await this.jotformService.cloneForm(dto.templateFormId);
+    const { formId, title: clonedTitle, url: clonedFormUrl } = await this.jotformService.cloneForm(
+      dto.templateFormId,
+    );
     await this.jotformService.addWebhook(formId);
 
     const survey = await this.prisma.survey.create({
@@ -182,7 +200,7 @@ export class SurveysService {
       },
     });
 
-    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
+    const jotformFormUrl = clonedFormUrl;
     await this.prisma.program.update({
       where: { id: dto.programId },
       data: { jotformSurveyUrl: jotformFormUrl },
@@ -286,9 +304,8 @@ export class SurveysService {
     const program = await this.prisma.program.findUnique({ where: { id: programId } });
     if (!program) throw new BadRequestException('Program not found');
 
-    const { formId, title: clonedTitle } = await this.jotformService.cloneForm(templateFormId);
+    const { formId, title: clonedTitle, url: jotformFormUrl } = await this.jotformService.cloneForm(templateFormId);
     await this.jotformService.addWebhook(formId);
-    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
     await this.prisma.program.update({
       where: { id: programId },
       data: { jotformIntakeFormUrl: jotformFormUrl },

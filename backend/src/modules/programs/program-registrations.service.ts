@@ -316,6 +316,7 @@ export class ProgramRegistrationsService {
       include: {
         user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
         slot: true,
+        program: { select: { jotformIntakeFormUrl: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -334,7 +335,17 @@ export class ProgramRegistrationsService {
       },
       include: {
         user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
-        program: { select: { id: true, title: true, jotformIntakeFormUrl: true, zoomSessionType: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            jotformIntakeFormUrl: true,
+            zoomSessionType: true,
+            zoomJoinUrl: true,
+            startDate: true,
+            duration: true,
+          },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });

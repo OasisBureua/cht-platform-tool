@@ -33,6 +33,10 @@ export interface Survey {
     id: string;
     title: string;
     sponsorName?: string;
+    honorariumAmount?: number | null;
+    creditAmount?: number | null;
+    zoomSessionType?: string;
+    startDate?: string | null;
   };
 }
 

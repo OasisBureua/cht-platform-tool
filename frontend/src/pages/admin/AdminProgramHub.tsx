@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { ChevronLeft, Download, Loader2, Plus, Trash2 } from 'lucide-react';
+import { ChevronLeft, Download, ExternalLink, Loader2, Plus, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 export default function AdminProgramHub() {
@@ -46,7 +46,6 @@ export default function AdminProgramHub() {
   });
 
   const [intakeUrl, setIntakeUrl] = useState('');
-  const [preUrl, setPreUrl] = useState('');
   const [hostName, setHostName] = useState('');
   const [requireApproval, setRequireApproval] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<{ ok?: boolean; err?: string }>({});
@@ -55,7 +54,6 @@ export default function AdminProgramHub() {
     if (!program) return;
     const pr = program as Record<string, unknown>;
     setIntakeUrl(String(pr.jotformIntakeFormUrl ?? ''));
-    setPreUrl(String(pr.jotformPreEventUrl ?? ''));
     setHostName(String(pr.hostDisplayName ?? ''));
     setRequireApproval(Boolean(pr.registrationRequiresApproval));
   }, [program]);
@@ -64,7 +62,6 @@ export default function AdminProgramHub() {
     mutationFn: () =>
       adminApi.patchProgramRegistrationSettings(programId!, {
         jotformIntakeFormUrl: intakeUrl.trim() || null,
-        jotformPreEventUrl: preUrl.trim() || null,
         hostDisplayName: hostName.trim() || null,
         registrationRequiresApproval: requireApproval,
       }),
@@ -196,8 +193,9 @@ export default function AdminProgramHub() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Program hub, Jotform URLs, office-hours slots and registration queue, webinar enrollments, extra form links,
-          and calendar invites.
+          Program hub: intake Jotform, office-hours slots, registration queue, enrollments, extra form links, and
+          calendar invites. Post-event surveys are FEEDBACK-type surveys (learners complete them on the Surveys tab after
+          the session).
         </p>
         <p className="mt-2 text-xs text-gray-500">
           Enrollments: {String((p._count as { enrollments?: number })?.enrollments ?? '-')} · Registrations:{' '}
@@ -208,23 +206,17 @@ export default function AdminProgramHub() {
       <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Registration & forms</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <label className="block text-sm">
-            <span className="font-medium text-gray-700">Jotform intake URL</span>
+          <label className="block text-sm md:col-span-2">
+            <span className="font-medium text-gray-700">Jotform intake URL (registration)</span>
             <input
               value={intakeUrl}
               onChange={(e) => setIntakeUrl(e.target.value)}
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
               placeholder="https://form.jotform.com/..."
             />
-          </label>
-          <label className="block text-sm">
-            <span className="font-medium text-gray-700">Pre-event Jotform URL</span>
-            <input
-              value={preUrl}
-              onChange={(e) => setPreUrl(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              placeholder="https://form.jotform.com/..."
-            />
+            <span className="mt-1 block text-xs text-gray-500">
+              Pre-event forms are deprecated — use this intake for registration; use a FEEDBACK survey for post-event.
+            </span>
           </label>
           <label className="block text-sm">
             <span className="font-medium text-gray-700">Host display name</span>
@@ -450,78 +442,90 @@ export default function AdminProgramHub() {
                               <div className="text-xs text-gray-500">{r.user.email}</div>
                             </td>
                             <td className="py-2 pr-4 font-medium">{r.status}</td>
-                            <td className="py-2 pr-4 text-gray-600">
-                              {!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}
-                            </td>
-                            <td className="py-2 pr-4">
-                              <div className="flex flex-wrap gap-2">
-                                {r.status === 'PENDING' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={!canApprove || approveMut.isPending}
-                                      title={
-                                        !canApprove
-                                          ? 'Intake Jotform submission ID required before approval'
-                                          : undefined
-                                      }
-                                      onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
-                                      className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                                    >
-                                      Approve
-                                    </button>
-                                    {intakeRequired && !intakeOk && (
-                                      <button
-                                        type="button"
-                                        disabled={approveMut.isPending}
-                                        title="Supersede intake requirement and approve without a Jotform submission ID on file"
-                                        onClick={() => {
-                                          if (
-                                            !window.confirm(
-                                              'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
-                                            )
-                                          ) {
-                                            return;
-                                          }
-                                          approveMut.mutate({
-                                            id: r.id,
-                                            status: 'APPROVED',
-                                            bypassIntakeRequirement: true,
-                                          });
-                                        }}
-                                        className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
-                                      >
-                                        Supersede &amp; approve anyway
-                                      </button>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
-                                      className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
-                                    >
-                                      Reject
-                                    </button>
-                                  </>
-                                )}
-                                {r.status === 'APPROVED' && (
+                          <td className="py-2 pr-4 text-gray-600">
+                            <div className="space-y-1">
+                              <span>{!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}</span>
+                              {r.jotformIntakeSubmissionViewUrl ? (
+                                <a
+                                  href={r.jotformIntakeSubmissionViewUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+                                >
+                                  View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
+                                </a>
+                              ) : null}
+                            </div>
+                          </td>
+                          <td className="py-2 pr-4">
+                            <div className="flex flex-wrap gap-2">
+                              {r.status === 'PENDING' && (
+                                <>
                                   <button
                                     type="button"
-                                    onClick={() => void downloadIcs(r.id)}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                                    disabled={!canApprove || approveMut.isPending}
+                                    title={
+                                      !canApprove
+                                        ? 'Intake Jotform submission ID required before approval'
+                                        : undefined
+                                    }
+                                    onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
+                                    className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                   >
-                                    <Download className="h-3 w-3" /> ICS invite
+                                    Approve
                                   </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
-                </div>
-              )}
+                                  {intakeRequired && !intakeOk && (
+                                    <button
+                                      type="button"
+                                      disabled={approveMut.isPending}
+                                      title="Supersede intake requirement and approve without a Jotform submission ID on file"
+                                      onClick={() => {
+                                        if (
+                                          !window.confirm(
+                                            'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
+                                          )
+                                        ) {
+                                          return;
+                                        }
+                                        approveMut.mutate({
+                                          id: r.id,
+                                          status: 'APPROVED',
+                                          bypassIntakeRequirement: true,
+                                        });
+                                      }}
+                                      className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
+                                    >
+                                      Supersede &amp; approve anyway
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
+                                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                                  >
+                                    Reject
+                                  </button>
+                                </>
+                              )}
+                              {r.status === 'APPROVED' && (
+                                <button
+                                  type="button"
+                                  onClick={() => void downloadIcs(r.id)}
+                                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                                >
+                                  <Download className="h-3 w-3" /> ICS invite
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
+              </div>
+            )}
             </>
           ) : (
             <>
@@ -631,7 +635,19 @@ export default function AdminProgramHub() {
                               : '-'}
                           </td>
                           <td className="py-2 pr-4 text-gray-600">
-                            {!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}
+                            <div className="space-y-1">
+                              <span>{!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}</span>
+                              {r.jotformIntakeSubmissionViewUrl ? (
+                                <a
+                                  href={r.jotformIntakeSubmissionViewUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+                                >
+                                  View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
+                                </a>
+                              ) : null}
+                            </div>
                           </td>
                           <td className="py-2 pr-4">
                             <div className="flex flex-wrap gap-2">

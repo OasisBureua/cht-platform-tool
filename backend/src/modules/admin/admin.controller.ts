@@ -34,6 +34,7 @@ import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
+import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -650,6 +651,10 @@ export class AdminController {
       createdAt: r.createdAt.toISOString(),
       intakeJotformSubmissionId: r.intakeJotformSubmissionId,
       intakeComplete: !!r.intakeJotformSubmissionId?.trim(),
+      jotformIntakeSubmissionViewUrl: buildJotformIntakeSubmissionViewUrl(
+        r.program.jotformIntakeFormUrl,
+        r.intakeJotformSubmissionId,
+      ),
       user: r.user,
       program: r.program,
     }));
@@ -690,6 +695,10 @@ export class AdminController {
       calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
       adminNotes: r.adminNotes,
       intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+      jotformIntakeSubmissionViewUrl: buildJotformIntakeSubmissionViewUrl(
+        r.program.jotformIntakeFormUrl,
+        r.intakeJotformSubmissionId,
+      ),
       user: r.user,
       slot: r.slot
         ? {

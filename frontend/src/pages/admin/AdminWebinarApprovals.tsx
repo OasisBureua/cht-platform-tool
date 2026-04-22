@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
+import { ExternalLink } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
@@ -56,8 +57,8 @@ export default function AdminWebinarApprovals() {
           Pending registration requests for published webinars and CHM Office Hours. For programs with a Jotform intake
           URL, approve after a submission ID is on file when possible. Use{' '}
           <strong>Supersede &amp; approve anyway</strong> only if you verified the learner another way. Learners can join
-          via Zoom after approval. If you <strong>reject</strong> someone, they can go through registration again; their
-          request returns to pending when they resubmit.
+          via Zoom after approval. If you <strong>reject</strong> someone, they can register again; their request
+          returns to pending when they resubmit.
         </p>
       </div>
 
@@ -70,6 +71,7 @@ export default function AdminWebinarApprovals() {
               <th className="py-3 px-4">User</th>
               <th className="py-3 px-4">Submitted</th>
               <th className="py-3 px-4">Intake</th>
+              <th className="py-3 px-4">Jotform</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
@@ -113,6 +115,20 @@ export default function AdminWebinarApprovals() {
                       </span>
                     ) : (
                       <span className="text-gray-500">—</span>
+                    )}
+                  </td>
+                  <td className="py-3 px-4">
+                    {r.jotformIntakeSubmissionViewUrl ? (
+                      <a
+                        href={r.jotformIntakeSubmissionViewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+                      >
+                        View answers <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 text-xs">—</span>
                     )}
                   </td>
                   <td className="py-3 px-4">

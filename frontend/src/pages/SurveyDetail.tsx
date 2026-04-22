@@ -11,8 +11,13 @@ function typeLabel(type?: Survey['type']) {
   if (!type) return 'Survey';
   if (type === 'PRE_TEST') return 'Pre-test';
   if (type === 'POST_TEST') return 'Post-test';
-  if (type === 'FEEDBACK') return 'Feedback';
+  if (type === 'FEEDBACK') return 'Post-event';
   return 'Survey';
+}
+
+function formatHonorarium(cents?: number | null) {
+  if (cents == null || cents <= 0) return null;
+  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 export default function SurveyDetail() {
@@ -91,6 +96,26 @@ export default function SurveyDetail() {
         <p className="text-sm text-gray-600 max-w-3xl">
           {survey.description || 'Complete this survey to contribute your perspective.'}
         </p>
+        {survey.type === 'FEEDBACK' ? (
+          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 max-w-3xl">
+            <p className="font-semibold text-gray-900">Payments</p>
+            <p className="mt-1">
+              Post-event surveys are tied to CME credit and honorarium processing. Complete your{' '}
+              <strong>W-9</strong> and payout profile under{' '}
+              <Link to="/app/payments" className="font-semibold text-gray-900 underline">
+                Payments
+              </Link>{' '}
+              so admins can pay you after the activity.
+              {formatHonorarium(survey.program?.honorariumAmount) ? (
+                <>
+                  {' '}
+                  Listed honorarium for this program:{' '}
+                  <strong>{formatHonorarium(survey.program?.honorariumAmount)}</strong>.
+                </>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
       </header>
 
       {/* Main */}

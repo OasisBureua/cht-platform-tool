@@ -6,7 +6,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { ChevronLeft, ExternalLink, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 
-type StepKey = 'intake' | 'pre' | 'bill' | 'slot' | 'submit';
+type StepKey = 'intake' | 'bill' | 'slot' | 'submit';
 
 /** Jotform thank-you / redirect URLs often pass one of these query keys with the submission id. */
 function readIntakeSubmissionIdFromSearch(search: string): string | undefined {
@@ -21,7 +21,6 @@ function readIntakeSubmissionIdFromSearch(search: string): string | undefined {
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
   if (p.jotformIntakeFormUrl?.trim()) steps.push('intake');
-  if (p.jotformPreEventUrl?.trim()) steps.push('pre');
   steps.push('bill');
   if (hasSlots) steps.push('slot');
   steps.push('submit');
@@ -131,8 +130,9 @@ export default function ProgramRegisterWizard() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Complete the steps in one place: Jotform (workflow), optional Bill.com vendor setup, then time slot if
-          applicable. You can embed these URLs in Jotform thank-you pages to return here:{' '}
+          Complete intake (if required), then <strong>Payments</strong> (W-9 and bank details for honoraria), then time
+          slot when applicable. Post-event surveys are available on the <strong>Surveys</strong> tab after the live
+          session. Embed this URL in Jotform thank-you pages to return here:{' '}
           <span className="font-mono text-xs break-all">{returnUrl}</span>
         </p>
 
@@ -146,7 +146,7 @@ export default function ProgramRegisterWizard() {
               ].join(' ')}
             >
               {i + 1}.{' '}
-              {s === 'intake' ? 'Intake' : s === 'pre' ? 'Pre-event' : s === 'bill' ? 'Bill.com' : s === 'slot' ? 'Pick a time' : 'Submit'}
+              {s === 'intake' ? 'Intake' : s === 'bill' ? 'Payments (W-9)' : s === 'slot' ? 'Pick a time' : 'Submit'}
             </li>
           ))}
         </ol>
@@ -183,26 +183,12 @@ export default function ProgramRegisterWizard() {
             </div>
           )}
 
-          {current === 'pre' && program.jotformPreEventUrl && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Pre-event survey</p>
-              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                <iframe
-                  title="Pre-event survey"
-                  src={jotformAppendReturn(program.jotformPreEventUrl)}
-                  className="h-[480px] w-full"
-                  allow="camera; microphone; payment"
-                />
-              </div>
-            </div>
-          )}
-
           {current === 'bill' && (
             <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-sm font-semibold text-gray-900">Vendor & payments (Bill.com)</p>
+              <p className="text-sm font-semibold text-gray-900">Payments — W-9 and payout profile</p>
               <p className="text-sm text-gray-600">
-                If this program requires payment setup, open Bill.com in a new tab, complete onboarding, then return here
-                and continue. This keeps Jotform and Bill.com in one guided flow without mixing iframes.
+                Complete your W-9 and payout setup so we can process honoraria after the activity. Open Payments in a new
+                tab, finish onboarding, then return here and continue.
               </p>
               <a
                 href="/app/payments"
@@ -210,7 +196,7 @@ export default function ProgramRegisterWizard() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
               >
-                Open Bill.com setup
+                Open Payments
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
