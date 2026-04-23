@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, Instagram, Menu, X } from 'lucide-react';
 import ChatBubble from '../components/ChatBubble';
