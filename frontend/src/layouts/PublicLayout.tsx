@@ -211,7 +211,7 @@ export default function PublicLayout() {
               </address>
               <div className="flex gap-4">
                 <a
-                  href="https://instagram.com"
+                  href="https://www.instagram.com/healthinourhands_/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
@@ -220,7 +220,7 @@ export default function PublicLayout() {
                   <Instagram className="h-5 w-5" />
                 </a>
                 <a
-                  href="https://youtube.com"
+                  href="https://youtube.com/@CommunityHealthMedia/videos"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
