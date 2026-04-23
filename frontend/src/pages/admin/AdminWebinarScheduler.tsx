@@ -40,6 +40,7 @@ export default function AdminWebinarScheduler({
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
   const [duration, setDuration] = useState('60');
+  const [postEventJotformFormIdOrUrl, setPostEventJotformFormIdOrUrl] = useState('');
 
   const { data: adminConfig } = useQuery({
     queryKey: ['admin', 'config'],
@@ -57,6 +58,8 @@ export default function AdminWebinarScheduler({
     mutationFn: (payload: CreateWebinarPayload) => adminApi.createWebinar(payload),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+      queryClient.invalidateQueries({ queryKey: ['surveys'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
       if (data?.zoomWarning) {
         setZoomWarning(data.zoomWarning);
         return;
@@ -113,6 +116,9 @@ export default function AdminWebinarScheduler({
       timezone,
       zoomSessionType,
       status: 'PUBLISHED',
+      ...(postEventJotformFormIdOrUrl.trim()
+        ? { postEventJotformFormIdOrUrl: postEventJotformFormIdOrUrl.trim() }
+        : {}),
     };
 
     createMutation.mutate(payload);
@@ -299,14 +305,44 @@ export default function AdminWebinarScheduler({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-1">
+              Post-event survey (Jotform){' '}
+              <span className="font-normal text-gray-500">— optional</span>
+            </label>
+            <input
+              type="text"
+              value={postEventJotformFormIdOrUrl}
+              onChange={(e) => setPostEventJotformFormIdOrUrl(e.target.value)}
+              placeholder="e.g. 241234567890123 or https://form.jotform.com/241234567890123"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+            <p className="mt-1 text-xs text-gray-600">
+              When set, this form is saved as the <strong>post-event</strong> survey for the session and appears in the
+              learner <strong>Surveys</strong> tab (and admin Surveys). Webhook should point at this app if you want
+              responses stored automatically.
+            </p>
+            {isWebinar ? (
+              <p className="mt-1 text-xs text-gray-600">
+                For <strong>webinars</strong>, filling this in uses your form instead of the environment default post-event
+                template or shared form. The invitation form is still cloned from the template when Jotform API access is
+                configured.
+              </p>
+            ) : (
+              <p className="mt-1 text-xs text-gray-600">
+                For <strong>office hours</strong>, there is no automatic Jotform clone—use this field or Program hub to
+                attach feedback.
+              </p>
+            )}
+          </div>
+
           {isWebinar && (
             <div className="text-sm text-gray-700 border border-gray-200 rounded-xl bg-gray-50 px-4 py-3 space-y-2">
-              <p className="font-semibold text-gray-900">Registration forms (Jotform)</p>
+              <p className="font-semibold text-gray-900">Registration intake (Jotform)</p>
               <p>
-                Each webinar gets its own copy of your <strong>invitation</strong> form. The <strong>after-session</strong>{' '}
-                survey is either one <strong>shared</strong> form for every webinar or a new copy from your post-event
-                template—whichever your technical administrator configured. We also need Jotform API access on the server so
-                those forms can be created automatically.
+                Each webinar gets its own copy of your <strong>invitation / intake</strong> form when the server can call
+                the Jotform API. If you did not set a post-event form above, the <strong>after-session</strong> survey comes
+                from your environment&apos;s shared form or post-event template.
               </p>
               {adminConfig?.webinarJotformTemplatesConfigured ? (
                 <p className="text-xs text-green-800">
@@ -325,8 +361,9 @@ export default function AdminWebinarScheduler({
                 </p>
               ) : (
                 <p className="text-xs text-amber-800">
-                  Jotform templates or API access are not fully configured for this environment. Scheduling a webinar will
-                  fail until your technical administrator finishes setup in deployment settings.
+                  Jotform templates or API access are not fully configured for this environment. You can still save a
+                  post-event form above; invitation cloning may need your technical administrator to finish deployment
+                  setup.
                 </p>
               )}
             </div>
@@ -334,7 +371,7 @@ export default function AdminWebinarScheduler({
 
           {!isWebinar && (
             <p className="text-sm text-gray-600 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
-              Office Hours use Zoom Meetings only. Attach optional Jotforms manually in the program hub if needed.
+              Office Hours use Zoom Meetings. Optional intake or other links can be set in Program hub.
             </p>
           )}
         </div>

@@ -50,8 +50,6 @@ import Earnings from './pages/Earnings';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
-import ChmDocs from './pages/ChmDocs';
-import Podcasts from './pages/Podcasts';
 import DiseaseAreas from './pages/DiseaseAreas';
 
 // =======================
@@ -167,8 +165,8 @@ function App() {
             <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
-            {/* CHM Docs */}
-            <Route path="chm-docs" element={<ChmDocs />} />
+            {/* CHM Docs + Podcasts: hidden from nav; direct URLs redirect home */}
+            <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
 
             {/* Disease Areas */}
             <Route path="disease-areas" element={<DiseaseAreas />} />
@@ -177,8 +175,7 @@ function App() {
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
-            {/* Podcasts */}
-            <Route path="podcasts" element={<Podcasts />} />
+            <Route path="podcasts" element={<Navigate to="/app/home" replace />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />
             <Route path="watch" element={<Navigate to="/app/catalog" replace />} />

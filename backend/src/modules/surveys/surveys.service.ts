@@ -5,6 +5,7 @@ import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { JotformService } from '../jotform/jotform.service';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
+import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
 
 @Injectable()
 export class SurveysService {
@@ -90,6 +91,33 @@ export class SurveysService {
       createdAt: survey.createdAt.toISOString(),
       updatedAt: survey.updatedAt.toISOString(),
       program: survey.program,
+    };
+  }
+
+  /**
+   * Whether the user already has a stored response (native submit or Jotform webhook).
+   */
+  async getMyResponseStatus(
+    surveyId: string,
+    userId: string,
+  ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> {
+    const survey = await this.prisma.survey.findUnique({
+      where: { id: surveyId },
+      select: { id: true },
+    });
+    if (!survey) throw new NotFoundException('Survey not found');
+
+    const row = await this.prisma.surveyResponse.findUnique({
+      where: { userId_surveyId: { userId, surveyId } },
+      select: { id: true, submittedAt: true },
+    });
+    if (!row) {
+      return { submitted: false };
+    }
+    return {
+      submitted: true,
+      responseId: row.id,
+      submittedAt: row.submittedAt.toISOString(),
     };
   }
 
@@ -233,6 +261,73 @@ export class SurveysService {
         'A Jotform API key is required to create webinar invitation forms. Ask your technical administrator to configure it.',
       );
     }
+  }
+
+  /** Invitation clone only (used when admin supplies a manual post-event Jotform). */
+  private assertJotformInvitationCloneRequirements(): void {
+    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')?.trim();
+    if (!inv) {
+      throw new BadRequestException(this.webinarJotformTemplateConfigMessage());
+    }
+    if (!this.configService.get<string>('jotform.apiKey')?.trim()) {
+      throw new BadRequestException(
+        'A Jotform API key is required to create webinar invitation forms. Ask your technical administrator to configure it.',
+      );
+    }
+  }
+
+  /**
+   * Link an existing Jotform as the program post-event (FEEDBACK) survey; replaces any FEEDBACK rows for this program.
+   * Ensures the survey appears in GET /surveys and learners see it after the session.
+   */
+  async applyManualPostEventJotform(programId: string, programTitle: string, formIdOrUrl: string) {
+    const program = await this.prisma.program.findUnique({ where: { id: programId } });
+    if (!program) throw new BadRequestException('Program not found');
+
+    const trimmed = formIdOrUrl.trim();
+    const formId =
+      this.normalizeJotformFormId(trimmed) || extractJotformFormIdFromUrl(trimmed) || '';
+    if (!formId) {
+      throw new BadRequestException(
+        'Enter a valid Jotform form ID or form URL for the post-event survey (e.g. 123456789012345).',
+      );
+    }
+
+    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
+
+    await this.prisma.survey.deleteMany({ where: { programId, type: 'FEEDBACK' } });
+
+    await this.prisma.survey.create({
+      data: {
+        programId,
+        title: `${programTitle} - Post Event Survey`,
+        jotformFormId: formId,
+        questions: { source: 'jotform', formId, manualPostEvent: true },
+        type: 'FEEDBACK',
+        required: true,
+      },
+    });
+
+    await this.prisma.program.update({
+      where: { id: programId },
+      data: { jotformSurveyUrl: jotformFormUrl },
+    });
+
+    this.logger.log(`Manual post-event Jotform for program ${programId}: form ${formId}`);
+  }
+
+  /**
+   * Clone invitation from template, then attach admin-provided post-event form (skips env post-event template/shared).
+   */
+  async createWebinarInvitationAndManualPostSurvey(
+    programId: string,
+    programTitle: string,
+    postEventFormIdOrUrl: string,
+  ) {
+    this.assertJotformInvitationCloneRequirements();
+    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')!.trim();
+    await this.createInvitationFormFromJotformTemplate(programId, inv, `${programTitle} - Invitation`);
+    await this.applyManualPostEventJotform(programId, programTitle, postEventFormIdOrUrl);
   }
 
   /**

@@ -19,6 +19,16 @@ export class SurveysController {
   }
 
   /**
+   * GET /api/surveys/:id/my-response
+   * Whether the current user has a saved response (including via Jotform webhook).
+   */
+  @Get(':id/my-response')
+  @UseGuards(JwtAuthGuard)
+  async getMyResponse(@CurrentUser() user: AuthUser, @Param('id') surveyId: string) {
+    return this.surveysService.getMyResponseStatus(surveyId, user.userId);
+  }
+
+  /**
    * GET /api/surveys/:id
    * Get survey by ID (public)
    */

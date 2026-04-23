@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -34,6 +34,33 @@ export default function SurveyDetail() {
     enabled: Boolean(id),
   });
 
+  const hasJotform = Boolean(survey?.jotformFormId);
+  const baseUrl = survey
+    ? survey.jotformFormUrl ??
+      (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null)
+    : null;
+  const jotformFormUrl = baseUrl;
+  const jotformEmbedUrl = useMemo(() => {
+    if (!baseUrl || !survey) return null;
+    const q = new URLSearchParams();
+    if (userId) q.set('user_id', userId);
+    if (survey.programId) q.set('program_id', survey.programId);
+    const join = baseUrl.includes('?') ? '&' : '?';
+    const suffix = q.toString();
+    return suffix ? `${baseUrl}${join}${suffix}` : baseUrl;
+  }, [baseUrl, userId, survey]);
+
+  const { data: myResponse } = useQuery({
+    queryKey: ['survey', id, 'my-response'],
+    queryFn: () => surveysApi.getMyResponse(id!),
+    enabled: Boolean(id && userId && survey),
+    refetchInterval: (q) => {
+      if (!hasJotform || !started || q.state.data?.submitted) return false;
+      return 4000;
+    },
+  });
+  const surveySaved = Boolean(myResponse?.submitted);
+
   const submitMutation = useMutation({
     mutationFn: async () => {
       // UI-only placeholder submission payload (answers empty for now)
@@ -44,6 +71,7 @@ export default function SurveyDetail() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
+      queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
     },
   });
 
@@ -65,14 +93,6 @@ export default function SurveyDetail() {
       </div>
     );
   }
-
-  const hasJotform = Boolean(survey.jotformFormId);
-  const baseUrl = survey.jotformFormUrl ?? (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null);
-  const jotformFormUrl = baseUrl;
-  // Append user_id so Jotform webhook can associate response with logged-in user
-  const jotformEmbedUrl = baseUrl && userId
-    ? `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}user_id=${encodeURIComponent(userId)}`
-    : baseUrl;
 
   return (
     <div className="space-y-8">
@@ -96,25 +116,11 @@ export default function SurveyDetail() {
         <p className="text-sm text-gray-600 max-w-3xl">
           {survey.description || 'Complete this survey to contribute your perspective.'}
         </p>
-        {survey.type === 'FEEDBACK' ? (
-          <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 max-w-3xl">
-            <p className="font-semibold text-gray-900">Payments</p>
-            <p className="mt-1">
-              Post-event surveys are tied to CME credit and honorarium processing. Complete your{' '}
-              <strong>W-9</strong> and payout profile under{' '}
-              <Link to="/app/payments" className="font-semibold text-gray-900 underline">
-                Payments
-              </Link>{' '}
-              so admins can pay you after the activity.
-              {formatHonorarium(survey.program?.honorariumAmount) ? (
-                <>
-                  {' '}
-                  Listed honorarium for this program:{' '}
-                  <strong>{formatHonorarium(survey.program?.honorariumAmount)}</strong>.
-                </>
-              ) : null}
-            </p>
-          </div>
+        {survey.type === 'FEEDBACK' && formatHonorarium(survey.program?.honorariumAmount) ? (
+          <p className="text-sm text-gray-600 max-w-3xl">
+            Listed honorarium for this program:{' '}
+            <strong>{formatHonorarium(survey.program?.honorariumAmount)}</strong>.
+          </p>
         ) : null}
       </header>
 
@@ -125,21 +131,51 @@ export default function SurveyDetail() {
           {/* Start / Embed */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
             {!started ? (
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
-                <button
-                  onClick={() => setStarted(true)}
-                  className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-                >
-                  Start survey <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-              </div>
+              surveySaved && hasJotform ? (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                    Your responses are saved. Thank you for completing this survey.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setStarted(true)}
+                    className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                  >
+                    Open embedded form
+                  </button>
+                </div>
+              ) : surveySaved && !hasJotform ? (
+                <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  Your responses are saved. Thank you for completing this survey.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
+                  <button
+                    type="button"
+                    onClick={() => setStarted(true)}
+                    className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                  >
+                    Start survey <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
+              )
             ) : null}
 
             {started ? (
               <div>
                 {hasJotform && jotformEmbedUrl ? (
                   <div className="space-y-4">
+                    {surveySaved ? (
+                      <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                        Your responses are saved. Thank you for completing this survey.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        After you submit the form below, this page will update automatically when we receive your
+                        responses (usually within a few seconds).
+                      </p>
+                    )}
                     <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white">
                       <iframe
                         src={jotformEmbedUrl}

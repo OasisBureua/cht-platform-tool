@@ -72,4 +72,12 @@ export const surveysApi = {
     });
     return data;
   },
+
+  /** Auth required. Reflects Jotform webhook-created rows as well as native submit. */
+  getMyResponse: async (
+    id: string,
+  ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> => {
+    const { data } = await apiClient.get(`/surveys/${id}/my-response`);
+    return data;
+  },
 };

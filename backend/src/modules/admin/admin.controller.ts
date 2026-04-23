@@ -337,6 +337,44 @@ export class AdminController {
     return updated;
   }
 
+  @Delete('users/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Delete an HCP or KOL user',
+    description:
+      'Removes the user and cascaded data (enrollments, registrations, etc.). Admin accounts cannot be deleted. You cannot delete yourself.',
+  })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  async deleteParticipantUser(@Param('userId') userId: string, @CurrentUser() admin: AuthUser) {
+    if (userId === admin.userId) {
+      throw new BadRequestException('You cannot delete your own account.');
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, email: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (target.role === UserRole.ADMIN) {
+      throw new ForbiddenException('Admin accounts cannot be deleted from the portal.');
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.programRegistration.updateMany({
+        where: { reviewedByUserId: userId },
+        data: { reviewedByUserId: null },
+      });
+      await tx.webinarParticipantEvent.updateMany({
+        where: { userId },
+        data: { userId: null },
+      });
+      await tx.user.delete({ where: { id: userId } });
+    });
+    this.logger.log(`Admin ${admin.userId} deleted user ${userId} (${target.email})`);
+    return { deleted: true, id: userId };
+  }
+
   // ─── Admin Webinar Management ─────────────────────────────────────────────
 
   @Get('webinars')
@@ -415,6 +453,11 @@ export class AdminController {
         timezone: { type: 'string', default: 'America/New_York' },
         status: { type: 'string', enum: ['DRAFT', 'PUBLISHED'], default: 'PUBLISHED' },
         zoomSessionType: { type: 'string', enum: ['WEBINAR', 'MEETING'], default: 'WEBINAR' },
+        postEventJotformFormIdOrUrl: {
+          type: 'string',
+          description:
+            'Optional. Jotform form ID or URL for post-event (FEEDBACK) survey; saved to Surveys and program hub.',
+        },
       },
     },
   })
@@ -428,6 +471,8 @@ export class AdminController {
       timezone?: string;
       status?: 'DRAFT' | 'PUBLISHED';
       zoomSessionType?: 'WEBINAR' | 'MEETING';
+      /** When set for WEBINAR, clones invitation from template then uses this form for post-event (skips env post template). For MEETING, only attaches this survey. */
+      postEventJotformFormIdOrUrl?: string;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -489,9 +534,19 @@ export class AdminController {
       registrationRequiresApproval: true,
     });
 
+    const manualPost = body.postEventJotformFormIdOrUrl?.trim();
+
     if (sessionType === 'WEBINAR') {
       try {
-        await this.surveysService.createWebinarJotformPairFromTemplates(program.id, program.title);
+        if (manualPost) {
+          await this.surveysService.createWebinarInvitationAndManualPostSurvey(
+            program.id,
+            program.title,
+            manualPost,
+          );
+        } else {
+          await this.surveysService.createWebinarJotformPairFromTemplates(program.id, program.title);
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(`Webinar Jotform clone failed for program ${program.id}: ${msg}`);
@@ -500,6 +555,22 @@ export class AdminController {
           'This usually means Jotform templates or API access still need to be configured for this environment. ' +
           'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
           'Learner signup is not blocked.';
+        if (manualPost) {
+          try {
+            await this.surveysService.applyManualPostEventJotform(program.id, program.title, manualPost);
+            this.logger.log(`Saved manual post-event survey for program ${program.id} after invitation clone failure`);
+          } catch (e2) {
+            const m2 = e2 instanceof Error ? e2.message : String(e2);
+            this.logger.warn(`Manual post-event survey could not be saved for program ${program.id}: ${m2}`);
+          }
+        }
+      }
+    } else if (manualPost) {
+      try {
+        await this.surveysService.applyManualPostEventJotform(program.id, program.title, manualPost);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Post-event Jotform for office hours program ${program.id}: ${msg}`);
       }
     }
 

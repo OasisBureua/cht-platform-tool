@@ -44,6 +44,11 @@ export interface CreateWebinarPayload {
   /** WEBINAR = Zoom Webinar + Jotform invitation & post-event clones from env; MEETING = Office Hours. */
   zoomSessionType?: ZoomSessionType;
   status?: 'DRAFT' | 'PUBLISHED';
+  /**
+   * Optional Jotform form ID or URL for the post-event (FEEDBACK) survey.
+   * Saved to the program and listed under Surveys for learners.
+   */
+  postEventJotformFormIdOrUrl?: string;
 }
 
 export interface UpdateWebinarPayload {
@@ -356,6 +361,12 @@ export const adminApi = {
 
   updateUserRole: async (userId: string, role: 'HCP' | 'KOL' | 'ADMIN') => {
     const { data } = await apiClient.patch(`/admin/users/${userId}/role`, { role });
+    return data;
+  },
+
+  /** HCP/KOL only; backend rejects ADMIN and self-delete. */
+  deleteUser: async (userId: string): Promise<{ deleted: boolean; id: string }> => {
+    const { data } = await apiClient.delete(`/admin/users/${encodeURIComponent(userId)}`);
     return data;
   },
 

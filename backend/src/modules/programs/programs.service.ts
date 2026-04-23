@@ -86,9 +86,7 @@ export class ProgramsService {
         zoomJoinUrl: dto.zoomJoinUrl ?? null,
         zoomStartUrl: dto.zoomStartUrl ?? null,
         ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
-        ...(dto.registrationRequiresApproval !== undefined
-          ? { registrationRequiresApproval: dto.registrationRequiresApproval }
-          : {}),
+        registrationRequiresApproval: dto.registrationRequiresApproval ?? true,
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);

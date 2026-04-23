@@ -3,18 +3,17 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, ExternalLink, Loader2 } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 
-type StepKey = 'intake' | 'bill' | 'slot' | 'submit';
+type StepKey = 'intake' | 'slot' | 'submit';
 
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
   if (p.jotformIntakeFormUrl?.trim()) steps.push('intake');
-  steps.push('bill');
   if (hasSlots) steps.push('slot');
   steps.push('submit');
   return steps;
@@ -92,6 +91,7 @@ export default function ProgramRegisterWizard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
       navigate(`${backHref}?registered=1`);
     },
   });
@@ -144,9 +144,8 @@ export default function ProgramRegisterWizard() {
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Complete intake (if this step appears), then <strong>Payments</strong> for W-9 and payout details when
-          applicable, then pick a time slot if required. After the live session, post-event feedback is under{' '}
-          <strong>Surveys</strong>.
+          Complete intake if this step appears, then pick a time slot when offered. Submit to send your registration for
+          review when required. Post-event feedback lives under <strong>Surveys</strong>.
         </p>
 
         <ol className="mt-6 flex flex-wrap gap-2 text-xs">
@@ -159,7 +158,7 @@ export default function ProgramRegisterWizard() {
               ].join(' ')}
             >
               {i + 1}.{' '}
-              {s === 'intake' ? 'Intake' : s === 'bill' ? 'Payments (W-9)' : s === 'slot' ? 'Pick a time' : 'Submit'}
+              {s === 'intake' ? 'Intake' : s === 'slot' ? 'Pick a time' : 'Submit'}
             </li>
           ))}
         </ol>
@@ -178,9 +177,8 @@ export default function ProgramRegisterWizard() {
                 >
                   open it in a new tab
                 </a>
-                . After submit, this page usually updates from the return link; our system may also record your answers
-                automatically in the background. You still need to finish the steps below (payments, time slot if offered,
-                then submit).
+                .                 After submit, this page usually updates from the return link; our system may also record your answers
+                automatically in the background. Finish any remaining steps (time slot if offered, then submit).
               </p>
               {intakeSubmissionId ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
@@ -197,28 +195,9 @@ export default function ProgramRegisterWizard() {
                   title="Intake form"
                   src={intakeFormSrc}
                   className="h-[480px] w-full"
-                  allow="camera; microphone; payment"
+                  allow="camera; microphone"
                 />
               </div>
-            </div>
-          )}
-
-          {current === 'bill' && (
-            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-sm font-semibold text-gray-900">Payments — W-9 and payout profile</p>
-              <p className="text-sm text-gray-600">
-                Complete your W-9 and payout setup so we can process honoraria after the activity. Open Payments in a new
-                tab, finish onboarding, then return here and continue.
-              </p>
-              <a
-                href="/app/payments"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-              >
-                Open Payments
-                <ExternalLink className="h-4 w-4" />
-              </a>
             </div>
           )}
 
