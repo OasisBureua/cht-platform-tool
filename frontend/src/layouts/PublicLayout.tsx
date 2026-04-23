@@ -207,7 +207,6 @@ export default function PublicLayout() {
                 <p>2471 18th St NW</p>
                 <p>Second Floor</p>
                 <p>Washington, DC 20009</p>
-                <p>Tel: (123) 456-7890</p>
                 <p>Email: info@communityhealth.media</p>
               </address>
               <div className="flex gap-4">
