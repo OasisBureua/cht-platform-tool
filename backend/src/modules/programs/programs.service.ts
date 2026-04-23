@@ -67,6 +67,7 @@ export class ProgramsService {
     zoomStartUrl?: string;
     zoomSessionType?: 'WEBINAR' | 'MEETING';
     registrationRequiresApproval?: boolean;
+    jotformIntakeFormUrl?: string | null;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -87,6 +88,11 @@ export class ProgramsService {
         zoomStartUrl: dto.zoomStartUrl ?? null,
         ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
         registrationRequiresApproval: dto.registrationRequiresApproval ?? true,
+        ...(dto.jotformIntakeFormUrl !== undefined && dto.jotformIntakeFormUrl !== null
+          ? {
+              jotformIntakeFormUrl: dto.jotformIntakeFormUrl?.trim() || null,
+            }
+          : {}),
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);

@@ -49,6 +49,11 @@ export interface CreateWebinarPayload {
    * Saved to the program and listed under Surveys for learners.
    */
   postEventJotformFormIdOrUrl?: string;
+  /**
+   * Optional (WEBINAR). Full Jotform form URL for registration / intake.
+   * When set, skips automatic invitation clone from env for this session.
+   */
+  jotformIntakeFormUrl?: string;
 }
 
 export interface UpdateWebinarPayload {

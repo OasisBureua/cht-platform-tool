@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useMemo, useState, useEffect } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,7 @@ function formatHonorarium(cents?: number | null) {
 
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
@@ -35,20 +36,6 @@ export default function SurveyDetail() {
   });
 
   const hasJotform = Boolean(survey?.jotformFormId);
-  const baseUrl = survey
-    ? survey.jotformFormUrl ??
-      (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null)
-    : null;
-  const jotformFormUrl = baseUrl;
-  const jotformEmbedUrl = useMemo(() => {
-    if (!baseUrl || !survey) return null;
-    const q = new URLSearchParams();
-    if (userId) q.set('user_id', userId);
-    if (survey.programId) q.set('program_id', survey.programId);
-    const join = baseUrl.includes('?') ? '&' : '?';
-    const suffix = q.toString();
-    return suffix ? `${baseUrl}${join}${suffix}` : baseUrl;
-  }, [baseUrl, userId, survey]);
 
   const { data: myResponse } = useQuery({
     queryKey: ['survey', id, 'my-response'],
@@ -61,6 +48,52 @@ export default function SurveyDetail() {
   });
   const surveySaved = Boolean(myResponse?.submitted);
 
+  const { data: jotformResume } = useQuery({
+    queryKey: ['survey', id, 'jotform-resume'],
+    queryFn: () => surveysApi.getJotformResume(id!),
+    enabled: Boolean(id && userId && survey && hasJotform && !surveySaved),
+  });
+
+  const baseUrl = survey
+    ? survey.jotformFormUrl ??
+      (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null)
+    : null;
+  const jotformFormUrl = baseUrl;
+  const jotformEmbedUrl = useMemo(() => {
+    if (!baseUrl || !survey) return null;
+    const q = new URLSearchParams();
+    if (userId) q.set('user_id', userId);
+    if (survey.programId) q.set('program_id', survey.programId);
+    const sessionId = jotformResume?.sessionId?.trim();
+    if (sessionId) q.set('session', sessionId);
+    const join = baseUrl.includes('?') ? '&' : '?';
+    const suffix = q.toString();
+    return suffix ? `${baseUrl}${join}${suffix}` : baseUrl;
+  }, [baseUrl, userId, survey, jotformResume?.sessionId]);
+
+  useEffect(() => {
+    const sid = searchParams.get('session') || searchParams.get('jotform_session');
+    if (!sid?.trim() || !userId || !id || !survey?.jotformFormId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await surveysApi.putJotformResume(id, sid.trim());
+        if (!cancelled) {
+          queryClient.invalidateQueries({ queryKey: ['survey', id, 'jotform-resume'] });
+          const next = new URLSearchParams(searchParams);
+          next.delete('session');
+          next.delete('jotform_session');
+          setSearchParams(next, { replace: true });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, userId, id, survey?.jotformFormId, queryClient, setSearchParams]);
+
   const submitMutation = useMutation({
     mutationFn: async () => {
       // UI-only placeholder submission payload (answers empty for now)
@@ -72,6 +105,7 @@ export default function SurveyDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
+      queryClient.invalidateQueries({ queryKey: ['survey', id, 'jotform-resume'] });
     },
   });
 
@@ -173,7 +207,9 @@ export default function SurveyDetail() {
                     ) : (
                       <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                         After you submit the form below, this page will update automatically when we receive your
-                        responses (usually within a few seconds).
+                        responses (usually within a few seconds). If your Jotform uses <strong>Save &amp; Continue</strong>,
+                        your progress is stored for <strong>24 hours</strong> when you return through this app (same
+                        account).
                       </p>
                     )}
                     <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white">

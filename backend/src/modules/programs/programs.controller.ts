@@ -1,10 +1,22 @@
-import { Controller, Get, Post, Body, Param, Logger, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Body,
+  Param,
+  Logger,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
+import { FormJotformScope } from './form-jotform-scope';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthUser } from '../../auth/auth.service';
 import { ProgramsService } from './programs.service';
 import { ProgramRegistrationsService } from './program-registrations.service';
+import { FormJotformProgressService } from './form-jotform-progress.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto } from './dto/program-response.dto';
 import { UpdateVideoProgressDto, VideoProgressResponseDto } from './dto/update-video-progress.dto';
@@ -16,6 +28,7 @@ export class ProgramsController {
   constructor(
     private readonly programsService: ProgramsService,
     private readonly registrationsService: ProgramRegistrationsService,
+    private readonly formJotformProgress: FormJotformProgressService,
   ) {}
 
   /**
@@ -77,6 +90,37 @@ export class ProgramsController {
     @Body() body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
   ) {
     return this.registrationsService.submitRegistration(user.userId, id, body ?? {});
+  }
+
+  /**
+   * GET /api/programs/:id/jotform-resume — saved Jotform “Save & Continue” session (24h), if any
+   */
+  @Get(':id/jotform-resume')
+  @UseGuards(JwtAuthGuard)
+  async getIntakeJotformResume(@Param('id') programId: string, @CurrentUser() user: AuthUser) {
+    return this.formJotformProgress.getResumeSession(user.userId, FormJotformScope.INTAKE, programId);
+  }
+
+  /**
+   * PUT /api/programs/:id/jotform-resume — store session id (extends expiry to 24h from now)
+   */
+  @Put(':id/jotform-resume')
+  @UseGuards(JwtAuthGuard)
+  async putIntakeJotformResume(
+    @Param('id') programId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() body: { sessionId?: string },
+  ) {
+    if (!body.sessionId?.trim()) {
+      throw new BadRequestException('sessionId is required');
+    }
+    await this.formJotformProgress.saveResumeSession(
+      user.userId,
+      FormJotformScope.INTAKE,
+      programId,
+      body.sessionId,
+    );
+    return { ok: true as const };
   }
 
   /**

@@ -5,7 +5,6 @@ import {
   CalendarClock,
   MonitorPlay,
   ClipboardList,
-  Dna,
   Settings,
 } from 'lucide-react';
 
@@ -13,7 +12,6 @@ const nav = [
   { to: '/app/home', label: 'Home', icon: Home, end: true },
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
-  { to: '/app/disease-areas', label: 'Diseases', icon: Dna, end: false },
   { to: '/app/catalog', label: 'Convos', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },

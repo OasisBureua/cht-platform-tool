@@ -55,6 +55,8 @@ export interface ProgramRegistrationState {
   officeHoursSlotId?: string;
   /** Present when intake Jotform redirect included a submission id */
   intakeJotformSubmissionId?: string;
+  /** When intake was recorded (submit or webhook) */
+  intakeJotformSubmittedAt?: string;
   createdAt: string;
   reviewedAt?: string;
 }
@@ -203,5 +205,16 @@ export const programsApi = {
   ): Promise<{ id: string; status: string; enrolled: boolean }> => {
     const { data } = await apiClient.post(`/programs/${encodeURIComponent(programId)}/registration`, body);
     return data;
+  },
+
+  getJotformResume: async (
+    programId: string,
+  ): Promise<{ sessionId: string; expiresAt: string } | null> => {
+    const { data } = await apiClient.get(`/programs/${encodeURIComponent(programId)}/jotform-resume`);
+    return data ?? null;
+  },
+
+  putJotformResume: async (programId: string, sessionId: string): Promise<void> => {
+    await apiClient.put(`/programs/${encodeURIComponent(programId)}/jotform-resume`, { sessionId });
   },
 };

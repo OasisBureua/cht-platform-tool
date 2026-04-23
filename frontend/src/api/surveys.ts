@@ -80,4 +80,13 @@ export const surveysApi = {
     const { data } = await apiClient.get(`/surveys/${id}/my-response`);
     return data;
   },
+
+  getJotformResume: async (surveyId: string): Promise<{ sessionId: string; expiresAt: string } | null> => {
+    const { data } = await apiClient.get(`/surveys/${surveyId}/jotform-resume`);
+    return data ?? null;
+  },
+
+  putJotformResume: async (surveyId: string, sessionId: string): Promise<void> => {
+    await apiClient.put(`/surveys/${surveyId}/jotform-resume`, { sessionId });
+  },
 };

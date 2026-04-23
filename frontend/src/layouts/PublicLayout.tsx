@@ -11,7 +11,6 @@ const navLinks = [
   { to: '/live', label: 'LIVE' },
   { to: '/chm-office-hours', label: 'CHM Office Hours' },
   { to: '/for-hcps', label: 'For HCPs' },
-  { to: '/kol-network', label: 'CHM Docs' },
   { to: '/contact', label: 'Contact' },
 ];
 

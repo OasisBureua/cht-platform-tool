@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -23,6 +23,7 @@ export default function ProgramRegisterWizard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId;
@@ -54,6 +55,41 @@ export default function ProgramRegisterWizard() {
     !!program?.jotformIntakeFormUrl?.trim() &&
     !intakeSubmissionId &&
     !intakeFromUrl;
+
+  const { data: intakeJotformResume } = useQuery({
+    queryKey: ['program', id, 'jotform-resume'],
+    queryFn: () => programsApi.getJotformResume(id!),
+    enabled: pollRegistration,
+  });
+
+  useEffect(() => {
+    const sid = searchParams.get('session') || searchParams.get('jotform_session');
+    if (!sid?.trim() || !userId || !id || !program?.jotformIntakeFormUrl?.trim()) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await programsApi.putJotformResume(id, sid.trim());
+        if (!cancelled) {
+          queryClient.invalidateQueries({ queryKey: ['program', id, 'jotform-resume'] });
+          const next = new URLSearchParams(searchParams);
+          next.delete('session');
+          next.delete('jotform_session');
+          setSearchParams(next, { replace: true });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, userId, id, program?.jotformIntakeFormUrl, queryClient, setSearchParams]);
+
+  useEffect(() => {
+    if (intakeSubmissionId) {
+      queryClient.invalidateQueries({ queryKey: ['program', id, 'jotform-resume'] });
+    }
+  }, [intakeSubmissionId, id, queryClient]);
 
   const { data: myRegistration } = useQuery({
     queryKey: ['program', id, 'registration'],
@@ -96,6 +132,16 @@ export default function ProgramRegisterWizard() {
     },
   });
 
+  const intakeFormSrc = useMemo(() => {
+    if (!program?.jotformIntakeFormUrl?.trim()) return '';
+    return buildIntakeFormUrl(program.jotformIntakeFormUrl, {
+      returnRedirect: returnUrl || undefined,
+      userId: userId || undefined,
+      programId: program.id,
+      jotformSessionId: intakeJotformResume?.sessionId,
+    });
+  }, [program, returnUrl, userId, intakeJotformResume?.sessionId]);
+
   if (isLoading || !id) return <LoadingSpinner />;
 
   if (isError || !program) {
@@ -119,14 +165,6 @@ export default function ProgramRegisterWizard() {
     }
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   };
-
-  const intakeFormSrc = program.jotformIntakeFormUrl
-    ? buildIntakeFormUrl(program.jotformIntakeFormUrl, {
-        returnRedirect: returnUrl || undefined,
-        userId: userId || undefined,
-        programId: program.id,
-      })
-    : '';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-8">
@@ -177,8 +215,10 @@ export default function ProgramRegisterWizard() {
                 >
                   open it in a new tab
                 </a>
-                .                 After submit, this page usually updates from the return link; our system may also record your answers
-                automatically in the background. Finish any remaining steps (time slot if offered, then submit).
+                . After submit, this page usually updates from the return link; our system may also record your answers
+                automatically in the background. If the form has <strong>Save &amp; Continue</strong>, partial progress is
+                kept for <strong>24 hours</strong> when you return signed in. Finish any remaining steps (time slot if
+                offered, then submit).
               </p>
               {intakeSubmissionId ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
@@ -207,7 +247,7 @@ export default function ProgramRegisterWizard() {
                 slots={slots}
                 selectedId={selectedSlotId}
                 onSelect={setSelectedSlotId}
-                subtitle="Each row is one bookable start time (e.g. 12:00pm, then 12:30pm). After registration, open your session page and use Zoom — the same meeting link the host shared for office hours."
+                subtitle="The session is split into 15-minute windows (four per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
               />
             </div>
           )}

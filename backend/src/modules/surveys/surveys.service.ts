@@ -6,6 +6,8 @@ import { HubSpotService } from '../hubspot/hubspot.service';
 import { JotformService } from '../jotform/jotform.service';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
+import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
+import { FormJotformScope } from '../programs/form-jotform-scope';
 
 @Injectable()
 export class SurveysService {
@@ -17,6 +19,7 @@ export class SurveysService {
     private configService: ConfigService,
     private hubspot: HubSpotService,
     private jotformService: JotformService,
+    private formJotformProgress: FormJotformProgressService,
   ) {}
 
   /**
@@ -352,6 +355,35 @@ export class SurveysService {
   }
 
   /**
+   * Post-event survey only from env (shared form or cloned post template). Use when intake URL is set manually and
+   * invitation must not be cloned from the template.
+   */
+  async createWebinarPostEventOnlyFromTemplates(programId: string, programTitle: string) {
+    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
+    if (sharedPost) {
+      await this.attachSharedPostEventSurvey(programId, programTitle, sharedPost);
+      return;
+    }
+    const postTemplate = this.configService.get<string>('jotform.postEventTemplateFormId')?.trim();
+    if (!postTemplate) {
+      throw new BadRequestException(
+        'No Jotform post-event shared form or template is configured. Set JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID or JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID, or provide a manual post-event form when scheduling.',
+      );
+    }
+    if (!this.configService.get<string>('jotform.apiKey')?.trim()) {
+      throw new BadRequestException(
+        'A Jotform API key is required to clone the post-event survey from the template.',
+      );
+    }
+    await this.createSurveyFromJotformTemplate({
+      programId,
+      templateFormId: postTemplate,
+      title: `${programTitle} - Post Event Survey`,
+      type: 'FEEDBACK',
+    });
+  }
+
+  /**
    * Link program to an existing Jotform for post-event (no clone; webhook should be configured on that form if needed).
    */
   private async attachSharedPostEventSurvey(programId: string, programTitle: string, formIdRaw: string) {
@@ -446,8 +478,11 @@ export class SurveysService {
         surveyId,
         answers: dto.answers as object,
         score: dto.score,
+        submittedAt: new Date(),
       },
     });
+
+    await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, surveyId).catch(() => {});
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },

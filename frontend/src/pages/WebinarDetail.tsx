@@ -206,16 +206,36 @@ export default function WebinarDetail() {
 
   const enrolled = enrolledProgramIds.has(program.id);
 
+  const myEnrollment = enrollments?.find((e) => e.programId === program.id);
+  const videoCount = program.videos?.length ?? 0;
+  const videosDone =
+    enrolled &&
+    (videoCount === 0 ||
+      myEnrollment?.completed === true ||
+      (myEnrollment?.overallProgress ?? 0) >= 99.5);
+
   const postEventReminder = liveActionItems.find(
     (a) => a.programId === program.id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
   );
 
-  /** Intake + payments + approval use the registration wizard; post-event survey unlocks after the live session. */
+  const hasPostEventSurvey = !!program.jotformSurveyUrl?.trim();
+  const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
+  const surveyDone =
+    enrolled &&
+    (!hasPostEventSurvey || (postEventSurveyWindowOpen && !postEventReminder));
+
+  const registrationPendingApproval = myRegistration?.status === 'PENDING';
+  const showJoinSessionCard =
+    program.zoomSessionType === 'WEBINAR' && (enrolled || registrationPendingApproval);
+
+  /** LIVE webinars always use the registration wizard so intake (when configured) is not skipped via quick enroll. */
   const needsRegistrationWizard =
     !!program &&
-    ((program.zoomSessionType === 'MEETING' && slots.length > 0) ||
-      !!program.jotformIntakeFormUrl?.trim() ||
-      !!program.registrationRequiresApproval);
+    (program.zoomSessionType === 'WEBINAR' ||
+      (program.zoomSessionType === 'MEETING' &&
+        (slots.length > 0 ||
+          !!program.jotformIntakeFormUrl?.trim() ||
+          !!program.registrationRequiresApproval)));
 
   const ctaLabel = enrolled
     ? 'Registered'
@@ -329,7 +349,7 @@ export default function WebinarDetail() {
                 to={`/app/live/${program.id}/register`}
                 className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
-                Register (intake &amp; payments)
+                Register
               </Link>
             ) : (
               <button
@@ -348,7 +368,7 @@ export default function WebinarDetail() {
 
             {!enrolled && myRegistration?.status !== 'PENDING' && needsRegistrationWizard ? (
               <p className="mt-2 text-xs text-gray-600">
-                Registration includes intake and payout setup (W-9) where applicable. Post-event surveys appear on the
+                Complete registration here (intake survey when your host has one set up). Post-event surveys appear on the
                 Surveys tab after the live session.
               </p>
             ) : null}
@@ -362,24 +382,45 @@ export default function WebinarDetail() {
         </div>
       </section>
 
-      {enrolled && program.zoomSessionType === 'WEBINAR' ? (
+      {showJoinSessionCard ? (
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
           <h2 className="text-base font-semibold text-gray-900">Live webinar</h2>
           <p className="text-sm text-gray-600">
-            After an administrator approves your registration, use <strong>Join session</strong> to open Zoom the usual
-            way (browser or Zoom app).
+            {registrationPendingApproval && !enrolled ? (
+              <>
+                Your join link is shown below so you know what to expect. It stays inactive until an administrator
+                approves your registration—then you can open Zoom as usual (browser or app).
+              </>
+            ) : (
+              <>
+                Use <strong>Join session</strong> to open Zoom the usual way (browser or Zoom app).
+              </>
+            )}
           </p>
           {program.zoomJoinUrl?.trim() ? (
-            <a
-              href={program.zoomJoinUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-            >
-              <Video className="h-4 w-4" />
-              Join session
-              <ExternalLink className="h-4 w-4 opacity-90" />
-            </a>
+            enrolled ? (
+              <a
+                href={program.zoomJoinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+              >
+                <Video className="h-4 w-4" />
+                Join session
+                <ExternalLink className="h-4 w-4 opacity-90" />
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-500"
+                title="Available after an administrator approves your registration."
+              >
+                <Video className="h-4 w-4" />
+                Join session
+                <ExternalLink className="h-4 w-4 opacity-60" />
+              </button>
+            )
           ) : (
             <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               A join link is not available yet. If this persists, contact support so an admin can confirm the Zoom
@@ -410,18 +451,33 @@ export default function WebinarDetail() {
           <p className="text-xs font-semibold text-gray-600">Requirements</p>
 
           <ul className="mt-4 space-y-3">
-            <RequirementRow label="Register for the activity" done={enrolled} />
+            <RequirementRow
+              label="Register for the activity"
+              done={enrolled}
+              pendingApproval={!enrolled && registrationPendingApproval}
+            />
             <RequirementRow
               label="Complete all required videos in Conversations"
-              done={false}
-              disabled={!enrolled}
+              done={videosDone}
+              locked={!enrolled}
             />
-            <RequirementRow label="Complete required survey" done={false} disabled={!enrolled} />
+            <RequirementRow
+              label="Complete required survey"
+              done={surveyDone}
+              locked={!enrolled}
+            />
           </ul>
 
-          {!enrolled ? (
+          {!enrolled && !registrationPendingApproval ? (
             <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3">
               <p className="text-xs text-gray-600">Register to unlock content and survey completion.</p>
+            </div>
+          ) : null}
+          {!enrolled && registrationPendingApproval ? (
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs text-amber-900">
+                You&apos;re registered—waiting for admin approval. Conversations and surveys unlock after approval.
+              </p>
             </div>
           ) : null}
         </div>
@@ -500,8 +556,15 @@ export default function WebinarDetail() {
   );
 }
 
-function RequirementRow(props: { label: string; done?: boolean; disabled?: boolean }) {
-  const { label, done, disabled } = props;
+function RequirementRow(props: {
+  label: string;
+  done?: boolean;
+  /** No access until admin approves registration */
+  locked?: boolean;
+  /** Registration submitted; waiting on admin */
+  pendingApproval?: boolean;
+}) {
+  const { label, done, locked, pendingApproval } = props;
 
   return (
     <li className="flex items-center justify-between gap-3">
@@ -509,9 +572,9 @@ function RequirementRow(props: { label: string; done?: boolean; disabled?: boole
         {done ? (
           <CheckCircle2 className="h-5 w-5 text-green-600" />
         ) : (
-          <Circle className={['h-5 w-5', disabled ? 'text-gray-200' : 'text-gray-300'].join(' ')} />
+          <Circle className={['h-5 w-5', locked ? 'text-gray-200' : 'text-gray-300'].join(' ')} />
         )}
-        <span className={['text-sm truncate', disabled ? 'text-gray-400' : 'text-gray-700'].join(' ')}>
+        <span className={['text-sm truncate', locked ? 'text-gray-400' : 'text-gray-700'].join(' ')}>
           {label}
         </span>
       </div>
@@ -519,7 +582,11 @@ function RequirementRow(props: { label: string; done?: boolean; disabled?: boole
         <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-1">
           Done
         </span>
-      ) : disabled ? (
+      ) : pendingApproval ? (
+        <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-2 py-1">
+          Pending approval
+        </span>
+      ) : locked ? (
         <span className="text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
           Locked
         </span>

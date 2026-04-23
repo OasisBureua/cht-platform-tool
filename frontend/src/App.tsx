@@ -28,8 +28,6 @@ import PublicSurveys from './pages/public/PublicSurveys';
 import WhatWeDo from './pages/public/WhatWeDo';
 import Services from './pages/public/Services';
 import Portfolios from './pages/public/Portfolios';
-import DolNetwork from './pages/public/DolNetwork';
-import DolRegionDetail from './pages/public/DolRegionDetail';
 import Terms from './pages/public/Terms';
 
 // App layout (existing)
@@ -50,8 +48,6 @@ import Earnings from './pages/Earnings';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
-import DiseaseAreas from './pages/DiseaseAreas';
-
 // =======================
 // ADMIN ROUTES
 // =======================
@@ -128,8 +124,10 @@ function App() {
             <Route path="/surveys" element={<PublicSurveys />} />
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
-            <Route path="/kol-network" element={<DolNetwork />} />
-            <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
+            <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
+            {/* KOL / CHM Docs directory hidden; bookmarked URLs go home */}
+            <Route path="/kol-network" element={<Navigate to="/home" replace />} />
+            <Route path="/kol-network/:regionSlug" element={<Navigate to="/home" replace />} />
           </Route>
 
           {/* =======================
@@ -168,8 +166,8 @@ function App() {
             {/* CHM Docs + Podcasts: hidden from nav; direct URLs redirect home */}
             <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
 
-            {/* Disease Areas */}
-            <Route path="disease-areas" element={<DiseaseAreas />} />
+            {/* Disease Areas: hidden from nav; bookmarked URLs redirect home */}
+            <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
 
             {/* Surveys */}
             <Route path="surveys" element={<Surveys />} />

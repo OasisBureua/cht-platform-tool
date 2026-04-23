@@ -11,7 +11,6 @@ const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
 const STOCK_IMAGES = {
   featuredVideo: '/images/resource-watch.png',
   featuredWebinar: '/images/resource-webinars.png',
-  featuredStudy: '/images/resource-clinicals.png',
 } as const;
 
 type Treatment = {
@@ -130,12 +129,6 @@ export default function ForHCPs() {
             cta="View sessions"
             to="/chm-office-hours"
             showNew
-          />
-          <FeaturedCard
-            title="KOL Network"
-            imageUrl={STOCK_IMAGES.featuredStudy}
-            cta="View directory"
-            to="/kol-network"
           />
         </section>
 

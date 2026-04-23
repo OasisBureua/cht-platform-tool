@@ -4,11 +4,12 @@ import { HubSpotModule } from '../hubspot/hubspot.module';
 import { ProgramsController } from './programs.controller';
 import { ProgramsService } from './programs.service';
 import { ProgramRegistrationsService } from './program-registrations.service';
+import { FormJotformProgressService } from './form-jotform-progress.service';
 
 @Module({
   imports: [AuthModule, HubSpotModule],
   controllers: [ProgramsController],
-  providers: [ProgramsService, ProgramRegistrationsService],
-  exports: [ProgramsService, ProgramRegistrationsService],
+  providers: [ProgramsService, ProgramRegistrationsService, FormJotformProgressService],
+  exports: [ProgramsService, ProgramRegistrationsService, FormJotformProgressService],
 })
 export class ProgramsModule {}

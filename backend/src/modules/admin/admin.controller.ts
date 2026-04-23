@@ -458,6 +458,11 @@ export class AdminController {
           description:
             'Optional. Jotform form ID or URL for post-event (FEEDBACK) survey; saved to Surveys and program hub.',
         },
+        jotformIntakeFormUrl: {
+          type: 'string',
+          description:
+            'Required for WEBINAR. Registration / invitation Jotform URL used for learner intake.',
+        },
       },
     },
   })
@@ -473,6 +478,8 @@ export class AdminController {
       zoomSessionType?: 'WEBINAR' | 'MEETING';
       /** When set for WEBINAR, clones invitation from template then uses this form for post-event (skips env post template). For MEETING, only attaches this survey. */
       postEventJotformFormIdOrUrl?: string;
+      /** WEBINAR: required per-session intake URL. */
+      jotformIntakeFormUrl?: string;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -480,6 +487,10 @@ export class AdminController {
     if (!body.duration || body.duration < 1) throw new BadRequestException('duration (minutes) is required');
 
     const sessionType = body.zoomSessionType ?? 'WEBINAR';
+
+    if (sessionType === 'WEBINAR' && !body.jotformIntakeFormUrl?.trim()) {
+      throw new BadRequestException('Jotform intake URL is required for webinars.');
+    }
 
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
@@ -520,6 +531,8 @@ export class AdminController {
 
     let jotformFormsWarning: string | undefined;
 
+    const manualIntakeUrl = body.jotformIntakeFormUrl?.trim();
+
     const program = await this.programsService.createProgram({
       title: body.title.trim(),
       description: body.description?.trim() || body.title.trim(),
@@ -532,13 +545,22 @@ export class AdminController {
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
+      ...(sessionType === 'WEBINAR' && manualIntakeUrl
+        ? { jotformIntakeFormUrl: manualIntakeUrl }
+        : {}),
     });
 
     const manualPost = body.postEventJotformFormIdOrUrl?.trim();
 
     if (sessionType === 'WEBINAR') {
       try {
-        if (manualPost) {
+        if (manualIntakeUrl) {
+          if (manualPost) {
+            await this.surveysService.applyManualPostEventJotform(program.id, program.title, manualPost);
+          } else {
+            await this.surveysService.createWebinarPostEventOnlyFromTemplates(program.id, program.title);
+          }
+        } else if (manualPost) {
           await this.surveysService.createWebinarInvitationAndManualPostSurvey(
             program.id,
             program.title,

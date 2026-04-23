@@ -40,6 +40,7 @@ export default function AdminWebinarScheduler({
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
   const [duration, setDuration] = useState('60');
+  const [jotformIntakeFormUrl, setJotformIntakeFormUrl] = useState('');
   const [postEventJotformFormIdOrUrl, setPostEventJotformFormIdOrUrl] = useState('');
 
   const { data: adminConfig } = useQuery({
@@ -97,6 +98,11 @@ export default function AdminWebinarScheduler({
       return;
     }
 
+    if (isWebinar && !jotformIntakeFormUrl.trim()) {
+      setValidationError('Registration intake (Jotform URL) is required for webinars.');
+      return;
+    }
+
     const durationNum = parseInt(duration, 10);
     if (isNaN(durationNum) || durationNum < 15 || durationNum > 480) {
       setValidationError('Duration must be between 15 and 480 minutes.');
@@ -116,6 +122,7 @@ export default function AdminWebinarScheduler({
       timezone,
       zoomSessionType,
       status: 'PUBLISHED',
+      ...(isWebinar ? { jotformIntakeFormUrl: jotformIntakeFormUrl.trim() } : {}),
       ...(postEventJotformFormIdOrUrl.trim()
         ? { postEventJotformFormIdOrUrl: postEventJotformFormIdOrUrl.trim() }
         : {}),
@@ -189,7 +196,7 @@ export default function AdminWebinarScheduler({
               }}
               className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             >
-              <option value="WEBINAR">Webinar (Zoom Webinar, CME-style, optional Jotform survey)</option>
+              <option value="WEBINAR">Webinar (Zoom Webinar, CME-style; intake Jotform required)</option>
               <option value="MEETING">Office Hours (Zoom Meeting, Q&A, waiting room)</option>
             </select>
           </div>
@@ -305,6 +312,26 @@ export default function AdminWebinarScheduler({
             </div>
           </div>
 
+          {isWebinar ? (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">
+                Registration intake (Jotform URL) *
+              </label>
+              <input
+                type="url"
+                required
+                value={jotformIntakeFormUrl}
+                onChange={(e) => setJotformIntakeFormUrl(e.target.value)}
+                placeholder="https://form.jotform.com/… or https://communityhealthmedia.jotform.com/…"
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-600">
+                Required for webinars. This URL is saved on the program for learner registration intake. Point webhooks
+                for this form at your app so submissions and progress sync correctly.
+              </p>
+            </div>
+          ) : null}
+
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-1">
               Post-event survey (Jotform){' '}
@@ -324,9 +351,8 @@ export default function AdminWebinarScheduler({
             </p>
             {isWebinar ? (
               <p className="mt-1 text-xs text-gray-600">
-                For <strong>webinars</strong>, filling this in uses your form instead of the environment default post-event
-                template or shared form. The invitation form is still cloned from the template when Jotform API access is
-                configured.
+                For <strong>webinars</strong>, if you leave this blank, the server attaches post-event feedback from your
+                environment template or shared form when Jotform is configured.
               </p>
             ) : (
               <p className="mt-1 text-xs text-gray-600">
@@ -338,11 +364,11 @@ export default function AdminWebinarScheduler({
 
           {isWebinar && (
             <div className="text-sm text-gray-700 border border-gray-200 rounded-xl bg-gray-50 px-4 py-3 space-y-2">
-              <p className="font-semibold text-gray-900">Registration intake (Jotform)</p>
+              <p className="font-semibold text-gray-900">Post-event survey (Jotform API)</p>
               <p>
-                Each webinar gets its own copy of your <strong>invitation / intake</strong> form when the server can call
-                the Jotform API. If you did not set a post-event form above, the <strong>after-session</strong> survey comes
-                from your environment&apos;s shared form or post-event template.
+                The intake URL above is always the form learners use to register. If you do not set a post-event form in
+                the field above, the <strong>after-session</strong> survey is created from your environment&apos;s shared
+                form or post-event template when Jotform API access is configured.
               </p>
               {adminConfig?.webinarJotformTemplatesConfigured ? (
                 <p className="text-xs text-green-800">

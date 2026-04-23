@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
+import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
+import { FormJotformScope } from '../programs/form-jotform-scope';
 import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 
@@ -24,6 +26,7 @@ export class JotformWebhookService {
     private queueService: QueueService,
     private config: ConfigService,
     private programRegistrations: ProgramRegistrationsService,
+    private formJotformProgress: FormJotformProgressService,
   ) {}
 
   async processSubmission(rawRequest: string): Promise<{ received: boolean; surveyResponseId?: string }> {
@@ -109,8 +112,11 @@ export class JotformWebhookService {
         surveyId: survey.id,
         answers: answers as object,
         jotformSubmissionId: String(submissionId),
+        submittedAt: new Date(),
       },
     });
+
+    await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, survey.id).catch(() => {});
 
     this.logger.log(`Survey ${survey.id} submitted via Jotform by user ${userId} (submission ${submissionId})`);
 
@@ -222,7 +228,14 @@ export class JotformWebhookService {
       return { received: true };
     }
 
-    await this.programRegistrations.recordWebinarIntakeFromJotformWebhook(userId, programId, String(submissionId));
+    const recorded = await this.programRegistrations.recordWebinarIntakeFromJotformWebhook(
+      userId,
+      programId,
+      String(submissionId),
+    );
+    if (recorded) {
+      await this.formJotformProgress.clear(userId, FormJotformScope.INTAKE, programId).catch(() => {});
+    }
     return { received: true };
   }
 

@@ -16,16 +16,58 @@ import { HubSpotService } from '../hubspot/hubspot.service';
 export class ProgramRegistrationsService {
   private readonly logger = new Logger(ProgramRegistrationsService.name);
 
+  /** Office hours meetings use fixed 15-minute registration windows; count scales with session duration (4 per hour). */
+  private static readonly OFFICE_HOURS_SEGMENT_MINUTES = 15;
+
   constructor(
     private prisma: PrismaService,
     private hubspot: HubSpotService,
     private config: ConfigService,
   ) {}
 
+  /**
+   * When a MEETING has a start time and duration but no rows yet, create 15-minute slots end-to-end
+   * (ceil(duration/15) segments, defaulting duration to 60 if missing).
+   */
+  private async ensureDefaultOfficeHoursSlots(
+    programId: string,
+    program: { zoomSessionType: string; startDate: Date | null; duration: number | null },
+  ): Promise<void> {
+    if (program.zoomSessionType !== 'MEETING' || !program.startDate) return;
+
+    const existing = await this.prisma.officeHoursSlot.count({ where: { programId } });
+    if (existing > 0) return;
+
+    const durationMin =
+      program.duration != null && program.duration > 0 ? program.duration : 60;
+    const segment = ProgramRegistrationsService.OFFICE_HOURS_SEGMENT_MINUTES;
+    const n = Math.max(1, Math.ceil(durationMin / segment));
+    const startMs = program.startDate.getTime();
+    const segMs = segment * 60_000;
+
+    await this.prisma.officeHoursSlot.createMany({
+      data: Array.from({ length: n }, (_, i) => ({
+        programId,
+        startsAt: new Date(startMs + i * segMs),
+        endsAt: new Date(startMs + (i + 1) * segMs),
+        label: null,
+        maxAttendees: 1,
+        sortOrder: i,
+      })),
+    });
+    this.logger.log(`Auto-created ${n} office-hours slot(s) for program ${programId}`);
+  }
+
   async listSlotsForProgram(programId: string) {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
-      select: { id: true, status: true, zoomSessionType: true },
+      select: {
+        id: true,
+        status: true,
+        zoomSessionType: true,
+        startDate: true,
+        duration: true,
+      },
     });
     if (!program || program.status !== 'PUBLISHED') {
       throw new NotFoundException('Program not found');
@@ -33,6 +75,7 @@ export class ProgramRegistrationsService {
     if (program.zoomSessionType !== 'MEETING') {
       return [];
     }
+    await this.ensureDefaultOfficeHoursSlots(programId, program);
     const slots = await this.prisma.officeHoursSlot.findMany({
       where: { programId },
       orderBy: [{ sortOrder: 'asc' }, { startsAt: 'asc' }],
@@ -70,6 +113,7 @@ export class ProgramRegistrationsService {
       status: reg.status,
       officeHoursSlotId: reg.officeHoursSlotId ?? undefined,
       intakeJotformSubmissionId: reg.intakeJotformSubmissionId ?? undefined,
+      intakeJotformSubmittedAt: reg.intakeJotformSubmittedAt?.toISOString(),
       createdAt: reg.createdAt.toISOString(),
       reviewedAt: reg.reviewedAt?.toISOString(),
     };
@@ -137,6 +181,8 @@ export class ProgramRegistrationsService {
       ? ProgramRegistrationStatus.PENDING
       : ProgramRegistrationStatus.APPROVED;
 
+    const intakeSid = body.intakeJotformSubmissionId?.trim();
+
     const reg = await this.prisma.programRegistration.upsert({
       where: { userId_programId: { userId, programId } },
       create: {
@@ -144,12 +190,18 @@ export class ProgramRegistrationsService {
         programId,
         status,
         officeHoursSlotId: body.officeHoursSlotId ?? null,
-        intakeJotformSubmissionId: body.intakeJotformSubmissionId ?? null,
+        intakeJotformSubmissionId: intakeSid || null,
+        intakeJotformSubmittedAt: intakeSid ? new Date() : null,
       },
       update: {
         status,
         officeHoursSlotId: body.officeHoursSlotId ?? undefined,
-        intakeJotformSubmissionId: body.intakeJotformSubmissionId ?? undefined,
+        ...(body.intakeJotformSubmissionId !== undefined
+          ? {
+              intakeJotformSubmissionId: intakeSid || null,
+              intakeJotformSubmittedAt: intakeSid ? new Date() : null,
+            }
+          : {}),
         updatedAt: new Date(),
         // Fresh pending request after rejection — clear last review so admins see a new queue item.
         ...(requiresApproval &&
@@ -224,8 +276,9 @@ export class ProgramRegistrationsService {
           programId,
           status: ProgramRegistrationStatus.APPROVED,
           intakeJotformSubmissionId: submissionId,
+          intakeJotformSubmittedAt: new Date(),
         },
-        update: { intakeJotformSubmissionId: submissionId },
+        update: { intakeJotformSubmissionId: submissionId, intakeJotformSubmittedAt: new Date() },
       });
       return true;
     }
@@ -237,7 +290,7 @@ export class ProgramRegistrationsService {
     if (existing?.status === ProgramRegistrationStatus.APPROVED) {
       await this.prisma.programRegistration.update({
         where: { id: existing.id },
-        data: { intakeJotformSubmissionId: submissionId },
+        data: { intakeJotformSubmissionId: submissionId, intakeJotformSubmittedAt: new Date() },
       });
       await this.ensureEnrollment(userId, programId);
       return true;
@@ -255,6 +308,7 @@ export class ProgramRegistrationsService {
             ? ProgramRegistrationStatus.APPROVED
             : ProgramRegistrationStatus.PENDING,
           intakeJotformSubmissionId: submissionId,
+          intakeJotformSubmittedAt: new Date(),
         },
       });
     } else {
@@ -268,6 +322,7 @@ export class ProgramRegistrationsService {
         where: { id: existing.id },
         data: {
           intakeJotformSubmissionId: submissionId,
+          intakeJotformSubmittedAt: new Date(),
           status: nextStatus,
         },
       });
