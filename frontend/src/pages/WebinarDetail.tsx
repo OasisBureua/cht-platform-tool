@@ -1,9 +1,9 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
-import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
+import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
@@ -22,20 +22,6 @@ function formatMoney(value?: number | null) {
   return `$${value.toLocaleString()}`;
 }
 
-/** Post-event Jotform: pass `user_id` for webhook attribution (and `program_id` when the form includes it). */
-function buildPostEventSurveyEmbedSrc(formUrl: string, userId: string, programId: string): string {
-  const raw = formUrl.trim();
-  try {
-    const u = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
-    u.searchParams.set('user_id', userId);
-    u.searchParams.set('program_id', programId);
-    return u.toString();
-  } catch {
-    const sep = raw.includes('?') ? '&' : '?';
-    return `${raw}${sep}user_id=${encodeURIComponent(userId)}&program_id=${encodeURIComponent(programId)}`;
-  }
-}
-
 export default function WebinarDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -44,6 +30,11 @@ export default function WebinarDetail() {
   const { user } = useAuth();
   const userId = user?.userId ?? '';
   const isZoomWebinar = id?.startsWith('zoom-') ?? false;
+  const [postEventSurveyStep, setPostEventSurveyStep] = useState<0 | 1>(0);
+
+  useEffect(() => {
+    setPostEventSurveyStep(0);
+  }, [id]);
 
   /** Intake often redirects to the session page; forward submission id to the registration wizard. */
   useEffect(() => {
@@ -368,8 +359,7 @@ export default function WebinarDetail() {
 
             {!enrolled && myRegistration?.status !== 'PENDING' && needsRegistrationWizard ? (
               <p className="mt-2 text-xs text-gray-600">
-                Complete registration here (intake survey when your host has one set up). Post-event surveys appear on the
-                Surveys tab after the live session.
+                Complete registration here. Post-event surveys appear on the Surveys tab after the live session.
               </p>
             ) : null}
             {!enrolled && myRegistration?.status !== 'PENDING' && !needsRegistrationWizard ? (
@@ -484,20 +474,44 @@ export default function WebinarDetail() {
       </section>
 
       {showPostEventSurvey ? (
-        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
+        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
           <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
-          <p className="text-sm text-gray-600">
-            Complete this survey after the live session. Responses are tied to your account for credit and honorarium
-            follow-up (complete W-9 under Payments if you have not already).
-          </p>
-          <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-            <iframe
-              title="Post-event survey"
-              src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
-              className="w-full h-[480px]"
-              allow="camera; microphone"
-            />
-          </div>
+          {postEventSurveyStep === 0 ? (
+            <>
+              <p className="text-sm text-gray-600">
+                Complete this survey after the live session. Responses are tied to your account for credit and honorarium
+                follow-up. Tap <strong>Continue</strong> to open the survey—you won&apos;t be able to return to this step.
+              </p>
+              <button
+                type="button"
+                onClick={() => setPostEventSurveyStep(1)}
+                className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+              >
+                Continue
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600">
+                Submit the survey below, then go to <strong>Payments</strong> to confirm your W-9 and payment details.
+              </p>
+              <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                <iframe
+                  title="Post-event survey"
+                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
+                  className="w-full h-[480px]"
+                  allow="camera; microphone"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/app/payments')}
+                className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+              >
+                Continue to Payments
+              </button>
+            </>
+          )}
         </section>
       ) : enrolled && program.jotformSurveyUrl?.trim() && program.zoomSessionType === 'WEBINAR' ? (
         <section className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">

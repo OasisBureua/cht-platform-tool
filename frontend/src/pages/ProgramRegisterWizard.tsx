@@ -7,7 +7,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
-import { buildIntakeFormUrl, buildJotformThankYouRedirectTemplate } from '../utils/jotform-intake-prefill';
+import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 
 type StepKey = 'intake' | 'slot' | 'submit';
 
@@ -94,8 +94,8 @@ export default function ProgramRegisterWizard() {
   const { data: myRegistration } = useQuery({
     queryKey: ['program', id, 'registration'],
     queryFn: () => programsApi.getMyRegistration(id!),
-    enabled: pollRegistration,
-    refetchInterval: pollRegistration ? 3000 : false,
+    enabled: !!userId && !!id,
+    refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
   });
 
   useEffect(() => {
@@ -142,11 +142,6 @@ export default function ProgramRegisterWizard() {
       jotformSessionId: intakeJotformResume?.sessionId,
     });
   }, [program, returnUrl, userId, intakeJotformResume?.sessionId]);
-
-  const jotformThankYouRedirectTemplate = useMemo(
-    () => (returnUrl ? buildJotformThankYouRedirectTemplate(returnUrl) : ''),
-    [returnUrl],
-  );
 
   if (isLoading || !id) return <LoadingSpinner />;
 
@@ -221,39 +216,8 @@ export default function ProgramRegisterWizard() {
                 >
                   open it in a new tab
                 </a>
-                . After submit, you should return here with a submission ID in the URL. If the form has{' '}
-                <strong>Save &amp; Continue</strong>, partial progress is kept for <strong>24 hours</strong> when you
-                return signed in. The server can also record the submission via Jotform webhook (usually within
-                seconds). Finish any remaining steps (time slot if offered), then <strong>Submit registration</strong>.
+                .
               </p>
-              {jotformThankYouRedirectTemplate ? (
-                <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
-                  <summary className="cursor-pointer font-semibold text-gray-900">
-                    Host setup: Jotform thank-you redirect (submission ID)
-                  </summary>
-                  <p className="mt-2 text-gray-600">
-                    In Jotform open <strong>Settings → Thank You page → Redirect to an external link</strong> and set the
-                    URL to exactly this (Jotform replaces <code className="rounded bg-white px-1">{`{id}`}</code> with the
-                    submission id). Also add hidden fields <code className="rounded bg-white px-1">user_id</code> and{' '}
-                    <code className="rounded bg-white px-1">program_id</code> on the form so webhooks match the learner;
-                    point the form webhook to your app&apos;s Jotform endpoint.
-                  </p>
-                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <code className="block flex-1 break-all rounded border border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-900">
-                      {jotformThankYouRedirectTemplate}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(jotformThankYouRedirectTemplate);
-                      }}
-                      className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50"
-                    >
-                      Copy URL
-                    </button>
-                  </div>
-                </details>
-              ) : null}
               {intakeSubmissionId?.trim() ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                   Intake submission recorded. Use <strong>Continue</strong>, then <strong>Submit registration</strong> to
@@ -321,7 +285,7 @@ export default function ProgramRegisterWizard() {
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-3">
-          {stepIndex > 0 && (
+          {stepIndex > 0 && myRegistration?.status === 'REJECTED' && (
             <button
               type="button"
               onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
