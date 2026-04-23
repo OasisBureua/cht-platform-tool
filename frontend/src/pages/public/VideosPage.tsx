@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { Search, Loader2, ChevronDown, Play } from 'lucide-react';
+import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
-
+import { getShortClipId } from '../../utils/clipUrl';
+import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistGrid } from '../../components/content/PlaylistGrid';
+import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
+import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
+import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -17,47 +19,23 @@ const SORT_OPTIONS = [
   { value: 'likes', label: 'Most likes' },
 ];
 
-function stripTagPrefix(tag: string): string {
-  return tag.replace(/^[a-z_]+:/i, '');
-}
-
-/**
- * Build tag filter options from the /tags endpoint.
- * The API returns `{ biomarker: ["HER2+", ...], drug: ["Enhertu", ...] }` (no prefix in values),
- * but the /clips?tag= filter expects the prefixed form `biomarker:HER2+`.
- * We store `category:value` as the option value and show just `value` as the label.
- * Doctor tags are excluded here — they have a dedicated filter.
- */
 function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
   const seen = new Set<string>();
   for (const [category, values] of Object.entries(tags)) {
-    if (category === 'doctor') continue;
     if (!Array.isArray(values)) continue;
     for (const v of values) {
-      if (!v) continue;
-      const apiValue = `${category}:${v}`;
-      if (!seen.has(apiValue)) {
-        seen.add(apiValue);
-        out.push({ value: apiValue, label: v });
+      if (v && !seen.has(v)) {
+        seen.add(v);
+        out.push({ value: v, label: v });
       }
     }
   }
   return out.sort((a, b) => a.label.localeCompare(b.label));
 }
 
-/**
- * Build doctor filter options from the /tags "doctor" category.
- * The /clips?doctor= filter expects the short name (e.g. "Mouabbi"), which is
- * exactly what /tags returns under the "doctor" key.
- */
-function getDoctorOptionsFromTags(tags: MediaHubTags): { value: string; label: string }[] {
-  const doctors = tags['doctor'];
-  if (!Array.isArray(doctors)) return [];
-  return doctors
-    .filter(Boolean)
-    .map((name) => ({ value: name, label: `Dr. ${name}` }))
-    .sort((a, b) => a.label.localeCompare(b.label));
+function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: string }[] {
+  return doctors.map((d) => ({ value: d.slug, label: doctorLabelFromSlug(d.slug) }));
 }
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -79,6 +57,10 @@ export default function VideosPage() {
     const params = new URLSearchParams(location.search);
     const q = params.get('q');
     if (q != null && q !== '') setQuery(q);
+    const tag = params.get('tag');
+    if (tag != null && tag !== '') setTagFilter(tag);
+    const view = params.get('view');
+    if (view === 'playlists') setLibraryView('playlists');
   }, [location.search]);
 
   useEffect(() => {
@@ -92,9 +74,16 @@ export default function VideosPage() {
     staleTime: 10 * 60 * 1000,
   });
 
+  const { data: doctors = [] } = useQuery({
+    queryKey: ['catalog', 'doctors'],
+    queryFn: catalogApi.getDoctors,
+    staleTime: 10 * 60 * 1000,
+  });
+
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
-  const doctorOptions = useMemo(() => getDoctorOptionsFromTags(tags), [tags]);
-  const useMediaHub = tagOptions.length > 0 || doctorOptions.length > 0;
+  const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
+  const useMediaHub = tagOptions.length > 0;
+  const effectiveLibraryView: 'clips' | 'playlists' = isInApp ? 'clips' : libraryView;
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -125,7 +114,7 @@ export default function VideosPage() {
       return lastItems.length === CLIPS_PAGE_SIZE ? loaded : undefined;
     },
     initialPageParam: 0,
-    enabled: useMediaHub && libraryView === 'clips',
+    enabled: useMediaHub && effectiveLibraryView === 'clips',
     staleTime: 2 * 60 * 1000,
   });
 
@@ -157,24 +146,62 @@ export default function VideosPage() {
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
 
+  const firstPageItems = clipsData?.pages?.[0]?.items ?? [];
+  const featuredClip = firstPageItems[0] ?? null;
+  const gridItems = useMemo(
+    () => (featuredClip ? displayItems.filter((c) => c.id !== featuredClip.id) : displayItems),
+    [displayItems, featuredClip],
+  );
+
+  const isInitialClipsLoad =
+    useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && (clipsData?.pages?.length ?? 0) === 0;
+  const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
+  const popularItems = useMemo(
+    () =>
+      [...gridItems]
+        .sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
+        .slice(0, 14),
+    [gridItems],
+  );
+  const shortItems = useMemo(
+    () =>
+      gridItems
+        .filter((c) => c.is_short)
+        .slice(0, 14),
+    [gridItems],
+  );
+
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
 
   return (
-    <div className="bg-white min-h-screen min-w-0">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900">Explore our Catalogue</h1>
+    <div className="min-h-screen min-w-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_32px_-20px_rgba(0,0,0,0.14)]">
+      <div
+        className={[
+          isInApp
+            ? 'w-full px-0 py-6 sm:py-10 space-y-6 sm:space-y-8'
+            : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
+        ].join(' ')}
+      >
+        <div className="flex items-center gap-2.5 pl-[20px] text-zinc-900">
+          <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+          <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+            {isInApp ? 'Explore our conversations' : 'Explore our catalogue'}
+          </h1>
+        </div>
 
-        <ContentLibraryNavTabs
-          isInApp={isInApp}
-          libraryView={libraryView}
-          playlistsAvailable={playlists.length > 0}
-          onSelectClips={() => setLibraryView('clips')}
-          onSelectPlaylists={() => setLibraryView('playlists')}
-        />
+        {!isInApp ? (
+          <ContentLibraryNavTabs
+            isInApp={isInApp}
+            libraryView={libraryView}
+            playlistsAvailable={playlists.length > 0}
+            onSelectClips={() => setLibraryView('clips')}
+            onSelectPlaylists={() => setLibraryView('playlists')}
+          />
+        ) : null}
 
-        {libraryView === 'clips' && useMediaHub && (
-          <section className="flex flex-col md:flex-row gap-3 flex-wrap">
+        {!isInApp && effectiveLibraryView === 'clips' && useMediaHub && (
+          <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
             <div className="flex-1 min-w-[200px] relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
               <input
@@ -246,7 +273,13 @@ export default function VideosPage() {
           </section>
         )}
 
-        {libraryView === 'playlists' ? (
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && <ConversationsHeroSkeleton />}
+
+        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
+          <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+        )}
+
+        {effectiveLibraryView === 'playlists' ? (
           <section className="space-y-4">
             <h2 className="text-xl font-bold text-gray-900">YouTube playlists</h2>
             <PlaylistGrid playlists={playlists} isInApp={isInApp} descriptionForItem={playlistDescription} />
@@ -254,29 +287,125 @@ export default function VideosPage() {
               <p className="text-sm text-gray-600">No playlists configured. Add YouTube playlist IDs on the server.</p>
             ) : null}
           </section>
+        ) : isInApp ? (
+          <section className="space-y-8">
+            {!useMediaHub && playlists.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
+                <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
+                <Link
+                  to="/app/catalog"
+                  className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
+                >
+                  Browse catalog
+                </Link>
+              </div>
+            ) : !useMediaHub && playlists.length > 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
+                <p className="text-pretty text-gray-600">
+                  MediaHub is not connected. Add API keys in the server to load the featured banner and conversation rows.
+                </p>
+              </div>
+            ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+              <>
+                <ConversationRow title="Loading conversations" seeAllHref="/app/catalog">
+                  <StripRowLoading />
+                </ConversationRow>
+                <ConversationRow title="Loading popular conversations" seeAllHref="/app/catalog">
+                  <StripRowLoading />
+                </ConversationRow>
+              </>
+            ) : useMediaHub && displayItems.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+              </div>
+            ) : (
+              <>
+                {newestItems.length > 0 ? (
+                  <ConversationRow
+                    title="Recently added"
+                    subtitle={`${newestItems.length} videos`}
+                    seeAllHref="/app/catalog"
+                  >
+                    {newestItems.map((item) => (
+                      <StripCard
+                        key={`new-${item.id}`}
+                        to={`/app/clip/${getShortClipId(item.id)}`}
+                        title={item.title}
+                        imageUrl={getMediaHubThumbnail(item)}
+                        meta={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                      />
+                    ))}
+                  </ConversationRow>
+                ) : null}
+                {popularItems.length > 0 ? (
+                  <ConversationRow
+                    title="Popular now"
+                    subtitle={`${popularItems.length} videos`}
+                    seeAllHref="/app/catalog"
+                  >
+                    {popularItems.map((item) => (
+                      <StripCard
+                        key={`pop-${item.id}`}
+                        to={`/app/clip/${getShortClipId(item.id)}`}
+                        title={item.title}
+                        imageUrl={getMediaHubThumbnail(item)}
+                        meta={`${(item.view_count ?? 0).toLocaleString()} views`}
+                      />
+                    ))}
+                  </ConversationRow>
+                ) : null}
+                {shortItems.length > 0 ? (
+                  <ConversationRow
+                    title="Short clips"
+                    subtitle={`${shortItems.length} videos`}
+                    seeAllHref="/app/catalog"
+                  >
+                    {shortItems.map((item) => (
+                      <StripCard
+                        key={`short-${item.id}`}
+                        to={`/app/clip/${getShortClipId(item.id)}`}
+                        title={item.title}
+                        imageUrl={getMediaHubThumbnail(item)}
+                        meta="Short conversation"
+                      />
+                    ))}
+                  </ConversationRow>
+                ) : null}
+              </>
+            )}
+            {useMediaHub && (
+              <div ref={loadMoreRef} className="flex justify-center py-2">
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+              </div>
+            )}
+          </section>
         ) : (
           <section className="space-y-4">
-            {useMediaHub && (
-              <h2 className="text-lg sm:text-xl font-bold text-gray-900 text-balance break-words max-w-full">
-                Videos
-              </h2>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-0">
+            <h2 className="sr-only">Video library</h2>
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {!useMediaHub && playlists.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="text-gray-600 mb-2">Video catalog requires MediaHub API key or YouTube playlists.</p>
-                  <p className="text-sm text-gray-500 mb-3">
-                    Configure mediahub_api_key or youtube_playlist_ids in the backend.
-                  </p>
-                  <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
-                    Browse Catalog
+                  <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
+                  <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
+                  <Link
+                    to={isInApp ? '/app/catalog' : '/catalog'}
+                    className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
+                  >
+                    Browse catalog
                   </Link>
                 </div>
               ) : !useMediaHub && playlists.length > 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-8 text-center space-y-4">
-                  <p className="text-gray-600">MediaHub is not configured. Open Playlists above or browse the catalog.</p>
-                  <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-sm font-medium text-gray-900 hover:underline">
-                    Explore catalog
+                <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
+                  <p className="text-pretty text-gray-600">
+                    MediaHub is not connected. Add API keys in the server to load the featured banner and conversation grid.
+                  </p>
+                  <Link
+                    to={isInApp ? '/app/catalog' : '/catalog'}
+                    className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
+                  >
+                    Open catalog
                   </Link>
                 </div>
               ) : useMediaHub && isLoading && displayItems.length === 0 ? (
@@ -285,75 +414,19 @@ export default function VideosPage() {
                 </div>
               ) : useMediaHub && displayItems.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="text-gray-600 mb-2">No results found.</p>
-                  <p className="text-sm text-gray-500">Try adjusting your search or filters.</p>
+                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
+              ) : useMediaHub && gridItems.length === 0 && displayItems.length > 0 ? (
+                <p className="col-span-full text-pretty text-center text-sm text-zinc-500">
+                  That is the only clip for this search.
+                </p>
               ) : (
-                displayItems.map((item) => {
-                  const detailUrl = isInApp ? `/app/clip/${getShortClipId(item.id)}` : `/catalog/clip/${getShortClipId(item.id)}`;
-                  const summary = clipDisplaySummary(item);
-                  return (
-                    <div
-                      key={item.id}
-                      className="bg-white rounded-2xl border border-gray-200 hover:shadow-md transition-shadow flex flex-col h-full min-h-[280px] min-w-0"
-                    >
-                      <div className="aspect-video relative shrink-0 bg-gray-100 overflow-hidden rounded-t-2xl">
-                        <Link to={detailUrl} className="block h-full">
-                          <img
-                            src={getMediaHubThumbnail(item)}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                            referrerPolicy="no-referrer"
-                          />
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 hover:opacity-100 transition-opacity">
-                            <div className="rounded-full bg-white/90 p-4">
-                              <Play className="h-10 w-10 text-gray-900 ml-1" fill="currentColor" />
-                            </div>
-                          </div>
-                        </Link>
-                      </div>
-                      <div className="p-4 sm:p-5 flex flex-col flex-1 min-w-0 gap-2">
-                        <Link to={detailUrl} className="block min-w-0">
-                          <h3 className="font-bold text-gray-900 hover:underline line-clamp-3 sm:line-clamp-2 break-words [overflow-wrap:anywhere]">
-                            {item.title}
-                          </h3>
-                        </Link>
-                        {item.doctors?.length > 0 && (
-                          <p className="text-xs font-medium text-gray-500 line-clamp-2 break-words [overflow-wrap:anywhere]">
-                            {item.doctors.join(', ')}
-                          </p>
-                        )}
-                        {summary ? (
-                          <p className="text-sm text-gray-600 line-clamp-4 sm:line-clamp-3 leading-relaxed break-words [overflow-wrap:anywhere]">
-                            {summary}
-                          </p>
-                        ) : null}
-                        {item.tags && item.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {item.tags.slice(0, 3).map((tag) => (
-                              <span
-                                key={tag}
-                                className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 max-w-full break-words text-left [overflow-wrap:anywhere]"
-                                title={stripTagPrefix(tag)}
-                              >
-                                {stripTagPrefix(tag)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="flex justify-end mt-auto pt-4 border-t border-gray-100 shrink-0">
-                          <Link
-                            to={detailUrl}
-                            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
-                          >
-                            <Play className="h-4 w-4" />
-                            Watch
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  );
+                gridItems.map((item) => {
+                  const detailUrl = isInApp
+                    ? `/app/clip/${getShortClipId(item.id)}`
+                    : `/catalog/clip/${getShortClipId(item.id)}`;
+                  return <ConversationsClipCard key={item.id} item={item} href={detailUrl} />;
                 })
               )}
             </div>
