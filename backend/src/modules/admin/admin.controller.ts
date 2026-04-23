@@ -835,8 +835,6 @@ export class AdminController {
     body: {
       status: ProgramRegistrationStatus;
       adminNotes?: string;
-      /** When true, approve even if intake Jotform submission id is missing (admin override). */
-      bypassIntakeRequirement?: boolean;
     },
     @CurrentUser() admin: AuthUser,
   ) {
@@ -848,7 +846,6 @@ export class AdminController {
       registrationId,
       body.status,
       body.adminNotes,
-      body.bypassIntakeRequirement ? { bypassIntakeRequirement: true } : undefined,
     );
   }
 

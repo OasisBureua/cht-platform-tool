@@ -127,6 +127,7 @@ export default function ProgramRegisterWizard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
+      queryClient.invalidateQueries({ queryKey: ['programs', 'me', 'live-session-status'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
       navigate(`${backHref}?registered=1`);
     },
@@ -303,9 +304,9 @@ export default function ProgramRegisterWizard() {
                 </p>
               )}
               {!!program.jotformIntakeFormUrl?.trim() && !intakeSubmissionId?.trim() ? (
-                <p className="text-xs font-medium text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  We still need your intake submission. Go <strong>Back</strong> to the intake step and complete the
-                  form so we can record your submission (redirect or webhook), then return here.
+                <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
+                  Intake is optional before you submit. Complete the form when you can so we can keep your answers on
+                  file (return from Jotform or wait for the automatic save).
                 </p>
               ) : null}
             </div>
@@ -333,14 +334,7 @@ export default function ProgramRegisterWizard() {
             type="button"
             onClick={goNext}
             disabled={
-              submitMut.isPending ||
-              (current === 'intake' &&
-                !!program.jotformIntakeFormUrl?.trim() &&
-                !intakeSubmissionId?.trim()) ||
-              (current === 'slot' && slots.length > 0 && !selectedSlotId) ||
-              (isLastStep &&
-                !!program.jotformIntakeFormUrl?.trim() &&
-                !intakeSubmissionId?.trim())
+              submitMut.isPending || (current === 'slot' && slots.length > 0 && !selectedSlotId)
             }
             className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >

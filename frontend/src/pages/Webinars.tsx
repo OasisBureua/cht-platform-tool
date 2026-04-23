@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
+import { programsApi } from '../api/programs';
+import { useAuth } from '../contexts/AuthContext';
+import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
@@ -19,11 +22,27 @@ function formatDuration(minutes?: number): string {
 }
 
 export default function Webinars() {
+  const { user } = useAuth();
+  const userId = user?.userId;
+
   const { data: webinars = [], isLoading } = useQuery({
     queryKey: ['webinars'],
     queryFn: webinarsApi.list,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: liveStatuses = [] } = useQuery({
+    queryKey: ['programs', 'me', 'live-session-status'],
+    queryFn: () => programsApi.getMyLiveSessionStatus(),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  const statusByProgramId = useMemo(() => {
+    const m = new Map<string, (typeof liveStatuses)[0]>();
+    for (const s of liveStatuses) m.set(s.programId, s);
+    return m;
+  }, [liveStatuses]);
 
   const { upcoming, past } = useMemo(() => {
     const withDate = (w: WebinarItem) => (w.startTime ? new Date(w.startTime).getTime() : 0);
@@ -66,7 +85,14 @@ export default function Webinars() {
               </h2>
               <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
                 {upcoming.map((w) => (
-                  <WebinarRow key={w.id} webinar={w} />
+                  <WebinarRow
+                    key={w.id}
+                    webinar={w}
+                    listBadge={liveSessionListBadgeLabel(
+                      w.registrationRequiresApproval,
+                      statusByProgramId.get(w.id),
+                    )}
+                  />
                 ))}
               </div>
             </section>
@@ -80,7 +106,15 @@ export default function Webinars() {
               </h2>
               <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
                 {past.map((w) => (
-                  <WebinarRow key={w.id} webinar={w} expired />
+                  <WebinarRow
+                    key={w.id}
+                    webinar={w}
+                    expired
+                    listBadge={liveSessionListBadgeLabel(
+                      w.registrationRequiresApproval,
+                      statusByProgramId.get(w.id),
+                    )}
+                  />
                 ))}
               </div>
             </section>
@@ -91,7 +125,15 @@ export default function Webinars() {
   );
 }
 
-function WebinarRow({ webinar: w, expired = false }: { webinar: WebinarItem; expired?: boolean }) {
+function WebinarRow({
+  webinar: w,
+  expired = false,
+  listBadge,
+}: {
+  webinar: WebinarItem;
+  expired?: boolean;
+  listBadge?: string | null;
+}) {
   const date = w.startTime ? new Date(w.startTime) : null;
 
   return (
@@ -120,6 +162,11 @@ function WebinarRow({ webinar: w, expired = false }: { webinar: WebinarItem; exp
           <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
             {w.title}
           </p>
+          {listBadge ? (
+            <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+              {listBadge}
+            </span>
+          ) : null}
           {expired && (
             <span className="shrink-0 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
               Expired

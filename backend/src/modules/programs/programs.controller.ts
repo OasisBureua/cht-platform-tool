@@ -63,6 +63,15 @@ export class ProgramsController {
   }
 
   /**
+   * GET /api/programs/me/live-session-status — enrollment / registration per LIVE or Office Hours program (auth).
+   */
+  @Get('me/live-session-status')
+  @UseGuards(JwtAuthGuard)
+  async getMyLiveSessionStatus(@CurrentUser() user: AuthUser) {
+    return this.registrationsService.getMyLiveSessionStatusForLists(user.userId);
+  }
+
+  /**
    * GET /api/programs/:id/slots — published office-hours time slots (public)
    */
   @Get(':id/slots')

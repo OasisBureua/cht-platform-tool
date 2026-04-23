@@ -70,6 +70,12 @@ export type LiveWebinarActionItem = {
   href: string;
 };
 
+export type MyLiveSessionListStatus = {
+  programId: string;
+  enrolled: boolean;
+  registrationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED' | null;
+};
+
 export interface Enrollment {
   id: string;
   userId: string;
@@ -92,6 +98,11 @@ export interface Enrollment {
 export const programsApi = {
   getLiveActionItems: async (): Promise<LiveWebinarActionItem[]> => {
     const { data } = await apiClient.get<LiveWebinarActionItem[]>('/programs/live-action-items');
+    return data ?? [];
+  },
+
+  getMyLiveSessionStatus: async (): Promise<MyLiveSessionListStatus[]> => {
+    const { data } = await apiClient.get<MyLiveSessionListStatus[]>('/programs/me/live-session-status');
     return data ?? [];
   },
 

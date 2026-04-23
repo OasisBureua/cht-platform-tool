@@ -85,19 +85,8 @@ export default function AdminProgramHub() {
   });
 
   const approveMut = useMutation({
-    mutationFn: ({
-      id,
-      status,
-      bypassIntakeRequirement,
-    }: {
-      id: string;
-      status: 'APPROVED' | 'REJECTED' | 'WAITLISTED';
-      bypassIntakeRequirement?: boolean;
-    }) =>
-      adminApi.updateProgramRegistration(id, {
-        status,
-        ...(bypassIntakeRequirement ? { bypassIntakeRequirement: true } : {}),
-      }),
+    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' | 'WAITLISTED' }) =>
+      adminApi.updateProgramRegistration(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
@@ -450,7 +439,6 @@ export default function AdminProgramHub() {
                       {registrations.map((r) => {
                         const intakeRequired = r.intakeRequired ?? false;
                         const intakeOk = r.intakeComplete ?? false;
-                        const canApprove = !intakeRequired || intakeOk;
                         return (
                           <tr key={r.id}>
                             <td className="py-2 pr-4">
@@ -479,41 +467,12 @@ export default function AdminProgramHub() {
                                 <>
                                   <button
                                     type="button"
-                                    disabled={!canApprove || approveMut.isPending}
-                                    title={
-                                      !canApprove
-                                        ? 'Intake Jotform submission ID required before approval'
-                                        : undefined
-                                    }
+                                    disabled={approveMut.isPending}
                                     onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
                                     className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                   >
                                     Approve
                                   </button>
-                                  {intakeRequired && !intakeOk && (
-                                    <button
-                                      type="button"
-                                      disabled={approveMut.isPending}
-                                      title="Supersede intake requirement and approve without a Jotform submission ID on file"
-                                      onClick={() => {
-                                        if (
-                                          !window.confirm(
-                                            'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
-                                          )
-                                        ) {
-                                          return;
-                                        }
-                                        approveMut.mutate({
-                                          id: r.id,
-                                          status: 'APPROVED',
-                                          bypassIntakeRequirement: true,
-                                        });
-                                      }}
-                                      className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
-                                    >
-                                      Supersede &amp; approve anyway
-                                    </button>
-                                  )}
                                   <button
                                     type="button"
                                     onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
@@ -632,7 +591,6 @@ export default function AdminProgramHub() {
                     {registrations.map((r) => {
                       const intakeRequired = r.intakeRequired ?? false;
                       const intakeOk = r.intakeComplete ?? false;
-                      const canApprove = !intakeRequired || intakeOk;
                       return (
                         <tr key={r.id}>
                           <td className="py-2 pr-4">
@@ -671,41 +629,12 @@ export default function AdminProgramHub() {
                                 <>
                                   <button
                                     type="button"
-                                    disabled={!canApprove || approveMut.isPending}
-                                    title={
-                                      !canApprove
-                                        ? 'Intake Jotform submission ID required before approval'
-                                        : undefined
-                                    }
+                                    disabled={approveMut.isPending}
                                     onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
                                     className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                   >
                                     Approve
                                   </button>
-                                  {intakeRequired && !intakeOk && (
-                                    <button
-                                      type="button"
-                                      disabled={approveMut.isPending}
-                                      title="Supersede intake requirement and approve without a Jotform submission ID on file"
-                                      onClick={() => {
-                                        if (
-                                          !window.confirm(
-                                            'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
-                                          )
-                                        ) {
-                                          return;
-                                        }
-                                        approveMut.mutate({
-                                          id: r.id,
-                                          status: 'APPROVED',
-                                          bypassIntakeRequirement: true,
-                                        });
-                                      }}
-                                      className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
-                                    >
-                                      Supersede &amp; approve anyway
-                                    </button>
-                                  )}
                                   <button
                                     type="button"
                                     onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}

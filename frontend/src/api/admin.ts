@@ -295,7 +295,6 @@ export const adminApi = {
     body: {
       status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
       adminNotes?: string;
-      bypassIntakeRequirement?: boolean;
     },
   ) => {
     const { data } = await apiClient.patch(`/admin/registrations/${encodeURIComponent(registrationId)}`, body);

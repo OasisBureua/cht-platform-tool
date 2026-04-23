@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2 } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
+import { programsApi } from '../api/programs';
+import { useAuth } from '../contexts/AuthContext';
+import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
 import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
@@ -29,7 +32,16 @@ function getFallbackImage(type: 'webinar' | 'clip' | 'playlist' | 'survey'): str
 type Tab = 'best' | 'webinars' | 'videos' | 'surveys';
 
 type UnifiedItem =
-  | { type: 'webinar'; id: string; title: string; description: string; imageUrl: string; href: string }
+  | {
+      type: 'webinar';
+      id: string;
+      programId: string;
+      registrationRequiresApproval?: boolean;
+      title: string;
+      description: string;
+      imageUrl: string;
+      href: string;
+    }
   | { type: 'clip'; id: string; title: string; description: string; imageUrl: string; href: string; subtitle?: string }
   | { type: 'playlist'; id: string; title: string; description: string; imageUrl: string; href: string; videoNames?: string[] }
   | { type: 'survey'; id: string; title: string; description: string; imageUrl: string; href: string };
@@ -46,6 +58,8 @@ function matchesQuery(item: UnifiedItem, q: string): boolean {
 }
 
 export default function ExploreOpportunities() {
+  const { user } = useAuth();
+  const userId = user?.userId;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tab, setTab] = useState<Tab>('best');
@@ -68,6 +82,19 @@ export default function ExploreOpportunities() {
     queryFn: webinarsApi.list,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: liveStatuses = [] } = useQuery({
+    queryKey: ['programs', 'me', 'live-session-status'],
+    queryFn: () => programsApi.getMyLiveSessionStatus(),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  const statusByProgramId = useMemo(() => {
+    const m = new Map<string, (typeof liveStatuses)[0]>();
+    for (const s of liveStatuses) m.set(s.programId, s);
+    return m;
+  }, [liveStatuses]);
 
   const { data: clipsData, isLoading: clipsLoading, isError: clipsError } = useQuery({
     queryKey: ['catalog', 'clips', debouncedQuery],
@@ -105,6 +132,8 @@ export default function ExploreOpportunities() {
       out.push({
         type: 'webinar',
         id: `webinar-${w.id}`,
+        programId: w.id,
+        registrationRequiresApproval: w.registrationRequiresApproval,
         title: w.title,
         description: w.description || '',
         imageUrl: w.imageUrl || '',
@@ -226,7 +255,15 @@ export default function ExploreOpportunities() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((item) => (
+          {filtered.map((item) => {
+            const webinarBadge =
+              item.type === 'webinar'
+                ? liveSessionListBadgeLabel(
+                    item.registrationRequiresApproval,
+                    statusByProgramId.get(item.programId),
+                  )
+                : null;
+            return (
             <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
               <div className="h-44 shrink-0">
                 <img
@@ -246,7 +283,14 @@ export default function ExploreOpportunities() {
                     {item.type === 'survey' && 'Survey'}
                   </span>
                 </div>
-                <h3 className="font-bold text-gray-900 line-clamp-2 mt-1">{item.title}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h3 className="font-bold text-gray-900 line-clamp-2 flex-1 min-w-[8rem]">{item.title}</h3>
+                  {webinarBadge ? (
+                    <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+                      {webinarBadge}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex-1 min-h-0 mt-2">
                   {item.subtitle ? (
                     <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
@@ -271,7 +315,8 @@ export default function ExploreOpportunities() {
                 </Link>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

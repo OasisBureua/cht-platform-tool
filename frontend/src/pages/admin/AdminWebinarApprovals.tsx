@@ -14,19 +14,8 @@ export default function AdminWebinarApprovals() {
   });
 
   const approveMut = useMutation({
-    mutationFn: ({
-      id,
-      status,
-      bypassIntakeRequirement,
-    }: {
-      id: string;
-      status: 'APPROVED' | 'REJECTED';
-      bypassIntakeRequirement?: boolean;
-    }) =>
-      adminApi.updateProgramRegistration(id, {
-        status,
-        ...(bypassIntakeRequirement ? { bypassIntakeRequirement: true } : {}),
-      }),
+    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' }) =>
+      adminApi.updateProgramRegistration(id, { status }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program'] });
@@ -54,10 +43,9 @@ export default function AdminWebinarApprovals() {
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">LIVE & Office Hours approvals</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Pending registration requests for published webinars and CHM Office Hours. For programs with a Jotform intake
-          URL, approve after a submission ID is on file when possible. Use{' '}
-          <strong>Supersede &amp; approve anyway</strong> only if you verified the learner another way. Learners can join
-          via Zoom after approval. If you <strong>reject</strong> someone, they can register again; their request
+          Pending registration requests for published webinars and CHM Office Hours. Intake status is shown for reference
+          when a Jotform intake URL is configured; you can approve even if a submission ID is not on file yet. Learners
+          can join via Zoom after approval. If you <strong>reject</strong> someone, they can register again; their request
           returns to pending when they resubmit.
         </p>
       </div>
@@ -78,7 +66,6 @@ export default function AdminWebinarApprovals() {
           <tbody className="divide-y divide-gray-100">
             {rows.map((r) => {
               const intakeRequired = r.intakeRequired ?? false;
-              const canApprove = !intakeRequired || r.intakeComplete;
               return (
                 <tr key={r.id}>
                   <td className="py-3 px-4">
@@ -135,41 +122,12 @@ export default function AdminWebinarApprovals() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={!canApprove || approveMut.isPending}
-                        title={
-                          !canApprove
-                            ? 'Learner must complete intake Jotform and submit registration with submission ID'
-                            : undefined
-                        }
+                        disabled={approveMut.isPending}
                         onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
                         className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                       >
                         Approve
                       </button>
-                      {intakeRequired && !r.intakeComplete && (
-                        <button
-                          type="button"
-                          disabled={approveMut.isPending}
-                          title="Supersede intake requirement and approve without a Jotform submission ID on file"
-                          onClick={() => {
-                            if (
-                              !window.confirm(
-                                'Supersede the intake requirement and approve anyway? The Jotform submission ID will not be on file. Use only if you verified this learner another way.',
-                              )
-                            ) {
-                              return;
-                            }
-                            approveMut.mutate({
-                              id: r.id,
-                              status: 'APPROVED',
-                              bypassIntakeRequirement: true,
-                            });
-                          }}
-                          className="rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900"
-                        >
-                          Supersede &amp; approve anyway
-                        </button>
-                      )}
                       <button
                         type="button"
                         disabled={approveMut.isPending}

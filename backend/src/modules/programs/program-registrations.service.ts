@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ProgramRegistrationStatus } from '@prisma/client';
+import { ProgramRegistrationStatus, ProgramStatus, ProgramZoomSessionType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
@@ -120,6 +120,41 @@ export class ProgramRegistrationsService {
   }
 
   /**
+   * LIVE / Office Hours list badges: enrollment + registration status per program for the current user.
+   */
+  async getMyLiveSessionStatusForLists(userId: string): Promise<
+    Array<{ programId: string; enrolled: boolean; registrationStatus: ProgramRegistrationStatus | null }>
+  > {
+    const liveProgramWhere = {
+      zoomSessionType: { in: [ProgramZoomSessionType.WEBINAR, ProgramZoomSessionType.MEETING] },
+      status: ProgramStatus.PUBLISHED,
+    };
+    const [regs, enrolls] = await Promise.all([
+      this.prisma.programRegistration.findMany({
+        where: { userId, program: liveProgramWhere },
+        select: { programId: true, status: true },
+      }),
+      this.prisma.programEnrollment.findMany({
+        where: { userId, program: liveProgramWhere },
+        select: { programId: true },
+      }),
+    ]);
+    const enrollSet = new Set(enrolls.map((e) => e.programId));
+    const map = new Map<string, { registrationStatus: ProgramRegistrationStatus | null }>();
+    for (const r of regs) {
+      map.set(r.programId, { registrationStatus: r.status });
+    }
+    for (const pid of enrollSet) {
+      if (!map.has(pid)) map.set(pid, { registrationStatus: null });
+    }
+    return Array.from(map.entries()).map(([programId, { registrationStatus }]) => ({
+      programId,
+      enrolled: enrollSet.has(programId),
+      registrationStatus,
+    }));
+  }
+
+  /**
    * Submit or update registration. If program does not require approval, approves and enrolls immediately.
    */
   async submitRegistration(
@@ -163,17 +198,6 @@ export class ProgramRegistrationsService {
       if (used >= slot.maxAttendees) {
         throw new BadRequestException('This time slot is full');
       }
-    }
-
-    const intakeUrlConfigured = !!effectiveWebinarIntakeFormUrl(
-      program.zoomSessionType,
-      program.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
-    );
-    if (intakeUrlConfigured && !body.intakeJotformSubmissionId?.trim()) {
-      throw new BadRequestException(
-        'Intake form must be completed first. Submit the Jotform and return to this app using the thank-you redirect URL that includes your submission ID.',
-      );
     }
 
     const requiresApproval = program.registrationRequiresApproval;
@@ -415,39 +439,12 @@ export class ProgramRegistrationsService {
     registrationId: string,
     status: ProgramRegistrationStatus,
     adminNotes?: string,
-    options?: { bypassIntakeRequirement?: boolean },
   ) {
     const reg = await this.prisma.programRegistration.findUnique({
       where: { id: registrationId },
       include: { program: true },
     });
     if (!reg) throw new NotFoundException('Registration not found');
-
-    const intakeRequiredForApproval = !!effectiveWebinarIntakeFormUrl(
-      reg.program.zoomSessionType,
-      reg.program.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
-    );
-    if (
-      status === ProgramRegistrationStatus.APPROVED &&
-      intakeRequiredForApproval &&
-      !reg.intakeJotformSubmissionId?.trim() &&
-      !options?.bypassIntakeRequirement
-    ) {
-      throw new BadRequestException(
-        'Cannot approve: intake Jotform is not recorded for this registration (missing submission ID). Ask the learner to complete intake and submit registration again, or remove the intake URL if not required.',
-      );
-    }
-    if (
-      status === ProgramRegistrationStatus.APPROVED &&
-      intakeRequiredForApproval &&
-      !reg.intakeJotformSubmissionId?.trim() &&
-      options?.bypassIntakeRequirement
-    ) {
-      this.logger.warn(
-        `Admin ${adminUserId} approved registration ${registrationId} without intake submission id (override)`,
-      );
-    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.programRegistration.update({
