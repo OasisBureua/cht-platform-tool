@@ -508,10 +508,9 @@ export default function Home() {
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6">
           <h2
-            className="home-enter text-balance mx-auto mb-6 md:mb-8"
+            className="home-enter text-balance mx-auto mb-6 md:mb-8 text-gray-900 dark:text-white"
             style={{
               animationDelay: `${HOME_STAGGER_MS.closingHead}ms`,
-              color: '#000',
               fontFamily: '"Apple Garamond", Garamond, serif',
               fontSize: 'clamp(2.5rem, 8vw, 96px)',
               fontWeight: 400,
