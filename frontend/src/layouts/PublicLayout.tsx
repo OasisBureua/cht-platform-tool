@@ -1,8 +1,9 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, Instagram, Menu, X } from 'lucide-react';
-import logoSrc from '../assets/logo/LOGO.svg';
 import ChatBubble from '../components/ChatBubble';
+import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
+import ThemeToggle from '../components/ThemeToggle';
 
 const navLinks = [
   { to: '/about', label: 'About' },
@@ -42,20 +43,24 @@ export default function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col min-w-0">
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+    <div className="min-h-screen flex min-w-0 flex-col bg-white text-gray-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <header className="sticky top-0 z-50 nav-liquid-glass">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
           {/* Center: quick entry to content library (filters live on /catalog) */}
           <div className="grid h-14 sm:h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 min-w-0">
             <div className="flex justify-start min-w-0">
-              <Link to="/" className="flex items-center shrink-0">
-                <img src={logoSrc} alt="CHT" className="h-7 sm:h-8 w-auto" />
+              <Link
+                to="/"
+                className="flex items-center shrink-0 text-brand-600 transition-[color,opacity] hover:text-brand-700 hover:opacity-95"
+                aria-label="Community Health Media, home"
+              >
+                <ChmWordmarkOption2 className="h-7 w-[4.5rem] sm:h-8 sm:w-[5rem]" />
               </Link>
             </div>
 
             <div className="hidden sm:flex justify-center min-w-0 px-1">
               <form onSubmit={submitBrowse} className="w-full max-w-xl lg:max-w-2xl">
-                <div className="flex w-full rounded-full border border-gray-300 overflow-hidden bg-gray-50 focus-within:border-gray-900 focus-within:ring-1 focus-within:ring-gray-900">
+                <div className="flex w-full overflow-hidden rounded-full border border-white/50 bg-white/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] backdrop-blur-md transition-[box-shadow,border-color] focus-within:border-brand-400/50 focus-within:ring-2 focus-within:ring-brand-500/25">
                   <input
                     type="search"
                     name="q"
@@ -67,10 +72,10 @@ export default function PublicLayout() {
                   />
                   <button
                     type="submit"
-                    className="shrink-0 px-4 py-2 bg-gray-100 border-l border-gray-300 hover:bg-gray-200 transition-colors"
+                    className="shrink-0 border-l border-white/40 bg-white/35 px-4 py-2 text-brand-700 transition-[color,background-color] hover:bg-brand-50/80 hover:text-brand-800"
                     aria-label="Go to library"
                   >
-                    <Search className="h-5 w-5 text-gray-700" />
+                    <Search className="h-5 w-5" />
                   </button>
                 </div>
               </form>
@@ -79,21 +84,22 @@ export default function PublicLayout() {
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
               <Link
                 to="/catalog"
-                className="sm:hidden p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-brand-800 transition-colors hover:bg-white/50 hover:text-brand-900 sm:hidden dark:text-brand-300 dark:hover:bg-white/10"
                 aria-label="Browse library"
               >
                 <Search className="h-5 w-5" />
               </Link>
-              <div className="hidden sm:inline-flex items-center rounded-full bg-[#000000] p-1 gap-0.5">
+              <ThemeToggle className="shrink-0" />
+              <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-white/35 bg-black/75 p-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/90">
                 <Link
                   to="/login"
-                  className="px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                  className="rounded-full px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white/95 transition-[opacity,background-color] hover:bg-white/10 hover:opacity-100"
                 >
                   Login
                 </Link>
                 <Link
                   to="/join"
-                  className="rounded-full bg-white px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-[#000000] hover:bg-white/90 transition-colors"
+                  className="rounded-full bg-white px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-brand-800 shadow-sm transition-[background-color,color] hover:bg-brand-50"
                 >
                   Get Started
                 </Link>
@@ -101,95 +107,102 @@ export default function PublicLayout() {
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                className="p-2 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-700 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-gray-800 transition-[color,background-color,transform] duration-200 ease-out hover:bg-white/50 hover:text-gray-900 active:scale-[0.96]"
                 aria-label="Open menu"
                 aria-expanded={drawerOpen}
               >
-                <Menu className="h-6 w-6" />
+                <Menu className="h-6 w-6" strokeWidth={2} />
               </button>
             </div>
           </div>
         </div>
-
-        {/* Slide-in drawer (Hims-style ease) */}
-        <div
-          className={`fixed inset-0 z-[60] sm:z-[60] transition-opacity duration-300 ease-out ${
-            drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-          }`}
-          aria-hidden={!drawerOpen}
-        >
-          <button
-            type="button"
-            className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
-              drawerOpen ? 'opacity-100' : 'opacity-0'
-            }`}
-            onClick={() => setDrawerOpen(false)}
-            aria-label="Close menu"
-          />
-          <nav
-            className={`absolute top-0 right-0 h-full w-[min(100%,22rem)] bg-white shadow-2xl border-l border-gray-200 flex flex-col transition-transform duration-300 ease-out ${
-              drawerOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-            aria-label="Site navigation"
-          >
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-100">
-              <span className="text-lg font-semibold text-gray-900">Menu</span>
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto py-2 px-2">
-              {navLinks.map(({ to, label }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => setDrawerOpen(false)}
-                  className={({ isActive }) =>
-                    `block py-3.5 px-4 text-lg font-medium rounded-xl transition-colors ${
-                      isActive ? 'text-gray-900 bg-gray-100' : 'text-gray-700 hover:bg-gray-50'
-                    }`
-                  }
-                >
-                  {label}
-                </NavLink>
-              ))}
-            </div>
-            <div className="p-4 border-t border-gray-100 space-y-2 sm:hidden">
-              <Link
-                to="/login"
-                onClick={() => setDrawerOpen(false)}
-                className="block w-full py-3.5 text-center text-base font-semibold text-gray-900 bg-gray-100 rounded-xl hover:bg-gray-200"
-              >
-                Login
-              </Link>
-              <Link
-                to="/join"
-                onClick={() => setDrawerOpen(false)}
-                className="block w-full py-3.5 text-center text-base font-semibold text-white bg-gray-900 rounded-xl hover:bg-black"
-              >
-                Get Started
-              </Link>
-            </div>
-          </nav>
-        </div>
       </header>
+
+      {/* Slide-in drawer: kept outside <header> so position:fixed is viewport-relative.
+          backdrop-filter on the glass header creates a containing block and was clipping the drawer to ~nav height. */}
+      <div
+        className={`fixed inset-0 z-[100] transition-[opacity] duration-300 ease-out motion-reduce:duration-150 ${
+          drawerOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+        aria-hidden={!drawerOpen}
+      >
+        <button
+          type="button"
+          className={`absolute inset-0 bg-black/[0.38] transition-[opacity] duration-300 ease-out motion-reduce:duration-150 ${
+            drawerOpen ? 'opacity-100' : 'opacity-0'
+          }`}
+          onClick={() => setDrawerOpen(false)}
+          aria-label="Close menu"
+        />
+        <nav
+          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:bg-zinc-950/98 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_32px_64px_-24px_rgba(0,0,0,0.5)] ${
+            drawerOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+          aria-label="Site navigation"
+        >
+          <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.08)]">
+            <span className="text-balance text-lg font-semibold tracking-tight text-gray-900 dark:text-zinc-100">Menu</span>
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(false)}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96]"
+              aria-label="Close menu"
+            >
+              <X className="h-5 w-5" strokeWidth={2} />
+            </button>
+          </div>
+          <div
+            className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-2"
+            data-drawer-animating={drawerOpen ? 'true' : 'false'}
+          >
+            {navLinks.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={() => setDrawerOpen(false)}
+                className={({ isActive }) =>
+                  [
+                    'public-drawer-link flex min-h-[48px] items-center rounded-2xl px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
+                    isActive
+                      ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.22)] dark:bg-brand-950/40 dark:text-brand-100'
+                      : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
+                  ].join(' ')
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
+          <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] sm:hidden">
+            <Link
+              to="/login"
+              onClick={() => setDrawerOpen(false)}
+              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-gray-950/95 text-center text-base font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-8px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-black active:scale-[0.96]"
+            >
+              Login
+            </Link>
+            <Link
+              to="/join"
+              onClick={() => setDrawerOpen(false)}
+              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-brand-500 text-center text-base font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.2)_inset,0_10px_28px_-10px_rgba(24,92,84,0.55)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-600 active:scale-[0.96]"
+            >
+              Get Started
+            </Link>
+          </div>
+        </nav>
+      </div>
 
       <main className="flex-1 min-w-0 overflow-x-hidden">
         <Outlet />
       </main>
       <ChatBubble />
 
-      <footer className="bg-[#000000] text-white">
+      <footer className="bg-black text-white">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-16">
             <div className="space-y-6 max-w-md">
-              <Link to="/" className="inline-flex">
-                <img src={logoSrc} alt="CHT" className="h-7 w-auto brightness-0 invert" />
+              <Link to="/" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
+                <ChmWordmarkOption2 className="h-8 w-[5rem] text-white" />
               </Link>
               <address className="not-italic text-sm text-gray-300 space-y-1 leading-relaxed">
                 <p>2471 18th St NW</p>
