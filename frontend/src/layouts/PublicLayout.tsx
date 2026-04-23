@@ -134,17 +134,17 @@ export default function PublicLayout() {
           aria-label="Close menu"
         />
         <nav
-          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:bg-zinc-950/98 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_32px_64px_-24px_rgba(0,0,0,0.5)] ${
+          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:border-l dark:border-zinc-800/90 dark:bg-zinc-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_64px_-24px_rgba(0,0,0,0.55),inset_1px_0_0_0_rgba(255,255,255,0.04)] ${
             drawerOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           aria-label="Site navigation"
         >
-          <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.08)]">
-            <span className="text-balance text-lg font-semibold tracking-tight text-gray-900 dark:text-zinc-100">Menu</span>
+          <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
+            <span className="text-balance text-lg font-semibold tracking-tight text-gray-900 dark:text-white">Menu</span>
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96] dark:text-white dark:hover:bg-zinc-800 dark:active:bg-zinc-800/90"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" strokeWidth={2} />
@@ -163,8 +163,8 @@ export default function PublicLayout() {
                   [
                     'public-drawer-link flex min-h-[48px] items-center rounded-2xl px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
                     isActive
-                      ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.22)] dark:bg-brand-950/40 dark:text-brand-100'
-                      : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
+                      ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.22)] dark:bg-brand-950/50 dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(43,168,154,0.35)]'
+                      : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-white dark:hover:bg-zinc-800/90 dark:active:bg-zinc-800',
                   ].join(' ')
                 }
               >
@@ -172,7 +172,7 @@ export default function PublicLayout() {
               </NavLink>
             ))}
           </div>
-          <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] sm:hidden">
+          <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)] sm:hidden">
             <Link
               to="/login"
               onClick={() => setDrawerOpen(false)}
