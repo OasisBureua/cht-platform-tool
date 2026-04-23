@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
+import { Search, Loader2, ChevronDown, MonitorPlay, Play } from 'lucide-react';
 import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
+import { getMediaHubThumbnail, getShortClipId } from '../../utils/clipUrl';
+import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistGrid } from '../../components/content/PlaylistGrid';
-import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
-import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
 
 const SORT_OPTIONS = [
@@ -273,10 +272,49 @@ export default function VideosPage() {
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && <ConversationsHeroSkeleton />}
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
+          <div
+            className="mb-6 min-h-[min(52vw,320px)] w-full animate-pulse rounded-2xl bg-zinc-200 dark:bg-zinc-800 md:min-h-[280px]"
+            aria-hidden
+          />
+        )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+          <Link
+            to={
+              isInApp
+                ? `/app/clip/${getShortClipId(featuredClip.id)}`
+                : `/catalog/clip/${getShortClipId(featuredClip.id)}`
+            }
+            className="group relative mb-6 flex min-h-[min(52vw,320px)] w-full flex-col justify-end overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-black/5 transition-[transform,box-shadow] duration-200 ease-out hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:ring-white/10 md:min-h-[280px] md:flex-row md:items-stretch"
+          >
+            <div className="absolute inset-0">
+              <img
+                src={getMediaHubThumbnail(featuredClip)}
+                alt=""
+                className="h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.02]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10 md:bg-gradient-to-r md:from-black/80 md:via-black/40 md:to-transparent" />
+            </div>
+            <div className="relative z-10 flex w-full flex-col justify-end gap-3 p-5 md:max-w-[min(100%,520px)] md:justify-center md:p-8">
+              <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white/90 backdrop-blur-sm">
+                <Play className="h-3.5 w-3.5 fill-current" aria-hidden />
+                Featured
+              </div>
+              <h1 className="text-balance text-2xl font-bold leading-tight tracking-tight text-white md:text-3xl">
+                {featuredClip.title}
+              </h1>
+              {clipDisplaySummary(featuredClip) ? (
+                <p className="line-clamp-3 text-sm leading-relaxed text-white/85 md:text-base">
+                  {clipDisplaySummary(featuredClip)}
+                </p>
+              ) : null}
+              <span className="inline-flex w-fit items-center gap-2 text-sm font-semibold text-white underline-offset-4 group-hover:underline">
+                Watch
+                <Play className="h-4 w-4" aria-hidden />
+              </span>
+            </div>
+          </Link>
         )}
 
         {effectiveLibraryView === 'playlists' ? (
@@ -426,7 +464,34 @@ export default function VideosPage() {
                   const detailUrl = isInApp
                     ? `/app/clip/${getShortClipId(item.id)}`
                     : `/catalog/clip/${getShortClipId(item.id)}`;
-                  return <ConversationsClipCard key={item.id} item={item} href={detailUrl} />;
+                  const thumb = getMediaHubThumbnail(item);
+                  const meta = clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation';
+                  return (
+                    <Link
+                      key={item.id}
+                      to={detailUrl}
+                      className="group flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5 transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 dark:bg-zinc-900 dark:ring-white/10"
+                    >
+                      <div className="relative aspect-video w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                        <img
+                          src={thumb}
+                          alt=""
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/25 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/95 text-zinc-900 shadow-lg dark:bg-zinc-900 dark:text-white">
+                            <Play className="h-6 w-6 fill-current pl-0.5" aria-hidden />
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex min-h-[5.5rem] flex-col gap-1 p-3">
+                        <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                          {item.title}
+                        </h3>
+                        <p className="line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">{meta}</p>
+                      </div>
+                    </Link>
+                  );
                 })
               )}
             </div>
