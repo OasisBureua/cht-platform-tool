@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Public home: staggered chunk entrance - opacity only so we never clobber Tailwind transforms (e.g. -translate-x-1/2 full-bleed). */
+@keyframes home-chunk-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @layer base {
   html {
     /* clip avoids creating a scroll box that breaks position:sticky on descendants */
@@ -11,13 +21,66 @@
   body {
     @apply bg-gray-50 text-gray-900 antialiased overflow-x-clip min-w-0;
   }
+  .dark body {
+    @apply bg-zinc-950 text-zinc-100;
+  }
   /* Prevent horizontal overflow on mobile */
   #root {
     @apply min-w-0 overflow-x-clip max-w-full;
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .home-enter {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .public-drawer-link {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .app-shell .app-outlet-enter,
+  .app-shell .app-sidebar-nav > a {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Slide-out nav: soft stagger (opacity only; no transform so it never fights the panel translate). */
+@keyframes public-drawer-link-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 @layer utilities {
+  /** Public site header: frosted / “liquid glass” bar (content scrolls underneath) */
+  .nav-liquid-glass {
+    @apply border-b border-white/40 bg-white/55 shadow-[0_8px_40px_-12px_rgba(24,92,84,0.12),inset_0_1px_0_0_rgba(255,255,255,0.65)];
+    -webkit-backdrop-filter: blur(20px) saturate(1.35);
+    backdrop-filter: blur(20px) saturate(1.35);
+  }
+  .dark .nav-liquid-glass {
+    @apply border-zinc-800/80 bg-zinc-900/85 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.06)];
+  }
+  @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .nav-liquid-glass {
+      @apply bg-white/95 shadow-sm border-gray-200/80;
+    }
+    .dark .nav-liquid-glass {
+      @apply border-zinc-800 bg-zinc-900/95;
+    }
+  }
+
+  .home-enter {
+    animation: home-chunk-enter 0.5s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
   /* Hide scrollbars on horizontal carousels (still scrollable / swipeable) */
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -26,15 +89,121 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /** Public drawer: link row entrance when `[data-drawer-animating='true']` is set on the scroll container */
+  [data-drawer-animating='true'] .public-drawer-link {
+    animation: public-drawer-link-in 0.38s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(1) {
+    animation-delay: 0.035s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(2) {
+    animation-delay: 0.07s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(3) {
+    animation-delay: 0.105s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(4) {
+    animation-delay: 0.14s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(5) {
+    animation-delay: 0.175s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(6) {
+    animation-delay: 0.21s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(7) {
+    animation-delay: 0.245s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(8) {
+    animation-delay: 0.28s;
+  }
+  [data-drawer-animating='true'] .public-drawer-link:nth-child(n + 9) {
+    animation-delay: 0.3s;
+  }
+
+  /** /app shell: soft route content fade (opacity only — no transform fights with children) */
+  @keyframes app-outlet-enter {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .app-shell .app-outlet-enter {
+    animation: app-outlet-enter 0.34s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  /** Sidebar nav icons: stagger on first paint */
+  @keyframes app-sidebar-nav-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .app-shell .app-sidebar-nav > a {
+    animation: app-sidebar-nav-in 0.36s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(1) {
+    animation-delay: 0.03s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(2) {
+    animation-delay: 0.06s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(3) {
+    animation-delay: 0.09s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(5) {
+    animation-delay: 0.15s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(6) {
+    animation-delay: 0.18s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(7) {
+    animation-delay: 0.21s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(8) {
+    animation-delay: 0.24s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(9) {
+    animation-delay: 0.27s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(10) {
+    animation-delay: 0.3s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(11) {
+    animation-delay: 0.33s;
+  }
+  .app-shell .app-sidebar-nav > a:nth-child(n + 12) {
+    animation-delay: 0.36s;
+  }
+
+  /** Raster images in app main: subtle edge definition (pure black / 10%) */
+  .app-shell main img[src]:not([src^='data:']) {
+    outline: 1px solid rgba(0, 0, 0, 0.1);
+    outline-offset: -1px;
+  }
+  .dark .app-shell main img[src]:not([src^='data:']) {
+    outline: 1px solid rgba(255, 255, 255, 0.1);
+    outline-offset: -1px;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors;
+    @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-[color,background-color] duration-200 ease-out;
   }
   
   .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-colors;
+    @apply px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-[color,background-color] duration-200 ease-out;
   }
   
   .card {
