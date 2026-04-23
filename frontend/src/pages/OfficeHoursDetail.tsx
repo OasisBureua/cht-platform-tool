@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Video, CheckCircle2, Circle, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Video, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
@@ -53,13 +53,6 @@ export default function OfficeHoursDetail() {
     refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
   });
 
-  const { data: liveActionItems = [] } = useQuery({
-    queryKey: ['programs', 'live-action-items'],
-    queryFn: () => programsApi.getLiveActionItems(),
-    enabled: !!userId && !!program,
-    staleTime: 30_000,
-  });
-
   const pollWhileRegistrationPending = myRegistration?.status === 'PENDING';
 
   const { data: enrollments } = useQuery({
@@ -70,24 +63,6 @@ export default function OfficeHoursDetail() {
   });
 
   const enrolled = enrollments?.some((e) => e.programId === id) ?? false;
-
-  const myEnrollment = enrollments?.find((e) => e.programId === id);
-  const videoCount = program?.videos?.length ?? 0;
-  const videosDone =
-    !!enrolled &&
-    (videoCount === 0 ||
-      myEnrollment?.completed === true ||
-      (myEnrollment?.overallProgress ?? 0) >= 99.5);
-
-  const postEventReminder = liveActionItems.find(
-    (a) => a.programId === id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
-  );
-  const hasPostEventSurvey = !!program?.jotformSurveyUrl?.trim();
-  const postEventSurveyWindowOpen =
-    !!program && hasPostEventSurvey && isPostEventSurveyUnlocked(program);
-  const surveyDone =
-    enrolled &&
-    (!hasPostEventSurvey || (postEventSurveyWindowOpen && !postEventReminder));
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
 
@@ -150,11 +125,13 @@ export default function OfficeHoursDetail() {
         )}
         <p className="text-gray-600 whitespace-pre-wrap">{session.description}</p>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>How it works:</strong> Complete registration (and pick a time slot if offered). An administrator
-          approves your request; then join from this page via Zoom when it&apos;s time. You may wait briefly until the
-          host admits you.
-        </div>
+        {!enrolled ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <strong>How it works:</strong> Complete registration (and pick a time slot if offered). An administrator
+            approves your request; then join from this page via Zoom when it&apos;s time. You may wait briefly until the
+            host admits you.
+          </div>
+        ) : null}
 
         {programLoading ? (
           <p className="text-sm text-gray-500">Loading…</p>
@@ -217,43 +194,6 @@ export default function OfficeHoursDetail() {
           <p className="text-xs text-gray-500">Register once, then join your session directly from here.</p>
         )}
 
-        {!programLoading && program ? (
-          <div className="border-t border-gray-200 pt-6 max-w-2xl">
-            <div className="rounded-xl border border-gray-200 bg-white p-5">
-              <p className="text-xs font-semibold text-gray-600">Requirements</p>
-              <ul className="mt-4 space-y-3">
-                <OfficeHoursRequirementRow
-                  label="Register for the activity"
-                  done={enrolled}
-                  pendingApproval={!enrolled && registrationPendingApproval}
-                />
-                <OfficeHoursRequirementRow
-                  label="Complete all required videos in Conversations"
-                  done={videosDone}
-                  locked={!enrolled}
-                />
-                <OfficeHoursRequirementRow
-                  label="Complete required survey"
-                  done={surveyDone}
-                  locked={!enrolled}
-                />
-              </ul>
-              {!enrolled && !registrationPendingApproval ? (
-                <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                  <p className="text-xs text-gray-600">Register to unlock content and survey completion.</p>
-                </div>
-              ) : null}
-              {!enrolled && registrationPendingApproval ? (
-                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <p className="text-xs text-amber-900">
-                    You&apos;re registered—waiting for admin approval. Conversations and surveys unlock after approval.
-                  </p>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
         {enrolled && program?.jotformSurveyUrl?.trim() && program && isPostEventSurveyUnlocked(program) ? (
           <div className="border-t border-gray-200 pt-6 space-y-3">
             <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
@@ -276,43 +216,5 @@ export default function OfficeHoursDetail() {
         ) : null}
       </div>
     </div>
-  );
-}
-
-function OfficeHoursRequirementRow(props: {
-  label: string;
-  done?: boolean;
-  locked?: boolean;
-  pendingApproval?: boolean;
-}) {
-  const { label, done, locked, pendingApproval } = props;
-  return (
-    <li className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3 min-w-0">
-        {done ? (
-          <CheckCircle2 className="h-5 w-5 text-green-600" />
-        ) : (
-          <Circle className={['h-5 w-5', locked ? 'text-gray-200' : 'text-gray-300'].join(' ')} />
-        )}
-        <span className={['text-sm truncate', locked ? 'text-gray-400' : 'text-gray-700'].join(' ')}>{label}</span>
-      </div>
-      {done ? (
-        <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-1">
-          Done
-        </span>
-      ) : pendingApproval ? (
-        <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-2 py-1">
-          Pending approval
-        </span>
-      ) : locked ? (
-        <span className="text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-          Locked
-        </span>
-      ) : (
-        <span className="text-xs font-semibold text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-          Pending
-        </span>
-      )}
-    </li>
   );
 }

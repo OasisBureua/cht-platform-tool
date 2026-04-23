@@ -138,7 +138,7 @@ export class JotformWebhookService {
     const programs = await this.prisma.program.findMany({
       where: {
         status: 'PUBLISHED',
-        zoomSessionType: 'WEBINAR',
+        zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
         jotformIntakeFormUrl: { not: null },
       },
       select: { id: true, jotformIntakeFormUrl: true },
@@ -186,7 +186,7 @@ export class JotformWebhookService {
       where: {
         id: pid,
         status: 'PUBLISHED',
-        zoomSessionType: 'WEBINAR',
+        zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
       },
       select: { id: true, jotformIntakeFormUrl: true, zoomSessionType: true },
     });

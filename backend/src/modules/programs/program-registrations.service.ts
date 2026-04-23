@@ -249,10 +249,14 @@ export class ProgramRegistrationsService {
     submissionId: string,
   ): Promise<boolean> {
     const program = await this.prisma.program.findFirst({
-      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'WEBINAR' },
+      where: {
+        id: programId,
+        status: 'PUBLISHED',
+        zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+      },
     });
     if (!program) {
-      this.logger.warn(`Intake webhook: program ${programId} is not a published webinar`);
+      this.logger.warn(`Intake webhook: program ${programId} is not a published WEBINAR/MEETING session`);
       return false;
     }
     const intakeEffective = effectiveWebinarIntakeFormUrl(

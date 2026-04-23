@@ -1,6 +1,7 @@
 /**
- * Jotform intake used for LIVE webinars only. Office hours (MEETING) use admin approval without intake.
- * Webinars: per-program URL in DB, else optional platform default (ECS env).
+ * Effective Jotform intake URL for registration + webhooks.
+ * WEBINAR: per-program URL, else optional env default.
+ * MEETING (office hours): per-program URL only when set (no shared default).
  */
 export function effectiveWebinarIntakeFormUrl(
   zoomSessionType: string,
@@ -8,7 +9,7 @@ export function effectiveWebinarIntakeFormUrl(
   webinarDefaultIntakeUrl: string | null | undefined,
 ): string | undefined {
   if (zoomSessionType === 'MEETING') {
-    return undefined;
+    return jotformIntakeFormUrl?.trim() || undefined;
   }
   if (zoomSessionType !== 'WEBINAR') {
     return jotformIntakeFormUrl?.trim() || undefined;

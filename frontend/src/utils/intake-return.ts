@@ -1,9 +1,16 @@
-/** Jotform thank-you / redirect URLs often pass one of these query keys with the submission id. */
+/**
+ * Jotform thank-you redirect should use e.g. `...?submission_id={id}` ({id} is replaced by Jotform).
+ * We accept common query keys and regex-match similar names.
+ */
 export function readIntakeSubmissionIdFromSearch(search: string): string | undefined {
   const q = new URLSearchParams(search);
-  for (const key of ['submission_id', 'submissionId', 'submissionID', 'jid']) {
+  const keys = ['submission_id', 'submissionId', 'submissionID', 'jid', 'sid', 'submission'];
+  for (const key of keys) {
     const v = q.get(key)?.trim();
     if (v) return v;
+  }
+  for (const [k, v] of q.entries()) {
+    if (/^submission[_-]?id$/i.test(k) && v?.trim()) return v.trim();
   }
   return undefined;
 }

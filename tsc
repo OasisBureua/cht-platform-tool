@@ -1,0 +1,135 @@
+
+vite v7.3.0 building client environment for production...
+✓ 2510 modules transformed.
+dist/index.html                          1.84 kB │ gzip:   0.86 kB
+dist/assets/LOGO-rq0ASJuu.svg           15.46 kB │ gzip:  11.67 kB
+dist/assets/index-DYLV-cxu.css          56.46 kB │ gzip:  10.05 kB
+dist/assets/vendor-icons-CBVYP9wq.js    14.51 kB │ gzip:   4.71 kB
+dist/assets/vendor-query-Cd6vNFAZ.js    36.77 kB │ gzip:  10.96 kB
+dist/assets/vendor-react-BiwT-88e.js   164.48 kB │ gzip:  53.99 kB
+dist/assets/vendor-charts-bCVQ8zcS.js  392.70 ts/index-DUJnclJ6.js          651.90 kB │ gzip: 154.78 kB
+
+(!) Some chunks arear(!) Some chunks after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 8.41s
+
+📤 Uding to S3...
+delete: s3://cht-platform-frontend/assets/index-B2BEDdXa.js
+upload: dist/images/Screenshot_2026-02-19_at_11.15.57_PM-453c5834-3660-41bd-a50b-a5f53b4c72bc.png to s3://cht-platform-frontend/images/
+upload: dist/images/Screenshot_2026-02-19_at_11.15.57_PM-453c5834-3660-41bd-a50b-a5f53b4c72bc.png to s3://cht-platform-frontend/images/Screenshot_2026-02-19_at_11.15.57_PM-453c5834-3660-41bd-a50b-a5f53b4c72bc.png
+upload: dist/images/forhcp-featured-study.png to s3://cht-platform-frontend/images/forhcp-featured-study.png
+upload: dist/assets/LOGO-rq0ASJuu.svg to s3://cht-platform-frontend/assets/LOGO-rq0ASJuu.svg
+upload: dist/assets/vendor-icons-CBVYP9wq.js to s3://cht-platform-frontend/assets/vendor-icons-CBVYP9wq.js
+upload: dist/images/Screenshot_2026-03-10_at_8.50.06_PM-3ebec7c3-8233-42ad-a837-e24656a93c2a.png to s3://cht-platform-frontend/images/S
+upload: dist/images/Screenshot_2026-03-10_at_8.50.06_PM-3ebec7c3-8233-42ad-a837-e24656a93c2a.png to s3://cht-platform-frontend/images/Screenshot_2026-03-10_at_8.50.06_PM-3ebec7c3-8233-42ad-a837-e24656a93c2a.png
+upload: dist/images/forhcp-featured-survey.png to s3://cht-platform-frontend/images/forhcp-featured-survey.png
+upload: dist/assets/vendor-query-Cd6vNFAZ.js to s3://cht-platform-frontend/assets/vendor-query-Cd6vNFAZ.js
+upload: dist/assets/index-DYLV-cxu.css to s3://cht-platform-frontend/assets/index-DYLV-cxu.css
+upload: dist/images/hero-placeholder.svg to s3://cht-platform-frontend/images/hero-placeholder.svg
+upload: dist/images/Screenshot_2026-02-19_at_11.15.57_PM-99c771ec-4fd9-4c05-b093-a8b6aee78563.png to s3://cht-platform-frontend/images/
+upload: dist/images/Screenshot_2026-02-19_at_11.15.57_PM-99c771ec-4fd9-4c05-b093-a8b6aee78563.png to s3://cht-platform-frontend/images/Screenshot_2026-02-19_at_11.15.57_PM-99c771ec-4fd9-4c05-b093-a8b6aee78563.png
+upload: dist/images/forhcp-featured-webinar.png to s3://cht-platform-frontend/images/forhcp-featured-webinar.png
+upload: dist/assets/vendor-react-BiwT-88e.js to s3://cht-platform-frontend/assets/vendor-react-BiwT-88e.js
+upload: dist/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png to s3://cht-platform-frontend/images/iStock-1473559425-0
+upload: dist/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png to s3://cht-platform-frontend/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png
+upload: dist/images/forhcp-featured-video.png to s3://cht-platform-frontend/images/forhcp-featured-video.png
+upload: dist/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png to s3://cht-platform-frontend/images/iStock-1344792109-f
+upload: dist/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png to s3://cht-platform-frontend/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png
+upload: dist/assets/vendor-charts-bCVQ8zcS.js to s3://cht-platform-frontend/assets/vendor-charts-bCVQ8zcS.js
+upload: dist/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png to s3://cht-platform-frontend/images/iStock-1917170353-5
+upload: dist/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png to s3://cht-platform-frontend/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png
+upload: dist/images/iStock-1394005449-11d1c9d4-dcce-48b7-a7db-1fcafdbae728.png to s3://cht-platform-frontend/images/iStock-1394005449-1
+upload: dist/images/iStock-1394005449-11d1c9d4-dcce-48b7-a7db-1fcafdbae728.png to s3://cht-platform-frontend/images/iStock-1394005449-11d1c9d4-dcce-48b7-a7db-1fcafdbae728.png
+upload: dist/images/iStock-1667819272-cc7e9fde-feb0-4590-bb35-f5a86deba0dd.png to s3://cht-platform-frontend/images/iStock-1667819272-c
+upload: dist/images/iStock-1667819272-cc7e9fde-feb0-4590-bb35-f5a86deba0dd.png to s3://cht-platform-frontend/images/iStock-1667819272-cc7e9fde-feb0-4590-bb35-f5a86deba0dd.png
+upload: dist/images/hero-bg.png to s3://cht-platform-frontend/images/hero-bg.png
+upload: dist/images/iStock-2036497889-fae3ed6e-9859-4983-b3ec-7a489bb6fb95.png to s3://cht-platform-frontend/images/iStock-2036497889-f
+upload: dist/images/iStock-2036497889-fae3ed6e-9859-4983-b3ec-7a489bb6fb95.png to s3://cht-platform-frontend/images/iStock-2036497889-fae3ed6e-9859-4983-b3ec-7a489bb6fb95.png
+upload: dist/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png to s3://cht-platform-frontend/images/iStock-1869998948-a
+upload: dist/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png to s3://cht-platform-frontend/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png
+upload: dist/assets/index-DUJnclJ6.js to s3://cht-platform-frontend/assets/index-DUJnclJ6.js
+upload: dist/images/iStock-1861987830-c4d2cd71-5425-45e5-b008-167e41c1a284.png to s3://cht-platform-frontend/images/iStock-1861987830-c
+upload: dist/images/iStock-1861987830-c4d2cd71-5425-45e5-b008-167e41c1a284.png to s3://cht-platform-frontend/images/iStock-1861987830-c4d2cd71-5425-45e5-b008-167e41c1a284.png
+upload: dist/images/iStock-2177971092-6847eb62-5232-430c-b61e-b080b29756ad.png to s3://cht-platform-frontend/images/iStock-2177971092-6
+upload: dist/images/iStock-2177971092-6847eb62-5232-430c-b61e-b080b29756ad.png to s3://cht-platform-frontend/images/iStock-2177971092-6847eb62-5232-430c-b61e-b080b29756ad.png
+upload: dist/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png to s3://cht-platform-frontend/images/iStock-1938555104-3
+upload: dist/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png to s3://cht-platform-frontend/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png
+upload: dist/images/iStock-2196246469-5f98c76f-7e72-4fcf-b9d4-1f1f9a4f818a.png to s3://cht-platform-frontend/images/iStock-2196246469-5
+upload: dist/images/iStock-2196246469-5f98c76f-7e72-4fcf-b9d4-1f1f9a4f818a.png to s3://cht-platform-frontend/images/iStock-2196246469-5f98c76f-7e72-4fcf-b9d4-1f1f9a4f818a.png
+upload: dist/images/iStock-2201553550-7d34e476-31c2-48f5-97c2-c1e2be64f69c.png to s3://cht-platform-frontend/images/iStock-2201553550-7
+upload: dist/images/iStock-2201553550-7d34e476-31c2-48f5-97c2-c1e2be64f69c.png to s3://cht-platform-frontend/images/iStock-2201553550-7d34e476-31c2-48f5-97c2-c1e2be64f69c.png
+upload: dist/images/iStock-2215887161-594c1f0f-3543-403a-a4d9-82d35decd857.png to s3://cht-platform-frontend/images/iStock-2215887161-5
+upload: dist/images/iStock-2215887161-594c1f0f-3543-403a-a4d9-82d35decd857.png to s3://cht-platform-frontend/images/iStock-2215887161-594c1f0f-3543-403a-a4d9-82d35decd857.png
+upload: dist/images/iStock-2216587796-60664d42-7776-4b9d-bbd1-5edbcdfee34c.png to s3://cht-platform-frontend/images/iStock-2216587796-6
+upload: dist/images/iStock-2216587796-60664d42-7776-4b9d-bbd1-5edbcdfee34c.png to s3://cht-platform-frontend/images/iStock-2216587796-60664d42-7776-4b9d-bbd1-5edbcdfee34c.png
+upload: dist/images/iStock-2219183305-a5e969c2-db9f-4af8-983c-58d999566d13.png to s3://cht-platform-frontend/images/iStock-2219183305-a
+upload: dist/images/iStock-2219183305-a5e969c2-db9f-4af8-983c-58d999566d13.png to s3://cht-platform-frontend/images/iStock-2219183305-a5e969c2-db9f-4af8-983c-58d999566d13.png
+upload: dist/images/iStock-2216489570-5b943c5f-1d37-435a-a309-e39b12f434e0.png to s3://cht-platform-frontend/images/iStock-2216489570-5
+upload: dist/images/iStock-2216489570-5b943c5f-1d37-435a-a309-e39b12f434e0.png to s3://cht-platform-frontend/images/iStock-2216489570-5b943c5f-1d37-435a-a309-e39b12f434e0.png
+upload: dist/images/iStock-2225157971-736dfaab-1e8e-43ae-a932-19eafddec996.png to s3://cht-platform-frontend/images/iStock-2225157971-7
+upload: dist/images/iStock-2225157971-736dfaab-1e8e-43ae-a932-19eafddec996.png to s3://cht-platform-frontend/images/iStock-2225157971-736dfaab-1e8e-43ae-a932-19eafddec996.png
+upload: dist/images/iStock-2223908328-faab6545-93f1-4513-acaa-dbba56454277.png to s3://cht-platform-frontend/images/iStock-2223908328-f
+upload: dist/images/iStock-2223908328-faab6545-93f1-4513-acaa-dbba56454277.png to s3://cht-platform-frontend/images/iStock-2223908328-faab6545-93f1-4513-acaa-dbba56454277.png
+upload: dist/images/iStock-2225338995-56b9cc81-6ac1-490f-8545-f8d345c040e6.png to s3://cht-platform-frontend/images/iStock-2225338995-5
+upload: dist/images/iStock-2225338995-56b9cc81-6ac1-490f-8545-f8d345c040e6.png to s3://cht-platform-frontend/images/iStock-2225338995-56b9cc81-6ac1-490f-8545-f8d345c040e6.png
+upload: dist/images/iStock-2230313942-1a0d8644-fc61-4713-972b-53ca638c2a21.png to s3://cht-platform-frontend/images/iStock-2230313942-1
+upload: dist/images/iStock-2230313942-1a0d8644-fc61-4713-972b-53ca638c2a21.png to s3://cht-platform-frontend/images/iStock-2230313942-1a0d8644-fc61-4713-972b-53ca638c2a21.png
+upload: dist/images/iStock-2232288705-324392d9-d577-4c45-a3e9-50493e5722d5.png to s3://cht-platform-frontend/images/iStock-2232288705-3
+upload: dist/images/iStock-2232288705-324392d9-d577-4c45-a3e9-50493e5722d5.png to s3://cht-platform-frontend/images/iStock-2232288705-324392d9-d577-4c45-a3e9-50493e5722d5.png
+upload: dist/images/placeholder-playlist.svg to s3://cht-platform-frontend/images/placeholder-playlist.svg
+upload: dist/images/iStock-2233342016-12339015-cb72-4731-bdc1-219dc4810191.png to s3://cht-platform-frontend/images/iStock-2233342016-1
+upload: dist/images/iStock-2233342016-12339015-cb72-4731-bdc1-219dc4810191.png to s3://cht-platform-frontend/images/iStock-2233342016-12339015-cb72-4731-bdc1-219dc4810191.png
+upload: dist/images/image-31cbafbb-4cdd-40f3-bc35-a47f45094d59.png to s3://cht-platform-frontend/images/image-31cbafbb-4cdd-40f3-bc35-a
+upload: dist/images/image-31cbafbb-4cdd-40f3-bc35-a47f45094d59.png to s3://cht-platform-frontend/images/image-31cbafbb-4cdd-40f3-bc35-a47f45094d59.png
+upload: dist/images/iStock-2233342016-e3f8d756-5c82-42ab-85b8-e72d98dcdef2.png to s3://cht-platform-frontend/images/iStock-2233342016-e
+upload: dist/images/iStock-2233342016-e3f8d756-5c82-42ab-85b8-e72d98dcdef2.png to s3://cht-platform-frontend/images/iStock-2233342016-e3f8d756-5c82-42ab-85b8-e72d98dcdef2.png
+upload: dist/images/iStock-2206296706-645809c1-867e-4726-889e-0058b0cfbd76.png to s3://cht-platform-frontend/images/iStock-2206296706-6
+upload: dist/images/iStock-2206296706-645809c1-867e-4726-889e-0058b0cfbd76.png to s3://cht-platform-frontend/images/iStock-2206296706-645809c1-867e-4726-889e-0058b0cfbd76.png
+upload: dist/images/resource-clinicals.png to s3://cht-platform-frontend/images/resource-clinicals.png
+upload: dist/images/resource-clinicals.svg to s3://cht-platform-frontend/images/resource-clinicals.svg
+upload: dist/images/resource-data.png to s3://cht-platform-frontend/images/resource-data.png
+upload: dist/images/iStock-2160715202-d78d1fba-2d84-42c5-af71-839ee3fc1e8b.png to s3://cht-platform-frontend/images/iStock-2160715202-d
+upload: dist/images/iStock-2160715202-d78d1fba-2d84-42c5-af71-839ee3fc1e8b.png to s3://cht-platform-frontend/images/iStock-2160715202-d78d1fba-2d84-42c5-af71-839ee3fc1e8b.png
+upload: dist/images/resource-data.svg to s3://cht-platform-frontend/images/resource-data.svg
+upload: dist/images/resource-placeholder.svg to s3://cht-platform-frontend/images/resource-placeholder.svg
+upload: dist/images/resource-protocols.svg to s3://cht-platform-frontend/images/resource-protocols.svg
+upload: dist/images/resource-reporting.svg to s3://cht-platform-frontend/images/resource-reporting.svg
+upload: dist/images/iStock-1944379143-b141c808-4033-4841-aed6-b3dd02278ade.png to s3://cht-platform-frontend/images/iStock-1944379143-b
+upload: dist/images/iStock-1944379143-b141c808-4033-4841-aed6-b3dd02278ade.png to s3://cht-platform-frontend/images/iStock-1944379143-b141c808-4033-4841-aed6-b3dd02278ade.png
+upload: dist/images/resource-search.png to s3://cht-platform-frontend/images/resource-search.png
+upload: dist/images/resource-search.svg to s3://cht-platform-frontend/images/resource-search.svg
+upload: dist/images/resource-webinars.svg to s3://cht-platform-frontend/images/resource-webinars.svg
+upload: dist/images/resource-watch.svg to s3://cht-platform-frontend/images/resource-watch.svg
+upload: dist/logo.svg to s3://cht-platform-frontend/logo.svg  
+upload: dist/images/resource-webinars.png to s3://cht-platform-frontend/images/resource-webinars.png
+upload: dist/index.html to s3://cht-platform-frontend/index.html
+upload: dist/vite.svg to s3://cht-platform-frontend/vite.svg  
+upload: dist/images/resource-reporting.png to s3://cht-platform-frontend/images/resource-reporting.png
+upload: dist/images/resource-watch.png to s3://cht-platform-frontend/images/resource-watch.png
+upload: dist/images/iStock-1944379143-2231d19d-d87a-4843-9909-1b44a35f23ed.png to s3://cht-platform-frontend/images/iStock-1944379143-2
+upload: dist/images/iStock-1944379143-2231d19d-d87a-4843-9909-1b44a35f23ed.png to s3://cht-platform-frontend/images/iStock-1944379143-2231d19d-d87a-4843-9909-1b44a35f23ed.png
+upload: dist/images/resource-protocols.png to s3://cht-platform-frontend/images/resource-protocols.png
+
+🔄 Invalidating CloudFront cache...
+{
+    "Location": "https://cloudfront.amazonaws.com/2020-05-31/distribution/E17MWIKCD8RRT9/invalidation/I37WXM1BUCK6U3UYJ94LVRXH85",
+    "Invalidation": {
+        "Id": "I37WXM1BUCK6U3UYJ94LVRXH85",
+        "Status": "InProgress",
+        "CreateTime": "2026-04-23T01:54:25.592000+00:00",
+        "InvalidationBatch": {
+            "Paths": {
+                "Quantity": 1,
+                "Items": [
+                    "/*"
+                ]
+            },
+            "CaerReference": "cli-1776909265-800730"
+        }
+    }
+}
+
+✅ Frontend deployed successfully!
+

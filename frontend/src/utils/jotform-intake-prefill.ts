@@ -1,6 +1,8 @@
 /**
- * Intake form open/embed URL: optional thank-you redirect + attribution for server webhooks.
- * Jotform should include hidden fields `user_id` and `program_id`; prefill via query works for many setups.
+ * Intake form open/embed URL: prefill `user_id` / `program_id` for webhooks; optional Save & Continue `session`.
+ *
+ * The `redirect` query on the form URL is not a substitute for Form Settings → Thank You → “Redirect to external link”.
+ * The thank-you URL there must include the submission id, e.g. `buildJotformThankYouRedirectTemplate(registerPageUrl)`.
  */
 export function buildIntakeFormUrl(
   formUrl: string,
@@ -24,4 +26,14 @@ export function buildIntakeFormUrl(
     if (parts.length === 0) return raw;
     return `${raw}${sep}${parts.join('&')}`;
   }
+}
+
+/**
+ * Paste into Jotform: Settings → Thank You page → Redirect to an external link after submission.
+ * Jotform replaces `{id}` with the numeric submission id. Docs: https://www.jotform.com/help/38-redirecting-users-to-a-different-page/
+ */
+export function buildJotformThankYouRedirectTemplate(absoluteRegisterUrl: string): string {
+  const base = absoluteRegisterUrl.split('#')[0].trim();
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}submission_id={id}`;
 }

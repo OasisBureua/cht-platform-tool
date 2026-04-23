@@ -7,7 +7,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
-import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
+import { buildIntakeFormUrl, buildJotformThankYouRedirectTemplate } from '../utils/jotform-intake-prefill';
 
 type StepKey = 'intake' | 'slot' | 'submit';
 
@@ -122,7 +122,7 @@ export default function ProgramRegisterWizard() {
     mutationFn: () =>
       programsApi.submitRegistration(id!, {
         officeHoursSlotId: selectedSlotId,
-        intakeJotformSubmissionId: intakeSubmissionId,
+        intakeJotformSubmissionId: intakeSubmissionId?.trim(),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
@@ -141,6 +141,11 @@ export default function ProgramRegisterWizard() {
       jotformSessionId: intakeJotformResume?.sessionId,
     });
   }, [program, returnUrl, userId, intakeJotformResume?.sessionId]);
+
+  const jotformThankYouRedirectTemplate = useMemo(
+    () => (returnUrl ? buildJotformThankYouRedirectTemplate(returnUrl) : ''),
+    [returnUrl],
+  );
 
   if (isLoading || !id) return <LoadingSpinner />;
 
@@ -215,21 +220,45 @@ export default function ProgramRegisterWizard() {
                 >
                   open it in a new tab
                 </a>
-                . After submit, this page usually updates from the return link; our system may also record your answers
-                automatically in the background. If the form has <strong>Save &amp; Continue</strong>, partial progress is
-                kept for <strong>24 hours</strong> when you return signed in. Finish any remaining steps (time slot if
-                offered, then submit).
+                . After submit, you should return here with a submission ID in the URL. If the form has{' '}
+                <strong>Save &amp; Continue</strong>, partial progress is kept for <strong>24 hours</strong> when you
+                return signed in. The server can also record the submission via Jotform webhook (usually within
+                seconds). Finish any remaining steps (time slot if offered), then <strong>Submit registration</strong>.
               </p>
-              {intakeSubmissionId ? (
+              {jotformThankYouRedirectTemplate ? (
+                <details className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                  <summary className="cursor-pointer font-semibold text-gray-900">
+                    Host setup: Jotform thank-you redirect (submission ID)
+                  </summary>
+                  <p className="mt-2 text-gray-600">
+                    In Jotform open <strong>Settings → Thank You page → Redirect to an external link</strong> and set the
+                    URL to exactly this (Jotform replaces <code className="rounded bg-white px-1">{`{id}`}</code> with the
+                    submission id). Also add hidden fields <code className="rounded bg-white px-1">user_id</code> and{' '}
+                    <code className="rounded bg-white px-1">program_id</code> on the form so webhooks match the learner;
+                    point the form webhook to your app&apos;s Jotform endpoint.
+                  </p>
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <code className="block flex-1 break-all rounded border border-gray-200 bg-white px-2 py-1.5 text-[11px] text-gray-900">
+                      {jotformThankYouRedirectTemplate}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(jotformThankYouRedirectTemplate);
+                      }}
+                      className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50"
+                    >
+                      Copy URL
+                    </button>
+                  </div>
+                </details>
+              ) : null}
+              {intakeSubmissionId?.trim() ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  We received your form. Continue to the next step.
+                  Intake submission recorded. Use <strong>Continue</strong>, then <strong>Submit registration</strong> to
+                  send your request for admin approval.
                 </p>
-              ) : (
-                <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  If nothing changes here after you submit, go back to this registration page from your confirmation or try
-                  the new-tab link above.
-                </p>
-              )}
+              ) : null}
               <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                 <iframe
                   title="Intake form"
@@ -253,18 +282,32 @@ export default function ProgramRegisterWizard() {
           )}
 
           {current === 'submit' && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
               {program.registrationRequiresApproval ? (
-                <p>
-                  <strong>Admin review:</strong> Your request will be pending until an administrator approves it. You
-                  are not enrolled until then.
-                </p>
+                <>
+                  <p className="font-semibold text-amber-950">Submit registration for approval</p>
+                  <p>
+                    Tap <strong>Submit registration</strong> below to send your request to the host. An administrator
+                    must approve you before you can join the session or unlock Conversations and surveys for this
+                    activity.
+                  </p>
+                  <p className="text-xs text-amber-900">
+                    You are <strong>not</strong> enrolled until approval—expect a pending state on the session page
+                    until then.
+                  </p>
+                </>
               ) : (
                 <p>
                   <strong>Almost done:</strong> Submit to complete registration
                   {program.zoomSessionType === 'MEETING' ? ' and reserve your slot' : ''}.
                 </p>
               )}
+              {!!program.jotformIntakeFormUrl?.trim() && !intakeSubmissionId?.trim() ? (
+                <p className="text-xs font-medium text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  We still need your intake submission. Go <strong>Back</strong> to the intake step and complete the
+                  form so we can record your submission (redirect or webhook), then return here.
+                </p>
+              ) : null}
             </div>
           )}
 
@@ -291,6 +334,9 @@ export default function ProgramRegisterWizard() {
             onClick={goNext}
             disabled={
               submitMut.isPending ||
+              (current === 'intake' &&
+                !!program.jotformIntakeFormUrl?.trim() &&
+                !intakeSubmissionId?.trim()) ||
               (current === 'slot' && slots.length > 0 && !selectedSlotId) ||
               (isLastStep &&
                 !!program.jotformIntakeFormUrl?.trim() &&
