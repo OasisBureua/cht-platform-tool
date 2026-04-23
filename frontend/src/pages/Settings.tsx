@@ -322,9 +322,14 @@ export default function Settings() {
               <Link to="/app/payments" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
                 Payment Settings
               </Link>
-              <button className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
-                KOL Analytics
-              </button>
+              {user?.role === 'KOL' ? (
+                <button
+                  type="button"
+                  className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50"
+                >
+                  KOL Analytics
+                </button>
+              ) : null}
               <button
                 onClick={handleLogout}
                 className="flex w-full items-center gap-2 rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50"

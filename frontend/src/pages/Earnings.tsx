@@ -57,11 +57,11 @@ export default function Earnings() {
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Your Earnings</h1>
         <p className="text-sm text-gray-600">
-          Balances and activity. Actual payouts are sent through{' '}
+          Balances and activity. Actual payouts are sent via Bill.com. Open{' '}
           <Link to="/app/payments" className="font-medium text-gray-900 underline hover:no-underline">
-            Bill.com
-          </Link>
-          .
+            Payment Settings
+          </Link>{' '}
+          to connect your bank and tax info.
         </p>
       </header>
 
@@ -135,7 +135,7 @@ export default function Earnings() {
           <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
             <p className="text-sm font-semibold text-gray-900">No payments yet</p>
             <p className="mt-1 text-sm text-gray-600">
-              Completed honoraria and bonuses appear here after admins process them in Bill.com.
+              Completed honoraria and bonuses appear here after admins process them via Bill.com.
             </p>
           </div>
         ) : (

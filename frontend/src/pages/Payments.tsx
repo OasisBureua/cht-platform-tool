@@ -78,10 +78,10 @@ export default function Payments() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Bill.com</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payment Settings</h1>
         <p className="text-sm text-gray-600">
-          Bill.com pays honoraria and survey bonuses. Set up your bank details in Bill.com (ACH or check); admins send
-          payouts from Bill.com.
+          Honoraria and survey bonuses are paid via Bill.com. Set up your bank details via Bill.com (ACH or check); admins
+          send payouts via Bill.com.
         </p>
         <p className="text-sm text-gray-600">
           <Link to="/app/earnings" className="font-medium text-gray-900 underline hover:no-underline">
