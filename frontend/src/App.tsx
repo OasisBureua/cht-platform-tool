@@ -186,7 +186,7 @@ function App() {
             <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
             <Route path="catalog" element={<VideosPage />} />
 
-            {/* Earnings + ChatBot + Settings (Payments moved to admin) */}
+            {/* Earnings + ChatBot + Settings (Payments: Settings → Payment Settings) */}
             <Route path="earnings" element={<Earnings />} />
             <Route path="chatbot" element={<ChatBot />} />
             <Route path="settings" element={<Settings />} />

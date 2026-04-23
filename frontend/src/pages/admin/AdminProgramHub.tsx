@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
@@ -94,6 +94,66 @@ export default function AdminProgramHub() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
     },
   });
+
+  const pendingRegs = useMemo(
+    () => registrations.filter((r) => r.status === 'PENDING'),
+    [registrations],
+  );
+  const pendingRegIds = useMemo(() => pendingRegs.map((r) => r.id), [pendingRegs]);
+  const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const allow = new Set(pendingRegIds);
+    setSelectedPendingIds((prev) => {
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (allow.has(id)) next.add(id);
+      }
+      return next;
+    });
+  }, [pendingRegIds]);
+
+  const allPendingSelected =
+    pendingRegIds.length > 0 && pendingRegIds.every((id) => selectedPendingIds.has(id));
+  const somePendingSelected =
+    pendingRegIds.some((id) => selectedPendingIds.has(id)) && !allPendingSelected;
+
+  const toggleSelectAllPending = () => {
+    if (allPendingSelected) {
+      setSelectedPendingIds(new Set());
+    } else {
+      setSelectedPendingIds(new Set(pendingRegIds));
+    }
+  };
+
+  const toggleSelectPending = (id: string) => {
+    setSelectedPendingIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const bulkApproveMut = useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: 'APPROVED' | 'REJECTED' }) => {
+      await Promise.all(ids.map((id) => adminApi.updateProgramRegistration(id, { status })));
+    },
+    onSuccess: (_data, vars) => {
+      setSelectedPendingIds((prev) => {
+        const next = new Set(prev);
+        for (const id of vars.ids) next.delete(id);
+        return next;
+      });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
+    },
+  });
+
+  const approvalBusy = approveMut.isPending || bulkApproveMut.isPending;
+  const selectedPendingList = pendingRegIds.filter((id) => selectedPendingIds.has(id));
 
   const removeEnrollmentMut = useMutation({
     mutationFn: ({ enrollmentId }: { enrollmentId: string }) =>
@@ -425,82 +485,124 @@ export default function AdminProgramHub() {
               {rLoading ? (
                 <p className="text-sm text-gray-500">Loading…</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-left text-gray-600">
-                        <th className="py-2 pr-4">User</th>
-                        <th className="py-2 pr-4">Status</th>
-                        <th className="py-2 pr-4">Intake</th>
-                        <th className="py-2 pr-4">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {registrations.map((r) => {
-                        const intakeRequired = r.intakeRequired ?? false;
-                        const intakeOk = r.intakeComplete ?? false;
-                        return (
+                <>
+                  {pendingRegs.length > 0 ? (
+                    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                      <span className="text-xs text-gray-700">
+                        {selectedPendingIds.size === 0
+                          ? 'Select pending rows or use the header checkbox.'
+                          : `${selectedPendingIds.size} pending selected`}
+                      </span>
+                      <div className="ml-auto flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={approvalBusy || selectedPendingList.length === 0}
+                          onClick={() => bulkApproveMut.mutate({ ids: selectedPendingList, status: 'APPROVED' })}
+                          className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          Approve selected
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approvalBusy || selectedPendingList.length === 0}
+                          onClick={() => bulkApproveMut.mutate({ ids: selectedPendingList, status: 'REJECTED' })}
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-800 disabled:opacity-40"
+                        >
+                          Reject selected
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                  {bulkApproveMut.isError ? (
+                    <p className="mb-2 text-xs text-red-600">
+                      Batch update failed partway through. Refresh and try again or use row actions.
+                    </p>
+                  ) : null}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 text-left text-gray-600">
+                          <th className="w-8 py-2 pr-2">
+                            {pendingRegs.length > 0 ? (
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300"
+                                checked={allPendingSelected}
+                                ref={(el) => {
+                                  if (el) el.indeterminate = somePendingSelected;
+                                }}
+                                onChange={toggleSelectAllPending}
+                                disabled={approvalBusy}
+                                aria-label="Select all pending registrations"
+                              />
+                            ) : null}
+                          </th>
+                          <th className="py-2 pr-4">User</th>
+                          <th className="py-2 pr-4">Status</th>
+                          <th className="py-2 pr-4">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {registrations.map((r) => (
                           <tr key={r.id}>
+                            <td className="py-2 pr-2">
+                              {r.status === 'PENDING' ? (
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300"
+                                  checked={selectedPendingIds.has(r.id)}
+                                  onChange={() => toggleSelectPending(r.id)}
+                                  disabled={approvalBusy}
+                                  aria-label={`Select ${r.user.email}`}
+                                />
+                              ) : null}
+                            </td>
                             <td className="py-2 pr-4">
                               {r.user.firstName} {r.user.lastName}
                               <div className="text-xs text-gray-500">{r.user.email}</div>
                             </td>
                             <td className="py-2 pr-4 font-medium">{r.status}</td>
-                          <td className="py-2 pr-4 text-gray-600">
-                            <div className="space-y-1">
-                              <span>{!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}</span>
-                              {r.jotformIntakeSubmissionViewUrl ? (
-                                <a
-                                  href={r.jotformIntakeSubmissionViewUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
-                                >
-                                  View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
-                                </a>
-                              ) : null}
-                            </div>
-                          </td>
-                          <td className="py-2 pr-4">
-                            <div className="flex flex-wrap gap-2">
-                              {r.status === 'PENDING' && (
-                                <>
+                            <td className="py-2 pr-4">
+                              <div className="flex flex-wrap gap-2">
+                                {r.status === 'PENDING' && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={approvalBusy}
+                                      onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
+                                      className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={approvalBusy}
+                                      onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
+                                      className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold disabled:opacity-40"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+                                {r.status === 'APPROVED' && (
                                   <button
                                     type="button"
-                                    disabled={approveMut.isPending}
-                                    onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
-                                    className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                                    onClick={() => void downloadIcs(r.id)}
+                                    className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
                                   >
-                                    Approve
+                                    <Download className="h-3 w-3" /> ICS invite
                                   </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
-                                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
-                                  >
-                                    Reject
-                                  </button>
-                                </>
-                              )}
-                              {r.status === 'APPROVED' && (
-                                <button
-                                  type="button"
-                                  onClick={() => void downloadIcs(r.id)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
-                                >
-                                  <Download className="h-3 w-3" /> ICS invite
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
-              </div>
-            )}
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
+                  </div>
+                </>
+              )}
             </>
           ) : (
             <>

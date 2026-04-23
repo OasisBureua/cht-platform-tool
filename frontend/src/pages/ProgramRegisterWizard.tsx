@@ -285,15 +285,6 @@ export default function ProgramRegisterWizard() {
         </div>
 
         <div className="mt-8 flex flex-wrap justify-end gap-3">
-          {stepIndex > 0 && myRegistration?.status === 'REJECTED' && (
-            <button
-              type="button"
-              onClick={() => setStepIndex((i) => Math.max(0, i - 1))}
-              className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
-            >
-              Back
-            </button>
-          )}
           <button
             type="button"
             onClick={goNext}

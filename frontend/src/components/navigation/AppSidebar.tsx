@@ -7,7 +7,6 @@ import {
   MonitorPlay,
   ClipboardList,
   Banknote,
-  Landmark,
   Bot,
   Settings,
 } from 'lucide-react';
@@ -21,7 +20,6 @@ const nav = [
   { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
-  { to: '/app/payments', label: 'Payments', icon: Landmark, end: false },
   { to: '/app/chatbot', label: 'ChatBot', icon: Bot, end: false },
   { to: '/app/settings', label: 'Settings', icon: Settings, end: false },
 ];
