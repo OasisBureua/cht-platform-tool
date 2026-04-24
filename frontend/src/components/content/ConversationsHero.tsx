@@ -55,7 +55,9 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             {clip.title}
           </h2>
           {body ? (
-            <p className="mb-3 max-w-[540px] text-pretty text-sm leading-relaxed text-white/80 md:text-[15px]">{body}</p>
+            <p className="mb-3 line-clamp-2 max-w-[540px] text-pretty text-sm leading-relaxed text-white/80 md:text-[15px]" title={body}>
+              {body}
+            </p>
           ) : null}
           {speakerLine ? <p className="mb-5 text-xs text-white/50">{speakerLine}</p> : <div className="mb-5" />}
 

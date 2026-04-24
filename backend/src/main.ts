@@ -71,10 +71,10 @@ async function bootstrap() {
     ],
   });
 
-  // Swagger — available in all envs but only accessible internally in prod
+  // Swagger - available in all envs but only accessible internally in prod
   const swaggerConfig = new DocumentBuilder()
     .setTitle('CHT Platform API')
-    .setDescription('Internal API for CHT Platform — admin operations, user management, programs, payments')
+    .setDescription('Internal API for CHT Platform - admin operations, user management, programs, payments')
     .setVersion(process.env.APP_VERSION || '1.0.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'session-token')
     .build();

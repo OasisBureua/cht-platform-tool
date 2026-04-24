@@ -40,7 +40,7 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/:id/slots — published office-hours time slots (public)
+   * GET /api/programs/:id/slots - published office-hours time slots (public)
    */
   @Get(':id/slots')
   async listSlots(@Param('id') id: string) {
@@ -48,7 +48,7 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/:id/registration — current user’s registration row (auth)
+   * GET /api/programs/:id/registration - current user’s registration row (auth)
    */
   @Get(':id/registration')
   @UseGuards(JwtAuthGuard)
@@ -57,7 +57,7 @@ export class ProgramsController {
   }
 
   /**
-   * POST /api/programs/:id/registration — submit registration (auth)
+   * POST /api/programs/:id/registration - submit registration (auth)
    */
   @Post(':id/registration')
   @UseGuards(JwtAuthGuard)
@@ -71,7 +71,7 @@ export class ProgramsController {
 
   /**
    * GET /api/programs/:id/calendly-scheduling
-   * Calendly URL for published office-hours programs — enrolled users only (sign-in + /app).
+   * Calendly URL for published office-hours programs - enrolled users only (sign-in + /app).
    */
   @Get(':id/calendly-scheduling')
   @UseGuards(JwtAuthGuard)

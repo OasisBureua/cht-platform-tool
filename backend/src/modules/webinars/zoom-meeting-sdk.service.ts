@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 
 /**
  * Server-side JWT for Zoom Meeting SDK (Web) join.
- * Credentials come from a Meeting SDK app on Zoom Marketplace — not the Server-to-Server OAuth app.
+ * Credentials come from a Meeting SDK app on Zoom Marketplace - not the Server-to-Server OAuth app.
  * @see https://developers.zoom.us/docs/meeting-sdk/auth/
  */
 @Injectable()
