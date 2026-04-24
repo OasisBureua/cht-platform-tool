@@ -4,7 +4,7 @@ import { BillWebhookService } from './bill-webhook.service';
 /**
  * POST /api/webhooks/bill
  * Receives payment.updated and payment.failed events from Bill.com.
- * No auth guard — Bill.com calls this from their servers.
+ * No auth guard - Bill.com calls this from their servers.
  * Signature validated inside the service using BILL_WEBHOOK_SECRET.
  */
 @Controller('webhooks/bill')

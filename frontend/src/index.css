@@ -301,6 +301,15 @@
   .dark .shadow-2xl {
     --tw-shadow-color: rgb(0 0 0 / 0.65) !important;
   }
+
+  /* Keep hero play buttons white in dark mode. */
+  .dark .hero-play-btn {
+    background-color: rgb(255 255 255) !important;
+    color: rgb(24 24 27) !important;
+  }
+  .dark .hero-play-btn:hover {
+    background-color: rgb(244 244 245) !important;
+  }
 }
 
 @layer components {

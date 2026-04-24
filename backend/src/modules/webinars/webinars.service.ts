@@ -28,7 +28,7 @@ export interface WebinarItem {
   duration?: number;
   joinUrl?: string;
   source: 'zoom' | 'program';
-  /** Present when sourced from our DB — distinguishes CME webinars vs Zoom Meeting office hours. */
+  /** Present when sourced from our DB - distinguishes CME webinars vs Zoom Meeting office hours. */
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
   calendlySchedulingUrl?: string;
@@ -38,7 +38,7 @@ export interface WebinarItem {
 
 /**
  * Hybrid listing strategy (transition period):
- *  1. DB PUBLISHED programs are always included — DB is authoritative.
+ *  1. DB PUBLISHED programs are always included - DB is authoritative.
  *     Deleting a program from admin removes it from this list immediately.
  *  2. Zoom webinars from the account are also included, BUT only if no DB
  *     program already references that Zoom meeting ID (deduplication).
@@ -124,7 +124,7 @@ export class WebinarsService {
           });
         }
       } catch (err) {
-        // Non-fatal — DB programs still shown if Zoom API is unavailable
+        // Non-fatal - DB programs still shown if Zoom API is unavailable
         this.logger.warn(`Zoom listWebinars fallback failed: ${String(err)}`);
       }
     }
@@ -133,7 +133,7 @@ export class WebinarsService {
   }
 
   /**
-   * Published office hours (Zoom Meetings) — interactive drop-in sessions.
+   * Published office hours (Zoom Meetings) - interactive drop-in sessions.
    */
   async listOfficeHours(): Promise<WebinarItem[]> {
     const thirtyDaysAgo = new Date();

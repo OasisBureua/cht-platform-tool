@@ -291,7 +291,7 @@ export class ZoomService implements OnModuleInit {
       ),
     );
 
-    this.logger.log(`Zoom: created webinar ${data.id} — ${data.topic}`);
+    this.logger.log(`Zoom: created webinar ${data.id} - ${data.topic}`);
     return {
       id: String(data.id),
       uuid: data.uuid,
@@ -395,7 +395,7 @@ export class ZoomService implements OnModuleInit {
       ),
     );
 
-    this.logger.log(`Zoom: created meeting (office hours) ${data.id} — ${data.topic}`);
+    this.logger.log(`Zoom: created meeting (office hours) ${data.id} - ${data.topic}`);
     return {
       id: String(data.id),
       uuid: data.uuid,

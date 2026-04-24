@@ -29,7 +29,7 @@ When you add the endpoint, Zoom sends an `endpoint.url_validation` request. The 
 
 ### 3. Linking to Programs
 
-When you create a webinar via the Admin Webinar Scheduler, the backend stores `zoomMeetingId` on the `Program`. Zoom webhooks include the meeting ID in the payload — we look up the Program by `zoomMeetingId` and store the event.
+When you create a webinar via the Admin Webinar Scheduler, the backend stores `zoomMeetingId` on the `Program`. Zoom webhooks include the meeting ID in the payload - we look up the Program by `zoomMeetingId` and store the event.
 
 ### 4. Participant Email Matching
 

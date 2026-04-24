@@ -192,7 +192,7 @@ export class ProgramsService {
   }
 
   /**
-   * Office-hours Calendly URL — only for enrolled users (after admin approval when registrationRequiresApproval is on).
+   * Office-hours Calendly URL - only for enrolled users (after admin approval when registrationRequiresApproval is on).
    */
   async getCalendlySchedulingForEnrolledUser(
     userId: string,

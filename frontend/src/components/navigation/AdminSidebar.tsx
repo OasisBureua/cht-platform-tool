@@ -12,7 +12,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import logoSrc from '../../assets/logo/LOGO.svg';
+import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 
 const nav = [
   { to: '/admin', label: 'Home', icon: Home, end: true },
@@ -39,7 +39,7 @@ export default function AdminSidebar() {
     <aside className="hidden md:flex md:flex-col w-[100px] bg-white shrink-0">
       <div className="flex w-full h-[82px] justify-center items-center shrink-0" style={{ aspectRatio: '50/41' }}>
         <Link to="/admin" className="flex w-full h-full justify-center items-center">
-          <img src={logoSrc} alt="CHT" className="max-w-[60px] max-h-[50px] object-contain" />
+          <ChmWordmarkOption2 className="h-8 w-[4.5rem]" />
         </Link>
       </div>
 

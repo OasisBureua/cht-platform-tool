@@ -49,7 +49,7 @@ export class ZoomWebhookService {
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
-      this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not configured — signature validation skipped');
+      this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not configured - signature validation skipped');
     }
   }
 
@@ -77,7 +77,7 @@ export class ZoomWebhookService {
       }
       const encryptedToken = this.encryptToken(plainToken);
       if (!encryptedToken) {
-        this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not set — cannot encrypt token for validation');
+        this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not set - cannot encrypt token for validation');
       }
       this.logger.log('[Zoom webhook] URL validation response sent');
       return { plainToken, encryptedToken };
@@ -87,7 +87,7 @@ export class ZoomWebhookService {
     if (this.webhookSecret && signature && rawBody) {
       const isValid = this.validateSignature(rawBody, signature, timestamp);
       if (!isValid) {
-        this.logger.warn('[Zoom webhook] Invalid signature — ignoring event');
+        this.logger.warn('[Zoom webhook] Invalid signature - ignoring event');
         return { received: true };
       }
     }
@@ -131,7 +131,7 @@ export class ZoomWebhookService {
     });
 
     if (!program) {
-      this.logger.debug(`[Zoom webhook] No program found for meeting ${meetingId} — skipping`);
+      this.logger.debug(`[Zoom webhook] No program found for meeting ${meetingId} - skipping`);
       return;
     }
 

@@ -66,7 +66,7 @@ How the auth service, backend, Supabase (GoTrue), and the shared CHT auth endpoi
 
 ## 1. The Supabase / GoTrue POST Endpoint (Sebastian’s shared CHT auth)
 
-**What it is:** Supabase Auth (GoTrue) at `mediahub.communityhealth.media` — the shared CHT auth service (sometimes referred to as “Sebastian’s endpoint”).
+**What it is:** Supabase Auth (GoTrue) at `mediahub.communityhealth.media` - the shared CHT auth service (sometimes referred to as “Sebastian’s endpoint”).
 
 **Endpoint:**
 ```

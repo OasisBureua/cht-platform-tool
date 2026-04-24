@@ -112,16 +112,21 @@ export type StripCardProps = {
   to: string;
   title: string;
   imageUrl: string;
-  /** Secondary line: views, duration, or speaker */
+  /** One line under the title (summary, speakers, date, first clip title, etc.) */
+  description?: string;
+  /** @deprecated Prefer `description`. Kept for call sites still passing `meta`. */
   meta?: string;
+  /** Playlist-style count line, shown prominently below the description */
+  videoLabel?: string;
 };
 
-export function StripCard({ to, title, imageUrl, meta }: StripCardProps) {
+export function StripCard({ to, title, imageUrl, description, meta, videoLabel }: StripCardProps) {
+  const line1 = description ?? meta;
   return (
     <div className="snap-start" style={{ scrollSnapAlign: 'start' }}>
       <Link
         to={to}
-        className="group/card flex w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]"
+        className="group/card flex h-[300px] w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:h-[320px] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]"
       >
         <div className="relative h-[180px] w-full overflow-hidden sm:h-[200px]">
           <img
@@ -133,10 +138,25 @@ export function StripCard({ to, title, imageUrl, meta }: StripCardProps) {
             draggable={false}
           />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col p-2.5 pt-2">
-          <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{title}</p>
-          {meta ? (
-            <p className="mt-0.5 line-clamp-1 text-pretty text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">{meta}</p>
+        <div className="flex min-h-[6.25rem] flex-1 flex-col p-2.5 pt-2 sm:min-h-[6.5rem]">
+          <p
+            className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 [overflow-wrap:anywhere] dark:text-zinc-100"
+            title={title}
+          >
+            {title}
+          </p>
+          {line1 ? (
+            <p
+              className="mt-1 line-clamp-1 text-left text-[11px] leading-snug text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400"
+              title={line1}
+            >
+              {line1}
+            </p>
+          ) : null}
+          {videoLabel ? (
+            <span className="mt-1.5 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-2 py-1 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100">
+              {videoLabel}
+            </span>
           ) : null}
         </div>
       </Link>
@@ -146,11 +166,13 @@ export function StripCard({ to, title, imageUrl, meta }: StripCardProps) {
 
 function RowSkeleton() {
   return (
-    <div className="flex w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-zinc-100/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:w-[288px] dark:bg-zinc-800/80 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+    <div className="flex h-[300px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-zinc-100/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:h-[320px] sm:w-[288px] dark:bg-zinc-800/80 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
       <div className="h-[180px] w-full animate-pulse bg-zinc-200/90 sm:h-[200px] dark:bg-zinc-700/80" />
-      <div className="space-y-2 p-2.5 pt-2">
+      <div className="space-y-1.5 p-2.5 pt-2">
         <div className="h-3.5 w-4/5 animate-pulse rounded bg-zinc-200/80" />
-        <div className="h-3 w-1/2 animate-pulse rounded bg-zinc-200/60" />
+        <div className="h-3.5 w-[90%] animate-pulse rounded bg-zinc-200/70" />
+        <div className="h-3 w-full animate-pulse rounded bg-zinc-200/60" />
+        <div className="mt-1 h-6 w-16 animate-pulse rounded-md bg-zinc-200/80" />
       </div>
     </div>
   );

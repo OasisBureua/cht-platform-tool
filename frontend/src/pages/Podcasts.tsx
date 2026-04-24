@@ -78,23 +78,23 @@ export default function Podcasts() {
     <div className="space-y-8 pb-24 font-['DM_Sans',system-ui,sans-serif] md:pb-0">
       <header className="md:flex md:items-end md:justify-between md:gap-6">
         <div>
-          <div className="mb-2 flex items-center gap-2.5 text-gray-900">
+          <div className="mb-2 flex items-center gap-2.5 text-gray-900 dark:text-zinc-100">
             <Mic2 className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-            <h1 className="text-balance text-2xl font-bold tracking-tight text-gray-900 md:text-3xl">Podcasts</h1>
+            <h1 className="text-balance text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-3xl">Podcasts</h1>
           </div>
-          <p className="max-w-2xl font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600">
+          <p className="max-w-2xl font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
             Long-form audio from CHM. Same editorial standards as the main hub, built for headphones and a little more room to breathe.
           </p>
         </div>
-        <p className="mt-3 hidden text-xs font-medium uppercase tracking-[0.2em] text-gray-500 md:mt-0 md:block">CHM original</p>
+        <p className="mt-3 hidden text-xs font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-zinc-500 md:mt-0 md:block">CHM original</p>
       </header>
 
       <section
-        className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white text-gray-900 shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_40px_-18px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)]"
+        className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white text-gray-900 shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_40px_-18px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:border-zinc-800/90 dark:bg-zinc-900 dark:text-zinc-100 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_12px_40px_-18px_rgba(0,0,0,0.5)]"
         aria-label="Breast Friends series"
       >
         <div className="min-w-0">
-          <div className="relative overflow-hidden bg-gradient-to-r from-violet-100 via-brand-50 to-white px-5 py-5 sm:px-7 sm:py-6 md:px-10 md:py-7">
+          <div className="relative overflow-hidden bg-gradient-to-r from-violet-100 via-brand-50 to-white px-5 py-5 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 sm:px-7 sm:py-6 md:px-10 md:py-7">
             <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-violet-200/35 blur-3xl" />
             <div className="pointer-events-none absolute left-1/4 top-0 h-40 w-40 rounded-full bg-brand-200/30 blur-3xl" />
             <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -110,10 +110,10 @@ export default function Podcasts() {
                   <Sparkles className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden />
                   <span>Original series</span>
                 </div>
-                <h2 className="mt-1 text-balance text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                <h2 className="mt-1 text-balance text-3xl font-extrabold tracking-tight text-gray-900 dark:text-zinc-100 sm:text-4xl">
                   {BREAST_FRIENDS.title}
                 </h2>
-                <p className="mt-1.5 max-w-2xl font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600">
+                <p className="mt-1.5 max-w-2xl font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
                   {BREAST_FRIENDS.tagline}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
@@ -130,14 +130,14 @@ export default function Podcasts() {
               </div>
             </div>
           </div>
-          <div className="border-t border-gray-200/90 bg-white px-4 py-3 sm:px-6">
+          <div className="border-t border-gray-200/90 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">Listen on</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600 dark:text-zinc-400">Listen on</span>
               {['Apple Podcasts', 'Spotify', 'Amazon Music', 'iHeartRadio', 'Castbox', 'Pocket Casts'].map((platform) => (
                 <button
                   key={platform}
                   type="button"
-                  className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96]"
+                  className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 >
                   {platform}
                 </button>
@@ -146,14 +146,14 @@ export default function Podcasts() {
           </div>
         </div>
 
-        <div className="border-t border-gray-200/90 bg-gray-50 px-4 py-3 sm:px-6">
+        <div className="border-t border-gray-200/90 bg-gray-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6">
           <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600">All episodes</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600 dark:text-zinc-400">All episodes</h3>
             <button
               type="button"
               onClick={() => setSortNewestFirst((v) => !v)}
               aria-pressed={sortNewestFirst}
-              className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96]"
+              className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
             >
               <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               {sortNewestFirst ? 'Newest first' : 'Oldest first'}
@@ -161,40 +161,40 @@ export default function Podcasts() {
           </div>
         </div>
 
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
           {sortedEpisodes.map((ep) => (
             <li key={ep.num + ep.title}>
               <button
                 type="button"
-                className="group flex w-full gap-3 px-4 py-4 text-left transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50/90 focus-visible:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500 active:scale-[0.995] sm:gap-4 sm:px-6 sm:py-5"
+                className="group flex w-full gap-3 px-4 py-4 text-left transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50/90 focus-visible:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500 active:scale-[0.995] dark:hover:bg-zinc-800/70 dark:focus-visible:bg-zinc-800 sm:gap-4 sm:px-6 sm:py-5"
                 aria-label={`Episode ${ep.num.replace(/\D/g, '')}: ${ep.title}`}
               >
-                <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-center shadow-[0_1px_0_rgba(0,0,0,0.03)] sm:min-w-[3.5rem] sm:px-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500">Ep</span>
-                  <span className="text-lg font-extrabold leading-none text-gray-900 tabular-nums">
+                <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-center shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-zinc-900 sm:min-w-[3.5rem] sm:px-3">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-zinc-500">Ep</span>
+                  <span className="text-lg font-extrabold leading-none text-gray-900 tabular-nums dark:text-zinc-100">
                     {ep.num.replace(/\D/g, '')}
                   </span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-balance font-semibold leading-snug text-gray-900 sm:text-base">{ep.title}</p>
-                  <p className="mt-1 line-clamp-1 text-xs font-normal text-gray-500 sm:text-sm">{ep.guests}</p>
+                  <p className="text-balance font-semibold leading-snug text-gray-900 dark:text-zinc-100 sm:text-base">{ep.title}</p>
+                  <p className="mt-1 line-clamp-1 text-xs font-normal text-gray-500 dark:text-zinc-500 sm:text-sm">{ep.guests}</p>
                   {ep.description ? (
-                    <p className="mt-1.5 line-clamp-2 font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600">
+                    <p className="mt-1.5 line-clamp-2 font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
                       {ep.description}
                     </p>
                   ) : null}
-                  <p className="mt-1.5 text-xs text-gray-600 tabular-nums sm:hidden">
-                    {ep.date} <span className="text-gray-400">|</span> {ep.duration}
+                  <p className="mt-1.5 text-xs text-gray-600 tabular-nums dark:text-zinc-500 sm:hidden">
+                    {ep.date} <span className="text-gray-400 dark:text-zinc-600">|</span> {ep.duration}
                   </p>
                 </div>
                 <div className="hidden shrink-0 flex-col items-end justify-center gap-1 text-right sm:flex">
-                  <time className="whitespace-nowrap text-xs text-gray-600 tabular-nums" dateTime={ep.dateIso}>
+                  <time className="whitespace-nowrap text-xs text-gray-600 tabular-nums dark:text-zinc-500" dateTime={ep.dateIso}>
                     {ep.date}
                   </time>
-                  <span className="text-xs font-semibold text-brand-800 tabular-nums">{ep.duration}</span>
+                  <span className="text-xs font-semibold text-brand-800 tabular-nums dark:text-brand-300">{ep.duration}</span>
                 </div>
                 <ChevronRight
-                  className="h-5 w-5 shrink-0 self-center text-gray-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-gray-600"
+                  className="h-5 w-5 shrink-0 self-center text-gray-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-gray-600 dark:text-zinc-600 dark:group-hover:text-zinc-300"
                   aria-hidden
                 />
               </button>
@@ -204,7 +204,7 @@ export default function Podcasts() {
       </section>
 
       <section
-        className="overflow-hidden rounded-2xl border-2 border-dashed border-gray-300/90 bg-zinc-50/90 shadow-[0_1px_0_rgba(0,0,0,0.03),0_6px_24px_-12px_rgba(0,0,0,0.08)]"
+        className="overflow-hidden rounded-2xl border-2 border-dashed border-gray-300/90 bg-zinc-50/90 shadow-[0_1px_0_rgba(0,0,0,0.03),0_6px_24px_-12px_rgba(0,0,0,0.08)] dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_6px_24px_-12px_rgba(0,0,0,0.45)]"
         aria-label="Upcoming series"
       >
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:gap-6 sm:p-6 md:p-8">
@@ -221,18 +221,18 @@ export default function Podcasts() {
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <h2 className="text-balance text-xl font-bold text-gray-900">{UPCOMING_SHOW.title}</h2>
-            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-gray-600">{UPCOMING_SHOW.tagline}</p>
+            <h2 className="text-balance text-xl font-bold text-gray-900 dark:text-zinc-100">{UPCOMING_SHOW.title}</h2>
+            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-gray-600 dark:text-zinc-400">{UPCOMING_SHOW.tagline}</p>
             <button
               type="button"
-              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50"
+              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
               disabled
               aria-disabled
             >
               <Bell className="h-4 w-4 shrink-0" aria-hidden />
               Notify me when live
             </button>
-            <p className="mt-2 text-xs text-gray-500">We will use the email on your account when this goes live.</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-zinc-500">We will use the email on your account when this goes live.</p>
           </div>
         </div>
       </section>

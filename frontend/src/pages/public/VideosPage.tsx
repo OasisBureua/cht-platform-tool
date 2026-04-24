@@ -179,16 +179,18 @@ export default function VideosPage() {
       <div
         className={[
           isInApp
-            ? 'w-full px-0 py-0 sm:py-0 space-y-6 sm:space-y-8'
+            ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
             : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
-          <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-          <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
-            {isInApp ? 'Explore our conversations' : 'Explore our catalogue'}
-          </h1>
-        </div>
+        {!isInApp ? (
+          <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
+            <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+              Explore our catalogue
+            </h1>
+          </div>
+        ) : null}
 
         {!isInApp ? (
           <ContentLibraryNavTabs
@@ -274,15 +276,23 @@ export default function VideosPage() {
         )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
-          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+          isInApp ? (
+            <section className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+              <ConversationsHeroSkeleton />
+            </section>
+          ) : (
             <ConversationsHeroSkeleton />
-          </div>
+          )
         )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+          isInApp ? (
+            <section className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+              <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+            </section>
+          ) : (
             <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-          </div>
+          )
         )}
 
         {effectiveLibraryView === 'playlists' ? (
@@ -294,7 +304,7 @@ export default function VideosPage() {
             ) : null}
           </section>
         ) : isInApp ? (
-          <section className="space-y-8">
+          <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
                 <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
@@ -340,7 +350,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
                       />
                     ))}
                   </ConversationRow>
@@ -357,7 +367,8 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta={`${(item.view_count ?? 0).toLocaleString()} views`}
+                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        videoLabel={`${(item.view_count ?? 0).toLocaleString()} views`}
                       />
                     ))}
                   </ConversationRow>
@@ -374,7 +385,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta="Short conversation"
+                        description="Short conversation"
                       />
                     ))}
                   </ConversationRow>
