@@ -2,17 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardApi } from '../../api/dashboard';
-
-const PROFESSION_OPTIONS = [
-  { value: '', label: 'Select your profession' },
-  { value: 'Physician', label: 'Physician (MD/DO)' },
-  { value: 'Nurse Practitioner', label: 'Nurse Practitioner (NP)' },
-  { value: 'Physician Assistant', label: 'Physician Assistant (PA)' },
-  { value: 'Pharmacist', label: 'Pharmacist' },
-  { value: 'Nurse', label: 'Nurse (RN/LPN)' },
-  { value: 'Pharmaceuticals', label: 'Pharmaceuticals' },
-  { value: 'Other HCP', label: 'Other Healthcare Professional' },
-];
+import { PROFESSION_OPTIONS } from '../../data/profession-options';
 
 export default function CompleteProfile() {
   const navigate = useNavigate();
@@ -103,7 +93,8 @@ export default function CompleteProfile() {
           Complete your profile
         </h1>
         <p className="mt-1 text-sm text-gray-600">
-          A few details are needed before you can access the platform.
+          Add your <strong>profession</strong> and <strong>NPI</strong> (when required) so you can receive payments.
+          You already have app access; without this on file, <strong>earnings and payouts may be held</strong>.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>

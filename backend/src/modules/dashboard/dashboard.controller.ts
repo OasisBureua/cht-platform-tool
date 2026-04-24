@@ -46,7 +46,7 @@ export class DashboardController {
 
   /**
    * PATCH /api/dashboard/:userId/profile
-   * Update user profile (firstName, lastName only for now)
+   * Update name, profession (specialty), NPI, practice location, etc.
    */
   @Patch(':userId/profile')
   async updateProfile(
@@ -59,6 +59,10 @@ export class DashboardController {
       lastName: dto.lastName,
       specialty: dto.specialty,
       npiNumber: dto.npiNumber,
+      institution: dto.institution,
+      city: dto.city,
+      state: dto.state,
+      zipCode: dto.zipCode,
     });
   }
 }

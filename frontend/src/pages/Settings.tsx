@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { User, LogOut, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -9,6 +9,7 @@ import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
 import { getApiErrorMessage } from '../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { PROFESSION_OPTIONS } from '../data/profession-options';
 
 function getInitials(name: string, email?: string): string {
   const parts = name.trim().split(/\s+/);
@@ -23,6 +24,7 @@ function getInitials(name: string, email?: string): string {
 export default function Settings() {
   const { user, logout, refreshProfile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const userId = user?.userId ?? '';
 
@@ -32,9 +34,20 @@ export default function Settings() {
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
+  const [specialty, setSpecialty] = useState('');
+  const [npiNumber, setNpiNumber] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [settingsTab, setSettingsTab] = useState<'general' | 'security' | 'payment'>(() => {
+    const s = (location.state as { settingsTab?: 'general' | 'security' | 'payment' } | null)?.settingsTab;
+    return s === 'payment' || s === 'security' || s === 'general' ? s : 'general';
+  });
+
+  useEffect(() => {
+    const s = (location.state as { settingsTab?: 'general' | 'security' | 'payment' } | null)?.settingsTab;
+    if (s === 'payment' || s === 'security' || s === 'general') setSettingsTab(s);
+  }, [location.state]);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', userId],
@@ -58,6 +71,8 @@ export default function Settings() {
     if (profile) {
       setFirstName(profile.firstName ?? '');
       setLastName(profile.lastName ?? '');
+      setSpecialty(profile.specialty ?? '');
+      setNpiNumber((profile.npiNumber ?? '').replace(/\D/g, '').slice(0, 10));
       setInstitution(profile.institution ?? '');
       setCity(profile.city ?? '');
       setState(profile.state ?? '');
@@ -70,9 +85,20 @@ export default function Settings() {
     setSaveOk(false);
     setSaving(true);
     try {
+      if (!specialty.trim()) {
+        setSaveError('Please select your profession.');
+        setSaving(false);
+        return;
+      }
+      const npi = npiNumber.replace(/\D/g, '');
+      const isPharmaceuticals = specialty === 'Pharmaceuticals';
+      if (!isPharmaceuticals && npi.length !== 10) {
+        setSaveError('NPI number must be 10 digits (or choose Pharmaceuticals if it does not apply).');
+        setSaving(false);
+        return;
+      }
       const zip = zipCode.replace(/\D/g, '');
       if (zip && zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
-        setSaveOk(false);
         setSaveError('ZIP code must be 5 digits (or 9 for ZIP+4).');
         setSaving(false);
         return;
@@ -80,6 +106,9 @@ export default function Settings() {
       await dashboardApi.updateProfile(userId, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        specialty: specialty.trim(),
+        // Sending '' for Pharma without 10-digit NPI clears any previous NPI (backend stores null).
+        npiNumber: isPharmaceuticals ? (npi.length === 10 ? npi : '') : npi,
         institution: institution.trim() || undefined,
         city: city.trim() || undefined,
         state: state.trim().toUpperCase().slice(0, 2) || undefined,
@@ -90,7 +119,7 @@ export default function Settings() {
       setSaveOk(true);
       window.setTimeout(() => setSaveOk(false), 3000);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to save');
+      setSaveError(getApiErrorMessage(err, 'Failed to save profile.'));
     } finally {
       setSaving(false);
     }
@@ -134,27 +163,40 @@ export default function Settings() {
               </div>
               <div>
                 <p className="text-lg font-bold text-gray-900">{displayName}</p>
-                {profile?.specialty ? (
-                  <span className="text-sm text-gray-600">{profile.specialty}</span>
+                {specialty ? (
+                  <span className="text-sm text-gray-600">{specialty}</span>
                 ) : (
-                  <span className="text-sm text-gray-500">-</span>
+                  <span className="text-sm text-gray-500">Profession not set</span>
                 )}
               </div>
             </div>
 
-            <div className="flex gap-2 border-b border-gray-200 pb-4">
-              {['General', 'Security', 'Notifications', 'Integrations'].map((tab, i) => (
+            <div className="flex flex-wrap gap-1 border-b border-gray-200 pb-4" role="tablist" aria-label="Settings sections">
+              {(
+                [
+                  { id: 'general' as const, label: 'General' },
+                  { id: 'security' as const, label: 'Security' },
+                  { id: 'payment' as const, label: 'Payment settings' },
+                ] as const
+              ).map((tab) => (
                 <button
-                  key={tab}
-                  className={`px-4 py-2 text-sm font-medium ${
-                    i === 0 ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-600 hover:text-gray-900'
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={settingsTab === tab.id}
+                  onClick={() => setSettingsTab(tab.id)}
+                  className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
+                    settingsTab === tab.id
+                      ? 'text-blue-600 border-b-2 border-blue-600 -mb-px'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  {tab}
+                  {tab.label}
                 </button>
               ))}
             </div>
 
+            {settingsTab === 'general' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
@@ -174,6 +216,43 @@ export default function Settings() {
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter last name"
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Profession</label>
+                <select
+                  value={specialty}
+                  onChange={(e) => setSpecialty(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
+                >
+                  {PROFESSION_OPTIONS.map((opt) => (
+                    <option key={opt.value || 'empty'} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-0.5 text-xs text-gray-500">Used as your professional role for eligibility and payments</p>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  NPI number{' '}
+                  {specialty === 'Pharmaceuticals' && (
+                    <span className="font-normal text-gray-500">(optional for Pharmaceuticals)</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={npiNumber}
+                  onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder={
+                    specialty === 'Pharmaceuticals'
+                      ? 'Optional 10-digit NPI if applicable'
+                      : '10-digit National Provider Identifier'
+                  }
+                  maxLength={10}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
                 />
               </div>
               <div className="md:col-span-2 pt-2 border-t border-gray-100">
@@ -240,16 +319,6 @@ export default function Settings() {
                   className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
                 />
               </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Specialty</label>
-                <input
-                  type="text"
-                  value={profile?.specialty ?? ''}
-                  readOnly
-                  placeholder="Not set"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
-                />
-              </div>
               <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-2">
                 <button
                   type="button"
@@ -263,24 +332,40 @@ export default function Settings() {
                 {saveError && <span className="text-sm text-red-600">{saveError}</span>}
               </div>
             </div>
+            ) : settingsTab === 'security' ? (
+              <div className="mt-6 space-y-3 text-sm text-gray-600">
+                <p>
+                  To change your password, sign out and use <strong>Forgot password</strong> on the login page, or
+                  contact your administrator.
+                </p>
+                <Link
+                  to="/forgot-password"
+                  className="inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  Open password reset
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-6">
+                <PaymentSettingsSection
+                  userId={userId}
+                  accountStatus={accountStatus}
+                  isLoading={loadingAccount}
+                  displayName={displayName}
+                  profileCity={profile?.city}
+                  profileState={profile?.state}
+                  profileZip={profile?.zipCode}
+                  embedded
+                  onSuccess={() => {
+                    void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
+                    void queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
+                    void queryClient.invalidateQueries({ queryKey: ['payments-history', userId] });
+                    void queryClient.invalidateQueries({ queryKey: ['earnings', userId] });
+                  }}
+                />
+              </div>
+            )}
           </div>
-
-          {/* Payment Settings */}
-          <PaymentSettingsSection
-            userId={userId}
-            accountStatus={accountStatus}
-            isLoading={loadingAccount}
-            displayName={displayName}
-            profileCity={profile?.city}
-            profileState={profile?.state}
-            profileZip={profile?.zipCode}
-            onSuccess={() => {
-              void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
-              void queryClient.invalidateQueries({ queryKey: ['payments-summary', userId] });
-              void queryClient.invalidateQueries({ queryKey: ['payments-history', userId] });
-              void queryClient.invalidateQueries({ queryKey: ['earnings', userId] });
-            }}
-          />
         </div>
 
         {/* Right sidebar */}
@@ -319,8 +404,12 @@ export default function Settings() {
               <Link to="/app/earnings" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
                 View Earnings
               </Link>
-              <Link to="/app/payments" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
-                Payment Settings
+              <Link
+                to="/app/settings"
+                state={{ settingsTab: 'payment' as const }}
+                className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50"
+              >
+                Payment settings
               </Link>
               {user?.role === 'KOL' ? (
                 <button
@@ -352,6 +441,7 @@ function PaymentSettingsSection({
   profileCity,
   profileState,
   profileZip,
+  embedded = false,
   onSuccess,
 }: {
   userId: string;
@@ -367,6 +457,8 @@ function PaymentSettingsSection({
   profileCity?: string;
   profileState?: string;
   profileZip?: string;
+  /** When true, no outer card chrome (used inside Settings tabs). */
+  embedded?: boolean;
   onSuccess: () => void;
 }) {
   const [payeeName, setPayeeName] = useState('');
@@ -452,15 +544,16 @@ function PaymentSettingsSection({
     connectMutation.mutate();
   };
 
+  const cardShell = embedded
+    ? 'min-w-0'
+    : 'min-w-0 overflow-hidden rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]';
+
   if (isLoading) {
     return (
-      <div
-        id="payment-settings"
-        className="min-w-0 overflow-hidden rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]"
-      >
+      <div id="payment-settings" className={cardShell}>
         <div className="flex items-center gap-2 mb-4">
           <CreditCard className="h-5 w-5 text-gray-700" />
-          <h2 className="text-lg font-bold text-gray-900">Payment Settings</h2>
+          <h2 className="text-lg font-bold text-gray-900">Bill.com — payouts</h2>
         </div>
         <div className="py-8 flex justify-center">
           <LoadingSpinner />
@@ -481,10 +574,7 @@ function PaymentSettingsSection({
   }, [needsW9, isLoading]);
 
   return (
-    <div
-      id="payment-settings"
-      className="min-w-0 overflow-hidden rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]"
-    >
+    <div id="payment-settings" className={cardShell}>
       <div className="flex items-center gap-2 mb-4">
         <CreditCard className="h-5 w-5 text-gray-700 shrink-0" />
         <h2 className="text-lg font-bold text-gray-900 truncate">Bill.com — payouts</h2>

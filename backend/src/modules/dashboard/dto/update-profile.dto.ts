@@ -20,4 +20,24 @@ export class UpdateProfileDto {
   @IsString()
   @MaxLength(10)
   npiNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  institution?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2)
+  state?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(12)
+  zipCode?: string;
 }

@@ -253,9 +253,6 @@ export default function Home() {
         )}
       </section>
 
-      {/* Disease Areas - horizontal carousel */}
-      <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
-
       {playlistsLoading && playlists.length === 0 ? (
         <section className="py-10 sm:py-12" aria-live="polite" aria-busy="true">
           <div className="flex flex-col items-center justify-center gap-2 py-8">
@@ -312,6 +309,9 @@ export default function Home() {
               </ConversationRow>
             </div>
           </section>
+
+          {/* View treatment specific content — below HR+ playlists */}
+          <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
         </>
       )}
 
