@@ -58,9 +58,9 @@ export default function OfficeHours() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">CHM Office Hours</h1>
-        <p className="text-sm text-gray-600">
-          Get time with our experts. Live sessions for Q&A. Select an available time slot and join from here when
+        <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">CHM Office Hours</h1>
+        <p className="text-pretty text-sm text-gray-600">
+          Get time with our experts — live sessions for Q&amp;A. Select an available time slot and join from here when
           it&apos;s time.
         </p>
       </header>
@@ -70,7 +70,7 @@ export default function OfficeHours() {
           <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
         </div>
       ) : sessions.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="font-semibold text-gray-900">No CHM Office Hours scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
         </div>
@@ -81,7 +81,7 @@ export default function OfficeHours() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 Upcoming · {upcoming.length}
               </h2>
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {upcoming.map((w) => (
                   <SessionRow
                     key={w.id}
@@ -101,7 +101,7 @@ export default function OfficeHours() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 Past · {past.length}
               </h2>
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {past.map((w) => (
                   <SessionRow
                     key={w.id}
@@ -136,13 +136,13 @@ function SessionRow({
   return (
     <Link
       to={`/app/chm-office-hours/${w.id}`}
-      className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
+      className="group flex items-center gap-4 px-5 py-4 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.995]"
     >
       <div className="shrink-0 w-12 text-center">
         {date ? (
           <>
             <p className="text-xs font-semibold text-gray-500 uppercase">{format(date, 'MMM')}</p>
-            <p className="text-2xl font-bold text-gray-900 leading-none">{format(date, 'd')}</p>
+            <p className="text-2xl font-bold leading-none text-gray-900 tabular-nums">{format(date, 'd')}</p>
           </>
         ) : (
           <p className="text-xs text-gray-400">TBD</p>
@@ -170,7 +170,7 @@ function SessionRow({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
@@ -193,7 +193,7 @@ function SessionRow({
         )}
       </div>
 
-      <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-gray-600 transition-colors" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-gray-600" />
     </Link>
   );
 }

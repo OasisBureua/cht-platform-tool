@@ -145,7 +145,7 @@ export default function OfficeHoursDetail() {
             ) : !enrolled && needsRegistrationWizard ? (
               <Link
                 to={`/app/chm-office-hours/${id}/register`}
-                className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 Register for this session
               </Link>
@@ -154,7 +154,7 @@ export default function OfficeHoursDetail() {
                 type="button"
                 onClick={() => enrollMutation.mutate()}
                 disabled={!userId || enrollMutation.isPending}
-                className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+                className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
               >
                 {enrollMutation.isPending ? 'Saving…' : 'Register for this session'}
               </button>
@@ -166,7 +166,7 @@ export default function OfficeHoursDetail() {
                   href={session.joinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                  className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
                 >
                   <Video className="h-4 w-4" />
                   Join session

@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react';
 import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
 import { useAuth } from '../../contexts/AuthContext';
-import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 import ThemeToggle from '../ThemeToggle';
 import { NotificationBell } from './NotificationBell';
+import logoSrc from '../../assets/logo/LOGO.svg';
 
 export default function Layout() {
   const location = useLocation();
@@ -42,7 +42,7 @@ export default function Layout() {
             className="shrink-0 text-brand-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-brand-700 active:scale-[0.96] md:hidden"
             aria-label="Community Health Media, app home"
           >
-            <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
+            <img src={logoSrc} alt="CHM" className="h-7 w-7 object-contain" />
           </Link>
           <div className="min-w-0 pr-3">
             <h1 className="text-balance text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">

@@ -45,8 +45,8 @@ export default function Contact() {
           <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-gray-900 leading-tight">
             Let’s connect
           </h1>
-          <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-            Questions, partnership inquiries, or product feedback. Send a note and we’ll follow up.
+          <p className="text-sm md:text-base text-gray-600 leading-relaxed">
+            Questions, partnership inquiries, or product feedback — send a note and we’ll follow up.
           </p>
         </header>
 
@@ -56,9 +56,9 @@ export default function Contact() {
             <div className="rounded-3xl border border-gray-200 bg-white p-7 md:p-8">
               {sent ? (
                 <div className="space-y-2">
-                  <p className="text-base font-semibold text-gray-900">Message sent</p>
-                  <p className="text-base text-gray-600">
-                    Thanks. We’ll follow up shortly. For now, you can continue browsing the catalogue.
+                  <p className="text-sm font-semibold text-gray-900">Message sent</p>
+                  <p className="text-sm text-gray-600">
+                    Thanks — we’ll follow up shortly. For now, you can continue browsing the catalogue.
                   </p>
                   <div className="pt-4">
                     <Link

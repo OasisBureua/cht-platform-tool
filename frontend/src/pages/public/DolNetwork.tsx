@@ -143,7 +143,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
           <p className="text-xs font-semibold uppercase tracking-wider text-[#0d4f6c]">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
-            Oncology & breast cancer specialists. Filter by region, institution, or text; sort by name, region, or newest.
+            Oncology & breast cancer specialists — filter by region, institution, or text; sort by name, region, or
+            newest.
           </p>
         </header>
 

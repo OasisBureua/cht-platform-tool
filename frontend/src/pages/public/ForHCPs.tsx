@@ -296,7 +296,7 @@ function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: b
           {w.title}
         </h4>
         {date && (
-          <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 tabular-nums">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {format(date, 'EEE, MMM d, yyyy')}

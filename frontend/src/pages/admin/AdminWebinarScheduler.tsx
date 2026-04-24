@@ -157,8 +157,13 @@ export default function AdminWebinarScheduler({
         </h1>
         <p className="text-sm text-gray-600 mt-1">
           {isWebinar
+<<<<<<< HEAD
             ? 'Creates a Zoom Webinar and publishes it. The server clones a unique invitation Jotform and post-event Jotform from your template form IDs in environment variables, then wires webhooks. Learners complete invitation before approval; post-event reminders appear after the session. Honorarium uses Bill.com.'
             : 'Creates a Zoom Meeting (interactive Q&A, waiting room). Registrations require admin approval before learners can join. No automatic Jotform clone for meetings.'}
+=======
+            ? 'Creates a Zoom Webinar and publishes it. Optional Jotform post-event survey when enabled below.'
+            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). No Jotform survey - backend only creates surveys for webinars.'}
+>>>>>>> main
         </p>
       </div>
 
@@ -166,7 +171,11 @@ export default function AdminWebinarScheduler({
         <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
           <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
           <div className="flex-1">
+<<<<<<< HEAD
             <p className="text-sm font-semibold text-yellow-800">Saved. Zoom sync failed</p>
+=======
+            <p className="text-sm font-semibold text-yellow-800">Saved - Zoom sync failed</p>
+>>>>>>> main
             <p className="text-sm text-yellow-700 mt-0.5">
               The session was saved but could not be created on Zoom. Fix Zoom app scopes, then edit the session to
               retry.
@@ -214,8 +223,13 @@ export default function AdminWebinarScheduler({
               }}
               className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             >
+<<<<<<< HEAD
               <option value="WEBINAR">Webinar (Zoom Webinar, CME-style; intake Jotform required)</option>
               <option value="MEETING">Office Hours (Zoom Meeting, Q&A, waiting room)</option>
+=======
+              <option value="WEBINAR">Webinar (Zoom Webinar - CME-style, optional Jotform survey)</option>
+              <option value="MEETING">Office Hours (Zoom Meeting - Q&A, waiting room)</option>
+>>>>>>> main
             </select>
           </div>
 

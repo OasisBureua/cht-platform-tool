@@ -121,7 +121,7 @@ export default function Settings() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Information */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
             <div className="flex items-center gap-2 mb-4">
               <User className="h-5 w-5 text-gray-700" />
               <h2 className="text-lg font-bold text-gray-900">Profile Information</h2>
@@ -285,7 +285,7 @@ export default function Settings() {
 
         {/* Right sidebar */}
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Profile Stats</h2>
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -313,7 +313,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <div className="rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-2">
               <Link to="/app/earnings" className="flex w-full rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
@@ -454,7 +454,10 @@ function PaymentSettingsSection({
 
   if (isLoading) {
     return (
-      <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6">
+      <div
+        id="payment-settings"
+        className="min-w-0 overflow-hidden rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]"
+      >
         <div className="flex items-center gap-2 mb-4">
           <CreditCard className="h-5 w-5 text-gray-700" />
           <h2 className="text-lg font-bold text-gray-900">Payment Settings</h2>
@@ -478,7 +481,10 @@ function PaymentSettingsSection({
   }, [needsW9, isLoading]);
 
   return (
-    <div id="payment-settings" className="bg-white rounded-2xl border border-gray-200 p-6 min-w-0 overflow-hidden">
+    <div
+      id="payment-settings"
+      className="min-w-0 overflow-hidden rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]"
+    >
       <div className="flex items-center gap-2 mb-4">
         <CreditCard className="h-5 w-5 text-gray-700 shrink-0" />
         <h2 className="text-lg font-bold text-gray-900 truncate">Bill.com — payouts</h2>
@@ -655,7 +661,7 @@ function PaymentSettingsSection({
           <button
             type="submit"
             disabled={connectMutation.isPending}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50"
+            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
           >
             {connectMutation.isPending ? 'Saving...' : 'Add bank account'}
           </button>

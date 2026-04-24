@@ -123,7 +123,7 @@ export default function ClipDetail() {
         {/* Title + meta - all from API, works for public and /app */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{clip.title}</h1>
-          <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500">
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500 tabular-nums">
             {meta.doctors.length > 0 && (
               <span>Featuring: {meta.doctors.join(', ')}</span>
             )}

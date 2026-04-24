@@ -253,7 +253,7 @@ export default function WatchVideo() {
         <div className="space-y-2">
           <p className="text-sm font-semibold text-gray-900">{video.title}</p>
           <p className="text-sm text-gray-600">{video.description || program.title}</p>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-gray-700 tabular-nums">
             {program.sponsorName} • {video.platform} • {duration ? `${Math.round(duration / 60)} min` : 'Video'}
           </p>
 
@@ -261,12 +261,12 @@ export default function WatchVideo() {
           <div className="pt-3">
             <div className="h-2 w-full rounded-full bg-gray-200">
               <div
-                className="h-2 rounded-full bg-gray-900 transition-all"
+                className="h-2 rounded-full bg-gray-900 transition-[width] duration-300 ease-out"
                 style={{ width: `${Math.round(progress * 100)}%` }}
               />
             </div>
 
-            <div className="mt-2 flex items-center justify-between text-xs text-gray-600">
+            <div className="mt-2 flex items-center justify-between text-xs text-gray-600 tabular-nums">
               <span>
                 {watchedLabel} / {totalLabel}
               </span>
@@ -292,7 +292,7 @@ export default function WatchVideo() {
             {!hasStarted ? (
               <button
                 onClick={() => setHasStarted(true)}
-                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 {canResume ? 'Resume' : 'Start'}
               </button>
@@ -326,7 +326,7 @@ export default function WatchVideo() {
                   setWatchedSeconds(forcedSeconds);
                   syncNow(forcedSeconds);
                 }}
-                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Mark Complete (DEV)

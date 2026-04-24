@@ -103,7 +103,7 @@ export default function PublicOfficeHoursDetail() {
               <p className="text-sm font-medium text-gray-800">Get time with {session.hostDisplayName}</p>
             ) : null}
 
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600 tabular-nums">
               {session.startTime && (
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />

@@ -119,7 +119,7 @@ export default function SurveyDetail() {
         <div className="mt-5">
           <Link
             to="/app/surveys"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
             Back to surveys
           </Link>
@@ -165,6 +165,7 @@ export default function SurveyDetail() {
           {/* Start / Embed */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
             {!started ? (
+<<<<<<< HEAD
               surveySaved && hasJotform ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -194,6 +195,17 @@ export default function SurveyDetail() {
                   </button>
                 </div>
               )
+=======
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
+                <button
+                  onClick={() => setStarted(true)}
+                  className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                >
+                  Start survey <ArrowRight className="ml-2 h-4 w-4" />
+                </button>
+              </div>
+>>>>>>> main
             ) : null}
 
             {started ? (
@@ -252,7 +264,7 @@ export default function SurveyDetail() {
                           'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
                           submitMutation.isPending
                             ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                            : 'bg-gray-900 text-white hover:bg-black',
+                            : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
                         ].join(' ')}
                       >
                         {submitMutation.isPending ? 'Submitting…' : 'Mark as completed (UI)'}

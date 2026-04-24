@@ -31,11 +31,11 @@ export default function DiseaseAreas() {
       <header>
         <div className="flex items-center gap-3 mb-2">
           <Dna className="h-7 w-7 text-gray-900" />
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Disease Areas</h1>
+          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Disease Areas</h1>
         </div>
-        <p className="text-sm text-gray-600 max-w-2xl">
+        <p className="text-pretty max-w-2xl text-sm text-gray-600">
           Explore content by therapeutic area. Each disease area has LIVE sessions, conversations,
-          surveys, and expert insights, all in one place.
+          surveys, and expert insights — all in one place.
         </p>
       </header>
 
@@ -110,7 +110,7 @@ export default function DiseaseAreas() {
                           <Link
                             key={w.id}
                             to={`/app/live/${w.id}`}
-                            className="rounded-xl border border-gray-200 bg-white p-4 hover:shadow-sm transition-shadow"
+                            className="rounded-xl border border-gray-200 bg-white p-4 transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995]"
                           >
                             <p className="font-semibold text-gray-900 line-clamp-2">{w.title}</p>
                             {w.startTime && (
@@ -139,7 +139,7 @@ export default function DiseaseAreas() {
                           <Link
                             key={p.id}
                             to={`/app/catalog/playlist/${p.id}`}
-                            className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-sm transition-shadow"
+                            className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995]"
                           >
                             <div className="aspect-video bg-gray-100">
                               <img
@@ -171,7 +171,7 @@ export default function DiseaseAreas() {
                           <Link
                             key={c.id}
                             to={`/app/catalog/clip/${c.id}`}
-                            className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-sm transition-shadow group"
+                            className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995] group"
                           >
                             <div className="aspect-video bg-gray-100 relative">
                               <img

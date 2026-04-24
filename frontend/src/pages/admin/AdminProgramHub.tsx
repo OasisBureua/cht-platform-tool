@@ -244,9 +244,14 @@ export default function AdminProgramHub() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
         <p className="mt-1 text-sm text-gray-600">
+<<<<<<< HEAD
           Program hub: webinar intake Jotform (LIVE only), office-hours slots, registration queue, enrollments, extra form
           links, and calendar invites. Post-event surveys are FEEDBACK-type surveys (learners complete them on the Surveys
           tab after the session).
+=======
+          Program hub - Jotform URLs, Calendly, approval queue, office-hours slots, extra form links, and calendar
+          invites.
+>>>>>>> main
         </p>
         <p className="mt-2 text-xs text-gray-500">
           Enrollments: {String((p._count as { enrollments?: number })?.enrollments ?? '-')} · Registrations:{' '}
@@ -455,6 +460,7 @@ export default function AdminProgramHub() {
         )}
       </section>
 
+<<<<<<< HEAD
       {zoomType === 'WEBINAR' ? (
         <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
           <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
@@ -643,6 +649,40 @@ export default function AdminProgramHub() {
                             {Math.round(row.overallProgress)}%{row.completed ? ' · done' : ''}
                           </td>
                           <td className="py-2 pr-4 text-right">
+=======
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Registration queue</h2>
+        {rLoading ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 text-left text-gray-600">
+                  <th className="py-2 pr-4">User</th>
+                  <th className="py-2 pr-4">Status</th>
+                  <th className="py-2 pr-4">Slot</th>
+                  <th className="py-2 pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {registrations.map((r) => (
+                  <tr key={r.id}>
+                    <td className="py-2 pr-4">
+                      {r.user.firstName} {r.user.lastName}
+                      <div className="text-xs text-gray-500">{r.user.email}</div>
+                    </td>
+                    <td className="py-2 pr-4 font-medium">{r.status}</td>
+                    <td className="py-2 pr-4 text-gray-600">
+                      {r.slot
+                        ? `${format(parseISO(r.slot.startsAt), 'MMM d h:mm a')}`
+                        : '-'}
+                    </td>
+                    <td className="py-2 pr-4">
+                      <div className="flex flex-wrap gap-2">
+                        {r.status === 'PENDING' && (
+                          <>
+>>>>>>> main
                             <button
                               type="button"
                               disabled={removeEnrollmentMut.isPending}

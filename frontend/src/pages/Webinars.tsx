@@ -1,12 +1,21 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react';
+import { Loader2, Calendar, Clock, ChevronRight, Radio } from 'lucide-react';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
+
+const WEBINAR_PLACEHOLDER_IMAGES = [
+  '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
+  '/images/iStock-1667819272-cc7e9fde-feb0-4590-bb35-f5a86deba0dd.png',
+  '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
+  '/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png',
+  '/images/iStock-2036497889-fae3ed6e-9859-4983-b3ec-7a489bb6fb95.png',
+  '/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png',
+];
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
@@ -58,12 +67,20 @@ export default function Webinars() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
+<<<<<<< HEAD
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">LIVE</h1>
         <p className="text-sm text-gray-600">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator
           approves you, use <span className="font-medium text-gray-800">Join session</span> to open Zoom in your browser
           or the Zoom app. Honorarium payouts use Bill.com.
         </p>
+=======
+        <div className="flex items-center gap-2.5 text-gray-900">
+          <Radio className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
+        </div>
+        <p className="text-pretty text-sm text-gray-600">Real-time sessions - register and join directly from the platform.</p>
+>>>>>>> main
       </header>
 
       {isLoading ? (
@@ -71,7 +88,7 @@ export default function Webinars() {
           <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
         </div>
       ) : webinars.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="font-semibold text-gray-900">No LIVE sessions scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
         </div>
@@ -83,6 +100,7 @@ export default function Webinars() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 Upcoming · {upcoming.length}
               </h2>
+<<<<<<< HEAD
               <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
                 {upcoming.map((w) => (
                   <WebinarRow
@@ -93,6 +111,11 @@ export default function Webinars() {
                       statusByProgramId.get(w.id),
                     )}
                   />
+=======
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+                {upcoming.map((w, i) => (
+                  <WebinarRow key={w.id} webinar={w} imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]} />
+>>>>>>> main
                 ))}
               </div>
             </section>
@@ -104,6 +127,7 @@ export default function Webinars() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 Past · {past.length}
               </h2>
+<<<<<<< HEAD
               <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
                 {past.map((w) => (
                   <WebinarRow
@@ -115,6 +139,11 @@ export default function Webinars() {
                       statusByProgramId.get(w.id),
                     )}
                   />
+=======
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+                {past.map((w, i) => (
+                  <WebinarRow key={w.id} webinar={w} imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]} expired />
+>>>>>>> main
                 ))}
               </div>
             </section>
@@ -127,34 +156,40 @@ export default function Webinars() {
 
 function WebinarRow({
   webinar: w,
+<<<<<<< HEAD
   expired = false,
   listBadge,
 }: {
   webinar: WebinarItem;
   expired?: boolean;
   listBadge?: string | null;
+=======
+  imageUrl,
+  expired = false,
+}: {
+  webinar: WebinarItem;
+  imageUrl: string;
+  expired?: boolean;
+>>>>>>> main
 }) {
   const date = w.startTime ? new Date(w.startTime) : null;
 
   return (
     <Link
       to={`/app/live/${w.id}`}
-      className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
+      className="group flex items-center gap-3 px-4 py-3 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.995] sm:gap-4 sm:px-5"
     >
-      {/* Date block */}
-      <div className="shrink-0 w-12 text-center">
-        {date ? (
-          <>
-            <p className="text-xs font-semibold text-gray-500 uppercase">{format(date, 'MMM')}</p>
-            <p className="text-2xl font-bold text-gray-900 leading-none">{format(date, 'd')}</p>
-          </>
-        ) : (
-          <p className="text-xs text-gray-400">TBD</p>
-        )}
+      {/* Left thumbnail (Replit-like row card structure) */}
+      <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-16 sm:w-24">
+        <img
+          src={imageUrl}
+          alt=""
+          className="h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          draggable={false}
+        />
       </div>
-
-      {/* Divider */}
-      <div className="w-px h-10 bg-gray-200 shrink-0" />
 
       {/* Info */}
       <div className="flex-1 min-w-0 space-y-1">
@@ -173,7 +208,7 @@ function WebinarRow({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
@@ -198,8 +233,21 @@ function WebinarRow({
         )}
       </div>
 
-      {/* Arrow */}
-      <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-gray-600 transition-colors" />
+      {/* Right meta rail */}
+      <div className="hidden shrink-0 flex-col items-end justify-center gap-1.5 text-right sm:flex">
+        {w.duration ? (
+          <span className="tabular-nums text-xl font-bold leading-none text-zinc-900">${Math.min(1000, Math.max(250, Math.round(w.duration * 5)))}</span>
+        ) : null}
+        <span
+          className={[
+            'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+            expired ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-50 text-amber-800',
+          ].join(' ')}
+        >
+          {expired ? 'Session passed' : 'Survey required'}
+        </span>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-gray-600" />
     </Link>
   );
 }

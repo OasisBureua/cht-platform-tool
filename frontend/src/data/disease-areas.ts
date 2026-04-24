@@ -19,7 +19,7 @@ const DISEASE_AREAS: DiseaseArea[] = [
   {
     slug: 'lung-cancer',
     title: 'Lung Cancer',
-    description: 'Thoracic oncology content launching soon, clinical insights and treatment paradigms.',
+    description: 'Thoracic oncology content launching soon — clinical insights and treatment paradigms.',
     image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
     active: false,
     searchTags: ['lung', 'NSCLC', 'SCLC', 'thoracic', 'pulmonary'],

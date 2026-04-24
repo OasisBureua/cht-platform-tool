@@ -140,17 +140,19 @@ export default function WebinarDetail() {
             </p>
           </div>
           {zoomWebinar.joinUrl ? (
-            <p className="text-xs text-gray-600">
-              If you were given a direct host or panel link:{' '}
+            <div className="mt-4 flex flex-col gap-2">
               <a
                 href={zoomWebinar.joinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-medium text-gray-900 underline"
+                className="inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
-                Open in Zoom
+                Join session
               </a>
-            </p>
+              <p className="text-xs text-gray-600">
+                Or use a direct host or panel link from your invite if you were given one.
+              </p>
+            </div>
           ) : null}
         </div>
       </div>
@@ -169,7 +171,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
             Back to LIVE
           </Link>
@@ -186,7 +188,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
             Back to LIVE
           </Link>
@@ -341,14 +343,14 @@ export default function WebinarDetail() {
               <Link
                 to="/login"
                 state={{ from: { pathname: `/app/live/${program.id}` } }}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 Sign in to register
               </Link>
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
                 to={`/app/live/${program.id}/register`}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 Register
               </Link>
@@ -360,7 +362,7 @@ export default function WebinarDetail() {
                   'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
                   ctaDisabled
                     ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                    : 'bg-gray-900 text-white hover:bg-black',
+                    : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
                 ].join(' ')}
               >
                 {ctaLabel}
@@ -403,7 +405,7 @@ export default function WebinarDetail() {
                 href={program.zoomJoinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 <Video className="h-4 w-4" />
                 Join session
@@ -538,7 +540,7 @@ export default function WebinarDetail() {
                 'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
                 ctaDisabled
                   ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-900 text-white hover:bg-black',
+                  : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
               ].join(' ')}
             >
               {ctaLabel}

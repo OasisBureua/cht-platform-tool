@@ -37,8 +37,8 @@ export default function PublicOfficeHours() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-8">
         <header className="space-y-1">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">CHM Office Hours</h1>
-          <p className="text-base text-gray-600 max-w-2xl">
-            Live sessions. Click any session to register and join.
+          <p className="text-sm text-gray-600 max-w-2xl md:text-base">
+            Live sessions — click any session to register and join.
           </p>
         </header>
 
@@ -120,7 +120,7 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
             </span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
