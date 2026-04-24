@@ -100,8 +100,20 @@ export class JotformWebhookService {
       where: { userId_surveyId: { userId, surveyId: survey.id } },
     });
     if (existingUserResponse) {
-      this.logger.warn(`Jotform webhook: user ${userId} already submitted survey ${survey.id}`);
-      return { received: true };
+      const answers = this.buildAnswersFromPayload(payload);
+      const updated = await this.prisma.surveyResponse.update({
+        where: { id: existingUserResponse.id },
+        data: {
+          answers: answers as object,
+          jotformSubmissionId: String(submissionId),
+          submittedAt: new Date(),
+        },
+      });
+      await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, survey.id).catch(() => {});
+      this.logger.log(
+        `Jotform webhook: user ${userId} re-submitted survey ${survey.id} (submission ${submissionId}); updated submittedAt`,
+      );
+      return { received: true, surveyResponseId: updated.id };
     }
 
     const answers = this.buildAnswersFromPayload(payload);

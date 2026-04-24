@@ -206,6 +206,10 @@ export class ProgramRegistrationsService {
       : ProgramRegistrationStatus.APPROVED;
 
     const intakeSid = body.intakeJotformSubmissionId?.trim();
+    const incomingIntakeDefined = body.intakeJotformSubmissionId !== undefined;
+    const mergedIntakeId = incomingIntakeDefined
+      ? intakeSid || null
+      : existingRegistration?.intakeJotformSubmissionId ?? null;
 
     const reg = await this.prisma.programRegistration.upsert({
       where: { userId_programId: { userId, programId } },
@@ -220,12 +224,9 @@ export class ProgramRegistrationsService {
       update: {
         status,
         officeHoursSlotId: body.officeHoursSlotId ?? undefined,
-        ...(body.intakeJotformSubmissionId !== undefined
-          ? {
-              intakeJotformSubmissionId: intakeSid || null,
-              intakeJotformSubmittedAt: intakeSid ? new Date() : null,
-            }
-          : {}),
+        ...(incomingIntakeDefined ? { intakeJotformSubmissionId: intakeSid || null } : {}),
+        /** Refresh whenever they submit again and an intake id is on file (body or existing). */
+        intakeJotformSubmittedAt: mergedIntakeId ? new Date() : null,
         updatedAt: new Date(),
         // Fresh pending request after rejection — clear last review so admins see a new queue item.
         ...(requiresApproval &&

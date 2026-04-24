@@ -461,7 +461,6 @@ export class SurveysService {
       throw new NotFoundException('Survey not found');
     }
 
-    // Check if already submitted
     const existing = await this.prisma.surveyResponse.findUnique({
       where: {
         userId_surveyId: { userId, surveyId },
@@ -469,7 +468,20 @@ export class SurveysService {
     });
 
     if (existing) {
-      throw new BadRequestException('Survey already submitted');
+      const response = await this.prisma.surveyResponse.update({
+        where: { id: existing.id },
+        data: {
+          answers: dto.answers as object,
+          score: dto.score,
+          submittedAt: new Date(),
+        },
+      });
+      await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, surveyId).catch(() => {});
+      this.logger.log(`Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt`);
+      return {
+        id: response.id,
+        submittedAt: response.submittedAt.toISOString(),
+      };
     }
 
     const response = await this.prisma.surveyResponse.create({
