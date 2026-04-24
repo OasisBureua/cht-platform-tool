@@ -13,6 +13,8 @@ export interface WebinarItem {
   hostDisplayName?: string;
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
+  /** Whole dollars from API (converted from DB cents on the server). */
+  honorariumAmount?: number;
 }
 
 /** Response from POST /office-hours/:id/meeting-sdk-auth for Zoom Meeting SDK embedded client. */

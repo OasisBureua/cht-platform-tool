@@ -30,6 +30,11 @@ function formatDuration(minutes?: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+function formatHonorariumDollars(amount?: number): string | null {
+  if (amount == null || amount <= 0) return null;
+  return `$${amount.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
 export default function Webinars() {
   const { user } = useAuth();
   const userId = user?.userId;
@@ -151,6 +156,7 @@ function WebinarRow({
   listBadge?: string | null;
 }) {
   const date = w.startTime ? new Date(w.startTime) : null;
+  const honorariumLabel = formatHonorariumDollars(w.honorariumAmount);
 
   return (
     <Link
@@ -213,8 +219,8 @@ function WebinarRow({
 
       {/* Right meta rail */}
       <div className="hidden shrink-0 flex-col items-end justify-center gap-1.5 text-right sm:flex">
-        {w.duration ? (
-          <span className="tabular-nums text-xl font-bold leading-none text-zinc-900">${Math.min(1000, Math.max(250, Math.round(w.duration * 5)))}</span>
+        {honorariumLabel ? (
+          <span className="tabular-nums text-xl font-bold leading-none text-zinc-900">{honorariumLabel}</span>
         ) : null}
         <span
           className={[

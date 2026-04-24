@@ -33,6 +33,7 @@ export interface Survey {
     id: string;
     title: string;
     sponsorName?: string;
+    /** Cents in DB / surveys API (same as Prisma). */
     honorariumAmount?: number | null;
     creditAmount?: number | null;
     zoomSessionType?: string;

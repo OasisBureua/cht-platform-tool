@@ -18,6 +18,8 @@ export interface WebinarItem {
   hostDisplayName?: string;
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
+  /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
+  honorariumAmount?: number;
 }
 
 /**
@@ -87,6 +89,7 @@ export class WebinarsService {
         jotformIntakeFormUrl:
           effectiveWebinarIntakeFormUrl(p.zoomSessionType, p.jotformIntakeFormUrl, defaultIntake) || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
+        honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
       });
     }
 
@@ -157,6 +160,7 @@ export class WebinarsService {
         hostDisplayName: p.hostDisplayName || undefined,
         jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
+        honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
       });
     }
     return items;
@@ -208,6 +212,7 @@ export class WebinarsService {
         effectiveWebinarIntakeFormUrl(program.zoomSessionType, program.jotformIntakeFormUrl, defaultIntake) ||
         undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
+      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
     };
   }
 
@@ -238,6 +243,7 @@ export class WebinarsService {
       hostDisplayName: program.hostDisplayName || undefined,
       jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
+      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
     };
   }
 

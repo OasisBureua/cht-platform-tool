@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { ArrowRight, ClipboardList, AlertCircle, Loader2, ClipboardCheck } from 'lucide-react';
 import { surveysApi, type Survey, type SurveyType } from '../api/surveys';
 
@@ -12,9 +13,15 @@ const CARD_IMAGES = [
   '/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png',
 ] as const;
 
+function honorariumCentsToDollars(cents?: number | null): number {
+  if (cents == null || cents <= 0) return 0;
+  return cents / 100;
+}
+
 function formatHonorarium(cents?: number | null) {
-  if (cents == null || cents <= 0) return null;
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+  const dollars = honorariumCentsToDollars(cents);
+  if (dollars <= 0) return null;
+  return `$${dollars.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 function typeBadge(type: SurveyType) {
@@ -33,7 +40,11 @@ export default function Surveys() {
   const activeCount = surveys.length;
   const completedCount = 0;
   const expiringCount = activeCount > 0 ? 1 : 0;
-  const availableToEarn = activeCount * 350;
+  const availableToEarn = useMemo(
+    () =>
+      surveys.reduce((sum, s) => sum + honorariumCentsToDollars(s.program?.honorariumAmount ?? null), 0),
+    [surveys],
+  );
 
   return (
     <div className="-mt-[15px] space-y-2.5 sm:space-y-4">
@@ -77,7 +88,9 @@ export default function Surveys() {
           <StatChip label="Completed" value={completedCount} />
           <StatChip label="Expiring" value={expiringCount} />
           <div className="ml-0 inline-flex min-h-[44px] items-center rounded-full bg-brand-50 px-5 py-2 text-sm font-semibold text-brand-800 tabular-nums sm:ml-2">
-            ${availableToEarn.toLocaleString()} available to earn
+            {availableToEarn > 0
+              ? `$${availableToEarn.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} available to earn`
+              : 'Honorarium set per webinar'}
           </div>
         </div>
 
@@ -116,7 +129,7 @@ function StatChip({ label, value }: { label: string; value: number }) {
 
 function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string }) {
   const honorarium = formatHonorarium(survey.program?.honorariumAmount ?? null);
-  const payoutLabel = honorarium ?? '$350';
+  const payoutLabel = honorarium ?? '—';
   const remainingDays = getRemainingDays(survey.updatedAt);
   const badge = typeBadge(survey.type);
 
