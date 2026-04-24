@@ -31,8 +31,6 @@ type Treatment = {
   imageUrl: string;
   slug: string;
   videoNames: string[];
-  /** Count for prominent chip; falls back to videoNames.length when missing */
-  videoCount: number;
   playlistUrl: string;
 };
 
@@ -46,29 +44,26 @@ type Resource = {
 
 function catalogToTreatment(p: CatalogItem): Treatment {
   const thumb = p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist';
-  const videoCount =
-    typeof p.videoCount === 'number' && p.videoCount >= 0 ? p.videoCount : (p.videoNames?.length ?? 0);
   return {
     id: p.id,
     title: p.title,
     imageUrl: thumb,
     slug: p.id,
     videoNames: p.videoNames || [],
-    videoCount,
     playlistUrl: `/catalog/playlist/${p.id}`,
   };
 }
 
 const FALLBACK_HER2: Treatment[] = [
-  { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], videoCount: 4, playlistUrl: '/catalog' },
-  { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], videoCount: 4, playlistUrl: '/catalog' },
-  { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], videoCount: 4, playlistUrl: '/catalog' },
+  { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
 ];
 
 const FALLBACK_HR: Treatment[] = [
-  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], videoCount: 4, playlistUrl: '/catalog' },
-  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], videoCount: 4, playlistUrl: '/catalog' },
-  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], videoCount: 4, playlistUrl: '/catalog' },
+  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
 ];
 
 /** Shown when `/catalog/random-videos` returns [] (e.g. YouTube not configured) so the carousel is never blank */
@@ -250,7 +245,7 @@ export default function Home() {
                   to={v.id.startsWith('home-placeholder') ? '/catalog' : `/catalog/clip/${getShortClipId(v.id)}`}
                   title={v.title}
                   imageUrl={v.imageUrl}
-                  description={v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                  meta={v.youtubeUrl ? 'YouTube' : 'Conversation'}
                 />
               ))}
             </ConversationRow>
@@ -284,12 +279,7 @@ export default function Home() {
                     to={t.playlistUrl}
                     title={t.title}
                     imageUrl={t.imageUrl}
-                    description={t.videoNames[0]?.trim() || 'Curated clinical clips'}
-                    videoLabel={
-                      t.videoCount > 0
-                        ? `${t.videoCount.toLocaleString()} video${t.videoCount !== 1 ? 's' : ''}`
-                        : undefined
-                    }
+                    meta={t.videoNames.length > 0 ? `${t.videoNames.length} videos` : 'Playlist'}
                   />
                 ))}
               </ConversationRow>
@@ -313,12 +303,7 @@ export default function Home() {
                     to={t.playlistUrl}
                     title={t.title}
                     imageUrl={t.imageUrl}
-                    description={t.videoNames[0]?.trim() || 'Curated clinical clips'}
-                    videoLabel={
-                      t.videoCount > 0
-                        ? `${t.videoCount.toLocaleString()} video${t.videoCount !== 1 ? 's' : ''}`
-                        : undefined
-                    }
+                    meta={t.videoNames.length > 0 ? `${t.videoNames.length} videos` : 'Playlist'}
                   />
                 ))}
               </ConversationRow>
