@@ -1,30 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Mic2, Play, ChevronRight, Bell, Sparkles, ArrowUpDown } from 'lucide-react';
 
-<<<<<<< HEAD
-const SHOWS = [
-  {
-    id: 'breast-friends',
-    title: 'Breast Friends',
-    tagline: 'Real conversations about breast cancer, unfiltered, expert-led, and community-driven.',
-    image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
-    active: true,
-    episodes: [
-      { title: 'Ep 1: Navigating Your First Diagnosis', duration: '38 min' },
-      { title: 'Ep 2: Treatment Options Demystified', duration: '42 min' },
-      { title: 'Ep 3: Living Beyond Treatment', duration: '35 min' },
-    ],
-  },
-  {
-    id: 'coming-soon-1',
-    title: 'Coming Soon',
-    tagline: 'New podcast properties launching across disease areas and specialties.',
-    image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
-    active: false,
-    episodes: [],
-  },
-];
-=======
 type Episode = {
   num: string;
   title: string;
@@ -87,7 +63,6 @@ const UPCOMING_SHOW = {
     'We are recording new disease-area shows and short-run seasons. When they ship, you will see them here first.',
   image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
 };
->>>>>>> main
 
 export default function Podcasts() {
   const [sortNewestFirst, setSortNewestFirst] = useState(true);

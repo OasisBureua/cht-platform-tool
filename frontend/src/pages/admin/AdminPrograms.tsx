@@ -81,11 +81,7 @@ export default function AdminPrograms() {
           </h1>
           <p className="text-sm text-gray-600">
             {isOfficeHours
-<<<<<<< HEAD
-              ? 'Live sessions for Q&A. Host admits participants. Manage CHM Office Hours here.'
-=======
-              ? 'Live sessions for Q&A - host admits participants. Manage CHM Office Hours here.'
->>>>>>> main
+              ? 'Live sessions for Q&A — host admits participants. Manage CHM Office Hours here.'
               : 'Schedule and manage LIVE sessions.'}
           </p>
         </div>

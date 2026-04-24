@@ -67,20 +67,15 @@ export default function Webinars() {
   return (
     <div className="space-y-8">
       <header className="space-y-1">
-<<<<<<< HEAD
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">LIVE</h1>
-        <p className="text-sm text-gray-600">
-          Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator
-          approves you, use <span className="font-medium text-gray-800">Join session</span> to open Zoom in your browser
-          or the Zoom app. Honorarium payouts use Bill.com.
-        </p>
-=======
         <div className="flex items-center gap-2.5 text-gray-900">
           <Radio className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
           <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
         </div>
-        <p className="text-pretty text-sm text-gray-600">Real-time sessions - register and join directly from the platform.</p>
->>>>>>> main
+        <p className="text-pretty text-sm text-gray-600">
+          Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves
+          you, use <span className="font-medium text-gray-800">Join session</span> to open Zoom in your browser or the
+          Zoom app. Honorarium payouts use Bill.com.
+        </p>
       </header>
 
       {isLoading ? (
@@ -100,22 +95,17 @@ export default function Webinars() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 Upcoming · {upcoming.length}
               </h2>
-<<<<<<< HEAD
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
-                {upcoming.map((w) => (
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+                {upcoming.map((w, i) => (
                   <WebinarRow
                     key={w.id}
                     webinar={w}
+                    imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
                     listBadge={liveSessionListBadgeLabel(
                       w.registrationRequiresApproval,
                       statusByProgramId.get(w.id),
                     )}
                   />
-=======
-              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-                {upcoming.map((w, i) => (
-                  <WebinarRow key={w.id} webinar={w} imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]} />
->>>>>>> main
                 ))}
               </div>
             </section>
@@ -127,23 +117,18 @@ export default function Webinars() {
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 Past · {past.length}
               </h2>
-<<<<<<< HEAD
-              <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
-                {past.map((w) => (
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+                {past.map((w, i) => (
                   <WebinarRow
                     key={w.id}
                     webinar={w}
+                    imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
                     expired
                     listBadge={liveSessionListBadgeLabel(
                       w.registrationRequiresApproval,
                       statusByProgramId.get(w.id),
                     )}
                   />
-=======
-              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-                {past.map((w, i) => (
-                  <WebinarRow key={w.id} webinar={w} imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]} expired />
->>>>>>> main
                 ))}
               </div>
             </section>
@@ -156,21 +141,14 @@ export default function Webinars() {
 
 function WebinarRow({
   webinar: w,
-<<<<<<< HEAD
+  imageUrl,
   expired = false,
   listBadge,
 }: {
   webinar: WebinarItem;
-  expired?: boolean;
-  listBadge?: string | null;
-=======
-  imageUrl,
-  expired = false,
-}: {
-  webinar: WebinarItem;
   imageUrl: string;
   expired?: boolean;
->>>>>>> main
+  listBadge?: string | null;
 }) {
   const date = w.startTime ? new Date(w.startTime) : null;
 

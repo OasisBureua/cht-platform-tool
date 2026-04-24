@@ -235,7 +235,6 @@ export default function ProgramRegisterWizard() {
             </div>
           )}
 
-<<<<<<< HEAD
           {current === 'slot' && (
             <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
               <OfficeHoursSlotPicker
@@ -244,69 +243,6 @@ export default function ProgramRegisterWizard() {
                 onSelect={setSelectedSlotId}
                 subtitle="The session is split into 15-minute windows (four per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
               />
-=======
-          {current === 'pre' && program.jotformPreEventUrl && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Pre-event survey</p>
-              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                <iframe
-                  title="Pre-event survey"
-                  src={jotformAppendReturn(program.jotformPreEventUrl)}
-                  className="h-[480px] w-full"
-                  allow="camera; microphone; payment"
-                />
-              </div>
-            </div>
-          )}
-
-          {current === 'bill' && (
-            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-sm font-semibold text-gray-900">Vendor & payments (Bill.com)</p>
-              <p className="text-sm text-gray-600">
-                If this program requires payment setup, open Bill.com in a new tab, complete onboarding, then return here
-                and continue. This keeps Jotform and Bill.com in one guided flow without mixing iframes.
-              </p>
-              <a
-                href="/app/payments"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
-              >
-                Open Bill.com setup
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </div>
-          )}
-
-          {current === 'slot' && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Choose a time</p>
-              <p className="text-xs text-gray-600">Slots match the scheduled session length set for this program.</p>
-              <ul className="space-y-2">
-                {slots.map((s) => (
-                  <li key={s.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSlotId(s.id)}
-                      disabled={s.remaining <= 0}
-                      className={[
-                        'w-full rounded-xl border px-4 py-3 text-left text-sm transition-[color,background-color,border-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.995]',
-                        selectedSlotId === s.id ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white hover:bg-gray-50',
-                        s.remaining <= 0 ? 'opacity-50 cursor-not-allowed' : '',
-                      ].join(' ')}
-                    >
-                      <span className="font-semibold">
-                        {format(parseISO(s.startsAt), 'EEE MMM d, h:mm a')} – {format(parseISO(s.endsAt), 'h:mm a')}
-                      </span>
-                      {s.label ? <span className="ml-2 text-xs opacity-80">{s.label}</span> : null}
-                      <span className="mt-1 block text-xs opacity-80">
-                        {s.remaining} spot{s.remaining === 1 ? '' : 's'} left
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
->>>>>>> main
             </div>
           )}
 

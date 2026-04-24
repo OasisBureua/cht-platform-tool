@@ -165,7 +165,6 @@ export default function SurveyDetail() {
           {/* Start / Embed */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
             {!started ? (
-<<<<<<< HEAD
               surveySaved && hasJotform ? (
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -174,7 +173,7 @@ export default function SurveyDetail() {
                   <button
                     type="button"
                     onClick={() => setStarted(true)}
-                    className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                    className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
                   >
                     Open embedded form
                   </button>
@@ -189,23 +188,12 @@ export default function SurveyDetail() {
                   <button
                     type="button"
                     onClick={() => setStarted(true)}
-                    className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                    className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
                   >
                     Start survey <ArrowRight className="ml-2 h-4 w-4" />
                   </button>
                 </div>
               )
-=======
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
-                <button
-                  onClick={() => setStarted(true)}
-                  className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
-                >
-                  Start survey <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-              </div>
->>>>>>> main
             ) : null}
 
             {started ? (
