@@ -361,7 +361,7 @@ export default function Dashboard() {
                 to={item.href}
                 title={item.title}
                 imageUrl={item.imageUrl}
-                meta={item.meta}
+                description={item.meta}
               />
             ))}
           </ConversationRow>
@@ -388,7 +388,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c, 'recent')}
                     />
                   ))}
                 </ConversationRow>
@@ -406,7 +406,10 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'views')}
+                      description={clipMetaString(c, 'recent')}
+                      videoLabel={
+                        c.view_count != null ? `${c.view_count.toLocaleString()} views` : undefined
+                      }
                     />
                   ))}
                 </ConversationRow>
@@ -424,7 +427,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c, 'recent')}
                     />
                   ))}
                 </ConversationRow>
@@ -443,10 +446,13 @@ export default function Dashboard() {
                       to={`/app/catalog/playlist/${p.id}`}
                       title={p.title}
                       imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
-                      meta={
-                        p.videoCount != null
+                      description={p.videoNames?.[0]?.trim() || 'Curated playlist'}
+                      videoLabel={
+                        p.videoCount != null && p.videoCount > 0
                           ? `${p.videoCount.toLocaleString()} video${p.videoCount !== 1 ? 's' : ''}`
-                          : undefined
+                          : p.videoNames && p.videoNames.length > 0
+                            ? `${p.videoNames.length} video${p.videoNames.length !== 1 ? 's' : ''}`
+                            : undefined
                       }
                     />
                   ))}
@@ -484,7 +490,7 @@ export default function Dashboard() {
                 to={w.id ? `/app/live/${w.id}` : '/app/live'}
                 title={w.title}
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
-                meta={
+                description={
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Medical education'
