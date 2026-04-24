@@ -245,8 +245,7 @@ export default function WebinarDetail() {
 
   const attendanceAllowsPostEvent =
     myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
-    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED' ||
-    myRegistration?.postEventAttendanceStatus === undefined;
+    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
   const showPostEventReminderBanner =
     program.zoomSessionType === 'WEBINAR' &&
     postEventReminder &&

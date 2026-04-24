@@ -605,7 +605,7 @@ export class ProgramsService {
       if (!postSurveyAllowed) continue;
 
       const att = attendanceByProgram.get(p.id);
-      if (att === 'PENDING_VERIFICATION' || att === 'DENIED') {
+      if (att !== 'VERIFIED' && att !== 'NOT_REQUIRED') {
         continue;
       }
 

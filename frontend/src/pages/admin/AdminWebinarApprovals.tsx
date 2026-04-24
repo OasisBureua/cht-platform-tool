@@ -3,14 +3,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { adminApi } from '../../api/admin';
+import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 type AdminApprovalsTab = 'registrations' | 'attendance';
+
+function displayOrNA(value: string | null | undefined): string {
+  const t = value?.trim();
+  return t ? t : 'N/A';
+}
 
 export default function AdminWebinarApprovals() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<AdminApprovalsTab>('registrations');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [rejectModalIds, setRejectModalIds] = useState<string[] | null>(null);
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ['admin', 'webinar-registrations', 'pending'],
@@ -67,9 +74,31 @@ export default function AdminWebinarApprovals() {
   };
 
   const approveMut = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' }) =>
-      adminApi.updateProgramRegistration(id, { status }),
+    mutationFn: ({ id }: { id: string }) => adminApi.updateProgramRegistration(id, { status: 'APPROVED' }),
     onSuccess: () => {
+      invalidate();
+    },
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: async (o: { ids: string[]; rejectEmailReason: RejectEmailReason; adminNotes: string }) => {
+      await Promise.all(
+        o.ids.map((id) =>
+          adminApi.updateProgramRegistration(id, {
+            status: 'REJECTED',
+            rejectEmailReason: o.rejectEmailReason,
+            adminNotes: o.adminNotes.trim() || null,
+          }),
+        ),
+      );
+    },
+    onSuccess: (_d, o) => {
+      setRejectModalIds(null);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const id of o.ids) next.delete(id);
+        return next;
+      });
       invalidate();
     },
   });
@@ -83,7 +112,7 @@ export default function AdminWebinarApprovals() {
   });
 
   const bulkMut = useMutation({
-    mutationFn: async ({ ids, status }: { ids: string[]; status: 'APPROVED' | 'REJECTED' }) => {
+    mutationFn: async ({ ids, status }: { ids: string[]; status: 'APPROVED' }) => {
       await Promise.all(ids.map((id) => adminApi.updateProgramRegistration(id, { status })));
     },
     onSuccess: (_data, vars) => {
@@ -96,11 +125,21 @@ export default function AdminWebinarApprovals() {
     },
   });
 
-  const busy = approveMut.isPending || bulkMut.isPending || attendanceMut.isPending;
+  const busy =
+    approveMut.isPending || rejectMut.isPending || bulkMut.isPending || attendanceMut.isPending;
   const selectedList = rows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
+      <RejectRegistrationModal
+        open={rejectModalIds != null}
+        onClose={() => {
+          if (!rejectMut.isPending) setRejectModalIds(null);
+        }}
+        onConfirm={(o) => rejectMut.mutate({ ids: rejectModalIds ?? [], ...o })}
+        isSubmitting={rejectMut.isPending}
+        count={rejectModalIds?.length ?? 0}
+      />
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Live & office hours approvals</h1>
         <p className="mt-1 text-sm text-gray-600">
@@ -179,7 +218,7 @@ export default function AdminWebinarApprovals() {
             <button
               type="button"
               disabled={busy || selectedList.length === 0}
-              onClick={() => bulkMut.mutate({ ids: selectedList, status: 'REJECTED' })}
+              onClick={() => setRejectModalIds([...selectedList])}
               className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 disabled:opacity-40"
             >
               Reject selected
@@ -188,8 +227,8 @@ export default function AdminWebinarApprovals() {
         </div>
       ) : null}
 
-      {tab === 'registrations' && bulkMut.isError ? (
-        <p className="text-sm text-red-600">One or more updates failed. Try again or approve rows individually.</p>
+      {tab === 'registrations' && (bulkMut.isError || rejectMut.isError) ? (
+        <p className="text-sm text-red-600">One or more updates failed. Try again or use row actions.</p>
       ) : null}
 
       {tab === 'attendance' && attendanceMut.isError ? (
@@ -204,6 +243,8 @@ export default function AdminWebinarApprovals() {
                 <th className="py-3 px-4">Program</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4">Hospital</th>
+                <th className="py-3 px-4">City</th>
                 <th className="py-3 px-4">Actions</th>
               </tr>
             </thead>
@@ -228,6 +269,8 @@ export default function AdminWebinarApprovals() {
                     {r.user.firstName} {r.user.lastName}
                     <div className="text-xs text-gray-500">{r.user.email}</div>
                   </td>
+                  <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.institution)}</td>
+                  <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.city)}</td>
                   <td className="py-3 px-4">
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -279,6 +322,8 @@ export default function AdminWebinarApprovals() {
               <th className="py-3 px-4">Program</th>
               <th className="py-3 px-4">Type</th>
               <th className="py-3 px-4">User</th>
+              <th className="py-3 px-4">Hospital</th>
+              <th className="py-3 px-4">City</th>
               <th className="py-3 px-4">Last submitted</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
@@ -314,6 +359,8 @@ export default function AdminWebinarApprovals() {
                   {r.user.firstName} {r.user.lastName}
                   <div className="text-xs text-gray-500">{r.user.email}</div>
                 </td>
+                <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.institution)}</td>
+                <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.city)}</td>
                 <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
                   {format(parseISO(r.lastSubmittedAt ?? r.createdAt), 'MMM d, yyyy h:mm a')}
                 </td>
@@ -322,7 +369,7 @@ export default function AdminWebinarApprovals() {
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
+                      onClick={() => approveMut.mutate({ id: r.id })}
                       className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                     >
                       Approve
@@ -330,7 +377,7 @@ export default function AdminWebinarApprovals() {
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
+                      onClick={() => setRejectModalIds([r.id])}
                       className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
                     >
                       Reject

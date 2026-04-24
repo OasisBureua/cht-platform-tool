@@ -86,7 +86,11 @@ export default function VideosPage() {
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
   const useMediaHub = tagOptions.length > 0;
-  const effectiveLibraryView: 'clips' | 'playlists' = isInApp ? 'clips' : libraryView;
+  /** In-app: `?view=playlists` opens the same playlist grid as public /catalog?view=playlists (was incorrectly forced to clips only). */
+  const viewFromSearch = useMemo((): 'clips' | 'playlists' => {
+    return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
+  }, [location.search]);
+  const effectiveLibraryView: 'clips' | 'playlists' = isInApp ? viewFromSearch : libraryView;
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -310,7 +314,17 @@ export default function VideosPage() {
 
         {effectiveLibraryView === 'playlists' ? (
           <section className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">YouTube playlists</h2>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">YouTube playlists</h2>
+              {isInApp ? (
+                <Link
+                  to="/app/catalog"
+                  className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                >
+                  Browse conversations
+                </Link>
+              ) : null}
+            </div>
             <PlaylistGrid playlists={playlists} isInApp={isInApp} descriptionForItem={playlistDescription} />
             {playlists.length === 0 ? (
               <p className="text-sm text-gray-600">No playlists configured. Add YouTube playlist IDs on the server.</p>

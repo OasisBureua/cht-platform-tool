@@ -30,6 +30,10 @@ export const validationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
 
+  // Amazon SES (registration-approved, etc.)
+  EMAIL_FROM: Joi.string().email().allow('').optional(),
+  EMAIL_ENABLED: Joi.string().valid('true', 'false', '0', '1', 'yes', 'no', '').optional(),
+
   // SQS (payment queue - optional for local dev)
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
 

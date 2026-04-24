@@ -906,17 +906,35 @@ export class AdminController {
     body: {
       status: ProgramRegistrationStatus;
       adminNotes?: string;
+      /** When status is REJECTED, which email copy to use for Live / Office Hours. */
+      rejectEmailReason?: 'GENERIC' | 'INCOMPLETE_INTAKE';
     },
     @CurrentUser() admin: AuthUser,
   ) {
     if (!body?.status || !Object.values(ProgramRegistrationStatus).includes(body.status)) {
       throw new BadRequestException('status must be a valid ProgramRegistrationStatus');
     }
+    if (body.status !== 'REJECTED' && body.rejectEmailReason) {
+      throw new BadRequestException('rejectEmailReason is only used when status is REJECTED');
+    }
+    if (
+      body.rejectEmailReason != null &&
+      body.rejectEmailReason !== 'GENERIC' &&
+      body.rejectEmailReason !== 'INCOMPLETE_INTAKE'
+    ) {
+      throw new BadRequestException('rejectEmailReason must be GENERIC or INCOMPLETE_INTAKE');
+    }
     return this.programRegistrations.adminSetRegistrationStatus(
       admin.userId,
       registrationId,
       body.status,
       body.adminNotes,
+      body.status === 'REJECTED'
+        ? {
+            rejectEmailReason:
+              body.rejectEmailReason === 'INCOMPLETE_INTAKE' ? 'INCOMPLETE_INTAKE' : 'GENERIC',
+          }
+        : undefined,
     );
   }
 

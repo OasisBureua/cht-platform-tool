@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
+import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { ChevronLeft, Download, ExternalLink, Loader2, Plus, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
@@ -85,9 +86,34 @@ export default function AdminProgramHub() {
   });
 
   const approveMut = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'APPROVED' | 'REJECTED' | 'WAITLISTED' }) =>
-      adminApi.updateProgramRegistration(id, { status }),
+    mutationFn: ({ id }: { id: string }) => adminApi.updateProgramRegistration(id, { status: 'APPROVED' }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
+    },
+  });
+
+  const rejectMut = useMutation({
+    mutationFn: async (o: { ids: string[]; rejectEmailReason: RejectEmailReason; adminNotes: string }) => {
+      await Promise.all(
+        o.ids.map((id) =>
+          adminApi.updateProgramRegistration(id, {
+            status: 'REJECTED',
+            rejectEmailReason: o.rejectEmailReason,
+            adminNotes: o.adminNotes.trim() || null,
+          }),
+        ),
+      );
+    },
+    onSuccess: (_d, o) => {
+      setRejectModalIds(null);
+      setSelectedPendingIds((prev) => {
+        const next = new Set(prev);
+        for (const id of o.ids) next.delete(id);
+        return next;
+      });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
@@ -101,6 +127,7 @@ export default function AdminProgramHub() {
   );
   const pendingRegIds = useMemo(() => pendingRegs.map((r) => r.id), [pendingRegs]);
   const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(() => new Set());
+  const [rejectModalIds, setRejectModalIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     const allow = new Set(pendingRegIds);
@@ -136,8 +163,8 @@ export default function AdminProgramHub() {
   };
 
   const bulkApproveMut = useMutation({
-    mutationFn: async ({ ids, status }: { ids: string[]; status: 'APPROVED' | 'REJECTED' }) => {
-      await Promise.all(ids.map((id) => adminApi.updateProgramRegistration(id, { status })));
+    mutationFn: async ({ ids }: { ids: string[] }) => {
+      await Promise.all(ids.map((id) => adminApi.updateProgramRegistration(id, { status: 'APPROVED' })));
     },
     onSuccess: (_data, vars) => {
       setSelectedPendingIds((prev) => {
@@ -152,7 +179,7 @@ export default function AdminProgramHub() {
     },
   });
 
-  const approvalBusy = approveMut.isPending || bulkApproveMut.isPending;
+  const approvalBusy = approveMut.isPending || rejectMut.isPending || bulkApproveMut.isPending;
   const selectedPendingList = pendingRegIds.filter((id) => selectedPendingIds.has(id));
 
   const removeEnrollmentMut = useMutation({
@@ -231,6 +258,15 @@ export default function AdminProgramHub() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-10 pb-16">
+      <RejectRegistrationModal
+        open={rejectModalIds != null}
+        onClose={() => {
+          if (!rejectMut.isPending) setRejectModalIds(null);
+        }}
+        onConfirm={(o) => rejectMut.mutate({ ids: rejectModalIds ?? [], ...o })}
+        isSubmitting={rejectMut.isPending}
+        count={rejectModalIds?.length ?? 0}
+      />
       <div className="flex flex-wrap items-center gap-4">
         <Link
           to={zoomType === 'MEETING' ? '/admin/office-hours' : '/admin/programs'}
@@ -497,7 +533,7 @@ export default function AdminProgramHub() {
                         <button
                           type="button"
                           disabled={approvalBusy || selectedPendingList.length === 0}
-                          onClick={() => bulkApproveMut.mutate({ ids: selectedPendingList, status: 'APPROVED' })}
+                          onClick={() => bulkApproveMut.mutate({ ids: selectedPendingList })}
                           className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                         >
                           Approve selected
@@ -505,7 +541,7 @@ export default function AdminProgramHub() {
                         <button
                           type="button"
                           disabled={approvalBusy || selectedPendingList.length === 0}
-                          onClick={() => bulkApproveMut.mutate({ ids: selectedPendingList, status: 'REJECTED' })}
+                          onClick={() => setRejectModalIds([...selectedPendingList])}
                           className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-800 disabled:opacity-40"
                         >
                           Reject selected
@@ -513,9 +549,9 @@ export default function AdminProgramHub() {
                       </div>
                     </div>
                   ) : null}
-                  {bulkApproveMut.isError ? (
+                  {bulkApproveMut.isError || rejectMut.isError ? (
                     <p className="mb-2 text-xs text-red-600">
-                      Batch update failed partway through. Refresh and try again or use row actions.
+                      Update failed partway through. Refresh and try again or use row actions.
                     </p>
                   ) : null}
                   <div className="overflow-x-auto">
@@ -569,7 +605,7 @@ export default function AdminProgramHub() {
                                     <button
                                       type="button"
                                       disabled={approvalBusy}
-                                      onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
+                                      onClick={() => approveMut.mutate({ id: r.id })}
                                       className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                     >
                                       Approve
@@ -577,7 +613,7 @@ export default function AdminProgramHub() {
                                     <button
                                       type="button"
                                       disabled={approvalBusy}
-                                      onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
+                                      onClick={() => setRejectModalIds([r.id])}
                                       className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold disabled:opacity-40"
                                     >
                                       Reject
@@ -731,16 +767,17 @@ export default function AdminProgramHub() {
                                 <>
                                   <button
                                     type="button"
-                                    disabled={approveMut.isPending}
-                                    onClick={() => approveMut.mutate({ id: r.id, status: 'APPROVED' })}
+                                    disabled={approveMut.isPending || rejectMut.isPending}
+                                    onClick={() => approveMut.mutate({ id: r.id })}
                                     className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                   >
                                     Approve
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => approveMut.mutate({ id: r.id, status: 'REJECTED' })}
-                                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                                    disabled={rejectMut.isPending}
+                                    onClick={() => setRejectModalIds([r.id])}
+                                    className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold disabled:opacity-50"
                                   >
                                     Reject
                                   </button>

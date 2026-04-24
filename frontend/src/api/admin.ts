@@ -283,7 +283,15 @@ export const adminApi = {
       id: string;
       postEventAttendanceStatus: string;
       createdAt: string;
-      user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
       program: {
         id: string;
         title: string;
@@ -315,7 +323,15 @@ export const adminApi = {
       intakeRequired: boolean;
       intakeComplete: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;
-      user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
       program: {
         id: string;
         title: string;
@@ -332,7 +348,9 @@ export const adminApi = {
     registrationId: string,
     body: {
       status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
-      adminNotes?: string;
+      adminNotes?: string | null;
+      /** When status is REJECTED, controls rejection email copy (Live / Office Hours). */
+      rejectEmailReason?: 'GENERIC' | 'INCOMPLETE_INTAKE';
     },
   ) => {
     const { data } = await apiClient.patch(`/admin/registrations/${encodeURIComponent(registrationId)}`, body);

@@ -62,7 +62,11 @@ export default function Earnings() {
         </div>
         <p className="text-pretty text-sm text-gray-600">
           Balances and activity. Actual payouts are sent via Bill.com. Open{' '}
-          <Link to="/app/payments" className="font-medium text-gray-900 underline hover:no-underline">
+          <Link
+            to="/app/settings"
+            state={{ settingsTab: 'payment' as const }}
+            className="font-medium text-gray-900 underline hover:no-underline"
+          >
             Payment Settings
           </Link>{' '}
           to connect your bank and tax info.

@@ -3,7 +3,9 @@ import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
+import { isAxiosError } from 'axios';
 import { surveysApi } from '../api/surveys';
+import { getApiErrorMessage } from '../api/client';
 import type { Survey } from '../api/surveys';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 
@@ -29,10 +31,10 @@ export default function SurveyDetail() {
 
   const [started, setStarted] = useState(false);
 
-  const { data: survey, isLoading, isError } = useQuery({
+  const { data: survey, isLoading, isError, error } = useQuery({
     queryKey: ['survey', id],
     queryFn: () => surveysApi.getById(id!),
-    enabled: Boolean(id),
+    enabled: Boolean(id && userId),
   });
 
   const hasJotform = Boolean(survey?.jotformFormId);
@@ -109,19 +111,46 @@ export default function SurveyDetail() {
     },
   });
 
+  if (!userId) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
+        <p className="font-semibold text-gray-900">Sign in to view this survey</p>
+        <p className="mt-1 text-sm text-gray-600">You need to be signed in to open surveys on this platform.</p>
+        <div className="mt-5">
+          <Link
+            to="/login"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+          >
+            Sign in
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) return <LoadingSpinner />;
 
   if (isError || !survey) {
+    const forbidden = isAxiosError(error) && error.response?.status === 403;
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Survey not found</p>
-        <p className="mt-1 text-sm text-gray-600">Return to surveys and try again.</p>
+        <p className="font-semibold text-gray-900">
+          {forbidden ? 'This survey is not available yet' : 'Survey not found'}
+        </p>
+        <p className="mt-1 text-sm text-gray-600">
+          {forbidden
+            ? getApiErrorMessage(
+                error,
+                'This post-event survey unlocks after an administrator verifies your attendance for the live session (and after the session window, when applicable).',
+              )
+            : 'Return to surveys and try again.'}
+        </p>
         <div className="mt-5">
           <Link
-            to="/app/surveys"
+            to={forbidden ? '/app/live' : '/app/surveys'}
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
-            Back to surveys
+            {forbidden ? 'Back to Live' : 'Back to surveys'}
           </Link>
         </div>
       </div>

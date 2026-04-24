@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, ClipboardList, AlertCircle, Loader2, ClipboardCheck } from 'lucide-react';
 import { surveysApi, type Survey, type SurveyType } from '../api/surveys';
 
@@ -32,9 +33,12 @@ function typeBadge(type: SurveyType) {
 }
 
 export default function Surveys() {
+  const { user } = useAuth();
+  const userId = user?.userId;
   const { data: surveys = [], isLoading } = useQuery({
-    queryKey: ['surveys'],
+    queryKey: ['surveys', userId],
     queryFn: surveysApi.getAll,
+    enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
   const activeCount = surveys.length;

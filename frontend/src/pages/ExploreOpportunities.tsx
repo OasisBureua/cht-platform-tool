@@ -120,8 +120,9 @@ export default function ExploreOpportunities() {
   });
 
   const { data: surveys = [], isLoading: surveysLoading } = useQuery({
-    queryKey: ['surveys'],
+    queryKey: ['surveys', userId],
     queryFn: surveysApi.getAll,
+    enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
 

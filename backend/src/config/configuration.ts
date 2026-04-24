@@ -49,6 +49,16 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 
+  // Transactional email (Amazon SES) — e.g. registration approved for Live / Office Hours
+  email: {
+    from: (process.env.EMAIL_FROM || 'info@communityhealth.media').trim(),
+    /** Set EMAIL_ENABLED to false, 0, or no to skip sending (e.g. local dev without IAM). */
+    enabled: (() => {
+      const v = (process.env.EMAIL_ENABLED || 'true').toLowerCase();
+      return v !== 'false' && v !== '0' && v !== 'no';
+    })(),
+  },
+
   // SQS (payment queue only for now)
   sqs: {
     paymentQueueUrl: process.env.SQS_PAYMENT_QUEUE_URL,

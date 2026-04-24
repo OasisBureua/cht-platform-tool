@@ -98,6 +98,14 @@ resource "aws_iam_role_policy" "backend_task" {
       {
         Effect = "Allow"
         Action = [
+          "ses:SendEmail",
+          "ses:SendRawEmail"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "s3:PutObject",
           "s3:GetObject"
         ]

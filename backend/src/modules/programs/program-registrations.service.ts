@@ -17,6 +17,7 @@ import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { PaymentsService } from '../payments/payments.service';
+import { SesEmailService } from '../email/ses-email.service';
 
 @Injectable()
 export class ProgramRegistrationsService {
@@ -30,6 +31,7 @@ export class ProgramRegistrationsService {
     private hubspot: HubSpotService,
     private config: ConfigService,
     private paymentsService: PaymentsService,
+    private sesEmail: SesEmailService,
   ) {}
 
   /**
@@ -60,6 +62,73 @@ export class ProgramRegistrationsService {
       return PostEventAttendanceStatus.PENDING_VERIFICATION;
     }
     return PostEventAttendanceStatus.NOT_REQUIRED;
+  }
+
+  /**
+   * FEEDBACK (post-event) surveys: require enrollment, the same post-time window as notifications,
+   * and for live (WEBINAR/MEETING) an approved registration with attendance verified or not required.
+   */
+  async canUserAccessPostEventFeedbackSurvey(userId: string, programId: string): Promise<boolean> {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+      select: {
+        status: true,
+        zoomSessionType: true,
+        startDate: true,
+        duration: true,
+        zoomSessionEndedAt: true,
+      },
+    });
+    if (!program || program.status !== ProgramStatus.PUBLISHED) {
+      return false;
+    }
+
+    const enrolled = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+      select: { id: true },
+    });
+    if (!enrolled) {
+      return false;
+    }
+
+    if (
+      program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
+      program.zoomSessionType !== ProgramZoomSessionType.MEETING
+    ) {
+      return true;
+    }
+
+    const now = new Date();
+    let postSurveyAllowed = false;
+    if (program.zoomSessionEndedAt) {
+      postSurveyAllowed = now >= program.zoomSessionEndedAt;
+    } else if (program.startDate) {
+      const durationMin = program.duration ?? 60;
+      postSurveyAllowed = now.getTime() >= program.startDate.getTime() + durationMin * 60_000;
+    } else {
+      return false;
+    }
+    if (!postSurveyAllowed) {
+      return false;
+    }
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+      select: { status: true, postEventAttendanceStatus: true },
+    });
+    if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
+      return false;
+    }
+    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.PENDING_VERIFICATION) {
+      return false;
+    }
+    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
+      return false;
+    }
+    return (
+      reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
+      reg.postEventAttendanceStatus === PostEventAttendanceStatus.NOT_REQUIRED
+    );
   }
 
   private assertProgramPostEventWindowOpen(program: {
@@ -521,7 +590,17 @@ export class ProgramRegistrationsService {
         },
       },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            institution: true,
+            city: true,
+          },
+        },
         program: {
           select: {
             id: true,
@@ -544,6 +623,7 @@ export class ProgramRegistrationsService {
     registrationId: string,
     status: ProgramRegistrationStatus,
     adminNotes?: string,
+    emailOpts?: { rejectEmailReason?: 'GENERIC' | 'INCOMPLETE_INTAKE' },
   ) {
     const reg = await this.prisma.programRegistration.findUnique({
       where: { id: registrationId },
@@ -551,10 +631,19 @@ export class ProgramRegistrationsService {
     });
     if (!reg) throw new NotFoundException('Registration not found');
 
+    const previousStatus = reg.status;
+
     const nextAttendance =
       status === ProgramRegistrationStatus.APPROVED
         ? await this.resolvePostEventAttendanceStatusForNewApproval(reg.programId)
         : PostEventAttendanceStatus.NOT_REQUIRED;
+
+    const normalizedNotes =
+      adminNotes === undefined
+        ? undefined
+        : adminNotes === null || (typeof adminNotes === 'string' && adminNotes.trim() === '')
+          ? null
+          : String(adminNotes).trim().slice(0, 8000);
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.programRegistration.update({
@@ -562,7 +651,7 @@ export class ProgramRegistrationsService {
         data: {
           status,
           postEventAttendanceStatus: nextAttendance,
-          adminNotes: adminNotes !== undefined ? adminNotes : undefined,
+          adminNotes: normalizedNotes !== undefined ? normalizedNotes : undefined,
           reviewedAt: new Date(),
           reviewedByUserId: adminUserId,
           ...(status === ProgramRegistrationStatus.REJECTED
@@ -598,6 +687,65 @@ export class ProgramRegistrationsService {
 
       return row;
     });
+
+    if (
+      status === ProgramRegistrationStatus.APPROVED &&
+      previousStatus !== ProgramRegistrationStatus.APPROVED &&
+      (reg.program.zoomSessionType === ProgramZoomSessionType.WEBINAR ||
+        reg.program.zoomSessionType === ProgramZoomSessionType.MEETING)
+    ) {
+      void (async () => {
+        const u = await this.prisma.user.findUnique({
+          where: { id: reg.userId },
+          select: { email: true, firstName: true },
+        });
+        if (!u?.email) {
+          return;
+        }
+        await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
+          to: u.email,
+          firstName: u.firstName || 'there',
+          program: {
+            id: reg.program.id,
+            title: reg.program.title,
+            description: reg.program.description,
+            startDate: reg.program.startDate,
+            duration: reg.program.duration,
+            honorariumAmount: reg.program.honorariumAmount,
+            hostDisplayName: reg.program.hostDisplayName,
+            sponsorName: reg.program.sponsorName,
+          },
+          sessionKind: reg.program.zoomSessionType!,
+        });
+      })().catch((e: Error) => this.logger.warn(`Registration-approved email side effect: ${e.message}`));
+    }
+
+    if (
+      status === ProgramRegistrationStatus.REJECTED &&
+      previousStatus !== ProgramRegistrationStatus.REJECTED &&
+      (reg.program.zoomSessionType === ProgramZoomSessionType.WEBINAR ||
+        reg.program.zoomSessionType === ProgramZoomSessionType.MEETING)
+    ) {
+      const rejectReason = emailOpts?.rejectEmailReason === 'INCOMPLETE_INTAKE' ? 'INCOMPLETE_INTAKE' : 'GENERIC';
+      const noteForEmail = (normalizedNotes ?? '').toString().trim().slice(0, 2000);
+      void (async () => {
+        const u = await this.prisma.user.findUnique({
+          where: { id: reg.userId },
+          select: { email: true, firstName: true },
+        });
+        if (!u?.email) {
+          return;
+        }
+        await this.sesEmail.sendLiveSessionRegistrationRejectedEmail({
+          to: u.email,
+          firstName: u.firstName || 'there',
+          program: { id: reg.program.id, title: reg.program.title },
+          sessionKind: reg.program.zoomSessionType!,
+          reason: rejectReason,
+          adminNote: noteForEmail,
+        });
+      })().catch((e: Error) => this.logger.warn(`Registration-rejected email side effect: ${e.message}`));
+    }
 
     return updated;
   }
@@ -777,7 +925,17 @@ export class ProgramRegistrationsService {
         },
       },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            institution: true,
+            city: true,
+          },
+        },
         program: {
           select: {
             id: true,

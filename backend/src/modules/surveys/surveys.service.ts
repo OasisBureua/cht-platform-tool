@@ -1,9 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { JotformService } from '../jotform/jotform.service';
+import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
@@ -20,12 +28,14 @@ export class SurveysService {
     private hubspot: HubSpotService,
     private jotformService: JotformService,
     private formJotformProgress: FormJotformProgressService,
+    private programRegistrations: ProgramRegistrationsService,
   ) {}
 
   /**
-   * Get all surveys (for programs user has access to)
+   * List surveys. Admins see all. Learners only see FEEDBACK post-event surveys they may take
+   * (enrolled, post–live window, attendance verified when required).
    */
-  async getAll() {
+  async getAllForUser(userId: string, role: UserRole) {
     const surveys = await this.prisma.survey.findMany({
       include: {
         program: {
@@ -42,7 +52,7 @@ export class SurveysService {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return surveys.map((s) => ({
+    const mapped = surveys.map((s) => ({
       id: s.id,
       programId: s.programId,
       title: s.title,
@@ -55,12 +65,26 @@ export class SurveysService {
       updatedAt: s.updatedAt.toISOString(),
       program: s.program,
     }));
+    if (role === UserRole.ADMIN) {
+      return mapped;
+    }
+    const out: typeof mapped = [];
+    for (const s of mapped) {
+      if (s.type === 'FEEDBACK' && s.programId) {
+        const ok = await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(userId, s.programId);
+        if (!ok) {
+          continue;
+        }
+      }
+      out.push(s);
+    }
+    return out;
   }
 
   /**
-   * Get survey by ID
+   * Get survey by ID. Admins: always. Learners: FEEDBACK is forbidden until attendance allows access.
    */
-  async getById(id: string) {
+  async getByIdForUser(id: string, userId: string, role: UserRole) {
     const survey = await this.prisma.survey.findUnique({
       where: { id },
       include: {
@@ -77,7 +101,12 @@ export class SurveysService {
         },
       },
     });
-    if (!survey) throw new NotFoundException('Survey not found');
+    if (!survey) {
+      throw new NotFoundException('Survey not found');
+    }
+    if (role !== UserRole.ADMIN) {
+      await this.assertUserCanAccessFeedbackSurvey(survey.type, survey.programId, userId);
+    }
     const jotformFormUrl = survey.jotformFormId
       ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}`
       : null;
@@ -97,18 +126,48 @@ export class SurveysService {
     };
   }
 
+  private async assertUserCanAccessFeedbackSurvey(
+    type: string,
+    programId: string,
+    userId: string,
+  ): Promise<void> {
+    if (type !== 'FEEDBACK' || !programId) {
+      return;
+    }
+    const ok = await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(userId, programId);
+    if (!ok) {
+      throw new ForbiddenException(
+        'This post-event survey is not available until your attendance is verified (and the session window has passed, when applicable).',
+      );
+    }
+  }
+
+  /**
+   * Call before Jotform resume / my-response for a learner; admins bypass.
+   */
+  async ensureUserCanAccessSurvey(surveyId: string, userId: string, role: UserRole): Promise<void> {
+    if (role === UserRole.ADMIN) {
+      return;
+    }
+    const survey = await this.prisma.survey.findUnique({
+      where: { id: surveyId },
+      select: { type: true, programId: true },
+    });
+    if (!survey) {
+      throw new NotFoundException('Survey not found');
+    }
+    await this.assertUserCanAccessFeedbackSurvey(survey.type, survey.programId, userId);
+  }
+
   /**
    * Whether the user already has a stored response (native submit or Jotform webhook).
    */
   async getMyResponseStatus(
     surveyId: string,
     userId: string,
+    role: UserRole,
   ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> {
-    const survey = await this.prisma.survey.findUnique({
-      where: { id: surveyId },
-      select: { id: true },
-    });
-    if (!survey) throw new NotFoundException('Survey not found');
+    await this.ensureUserCanAccessSurvey(surveyId, userId, role);
 
     const row = await this.prisma.surveyResponse.findUnique({
       where: { userId_surveyId: { userId, surveyId } },
@@ -450,8 +509,10 @@ export class SurveysService {
   async submitResponse(
     surveyId: string,
     userId: string,
+    role: UserRole,
     dto: SubmitSurveyResponseDto,
   ): Promise<{ id: string; submittedAt: string }> {
+    await this.ensureUserCanAccessSurvey(surveyId, userId, role);
     const survey = await this.prisma.survey.findUnique({
       where: { id: surveyId },
       include: { program: true },
