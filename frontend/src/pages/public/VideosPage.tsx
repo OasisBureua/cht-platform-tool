@@ -179,7 +179,7 @@ export default function VideosPage() {
       <div
         className={[
           isInApp
-            ? 'w-full px-0 py-0 sm:py-0 space-y-6 sm:space-y-8'
+            ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
             : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
@@ -276,15 +276,23 @@ export default function VideosPage() {
         )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
-          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+          isInApp ? (
+            <section className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+              <ConversationsHeroSkeleton />
+            </section>
+          ) : (
             <ConversationsHeroSkeleton />
-          </div>
+          )
         )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+          isInApp ? (
+            <section className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+              <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+            </section>
+          ) : (
             <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-          </div>
+          )
         )}
 
         {effectiveLibraryView === 'playlists' ? (
@@ -296,7 +304,7 @@ export default function VideosPage() {
             ) : null}
           </section>
         ) : isInApp ? (
-          <section className="space-y-8">
+          <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
                 <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
