@@ -17,7 +17,7 @@ import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 const nav = [
   { to: '/admin', label: 'Home', icon: Home, end: true },
   { to: '/admin/hcp-explorer', label: 'Search', icon: Search, end: false },
-  { to: '/admin/programs', label: 'LIVE', icon: Radio, end: false },
+  { to: '/admin/programs', label: 'Live', icon: Radio, end: false },
   { to: '/admin/webinar-approvals', label: 'Approvals', icon: UserCheck, end: false },
   { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },

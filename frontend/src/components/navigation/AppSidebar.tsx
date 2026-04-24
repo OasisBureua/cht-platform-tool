@@ -12,7 +12,7 @@ import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 
 const nav = [
   { to: '/app/search', label: 'Search', icon: Search, end: false },
-  { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
+  { to: '/app/live', label: 'Live', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
   { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },

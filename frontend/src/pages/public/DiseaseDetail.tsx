@@ -67,11 +67,11 @@ export default function DiseaseDetail() {
 
         {!isLoading && (
           <div className="space-y-10">
-            {/* LIVE sessions */}
+            {/* Live sessions */}
             {matchedWebinars.length > 0 && (
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">LIVE Sessions</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Live Sessions</h2>
                   <Link to={`${basePath}/live`} className="text-sm font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-1">
                     View all <ArrowRight className="h-4 w-4" />
                   </Link>

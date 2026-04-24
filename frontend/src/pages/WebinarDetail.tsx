@@ -115,7 +115,7 @@ export default function WebinarDetail() {
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
           <p className="font-semibold text-gray-900">Session not found</p>
           <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
-            Back to LIVE
+            Back to Live
           </Link>
         </div>
       );
@@ -127,13 +127,13 @@ export default function WebinarDetail() {
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to LIVE
+          Back to Live
         </button>
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
           <h1 className="text-2xl font-bold text-gray-900">{zoomWebinar.title}</h1>
           <p className="mt-3 text-gray-600">{zoomWebinar.description}</p>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            <p className="font-semibold">Use a scheduled LIVE webinar in the app</p>
+            <p className="font-semibold">Use a scheduled Live webinar in the app</p>
             <p className="mt-1 text-amber-900">
               CME registration, admin approval, and honorarium payouts run through platform webinars. Raw Zoom-only
               listings do not support that workflow.
@@ -173,7 +173,7 @@ export default function WebinarDetail() {
             to="/app/live"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
-            Back to LIVE
+            Back to Live
           </Link>
         </div>
       </div>
@@ -190,7 +190,7 @@ export default function WebinarDetail() {
             to="/app/live"
             className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
-            Back to LIVE
+            Back to Live
           </Link>
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function WebinarDetail() {
   const showJoinSessionCard =
     program.zoomSessionType === 'WEBINAR' && (enrolled || registrationPendingApproval);
 
-  /** LIVE webinars always use the registration wizard so intake (when configured) is not skipped via quick enroll. */
+  /** Live webinars always use the registration wizard so intake (when configured) is not skipped via quick enroll. */
   const needsRegistrationWizard =
     !!program &&
     (program.zoomSessionType === 'WEBINAR' ||
@@ -266,7 +266,7 @@ export default function WebinarDetail() {
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to LIVE
+          Back to Live
         </button>
       </div>
 
@@ -314,7 +314,7 @@ export default function WebinarDetail() {
 
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-                LIVE
+                Live
               </span>
 
               <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">

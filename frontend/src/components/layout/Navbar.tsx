@@ -54,7 +54,7 @@ export default function Navbar() {
 
               <NavLink to="/live" className={linkClass}>
                 <Radio className="w-4 h-4 mr-2" />
-                LIVE
+                Live
               </NavLink>
 
               <NavLink to="/office-hours" className={linkClass}>

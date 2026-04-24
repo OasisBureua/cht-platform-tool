@@ -244,7 +244,7 @@ export default function AdminProgramHub() {
       <header>
         <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Program hub: webinar intake Jotform (LIVE only), office-hours slots, registration queue, enrollments, extra
+          Program hub: webinar intake Jotform (Live only), office-hours slots, registration queue, enrollments, extra
           form links, and calendar invites. Post-event surveys are FEEDBACK-type surveys (learners complete them on the
           Surveys tab after the session).
         </p>
@@ -265,7 +265,7 @@ export default function AdminProgramHub() {
             </div>
           ) : (
             <label className="block text-sm md:col-span-2">
-              <span className="font-medium text-gray-700">Jotform intake URL (LIVE webinars only)</span>
+              <span className="font-medium text-gray-700">Jotform intake URL (Live webinars only)</span>
               <input
                 value={intakeUrl}
                 onChange={(e) => setIntakeUrl(e.target.value)}

@@ -5,15 +5,23 @@ import ChatBubble from '../components/ChatBubble';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import ThemeToggle from '../components/ThemeToggle';
 
-const navLinks = [
+const allNavLinks = [
   { to: '/about', label: 'About' },
   { to: '/what-we-do', label: 'What We Do' },
   { to: '/catalog', label: 'Content Library' },
-  { to: '/live', label: 'LIVE' },
+  { to: '/live', label: 'Live' },
   { to: '/chm-office-hours', label: 'CHM Office Hours' },
   { to: '/for-hcps', label: 'For HCPs' },
   { to: '/contact', label: 'Contact' },
 ];
+
+const footerQuickLinks = allNavLinks.filter(
+  (l) => l.to !== '/about' && l.to !== '/what-we-do',
+);
+
+const drawerNavLinks = allNavLinks.filter(
+  (l) => l.to !== '/about' && l.to !== '/what-we-do' && l.to !== '/for-hcps',
+);
 
 export default function PublicLayout() {
   const navigate = useNavigate();
@@ -154,7 +162,7 @@ export default function PublicLayout() {
             className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-2"
             data-drawer-animating={drawerOpen ? 'true' : 'false'}
           >
-            {navLinks.map(({ to, label }) => (
+            {drawerNavLinks.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -255,7 +263,7 @@ export default function PublicLayout() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Quick Links</p>
                 <ul className="space-y-3">
-                  {navLinks.map(({ to, label }) => (
+                  {footerQuickLinks.map(({ to, label }) => (
                     <li key={to}>
                       <Link to={to} className="text-sm text-gray-300 hover:text-white transition-colors">
                         {label}

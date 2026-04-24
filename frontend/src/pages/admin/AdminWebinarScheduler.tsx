@@ -18,10 +18,13 @@ const TIMEZONES = [
 export type AdminWebinarSchedulerProps = {
   /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
   defaultZoomSessionType?: ZoomSessionType;
+  /** When true, session type is fixed to `defaultZoomSessionType` (office-hours route uses MEETING + office hours copy). */
+  lockSessionType?: boolean;
 };
 
 export default function AdminWebinarScheduler({
   defaultZoomSessionType = 'WEBINAR',
+  lockSessionType = false,
 }: AdminWebinarSchedulerProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -62,6 +65,7 @@ export default function AdminWebinarScheduler({
 
   const successPath = zoomSessionType === 'MEETING' ? '/admin/office-hours' : '/admin/programs';
   const isWebinar = zoomSessionType === 'WEBINAR';
+  const isOfficeHoursOnly = lockSessionType && defaultZoomSessionType === 'MEETING';
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateWebinarPayload) => adminApi.createWebinar(payload),
@@ -153,12 +157,12 @@ export default function AdminWebinarScheduler({
     <div className="space-y-8 max-w-3xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
-          {isWebinar ? 'Webinar scheduler' : 'Office Hours scheduler'}
+          {isWebinar ? 'Webinar scheduler' : 'Office hours scheduler'}
         </h1>
         <p className="text-sm text-gray-600 mt-1">
           {isWebinar
             ? 'Creates a Zoom Webinar and publishes it. The server clones a unique invitation Jotform and post-event Jotform from your template form IDs in environment variables, then wires webhooks. Learners complete invitation before approval; post-event reminders appear after the session. Honorarium uses Bill.com.'
-            : 'Creates a Zoom Meeting (interactive Q&A, waiting room). Registrations require admin approval before learners can join. No automatic Jotform clone for meetings.'}
+            : 'Creates an office hours session as a Zoom Meeting (type MEETING: interactive Q&A, waiting room). Registrations require admin approval before learners can join. No automatic Jotform clone for this session type.'}
         </p>
       </div>
 
@@ -182,12 +186,22 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {!zoomWarning && (
+      {!zoomWarning && !isOfficeHoursOnly && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            Choose <strong>Session type</strong> below. Webinars use Zoom Webinars; Office Hours use Zoom Meetings with
+            Choose <strong>Session type</strong> below. Webinars use Zoom Webinars; office hours use Zoom Meetings with
             waiting room (host admits attendees).
+          </p>
+        </div>
+      )}
+
+      {!zoomWarning && isOfficeHoursOnly && (
+        <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
+          <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+          <p className="text-sm text-blue-700">
+            This page schedules <strong>office hours</strong> (Zoom Meeting, session type <code className="text-xs">MEETING</code>).
+            Host admits attendees from the waiting room.
           </p>
         </div>
       )}
@@ -205,19 +219,28 @@ export default function AdminWebinarScheduler({
             <h2 className="text-lg font-bold text-gray-900">Schedule session</h2>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Session type *</label>
-            <select
-              value={zoomSessionType}
-              onChange={(e) => {
-                setZoomSessionType(e.target.value as ZoomSessionType);
-              }}
-              className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-            >
-              <option value="WEBINAR">Webinar (Zoom Webinar, CME-style; intake Jotform required)</option>
-              <option value="MEETING">Office Hours (Zoom Meeting, Q&A, waiting room)</option>
-            </select>
-          </div>
+          {!lockSessionType ? (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">Session type *</label>
+              <select
+                value={zoomSessionType}
+                onChange={(e) => {
+                  setZoomSessionType(e.target.value as ZoomSessionType);
+                }}
+                className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              >
+                <option value="WEBINAR">Webinar (Zoom Webinar, CME-style; intake Jotform required)</option>
+                <option value="MEETING">Office hours (Zoom Meeting, Q&A, waiting room)</option>
+              </select>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-700">
+              Session type:{' '}
+              <span className="font-semibold">
+                {isWebinar ? 'Webinar (WEBINAR)' : 'Office hours (MEETING)'}
+              </span>
+            </p>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -229,7 +252,7 @@ export default function AdminWebinarScheduler({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={isWebinar ? 'e.g., Advanced Cardiology Update' : 'e.g., Breast oncology Office Hours'}
+                placeholder={isWebinar ? 'e.g., Advanced Cardiology Update' : 'e.g., Breast oncology office hours'}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
@@ -347,7 +370,7 @@ export default function AdminWebinarScheduler({
               />
               <p className="mt-1 text-xs text-gray-600">
                 Learners can request this amount after post-event steps; admins pay via Bill.com. Not available for
-                Office Hours sessions.
+                Office hours sessions.
               </p>
             </div>
           ) : null}
@@ -437,7 +460,7 @@ export default function AdminWebinarScheduler({
 
           {!isWebinar && (
             <p className="text-sm text-gray-600 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
-              Office Hours use Zoom Meetings. Optional intake or other links can be set in Program hub.
+              Office hours use Zoom Meetings (MEETING). Optional intake or other links can be set in Program hub.
             </p>
           )}
         </div>
@@ -464,7 +487,11 @@ export default function AdminWebinarScheduler({
             {createMutation.isPending && (
               <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />
             )}
-            {createMutation.isPending ? 'Scheduling…' : isWebinar ? 'Schedule webinar' : 'Schedule Office Hours'}
+            {createMutation.isPending
+              ? 'Scheduling…'
+              : isWebinar
+                ? 'Schedule webinar'
+                : 'Schedule office hours'}
           </button>
         </div>
       </form>

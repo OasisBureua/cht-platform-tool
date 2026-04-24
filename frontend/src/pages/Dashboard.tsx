@@ -21,7 +21,7 @@ const WEBINAR_PLACEHOLDER_IMAGES = [
 const ONBOARDING_STORAGE_KEY = 'chm-home-onboarding-seen-v1';
 const QUICK_START_ACTIONS = [
   {
-    title: 'LIVE sessions',
+    title: 'Live sessions',
     desc: 'Attend live education sessions and earn for participation.',
     icon: Presentation,
     to: '/app/live',
@@ -206,7 +206,7 @@ export default function Dashboard() {
     return {
       eyebrow: 'Featured',
       title: 'Latest CHM updates and releases',
-      description: 'Catch newly released conversations, upcoming LIVE sessions, and fresh podcast drops in one place.',
+      description: 'Catch newly released conversations, upcoming Live sessions, and fresh podcast drops in one place.',
       imageUrl: WEBINAR_PLACEHOLDER_IMAGES[0],
       primaryHref: '/app/catalog',
       secondaryHref: '/app/catalog',
@@ -227,7 +227,7 @@ export default function Dashboard() {
           imageUrl: w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length],
           meta: w.startTime
             ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d')}`
-            : 'LIVE session',
+            : 'Live session',
         }),
       );
 

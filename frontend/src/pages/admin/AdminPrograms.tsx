@@ -82,7 +82,7 @@ export default function AdminPrograms() {
           <p className="text-sm text-gray-600">
             {isOfficeHours
               ? 'Live sessions for Q&A — host admits participants. Manage CHM Office Hours here.'
-              : 'Schedule and manage LIVE sessions.'}
+              : 'Schedule and manage Live sessions.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -173,7 +173,7 @@ export default function AdminPrograms() {
           <p className="text-sm text-gray-500 mt-1">
             {isOfficeHours
               ? 'Create a new CHM Office Hours session for interactive Q&A.'
-              : 'Schedule your first LIVE session.'}
+              : 'Schedule your first Live session.'}
           </p>
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}

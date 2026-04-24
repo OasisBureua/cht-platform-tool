@@ -53,7 +53,7 @@ export default function Surveys() {
         <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">Your Surveys</h1>
       </div>
       <p className="text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-        <strong>Post-event</strong> surveys unlock after your LIVE session ends. Complete them within 7 days to receive
+        <strong>Post-event</strong> surveys unlock after your Live session ends. Complete them within 7 days to receive
         your honorarium. Keep{' '}
         <Link to="/app/payments" className="font-semibold text-zinc-900 underline dark:text-zinc-100">
           Payments
@@ -101,7 +101,7 @@ export default function Surveys() {
         ) : surveys.length === 0 ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-12px_rgba(0,0,0,0.45)]">
             <p className="font-semibold text-gray-900 dark:text-zinc-100">No post-session surveys yet</p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">Enroll in a LIVE activity, then check back after the session ends.</p>
+            <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">Enroll in a Live activity, then check back after the session ends.</p>
           </div>
         ) : (
           <div className="space-y-2.5">

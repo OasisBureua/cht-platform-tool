@@ -11,7 +11,7 @@ const DISEASE_AREAS: DiseaseArea[] = [
   {
     slug: 'breast-cancer',
     title: 'Breast Cancer',
-    description: 'Expert-led education, conversations, and LIVE sessions focused on breast oncology.',
+    description: 'Expert-led education, conversations, and Live sessions focused on breast oncology.',
     image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
     active: true,
     searchTags: ['breast', 'HER2', 'TNBC', 'HR+', 'mammary', 'oncology', 'mastectomy'],

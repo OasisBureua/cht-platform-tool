@@ -57,7 +57,7 @@ export function NotificationBell() {
       </button>
       {open ? (
         <div className="absolute right-0 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-96 overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg z-50 text-[100%]">
-          <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">LIVE follow-ups</p>
+          <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">Live follow-ups</p>
           {items.length === 0 ? (
             <p className="px-4 py-6 text-sm text-gray-600">
               All caught up. Live session reminders (e.g. post-event surveys) appear here after you enroll—or after

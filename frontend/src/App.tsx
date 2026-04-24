@@ -147,7 +147,7 @@ function App() {
             <Route path="home" element={<Dashboard />} />
             <Route path="search" element={<ExploreOpportunities />} />
 
-            {/* LIVE (formerly Webinars) */}
+            {/* Live (formerly Webinars) */}
             <Route path="live" element={<Webinars />} />
             <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="live/:id" element={<WebinarDetail />} />
@@ -228,7 +228,7 @@ function App() {
             <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
             <Route
               path="office-hours-scheduler"
-              element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" />}
+              element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" lockSessionType />}
             />
             <Route path="payments" element={<AdminPayments />} />
             <Route path="settings" element={<AdminSettings />} />

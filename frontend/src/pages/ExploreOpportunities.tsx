@@ -198,7 +198,7 @@ export default function ExploreOpportunities() {
 
   const tabs = [
     { key: 'best' as Tab, label: 'Best Match', icon: Zap },
-    { key: 'webinars' as Tab, label: 'LIVE', icon: Presentation },
+    { key: 'webinars' as Tab, label: 'Live', icon: Presentation },
     { key: 'videos' as Tab, label: 'Videos', icon: PlayCircle },
     { key: 'surveys' as Tab, label: 'Surveys', icon: ClipboardList },
   ];
@@ -283,7 +283,7 @@ export default function ExploreOpportunities() {
               <div className="p-4 flex flex-col flex-1 min-h-0">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                    {item.type === 'webinar' && 'LIVE'}
+                    {item.type === 'webinar' && 'Live'}
                     {item.type === 'clip' && 'Video'}
                     {item.type === 'playlist' && 'Playlist'}
                     {item.type === 'survey' && 'Survey'}

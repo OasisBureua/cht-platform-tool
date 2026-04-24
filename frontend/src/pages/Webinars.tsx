@@ -74,7 +74,7 @@ export default function Webinars() {
       <header className="space-y-1">
         <div className="flex items-center gap-2.5 text-gray-900">
           <Radio className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
+          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Live</h1>
         </div>
         <p className="text-pretty text-sm text-gray-600">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves
@@ -89,7 +89,7 @@ export default function Webinars() {
         </div>
       ) : webinars.length === 0 ? (
         <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="font-semibold text-gray-900">No LIVE sessions scheduled</p>
+          <p className="font-semibold text-gray-900">No Live sessions scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
         </div>
       ) : (

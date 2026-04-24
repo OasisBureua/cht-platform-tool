@@ -102,7 +102,7 @@ export default function AdminWebinarApprovals() {
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">LIVE & Office Hours approvals</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Live & office hours approvals</h1>
         <p className="mt-1 text-sm text-gray-600">
           Pending registration requests for published webinars and CHM Office Hours. Learners can join via Zoom after
           approval. If you <strong>reject</strong> someone, they can register again; their request returns to pending when
@@ -222,7 +222,7 @@ export default function AdminWebinarApprovals() {
                     </div>
                   </td>
                   <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
-                    {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'LIVE webinar'}
+                    {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
                   </td>
                   <td className="py-3 px-4">
                     {r.user.firstName} {r.user.lastName}
@@ -308,7 +308,7 @@ export default function AdminWebinarApprovals() {
                   </div>
                 </td>
                 <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
-                  {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'LIVE webinar'}
+                  {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
                 </td>
                 <td className="py-3 px-4">
                   {r.user.firstName} {r.user.lastName}

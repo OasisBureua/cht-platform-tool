@@ -1,6 +1,6 @@
 import type { MyLiveSessionListStatus } from '../api/programs';
 
-/** Pill label next to LIVE / Office Hours titles when the user is in good standing to attend. */
+/** Pill label next to Live / Office Hours titles when the user is in good standing to attend. */
 export function liveSessionListBadgeLabel(
   registrationRequiresApproval: boolean | undefined,
   status: MyLiveSessionListStatus | undefined,
