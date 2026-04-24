@@ -175,15 +175,15 @@ export default function VideosPage() {
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
 
   return (
-    <div className="min-h-screen min-w-0 overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_32px_-20px_rgba(0,0,0,0.14)]">
+    <div className="min-h-screen min-w-0 bg-transparent">
       <div
         className={[
           isInApp
-            ? 'w-full px-0 py-6 sm:py-10 space-y-6 sm:space-y-8'
+            ? 'w-full px-0 py-0 sm:py-0 space-y-6 sm:space-y-8'
             : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        <div className="flex items-center gap-2.5 pl-[20px] text-zinc-900">
+        <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
           <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
           <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
             {isInApp ? 'Explore our conversations' : 'Explore our catalogue'}
@@ -273,10 +273,16 @@ export default function VideosPage() {
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && <ConversationsHeroSkeleton />}
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
+          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+            <ConversationsHeroSkeleton />
+          </div>
+        )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+          </div>
         )}
 
         {effectiveLibraryView === 'playlists' ? (

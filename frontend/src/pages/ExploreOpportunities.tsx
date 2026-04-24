@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2 } from 'lucide-react';
+import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2, Compass } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
 import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
@@ -176,7 +176,10 @@ export default function ExploreOpportunities() {
 
   return (
     <div className="space-y-6 min-w-0">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Explore Opportunities</h1>
+      <div className="flex items-center gap-2.5 text-gray-900">
+        <Compass className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+        <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Explore Opportunities</h1>
+      </div>
 
       {/* Search + Filters */}
       <div className="flex flex-col md:flex-row gap-3">
@@ -197,8 +200,8 @@ export default function ExploreOpportunities() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition ${
-              tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+            className={`flex min-h-[44px] flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition-[color,background-color,border-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] ${
+              tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
             }`}
           >
             <Icon className="h-6 w-6" />
@@ -227,7 +230,10 @@ export default function ExploreOpportunities() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col">
+            <div
+              key={item.id}
+              className="flex flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_36px_-14px_rgba(0,0,0,0.1)]"
+            >
               <div className="h-44 shrink-0">
                 <img
                   src={item.imageUrl || getFallbackImage(item.type)}
@@ -246,7 +252,7 @@ export default function ExploreOpportunities() {
                     {item.type === 'survey' && 'Survey'}
                   </span>
                 </div>
-                <h3 className="font-bold text-gray-900 line-clamp-2 mt-1">{item.title}</h3>
+                <h3 className="mt-1 line-clamp-2 text-balance font-bold text-gray-900">{item.title}</h3>
                 <div className="flex-1 min-h-0 mt-2">
                   {item.subtitle ? (
                     <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
@@ -265,7 +271,7 @@ export default function ExploreOpportunities() {
                 </div>
                 <Link
                   to={item.href}
-                  className="mt-4 inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="mt-4 inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
                 >
                   {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'View Session' : 'Conversations'}
                 </Link>

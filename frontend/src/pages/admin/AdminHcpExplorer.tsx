@@ -28,7 +28,7 @@ export default function AdminHcpExplorer() {
   const [inputValue, setInputValue] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
 
-  // Debounced query — only fires backend request after 400 ms idle
+  // Debounced query - only fires backend request after 400 ms idle
   const [debouncedQuery, setDebouncedQuery] = useState('');
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(inputValue.trim()), 400);
@@ -160,7 +160,7 @@ export default function AdminHcpExplorer() {
 
 function UserRow({ user }: { user: AdminUser }) {
   const initials = getInitials(user.firstName, user.lastName, user.email);
-  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '—';
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ') || '-';
   const joined = new Date(user.createdAt).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',

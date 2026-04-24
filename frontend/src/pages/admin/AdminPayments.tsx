@@ -168,7 +168,7 @@ function PendingRow({
       </td>
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-sm text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{payment.program?.title ?? '—'}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-sm text-gray-500">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-2">

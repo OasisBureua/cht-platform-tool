@@ -178,7 +178,7 @@ export default function ProgramRegisterWizard() {
                 href="/app/payments"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 Open Bill.com setup
                 <ExternalLink className="h-4 w-4" />
@@ -198,7 +198,7 @@ export default function ProgramRegisterWizard() {
                       onClick={() => setSelectedSlotId(s.id)}
                       disabled={s.remaining <= 0}
                       className={[
-                        'w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors',
+                        'w-full rounded-xl border px-4 py-3 text-left text-sm transition-[color,background-color,border-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.995]',
                         selectedSlotId === s.id ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white hover:bg-gray-50',
                         s.remaining <= 0 ? 'opacity-50 cursor-not-allowed' : '',
                       ].join(' ')}
@@ -258,7 +258,7 @@ export default function ProgramRegisterWizard() {
               submitMut.isPending ||
               (current === 'slot' && slots.length > 0 && !selectedSlotId)
             }
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
           >
             {submitMut.isPending && isLastStep ? (
               <>

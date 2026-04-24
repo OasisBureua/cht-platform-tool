@@ -150,12 +150,12 @@ export default function PublicWatch() {
               <div key={col.key} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
                 <div className="p-5">
                   <h4 className="font-bold text-gray-900">{col.title}</h4>
-                  <p className="text-sm text-gray-600 mt-0.5">{col.count} videos</p>
+                  <p className="mt-0.5 text-sm text-gray-600 tabular-nums">{col.count} videos</p>
                   <ul className="mt-4 space-y-2">
                     {col.items.map((item, i) => (
                       <li key={i} className="flex items-center justify-between text-sm">
                         <span className="text-gray-900">{item.title}</span>
-                        <span className="text-gray-500">{item.duration}</span>
+                        <span className="text-gray-500 tabular-nums">{item.duration}</span>
                       </li>
                     ))}
                   </ul>

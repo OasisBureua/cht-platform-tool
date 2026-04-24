@@ -135,7 +135,7 @@ export default function PlaylistDetail() {
                           url.searchParams.set('v', video.id);
                           window.history.replaceState({}, '', url.pathname + url.search);
                         }}
-                        className={`w-full text-left rounded-lg overflow-hidden border-2 transition-all ${
+                        className={`w-full overflow-hidden rounded-lg border-2 text-left transition-[border-color,box-shadow] ${
                           idx === safeIndex
                             ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-2'
                             : 'border-transparent hover:border-gray-300'

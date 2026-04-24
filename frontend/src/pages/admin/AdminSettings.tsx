@@ -204,7 +204,7 @@ export default function AdminSettings() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Email</span>
-                <span className="font-medium text-gray-900 truncate max-w-[140px]">{profile?.email ?? user?.email ?? '—'}</span>
+                <span className="font-medium text-gray-900 truncate max-w-[140px]">{profile?.email ?? user?.email ?? '-'}</span>
               </div>
             </div>
           </section>

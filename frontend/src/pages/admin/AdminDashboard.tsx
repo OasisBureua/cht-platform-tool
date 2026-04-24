@@ -26,20 +26,20 @@ export default function AdminDashboard() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <Link to="/admin/users" className="group block rounded-2xl border border-blue-200 bg-blue-50/50 p-6 relative hover:border-blue-400 hover:ring-2 hover:ring-blue-200 transition-all">
+        <Link to="/admin/users" className="group relative block rounded-2xl border border-blue-200 bg-blue-50/50 p-6 transition-[border-color,box-shadow] hover:border-blue-400 hover:ring-2 hover:ring-blue-200">
           <span className={`absolute top-3 right-3 rounded-full px-2 py-1 text-xs font-semibold ${activeHcpsChange?.colorClass ?? 'bg-gray-100 text-gray-700'}`}>
-            {activeHcpsChange?.label ?? '—'}
+            {activeHcpsChange?.label ?? '-'}
           </span>
-          <p className="text-3xl font-bold text-gray-900">{stats?.activeHcpsCount ?? 0}</p>
+          <p className="text-3xl font-bold tabular-nums text-gray-900">{stats?.activeHcpsCount ?? 0}</p>
           <p className="mt-2 text-sm font-semibold text-blue-700 group-hover:underline">Active HCPs</p>
         </Link>
-        <Link to="/admin/rx-analytics" className="group block rounded-2xl border border-purple-200 bg-purple-50/50 p-6 relative hover:border-purple-400 hover:ring-2 hover:ring-purple-200 transition-all">
+        <Link to="/admin/rx-analytics" className="group relative block rounded-2xl border border-purple-200 bg-purple-50/50 p-6 transition-[border-color,box-shadow] hover:border-purple-400 hover:ring-2 hover:ring-purple-200">
           <span className="absolute top-3 right-3 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">% change</span>
           <p className="text-3xl font-bold text-gray-400">#</p>
           <p className="mt-2 text-sm font-semibold text-purple-700 group-hover:underline">Engagement Rate</p>
         </Link>
-        <Link to="/admin/payments" className="group block rounded-2xl border border-amber-200 bg-amber-50/50 p-6 hover:border-amber-400 hover:ring-2 hover:ring-amber-200 transition-all">
-          <p className="text-3xl font-bold text-gray-900">{stats?.paymentsPaidCount ?? 0}</p>
+        <Link to="/admin/payments" className="group block rounded-2xl border border-amber-200 bg-amber-50/50 p-6 transition-[border-color,box-shadow] hover:border-amber-400 hover:ring-2 hover:ring-amber-200">
+          <p className="text-3xl font-bold tabular-nums text-gray-900">{stats?.paymentsPaidCount ?? 0}</p>
           <p className="mt-2 text-sm font-semibold text-amber-700 group-hover:underline">Payments Made</p>
         </Link>
       </div>
@@ -67,13 +67,13 @@ export default function AdminDashboard() {
               <p className="text-sm text-gray-500">Campaign data</p>
             </div>
           </div>
-          <Link to="/admin/payments" className="group block rounded-2xl border border-gray-200 bg-white p-6 hover:border-amber-200 hover:ring-2 hover:ring-amber-100 transition-all">
-            <p className="text-3xl font-bold text-amber-600">{stats?.paymentsPaidCount ?? 0}</p>
+          <Link to="/admin/payments" className="group block rounded-2xl border border-gray-200 bg-white p-6 transition-[border-color,box-shadow] hover:border-amber-200 hover:ring-2 hover:ring-amber-100">
+            <p className="text-3xl font-bold tabular-nums text-amber-600">{stats?.paymentsPaidCount ?? 0}</p>
             <p className="mt-2 text-sm font-semibold text-amber-700 group-hover:underline">Payments Made</p>
             <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
               <p className="text-sm text-gray-600">
                 {(pendingPayments?.length ?? 0) > 0 ? (
-                  <span className="font-medium text-amber-700">{pendingPayments?.length ?? 0} pending</span>
+                  <span className="font-medium tabular-nums text-amber-700">{pendingPayments?.length ?? 0} pending</span>
                 ) : (
                   'All caught up'
                 )}

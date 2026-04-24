@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
+import { Banknote } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -47,30 +48,33 @@ export default function Earnings() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Your Earnings</h1>
-        <p className="text-sm text-gray-600">Track your income and payment history</p>
+        <div className="flex items-center gap-2.5 text-gray-900">
+          <Banknote className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+          <h1 className="text-balance text-2xl font-semibold text-gray-900 md:text-3xl">Your Earnings</h1>
+        </div>
+        <p className="text-pretty text-sm text-gray-600">Track your income and payment history</p>
       </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="text-sm text-gray-600">Total Balance</p>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">${total.toFixed(2)}</p>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">${total.toFixed(2)}</p>
+          <p className="mt-1 text-sm text-gray-600 tabular-nums">
             {points.toLocaleString()} points = ${total.toFixed(2)}
           </p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="text-sm text-gray-600">This Week</p>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
             ${(earnings?.currentWeekEarnings ?? 0).toFixed(2)}
           </p>
           <p className="mt-1 text-sm text-gray-600">Current week earnings</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
+        <div className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="text-sm text-gray-600">Pending Payments</p>
-          <p className="mt-2 text-3xl font-semibold text-gray-900">
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
             ${(earnings?.pendingPayments ?? 0).toFixed(2)}
           </p>
           <p className="mt-1 text-sm text-gray-600">
@@ -81,9 +85,9 @@ export default function Earnings() {
         </div>
       </section>
 
-      <section className="bg-white border border-gray-200 rounded-xl p-5">
+      <section className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Recent Activity</h2>
+          <h2 className="text-base font-semibold text-balance text-gray-900">Recent Activity</h2>
           <span className="text-sm text-gray-600">Last 12 weeks</span>
         </div>
 
@@ -106,10 +110,15 @@ export default function Earnings() {
         </div>
       </section>
 
-      <section className="bg-white border border-gray-200 rounded-xl p-5">
+      <section className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Payment History</h2>
-          <button className="text-sm font-medium text-gray-700 hover:text-gray-900">View all</button>
+          <h2 className="text-base font-semibold text-balance text-gray-900">Payment History</h2>
+          <button
+            type="button"
+            className="min-h-[44px] min-w-[44px] rounded-lg px-3 text-sm font-medium text-gray-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-gray-900 active:scale-[0.96]"
+          >
+            View all
+          </button>
         </div>
 
         <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">

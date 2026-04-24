@@ -325,7 +325,7 @@ export default function Dashboard() {
               <h2 className="mb-2 max-w-[18ch] text-balance font-sans text-[24px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white md:text-[32px]">
                 {featuredPanel.title}
               </h2>
-              <p className="mb-4 max-w-[540px] text-pretty text-sm leading-relaxed text-white/80 md:text-[15px]">
+              <p className="mb-4 line-clamp-2 max-w-[540px] text-pretty text-sm leading-relaxed text-white/80 md:text-[15px]">
                 {featuredPanel.description}
               </p>
               <div className="flex flex-wrap items-center gap-3">

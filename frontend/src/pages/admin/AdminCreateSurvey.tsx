@@ -161,7 +161,7 @@ export default function AdminCreateSurvey() {
                 type="text"
                 value={jotformFormId}
                 onChange={(e) => setJotformFormId(e.target.value)}
-                placeholder="e.g., 260698533879881 — from communityhealthmedia.jotform.com/build/..."
+                placeholder="e.g., 260698533879881 - from communityhealthmedia.jotform.com/build/..."
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
               />
               <p className="mt-1 text-xs text-gray-500">

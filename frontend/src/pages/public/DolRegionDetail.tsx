@@ -109,7 +109,7 @@ export default function DolRegionDetail() {
 
       <div className="border-t border-gray-200 py-6">
         <p className="text-center text-xs text-gray-500">
-          Community Health Technologies — Confidential KOL Network Document | ★ = Newly Added
+          Community Health Technologies - Confidential KOL Network Document | ★ = Newly Added
         </p>
       </div>
     </div>

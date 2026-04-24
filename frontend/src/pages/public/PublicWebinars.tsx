@@ -44,7 +44,7 @@ export default function PublicWebinars() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-10 md:space-y-14">
         <header>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">LIVE</h1>
-          <p className="mt-2 text-sm text-gray-600">Live and upcoming sessions — click any webinar to register and join.</p>
+          <p className="mt-2 text-sm text-gray-600">Live and upcoming sessions - click any webinar to register and join.</p>
         </header>
 
         {isLoading ? (
@@ -125,7 +125,7 @@ function WebinarCard({ webinar, past = false }: { webinar: WebinarRow; past?: bo
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { Award, DollarSign, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
+import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 
 const PROFESSION_OPTIONS = [
   { value: '', label: 'Select your role' },
@@ -124,7 +124,7 @@ export default function Join() {
       firstName,
       lastName,
       profession,
-      npiNumber: isPharmaceuticals ? undefined : (npi || undefined),
+      npiNumber: profession === 'Pharmaceuticals' ? undefined : (npi || undefined),
       institution: institution.trim() || undefined,
       city: city.trim() || undefined,
       state: state || undefined,
@@ -141,14 +141,14 @@ export default function Join() {
   if (success) {
     return (
       <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center">
-          <h2 className="text-xl font-semibold text-gray-900">Check your email</h2>
-          <p className="mt-2 text-sm text-gray-600">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200/90 bg-white/95 p-8 text-center shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.12)]">
+          <h2 className="text-balance text-xl font-semibold text-gray-900">Check your email</h2>
+          <p className="text-pretty mt-2 text-sm text-gray-600">
             We&apos;ve sent a verification link to <strong>{email}</strong>. Click the link to verify your account, then you can sign in.
           </p>
           <Link
             to="/login"
-            className="mt-6 inline-block rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-black active:scale-[0.96]"
           >
             Go to Login
           </Link>
@@ -158,62 +158,62 @@ export default function Join() {
   }
 
   return (
-    <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-10">
-        {/* =====================
-            LEFT: VALUE
-            ===================== */}
-        <div className="space-y-6">
-          <p className="text-sm font-semibold text-gray-600">Join</p>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
-            Join CHT
-          </h1>
+    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-gray-50/90 via-white to-white px-4 py-10 sm:px-6 sm:py-12 md:py-16">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-14">
+        {/* Mobile: form first (order-1). Desktop: story left, form right — equal 1fr columns */}
+        <aside className="order-2 space-y-5 lg:sticky lg:top-24 lg:order-1">
+          <header className="text-center lg:text-left">
+            <p className="text-sm font-semibold tracking-wide text-brand-700">Join</p>
+            <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
+              Join CHT
+            </h1>
+            <p className="text-pretty mx-auto mt-3 max-w-md text-sm leading-relaxed text-gray-600 sm:text-base lg:mx-0">
+              CHT is a platform for healthcare professionals to participate in accredited education,
+              surveys, and research opportunities, and to earn CME credits and honoraria.
+            </p>
+          </header>
 
-          <p className="text-sm md:text-base text-gray-600 leading-relaxed">
-            CHT is a platform for healthcare professionals to participate in
-            accredited education, surveys, and research opportunities — and
-            earn CME credits and honoraria.
-          </p>
+          <ul className="mx-auto flex max-w-md list-none flex-col gap-3 lg:mx-0 lg:max-w-none" role="list">
+            <li>
+              <ValueRow
+                icon={<Award className="h-5 w-5" aria-hidden />}
+                title="Earn CME credits"
+                text="Participate in accredited educational programs."
+              />
+            </li>
+            <li>
+              <ValueRow
+                icon={<DollarSign className="h-5 w-5" aria-hidden />}
+                title="Honoraria"
+                text="Receive payment for eligible activities."
+              />
+            </li>
+            <li>
+              <ValueRow
+                icon={<ClipboardCheck className="h-5 w-5" aria-hidden />}
+                title="On your schedule"
+                text="Short videos and surveys when it works for you."
+              />
+            </li>
+          </ul>
+        </aside>
 
-          <div className="space-y-4">
-            <ValueRow
-              icon={<Award className="h-5 w-5" />}
-              title="Earn CME credits"
-              text="Participate in accredited educational programs."
-            />
-            <ValueRow
-              icon={<DollarSign className="h-5 w-5" />}
-              title="Get paid for your time"
-              text="Receive honoraria for eligible activities."
-            />
-            <ValueRow
-              icon={<ClipboardCheck className="h-5 w-5" />}
-              title="Simple participation"
-              text="Complete short videos and surveys on your schedule."
-            />
-          </div>
-        </div>
+        <div className="order-1 w-full min-w-0 lg:order-2">
+        <div className="rounded-2xl border border-gray-200/90 bg-white/95 p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.14)] sm:p-6">
+          <h2 className="text-balance text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">Create your account</h2>
 
-        {/* =====================
-            RIGHT: FORM
-            ===================== */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Create your account
-          </h2>
-
-          <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+          <p className="text-pretty mt-1 text-sm leading-snug text-gray-600">
             Join the Community Health platform.
           </p>
 
-          {/* OAuth sign-up — creates CHT account and redirects to platform */}
-          <div className="mt-6 space-y-3">
+          {/* OAuth sign-up creates CHT account and redirects to platform */}
+          <div className="mt-4 space-y-2">
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => handleOAuth('google')}
                 disabled={!!oauthLoading}
-                className="flex items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-gray-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
               >
                 {oauthLoading === 'google' ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
@@ -226,7 +226,7 @@ export default function Join() {
                 type="button"
                 onClick={() => handleOAuth('apple')}
                 disabled={!!oauthLoading}
-                className="flex items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-gray-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
               >
                 {oauthLoading === 'apple' ? (
                   <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
@@ -236,154 +236,172 @@ export default function Join() {
                 Apple
               </button>
             </div>
-            <p className="text-center text-xs text-gray-500">
-              Sign up with Google or Apple
-            </p>
+            <p className="text-center text-xs text-gray-500">Sign up with Google or Apple</p>
           </div>
 
-          <div className="mt-6">
+          <div className="mt-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">Or create account with email</span>
+                <span className="bg-white/95 px-3 text-gray-500">Or create account with email</span>
               </div>
             </div>
           </div>
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+          <form className="mt-4" onSubmit={handleSubmit}>
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="mb-3 rounded-xl border border-red-100 bg-red-50/90 px-3 py-2.5 text-sm text-red-800 shadow-[inset_0_0_0_1px_rgba(254,202,202,0.6)]">
                 {error}
               </div>
             )}
-            <Input
-              label="First name"
-              placeholder="Jane"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-            />
-            <Input
-              label="Last name"
-              placeholder="Doe"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-            />
-            <Input
-              label="Email address"
-              type="email"
-              placeholder="jane@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              placeholder="At least 8 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={8}
-            />
-            <Select
-              label="I am a…"
-              value={profession}
-              onChange={(e) => { setProfession(e.target.value); setNpiVerified(null); }}
-              options={PROFESSION_OPTIONS}
-              required
-            />
-            {requiresNpi && (
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-gray-900">NPI number</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="10-digit National Provider Identifier"
-                    value={npiNumber}
-                    onChange={(e) => { setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10)); setNpiVerified(null); }}
-                    required
-                    maxLength={10}
-                    className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
-                  />
-                  <button
-                    type="button"
-                    disabled={npiNumber.replace(/\D/g, '').length !== 10 || npiVerifying}
-                    onClick={async () => {
-                      setNpiVerifying(true);
-                      setNpiVerified(null);
-                      try {
-                        const res = await fetch(`https://npiregistry.cms.hhs.gov/api/?number=${npiNumber.replace(/\D/g, '')}&version=2.1`);
-                        const data = await res.json();
-                        setNpiVerified(data.result_count > 0);
-                      } catch {
-                        setNpiVerified(null);
-                      } finally {
-                        setNpiVerifying(false);
-                      }
-                    }}
-                    className="shrink-0 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
-                  >
-                    {npiVerifying ? 'Verifying…' : 'Verify'}
-                  </button>
-                </div>
-                {npiVerified === true && (
-                  <p className="text-xs text-green-700 font-medium">NPI verified successfully.</p>
-                )}
-                {npiVerified === false && (
-                  <p className="text-xs text-red-600 font-medium">NPI not found in the NPPES registry. Please check and try again.</p>
-                )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-3">
+              <div className="min-w-0">
+                <Input
+                  label="First name"
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
               </div>
-            )}
-
-            <div className="pt-2 border-t border-gray-100">
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
-                Practice Location <span className="font-normal normal-case">(optional)</span>
-              </p>
-              <div className="space-y-4">
+              <div className="min-w-0">
                 <Input
-                  label="Institution / Hospital"
-                  placeholder="e.g., Mayo Clinic"
-                  value={institution}
-                  onChange={(e) => setInstitution(e.target.value)}
+                  label="Last name"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
                 />
+              </div>
+              <div className="min-w-0">
                 <Input
-                  label="City"
-                  placeholder="e.g., Rochester"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  label="Email address"
+                  type="email"
+                  placeholder="jane@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <Select
-                    label="State"
-                    value={state}
-                    onChange={(e) => setState(e.target.value)}
-                    options={US_STATES}
-                  />
-                  <Input
-                    label="ZIP code"
-                    placeholder="12345"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    maxLength={10}
-                  />
+              </div>
+              <div className="min-w-0">
+                <Input
+                  label="Password"
+                  type="password"
+                  placeholder="At least 8 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                />
+              </div>
+              <div className="min-w-0 sm:col-span-2">
+                <Select
+                  label="I am a…"
+                  value={profession}
+                  onChange={(e) => { setProfession(e.target.value); setNpiVerified(null); }}
+                  options={PROFESSION_OPTIONS}
+                  required
+                />
+              </div>
+              {requiresNpi && (
+                <div className="min-w-0 space-y-1.5 sm:col-span-2">
+                  <label className="text-sm font-semibold text-gray-900">NPI number</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="10-digit NPI"
+                      value={npiNumber}
+                      onChange={(e) => { setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10)); setNpiVerified(null); }}
+                      required
+                      maxLength={10}
+                      className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                    />
+                    <button
+                      type="button"
+                      disabled={npiNumber.replace(/\D/g, '').length !== 10 || npiVerifying}
+                      onClick={async () => {
+                        setNpiVerifying(true);
+                        setNpiVerified(null);
+                        try {
+                          const res = await fetch(`https://npiregistry.cms.hhs.gov/api/?number=${npiNumber.replace(/\D/g, '')}&version=2.1`);
+                          const data = await res.json();
+                          setNpiVerified(data.result_count > 0);
+                        } catch {
+                          setNpiVerified(null);
+                        } finally {
+                          setNpiVerifying(false);
+                        }
+                      }}
+                      className="shrink-0 rounded-xl bg-gray-900 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-black active:scale-[0.96] disabled:opacity-50"
+                    >
+                      {npiVerifying ? 'Verifying…' : 'Verify'}
+                    </button>
+                  </div>
+                  {npiVerified === true && (
+                    <p className="text-xs font-medium text-green-700">NPI verified successfully.</p>
+                  )}
+                  {npiVerified === false && (
+                    <p className="text-xs font-medium text-red-600">NPI not found in the NPPES registry. Please check and try again.</p>
+                  )}
                 </div>
+              )}
+
+              <div className="border-t border-gray-100/90 pt-3 shadow-[0_-1px_0_0_rgba(255,255,255,0.85)] sm:col-span-2">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  Practice Location <span className="font-normal normal-case">(optional)</span>
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-3">
+                  <div className="min-w-0 sm:col-span-2">
+                    <Input
+                      label="Institution / Hospital"
+                      placeholder="e.g., Mayo Clinic"
+                      value={institution}
+                      onChange={(e) => setInstitution(e.target.value)}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <Input
+                      label="City"
+                      placeholder="e.g., Rochester"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <Select
+                      label="State"
+                      value={state}
+                      onChange={(e) => setState(e.target.value)}
+                      options={US_STATES}
+                    />
+                  </div>
+                  <div className="min-w-0 sm:col-span-2">
+                    <Input
+                      label="ZIP code"
+                      placeholder="12345"
+                      value={zipCode}
+                      onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-black active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
+                >
+                  {submitting ? 'Creating account...' : 'Create account'}
+                </button>
               </div>
             </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-70"
-            >
-              {submitting ? 'Creating account...' : 'Create account'}
-            </button>
           </form>
 
-          <p className="mt-4 text-xs text-gray-500">
+          <p className="mt-3 text-xs text-gray-500">
             By continuing, you agree to our{' '}
             <Link to="/privacy" className="underline hover:text-gray-700">
               Privacy Policy
@@ -391,12 +409,13 @@ export default function Join() {
             .
           </p>
 
-          <div className="mt-6 text-sm text-gray-600">
+          <div className="mt-4 text-sm text-gray-600">
             Already have an account?{' '}
             <Link to="/login" className="font-semibold text-gray-900 hover:underline">
               Sign in
             </Link>
           </div>
+        </div>
         </div>
       </div>
     </div>
@@ -417,11 +436,13 @@ function ValueRow({
   text: string;
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">{icon}</div>
-      <div>
+    <div className="flex gap-3 rounded-2xl border border-gray-200/75 bg-white/70 p-4 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_10px_32px_-18px_rgba(0,0,0,0.08)] sm:p-4 sm:pr-5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 text-gray-900 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
+        {icon}
+      </div>
+      <div className="min-w-0 pt-0.5">
         <p className="text-sm font-semibold text-gray-900">{title}</p>
-        <p className="text-sm text-gray-600 leading-relaxed">{text}</p>
+        <p className="text-pretty mt-0.5 text-sm leading-relaxed text-gray-600">{text}</p>
       </div>
     </div>
   );
@@ -447,7 +468,7 @@ function Input({
   maxLength?: number;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <label className="text-sm font-semibold text-gray-900">{label}</label>
       <input
         type={type}
@@ -457,7 +478,7 @@ function Input({
         required={required}
         minLength={minLength}
         maxLength={maxLength}
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
       />
     </div>
   );
@@ -477,13 +498,13 @@ function Select({
   required?: boolean;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <label className="text-sm font-semibold text-gray-900">{label}</label>
       <select
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] transition-[border-color,box-shadow] duration-200 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
