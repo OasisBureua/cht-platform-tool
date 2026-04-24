@@ -247,6 +247,8 @@ export const adminApi = {
       id: string;
       status: string;
       createdAt: string;
+      updatedAt?: string;
+      lastSubmittedAt?: string;
       intakeJotformSubmissionId?: string | null;
       intakeRequired?: boolean;
       intakeComplete?: boolean;
@@ -273,6 +275,9 @@ export const adminApi = {
       id: string;
       status: string;
       createdAt: string;
+      updatedAt?: string;
+      /** Max(createdAt, updatedAt, intake submitted) — use for “last request” after resubmits */
+      lastSubmittedAt?: string;
       intakeJotformSubmissionId: string | null;
       intakeRequired: boolean;
       intakeComplete: boolean;

@@ -37,6 +37,21 @@ import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 
+/** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
+function lastProgramRegistrationSubmittedAtIso(r: {
+  createdAt: Date;
+  updatedAt: Date;
+  intakeJotformSubmittedAt: Date | null;
+}): string {
+  return new Date(
+    Math.max(
+      r.createdAt.getTime(),
+      r.updatedAt.getTime(),
+      r.intakeJotformSubmittedAt?.getTime() ?? 0,
+    ),
+  ).toISOString();
+}
+
 @ApiTags('Admin')
 @Controller('admin')
 export class AdminController {
@@ -751,6 +766,8 @@ export class AdminController {
         id: r.id,
         status: r.status,
         createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        lastSubmittedAt: lastProgramRegistrationSubmittedAtIso(r),
         intakeJotformSubmissionId: r.intakeJotformSubmissionId,
         intakeRequired,
         intakeComplete,
@@ -802,6 +819,8 @@ export class AdminController {
         id: r.id,
         status: r.status,
         createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        lastSubmittedAt: lastProgramRegistrationSubmittedAtIso(r),
         reviewedAt: r.reviewedAt?.toISOString(),
         calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
         adminNotes: r.adminNotes,

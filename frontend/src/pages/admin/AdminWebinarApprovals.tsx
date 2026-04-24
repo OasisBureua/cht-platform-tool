@@ -153,7 +153,7 @@ export default function AdminWebinarApprovals() {
               <th className="py-3 px-4">Program</th>
               <th className="py-3 px-4">Type</th>
               <th className="py-3 px-4">User</th>
-              <th className="py-3 px-4">Submitted</th>
+              <th className="py-3 px-4">Last submitted</th>
               <th className="py-3 px-4">Actions</th>
             </tr>
           </thead>
@@ -189,7 +189,7 @@ export default function AdminWebinarApprovals() {
                   <div className="text-xs text-gray-500">{r.user.email}</div>
                 </td>
                 <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
-                  {format(parseISO(r.createdAt), 'MMM d, yyyy h:mm a')}
+                  {format(parseISO(r.lastSubmittedAt ?? r.createdAt), 'MMM d, yyyy h:mm a')}
                 </td>
                 <td className="py-3 px-4">
                   <div className="flex flex-wrap gap-2">

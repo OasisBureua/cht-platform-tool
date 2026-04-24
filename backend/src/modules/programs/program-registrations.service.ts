@@ -431,7 +431,8 @@ export class ProgramRegistrationsService {
           },
         },
       },
-      orderBy: { createdAt: 'asc' },
+      /** Resubmits after rejection bump updatedAt — sort by that so queue order matches “last touch”. */
+      orderBy: { updatedAt: 'asc' },
     });
   }
 
