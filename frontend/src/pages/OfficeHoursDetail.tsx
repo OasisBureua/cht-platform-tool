@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
@@ -7,7 +7,8 @@ import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { ChevronLeft, Video, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
-import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../utils/post-event-survey';
+import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
+import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 
 export default function OfficeHoursDetail() {
@@ -17,12 +18,6 @@ export default function OfficeHoursDetail() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
-  const [postEventSurveyStep, setPostEventSurveyStep] = useState<0 | 1>(0);
-
-  useEffect(() => {
-    setPostEventSurveyStep(0);
-  }, [id]);
-
   useEffect(() => {
     if (!id) return;
     const sid = readIntakeSubmissionIdFromSearch(location.search);
@@ -199,52 +194,24 @@ export default function OfficeHoursDetail() {
           <p className="text-xs text-gray-500">Register once, then join your session directly from here.</p>
         )}
 
-        {enrolled && program?.jotformSurveyUrl?.trim() && program && isPostEventSurveyUnlocked(program) ? (
-          <div className="border-t border-gray-200 pt-6 space-y-4">
-            <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
-            {postEventSurveyStep === 0 ? (
-              <>
-                <p className="text-sm text-gray-600">
-                  Complete this survey after the session. Tap <strong>Continue</strong> to open the survey—you won&apos;t
-                  be able to return to this step.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setPostEventSurveyStep(1)}
-                  className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-                >
-                  Continue
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray-600">
-                  Submit the survey below, then go to <strong>Payments</strong> to confirm your W-9 and payment details.
-                </p>
-                <div className="min-h-[360px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-                  <iframe
-                    title="Post-event survey"
-                    src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl, userId, program.id)}
-                    className="w-full h-[420px]"
-                    allow="camera; microphone"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/app/payments')}
-                  className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-                >
-                  Continue to Payments
-                </button>
-              </>
-            )}
+        {program && userId ? (
+          <div className="border-t border-gray-200 pt-6">
+            <PostEventParticipantFlow
+              program={program}
+              userId={userId}
+              enrolled={enrolled}
+              myRegistration={myRegistration}
+            />
           </div>
-        ) : enrolled && program?.jotformSurveyUrl?.trim() ? (
+        ) : null}
+
+        {enrolled &&
+        program &&
+        (program.jotformSurveyUrl?.trim() || program.honorariumAmount) &&
+        !isPostEventSurveyUnlocked(program) ? (
           <div className="border-t border-gray-200 pt-6 text-sm text-gray-600">
-            <p className="font-medium text-gray-900">Post-event survey</p>
-            <p className="mt-1">
-              Unlocks after this office hours session ends in Zoom (or right away if no end time was recorded yet).
-            </p>
+            <p className="font-medium text-gray-900">Post-event steps</p>
+            <p className="mt-1">Additional steps unlock after the scheduled session window (or when attendance is verified).</p>
           </div>
         ) : null}
       </div>

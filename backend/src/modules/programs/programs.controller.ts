@@ -17,6 +17,7 @@ import { AuthUser } from '../../auth/auth.service';
 import { ProgramsService } from './programs.service';
 import { ProgramRegistrationsService } from './program-registrations.service';
 import { FormJotformProgressService } from './form-jotform-progress.service';
+import { PaymentsService } from '../payments/payments.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto } from './dto/program-response.dto';
 import { UpdateVideoProgressDto, VideoProgressResponseDto } from './dto/update-video-progress.dto';
@@ -29,6 +30,7 @@ export class ProgramsController {
     private readonly programsService: ProgramsService,
     private readonly registrationsService: ProgramRegistrationsService,
     private readonly formJotformProgress: FormJotformProgressService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   /**
@@ -99,6 +101,33 @@ export class ProgramsController {
     @Body() body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
   ) {
     return this.registrationsService.submitRegistration(user.userId, id, body ?? {});
+  }
+
+  /**
+   * POST /api/programs/:id/post-event/acknowledge-survey — learner confirms post-event Jotform submitted (after attendance verified).
+   */
+  @Post(':id/post-event/acknowledge-survey')
+  @UseGuards(JwtAuthGuard)
+  async acknowledgePostEventSurvey(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.registrationsService.acknowledgePostEventSurvey(user.userId, id);
+  }
+
+  /**
+   * POST /api/programs/:id/post-event/request-honorarium — learner confirms payout details; creates PENDING payment for admin Pay now.
+   */
+  @Post(':id/post-event/request-honorarium')
+  @UseGuards(JwtAuthGuard)
+  async requestPostEventHonorarium(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.registrationsService.requestPostEventHonorariumPayout(user.userId, id);
+  }
+
+  /**
+   * GET /api/programs/:id/honorarium-preview — masked payout summary for honorarium confirmation step.
+   */
+  @Get(':id/honorarium-preview')
+  @UseGuards(JwtAuthGuard)
+  async getHonorariumPreview(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.paymentsService.getHonorariumProgramPreview(user.userId, id);
   }
 
   /**

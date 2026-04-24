@@ -31,6 +31,8 @@ export interface AdminWebinar {
   zoomStartUrl: string | null;
   sponsorName: string;
   creditAmount: number;
+  /** USD; webinars only (Office Hours sessions omit this). */
+  honorariumAmount?: number;
   createdAt: string;
 }
 
@@ -54,6 +56,10 @@ export interface CreateWebinarPayload {
    * When set, skips automatic invitation clone from env for this session.
    */
   jotformIntakeFormUrl?: string;
+  /**
+   * Optional. Honorarium in USD for learners (paid via Bill.com after post-event flow). WEBINAR only.
+   */
+  honorariumAmount?: number;
 }
 
 export interface UpdateWebinarPayload {
@@ -63,6 +69,8 @@ export interface UpdateWebinarPayload {
   startDate?: string;
   duration?: number;
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  /** WEBINAR only. USD; use 0 to clear. */
+  honorariumAmount?: number;
 }
 
 export interface CreateProgramPayload {
@@ -267,6 +275,31 @@ export const adminApi = {
       overallProgress: number;
       user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
     }>;
+  },
+
+  listPendingPostEventAttendance: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/pending-attendance');
+    return data as Array<{
+      id: string;
+      postEventAttendanceStatus: string;
+      createdAt: string;
+      user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
+      program: {
+        id: string;
+        title: string;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+        startDate?: string | null;
+        zoomJoinUrl?: string | null;
+      };
+    }>;
+  },
+
+  updatePostEventAttendance: async (registrationId: string, status: 'VERIFIED' | 'DENIED') => {
+    const { data } = await apiClient.patch(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/post-event-attendance`,
+      { status },
+    );
+    return data;
   },
 
   listPendingWebinarRegistrations: async () => {

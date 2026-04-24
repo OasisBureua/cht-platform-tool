@@ -49,6 +49,12 @@ export interface OfficeHoursSlotOption {
   remaining: number;
 }
 
+export type PostEventAttendanceStatus =
+  | 'NOT_REQUIRED'
+  | 'PENDING_VERIFICATION'
+  | 'VERIFIED'
+  | 'DENIED';
+
 export interface ProgramRegistrationState {
   id: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
@@ -59,7 +65,21 @@ export interface ProgramRegistrationState {
   intakeJotformSubmittedAt?: string;
   createdAt: string;
   reviewedAt?: string;
+  postEventAttendanceStatus?: PostEventAttendanceStatus;
+  postEventSurveyAcknowledgedAt?: string;
+  honorariumRequestedAt?: string;
+  honorariumPayment?: { id: string; status: string } | null;
 }
+
+export type HonorariumProgramPreview = {
+  programTitle: string;
+  honorariumAmountCents: number;
+  payeeDisplayName: string;
+  maskedBankLast4: string | null;
+  addressSummary: string | null;
+  hasBillVendor: boolean;
+  w9Submitted: boolean;
+};
 
 export type LiveWebinarActionItem = {
   id: string;
@@ -227,5 +247,23 @@ export const programsApi = {
 
   putJotformResume: async (programId: string, sessionId: string): Promise<void> => {
     await apiClient.put(`/programs/${encodeURIComponent(programId)}/jotform-resume`, { sessionId });
+  },
+
+  acknowledgePostEventSurvey: async (programId: string): Promise<void> => {
+    await apiClient.post(`/programs/${encodeURIComponent(programId)}/post-event/acknowledge-survey`);
+  },
+
+  requestPostEventHonorarium: async (programId: string): Promise<{ paymentId: string; created: boolean }> => {
+    const { data } = await apiClient.post<{ paymentId: string; created: boolean }>(
+      `/programs/${encodeURIComponent(programId)}/post-event/request-honorarium`,
+    );
+    return data;
+  },
+
+  getHonorariumPreview: async (programId: string): Promise<HonorariumProgramPreview> => {
+    const { data } = await apiClient.get<HonorariumProgramPreview>(
+      `/programs/${encodeURIComponent(programId)}/honorarium-preview`,
+    );
+    return data;
   },
 };

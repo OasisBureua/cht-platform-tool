@@ -27,9 +27,17 @@ export default function AdminWebinarScheduler({
   const queryClient = useQueryClient();
 
   const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
+  const [honorariumUsd, setHonorariumUsd] = useState('');
+
   useEffect(() => {
     setZoomSessionType(defaultZoomSessionType);
   }, [defaultZoomSessionType]);
+
+  useEffect(() => {
+    if (zoomSessionType === 'MEETING') {
+      setHonorariumUsd('');
+    }
+  }, [zoomSessionType]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -103,6 +111,15 @@ export default function AdminWebinarScheduler({
       return;
     }
 
+    let honorariumNum: number | undefined;
+    if (isWebinar && honorariumUsd.trim()) {
+      honorariumNum = parseFloat(honorariumUsd);
+      if (Number.isNaN(honorariumNum) || honorariumNum < 0) {
+        setValidationError('Honorarium must be a non-negative dollar amount (or leave blank).');
+        return;
+      }
+    }
+
     const durationNum = parseInt(duration, 10);
     if (isNaN(durationNum) || durationNum < 15 || durationNum > 480) {
       setValidationError('Duration must be between 15 and 480 minutes.');
@@ -126,6 +143,7 @@ export default function AdminWebinarScheduler({
       ...(postEventJotformFormIdOrUrl.trim()
         ? { postEventJotformFormIdOrUrl: postEventJotformFormIdOrUrl.trim() }
         : {}),
+      ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
     };
 
     createMutation.mutate(payload);
@@ -311,6 +329,28 @@ export default function AdminWebinarScheduler({
               />
             </div>
           </div>
+
+          {isWebinar ? (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">
+                Honorarium (USD){' '}
+                <span className="font-normal text-gray-500">— optional; webinars only</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={honorariumUsd}
+                onChange={(e) => setHonorariumUsd(e.target.value)}
+                placeholder="e.g. 500"
+                className="w-full max-w-xs rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-600">
+                Learners can request this amount after post-event steps; admins pay via Bill.com. Not available for
+                Office Hours sessions.
+              </p>
+            </div>
+          ) : null}
 
           {isWebinar ? (
             <div>

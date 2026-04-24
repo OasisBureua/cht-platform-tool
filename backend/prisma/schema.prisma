@@ -188,6 +188,14 @@ enum ProgramRegistrationStatus {
   WAITLISTED
 }
 
+/// After registration is approved, LIVE sessions may require a second admin step before post-event survey / honorarium.
+enum PostEventAttendanceStatus {
+  NOT_REQUIRED
+  PENDING_VERIFICATION
+  VERIFIED
+  DENIED
+}
+
 enum ProgramFormLinkKind {
   INTAKE
   PRE_EVENT
@@ -208,6 +216,11 @@ model ProgramRegistration {
   reviewedAt                DateTime?
   reviewedByUserId          String?
   calendarInviteSentAt      DateTime?
+  postEventAttendanceStatus              PostEventAttendanceStatus @default(NOT_REQUIRED)
+  postEventAttendanceReviewedAt        DateTime?
+  postEventAttendanceReviewedByUserId  String?
+  postEventSurveyAcknowledgedAt        DateTime?
+  honorariumRequestedAt                DateTime?
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
 
@@ -218,6 +231,7 @@ model ProgramRegistration {
   @@unique([userId, programId])
   @@index([programId])
   @@index([status])
+  @@index([postEventAttendanceStatus])
   @@map("ProgramRegistration")
 }
 

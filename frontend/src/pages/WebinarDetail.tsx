@@ -1,9 +1,10 @@
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
-import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../utils/post-event-survey';
+import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
+import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
@@ -30,12 +31,6 @@ export default function WebinarDetail() {
   const { user } = useAuth();
   const userId = user?.userId ?? '';
   const isZoomWebinar = id?.startsWith('zoom-') ?? false;
-  const [postEventSurveyStep, setPostEventSurveyStep] = useState<0 | 1>(0);
-
-  useEffect(() => {
-    setPostEventSurveyStep(0);
-  }, [id]);
-
   /** Intake often redirects to the session page; forward submission id to the registration wizard. */
   useEffect(() => {
     if (!id || isZoomWebinar) return;
@@ -73,7 +68,12 @@ export default function WebinarDetail() {
   const { data: myRegistration } = useQuery({
     queryKey: ['program', id, 'registration'],
     queryFn: () => programsApi.getMyRegistration(id!),
-    enabled: !!userId && !!id && !isZoomWebinar && !!program && program.zoomSessionType === 'WEBINAR',
+    enabled:
+      !!userId &&
+      !!id &&
+      !isZoomWebinar &&
+      !!program &&
+      (program.zoomSessionType === 'WEBINAR' || program.zoomSessionType === 'MEETING'),
     refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
   });
 
@@ -211,6 +211,8 @@ export default function WebinarDetail() {
 
   const hasPostEventSurvey = !!program.jotformSurveyUrl?.trim();
   const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
+  const wantsPostEventExtras =
+    hasPostEventSurvey || !!(program.honorariumAmount && program.honorariumAmount > 0);
   const surveyDone =
     enrolled &&
     (!hasPostEventSurvey || (postEventSurveyWindowOpen && !postEventReminder));
@@ -239,11 +241,19 @@ export default function WebinarDetail() {
     enrollMutation.isPending ||
     myRegistration?.status === 'PENDING';
 
-  const showPostEventSurvey =
+  const attendanceAllowsPostEvent =
+    myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
+    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED' ||
+    myRegistration?.postEventAttendanceStatus === undefined;
+  const showPostEventReminderBanner =
+    program.zoomSessionType === 'WEBINAR' &&
+    postEventReminder &&
     enrolled &&
-    !!program.jotformSurveyUrl?.trim() &&
-    !!userId &&
-    isPostEventSurveyUnlocked(program);
+    wantsPostEventExtras &&
+    isPostEventSurveyUnlocked(program) &&
+    attendanceAllowsPostEvent &&
+    myRegistration?.postEventAttendanceStatus !== 'PENDING_VERIFICATION' &&
+    myRegistration?.postEventAttendanceStatus !== 'DENIED';
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
@@ -258,16 +268,16 @@ export default function WebinarDetail() {
         </button>
       </div>
 
-      {program.zoomSessionType === 'WEBINAR' && postEventReminder && enrolled && showPostEventSurvey ? (
+      {showPostEventReminderBanner ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <p className="font-semibold">Post-event survey</p>
+          <p className="font-semibold">Post-event follow-up</p>
           <p className="mt-1 text-amber-900">
-            Complete the post-event survey on the{' '}
+            Complete remaining steps on this page after the session (survey and/or honorarium confirmation). You can also
+            open the{' '}
             <Link to="/app/surveys" className="font-semibold underline">
               Surveys
             </Link>{' '}
-            tab (or below on this page). Ensure <strong>Payments</strong> is up to date for honorarium processing. This
-            also appears under the header notifications (bell) for enrolled participants.
+            tab for linked feedback surveys. This may appear under the header notifications (bell).
           </p>
         </div>
       ) : null}
@@ -473,52 +483,22 @@ export default function WebinarDetail() {
         </div>
       </section>
 
-      {showPostEventSurvey ? (
-        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-base font-semibold text-gray-900">Post-event survey</h2>
-          {postEventSurveyStep === 0 ? (
-            <>
-              <p className="text-sm text-gray-600">
-                Complete this survey after the live session. Responses are tied to your account for credit and honorarium
-                follow-up. Tap <strong>Continue</strong> to open the survey—you won&apos;t be able to return to this step.
-              </p>
-              <button
-                type="button"
-                onClick={() => setPostEventSurveyStep(1)}
-                className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-              >
-                Continue
-              </button>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-gray-600">
-                Submit the survey below, then go to <strong>Payments</strong> to confirm your W-9 and payment details.
-              </p>
-              <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-                <iframe
-                  title="Post-event survey"
-                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
-                  className="w-full h-[480px]"
-                  allow="camera; microphone"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => navigate('/app/payments')}
-                className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-              >
-                Continue to Payments
-              </button>
-            </>
-          )}
-        </section>
-      ) : enrolled && program.jotformSurveyUrl?.trim() && program.zoomSessionType === 'WEBINAR' ? (
+      {program && userId ? (
+        <PostEventParticipantFlow
+          program={program}
+          userId={userId}
+          enrolled={enrolled}
+          myRegistration={myRegistration}
+        />
+      ) : null}
+
+      {enrolled &&
+      wantsPostEventExtras &&
+      !isPostEventSurveyUnlocked(program) &&
+      program.zoomSessionType === 'WEBINAR' ? (
         <section className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-          <p className="font-medium text-gray-900">Post-event survey</p>
-          <p className="mt-1">
-            The post-event survey will unlock here after the live session ends.
-          </p>
+          <p className="font-medium text-gray-900">Post-event steps</p>
+          <p className="mt-1">These unlock after the live session ends (or once attendance is verified, if required).</p>
         </section>
       ) : null}
 

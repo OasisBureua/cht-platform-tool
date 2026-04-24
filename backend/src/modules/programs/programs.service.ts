@@ -463,8 +463,10 @@ export class ProgramsService {
       },
     });
 
-    // Process honorarium payment if applicable
-    if (program.honorariumAmount) {
+    // Honorarium for LIVE webinars / office hours is requested by the learner after post-event steps (admin pays via Bill.com).
+    const isLiveSession =
+      program.zoomSessionType === 'WEBINAR' || program.zoomSessionType === 'MEETING';
+    if (program.honorariumAmount && !isLiveSession) {
       await this.queueService.processPayment(
         enrollment.userId,
         program.honorariumAmount,
@@ -522,7 +524,7 @@ export class ProgramsService {
     const programs = await this.prisma.program.findMany({
       where: {
         status: 'PUBLISHED',
-        zoomSessionType: 'WEBINAR',
+        zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
         OR: [{ startDate: null }, { startDate: { gte: since } }],
       },
       select: {
@@ -540,7 +542,7 @@ export class ProgramsService {
 
     const programIds = programs.map((p) => p.id);
 
-    const [enrollments, surveys] = await Promise.all([
+    const [enrollments, surveys, liveRegs] = await Promise.all([
       this.prisma.programEnrollment.findMany({
         where: { userId, programId: { in: programIds } },
         select: { programId: true },
@@ -552,9 +554,14 @@ export class ProgramsService {
         },
         select: { id: true, programId: true },
       }),
+      this.prisma.programRegistration.findMany({
+        where: { userId, programId: { in: programIds } },
+        select: { programId: true, postEventAttendanceStatus: true },
+      }),
     ]);
 
     const enrolledSet = new Set(enrollments.map((e) => e.programId));
+    const attendanceByProgram = new Map(liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]));
     const feedbackByProgram = new Map(surveys.map((s) => [s.programId, s.id]));
 
     const feedbackIds = surveys.map((s) => s.id);
@@ -596,6 +603,11 @@ export class ProgramsService {
         postSurveyAllowed = now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
       }
       if (!postSurveyAllowed) continue;
+
+      const att = attendanceByProgram.get(p.id);
+      if (att === 'PENDING_VERIFICATION' || att === 'DENIED') {
+        continue;
+      }
 
       items.push({
         id: `post-${p.id}`,

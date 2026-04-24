@@ -243,6 +243,11 @@ export class BillService {
     return this.request<BillVendor>('GET', `/vendors/${vendorId}`);
   }
 
+  /** Raw vendor payload for masked display (bank fields may be partially redacted by Bill.com). */
+  async getVendorJson(vendorId: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>('GET', `/vendors/${vendorId}`);
+  }
+
   /**
    * Update vendor with W-9 / tax information
    */

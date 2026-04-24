@@ -272,6 +272,13 @@ function WebinarRow({
         {durationStr && (
           <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>
         )}
+        {webinar.zoomSessionType !== 'MEETING' &&
+          webinar.honorariumAmount != null &&
+          webinar.honorariumAmount > 0 && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Honorarium ${webinar.honorariumAmount.toLocaleString()}
+            </p>
+          )}
       </td>
 
       <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">
@@ -372,6 +379,9 @@ function EditWebinarModal({
   const [startDate, setStartDate] = useState(localDate);
   const [duration, setDuration] = useState(String(webinar.duration ?? ''));
   const [status, setStatus] = useState<AdminWebinar['status']>(webinar.status);
+  const [honorariumUsd, setHonorariumUsd] = useState(
+    webinar.honorariumAmount != null ? String(webinar.honorariumAmount) : '',
+  );
   const [error, setError] = useState<string | null>(null);
 
   const updateMutation = useMutation({
@@ -399,6 +409,20 @@ function EditWebinarModal({
       if (isNaN(d.getTime())) { setError('Invalid date and time.'); return; }
     }
 
+    let honorariumPayload: number | undefined;
+    if (sessionKind === 'WEBINAR') {
+      if (honorariumUsd.trim() === '') {
+        honorariumPayload = 0;
+      } else {
+        const h = parseFloat(honorariumUsd);
+        if (Number.isNaN(h) || h < 0) {
+          setError('Honorarium must be a non-negative number (or leave blank to clear).');
+          return;
+        }
+        honorariumPayload = h;
+      }
+    }
+
     setError(null);
     const payload: UpdateWebinarPayload = {
       title: title.trim(),
@@ -407,6 +431,9 @@ function EditWebinarModal({
       startDate: startDate ? new Date(startDate).toISOString() : undefined,
       duration: durationNum,
       status,
+      ...(sessionKind === 'WEBINAR' && honorariumPayload !== undefined
+        ? { honorariumAmount: honorariumPayload }
+        : {}),
     };
     updateMutation.mutate(payload);
   };
@@ -491,6 +518,26 @@ function EditWebinarModal({
               />
             </div>
           </div>
+
+          {sessionKind === 'WEBINAR' ? (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Honorarium (USD) — optional
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={honorariumUsd}
+                onChange={(e) => setHonorariumUsd(e.target.value)}
+                placeholder="Leave blank to remove"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Webinars only. Save with an empty field to clear the honorarium for this program.
+              </p>
+            </div>
+          ) : null}
 
           {webinar.zoomMeetingId && (
             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">

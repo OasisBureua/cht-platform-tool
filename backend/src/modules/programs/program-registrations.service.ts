@@ -6,11 +6,17 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ProgramRegistrationStatus, ProgramStatus, ProgramZoomSessionType } from '@prisma/client';
+import {
+  PostEventAttendanceStatus,
+  ProgramRegistrationStatus,
+  ProgramStatus,
+  ProgramZoomSessionType,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { HubSpotService } from '../hubspot/hubspot.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class ProgramRegistrationsService {
@@ -23,7 +29,63 @@ export class ProgramRegistrationsService {
     private prisma: PrismaService,
     private hubspot: HubSpotService,
     private config: ConfigService,
+    private paymentsService: PaymentsService,
   ) {}
+
+  /**
+   * LIVE programs with honorarium, post-event Jotform, or FEEDBACK survey need attendance verification after approval.
+   */
+  async resolvePostEventAttendanceStatusForNewApproval(programId: string): Promise<PostEventAttendanceStatus> {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+      select: {
+        zoomSessionType: true,
+        jotformSurveyUrl: true,
+        honorariumAmount: true,
+      },
+    });
+    if (
+      !program ||
+      (program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
+        program.zoomSessionType !== ProgramZoomSessionType.MEETING)
+    ) {
+      return PostEventAttendanceStatus.NOT_REQUIRED;
+    }
+    const hasHonorarium = (program.honorariumAmount ?? 0) > 0;
+    const hasJotform = !!program.jotformSurveyUrl?.trim();
+    const feedbackCount = await this.prisma.survey.count({
+      where: { programId, type: 'FEEDBACK' },
+    });
+    if (hasHonorarium || hasJotform || feedbackCount > 0) {
+      return PostEventAttendanceStatus.PENDING_VERIFICATION;
+    }
+    return PostEventAttendanceStatus.NOT_REQUIRED;
+  }
+
+  private assertProgramPostEventWindowOpen(program: {
+    zoomSessionType: ProgramZoomSessionType | null;
+    startDate: Date | null;
+    duration: number | null;
+    zoomSessionEndedAt: Date | null;
+  }): void {
+    const now = Date.now();
+    if (program.zoomSessionEndedAt) {
+      if (now < program.zoomSessionEndedAt.getTime()) {
+        throw new BadRequestException('Post-event steps unlock after the live session ends.');
+      }
+      return;
+    }
+    if (program.zoomSessionType === ProgramZoomSessionType.MEETING) {
+      return;
+    }
+    if (!program.startDate) {
+      throw new BadRequestException('Session schedule is not set yet.');
+    }
+    const durMin = program.duration ?? 60;
+    if (now < program.startDate.getTime() + durMin * 60_000) {
+      throw new BadRequestException('Post-event steps unlock after the scheduled session end.');
+    }
+  }
 
   /**
    * When a MEETING has a start time and duration but no rows yet, create 15-minute slots end-to-end
@@ -108,6 +170,13 @@ export class ProgramRegistrationsService {
       include: { slot: true },
     });
     if (!reg) return null;
+
+    const honorariumPayment = await this.prisma.payment.findFirst({
+      where: { userId, programId, type: 'HONORARIUM' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, status: true },
+    });
+
     return {
       id: reg.id,
       status: reg.status,
@@ -116,6 +185,12 @@ export class ProgramRegistrationsService {
       intakeJotformSubmittedAt: reg.intakeJotformSubmittedAt?.toISOString(),
       createdAt: reg.createdAt.toISOString(),
       reviewedAt: reg.reviewedAt?.toISOString(),
+      postEventAttendanceStatus: reg.postEventAttendanceStatus,
+      postEventSurveyAcknowledgedAt: reg.postEventSurveyAcknowledgedAt?.toISOString(),
+      honorariumRequestedAt: reg.honorariumRequestedAt?.toISOString(),
+      honorariumPayment: honorariumPayment
+        ? { id: honorariumPayment.id, status: honorariumPayment.status }
+        : null,
     };
   }
 
@@ -205,6 +280,10 @@ export class ProgramRegistrationsService {
       ? ProgramRegistrationStatus.PENDING
       : ProgramRegistrationStatus.APPROVED;
 
+    const becomesApproved =
+      status === ProgramRegistrationStatus.APPROVED &&
+      existingRegistration?.status !== ProgramRegistrationStatus.APPROVED;
+
     const intakeSid = body.intakeJotformSubmissionId?.trim();
     const incomingIntakeDefined = body.intakeJotformSubmissionId !== undefined;
     const mergedIntakeId = incomingIntakeDefined
@@ -217,12 +296,24 @@ export class ProgramRegistrationsService {
         userId,
         programId,
         status,
+        postEventAttendanceStatus:
+          status === ProgramRegistrationStatus.APPROVED
+            ? await this.resolvePostEventAttendanceStatusForNewApproval(programId)
+            : PostEventAttendanceStatus.NOT_REQUIRED,
         officeHoursSlotId: body.officeHoursSlotId ?? null,
         intakeJotformSubmissionId: intakeSid || null,
         intakeJotformSubmittedAt: intakeSid ? new Date() : null,
       },
       update: {
         status,
+        ...(status === ProgramRegistrationStatus.PENDING
+          ? { postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED }
+          : becomesApproved
+            ? {
+                postEventAttendanceStatus:
+                  await this.resolvePostEventAttendanceStatusForNewApproval(programId),
+              }
+            : {}),
         officeHoursSlotId: body.officeHoursSlotId ?? undefined,
         ...(incomingIntakeDefined ? { intakeJotformSubmissionId: intakeSid || null } : {}),
         /** Refresh whenever they submit again and an intake id is on file (body or existing). */
@@ -298,12 +389,14 @@ export class ProgramRegistrationsService {
       where: { userId_programId: { userId, programId } },
     });
     if (enrolled) {
+      const att = await this.resolvePostEventAttendanceStatusForNewApproval(programId);
       await this.prisma.programRegistration.upsert({
         where: { userId_programId: { userId, programId } },
         create: {
           userId,
           programId,
           status: ProgramRegistrationStatus.APPROVED,
+          postEventAttendanceStatus: att,
           intakeJotformSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
@@ -327,6 +420,7 @@ export class ProgramRegistrationsService {
 
     const requiresApproval = program.registrationRequiresApproval;
     const approvedNow = !requiresApproval;
+    const attendanceIfApproved = await this.resolvePostEventAttendanceStatusForNewApproval(programId);
 
     if (!existing) {
       await this.prisma.programRegistration.create({
@@ -336,6 +430,9 @@ export class ProgramRegistrationsService {
           status: approvedNow
             ? ProgramRegistrationStatus.APPROVED
             : ProgramRegistrationStatus.PENDING,
+          postEventAttendanceStatus: approvedNow
+            ? attendanceIfApproved
+            : PostEventAttendanceStatus.NOT_REQUIRED,
           intakeJotformSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
@@ -347,12 +444,18 @@ export class ProgramRegistrationsService {
           : existing.status === ProgramRegistrationStatus.REJECTED
             ? ProgramRegistrationStatus.PENDING
             : existing.status;
+      const becomesApprovedHere = nextStatus === ProgramRegistrationStatus.APPROVED;
       await this.prisma.programRegistration.update({
         where: { id: existing.id },
         data: {
           intakeJotformSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
           status: nextStatus,
+          ...(nextStatus === ProgramRegistrationStatus.PENDING
+            ? { postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED }
+            : becomesApprovedHere
+              ? { postEventAttendanceStatus: attendanceIfApproved }
+              : {}),
         },
       });
     }
@@ -448,14 +551,28 @@ export class ProgramRegistrationsService {
     });
     if (!reg) throw new NotFoundException('Registration not found');
 
+    const nextAttendance =
+      status === ProgramRegistrationStatus.APPROVED
+        ? await this.resolvePostEventAttendanceStatusForNewApproval(reg.programId)
+        : PostEventAttendanceStatus.NOT_REQUIRED;
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const row = await tx.programRegistration.update({
         where: { id: registrationId },
         data: {
           status,
+          postEventAttendanceStatus: nextAttendance,
           adminNotes: adminNotes !== undefined ? adminNotes : undefined,
           reviewedAt: new Date(),
           reviewedByUserId: adminUserId,
+          ...(status === ProgramRegistrationStatus.REJECTED
+            ? {
+                postEventSurveyAcknowledgedAt: null,
+                honorariumRequestedAt: null,
+                postEventAttendanceReviewedAt: null,
+                postEventAttendanceReviewedByUserId: null,
+              }
+            : {}),
         },
       });
 
@@ -506,6 +623,11 @@ export class ProgramRegistrationsService {
           where: { id: reg.id },
           data: {
             status: ProgramRegistrationStatus.REJECTED,
+            postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
+            postEventSurveyAcknowledgedAt: null,
+            honorariumRequestedAt: null,
+            postEventAttendanceReviewedAt: null,
+            postEventAttendanceReviewedByUserId: null,
             reviewedAt: new Date(),
             reviewedByUserId: adminUserId,
             adminNotes: 'Enrollment removed by admin; learner may register again.',
@@ -516,6 +638,158 @@ export class ProgramRegistrationsService {
 
     this.logger.log(`Admin ${adminUserId} removed enrollment ${enrollmentId} (program ${programId})`);
     return { removed: true };
+  }
+
+  async acknowledgePostEventSurvey(userId: string, programId: string) {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+      select: {
+        jotformSurveyUrl: true,
+        zoomSessionType: true,
+        startDate: true,
+        duration: true,
+        zoomSessionEndedAt: true,
+      },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+    if (!program.jotformSurveyUrl?.trim()) {
+      throw new BadRequestException('This program does not have a post-event survey URL.');
+    }
+    this.assertProgramPostEventWindowOpen(program);
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
+      throw new ForbiddenException('Your registration must be approved.');
+    }
+    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.PENDING_VERIFICATION) {
+      throw new BadRequestException(
+        'An administrator must confirm your attendance before you can complete the post-event survey.',
+      );
+    }
+    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
+      throw new ForbiddenException('Attendance was not verified for this session.');
+    }
+
+    return this.prisma.programRegistration.update({
+      where: { id: reg.id },
+      data: { postEventSurveyAcknowledgedAt: new Date() },
+    });
+  }
+
+  async requestPostEventHonorariumPayout(userId: string, programId: string) {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+      select: {
+        honorariumAmount: true,
+        jotformSurveyUrl: true,
+        zoomSessionType: true,
+        startDate: true,
+        duration: true,
+        zoomSessionEndedAt: true,
+      },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+    if (!program.honorariumAmount || program.honorariumAmount <= 0) {
+      throw new BadRequestException('This program does not include an honorarium.');
+    }
+
+    this.assertProgramPostEventWindowOpen(program);
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
+      throw new ForbiddenException('Your registration must be approved.');
+    }
+    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.PENDING_VERIFICATION) {
+      throw new BadRequestException('Attendance must be verified before requesting payment.');
+    }
+    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
+      throw new ForbiddenException('Attendance was not verified for this session.');
+    }
+
+    if (program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {
+      throw new BadRequestException('Complete and acknowledge the post-event survey first.');
+    }
+
+    const u = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { billVendorId: true, w9Submitted: true },
+    });
+    if (!u?.billVendorId) {
+      throw new BadRequestException('Add your payment profile under Payments before requesting an honorarium.');
+    }
+    if (!u.w9Submitted) {
+      throw new BadRequestException('Submit your W-9 under Payments before requesting an honorarium.');
+    }
+
+    const result = await this.paymentsService.ensurePendingHonorariumForProgram(userId, programId);
+
+    await this.prisma.programRegistration.update({
+      where: { id: reg.id },
+      data: { honorariumRequestedAt: new Date() },
+    });
+
+    return result;
+  }
+
+  async adminSetPostEventAttendance(
+    adminUserId: string,
+    registrationId: string,
+    status: 'VERIFIED' | 'DENIED',
+  ) {
+    if (status !== 'VERIFIED' && status !== 'DENIED') {
+      throw new BadRequestException('status must be VERIFIED or DENIED');
+    }
+    const reg = await this.prisma.programRegistration.findUnique({ where: { id: registrationId } });
+    if (!reg) throw new NotFoundException('Registration not found');
+    if (reg.status !== ProgramRegistrationStatus.APPROVED) {
+      throw new BadRequestException('Registration must be approved first.');
+    }
+    if (reg.postEventAttendanceStatus !== PostEventAttendanceStatus.PENDING_VERIFICATION) {
+      throw new BadRequestException('This registration is not waiting for attendance verification.');
+    }
+    const next =
+      status === 'VERIFIED'
+        ? PostEventAttendanceStatus.VERIFIED
+        : PostEventAttendanceStatus.DENIED;
+
+    return this.prisma.programRegistration.update({
+      where: { id: registrationId },
+      data: {
+        postEventAttendanceStatus: next,
+        postEventAttendanceReviewedAt: new Date(),
+        postEventAttendanceReviewedByUserId: adminUserId,
+      },
+    });
+  }
+
+  async listPendingPostEventAttendanceForAdmin() {
+    return this.prisma.programRegistration.findMany({
+      where: {
+        status: ProgramRegistrationStatus.APPROVED,
+        postEventAttendanceStatus: PostEventAttendanceStatus.PENDING_VERIFICATION,
+        program: {
+          zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+          status: 'PUBLISHED',
+        },
+      },
+      include: {
+        user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            zoomSessionType: true,
+            startDate: true,
+            zoomJoinUrl: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
   }
 
   async markCalendarInviteSent(registrationId: string) {

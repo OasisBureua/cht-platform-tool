@@ -443,6 +443,10 @@ export class AdminController {
         zoomStartUrl: zoom?.startUrl ?? p.zoomStartUrl ?? null,
         sponsorName: p.sponsorName,
         creditAmount: p.creditAmount,
+        honorariumAmount:
+          p.zoomSessionType === 'WEBINAR' && p.honorariumAmount != null
+            ? p.honorariumAmount / 100
+            : undefined,
         createdAt: p.createdAt.toISOString(),
       };
     });
@@ -478,6 +482,11 @@ export class AdminController {
           description:
             'Required for WEBINAR. Registration / invitation Jotform URL used for learner intake.',
         },
+        honorariumAmount: {
+          type: 'number',
+          description:
+            'Optional. Honorarium in USD for learners (stored as cents). WEBINAR only; not allowed for Office Hours (MEETING).',
+        },
       },
     },
   })
@@ -495,6 +504,8 @@ export class AdminController {
       postEventJotformFormIdOrUrl?: string;
       /** WEBINAR: required per-session intake URL. */
       jotformIntakeFormUrl?: string;
+      /** WEBINAR only. Dollars (e.g. 250 = $250); stored as cents on Program. */
+      honorariumAmount?: number;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -502,6 +513,19 @@ export class AdminController {
     if (!body.duration || body.duration < 1) throw new BadRequestException('duration (minutes) is required');
 
     const sessionType = body.zoomSessionType ?? 'WEBINAR';
+
+    if (sessionType === 'MEETING' && body.honorariumAmount != null) {
+      throw new BadRequestException(
+        'Honorarium is only supported for Zoom Webinars. Remove honorariumAmount when scheduling Office Hours.',
+      );
+    }
+    if (
+      sessionType === 'WEBINAR' &&
+      body.honorariumAmount != null &&
+      (typeof body.honorariumAmount !== 'number' || body.honorariumAmount < 0)
+    ) {
+      throw new BadRequestException('honorariumAmount must be a non-negative number (USD).');
+    }
 
     if (sessionType === 'WEBINAR' && !body.jotformIntakeFormUrl?.trim()) {
       throw new BadRequestException('Jotform intake URL is required for webinars.');
@@ -560,6 +584,11 @@ export class AdminController {
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
+      ...(sessionType === 'WEBINAR' &&
+      body.honorariumAmount != null &&
+      body.honorariumAmount > 0
+        ? { honorariumAmount: body.honorariumAmount }
+        : {}),
       ...(sessionType === 'WEBINAR' && manualIntakeUrl
         ? { jotformIntakeFormUrl: manualIntakeUrl }
         : {}),
@@ -780,6 +809,25 @@ export class AdminController {
     });
   }
 
+  @Get('webinar-registrations/pending-attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Approved learners waiting for post-event attendance verification (unlocks survey / honorarium flow)',
+  })
+  async listPendingPostEventAttendance() {
+    const rows = await this.programRegistrations.listPendingPostEventAttendanceForAdmin();
+    return rows.map((r) => ({
+      id: r.id,
+      postEventAttendanceStatus: r.postEventAttendanceStatus,
+      createdAt: r.createdAt.toISOString(),
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
   @Get('programs/:id/enrollments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -839,6 +887,10 @@ export class AdminController {
               label: r.slot.label,
             }
           : null,
+        postEventAttendanceStatus: r.postEventAttendanceStatus,
+        postEventAttendanceReviewedAt: r.postEventAttendanceReviewedAt?.toISOString(),
+        postEventSurveyAcknowledgedAt: r.postEventSurveyAcknowledgedAt?.toISOString(),
+        honorariumRequestedAt: r.honorariumRequestedAt?.toISOString(),
       };
     });
   }
@@ -865,6 +917,26 @@ export class AdminController {
       registrationId,
       body.status,
       body.adminNotes,
+    );
+  }
+
+  @Patch('registrations/:registrationId/post-event-attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Verify or deny post-event attendance (unlocks survey when verified)' })
+  async adminPatchPostEventAttendance(
+    @Param('registrationId') registrationId: string,
+    @Body() body: { status: 'VERIFIED' | 'DENIED' },
+    @CurrentUser() admin: AuthUser,
+  ) {
+    if (body?.status !== 'VERIFIED' && body?.status !== 'DENIED') {
+      throw new BadRequestException('status must be VERIFIED or DENIED');
+    }
+    return this.programRegistrations.adminSetPostEventAttendance(
+      admin.userId,
+      registrationId,
+      body.status,
     );
   }
 
@@ -985,10 +1057,21 @@ export class AdminController {
       startDate?: string;
       duration?: number;
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      /** WEBINAR only. Dollars; omit to leave unchanged. Set to 0 to clear. */
+      honorariumAmount?: number;
     },
   ) {
     const existing = await this.prisma.program.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Webinar not found');
+
+    if (body.honorariumAmount !== undefined) {
+      if (existing.zoomSessionType !== 'WEBINAR') {
+        throw new BadRequestException('Honorarium can only be set on Zoom Webinar programs, not Office Hours.');
+      }
+      if (typeof body.honorariumAmount !== 'number' || body.honorariumAmount < 0) {
+        throw new BadRequestException('honorariumAmount must be a non-negative number (USD).');
+      }
+    }
 
     if (existing.zoomMeetingId && this.zoom.isConfigured()) {
       if (existing.zoomSessionType === 'MEETING') {
@@ -1015,6 +1098,10 @@ export class AdminController {
     if (body.startDate) updateData.startDate = new Date(body.startDate);
     if (body.duration !== undefined) updateData.duration = body.duration;
     if (body.status) updateData.status = body.status;
+    if (body.honorariumAmount !== undefined && existing.zoomSessionType === 'WEBINAR') {
+      updateData.honorariumAmount =
+        body.honorariumAmount <= 0 ? null : Math.round(body.honorariumAmount * 100);
+    }
 
     const updated = await this.prisma.program.update({ where: { id }, data: updateData });
     return updated;

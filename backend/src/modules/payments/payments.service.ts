@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PaymentType, ProgramZoomSessionType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
@@ -19,6 +20,153 @@ export class PaymentsService {
     private configService: ConfigService,
   ) {
     this.frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
+  }
+
+  /**
+   * Learner-facing payout summary for a program honorarium (masked bank + partial address only).
+   */
+  async getHonorariumProgramPreview(
+    userId: string,
+    programId: string,
+  ): Promise<{
+    programTitle: string;
+    honorariumAmountCents: number;
+    payeeDisplayName: string;
+    maskedBankLast4: string | null;
+    addressSummary: string | null;
+    hasBillVendor: boolean;
+    w9Submitted: boolean;
+  }> {
+    const [user, program] = await Promise.all([
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          firstName: true,
+          lastName: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          billVendorId: true,
+          w9Submitted: true,
+        },
+      }),
+      this.prisma.program.findUnique({
+        where: { id: programId },
+        select: { title: true, honorariumAmount: true, zoomSessionType: true },
+      }),
+    ]);
+
+    if (!user) throw new NotFoundException('User not found');
+    if (!program) throw new NotFoundException('Program not found');
+    if (!program.honorariumAmount || program.honorariumAmount <= 0) {
+      throw new BadRequestException('This program does not offer an honorarium');
+    }
+    if (
+      program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
+      program.zoomSessionType !== ProgramZoomSessionType.MEETING
+    ) {
+      throw new BadRequestException('Honorarium preview is only available for LIVE programs');
+    }
+
+    const payeeDisplayName = `${user.firstName} ${user.lastName}`.trim();
+    const zip = user.zipCode?.replace(/\D/g, '') ?? '';
+    const zipTail = zip.length >= 4 ? zip.slice(-4) : zip ? '••••' : null;
+    const addressSummary =
+      user.city || user.state || zipTail
+        ? [user.city, user.state, zipTail ? `ZIP …${zipTail}` : null].filter(Boolean).join(', ')
+        : null;
+
+    let maskedBankLast4: string | null = null;
+    if (user.billVendorId) {
+      try {
+        const raw = await this.billService.getVendorJson(user.billVendorId);
+        maskedBankLast4 = this.extractMaskedBankLast4(raw);
+      } catch (e) {
+        this.logger.warn(`Bill.com vendor read for preview failed: ${(e as Error).message}`);
+      }
+    }
+
+    return {
+      programTitle: program.title,
+      honorariumAmountCents: program.honorariumAmount,
+      payeeDisplayName,
+      maskedBankLast4,
+      addressSummary,
+      hasBillVendor: !!user.billVendorId,
+      w9Submitted: user.w9Submitted,
+    };
+  }
+
+  private extractMaskedBankLast4(vendor: Record<string, unknown>): string | null {
+    const tryFrom = (val: unknown): string | null => {
+      if (val == null) return null;
+      const s = String(val).replace(/\s/g, '');
+      if (!s) return null;
+      const digits = s.replace(/\D/g, '');
+      if (digits.length >= 4) return digits.slice(-4);
+      if (/\*{2,}/.test(s) && digits.length > 0) return digits.slice(-4);
+      if (s.length <= 6 && digits.length > 0) return digits;
+      return null;
+    };
+
+    const payInfo = vendor.paymentInformation as Record<string, unknown> | undefined;
+    const bank = payInfo?.bankAccount as Record<string, unknown> | undefined;
+    const direct =
+      tryFrom(bank?.accountNumber) ??
+      tryFrom(bank?.accountNumberLast4) ??
+      tryFrom(bank?.last4) ??
+      tryFrom(vendor.accountNumber);
+
+    if (direct) return `••••${direct}`;
+
+    const nested = JSON.stringify(vendor);
+    const m = nested.match(/accountNumber"\s*:\s*"([^"]+)"/i) || nested.match(/last4"\s*:\s*"([^"]+)"/i);
+    if (m?.[1]) {
+      const t = tryFrom(m[1]);
+      if (t) return `••••${t}`;
+    }
+    return null;
+  }
+
+  /**
+   * Create a single PENDING honorarium row for admin Bill.com pay-now (idempotent).
+   */
+  async ensurePendingHonorariumForProgram(
+    userId: string,
+    programId: string,
+  ): Promise<{ paymentId: string; created: boolean }> {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+      select: { honorariumAmount: true, title: true },
+    });
+    if (!program?.honorariumAmount || program.honorariumAmount <= 0) {
+      throw new BadRequestException('This program does not offer an honorarium');
+    }
+
+    const existing = await this.prisma.payment.findFirst({
+      where: {
+        userId,
+        programId,
+        type: PaymentType.HONORARIUM,
+        status: { in: ['PENDING', 'PROCESSING', 'PAID'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) {
+      return { paymentId: existing.id, created: false };
+    }
+
+    const payment = await this.prisma.payment.create({
+      data: {
+        userId,
+        programId,
+        amount: program.honorariumAmount,
+        type: PaymentType.HONORARIUM,
+        status: 'PENDING',
+        description: `Honorarium — ${program.title} (learner confirmed)`,
+      },
+    });
+    return { paymentId: payment.id, created: true };
   }
 
   /**
