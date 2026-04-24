@@ -793,6 +793,7 @@ export class ProgramRegistrationsService {
       where: { id: programId },
       select: {
         jotformSurveyUrl: true,
+        honorariumAmount: true,
         zoomSessionType: true,
         startDate: true,
         duration: true,
@@ -820,9 +821,17 @@ export class ProgramRegistrationsService {
       throw new ForbiddenException('Attendance was not verified for this session.');
     }
 
+    const hasHonor = program.honorariumAmount != null && program.honorariumAmount > 0;
+    if (hasHonor) {
+      await this.paymentsService.ensurePendingHonorariumForProgram(userId, programId);
+    }
+
     return this.prisma.programRegistration.update({
       where: { id: reg.id },
-      data: { postEventSurveyAcknowledgedAt: new Date() },
+      data: {
+        postEventSurveyAcknowledgedAt: new Date(),
+        ...(hasHonor ? { honorariumRequestedAt: new Date() } : {}),
+      },
     });
   }
 
@@ -856,6 +865,11 @@ export class ProgramRegistrationsService {
     }
     if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
       throw new ForbiddenException('Attendance was not verified for this session.');
+    }
+
+    if (reg.honorariumRequestedAt) {
+      const result = await this.paymentsService.ensurePendingHonorariumForProgram(userId, programId);
+      return { ...result, alreadyRequested: true as const };
     }
 
     if (program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {

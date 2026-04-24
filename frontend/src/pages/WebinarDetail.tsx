@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,6 +30,7 @@ export default function WebinarDetail() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  const [postEventNavLock, setPostEventNavLock] = useState(false);
   const isZoomWebinar = id?.startsWith('zoom-') ?? false;
   /** Intake often redirects to the session page; forward submission id to the registration wizard. */
   useEffect(() => {
@@ -258,16 +259,18 @@ export default function WebinarDetail() {
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
-      {/* Back */}
-      <div>
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back to Live
-        </button>
-      </div>
+      {!postEventNavLock ? (
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Live
+          </button>
+        </div>
+      ) : null}
 
       {showPostEventReminderBanner ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
@@ -490,6 +493,7 @@ export default function WebinarDetail() {
           userId={userId}
           enrolled={enrolled}
           myRegistration={myRegistration}
+          onPostEventNavLockChange={setPostEventNavLock}
         />
       ) : null}
 

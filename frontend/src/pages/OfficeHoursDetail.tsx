@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
@@ -18,6 +18,7 @@ export default function OfficeHoursDetail() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  const [postEventNavLock, setPostEventNavLock] = useState(false);
   useEffect(() => {
     if (!id) return;
     const sid = readIntakeSubmissionIdFromSearch(location.search);
@@ -100,14 +101,16 @@ export default function OfficeHoursDetail() {
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
-      >
-        <ChevronLeft className="h-4 w-4" />
-        Back
-      </button>
+      {!postEventNavLock ? (
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back
+        </button>
+      ) : null}
 
       <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
         <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
@@ -201,6 +204,7 @@ export default function OfficeHoursDetail() {
               userId={userId}
               enrolled={enrolled}
               myRegistration={myRegistration}
+              onPostEventNavLockChange={setPostEventNavLock}
             />
           </div>
         ) : null}

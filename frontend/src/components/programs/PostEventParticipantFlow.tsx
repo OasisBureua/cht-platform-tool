@@ -24,8 +24,10 @@ export default function PostEventParticipantFlow(props: {
   userId: string;
   enrolled: boolean;
   myRegistration: ProgramRegistrationState | null | undefined;
+  /** While true, parent should hide the page "Back" control so the learner cannot return mid-flow. */
+  onPostEventNavLockChange?: (locked: boolean) => void;
 }) {
-  const { program, userId, enrolled, myRegistration } = props;
+  const { program, userId, enrolled, myRegistration, onPostEventNavLockChange } = props;
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>('intro');
 
@@ -37,10 +39,6 @@ export default function PostEventParticipantFlow(props: {
   const attendancePending = att === 'PENDING_VERIFICATION';
   const attendanceDenied = att === 'DENIED';
 
-  useEffect(() => {
-    setPhase('intro');
-  }, [program.id]);
-
   const showFlow =
     enrolled &&
     !!userId &&
@@ -49,10 +47,50 @@ export default function PostEventParticipantFlow(props: {
     !!myRegistration &&
     myRegistration.status === 'APPROVED';
 
+  const flowBackLocked = showFlow && phase !== 'intro' && phase !== 'done';
+
+  useEffect(() => {
+    onPostEventNavLockChange?.(flowBackLocked);
+    return () => onPostEventNavLockChange?.(false);
+  }, [flowBackLocked, onPostEventNavLockChange]);
+
+  /** Prevent browser back from undoing a committed step in this sub-flow. */
+  useEffect(() => {
+    if (!flowBackLocked) return;
+    const onPop = () => {
+      window.history.pushState({ postEventFlowLock: 1 }, '', window.location.href);
+    };
+    window.history.pushState({ postEventFlowLock: 1 }, '', window.location.href);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [flowBackLocked]);
+
+  useEffect(() => {
+    setPhase('intro');
+  }, [program.id]);
+
+  // Resume from server (e.g. refresh) when sitting at intro.
+  useEffect(() => {
+    if (!myRegistration || !showFlow) return;
+    if (phase !== 'intro') return;
+    const ack = !!myRegistration.postEventSurveyAcknowledgedAt;
+    const req = !!myRegistration.honorariumRequestedAt;
+    if (hasSurvey && !ack) return;
+    if (hasHonorarium) {
+      if (req || myRegistration.honorariumPayment) {
+        setPhase('done');
+      } else {
+        setPhase('payout');
+      }
+    } else if (ack) {
+      setPhase('done');
+    }
+  }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id]);
+
   const { data: preview, isError: previewError } = useQuery({
     queryKey: ['programs', program.id, 'honorarium-preview'],
     queryFn: () => programsApi.getHonorariumPreview(program.id),
-    enabled: showFlow && attendanceOk && phase === 'payout' && hasHonorarium,
+    enabled: showFlow && attendanceOk && phase === 'payout' && hasHonorarium && !hasSurvey,
     retry: false,
   });
 
@@ -61,6 +99,7 @@ export default function PostEventParticipantFlow(props: {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['program', program.id, 'registration'] });
       queryClient.invalidateQueries({ queryKey: ['programs', 'live-action-items'] });
+      queryClient.invalidateQueries({ queryKey: ['payments', userId, 'summary'] });
     },
   });
 
@@ -107,8 +146,7 @@ export default function PostEventParticipantFlow(props: {
 
   const afterSurvey = async () => {
     await ackMut.mutateAsync();
-    if (hasHonorarium) setPhase('payout');
-    else setPhase('done');
+    setPhase('done');
   };
 
   const afterPayoutConfirm = async () => {
@@ -125,15 +163,18 @@ export default function PostEventParticipantFlow(props: {
           <p className="text-sm text-gray-600">
             {hasSurvey ? (
               <>
-                Complete the post-event survey after the live session. Each time you tap <strong>Continue</strong>, you
-                move forward—you <strong>cannot</strong> go back to a previous step.
+                Complete the post-event survey in the next step, then use <strong>Complete survey</strong> to continue.
+                {hasHonorarium
+                  ? ' A pending honorarium will be created for an administrator to review and pay. '
+                  : ' '}
+                You cannot return to a previous step after you continue.
               </>
-            ) : (
+            ) : hasHonorarium ? (
               <>
-                Confirm your payout details for the honorarium. After you continue, you <strong>cannot</strong> go back
-                to change this step.
+                Confirm you are ready to submit your honorarium request. Payout is processed by an administrator through
+                Bill.com. After you continue, you <strong>cannot</strong> return to this step.
               </>
-            )}
+            ) : null}
           </p>
           <button
             type="button"
@@ -148,7 +189,8 @@ export default function PostEventParticipantFlow(props: {
       {phase === 'survey' && hasSurvey ? (
         <>
           <p className="text-sm text-gray-600">
-            Submit the embedded survey, then tap <strong>Continue</strong> to confirm you have finished.
+            Submit the embedded survey, then tap <strong>Complete survey</strong>. You will not be able to go back
+            afterward.
           </p>
           <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
             <iframe
@@ -164,7 +206,7 @@ export default function PostEventParticipantFlow(props: {
             onClick={() => afterSurvey().catch(() => {})}
             className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
-            {ackMut.isPending ? 'Saving…' : 'Continue'}
+            {ackMut.isPending ? 'Saving…' : 'Complete survey'}
           </button>
           {ackMut.isError ? (
             <p className="text-sm text-red-700">Could not save progress. Check your connection and try again.</p>
@@ -172,11 +214,15 @@ export default function PostEventParticipantFlow(props: {
         </>
       ) : null}
 
-      {phase === 'payout' && hasHonorarium ? (
+      {phase === 'payout' && hasHonorarium && !hasSurvey ? (
         <>
           <p className="text-sm text-gray-600">
-            Review the payout details we will use for your honorarium. Only masked account information is shown for
-            security. Tap <strong>Continue</strong> to submit your payment request to an administrator.
+            Review the payout details we will use for your honorarium. Add your Bill.com profile and W-9 under{' '}
+            <Link to="/app/payments" className="font-semibold underline">
+              Payments
+            </Link>{' '}
+            if needed. When you continue, a <strong>pending</strong> payment is created for an administrator to approve
+            and pay.
           </p>
           {previewError ? (
             <p className="text-sm text-red-700">Could not load payout preview. Open Payments to finish setup, then try again.</p>
@@ -265,8 +311,9 @@ export default function PostEventParticipantFlow(props: {
                   <>Your honorarium has been marked paid.</>
                 ) : (
                   <>
-                    Your honorarium request is with an administrator. When they use <strong>Pay now</strong>, funds are
-                    sent via Bill.com and your status updates to paid.
+                    A <strong>pending</strong> honorarium is on file. An administrator will review and use{' '}
+                    <strong>Pay now</strong> in the admin tools when ready; you will see the status under Payments when
+                    it is sent.
                   </>
                 )}
               </p>
