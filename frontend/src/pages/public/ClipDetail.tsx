@@ -39,7 +39,7 @@ function normalizeClip(raw: Record<string, unknown>): {
 }
 
 function formatDuration(seconds: number): string {
-  if (!seconds || seconds < 0) return '—';
+  if (!seconds || seconds < 0) return '-';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, '0')}`;
@@ -123,7 +123,7 @@ export default function ClipDetail() {
         {/* Title + meta - all from API, works for public and /app */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{clip.title}</h1>
-          <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500">
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500 tabular-nums">
             {meta.doctors.length > 0 && (
               <span>Featuring: {meta.doctors.join(', ')}</span>
             )}

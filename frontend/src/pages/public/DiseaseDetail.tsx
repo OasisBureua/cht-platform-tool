@@ -81,12 +81,12 @@ export default function DiseaseDetail() {
                     <Link
                       key={w.id}
                       to={isApp ? `/app/live/${w.id}` : `/live/${w.id}`}
-                      className="rounded-2xl border border-gray-200 bg-white p-5 hover:shadow-md transition-shadow"
+                      className="rounded-2xl border border-gray-200 bg-white p-5 transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_12px_32px_-14px_rgba(0,0,0,0.1)] active:scale-[0.995]"
                     >
                       <p className="font-bold text-gray-900 line-clamp-2">{w.title}</p>
                       <p className="text-sm text-gray-600 mt-1 line-clamp-2">{w.description}</p>
                       {w.startTime && (
-                        <p className="mt-2 text-xs text-gray-500">
+                        <p className="mt-2 text-xs text-gray-500 tabular-nums">
                           {new Date(w.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                           {w.duration ? ` · ${w.duration} min` : ''}
                         </p>
@@ -106,7 +106,7 @@ export default function DiseaseDetail() {
                     <Link
                       key={p.id}
                       to={`${basePath}/catalog/playlist/${p.id}`}
-                      className="rounded-2xl border border-gray-200 bg-white overflow-hidden hover:shadow-md transition-shadow"
+                      className="rounded-2xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_12px_32px_-14px_rgba(0,0,0,0.1)] active:scale-[0.995]"
                     >
                       <div className="aspect-video bg-gray-100">
                         <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
@@ -130,7 +130,7 @@ export default function DiseaseDetail() {
                     <Link
                       key={c.id}
                       to={`${basePath}/catalog/clip/${c.id}`}
-                      className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-sm transition-shadow group"
+                      className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-10px_rgba(0,0,0,0.08)] active:scale-[0.995] group"
                     >
                       <div className="aspect-video bg-gray-100 relative">
                         <img src={c.thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
@@ -153,7 +153,7 @@ export default function DiseaseDetail() {
                 <p className="mt-1 text-sm text-gray-600">Check back soon or browse the full content library.</p>
                 <Link
                   to={`${basePath}/catalog`}
-                  className="mt-4 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="mt-4 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
                 >
                   Browse Library
                 </Link>

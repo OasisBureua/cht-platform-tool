@@ -23,7 +23,7 @@ function formatMoney(value?: number | null) {
 }
 
 function formatDuration(seconds?: number) {
-  if (!seconds || seconds <= 0) return '—';
+  if (!seconds || seconds <= 0) return '-';
   const mins = Math.max(1, Math.round(seconds / 60));
   return `${mins} min`;
 }
@@ -116,7 +116,7 @@ export default function WebinarDetail() {
               href={zoomWebinar.joinUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+              className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
             >
               Join Session
             </a>
@@ -138,7 +138,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
             Back to LIVE
           </Link>
@@ -155,7 +155,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
             Back to LIVE
           </Link>
@@ -251,12 +251,12 @@ export default function WebinarDetail() {
           <div className="hidden md:block md:pt-1 space-y-2">
             {myRegistration?.status === 'PENDING' ? (
               <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Registration submitted — waiting for admin approval before you are enrolled.
+                Registration submitted - waiting for admin approval before you are enrolled.
               </p>
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
                 to={`/app/live/${program.id}/register`}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 Register (forms & checkout)
               </Link>
@@ -268,7 +268,7 @@ export default function WebinarDetail() {
                   'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
                   ctaDisabled
                     ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                    : 'bg-gray-900 text-white hover:bg-black',
+                    : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
                 ].join(' ')}
               >
                 {ctaLabel}
@@ -339,7 +339,7 @@ export default function WebinarDetail() {
               {enrolled && firstVideo ? (
                 <button
                   onClick={() => navigate(`/app/watch/${firstVideo.id}`)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
                 >
                   Continue in Conversations
                   <ArrowRight className="h-4 w-4" />
@@ -378,7 +378,7 @@ export default function WebinarDetail() {
                             <p className="font-medium text-gray-900 truncate">
                               {video.title}
                             </p>
-                            <p className="text-sm text-gray-600 truncate">{meta}</p>
+                            <p className="truncate text-sm text-gray-600 tabular-nums">{meta}</p>
                           </div>
 
                           <button
@@ -518,7 +518,7 @@ export default function WebinarDetail() {
                 'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
                 ctaDisabled
                   ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-900 text-white hover:bg-black',
+                  : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
               ].join(' ')}
             >
               {ctaLabel}

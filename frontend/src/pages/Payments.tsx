@@ -309,7 +309,7 @@ function VendorSetupForm({
       <button
         type="submit"
         disabled={mutation.isPending}
-        className="w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-800 active:scale-[0.96] disabled:opacity-60"
       >
         {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
         {mutation.isPending ? 'Saving…' : 'Save payment details'}
@@ -335,7 +335,7 @@ function HistoryRow({ item }: { item: PaymentItem }) {
       <div className="min-w-0">
         <p className="font-medium text-gray-900 truncate">{item.title}</p>
         <p className="text-sm text-gray-600 truncate">
-          {format(new Date(item.date), 'MMM d, yyyy')} • {item.method || '—'}
+          {format(new Date(item.date), 'MMM d, yyyy')} • {item.method || '-'}
         </p>
       </div>
       <div className="shrink-0 flex items-center gap-3">

@@ -13,7 +13,7 @@ function isSdkFailure(r: unknown): r is { type: string; reason: string } {
 }
 
 /**
- * Zoom Meeting SDK (component view) for Office Hours — keeps the session inside the app shell.
+ * Zoom Meeting SDK (component view) for Office Hours - keeps the session inside the app shell.
  * Requires Zoom Marketplace **Meeting SDK** credentials on the server (not S2S OAuth alone).
  */
 export function OfficeHoursZoomEmbed({

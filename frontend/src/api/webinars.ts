@@ -48,7 +48,7 @@ export const webinarsApi = {
     return data;
   },
 
-  /** Zoom Meeting SDK — enrolled users only; requires backend ZOOM_SDK_KEY / ZOOM_SDK_SECRET. */
+  /** Zoom Meeting SDK - enrolled users only; requires backend ZOOM_SDK_KEY / ZOOM_SDK_SECRET. */
   getMeetingSdkAuth: async (programId: string): Promise<MeetingSdkAuth> => {
     const { data } = await apiClient.post<MeetingSdkAuth>(
       `/office-hours/${encodeURIComponent(programId)}/meeting-sdk-auth`,

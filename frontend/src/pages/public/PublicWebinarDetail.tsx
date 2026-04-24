@@ -97,7 +97,7 @@ export default function PublicWebinarDetail() {
           <div className="p-6 md:p-8 space-y-6">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{webinar.title}</h1>
 
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600 tabular-nums">
               {webinar.startTime && (
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />

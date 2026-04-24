@@ -91,13 +91,21 @@ export const catalogApi = {
   },
 
   getRandomVideos: async (count = 6): Promise<{ id: string; title: string; thumbnailUrl: string; youtubeUrl: string }[]> => {
-    const { data } = await apiClient.get('/catalog/random-videos', { params: { count } });
-    return Array.isArray(data) ? data : [];
+    const { data } = await apiClient.get<unknown>('/catalog/random-videos', { params: { count } });
+    if (Array.isArray(data)) return data as { id: string; title: string; thumbnailUrl: string; youtubeUrl: string }[];
+    if (data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)) {
+      return (data as { items: { id: string; title: string; thumbnailUrl: string; youtubeUrl: string }[] }).items;
+    }
+    return [];
   },
 
   getPlaylists: async (): Promise<CatalogItem[]> => {
-    const { data } = await apiClient.get<CatalogItem[]>('/catalog/playlists');
-    return data || [];
+    const { data } = await apiClient.get<unknown>('/catalog/playlists');
+    if (Array.isArray(data)) return data as CatalogItem[];
+    if (data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)) {
+      return (data as { items: CatalogItem[] }).items;
+    }
+    return [];
   },
 
   getPlaylist: async (playlistId: string): Promise<{

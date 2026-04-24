@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase';
+import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { Shield } from 'lucide-react';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 

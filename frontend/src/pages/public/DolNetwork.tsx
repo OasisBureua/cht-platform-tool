@@ -128,7 +128,7 @@ export default function DolNetwork() {
           <p className="text-xs font-semibold uppercase tracking-wider text-[#0d4f6c]">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
-            Oncology & breast cancer specialists — filter by region, institution, or text; sort by name, region, or newest.
+            Oncology & breast cancer specialists - filter by region, institution, or text; sort by name, region, or newest.
           </p>
         </header>
 
@@ -283,7 +283,7 @@ export default function DolNetwork() {
         </main>
 
         <p className="mt-12 text-center text-xs text-gray-500 border-t border-gray-200 pt-8">
-          Community Health Technologies — KOL Network | ★ = Newly added
+          Community Health Technologies - KOL Network | ★ = Newly added
         </p>
       </div>
     </div>
