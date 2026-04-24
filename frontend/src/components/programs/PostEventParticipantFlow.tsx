@@ -87,10 +87,31 @@ export default function PostEventParticipantFlow(props: {
     }
   }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id]);
 
+  /** Refresh mid-flow: survey already saved server-side → advance to payout or done. */
+  useEffect(() => {
+    if (!myRegistration || !showFlow || phase !== 'survey' || !hasSurvey) return;
+    if (!myRegistration.postEventSurveyAcknowledgedAt) return;
+    if (hasHonorarium && !myRegistration.honorariumRequestedAt && !myRegistration.honorariumPayment) {
+      setPhase('payout');
+    } else {
+      setPhase('done');
+    }
+  }, [
+    myRegistration,
+    showFlow,
+    phase,
+    hasSurvey,
+    hasHonorarium,
+    program.id,
+    myRegistration?.postEventSurveyAcknowledgedAt,
+    myRegistration?.honorariumRequestedAt,
+    myRegistration?.honorariumPayment,
+  ]);
+
   const { data: preview, isError: previewError } = useQuery({
     queryKey: ['programs', program.id, 'honorarium-preview'],
     queryFn: () => programsApi.getHonorariumPreview(program.id),
-    enabled: showFlow && attendanceOk && phase === 'payout' && hasHonorarium && !hasSurvey,
+    enabled: showFlow && attendanceOk && phase === 'payout' && hasHonorarium,
     retry: false,
   });
 
@@ -146,7 +167,8 @@ export default function PostEventParticipantFlow(props: {
 
   const afterSurvey = async () => {
     await ackMut.mutateAsync();
-    setPhase('done');
+    if (hasHonorarium) setPhase('payout');
+    else setPhase('done');
   };
 
   const afterPayoutConfirm = async () => {
@@ -163,10 +185,15 @@ export default function PostEventParticipantFlow(props: {
           <p className="text-sm text-gray-600">
             {hasSurvey ? (
               <>
-                Complete the post-event survey in the next step, then use <strong>Complete survey</strong> to continue.
-                {hasHonorarium
-                  ? ' A pending honorarium will be created for an administrator to review and pay. '
-                  : ' '}
+                Complete the post-event survey in the next step, then use <strong>Complete survey</strong> to save your
+                progress.
+                {hasHonorarium ? (
+                  <>
+                    {' '}
+                    On the next screen, confirm your payout details and use <strong>Continue</strong> to create a{' '}
+                    <strong>pending</strong> honorarium for an administrator to review and pay.
+                  </>
+                ) : null}{' '}
                 You cannot return to a previous step after you continue.
               </>
             ) : hasHonorarium ? (
@@ -189,8 +216,8 @@ export default function PostEventParticipantFlow(props: {
       {phase === 'survey' && hasSurvey ? (
         <>
           <p className="text-sm text-gray-600">
-            Submit the embedded survey, then tap <strong>Complete survey</strong>. You will not be able to go back
-            afterward.
+            Submit the embedded survey, then tap <strong>Complete survey</strong> to record your response
+            {hasHonorarium ? ' before continuing to payout' : ''}. You will not be able to go back afterward.
           </p>
           <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
             <iframe
@@ -202,11 +229,19 @@ export default function PostEventParticipantFlow(props: {
           </div>
           <button
             type="button"
-            disabled={ackMut.isPending}
+            disabled={
+              ackMut.isPending ||
+              !!myRegistration?.postEventSurveyAcknowledgedAt ||
+              ackMut.isSuccess
+            }
             onClick={() => afterSurvey().catch(() => {})}
             className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
-            {ackMut.isPending ? 'Saving…' : 'Complete survey'}
+            {ackMut.isPending
+              ? 'Saving…'
+              : myRegistration?.postEventSurveyAcknowledgedAt || ackMut.isSuccess
+                ? 'Survey recorded'
+                : 'Complete survey'}
           </button>
           {ackMut.isError ? (
             <p className="text-sm text-red-700">Could not save progress. Check your connection and try again.</p>
@@ -214,7 +249,7 @@ export default function PostEventParticipantFlow(props: {
         </>
       ) : null}
 
-      {phase === 'payout' && hasHonorarium && !hasSurvey ? (
+      {phase === 'payout' && hasHonorarium ? (
         <>
           <p className="text-sm text-gray-600">
             Review the payout details we will use for your honorarium. Add your Bill.com profile and W-9 under{' '}
@@ -286,6 +321,9 @@ export default function PostEventParticipantFlow(props: {
             type="button"
             disabled={
               payMut.isPending ||
+              payMut.isSuccess ||
+              !!myRegistration?.honorariumRequestedAt ||
+              !!myRegistration?.honorariumPayment ||
               !preview ||
               !preview.hasBillVendor ||
               !preview.w9Submitted ||
@@ -294,7 +332,11 @@ export default function PostEventParticipantFlow(props: {
             onClick={() => afterPayoutConfirm().catch(() => {})}
             className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
-            {payMut.isPending ? 'Submitting…' : 'Continue'}
+            {payMut.isPending
+              ? 'Submitting…'
+              : myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment || payMut.isSuccess
+                ? 'Request submitted'
+                : 'Continue'}
           </button>
           {payMut.isError ? (
             <p className="text-sm text-red-700">Could not submit payment request. Fix any issues above and try again.</p>
