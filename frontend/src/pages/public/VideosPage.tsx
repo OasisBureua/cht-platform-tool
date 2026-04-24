@@ -183,12 +183,14 @@ export default function VideosPage() {
             : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
-          <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-          <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
-            {isInApp ? 'Explore our conversations' : 'Explore our catalogue'}
-          </h1>
-        </div>
+        {!isInApp ? (
+          <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
+            <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+              Explore our catalogue
+            </h1>
+          </div>
+        ) : null}
 
         {!isInApp ? (
           <ContentLibraryNavTabs
