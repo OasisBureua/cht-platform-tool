@@ -331,7 +331,7 @@ export default function Dashboard() {
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to={featuredPanel.primaryHref}
-                  className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
+                  className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
                 >
                   <PlayCircle className="h-4 w-4" aria-hidden />
                   {featuredPanel.primaryCta}

@@ -24,7 +24,7 @@ const nav = [
 export default function AppBottomNav() {
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/45 bg-white/80 shadow-[0_-8px_32px_-16px_rgba(24,92,84,0.1),inset_0_1px_0_0_rgba(255,255,255,0.75)] backdrop-blur-xl backdrop-saturate-150 dark:border-zinc-700/55 dark:bg-zinc-900/92 dark:shadow-[0_-8px_32px_-16px_rgba(0,0,0,0.35),inset_0_1px_0_0_rgba(255,255,255,0.06)] md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/45 bg-white/80 shadow-[0_-8px_32px_-16px_rgba(24,92,84,0.1),inset_0_1px_0_0_rgba(255,255,255,0.75)] backdrop-blur-xl backdrop-saturate-150 md:hidden dark:border-zinc-800/80 dark:bg-zinc-950/90 dark:shadow-[0_-8px_32px_-16px_rgba(0,0,0,0.45),inset_0_1px_0_0_rgba(255,255,255,0.05)]"
       aria-label="App navigation"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
     >
@@ -38,8 +38,8 @@ export default function AppBottomNav() {
               [
                 'flex min-h-[44px] min-w-0 flex-1 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96]',
                 isActive
-                  ? 'bg-white/70 text-brand-800 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.18),0_6px_14px_-10px_rgba(43,168,154,0.3)] dark:bg-brand-900/45 dark:text-brand-100 dark:shadow-[inset_0_0_0_1px_rgba(52,211,153,0.2),0_6px_16px_-10px_rgba(43,168,154,0.18)]'
-                  : 'text-gray-500 hover:text-gray-800 active:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-100 dark:active:text-zinc-50',
+                  ? 'bg-white/70 text-brand-800 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.18),0_6px_14px_-10px_rgba(43,168,154,0.3)] dark:bg-zinc-100 dark:text-zinc-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.92),0_6px_14px_-10px_rgba(0,0,0,0.55)]'
+                  : 'text-gray-500 hover:text-gray-800 active:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-200 dark:active:text-zinc-100',
               ].join(' ')
             }
           >

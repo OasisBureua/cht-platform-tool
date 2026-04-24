@@ -8,7 +8,7 @@ import {
   CalendarClock,
   Bot,
 } from 'lucide-react';
-import logoSrc from '../../assets/logo/LOGO.svg';
+import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 
 const nav = [
   { to: '/app/search', label: 'Search', icon: Search, end: false },
@@ -22,14 +22,14 @@ const nav = [
 
 export default function AppSidebar() {
   return (
-    <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col border-r border-white/50 bg-white/70 shadow-[1px_0_0_0_rgba(0,0,0,0.04),4px_0_24px_-12px_rgba(0,0,0,0.06)] backdrop-blur-xl backdrop-saturate-150 dark:border-zinc-700/55 dark:bg-zinc-900/90 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.06),4px_0_28px_-12px_rgba(0,0,0,0.45)] md:flex">
-      <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-white/40 dark:border-zinc-700/50">
+    <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col border-r border-white/50 bg-white/70 shadow-[1px_0_0_0_rgba(0,0,0,0.04),4px_0_24px_-12px_rgba(0,0,0,0.06)] backdrop-blur-xl backdrop-saturate-150 md:flex dark:border-zinc-800/80 dark:bg-zinc-950/85 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.04),4px_0_24px_-12px_rgba(0,0,0,0.45)]">
+      <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-white/40 dark:border-zinc-800/80">
         <Link
           to="/app/home"
           className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-2xl text-brand-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-brand-700 hover:opacity-95 active:scale-[0.96] dark:text-brand-400 dark:hover:text-brand-300"
           aria-label="Community Health Media, app home"
         >
-          <img src={logoSrc} alt="CHM" className="h-10 w-10 object-contain" />
+          <ChmWordmarkOption2 className="h-9 w-[4.75rem]" />
         </Link>
       </div>
 
@@ -46,8 +46,8 @@ export default function AppSidebar() {
               [
                 'flex h-[clamp(56px,8.5vh,76px)] w-[88px] shrink-0 flex-col items-center justify-center gap-[10px] rounded-2xl px-1.5 py-2 text-center transition-[color,background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96]',
                 isActive
-                  ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.2),0_8px_18px_-8px_rgba(43,168,154,0.35)] dark:bg-brand-900/45 dark:text-brand-100 dark:shadow-[inset_0_0_0_1px_rgba(52,211,153,0.22),0_8px_20px_-8px_rgba(43,168,154,0.2)]'
-                  : 'text-gray-600 hover:bg-white/80 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-800/85 dark:hover:text-zinc-100',
+                  ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.2),0_8px_18px_-8px_rgba(43,168,154,0.35)] dark:bg-zinc-100 dark:text-zinc-950 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.9),0_10px_24px_-12px_rgba(0,0,0,0.6)]'
+                  : 'text-gray-600 hover:bg-white/80 hover:text-gray-900 dark:text-zinc-400 dark:hover:bg-zinc-900/90 dark:hover:text-zinc-100',
               ].join(' ')
             }
           >
