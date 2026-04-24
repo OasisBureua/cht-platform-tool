@@ -55,14 +55,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             {clip.title}
           </h2>
           {body ? (
-            <p
-              className={[
-                'mb-3 max-w-[540px] text-pretty text-sm leading-relaxed text-white/80 md:text-[15px]',
-                isInApp ? 'line-clamp-2' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            >
+            <p className="mb-3 line-clamp-2 max-w-[540px] text-pretty text-sm leading-relaxed text-white/80 md:text-[15px]" title={body}>
               {body}
             </p>
           ) : null}

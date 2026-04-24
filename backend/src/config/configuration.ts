@@ -169,6 +169,9 @@ export default () => ({
     clientId: process.env.ZOOM_CLIENT_ID,
     clientSecret: process.env.ZOOM_CLIENT_SECRET,
     webhookSecret: process.env.ZOOM_WEBHOOK_SECRET,
+    /** Meeting SDK (embed in browser) - separate Zoom Marketplace "Meeting SDK" app */
+    sdkKey: process.env.ZOOM_SDK_KEY,
+    sdkSecret: process.env.ZOOM_SDK_SECRET,
   },
 
   // Admin bootstrap (one-time first-admin promotion secret)

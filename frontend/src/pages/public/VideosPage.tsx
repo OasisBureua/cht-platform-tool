@@ -377,7 +377,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
                       />
                     ))}
                   </ConversationRow>
@@ -394,7 +394,8 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta={`${(item.view_count ?? 0).toLocaleString()} views`}
+                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        videoLabel={`${(item.view_count ?? 0).toLocaleString()} views`}
                       />
                     ))}
                   </ConversationRow>
@@ -411,7 +412,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta="Short conversation"
+                        description="Short conversation"
                       />
                     ))}
                   </ConversationRow>

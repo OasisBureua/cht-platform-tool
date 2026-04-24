@@ -1,8 +1,25 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { AuthUser } from '../../auth/auth.service';
 import { ZoomService } from './zoom.service';
+import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+
+export interface OfficeHoursMeetingSdkAuthDto {
+  signature: string;
+  sdkKey: string;
+  meetingNumber: string;
+  password: string;
+  userName: string;
+  userEmail: string;
+}
 
 export interface WebinarItem {
   id: string;
@@ -13,7 +30,7 @@ export interface WebinarItem {
   duration?: number;
   joinUrl?: string;
   source: 'zoom' | 'program';
-  /** Present when sourced from our DB — distinguishes CME webinars vs Zoom Meeting office hours. */
+  /** Present when sourced from our DB - distinguishes CME webinars vs Zoom Meeting office hours. */
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
   jotformIntakeFormUrl?: string;
@@ -24,7 +41,7 @@ export interface WebinarItem {
 
 /**
  * Hybrid listing strategy (transition period):
- *  1. DB PUBLISHED programs are always included — DB is authoritative.
+ *  1. DB PUBLISHED programs are always included - DB is authoritative.
  *     Deleting a program from admin removes it from this list immediately.
  *  2. Zoom webinars from the account are also included, BUT only if no DB
  *     program already references that Zoom meeting ID (deduplication).
@@ -41,6 +58,7 @@ export class WebinarsService {
     private zoom: ZoomService,
     private prisma: PrismaService,
     private config: ConfigService,
+    private zoomMeetingSdk: ZoomMeetingSdkService,
   ) {}
 
   async listWebinars(): Promise<WebinarItem[]> {
@@ -112,7 +130,7 @@ export class WebinarsService {
           });
         }
       } catch (err) {
-        // Non-fatal — DB programs still shown if Zoom API is unavailable
+        // Non-fatal - DB programs still shown if Zoom API is unavailable
         this.logger.warn(`Zoom listWebinars fallback failed: ${String(err)}`);
       }
     }
@@ -121,7 +139,7 @@ export class WebinarsService {
   }
 
   /**
-   * Published office hours (Zoom Meetings) — interactive drop-in sessions.
+   * Published office hours (Zoom Meetings) - interactive drop-in sessions.
    */
   async listOfficeHours(): Promise<WebinarItem[]> {
     const thirtyDaysAgo = new Date();
@@ -247,4 +265,50 @@ export class WebinarsService {
     };
   }
 
+  /**
+   * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
+   * Requires published office-hours program, Zoom meeting id, and enrollment.
+   */
+  async getOfficeHoursMeetingSdkAuth(
+    authUser: AuthUser,
+    programId: string,
+  ): Promise<OfficeHoursMeetingSdkAuthDto> {
+    if (!this.zoomMeetingSdk.isConfigured()) {
+      throw new ServiceUnavailableException(
+        'In-browser Zoom is not configured. Set ZOOM_SDK_KEY and ZOOM_SDK_SECRET from a Zoom Meeting SDK app.',
+      );
+    }
+
+    const userId = authUser.userId;
+
+    const enrollment = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!enrollment) {
+      throw new ForbiddenException('Register for this session before joining in the app.');
+    }
+
+    const program = await this.prisma.program.findFirst({
+      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
+    });
+    if (!program?.zoomMeetingId) {
+      throw new BadRequestException('This session has no Zoom meeting ID yet.');
+    }
+
+    const userName = (authUser.name?.trim() || authUser.email || 'Participant').slice(0, 200);
+    const userEmail = (authUser.email || '').trim();
+
+    const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');
+    const password = program.zoomMeetingPassword?.trim() ?? '';
+    const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, 0);
+
+    return {
+      signature,
+      sdkKey: this.zoomMeetingSdk.getSdkKey(),
+      meetingNumber,
+      password,
+      userName,
+      userEmail,
+    };
+  }
 }

@@ -25,7 +25,7 @@ export class HubSpotService {
   constructor(private readonly config: ConfigService) {
     this.accessToken = this.config.get<string>('hubspot.accessToken')?.trim() || null;
     if (!this.accessToken) {
-      this.logger.warn('HUBSPOT_ACCESS_TOKEN not configured — contact sync disabled');
+      this.logger.warn('HUBSPOT_ACCESS_TOKEN not configured - contact sync disabled');
     }
   }
 

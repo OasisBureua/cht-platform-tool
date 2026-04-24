@@ -66,13 +66,13 @@ export class AdminController {
     private zoom: ZoomService,
   ) {}
 
-  // ─── Bootstrap (no auth — first-admin setup) ─────────────────────────────
+  // ─── Bootstrap (no auth - first-admin setup) ─────────────────────────────
 
   /**
    * POST /api/admin/bootstrap
    * One-time endpoint to promote the first admin.
    * Protected by ADMIN_BOOTSTRAP_SECRET env var.
-   * Safe to call repeatedly — always requires the secret.
+   * Safe to call repeatedly - always requires the secret.
    */
   @Post('bootstrap')
   @ApiOperation({
@@ -210,7 +210,7 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Single program (admin hub — forms, registration counts)' })
+  @ApiOperation({ summary: 'Single program (admin hub - forms, registration counts)' })
   async getProgramByIdForAdmin(@Param('id') id: string) {
     const p = await this.prisma.program.findUnique({
       where: { id },
@@ -458,7 +458,7 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Create a webinar — schedules on Zoom and saves to DB' })
+  @ApiOperation({ summary: 'Create a webinar - schedules on Zoom and saves to DB' })
   @ApiBody({
     schema: {
       type: 'object',

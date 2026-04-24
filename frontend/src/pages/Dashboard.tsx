@@ -215,6 +215,50 @@ export default function Dashboard() {
     };
   }, [latestWebinar, recentItems]);
 
+  const releaseCarouselItems = useMemo(() => {
+    const items: { href: string; title: string; imageUrl: string; meta?: string }[] = [];
+
+    webinars
+      .slice(0, 4)
+      .forEach((w, i) =>
+        items.push({
+          href: w.id ? `/app/live/${w.id}` : '/app/live',
+          title: w.title,
+          imageUrl: w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length],
+          meta: w.startTime
+            ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d')}`
+            : 'LIVE session',
+        }),
+      );
+
+    const podcastThumb = '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png';
+    items.push(
+      {
+        href: '/app/podcasts',
+        title: 'Breast Friends · New episode',
+        imageUrl: podcastThumb,
+        meta: 'Podcast release',
+      },
+      {
+        href: '/app/podcasts',
+        title: 'More podcast series coming soon',
+        imageUrl: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
+        meta: 'Podcast update',
+      },
+    );
+
+    recentItems.slice(0, 4).forEach((c) =>
+      items.push({
+        href: `/app/clip/${getShortClipId(c.id)}`,
+        title: c.title,
+        imageUrl: getMediaHubThumbnail(c),
+        meta: 'Conversation release',
+      }),
+    );
+
+    return items.slice(0, 12);
+  }, [recentItems, webinars]);
+
   return (
     <div className="space-y-8 md:space-y-10">
       {isOnboardingOpen ? (
@@ -303,6 +347,27 @@ export default function Dashboard() {
           </div>
         </section>
 
+      {releaseCarouselItems.length > 0 ? (
+        <section className="relative -top-[10px] space-y-4">
+          <ConversationRow
+            title="New releases"
+            subtitle={`${releaseCarouselItems.length} items`}
+            seeAllHref="/app/live"
+            seeAllLabel="View all releases"
+          >
+            {releaseCarouselItems.map((item, i) => (
+              <StripCard
+                key={`${item.href}-${i}`}
+                to={item.href}
+                title={item.title}
+                imageUrl={item.imageUrl}
+                description={item.meta}
+              />
+            ))}
+          </ConversationRow>
+        </section>
+      ) : null}
+
       {useMediaHub ? (
         <div className="space-y-10">
           {isLoading ? (
@@ -323,7 +388,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c, 'recent')}
                     />
                   ))}
                 </ConversationRow>
@@ -341,7 +406,10 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'views')}
+                      description={clipMetaString(c, 'recent')}
+                      videoLabel={
+                        c.view_count != null ? `${c.view_count.toLocaleString()} views` : undefined
+                      }
                     />
                   ))}
                 </ConversationRow>
@@ -359,7 +427,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c, 'recent')}
                     />
                   ))}
                 </ConversationRow>
@@ -378,10 +446,13 @@ export default function Dashboard() {
                       to={`/app/catalog/playlist/${p.id}`}
                       title={p.title}
                       imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
-                      meta={
-                        p.videoCount != null
+                      description={p.videoNames?.[0]?.trim() || 'Curated playlist'}
+                      videoLabel={
+                        p.videoCount != null && p.videoCount > 0
                           ? `${p.videoCount.toLocaleString()} video${p.videoCount !== 1 ? 's' : ''}`
-                          : undefined
+                          : p.videoNames && p.videoNames.length > 0
+                            ? `${p.videoNames.length} video${p.videoNames.length !== 1 ? 's' : ''}`
+                            : undefined
                       }
                     />
                   ))}
@@ -419,7 +490,7 @@ export default function Dashboard() {
                 to={w.id ? `/app/live/${w.id}` : '/app/live'}
                 title={w.title}
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
-                meta={
+                description={
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Medical education'
