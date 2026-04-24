@@ -2,8 +2,8 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, Instagram, Menu, X } from 'lucide-react';
 import ChatBubble from '../components/ChatBubble';
+import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import ThemeToggle from '../components/ThemeToggle';
-import logoSrc from '../assets/logo/LOGO.svg';
 
 const navLinks = [
   { to: '/about', label: 'About' },
@@ -54,7 +54,7 @@ export default function PublicLayout() {
                 className="flex items-center shrink-0 text-brand-600 transition-[color,opacity] hover:text-brand-700 hover:opacity-95"
                 aria-label="Community Health Media, home"
               >
-                <img src={logoSrc} alt="CHM" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
+                <ChmWordmarkOption2 className="h-7 w-[4.5rem] sm:h-8 sm:w-[5rem]" />
               </Link>
             </div>
 
@@ -202,7 +202,7 @@ export default function PublicLayout() {
           <div className="flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-16">
             <div className="space-y-6 max-w-md">
               <Link to="/" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
-                <img src={logoSrc} alt="CHM" className="h-9 w-9 object-contain brightness-0 invert" />
+                <ChmWordmarkOption2 className="h-8 w-[5rem] text-white" />
               </Link>
               <address className="not-italic text-sm text-gray-300 space-y-1 leading-relaxed">
                 <p>2471 18th St NW</p>

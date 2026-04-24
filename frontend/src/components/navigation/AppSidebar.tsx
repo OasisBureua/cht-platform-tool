@@ -8,7 +8,7 @@ import {
   Mic2,
   Bot,
 } from 'lucide-react';
-import logoSrc from '../../assets/logo/LOGO.svg';
+import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 
 const nav = [
   { to: '/app/search', label: 'Search', icon: Search, end: false },
@@ -29,7 +29,7 @@ export default function AppSidebar() {
           className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-2xl text-brand-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-brand-700 hover:opacity-95 active:scale-[0.96]"
           aria-label="Community Health Media, app home"
         >
-          <img src={logoSrc} alt="CHM" className="h-10 w-10 object-contain" />
+          <ChmWordmarkOption2 className="h-9 w-[4.75rem]" />
         </Link>
       </div>
 
