@@ -2,7 +2,7 @@
 # It is NOT deployed by default (manual failover only)
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -16,7 +16,7 @@ terraform {
     key            = "us-east-2-standby/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "cht-platform-terraform-locks"
+    use_lockfile   = true
   }
 }
 
