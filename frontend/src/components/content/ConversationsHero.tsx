@@ -23,7 +23,10 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
 
   return (
     <section
-      className="overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]"
+      className={[
+        'overflow-hidden bg-zinc-900 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]',
+        isInApp ? 'rounded-none' : 'rounded-2xl',
+      ].join(' ')}
       aria-label="Featured video"
     >
       <div className="relative h-[min(56vh,520px)] min-h-[280px] w-full sm:min-h-[320px] md:h-[min(58vh,580px)]">
@@ -59,7 +62,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
           <div className="flex flex-wrap gap-3">
             <Link
               to={playHref}
-              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
+              className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
             >
               <Play className="h-4 w-4 shrink-0" aria-hidden fill="currentColor" />
               Play

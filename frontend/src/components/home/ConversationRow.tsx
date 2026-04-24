@@ -121,7 +121,7 @@ export function StripCard({ to, title, imageUrl, meta }: StripCardProps) {
     <div className="snap-start" style={{ scrollSnapAlign: 'start' }}>
       <Link
         to={to}
-        className="group/card flex w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]"
+        className="group/card flex h-[280px] w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:h-[300px] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]"
       >
         <div className="relative h-[180px] w-full overflow-hidden sm:h-[200px]">
           <img
@@ -133,7 +133,7 @@ export function StripCard({ to, title, imageUrl, meta }: StripCardProps) {
             draggable={false}
           />
         </div>
-        <div className="flex min-h-0 flex-1 flex-col p-2.5 pt-2">
+        <div className="flex min-h-[96px] flex-1 flex-col p-2.5 pt-2 sm:min-h-[100px]">
           <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{title}</p>
           {meta ? (
             <p className="mt-0.5 line-clamp-1 text-pretty text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">{meta}</p>
@@ -146,7 +146,7 @@ export function StripCard({ to, title, imageUrl, meta }: StripCardProps) {
 
 function RowSkeleton() {
   return (
-    <div className="flex w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-zinc-100/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:w-[288px] dark:bg-zinc-800/80 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+    <div className="flex h-[280px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-zinc-100/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:h-[300px] sm:w-[288px] dark:bg-zinc-800/80 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
       <div className="h-[180px] w-full animate-pulse bg-zinc-200/90 sm:h-[200px] dark:bg-zinc-700/80" />
       <div className="space-y-2 p-2.5 pt-2">
         <div className="h-3.5 w-4/5 animate-pulse rounded bg-zinc-200/80" />
