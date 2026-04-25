@@ -51,3 +51,23 @@ See [docs/architecture.md](docs/architecture.md)
 ## Deployment
 
 See [docs/deployment.md](docs/deployment.md)
+
+## Local development helpers
+
+Two optional scripts for developers who want to catch problems before CI does:
+
+```bash
+./verify.sh           # runs typecheck + lint + tests across frontend + backend
+./verify.sh frontend  # frontend only
+./verify.sh backend   # backend only
+
+./smoke.sh                                        # defaults to testapp
+./smoke.sh https://testapp.communityhealth.media  # explicit
+```
+
+`verify.sh` mirrors the checks in `.github/workflows/pr-validation.yml` so you
+can find failures locally in ~60 seconds rather than after a failed PR check.
+`smoke.sh` hits health endpoints and critical public pages post-deploy to
+confirm nothing obvious is broken.
+
+Both scripts are optional — the GitHub Actions workflows remain the source of truth.
