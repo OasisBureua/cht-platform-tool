@@ -477,6 +477,9 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(DEV_USER_KEY);
         localStorage.removeItem(ACCESS_TOKEN_KEY);
       }
+      if (typeof sessionStorage?.removeItem === 'function') {
+        sessionStorage.removeItem('cht-profile-reminder-seen');
+      }
     } catch {
       /* ignore */
     }

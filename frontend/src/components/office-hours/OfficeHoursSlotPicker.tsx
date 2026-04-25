@@ -29,7 +29,7 @@ export interface OfficeHoursSlotPickerProps {
 }
 
 /**
- * 15-minute registration windows: one dropdown per day (sessions are usually a single day).
+ * 10-minute registration windows: one dropdown per day (sessions are usually a single day).
  * Booking still uses the program’s Zoom link after registration.
  */
 export function OfficeHoursSlotPicker({
@@ -51,10 +51,10 @@ export function OfficeHoursSlotPicker({
   return (
     <div className="space-y-8">
       <div className="space-y-1">
-        <h3 className="text-base font-semibold text-gray-900">Select a 15-minute window</h3>
+        <h3 className="text-base font-semibold text-gray-900">Select a 10-minute window</h3>
         <p className="text-sm text-gray-600">
           {subtitle ??
-            'Each option is a 15-minute segment within the session. You still join the host in Zoom from this app after you register.'}
+            'Each option is a 10-minute segment within the session. You still join the host in Zoom from this app after you register.'}
         </p>
       </div>
 

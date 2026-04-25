@@ -241,7 +241,7 @@ export default function ProgramRegisterWizard() {
                 slots={slots}
                 selectedId={selectedSlotId}
                 onSelect={setSelectedSlotId}
-                subtitle="The session is split into 15-minute windows (four per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
+                subtitle="The session is split into 10-minute windows (six per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
               />
             </div>
           )}

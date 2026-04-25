@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { HubSpotService } from '../modules/hubspot/hubspot.service';
+import { isProfileCompleteForPayments } from '../common/profile-payment-eligibility';
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -211,10 +212,7 @@ export class AuthService {
    * Requires: specialty. NPI required unless profession is Pharmaceuticals.
    */
   isProfileComplete(user: { specialty: string | null; npiNumber: string | null } | null): boolean {
-    if (!user || !user.specialty?.trim()) return false;
-    if (user.specialty.trim() === 'Pharmaceuticals') return true;
-    const npi = (user.npiNumber || '').replace(/\D/g, '');
-    return npi.length === 10;
+    return isProfileCompleteForPayments(user);
   }
 
   /**

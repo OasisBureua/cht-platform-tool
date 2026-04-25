@@ -23,8 +23,8 @@ import { SesEmailService } from '../email/ses-email.service';
 export class ProgramRegistrationsService {
   private readonly logger = new Logger(ProgramRegistrationsService.name);
 
-  /** Office hours meetings use fixed 15-minute registration windows; count scales with session duration (4 per hour). */
-  private static readonly OFFICE_HOURS_SEGMENT_MINUTES = 15;
+  /** Office hours meetings use fixed 10-minute registration windows; count scales with session duration (6 per hour). */
+  private static readonly OFFICE_HOURS_SEGMENT_MINUTES = 10;
 
   constructor(
     private prisma: PrismaService,
@@ -157,8 +157,8 @@ export class ProgramRegistrationsService {
   }
 
   /**
-   * When a MEETING has a start time and duration but no rows yet, create 15-minute slots end-to-end
-   * (ceil(duration/15) segments, defaulting duration to 60 if missing).
+   * When a MEETING has a start time and duration but no rows yet, create 10-minute slots end-to-end
+   * (ceil(duration/10) segments, defaulting duration to 60 if missing).
    */
   private async ensureDefaultOfficeHoursSlots(
     programId: string,

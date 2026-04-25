@@ -21,6 +21,19 @@ export function NotificationBell() {
 
   const hasIndicator = (items.length > 0 || profileIncomplete) && !!user?.userId;
 
+  /** Open the panel once per login session when profession/NPI still required (cleared on logout). */
+  useEffect(() => {
+    if (!user?.userId || user.profileComplete !== false) return;
+    try {
+      if (typeof sessionStorage?.getItem !== 'function') return;
+      if (sessionStorage.getItem('cht-profile-reminder-seen') === '1') return;
+      sessionStorage.setItem('cht-profile-reminder-seen', '1');
+    } catch {
+      /* ignore */
+    }
+    setOpen(true);
+  }, [user?.userId, user?.profileComplete]);
+
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {

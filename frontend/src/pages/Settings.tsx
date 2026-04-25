@@ -10,6 +10,7 @@ import { paymentsApi } from '../api/payments';
 import { getApiErrorMessage } from '../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { PROFESSION_OPTIONS } from '../data/profession-options';
+import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
 
 function getInitials(name: string, email?: string): string {
   const parts = name.trim().split(/\s+/);
@@ -355,6 +356,7 @@ export default function Settings() {
                   profileCity={profile?.city}
                   profileState={profile?.state}
                   profileZip={profile?.zipCode}
+                  profileComplete={user?.profileComplete}
                   embedded
                   onSuccess={() => {
                     void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
@@ -441,6 +443,7 @@ function PaymentSettingsSection({
   profileCity,
   profileState,
   profileZip,
+  profileComplete,
   embedded = false,
   onSuccess,
 }: {
@@ -457,6 +460,7 @@ function PaymentSettingsSection({
   profileCity?: string;
   profileState?: string;
   profileZip?: string;
+  profileComplete?: boolean;
   /** When true, no outer card chrome (used inside Settings tabs). */
   embedded?: boolean;
   onSuccess: () => void;
@@ -472,6 +476,8 @@ function PaymentSettingsSection({
   const [error, setError] = useState<string | null>(null);
   const [w9ModalOpen, setW9ModalOpen] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ ok?: string; err?: string }>({});
+  const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
+  const profileIncomplete = profileComplete === false;
 
   useEffect(() => {
     if (accountStatus?.hasAccount) return;
@@ -525,6 +531,10 @@ function PaymentSettingsSection({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (profileIncomplete) {
+      setError('Add your profession and NPI (when required) in the Profile tab first.');
+      return;
+    }
     if (!payeeName.trim() || !addressLine1.trim() || !city.trim() || !state.trim() || !zipCode.trim()) {
       setError('Payee name and full address are required');
       return;
@@ -584,6 +594,16 @@ function PaymentSettingsSection({
         embedded W-9 before admins can pay you in Bill.com.
       </p>
 
+      {profileIncomplete ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 mb-4">
+          <p className="font-semibold">Complete your profile first</p>
+          <p className="mt-1 text-amber-900/90">
+            Add your profession and NPI (when required) in the <strong>Profile</strong> tab before saving payment details
+            or submitting a W-9.
+          </p>
+        </div>
+      ) : null}
+
       {hasAccount ? (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
@@ -594,15 +614,36 @@ function PaymentSettingsSection({
                 <p className="text-sm text-green-700">Admins send payouts from Bill.com (ACH or check)</p>
               </div>
             </div>
-            <button
-              type="button"
-              disabled={syncMutation.isPending}
-              onClick={() => syncMutation.mutate()}
-              className="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
-            >
-              {syncMutation.isPending ? 'Syncing…' : 'Refresh from Bill.com'}
-            </button>
+            <div className="flex flex-wrap gap-2 shrink-0">
+              <button
+                type="button"
+                disabled={profileIncomplete || syncMutation.isPending}
+                onClick={() => setEditingPaymentDetails((v) => !v)}
+                className="rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
+              >
+                {editingPaymentDetails ? 'Close editor' : 'Edit payment details'}
+              </button>
+              <button
+                type="button"
+                disabled={syncMutation.isPending}
+                onClick={() => syncMutation.mutate()}
+                className="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
+              >
+                {syncMutation.isPending ? 'Syncing…' : 'Refresh from Bill.com'}
+              </button>
+            </div>
           </div>
+          {editingPaymentDetails && !profileIncomplete ? (
+            <BillVendorSetupForm
+              userId={userId}
+              variant="update"
+              locked={profileIncomplete}
+              onSuccess={() => {
+                setEditingPaymentDetails(false);
+                onSuccess();
+              }}
+            />
+          ) : null}
           {syncMessage.ok && <p className="text-sm text-green-700">{syncMessage.ok}</p>}
           {syncMessage.err && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{syncMessage.err}</p>}
 
@@ -617,8 +658,9 @@ function PaymentSettingsSection({
                   </p>
                   <button
                     type="button"
+                    disabled={profileIncomplete}
                     onClick={() => setW9ModalOpen(true)}
-                    className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-amber-900 hover:underline"
+                    className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-amber-900 hover:underline disabled:opacity-50"
                   >
                     Complete W-9
                   </button>
@@ -633,8 +675,9 @@ function PaymentSettingsSection({
               </div>
               <button
                 type="button"
+                disabled={profileIncomplete}
                 onClick={() => setW9ModalOpen(true)}
-                className="text-sm font-semibold text-gray-700 hover:text-gray-900 hover:underline"
+                className="text-sm font-semibold text-gray-700 hover:text-gray-900 hover:underline disabled:opacity-50"
               >
                 Update W-9
               </button>
@@ -644,6 +687,7 @@ function PaymentSettingsSection({
             isOpen={w9ModalOpen}
             onClose={() => setW9ModalOpen(false)}
             onSubmit={async (data) => {
+              if (profileIncomplete) return;
               await paymentsApi.submitW9(userId, data);
               onSuccess();
             }}
@@ -750,7 +794,7 @@ function PaymentSettingsSection({
           )}
           <button
             type="submit"
-            disabled={connectMutation.isPending}
+            disabled={connectMutation.isPending || profileIncomplete}
             className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
           >
             {connectMutation.isPending ? 'Saving...' : 'Add bank account'}

@@ -237,6 +237,37 @@ export class BillService {
   }
 
   /**
+   * Update vendor address and ACH details (Connect v3 PATCH). Requires at least one recognized top-level field.
+   */
+  async updateVendorPaymentAndAddress(vendorId: string, input: CreateVendorInput): Promise<BillVendor> {
+    this.logger.log(`Updating Bill.com vendor payment/address: ${vendorId}`);
+    const payload: Record<string, unknown> = {
+      name: input.name,
+      email: input.email,
+      accountType: 'PERSON',
+      address: {
+        line1: input.address.line1,
+        city: input.address.city,
+        stateOrProvince: input.address.stateOrProvince ?? '',
+        zipOrPostalCode: input.address.zipOrPostalCode,
+        country: 'US',
+      },
+      billCurrency: 'USD',
+    };
+    if (input.paymentInformation) {
+      payload.paymentInformation = {
+        payeeName: input.paymentInformation.payeeName,
+        bankAccount: {
+          nameOnAccount: input.paymentInformation.bankAccount.nameOnAccount,
+          accountNumber: input.paymentInformation.bankAccount.accountNumber,
+          routingNumber: input.paymentInformation.bankAccount.routingNumber,
+        },
+      };
+    }
+    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, payload);
+  }
+
+  /**
    * Get vendor by ID
    */
   async getVendor(vendorId: string): Promise<BillVendor> {
@@ -249,20 +280,20 @@ export class BillService {
   }
 
   /**
-   * Update vendor with W-9 / tax information
+   * Update vendor with W-9 / tax information (Connect v3: tax fields live under `additionalInfo`).
    */
   async updateVendorTaxInfo(
     vendorId: string,
     data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string; track1099?: boolean },
   ): Promise<BillVendor> {
     this.logger.log(`Updating Bill.com vendor tax info: ${vendorId}`);
-    const payload: Record<string, unknown> = {
+    const additionalInfo: Record<string, unknown> = {
       taxId: data.taxId.replace(/\D/g, ''),
       taxIdType: data.taxIdType,
       track1099: data.track1099 ?? true,
     };
-    if (data.companyName?.trim()) payload.companyName = data.companyName.trim();
-    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, payload);
+    if (data.companyName?.trim()) additionalInfo.companyName = data.companyName.trim();
+    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, { additionalInfo });
   }
 
   /**

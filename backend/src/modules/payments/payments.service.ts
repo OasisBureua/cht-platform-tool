@@ -8,6 +8,7 @@ import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 import { validateTaxId, sanitizeCompanyName } from './w9-validation';
+import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 
 @Injectable()
 export class PaymentsService {
@@ -48,6 +49,8 @@ export class PaymentsService {
           zipCode: true,
           billVendorId: true,
           w9Submitted: true,
+          specialty: true,
+          npiNumber: true,
         },
       }),
       this.prisma.program.findUnique({
@@ -57,6 +60,7 @@ export class PaymentsService {
     ]);
 
     if (!user) throw new NotFoundException('User not found');
+    assertProfileCompleteForPayments(user);
     if (!program) throw new NotFoundException('Program not found');
     if (!program.honorariumAmount || program.honorariumAmount <= 0) {
       throw new BadRequestException('This program does not offer an honorarium');
@@ -135,6 +139,13 @@ export class PaymentsService {
     userId: string,
     programId: string,
   ): Promise<{ paymentId: string; created: boolean }> {
+    const payUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { specialty: true, npiNumber: true },
+    });
+    if (!payUser) throw new NotFoundException('User not found');
+    assertProfileCompleteForPayments(payUser);
+
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
       select: { honorariumAmount: true, title: true },
@@ -174,8 +185,12 @@ export class PaymentsService {
    */
   async saveVendorId(userId: string, vendorId: string): Promise<{ saved: boolean }> {
     if (!vendorId?.trim()) throw new BadRequestException('vendorId is required');
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { specialty: true, npiNumber: true },
+    });
     if (!user) throw new NotFoundException('User not found');
+    assertProfileCompleteForPayments(user);
     await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -212,22 +227,23 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
-    if (user.billVendorId) {
-      this.logger.log(`User already has Bill.com vendor: ${user.billVendorId}`);
-      return {
-        accountId: user.billVendorId,
-        onboardingUrl: `${this.frontendUrl}/settings/payments`,
-        accountStatus: user.billVendorStatus ?? 'active',
-      };
-    }
-
     if (!vendorDto?.payeeName) {
+      if (user.billVendorId) {
+        this.logger.log(`User already has Bill.com vendor: ${user.billVendorId}`);
+        return {
+          accountId: user.billVendorId,
+          onboardingUrl: `${this.frontendUrl}/settings/payments`,
+          accountStatus: user.billVendorStatus ?? 'active',
+        };
+      }
       return {
         accountId: '',
         onboardingUrl: `${this.frontendUrl}/settings/payments`,
         accountStatus: 'onboarding_incomplete',
       };
     }
+
+    assertProfileCompleteForPayments(user);
 
     const addressLine1 = vendorDto.addressLine1 || '';
     const city = vendorDto.city || (user as Record<string, unknown>).city as string || '';
@@ -240,7 +256,7 @@ export class PaymentsService {
       );
     }
 
-    const vendor = await this.billService.createVendor({
+    const vendorInput = {
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
       address: {
@@ -255,7 +271,22 @@ export class PaymentsService {
           bankAccount: vendorDto.bankAccount,
         },
       }),
-    });
+    };
+
+    if (user.billVendorId) {
+      if (!vendorDto.bankAccount) {
+        throw new BadRequestException('Bank account details are required to update payment information.');
+      }
+      this.logger.log(`Updating Bill.com vendor for user: ${userId}`);
+      await this.billService.updateVendorPaymentAndAddress(user.billVendorId, vendorInput);
+      return {
+        accountId: user.billVendorId,
+        onboardingUrl: `${this.frontendUrl}/settings/payments`,
+        accountStatus: user.billVendorStatus ?? 'active',
+      };
+    }
+
+    const vendor = await this.billService.createVendor(vendorInput);
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -623,8 +654,16 @@ export class PaymentsService {
     userId: string,
     data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },
   ): Promise<{ success: boolean }> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        billVendorId: true,
+        specialty: true,
+        npiNumber: true,
+      },
+    });
     if (!user) throw new NotFoundException('User not found');
+    assertProfileCompleteForPayments(user);
     if (!user.billVendorId) throw new BadRequestException('Add bank details first before submitting W-9');
 
     const taxId = data.taxId.replace(/\D/g, '');

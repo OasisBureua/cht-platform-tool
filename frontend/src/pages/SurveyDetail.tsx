@@ -7,6 +7,11 @@ import { isAxiosError } from 'axios';
 import { surveysApi } from '../api/surveys';
 import { getApiErrorMessage } from '../api/client';
 import type { Survey } from '../api/surveys';
+import { programsApi } from '../api/programs';
+import {
+  PostEventAttendanceMessage,
+  PostEventFeedbackLearnerActions,
+} from '../components/programs/PostEventFeedbackLearnerActions';
 import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
 
 function typeLabel(type?: Survey['type']) {
@@ -36,6 +41,19 @@ export default function SurveyDetail() {
     queryFn: () => surveysApi.getById(id!),
     enabled: Boolean(id && userId),
   });
+
+  const isPostEventFeedback = survey?.type === 'FEEDBACK' && Boolean(survey.programId);
+
+  const { data: programRegistration } = useQuery({
+    queryKey: ['program', survey?.programId, 'registration'],
+    queryFn: () => programsApi.getMyRegistration(survey!.programId),
+    enabled: Boolean(userId && isPostEventFeedback && survey?.programId),
+  });
+
+  const registrationApproved = programRegistration?.status === 'APPROVED';
+  const attendanceOkForPostEvent =
+    programRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
+    programRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
 
   const hasJotform = Boolean(survey?.jotformFormId);
 
@@ -294,6 +312,31 @@ export default function SurveyDetail() {
             ) : null}
           </div>
 
+          {isPostEventFeedback && survey.programId ? (
+            <div className="space-y-4">
+              <PostEventAttendanceMessage myRegistration={programRegistration} />
+              {registrationApproved && attendanceOkForPostEvent ? (
+                <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
+                  <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
+                  <p className="text-sm text-gray-600">
+                    After you submit the Jotform above, use <strong>Complete survey</strong> to lock in your response
+                    {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
+                      ? ', then confirm payout details and tap Continue to create your pending honorarium request'
+                      : ''}
+                    . Each step can only be submitted once.
+                  </p>
+                  <PostEventFeedbackLearnerActions
+                    programId={survey.programId}
+                    userId={userId}
+                    myRegistration={programRegistration}
+                    hasHonorarium={Boolean(survey.program?.honorariumAmount && survey.program.honorariumAmount > 0)}
+                    surveyReadyForAck={started || surveySaved}
+                    surveyDetailId={id}
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         {/* Right: meta */}
