@@ -17,7 +17,7 @@ on:
         type: boolean
 
 env:
-  TERRAFORM_VERSION: 1.6.0
+  TERRAFORM_VERSION: 1.9.8
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
 
 permissions:
