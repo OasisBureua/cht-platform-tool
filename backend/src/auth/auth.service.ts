@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
-import { HubSpotService } from '../modules/hubspot/hubspot.service';
+import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -21,7 +21,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
-    private hubspot: HubSpotService,
+    private outboundSync: OutboundSyncService,
   ) {}
 
   /**
@@ -63,17 +63,21 @@ export class AuthService {
           zipCode: zipCode?.trim() || undefined,
         },
       });
-      this.hubspot.createOrUpdateContact({
-        email: user.email,
-        firstname: user.firstName,
-        lastname: user.lastName,
-        jobtitle: user.specialty ?? undefined,
-        company: user.institution ?? undefined,
-        city: user.city ?? undefined,
-        state: user.state ?? undefined,
-        zip: user.zipCode ?? undefined,
-        npi_number: user.npiNumber ?? undefined,
-      }).catch(() => {});
+      // Fan out to HubSpot + Mailchimp + MediaHub. Fire-and-forget: a slow
+      // downstream (Mailchimp is commonly the slowest) must not block signup.
+      this.outboundSync
+        .syncUser({
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          npiNumber: user.npiNumber,
+          specialty: user.specialty,
+          institution: user.institution,
+          city: user.city,
+          state: user.state,
+          zipCode: user.zipCode,
+        })
+        .catch((err) => this.logger.error('[Auth] outbound-sync error:', err));
     }
     // Do NOT overwrite firstName/lastName for existing users—Settings PATCH is the source of truth.
     // OAuth metadata is only used when creating a new user.

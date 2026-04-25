@@ -21,6 +21,7 @@ import { SurveysModule } from './modules/surveys/surveys.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { JotformModule } from './modules/jotform/jotform.module';
 import { HubSpotModule } from './modules/hubspot/hubspot.module';
+import { OutboundSyncModule } from './modules/outbound-sync/outbound-sync.module';
 import { ContactModule } from './modules/contact/contact.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
@@ -70,6 +71,7 @@ import { validationSchema } from './config/validation';
     AdminModule,
     JotformModule,
     HubSpotModule,
+    OutboundSyncModule,
     ContactModule,
   ],
   controllers: [AppController],
