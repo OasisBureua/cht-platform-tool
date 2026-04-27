@@ -21,7 +21,7 @@ Use this guide when the ACM certificate is still pending and you want to test in
 | **CloudFront** | No* | Can use default *.cloudfront.net cert; custom domain needs ACM |
 | **Route53** | **Yes** | Health check uses HTTPS:443; needs ALB HTTPS |
 
-\* CloudFront works without custom ACM—you get `xxxxx.cloudfront.net` URL.
+\* CloudFront works without custom ACM - you get `xxxxx.cloudfront.net` URL.
 
 ## Option A: Deploy Core Infra Only (No ALB/Route53/CloudFront)
 

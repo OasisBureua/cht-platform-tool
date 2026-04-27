@@ -8,7 +8,7 @@ import { ZoomWebhookService } from './zoom-webhook.service';
  * Also handles endpoint.url_validation when adding webhook in Zoom App Marketplace.
  *
  * Configure in Zoom App Marketplace: Event Subscriptions → Add Endpoint
- * Events: meeting.participant_joined, meeting.participant_left
+ * Events: meeting.participant_joined, meeting.participant_left, meeting.ended, webinar.ended
  * Set ZOOM_WEBHOOK_SECRET to the Secret Token from Zoom.
  */
 @Controller('webhooks/zoom')

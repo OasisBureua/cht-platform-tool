@@ -34,8 +34,8 @@ export default function DiseaseAreas() {
           <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Disease Areas</h1>
         </div>
         <p className="text-pretty max-w-2xl text-sm text-gray-600">
-          Explore content by therapeutic area. Each disease area has LIVE sessions, conversations,
-          surveys, and expert insights - all in one place.
+          Explore content by therapeutic area. Each disease area has Live sessions, conversations,
+          surveys, and expert insights — all in one place.
         </p>
       </header>
 
@@ -99,11 +99,11 @@ export default function DiseaseAreas() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {/* LIVE sessions for this area */}
+                  {/* Live sessions for this area */}
                   {matchedWebinars.length > 0 && (
                     <div className="space-y-3">
                       <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                        LIVE Sessions · {matchedWebinars.length}
+                        Live Sessions · {matchedWebinars.length}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         {matchedWebinars.slice(0, 3).map((w) => (

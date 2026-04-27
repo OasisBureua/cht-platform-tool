@@ -27,7 +27,7 @@ export function PlaylistGrid({ playlists, isInApp, descriptionForItem }: Playlis
             <div className="aspect-video relative shrink-0 bg-gray-100 overflow-hidden rounded-t-2xl">
               <Link to={playlistUrl} className="block h-full">
                 <img
-                  src={item.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
+                  src={item.thumbnailUrl || '/images/placeholder-playlist.svg'}
                   alt=""
                   className="h-full w-full object-cover"
                   loading="lazy"

@@ -30,6 +30,10 @@ export const validationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
 
+  // Amazon SES (registration-approved, etc.)
+  EMAIL_FROM: Joi.string().email().allow('').optional(),
+  EMAIL_ENABLED: Joi.string().valid('true', 'false', '0', '1', 'yes', 'no', '').optional(),
+
   // SQS (payment queue - optional for local dev)
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
 
@@ -52,14 +56,19 @@ export const validationSchema = Joi.object({
   // Jotform (optional – for surveys)
   JOTFORM_API_KEY: Joi.string().allow('').optional(),
   JOTFORM_BASE_URL: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_DEFAULT_INTAKE_URL: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_INTAKE_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID: Joi.string().allow('').optional(),
+  JOTFORM_TEMPLATE_FORM_ID: Joi.string().allow('').optional(),
+  WEBINARS_LIST_ZOOM_FALLBACK: Joi.string().valid('true', 'false', '1', '0').optional(),
 
   // Zoom (optional – for webinars)
   ZOOM_ACCOUNT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_ID: Joi.string().allow('').optional(),
   ZOOM_CLIENT_SECRET: Joi.string().allow('').optional(),
   ZOOM_WEBHOOK_SECRET: Joi.string().allow('').optional(),
-  ZOOM_SDK_KEY: Joi.string().allow('').optional(),
-  ZOOM_SDK_SECRET: Joi.string().allow('').optional(),
 
   // HubSpot (optional – CRM contact sync)
   HUBSPOT_ACCESS_TOKEN: Joi.string().allow('').optional(),

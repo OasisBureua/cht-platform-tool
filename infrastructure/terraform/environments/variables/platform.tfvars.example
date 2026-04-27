@@ -23,7 +23,7 @@ redis_num_nodes         = 1
 # Compute (scaled up for higher load)
 backend_task_cpu        = 512
 backend_task_memory     = 1024
-backend_desired_count   = 2
+backend_desired_count   = 3
 backend_min_capacity    = 2
 backend_max_capacity    = 6
 

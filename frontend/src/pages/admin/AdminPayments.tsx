@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, type PendingPayment } from '../../api/admin';
+import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import { DollarSign, CheckCircle2, AlertCircle, Trash2 } from 'lucide-react';
@@ -126,7 +127,10 @@ export default function AdminPayments() {
       {(payNowMutation.isError || deleteMutation.isError) && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertCircle className="h-5 w-5 shrink-0" />
-          {String(payNowMutation.error ?? deleteMutation.error)}
+          {getApiErrorMessage(
+            payNowMutation.isError ? payNowMutation.error : deleteMutation.error,
+            'Request failed.',
+          )}
         </div>
       )}
     </div>

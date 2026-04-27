@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
+import { isProfileCompleteForPayments } from '../common/profile-payment-eligibility';
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -27,8 +28,8 @@ export class AuthService {
   /**
    * Find or create user by Auth0 sub (authId).
    * Uses DB only (Redis bypassed to avoid connection/timeout issues during login).
-   * For existing users, we never overwrite firstName/lastName from OAuth metadata—
-   * those are managed via Settings PATCH and must persist across login/logout.
+   * For existing users, we never overwrite firstName/lastName from OAuth metadata;
+   * those values are managed via Settings PATCH and must persist across login/logout.
    */
   async findOrCreateByAuthId(
     authId: string,
@@ -79,7 +80,7 @@ export class AuthService {
         })
         .catch((err) => this.logger.error('[Auth] outbound-sync error:', err));
     }
-    // Do NOT overwrite firstName/lastName for existing users—Settings PATCH is the source of truth.
+    // Do NOT overwrite firstName/lastName for existing users - Settings PATCH is the source of truth.
     // OAuth metadata is only used when creating a new user.
 
     const authUser = new AuthUser();
@@ -215,10 +216,7 @@ export class AuthService {
    * Requires: specialty. NPI required unless profession is Pharmaceuticals.
    */
   isProfileComplete(user: { specialty: string | null; npiNumber: string | null } | null): boolean {
-    if (!user || !user.specialty?.trim()) return false;
-    if (user.specialty.trim() === 'Pharmaceuticals') return true;
-    const npi = (user.npiNumber || '').replace(/\D/g, '');
-    return npi.length === 10;
+    return isProfileCompleteForPayments(user);
   }
 
   /**

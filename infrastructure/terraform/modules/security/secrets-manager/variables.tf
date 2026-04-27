@@ -130,11 +130,39 @@ variable "zoom_webhook_secret" {
   default     = ""
 }
 
+variable "zoom_sdk_key" {
+  description = "Zoom Meeting SDK key (separate Marketplace app from Server-to-Server OAuth)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_sdk_secret" {
+  description = "Zoom Meeting SDK secret (Meeting SDK app)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
 variable "jotform_api_key" {
   description = "Jotform API key for surveys (from Jotform enterprise account)"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "jotform_webinar_default_intake_url" {
+  description = "Optional default webinar intake Jotform URL (stored in app secret JSON; injected as JOTFORM_WEBINAR_DEFAULT_INTAKE_URL on ECS)"
+  type        = string
+  sensitive   = false
+  default     = ""
+}
+
+variable "jotform_webinar_post_event_shared_form_id" {
+  description = "Optional Jotform form ID for org-wide post-event survey (injected as JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID; skips per-webinar clone when set)"
+  type        = string
+  sensitive   = false
   default     = ""
 }
 

@@ -4,6 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight } from 'lucide-react';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
+import { programsApi } from '../api/programs';
+import { useAuth } from '../contexts/AuthContext';
+import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
@@ -19,11 +22,27 @@ function formatDuration(minutes?: number): string {
 }
 
 export default function OfficeHours() {
+  const { user } = useAuth();
+  const userId = user?.userId;
+
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['office-hours'],
     queryFn: webinarsApi.listOfficeHours,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: liveStatuses = [] } = useQuery({
+    queryKey: ['programs', 'me', 'live-session-status'],
+    queryFn: () => programsApi.getMyLiveSessionStatus(),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  const statusByProgramId = useMemo(() => {
+    const m = new Map<string, (typeof liveStatuses)[0]>();
+    for (const s of liveStatuses) m.set(s.programId, s);
+    return m;
+  }, [liveStatuses]);
 
   const { upcoming, past } = useMemo(() => {
     const withDate = (w: WebinarItem) => (w.startTime ? new Date(w.startTime).getTime() : 0);
@@ -41,7 +60,7 @@ export default function OfficeHours() {
       <header className="space-y-1">
         <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">CHM Office Hours</h1>
         <p className="text-pretty text-sm text-gray-600">
-          Get time with our experts - live sessions for Q&A. Select an available time slot and join from here when
+          Get time with our experts — live sessions for Q&amp;A. Select an available time slot and join from here when
           it&apos;s time.
         </p>
       </header>
@@ -64,7 +83,14 @@ export default function OfficeHours() {
               </h2>
               <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {upcoming.map((w) => (
-                  <SessionRow key={w.id} session={w} />
+                  <SessionRow
+                    key={w.id}
+                    session={w}
+                    listBadge={liveSessionListBadgeLabel(
+                      w.registrationRequiresApproval,
+                      statusByProgramId.get(w.id),
+                    )}
+                  />
                 ))}
               </div>
             </section>
@@ -77,7 +103,15 @@ export default function OfficeHours() {
               </h2>
               <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {past.map((w) => (
-                  <SessionRow key={w.id} session={w} expired />
+                  <SessionRow
+                    key={w.id}
+                    session={w}
+                    expired
+                    listBadge={liveSessionListBadgeLabel(
+                      w.registrationRequiresApproval,
+                      statusByProgramId.get(w.id),
+                    )}
+                  />
                 ))}
               </div>
             </section>
@@ -88,7 +122,15 @@ export default function OfficeHours() {
   );
 }
 
-function SessionRow({ session: w, expired = false }: { session: WebinarItem; expired?: boolean }) {
+function SessionRow({
+  session: w,
+  expired = false,
+  listBadge,
+}: {
+  session: WebinarItem;
+  expired?: boolean;
+  listBadge?: string | null;
+}) {
   const date = w.startTime ? new Date(w.startTime) : null;
 
   return (
@@ -114,6 +156,11 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
           <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
             {w.title}
           </p>
+          {listBadge ? (
+            <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+              {listBadge}
+            </span>
+          ) : null}
           {w.hostDisplayName ? (
             <span className="text-xs font-medium text-gray-600 shrink-0">· Get time with {w.hostDisplayName}</span>
           ) : null}

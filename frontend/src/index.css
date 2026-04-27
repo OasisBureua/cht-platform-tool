@@ -2,6 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-text-primary: #111827;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #6b7280;
+  --color-border: #e5e7eb;
+  --color-surface: #f9fafb;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 /* Public home: staggered chunk entrance - opacity only so we never clobber Tailwind transforms (e.g. -translate-x-1/2 full-bleed). */
 @keyframes home-chunk-enter {
   from {
@@ -300,6 +314,15 @@
   .dark .shadow-lg,
   .dark .shadow-2xl {
     --tw-shadow-color: rgb(0 0 0 / 0.65) !important;
+  }
+
+  /* Keep hero play buttons white in dark mode. */
+  .dark .hero-play-btn {
+    background-color: rgb(255 255 255) !important;
+    color: rgb(24 24 27) !important;
+  }
+  .dark .hero-play-btn:hover {
+    background-color: rgb(244 244 245) !important;
   }
 }
 

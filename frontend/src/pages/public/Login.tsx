@@ -70,10 +70,10 @@ export default function Login() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-8 text-center">
           <h1 className="text-xl font-semibold text-gray-900 md:text-2xl">
-            Working on your HCP content today?
+            Welcome back.
           </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Pick a channel and get started.
+            Your clinical library is waiting.
           </p>
         </div>
 
@@ -86,6 +86,7 @@ export default function Login() {
               </div>
             )}
             <Input
+              id="email"
               label="Email address"
               type="email"
               placeholder="johndoe@gmail.com"
@@ -94,6 +95,7 @@ export default function Login() {
               required
             />
             <Input
+              id="password"
               label="Password"
               type="password"
               placeholder="••••••••"
@@ -112,7 +114,7 @@ export default function Login() {
               </label>
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                className="font-medium text-gray-900 underline hover:text-gray-700 text-sm"
               >
                 Forgot Password?
               </Link>
@@ -121,7 +123,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+              className="w-full rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
             >
               {submitting ? 'Signing in...' : 'Login'}
             </button>
@@ -171,7 +173,7 @@ export default function Login() {
             Don&apos;t have an account?{' '}
             <Link
               to="/join"
-              className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              className="font-medium text-gray-900 underline hover:text-gray-700"
             >
               Sign Up
             </Link>
@@ -202,6 +204,7 @@ function AppleIcon() {
 }
 
 function Input({
+  id,
   label,
   type = 'text',
   placeholder,
@@ -209,6 +212,7 @@ function Input({
   onChange,
   required,
 }: {
+  id?: string;
   label: string;
   type?: string;
   placeholder?: string;
@@ -218,8 +222,9 @@ function Input({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">{label}</label>
       <input
+        id={id}
         type={type}
         placeholder={placeholder}
         value={value}

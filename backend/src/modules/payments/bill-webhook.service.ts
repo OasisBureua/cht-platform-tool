@@ -37,7 +37,7 @@ export class BillWebhookService {
   ) {
     this.webhookSecret = this.configService.get<string>('bill.webhookSecret') || null;
     if (!this.webhookSecret) {
-      this.logger.warn('[Bill webhook] BILL_WEBHOOK_SECRET not configured — signature validation skipped');
+      this.logger.warn('[Bill webhook] BILL_WEBHOOK_SECRET not configured - signature validation skipped');
     }
   }
 
@@ -46,7 +46,7 @@ export class BillWebhookService {
     if (this.webhookSecret) {
       const isValid = this.validateSignature(body, signature, timestamp);
       if (!isValid) {
-        this.logger.warn('[Bill webhook] Invalid signature — ignoring event');
+        this.logger.warn('[Bill webhook] Invalid signature - ignoring event');
         return;
       }
     }
@@ -95,7 +95,7 @@ export class BillWebhookService {
     } else if (PROCESSING_STATUSES.has(billStatus)) {
       await this.markProcessing(payment.id);
     } else {
-      this.logger.log(`[Bill webhook] Unhandled status=${billStatus} for payment=${payment.id} — no action`);
+      this.logger.log(`[Bill webhook] Unhandled status=${billStatus} for payment=${payment.id} - no action`);
     }
   }
 
@@ -107,7 +107,7 @@ export class BillWebhookService {
   ): Promise<void> {
     const existing = await this.prisma.payment.findUnique({ where: { id: paymentId } });
     if (existing?.status === 'PAID') {
-      this.logger.log(`[Bill webhook] Payment ${paymentId} already PAID — skipping`);
+      this.logger.log(`[Bill webhook] Payment ${paymentId} already PAID - skipping`);
       return;
     }
 

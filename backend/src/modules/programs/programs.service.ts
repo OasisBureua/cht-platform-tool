@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
@@ -15,6 +17,7 @@ export class ProgramsService {
     private prisma: PrismaService,
     private queueService: QueueService,
     private hubspot: HubSpotService,
+    private config: ConfigService,
   ) {}
 
   /**
@@ -63,6 +66,8 @@ export class ProgramsService {
     zoomJoinUrl?: string;
     zoomStartUrl?: string;
     zoomSessionType?: 'WEBINAR' | 'MEETING';
+    registrationRequiresApproval?: boolean;
+    jotformIntakeFormUrl?: string | null;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -81,6 +86,13 @@ export class ProgramsService {
         zoomMeetingId: dto.zoomMeetingId ?? null,
         zoomJoinUrl: dto.zoomJoinUrl ?? null,
         zoomStartUrl: dto.zoomStartUrl ?? null,
+        ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
+        registrationRequiresApproval: dto.registrationRequiresApproval ?? true,
+        ...(dto.jotformIntakeFormUrl !== undefined && dto.jotformIntakeFormUrl !== null
+          ? {
+              jotformIntakeFormUrl: dto.jotformIntakeFormUrl?.trim() || null,
+            }
+          : {}),
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);
@@ -157,6 +169,29 @@ export class ProgramsService {
       throw new NotFoundException('Program not found');
     }
 
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+    const intakeForClient = effectiveWebinarIntakeFormUrl(
+      program.zoomSessionType,
+      program.jotformIntakeFormUrl,
+      defaultIntake,
+    );
+
+    let jotformSurveyUrl = program.jotformSurveyUrl?.trim() || undefined;
+    if (!jotformSurveyUrl && program.zoomSessionType === 'WEBINAR') {
+      const feedback = await this.prisma.survey.findFirst({
+        where: {
+          programId: program.id,
+          type: 'FEEDBACK',
+          jotformFormId: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { jotformFormId: true },
+      });
+      if (feedback?.jotformFormId) {
+        jotformSurveyUrl = `https://communityhealthmedia.jotform.com/${feedback.jotformFormId}`;
+      }
+    }
+
     return {
       id: program.id,
       title: program.title,
@@ -182,37 +217,13 @@ export class ProgramsService {
       zoomJoinUrl: program.zoomJoinUrl || undefined,
       startDate: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
-      jotformSurveyUrl: program.jotformSurveyUrl || undefined,
-      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),
+      jotformSurveyUrl,
+      jotformIntakeFormUrl: intakeForClient,
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,
-      hasCalendlyScheduling: !!program.calendlySchedulingUrl?.trim(),
     };
-  }
-
-  /**
-   * Office-hours Calendly URL — only for enrolled users (after admin approval when registrationRequiresApproval is on).
-   */
-  async getCalendlySchedulingForEnrolledUser(
-    userId: string,
-    programId: string,
-  ): Promise<{ calendlySchedulingUrl: string | null }> {
-    const program = await this.prisma.program.findFirst({
-      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
-      select: { calendlySchedulingUrl: true },
-    });
-    const url = program?.calendlySchedulingUrl?.trim();
-    if (!url) {
-      return { calendlySchedulingUrl: null };
-    }
-    const enrollment = await this.prisma.programEnrollment.findUnique({
-      where: { userId_programId: { userId, programId } },
-    });
-    if (!enrollment) {
-      return { calendlySchedulingUrl: null };
-    }
-    return { calendlySchedulingUrl: url };
   }
 
   /**
@@ -222,7 +233,8 @@ export class ProgramsService {
     this.logger.log(`Enrolling user ${dto.userId} in program ${dto.programId}`);
 
     const programRow = await this.prisma.program.findUnique({ where: { id: dto.programId } });
-    if (programRow?.registrationRequiresApproval) {
+    const approvalBlocksQuickEnroll = programRow?.registrationRequiresApproval === true;
+    if (approvalBlocksQuickEnroll) {
       throw new BadRequestException(
         'This program uses admin-approved registration. Complete the registration flow instead of quick enroll.',
       );
@@ -451,8 +463,10 @@ export class ProgramsService {
       },
     });
 
-    // Process honorarium payment if applicable
-    if (program.honorariumAmount) {
+    // Honorarium for LIVE webinars / office hours is requested by the learner after post-event steps (admin pays via Bill.com).
+    const isLiveSession =
+      program.zoomSessionType === 'WEBINAR' || program.zoomSessionType === 'MEETING';
+    if (program.honorariumAmount && !isLiveSession) {
       await this.queueService.processPayment(
         enrollment.userId,
         program.honorariumAmount,
@@ -473,5 +487,138 @@ export class ProgramsService {
     }).catch(() => {});
 
     this.logger.log(`Completion workflow triggered for program ${enrollment.programId}`);
+  }
+
+  /** Admin hub — who is enrolled (e.g. webinars). */
+  async listProgramEnrollmentsForAdmin(programId: string) {
+    return this.prisma.programEnrollment.findMany({
+      where: { programId },
+      include: {
+        user: {
+          select: { id: true, email: true, firstName: true, lastName: true, specialty: true },
+        },
+      },
+      orderBy: { enrolledAt: 'desc' },
+    });
+  }
+
+  /**
+   * Derived LIVE webinar reminders (no persisted Notification rows).
+   * Post-enrollment only: invitation / intake nudges are not shown here so the bell does not prompt
+   * users before signup and admin approval are complete. Post-event: enrolled, session end passed,
+   * FEEDBACK survey exists, no response yet.
+   */
+  async getLiveWebinarActionItems(userId: string): Promise<
+    Array<{
+      id: string;
+      kind: 'WEBINAR_INVITATION_SURVEY' | 'WEBINAR_POST_EVENT_SURVEY';
+      title: string;
+      body: string;
+      programId: string;
+      href: string;
+    }>
+  > {
+    const since = new Date();
+    since.setDate(since.getDate() - 90);
+
+    const programs = await this.prisma.program.findMany({
+      where: {
+        status: 'PUBLISHED',
+        zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+        OR: [{ startDate: null }, { startDate: { gte: since } }],
+      },
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        duration: true,
+        zoomSessionEndedAt: true,
+      },
+      orderBy: { startDate: 'desc' },
+      take: 50,
+    });
+
+    if (programs.length === 0) return [];
+
+    const programIds = programs.map((p) => p.id);
+
+    const [enrollments, surveys, liveRegs] = await Promise.all([
+      this.prisma.programEnrollment.findMany({
+        where: { userId, programId: { in: programIds } },
+        select: { programId: true },
+      }),
+      this.prisma.survey.findMany({
+        where: {
+          programId: { in: programIds },
+          type: 'FEEDBACK',
+        },
+        select: { id: true, programId: true },
+      }),
+      this.prisma.programRegistration.findMany({
+        where: { userId, programId: { in: programIds } },
+        select: { programId: true, postEventAttendanceStatus: true },
+      }),
+    ]);
+
+    const enrolledSet = new Set(enrollments.map((e) => e.programId));
+    const attendanceByProgram = new Map(liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]));
+    const feedbackByProgram = new Map(surveys.map((s) => [s.programId, s.id]));
+
+    const feedbackIds = surveys.map((s) => s.id);
+    const responses =
+      feedbackIds.length === 0
+        ? []
+        : await this.prisma.surveyResponse.findMany({
+            where: { userId, surveyId: { in: feedbackIds } },
+            select: { surveyId: true },
+          });
+    const respondedSurveyIds = new Set(responses.map((r) => r.surveyId));
+
+    const items: Array<{
+      id: string;
+      kind: 'WEBINAR_INVITATION_SURVEY' | 'WEBINAR_POST_EVENT_SURVEY';
+      title: string;
+      body: string;
+      programId: string;
+      href: string;
+    }> = [];
+
+    for (const p of programs) {
+      const enrolled = enrolledSet.has(p.id);
+
+      if (!enrolled) {
+        continue;
+      }
+
+      const surveyId = feedbackByProgram.get(p.id);
+      if (!surveyId) continue;
+      if (respondedSurveyIds.has(surveyId)) continue;
+
+      const now = new Date();
+      let postSurveyAllowed = false;
+      if (p.zoomSessionEndedAt) {
+        postSurveyAllowed = now >= p.zoomSessionEndedAt;
+      } else if (p.startDate) {
+        const durationMin = p.duration ?? 60;
+        postSurveyAllowed = now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
+      }
+      if (!postSurveyAllowed) continue;
+
+      const att = attendanceByProgram.get(p.id);
+      if (att !== 'VERIFIED' && att !== 'NOT_REQUIRED') {
+        continue;
+      }
+
+      items.push({
+        id: `post-${p.id}`,
+        kind: 'WEBINAR_POST_EVENT_SURVEY',
+        title: 'Complete post-event survey',
+        body: `Open Surveys to finish feedback for: ${p.title}`,
+        programId: p.id,
+        href: `/app/surveys/${surveyId}`,
+      });
+    }
+
+    return items;
   }
 }

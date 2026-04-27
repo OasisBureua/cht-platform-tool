@@ -5,6 +5,8 @@ export type DolEntry = {
   bio: string;
   education: string;
   isNew?: boolean;
+  /** ISO date when the entry was added; used to auto-expire the "New" badge after 7 days */
+  addedAt?: string;
 };
 
 export type DolRegion = {
@@ -64,6 +66,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A world authority on hereditary breast cancer and BRCA mutations; pioneered PARP inhibitor trials in BRCA-mutated patients and is a global leader integrating genetic testing into clinical oncology management.',
         education: 'Washington and Lee University (BSc); University of Virginia School of Medicine (MD); Walter Reed Army Medical Center (Residency & Fellowship).',
         isNew: true,
+        addedAt: '2025-03-01',
       },
       {
         id: 'lustberg',
@@ -166,6 +169,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A board-certified hematologist-oncologist and pioneering community-based researcher with expertise in breast cancer, bone marrow transplantation, lymphomas, and immunotherapy. Founder of Indy Hematology Review and Indy Hematology Education.',
         education: 'University of Benin, Nigeria (MD); Columbus Hospital / Northwestern University Affiliate (Residency); Johns Hopkins University & National Cancer Institute (Fellowships).',
         isNew: true,
+        addedAt: '2025-03-01',
       },
       {
         id: 'kruse',
@@ -207,6 +211,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A 2024 NCI Early Career Cancer Clinical Investigator Award recipient (one of 10 nationally) specializing in aggressive breast cancer subtypes, breast cancer in younger women, metastatic disease, and developmental therapeutics. A principal investigator on multiple national trials.',
         education: 'University of Iowa Roy J. and Lucille A. Carver College of Medicine (MD); Washington University / Barnes-Jewish Hospital (Residency & Fellowship).',
         isNew: true,
+        addedAt: '2025-03-01',
       },
     ],
   },

@@ -45,10 +45,6 @@ export default function AuthCallback() {
         setError(result.error.message || 'Sign-in failed.');
         return;
       }
-      if (result.profileComplete === false) {
-        navigate('/complete-profile', { replace: true });
-        return;
-      }
       const fromParam = searchParams.get('from');
       const fromPath = fromParam && fromParam !== 'undefined' ? fromParam : undefined;
       navigate(getPostLoginPath(result.role, fromPath), { replace: true });

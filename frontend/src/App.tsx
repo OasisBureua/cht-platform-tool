@@ -28,8 +28,6 @@ import PublicSurveys from './pages/public/PublicSurveys';
 import WhatWeDo from './pages/public/WhatWeDo';
 import Services from './pages/public/Services';
 import Portfolios from './pages/public/Portfolios';
-import DolNetwork from './pages/public/DolNetwork';
-import DolRegionDetail from './pages/public/DolRegionDetail';
 import Terms from './pages/public/Terms';
 
 // App layout (existing)
@@ -50,10 +48,6 @@ import Earnings from './pages/Earnings';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
-import ChmDocs from './pages/ChmDocs';
-import Podcasts from './pages/Podcasts';
-import DiseaseAreas from './pages/DiseaseAreas';
-
 // =======================
 // ADMIN ROUTES
 // =======================
@@ -70,6 +64,7 @@ import AdminRxAnalytics from './pages/admin/AdminRxAnalytics';
 import AdminSettings from './pages/admin/AdminSettings';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminProgramHub from './pages/admin/AdminProgramHub';
+import AdminWebinarApprovals from './pages/admin/AdminWebinarApprovals';
 
 // optional legacy page
 import Dashboard from './pages/Dashboard';
@@ -129,8 +124,10 @@ function App() {
             <Route path="/surveys" element={<PublicSurveys />} />
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
-            <Route path="/kol-network" element={<DolNetwork />} />
-            <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
+            <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
+            {/* KOL / CHM Docs directory hidden; bookmarked URLs go home */}
+            <Route path="/kol-network" element={<Navigate to="/home" replace />} />
+            <Route path="/kol-network/:regionSlug" element={<Navigate to="/home" replace />} />
           </Route>
 
           {/* =======================
@@ -150,7 +147,7 @@ function App() {
             <Route path="home" element={<Dashboard />} />
             <Route path="search" element={<ExploreOpportunities />} />
 
-            {/* LIVE (formerly Webinars) */}
+            {/* Live (formerly Webinars) */}
             <Route path="live" element={<Webinars />} />
             <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="live/:id" element={<WebinarDetail />} />
@@ -166,18 +163,17 @@ function App() {
             <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
-            {/* CHM DOC's */}
-            <Route path="chm-docs" element={<ChmDocs />} />
+            {/* CHM Docs + Podcasts: hidden from nav; direct URLs redirect home */}
+            <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
 
-            {/* Disease Areas */}
-            <Route path="disease-areas" element={<DiseaseAreas />} />
+            {/* Disease Areas: hidden from nav; bookmarked URLs redirect home */}
+            <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
 
             {/* Surveys */}
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
-            {/* Podcasts */}
-            <Route path="podcasts" element={<Podcasts />} />
+            <Route path="podcasts" element={<Navigate to="/app/home" replace />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />
             <Route path="watch" element={<Navigate to="/app/catalog" replace />} />
@@ -190,7 +186,7 @@ function App() {
             <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
             <Route path="catalog" element={<VideosPage />} />
 
-            {/* Earnings + ChatBot + Settings (Payments moved to admin) */}
+            {/* Earnings + ChatBot + Settings (Payments: Settings → Payment Settings) */}
             <Route path="earnings" element={<Earnings />} />
             <Route path="chatbot" element={<ChatBot />} />
             <Route path="settings" element={<Settings />} />
@@ -224,6 +220,7 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="programs" element={<AdminPrograms />} />
             <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
+            <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
             <Route path="office-hours" element={<AdminPrograms />} />
             <Route path="surveys" element={<AdminSurveys />} />
             <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
@@ -231,7 +228,7 @@ function App() {
             <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
             <Route
               path="office-hours-scheduler"
-              element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" />}
+              element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" lockSessionType />}
             />
             <Route path="payments" element={<AdminPayments />} />
             <Route path="settings" element={<AdminSettings />} />

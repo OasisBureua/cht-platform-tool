@@ -83,6 +83,10 @@ export class ProgramResponseDto {
 
   @IsString()
   @IsOptional()
+  zoomSessionEndedAt?: string;
+
+  @IsString()
+  @IsOptional()
   jotformSurveyUrl?: string;
 
   @IsString()
@@ -100,9 +104,4 @@ export class ProgramResponseDto {
   @IsString()
   @IsOptional()
   hostDisplayName?: string;
-
-  /** True when a Calendly URL is configured; actual URL is only returned after enrollment via GET .../calendly-scheduling. */
-  @IsBoolean()
-  @IsOptional()
-  hasCalendlyScheduling?: boolean;
 }

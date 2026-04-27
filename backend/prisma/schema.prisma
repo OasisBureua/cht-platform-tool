@@ -56,6 +56,7 @@ model User {
   programRegistrations ProgramRegistration[]
   videoViews      VideoView[]
   surveyResponses SurveyResponse[]
+  formJotformProgress FormJotformProgress[]
   payments        Payment[]
   cmeCredits      CMECredit[]
   analyticsEvents AnalyticsEvent[]
@@ -132,9 +133,7 @@ model Program {
   jotformPreEventUrl   String?
   /// KOL / host display name for office hours marketing ("Get time with …")
   hostDisplayName      String?
-  /// Optional Calendly (or other) scheduling link for office hours
-  calendlySchedulingUrl String?
-  /// When true, users submit registration; admin approves before enrollment
+  /// When true, users submit registration; admin approves before enrollment (webinars and office hours).
   registrationRequiresApproval Boolean @default(false)
   
   // Payment configuration
@@ -146,7 +145,9 @@ model Program {
   zoomMeetingPassword String?
   zoomJoinUrl       String?
   zoomStartUrl      String?  // For host/KOL
-  
+  /// Set from Zoom meeting.ended / webinar.ended webhooks when configured (preferred for post-event survey timing).
+  zoomSessionEndedAt DateTime?
+
   // Timestamps
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -187,6 +188,14 @@ enum ProgramRegistrationStatus {
   WAITLISTED
 }
 
+/// After registration is approved, LIVE sessions may require a second admin step before post-event survey / honorarium.
+enum PostEventAttendanceStatus {
+  NOT_REQUIRED
+  PENDING_VERIFICATION
+  VERIFIED
+  DENIED
+}
+
 enum ProgramFormLinkKind {
   INTAKE
   PRE_EVENT
@@ -201,11 +210,17 @@ model ProgramRegistration {
   programId                 String
   status                    ProgramRegistrationStatus   @default(PENDING)
   intakeJotformSubmissionId String?
+  intakeJotformSubmittedAt  DateTime?
   officeHoursSlotId         String?
   adminNotes                String?                   @db.Text
   reviewedAt                DateTime?
   reviewedByUserId          String?
   calendarInviteSentAt      DateTime?
+  postEventAttendanceStatus              PostEventAttendanceStatus @default(NOT_REQUIRED)
+  postEventAttendanceReviewedAt        DateTime?
+  postEventAttendanceReviewedByUserId  String?
+  postEventSurveyAcknowledgedAt        DateTime?
+  honorariumRequestedAt                DateTime?
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
 
@@ -216,7 +231,31 @@ model ProgramRegistration {
   @@unique([userId, programId])
   @@index([programId])
   @@index([status])
+  @@index([postEventAttendanceStatus])
   @@map("ProgramRegistration")
+}
+
+/// Jotform "Save & Continue" session id for resuming a partially filled form (24h TTL in app logic).
+enum FormJotformScope {
+  SURVEY
+  INTAKE
+}
+
+model FormJotformProgress {
+  id        String            @id @default(cuid())
+  userId    String
+  scope     FormJotformScope
+  refId     String
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, refId])
+  @@index([expiresAt])
+  @@map("FormJotformProgress")
 }
 
 /// Optional time blocks for office hours (aligned with meeting duration); users pick one at registration

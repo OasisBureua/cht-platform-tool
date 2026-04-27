@@ -1,4 +1,4 @@
-# GoTrue OAuth Redirect — Action Required (Sebastien)
+# GoTrue OAuth Redirect - Action Required (Sebastien)
 
 **Issue:** After Google sign-in, users are redirected to MediaHub instead of the CHT platform (testapp.communityhealth.media).
 

@@ -9,6 +9,13 @@ type FlatKol = DolEntry & {
   regionSubtitle?: string;
 };
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+function isRecentlyNew(k: { isNew?: boolean; addedAt?: string }): boolean {
+  if (!k.isNew) return false;
+  if (!k.addedAt) return false;
+  return Date.now() - new Date(k.addedAt).getTime() <= SEVEN_DAYS_MS;
+}
+
 function flattenNetwork(regions: DolRegion[]): FlatKol[] {
   return regions.flatMap((r) =>
     r.entries.map((e) => ({
@@ -39,7 +46,7 @@ function matchesQuery(k: FlatKol, q: string): boolean {
   return hay.includes(q.trim().toLowerCase());
 }
 
-export default function DolNetwork() {
+export default function DolNetwork({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState('');
   const [regionId, setRegionId] = useState('');
   const [institution, setInstitution] = useState('');
@@ -72,7 +79,7 @@ export default function DolNetwork() {
       if (!matchesQuery(k, search)) return false;
       if (regionId && k.regionId !== regionId) return false;
       if (institution && institutionHint(k) !== institution) return false;
-      if (newOnly && !k.isNew) return false;
+      if (newOnly && !isRecentlyNew(k)) return false;
       return true;
     });
   }, [flat, search, regionId, institution, newOnly]);
@@ -86,7 +93,9 @@ export default function DolNetwork() {
       out.sort((a, b) => last(b.name).localeCompare(last(a.name), undefined, { sensitivity: 'base' }));
     } else if (sortMode === 'new-first') {
       out.sort((a, b) => {
-        if (!!a.isNew !== !!b.isNew) return a.isNew ? -1 : 1;
+        const aNew = isRecentlyNew(a);
+        const bNew = isRecentlyNew(b);
+        if (aNew !== bNew) return aNew ? -1 : 1;
         return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
       });
     } else {
@@ -122,13 +131,20 @@ export default function DolNetwork() {
   };
 
   return (
-    <div className="bg-[#f5f5f7] min-h-screen">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 md:py-14">
+    <div className={embedded ? 'min-w-0' : 'bg-[#f5f5f7] min-h-screen'}>
+      <div
+        className={
+          embedded
+            ? 'mx-auto max-w-6xl py-2 sm:py-4 md:py-6'
+            : 'mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 md:py-14'
+        }
+      >
         <header className="mb-8 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-[#0d4f6c]">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
-            Oncology & breast cancer specialists - filter by region, institution, or text; sort by name, region, or newest.
+            Oncology & breast cancer specialists — filter by region, institution, or text; sort by name, region, or
+            newest.
           </p>
         </header>
 
@@ -298,7 +314,7 @@ function KolCard({ k }: { k: FlatKol }) {
   return (
     <article className="rounded-2xl border border-black/[0.08] bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
       <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-100 relative overflow-hidden">
-        {k.isNew && (
+        {isRecentlyNew(k) && (
           <span className="absolute top-2 right-2 z-10 rounded-md bg-orange-700/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
             New
           </span>

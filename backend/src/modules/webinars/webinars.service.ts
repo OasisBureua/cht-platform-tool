@@ -5,10 +5,12 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthUser } from '../../auth/auth.service';
 import { ZoomService } from './zoom.service';
 import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 
 export interface OfficeHoursMeetingSdkAuthDto {
   signature: string;
@@ -28,17 +30,18 @@ export interface WebinarItem {
   duration?: number;
   joinUrl?: string;
   source: 'zoom' | 'program';
-  /** Present when sourced from our DB — distinguishes CME webinars vs Zoom Meeting office hours. */
+  /** Present when sourced from our DB - distinguishes CME webinars vs Zoom Meeting office hours. */
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
-  calendlySchedulingUrl?: string;
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
+  /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
+  honorariumAmount?: number;
 }
 
 /**
  * Hybrid listing strategy (transition period):
- *  1. DB PUBLISHED programs are always included — DB is authoritative.
+ *  1. DB PUBLISHED programs are always included - DB is authoritative.
  *     Deleting a program from admin removes it from this list immediately.
  *  2. Zoom webinars from the account are also included, BUT only if no DB
  *     program already references that Zoom meeting ID (deduplication).
@@ -54,6 +57,7 @@ export class WebinarsService {
   constructor(
     private zoom: ZoomService,
     private prisma: PrismaService,
+    private config: ConfigService,
     private zoomMeetingSdk: ZoomMeetingSdkService,
   ) {}
 
@@ -88,6 +92,7 @@ export class WebinarsService {
           ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
           : undefined);
 
+      const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
       items.push({
         id: p.id,
         title: p.title,
@@ -99,14 +104,15 @@ export class WebinarsService {
         source: 'program',
         sessionKind: 'WEBINAR',
         hostDisplayName: p.hostDisplayName || undefined,
-        calendlySchedulingUrl: p.calendlySchedulingUrl || undefined,
-        jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
+        jotformIntakeFormUrl:
+          effectiveWebinarIntakeFormUrl(p.zoomSessionType, p.jotformIntakeFormUrl, defaultIntake) || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
+        honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
       });
     }
 
-    // 2. Add Zoom webinars not yet in the DB (transition fallback)
-    if (this.zoom.isConfigured()) {
+    // 2. Add Zoom webinars not yet in the DB (optional; off by default so LIVE uses DB + Jotform flow only)
+    if (this.config.get<boolean>('webinars.listZoomFallback') && this.zoom.isConfigured()) {
       try {
         const zoomWebinars = await this.zoom.listWebinars();
         for (const w of zoomWebinars) {
@@ -124,7 +130,7 @@ export class WebinarsService {
           });
         }
       } catch (err) {
-        // Non-fatal — DB programs still shown if Zoom API is unavailable
+        // Non-fatal - DB programs still shown if Zoom API is unavailable
         this.logger.warn(`Zoom listWebinars fallback failed: ${String(err)}`);
       }
     }
@@ -133,7 +139,7 @@ export class WebinarsService {
   }
 
   /**
-   * Published office hours (Zoom Meetings) — interactive drop-in sessions.
+   * Published office hours (Zoom Meetings) - interactive drop-in sessions.
    */
   async listOfficeHours(): Promise<WebinarItem[]> {
     const thirtyDaysAgo = new Date();
@@ -172,6 +178,7 @@ export class WebinarsService {
         hostDisplayName: p.hostDisplayName || undefined,
         jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
+        honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
       });
     }
     return items;
@@ -207,6 +214,7 @@ export class WebinarsService {
         ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
         : undefined);
 
+    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
     return {
       id: program.id,
       title: program.title,
@@ -218,9 +226,11 @@ export class WebinarsService {
       source: 'program',
       sessionKind: 'WEBINAR',
       hostDisplayName: program.hostDisplayName || undefined,
-      calendlySchedulingUrl: program.calendlySchedulingUrl || undefined,
-      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      jotformIntakeFormUrl:
+        effectiveWebinarIntakeFormUrl(program.zoomSessionType, program.jotformIntakeFormUrl, defaultIntake) ||
+        undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
+      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
     };
   }
 
@@ -251,6 +261,7 @@ export class WebinarsService {
       hostDisplayName: program.hostDisplayName || undefined,
       jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
+      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
     };
   }
 
@@ -258,7 +269,10 @@ export class WebinarsService {
    * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
    * Requires published office-hours program, Zoom meeting id, and enrollment.
    */
-  async getOfficeHoursMeetingSdkAuth(authUser: AuthUser, programId: string): Promise<OfficeHoursMeetingSdkAuthDto> {
+  async getOfficeHoursMeetingSdkAuth(
+    authUser: AuthUser,
+    programId: string,
+  ): Promise<OfficeHoursMeetingSdkAuthDto> {
     if (!this.zoomMeetingSdk.isConfigured()) {
       throw new ServiceUnavailableException(
         'In-browser Zoom is not configured. Set ZOOM_SDK_KEY and ZOOM_SDK_SECRET from a Zoom Meeting SDK app.',

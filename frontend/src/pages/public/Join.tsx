@@ -124,7 +124,7 @@ export default function Join() {
       firstName,
       lastName,
       profession,
-      npiNumber: profession === 'Pharmaceuticals' ? undefined : (npi || undefined),
+      npiNumber: requiresNpi ? (npi || undefined) : undefined,
       institution: institution.trim() || undefined,
       city: city.trim() || undefined,
       state: state || undefined,

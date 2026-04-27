@@ -83,6 +83,12 @@ export const paymentsApi = {
     return data;
   },
 
+  /** Re-fetch vendor state from Bill.com and update local user flags (after changes in Bill.com UI). */
+  syncAccountStatus: async (userId: string) => {
+    const { data } = await apiClient.post(`/payments/${userId}/sync-account`);
+    return data;
+  },
+
   submitW9: async (
     userId: string,
     data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },

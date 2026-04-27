@@ -22,18 +22,24 @@ interface ZoomParticipantObject {
   };
 }
 
+interface ZoomSessionEndedObject {
+  id?: string | number;
+  uuid?: string;
+  end_time?: string;
+}
+
 interface ZoomWebhookPayload {
   event?: string;
   Event?: string;
   payload?: {
     plainToken?: string;
     PlainToken?: string;
-    object?: ZoomParticipantObject;
+    object?: ZoomParticipantObject & ZoomSessionEndedObject;
   };
   Payload?: {
     plainToken?: string;
     PlainToken?: string;
-    object?: ZoomParticipantObject;
+    object?: ZoomParticipantObject & ZoomSessionEndedObject;
   };
 }
 
@@ -49,7 +55,7 @@ export class ZoomWebhookService {
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
-      this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not configured — signature validation skipped');
+      this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not configured - signature validation skipped');
     }
   }
 
@@ -77,7 +83,7 @@ export class ZoomWebhookService {
       }
       const encryptedToken = this.encryptToken(plainToken);
       if (!encryptedToken) {
-        this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not set — cannot encrypt token for validation');
+        this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not set - cannot encrypt token for validation');
       }
       this.logger.log('[Zoom webhook] URL validation response sent');
       return { plainToken, encryptedToken };
@@ -87,20 +93,68 @@ export class ZoomWebhookService {
     if (this.webhookSecret && signature && rawBody) {
       const isValid = this.validateSignature(rawBody, signature, timestamp);
       if (!isValid) {
-        this.logger.warn('[Zoom webhook] Invalid signature — ignoring event');
+        this.logger.warn('[Zoom webhook] Invalid signature - ignoring event');
         return { received: true };
       }
     }
 
     const obj = pl?.object;
+    const eventNorm = typeof event === 'string' ? event.toLowerCase() : '';
 
-    if (event === 'meeting.participant_joined' || event === 'meeting.participant_left') {
+    if (eventNorm === 'meeting.ended' || eventNorm === 'webinar.ended') {
+      await this.handleSessionEnded(obj as ZoomSessionEndedObject | undefined, eventNorm);
+    } else if (event === 'meeting.participant_joined' || event === 'meeting.participant_left') {
       await this.handleParticipantEvent(event, obj, payload);
     } else {
       this.logger.debug(`[Zoom webhook] Ignoring event: ${event}`);
     }
 
     return { received: true };
+  }
+
+  /**
+   * meeting.ended / webinar.ended — store actual end time for in-app post-event survey gating.
+   */
+  private async handleSessionEnded(obj: ZoomSessionEndedObject | undefined, eventNorm: string): Promise<void> {
+    if (!obj) {
+      this.logger.warn(`[Zoom webhook] ${eventNorm} missing object`);
+      return;
+    }
+    const idCandidates = [obj.id != null ? String(obj.id) : null, obj.uuid != null ? String(obj.uuid) : null].filter(
+      (x): x is string => !!x?.trim(),
+    );
+    if (idCandidates.length === 0) {
+      this.logger.warn(`[Zoom webhook] ${eventNorm} missing id/uuid`);
+      return;
+    }
+
+    let endAt = new Date();
+    if (obj.end_time?.trim()) {
+      const parsed = new Date(obj.end_time);
+      if (!Number.isNaN(parsed.getTime())) endAt = parsed;
+    }
+
+    const program = await this.prisma.program.findFirst({
+      where: { OR: idCandidates.map((zoomMeetingId) => ({ zoomMeetingId })) },
+      select: { id: true, zoomSessionEndedAt: true },
+    });
+
+    if (!program) {
+      this.logger.debug(`[Zoom webhook] ${eventNorm}: no program for Zoom id(s) ${idCandidates.join(', ')}`);
+      return;
+    }
+
+    const existing = program.zoomSessionEndedAt?.getTime() ?? 0;
+    if (existing && endAt.getTime() <= existing) {
+      return;
+    }
+
+    await this.prisma.program.update({
+      where: { id: program.id },
+      data: { zoomSessionEndedAt: endAt },
+    });
+
+    this.logger.log(`[Zoom webhook] ${eventNorm} → program ${program.id} zoomSessionEndedAt=${endAt.toISOString()}`);
   }
 
   private async handleParticipantEvent(
@@ -131,7 +185,7 @@ export class ZoomWebhookService {
     });
 
     if (!program) {
-      this.logger.debug(`[Zoom webhook] No program found for meeting ${meetingId} — skipping`);
+      this.logger.debug(`[Zoom webhook] No program found for meeting ${meetingId} - skipping`);
       return;
     }
 

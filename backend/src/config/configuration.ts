@@ -49,6 +49,16 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 
+  // Transactional email (Amazon SES) — e.g. registration approved for Live / Office Hours
+  email: {
+    from: (process.env.EMAIL_FROM || 'info@communityhealth.media').trim(),
+    /** Set EMAIL_ENABLED to false, 0, or no to skip sending (e.g. local dev without IAM). */
+    enabled: (() => {
+      const v = (process.env.EMAIL_ENABLED || 'true').toLowerCase();
+      return v !== 'false' && v !== '0' && v !== 'no';
+    })(),
+  },
+
   // SQS (payment queue only for now)
   sqs: {
     paymentQueueUrl: process.env.SQS_PAYMENT_QUEUE_URL,
@@ -115,16 +125,42 @@ export default () => ({
     };
   })(),
 
-  // Jotform (surveys - enterprise at communityhealthmedia.jotform.com; note /API is uppercase)
+  // Jotform — REST API per https://api.jotform.com/docs/ (use EU/HIPAA host or Enterprise …/API via JOTFORM_BASE_URL when required)
   jotform: {
     apiKey: process.env.JOTFORM_API_KEY,
-    baseUrl: process.env.JOTFORM_BASE_URL || 'https://communityhealthmedia.jotform.com/API',
-    templateFormId: process.env.JOTFORM_TEMPLATE_FORM_ID || '260698533879881',
+    baseUrl: process.env.JOTFORM_BASE_URL?.trim() || 'https://api.jotform.com',
+    /** Master Jotform form ID to clone per webinar for invitation / registration (set in env; no hardcoded default). */
+    invitationTemplateFormId:
+      process.env.JOTFORM_WEBINAR_INVITATION_TEMPLATE_FORM_ID?.trim() ||
+      process.env.JOTFORM_WEBINAR_INTAKE_TEMPLATE_FORM_ID?.trim() ||
+      '',
+    /** Master Jotform form ID to clone per webinar for post-event survey (ignored when postEventSharedFormId is set). */
+    postEventTemplateFormId:
+      process.env.JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID?.trim() ||
+      process.env.JOTFORM_TEMPLATE_FORM_ID?.trim() ||
+      '',
+    /**
+     * When set, webinars reuse this Jotform form ID for post-event FEEDBACK (no clone/webhook from our API).
+     * Prefer this for a single org-wide post-event form; leave empty to clone from postEventTemplateFormId instead.
+     */
+    postEventSharedFormId: process.env.JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID?.trim() || '',
+    /**
+     * Optional fallback intake URL when a WEBINAR has no per-program `jotformIntakeFormUrl` (prefer per-webinar clones).
+     */
+    webinarDefaultIntakeUrl: process.env.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL?.trim() || '',
     webhookUrl:
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL
         ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/webhooks/jotform`
         : 'https://testapp.communityhealth.media/api/webhooks/jotform'),
+  },
+
+  /**
+   * When false (default), LIVE listing only shows DB-published webinars (Jotform + approval flow).
+   * Set WEBINARS_LIST_ZOOM_FALLBACK=true to also list raw Zoom webinars not yet imported into the DB.
+   */
+  webinars: {
+    listZoomFallback: process.env.WEBINARS_LIST_ZOOM_FALLBACK === 'true',
   },
 
   // Zoom (Server-to-Server OAuth for webinars)
@@ -133,7 +169,7 @@ export default () => ({
     clientId: process.env.ZOOM_CLIENT_ID,
     clientSecret: process.env.ZOOM_CLIENT_SECRET,
     webhookSecret: process.env.ZOOM_WEBHOOK_SECRET,
-    /** Meeting SDK (embed in browser) — separate Zoom Marketplace "Meeting SDK" app */
+    /** Meeting SDK (embed in browser) - separate Zoom Marketplace "Meeting SDK" app */
     sdkKey: process.env.ZOOM_SDK_KEY,
     sdkSecret: process.env.ZOOM_SDK_SECRET,
   },

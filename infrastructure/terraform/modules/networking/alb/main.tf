@@ -45,8 +45,8 @@ resource "aws_lb" "main" {
   subnets            = var.public_subnet_ids
   idle_timeout       = 90
 
-  enable_deletion_protection = (var.environment == "prod" || var.environment == "platform") ? true : false
-  enable_http2              = true
+  enable_deletion_protection       = (var.environment == "prod" || var.environment == "platform") ? true : false
+  enable_http2                     = true
   enable_cross_zone_load_balancing = true
 
   access_logs {

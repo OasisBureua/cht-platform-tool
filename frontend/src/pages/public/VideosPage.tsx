@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
-import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
+import { catalogApi, type MediaHubTags } from '../../api/catalog';
+import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
+import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistGrid } from '../../components/content/PlaylistGrid';
@@ -22,7 +23,7 @@ const SORT_OPTIONS = [
 function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
   const seen = new Set<string>();
-  for (const [category, values] of Object.entries(tags)) {
+  for (const [, values] of Object.entries(tags)) {
     if (!Array.isArray(values)) continue;
     for (const v of values) {
       if (v && !seen.has(v)) {
@@ -40,6 +41,8 @@ function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: 
 
 const SEARCH_DEBOUNCE_MS = 300;
 const CLIPS_PAGE_SIZE = 24;
+
+type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
 
 export default function VideosPage() {
   const location = useLocation();
@@ -83,7 +86,11 @@ export default function VideosPage() {
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
   const useMediaHub = tagOptions.length > 0;
-  const effectiveLibraryView: 'clips' | 'playlists' = isInApp ? 'clips' : libraryView;
+  /** In-app: `?view=playlists` opens the same playlist grid as public /catalog?view=playlists (was incorrectly forced to clips only). */
+  const viewFromSearch = useMemo((): 'clips' | 'playlists' => {
+    return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
+  }, [location.search]);
+  const effectiveLibraryView: 'clips' | 'playlists' = isInApp ? viewFromSearch : libraryView;
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -92,12 +99,18 @@ export default function VideosPage() {
   });
 
   const {
-    data: clipsData,
+    data: rawClipsData,
     isLoading: clipsLoading,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useInfiniteQuery({
+  } = useInfiniteQuery<
+    ClipsPage,
+    Error,
+    InfiniteData<ClipsPage, number>,
+    readonly [string, string, string, string, string, string],
+    number
+  >({
     queryKey: ['catalog', 'clips', debouncedQuery, tagFilter, doctorFilter, sortBy],
     queryFn: ({ pageParam = 0 }) =>
       catalogApi.getClips({
@@ -117,6 +130,10 @@ export default function VideosPage() {
     enabled: useMediaHub && effectiveLibraryView === 'clips',
     staleTime: 2 * 60 * 1000,
   });
+
+  const clipsData: InfiniteData<ClipsPage, number> | undefined =
+    rawClipsData as unknown as InfiniteData<ClipsPage, number> | undefined;
+  const clipsPageCount = clipsData?.pages.length ?? 0;
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -154,7 +171,7 @@ export default function VideosPage() {
   );
 
   const isInitialClipsLoad =
-    useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && (clipsData?.pages?.length ?? 0) === 0;
+    useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && clipsPageCount === 0;
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
   const popularItems = useMemo(
     () =>
@@ -179,16 +196,18 @@ export default function VideosPage() {
       <div
         className={[
           isInApp
-            ? 'w-full px-0 py-0 sm:py-0 space-y-6 sm:space-y-8'
+            ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
             : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
-          <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-          <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
-            {isInApp ? 'Explore our conversations' : 'Explore our catalogue'}
-          </h1>
-        </div>
+        {!isInApp ? (
+          <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
+            <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+              Explore our catalogue
+            </h1>
+          </div>
+        ) : null}
 
         {!isInApp ? (
           <ContentLibraryNavTabs
@@ -274,27 +293,45 @@ export default function VideosPage() {
         )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
-          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+          isInApp ? (
+            <section className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+              <ConversationsHeroSkeleton />
+            </section>
+          ) : (
             <ConversationsHeroSkeleton />
-          </div>
+          )
         )}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          <div className={isInApp ? '-mx-4 sm:-mx-6 lg:-mx-8' : ''}>
+          isInApp ? (
+            <section className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+              <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+            </section>
+          ) : (
             <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-          </div>
+          )
         )}
 
         {effectiveLibraryView === 'playlists' ? (
           <section className="space-y-4">
-            <h2 className="text-xl font-bold text-gray-900">YouTube playlists</h2>
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">YouTube playlists</h2>
+              {isInApp ? (
+                <Link
+                  to="/app/catalog"
+                  className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                >
+                  Browse conversations
+                </Link>
+              ) : null}
+            </div>
             <PlaylistGrid playlists={playlists} isInApp={isInApp} descriptionForItem={playlistDescription} />
             {playlists.length === 0 ? (
               <p className="text-sm text-gray-600">No playlists configured. Add YouTube playlist IDs on the server.</p>
             ) : null}
           </section>
         ) : isInApp ? (
-          <section className="space-y-8">
+          <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
                 <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
@@ -340,7 +377,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
                       />
                     ))}
                   </ConversationRow>
@@ -357,7 +394,8 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta={`${(item.view_count ?? 0).toLocaleString()} views`}
+                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        videoLabel={`${(item.view_count ?? 0).toLocaleString()} views`}
                       />
                     ))}
                   </ConversationRow>
@@ -374,7 +412,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        meta="Short conversation"
+                        description="Short conversation"
                       />
                     ))}
                   </ConversationRow>

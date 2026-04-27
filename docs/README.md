@@ -4,7 +4,7 @@ Project documentation and guides.
 
 ## testapp.communityhealth.media (DNS on GoDaddy)
 
-To deploy the app at `testapp.communityhealth.media` with DNS on GoDaddy: **[TESTAPP-DEPLOYMENT-GODADDY.md](./TESTAPP-DEPLOYMENT-GODADDY.md)** — request ACM certificate first, add CNAME in GoDaddy for validation, then deploy Terraform and add NS records.
+To deploy the app at `testapp.communityhealth.media` with DNS on GoDaddy: **[TESTAPP-DEPLOYMENT-GODADDY.md](./TESTAPP-DEPLOYMENT-GODADDY.md)** - request ACM certificate first, add CNAME in GoDaddy for validation, then deploy Terraform and add NS records.
 
 ## Email (Amazon SES)
 

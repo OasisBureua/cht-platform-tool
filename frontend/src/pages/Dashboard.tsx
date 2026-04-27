@@ -21,7 +21,7 @@ const WEBINAR_PLACEHOLDER_IMAGES = [
 const ONBOARDING_STORAGE_KEY = 'chm-home-onboarding-seen-v1';
 const QUICK_START_ACTIONS = [
   {
-    title: 'LIVE sessions',
+    title: 'Live sessions',
     desc: 'Attend live education sessions and earn for participation.',
     icon: Presentation,
     to: '/app/live',
@@ -206,7 +206,7 @@ export default function Dashboard() {
     return {
       eyebrow: 'Featured',
       title: 'Latest CHM updates and releases',
-      description: 'Catch newly released conversations, upcoming LIVE sessions, and fresh podcast drops in one place.',
+      description: 'Catch newly released conversations, upcoming Live sessions, and fresh podcast drops in one place.',
       imageUrl: WEBINAR_PLACEHOLDER_IMAGES[0],
       primaryHref: '/app/catalog',
       secondaryHref: '/app/catalog',
@@ -331,7 +331,7 @@ export default function Dashboard() {
               <div className="flex flex-wrap items-center gap-3">
                 <Link
                   to={featuredPanel.primaryHref}
-                  className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
+                  className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
                 >
                   <PlayCircle className="h-4 w-4" aria-hidden />
                   {featuredPanel.primaryCta}
@@ -361,7 +361,7 @@ export default function Dashboard() {
                 to={item.href}
                 title={item.title}
                 imageUrl={item.imageUrl}
-                meta={item.meta}
+                description={item.meta}
               />
             ))}
           </ConversationRow>
@@ -388,7 +388,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c, 'recent')}
                     />
                   ))}
                 </ConversationRow>
@@ -406,7 +406,10 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'views')}
+                      description={clipMetaString(c, 'recent')}
+                      videoLabel={
+                        c.view_count != null ? `${c.view_count.toLocaleString()} views` : undefined
+                      }
                     />
                   ))}
                 </ConversationRow>
@@ -424,7 +427,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      meta={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c, 'recent')}
                     />
                   ))}
                 </ConversationRow>
@@ -443,10 +446,13 @@ export default function Dashboard() {
                       to={`/app/catalog/playlist/${p.id}`}
                       title={p.title}
                       imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
-                      meta={
-                        p.videoCount != null
+                      description={p.videoNames?.[0]?.trim() || 'Curated playlist'}
+                      videoLabel={
+                        p.videoCount != null && p.videoCount > 0
                           ? `${p.videoCount.toLocaleString()} video${p.videoCount !== 1 ? 's' : ''}`
-                          : undefined
+                          : p.videoNames && p.videoNames.length > 0
+                            ? `${p.videoNames.length} video${p.videoNames.length !== 1 ? 's' : ''}`
+                            : undefined
                       }
                     />
                   ))}
@@ -484,7 +490,7 @@ export default function Dashboard() {
                 to={w.id ? `/app/live/${w.id}` : '/app/live'}
                 title={w.title}
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
-                meta={
+                description={
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Medical education'

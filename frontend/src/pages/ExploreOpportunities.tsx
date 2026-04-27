@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2, Compass } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
+import { programsApi } from '../api/programs';
+import { useAuth } from '../contexts/AuthContext';
+import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
 import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
@@ -29,7 +32,16 @@ function getFallbackImage(type: 'webinar' | 'clip' | 'playlist' | 'survey'): str
 type Tab = 'best' | 'webinars' | 'videos' | 'surveys';
 
 type UnifiedItem =
-  | { type: 'webinar'; id: string; title: string; description: string; imageUrl: string; href: string }
+  | {
+      type: 'webinar';
+      id: string;
+      programId: string;
+      registrationRequiresApproval?: boolean;
+      title: string;
+      description: string;
+      imageUrl: string;
+      href: string;
+    }
   | { type: 'clip'; id: string; title: string; description: string; imageUrl: string; href: string; subtitle?: string }
   | { type: 'playlist'; id: string; title: string; description: string; imageUrl: string; href: string; videoNames?: string[] }
   | { type: 'survey'; id: string; title: string; description: string; imageUrl: string; href: string };
@@ -46,6 +58,8 @@ function matchesQuery(item: UnifiedItem, q: string): boolean {
 }
 
 export default function ExploreOpportunities() {
+  const { user } = useAuth();
+  const userId = user?.userId;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tab, setTab] = useState<Tab>('best');
@@ -68,6 +82,19 @@ export default function ExploreOpportunities() {
     queryFn: webinarsApi.list,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: liveStatuses = [] } = useQuery({
+    queryKey: ['programs', 'me', 'live-session-status'],
+    queryFn: () => programsApi.getMyLiveSessionStatus(),
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+  });
+
+  const statusByProgramId = useMemo(() => {
+    const m = new Map<string, (typeof liveStatuses)[0]>();
+    for (const s of liveStatuses) m.set(s.programId, s);
+    return m;
+  }, [liveStatuses]);
 
   const { data: clipsData, isLoading: clipsLoading, isError: clipsError } = useQuery({
     queryKey: ['catalog', 'clips', debouncedQuery],
@@ -93,8 +120,9 @@ export default function ExploreOpportunities() {
   });
 
   const { data: surveys = [], isLoading: surveysLoading } = useQuery({
-    queryKey: ['surveys'],
+    queryKey: ['surveys', userId],
     queryFn: surveysApi.getAll,
+    enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -105,6 +133,8 @@ export default function ExploreOpportunities() {
       out.push({
         type: 'webinar',
         id: `webinar-${w.id}`,
+        programId: w.id,
+        registrationRequiresApproval: w.registrationRequiresApproval,
         title: w.title,
         description: w.description || '',
         imageUrl: w.imageUrl || '',
@@ -169,7 +199,7 @@ export default function ExploreOpportunities() {
 
   const tabs = [
     { key: 'best' as Tab, label: 'Best Match', icon: Zap },
-    { key: 'webinars' as Tab, label: 'LIVE', icon: Presentation },
+    { key: 'webinars' as Tab, label: 'Live', icon: Presentation },
     { key: 'videos' as Tab, label: 'Videos', icon: PlayCircle },
     { key: 'surveys' as Tab, label: 'Surveys', icon: ClipboardList },
   ];
@@ -229,7 +259,15 @@ export default function ExploreOpportunities() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map((item) => (
+          {filtered.map((item) => {
+            const webinarBadge =
+              item.type === 'webinar'
+                ? liveSessionListBadgeLabel(
+                    item.registrationRequiresApproval,
+                    statusByProgramId.get(item.programId),
+                  )
+                : null;
+            return (
             <div
               key={item.id}
               className="flex flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_36px_-14px_rgba(0,0,0,0.1)]"
@@ -246,13 +284,20 @@ export default function ExploreOpportunities() {
               <div className="p-4 flex flex-col flex-1 min-h-0">
                 <div className="flex items-center gap-2">
                   <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                    {item.type === 'webinar' && 'LIVE'}
+                    {item.type === 'webinar' && 'Live'}
                     {item.type === 'clip' && 'Video'}
                     {item.type === 'playlist' && 'Playlist'}
                     {item.type === 'survey' && 'Survey'}
                   </span>
                 </div>
-                <h3 className="mt-1 line-clamp-2 text-balance font-bold text-gray-900">{item.title}</h3>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <h3 className="line-clamp-2 text-balance font-bold text-gray-900 flex-1 min-w-[8rem]">{item.title}</h3>
+                  {webinarBadge ? (
+                    <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+                      {webinarBadge}
+                    </span>
+                  ) : null}
+                </div>
                 <div className="flex-1 min-h-0 mt-2">
                   {item.subtitle ? (
                     <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
@@ -277,7 +322,8 @@ export default function ExploreOpportunities() {
                 </Link>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
