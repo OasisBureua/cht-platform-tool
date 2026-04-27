@@ -72,4 +72,11 @@ export const validationSchema = Joi.object({
 
   // HubSpot (optional – CRM contact sync)
   HUBSPOT_ACCESS_TOKEN: Joi.string().allow('').optional(),
+
+  // Mailchimp (optional – audience sync for NPI + marketing merge fields).
+  // Accept both MAILCHIMP_SERVER (MediaHub naming) and MAILCHIMP_SERVER_PREFIX.
+  MAILCHIMP_API_KEY: Joi.string().allow('').optional(),
+  MAILCHIMP_AUDIENCE_ID: Joi.string().allow('').optional(),
+  MAILCHIMP_SERVER: Joi.string().allow('').optional(),
+  MAILCHIMP_SERVER_PREFIX: Joi.string().allow('').optional(),
 });

@@ -12,7 +12,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
-  TERRAFORM_VERSION: 1.6.0
+  TERRAFORM_VERSION: 1.9.8
 
 permissions:
   id-token: write   # Required for OIDC
