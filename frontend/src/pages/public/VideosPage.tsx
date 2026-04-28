@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
@@ -46,6 +46,7 @@ type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
 
 export default function VideosPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isInApp = location.pathname.startsWith('/app');
   const [libraryView, setLibraryView] = useState<'clips' | 'playlists'>('clips');
   const [query, setQuery] = useState('');
@@ -209,6 +210,18 @@ export default function VideosPage() {
           </div>
         ) : null}
 
+        {isInApp ? (
+          <div className="mb-2">
+            <ContentLibraryNavTabs
+              isInApp={isInApp}
+              libraryView={effectiveLibraryView}
+              playlistsAvailable={playlists.length > 0}
+              onSelectClips={() => {}}
+              onSelectPlaylists={() => navigate('/app/catalog?view=playlists')}
+            />
+          </div>
+        ) : null}
+
         {!isInApp ? (
           <ContentLibraryNavTabs
             isInApp={isInApp}
@@ -311,6 +324,34 @@ export default function VideosPage() {
             <ConversationsHero clip={featuredClip} isInApp={isInApp} />
           )
         )}
+
+        {isInApp && effectiveLibraryView === 'clips' && playlists.length > 0 ? (
+          <section className="space-y-0">
+            <ConversationRow
+              title="YouTube playlists"
+              subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
+              seeAllHref="/app/catalog?view=playlists"
+              seeAllLabel="See all playlists"
+            >
+              {playlists.slice(0, 12).map((p) => (
+                <StripCard
+                  key={p.id}
+                  to={`/app/catalog/playlist/${p.id}`}
+                  title={p.title}
+                  imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
+                  description={playlistDescription(p)}
+                  videoLabel={
+                    p.videoCount != null && p.videoCount > 0
+                      ? `${p.videoCount.toLocaleString()} video${p.videoCount !== 1 ? 's' : ''}`
+                      : p.videoNames && p.videoNames.length > 0
+                        ? `${p.videoNames.length} video${p.videoNames.length !== 1 ? 's' : ''}`
+                        : undefined
+                  }
+                />
+              ))}
+            </ConversationRow>
+          </section>
+        ) : null}
 
         {effectiveLibraryView === 'playlists' ? (
           <section className="space-y-4">

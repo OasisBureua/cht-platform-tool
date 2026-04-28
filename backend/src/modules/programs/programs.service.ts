@@ -467,12 +467,18 @@ export class ProgramsService {
     const isLiveSession =
       program.zoomSessionType === 'WEBINAR' || program.zoomSessionType === 'MEETING';
     if (program.honorariumAmount && !isLiveSession) {
-      await this.queueService.processPayment(
+      const queued = await this.queueService.processPayment(
         enrollment.userId,
         program.honorariumAmount,
         'HONORARIUM',
         enrollment.programId,
+        `honorarium:${enrollment.userId}:${enrollment.programId}`,
       );
+      if (!queued) {
+        this.logger.warn(
+          `Honorarium queue not sent for user ${enrollment.userId} program ${enrollment.programId} (queue unavailable)`,
+        );
+      }
     }
 
     this.hubspot.createOrUpdateContact({

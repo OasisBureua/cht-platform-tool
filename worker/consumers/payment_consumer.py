@@ -40,6 +40,15 @@ class PaymentConsumer(SQSBaseConsumer):
             return False, "Missing paymentType"
         return True, None
 
+    def _resolve_idempotency_key(self, body: dict, user_id: str, amount: int, payment_type: str, program_id: Optional[str]) -> str:
+        """Stable key for ON CONFLICT dedupe (SQS at-least-once, parallel API calls)."""
+        key = body.get("idempotencyKey")
+        if isinstance(key, str) and key.strip():
+            return key.strip()
+        if program_id and payment_type == "HONORARIUM":
+            return f"honorarium:{user_id}:{program_id}"
+        return f"legacy:{user_id}:{payment_type}:{program_id or ''}:{amount}"
+
     def process_message(self, body: dict) -> bool:
         """Process payment message. Returns True on success."""
         valid, err = self._validate_message(body)
@@ -51,18 +60,24 @@ class PaymentConsumer(SQSBaseConsumer):
         amount = int(body["amount"])
         payment_type = body["paymentType"]
         program_id = body.get("programId")
+        idempotency_key = self._resolve_idempotency_key(body, user_id, amount, payment_type, program_id)
 
-        return self._record_pending_payment(user_id, amount, payment_type, program_id)
+        return self._record_pending_payment(
+            user_id, amount, payment_type, program_id, idempotency_key,
+        )
 
     def _record_pending_payment(
         self,
         user_id: str,
         amount: int,
         payment_type: str,
-        program_id: Optional[str] = None,
+        program_id: Optional[str],
+        idempotency_key: str,
     ) -> bool:
-        """Record payment as PENDING for admin review. Does not create Bill.com payments or increment earnings."""
-        logger.info(f"Recording pending payment: ${amount/100:.2f} for user {user_id} type={payment_type}")
+        """Record payment as PENDING. Duplicate idempotency_key is ignored (success)."""
+        logger.info(
+            f"Recording pending payment: ${amount/100:.2f} for user {user_id} type={payment_type} key={idempotency_key!r}",
+        )
 
         try:
             with get_db_session() as session:
@@ -75,23 +90,36 @@ class PaymentConsumer(SQSBaseConsumer):
                     logger.error(f"User not found: {user_id}")
                     return False
 
-                session.execute(
-                    text("""
+                row = session.execute(
+                    text(
+                        """
                         INSERT INTO "Payment"
-                        (id, "userId", "programId", amount, type, status, description, "createdAt", "updatedAt")
+                        (id, "userId", "programId", amount, type, status, description, "idempotencyKey", "createdAt", "updatedAt")
                         VALUES
-                        (gen_random_uuid()::text, :user_id, :program_id, :amount, :ptype, 'PENDING', :desc, NOW(), NOW())
-                    """),
+                        (gen_random_uuid()::text, :user_id, :program_id, :amount, CAST(:ptype AS "PaymentType"), 'PENDING', :desc, :idempotency_key, NOW(), NOW())
+                        ON CONFLICT ("idempotencyKey") DO NOTHING
+                        RETURNING id
+                        """
+                    ),
                     {
                         "user_id": user_id,
                         "program_id": program_id,
                         "amount": amount,
                         "ptype": payment_type,
                         "desc": f"Pending admin review - {payment_type}",
+                        "idempotency_key": idempotency_key,
                     },
-                )
+                ).fetchone()
 
-            logger.info(f"Pending payment recorded for user {user_id}: ${amount/100:.2f} (awaiting admin)")
+                if row:
+                    logger.info(
+                        f"Pending payment recorded for user {user_id}: ${amount/100:.2f} (awaiting admin)",
+                    )
+                else:
+                    logger.info(
+                        f"Skipped insert — duplicate idempotencyKey for user {user_id} type={payment_type}",
+                    )
+
             return True
 
         except Exception as e:

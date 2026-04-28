@@ -62,21 +62,52 @@ export class QueueService {
   }
 
   /**
-   * Process payment job
+   * Enqueue payment job. @returns true if SQS accepted the message, false if queueURL missing (local dev) or send failed.
    */
   async processPayment(
     userId: string,
     amount: number,
-    type: string,
-    programId?: string,
-  ): Promise<void> {
-    await this.sendMessage('PAYMENT_QUEUE', {
-      type: 'PROCESS_PAYMENT',
-      userId,
-      amount,
-      paymentType: type,
-      programId,
-      timestamp: new Date().toISOString(),
-    });
+    paymentType: string,
+    programId: string | undefined,
+    idempotencyKey: string,
+  ): Promise<boolean> {
+    const queueUrl = this.queueUrls.get('PAYMENT_QUEUE');
+
+    if (!queueUrl || !this.sqsClient) {
+      this.logger.warn('Queue not configured: PAYMENT_QUEUE');
+      this.logger.debug(
+        `Would send message: ${JSON.stringify({
+          type: 'PROCESS_PAYMENT',
+          userId,
+          amount,
+          paymentType,
+          programId,
+          idempotencyKey,
+        })}`,
+      );
+      return false;
+    }
+
+    try {
+      const command = new SendMessageCommand({
+        QueueUrl: queueUrl,
+        MessageBody: JSON.stringify({
+          type: 'PROCESS_PAYMENT',
+          userId,
+          amount,
+          paymentType,
+          programId,
+          idempotencyKey,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+
+      const response = await this.sqsClient.send(command);
+      this.logger.log(`Message sent to PAYMENT_QUEUE: ${response.MessageId}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send message to PAYMENT_QUEUE`, error);
+      return false;
+    }
   }
 }

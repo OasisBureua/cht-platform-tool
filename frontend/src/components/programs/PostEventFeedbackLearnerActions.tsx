@@ -164,8 +164,8 @@ export function PostEventFeedbackLearnerActions(props: {
             <Link to="/app/payments" className="font-semibold underline">
               Payments
             </Link>{' '}
-            if needed. When you continue, a <strong>pending</strong> payment is created for an administrator to approve
-            and pay.
+            if needed.             When you continue, we queue an honorarium for processing; a <strong>pending</strong> payment appears
+            for an administrator to approve and pay shortly after the job runs.
           </p>
           {previewError ? (
             <p className="text-sm text-red-700">

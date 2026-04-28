@@ -4,20 +4,23 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  PaymentType,
   PostEventAttendanceStatus,
   ProgramRegistrationStatus,
   ProgramStatus,
   ProgramZoomSessionType,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { HubSpotService } from '../hubspot/hubspot.service';
-import { PaymentsService } from '../payments/payments.service';
 import { SesEmailService } from '../email/ses-email.service';
+import { QueueService } from '../../queue/queue.service';
 
 @Injectable()
 export class ProgramRegistrationsService {
@@ -30,7 +33,7 @@ export class ProgramRegistrationsService {
     private prisma: PrismaService,
     private hubspot: HubSpotService,
     private config: ConfigService,
-    private paymentsService: PaymentsService,
+    private queueService: QueueService,
     private sesEmail: SesEmailService,
   ) {}
 
@@ -861,33 +864,86 @@ export class ProgramRegistrationsService {
     }
 
     if (reg.honorariumRequestedAt) {
-      const result = await this.paymentsService.ensurePendingHonorariumForProgram(userId, programId);
-      return { ...result, alreadyRequested: true as const };
+      const existing = await this.prisma.payment.findFirst({
+        where: {
+          userId,
+          programId,
+          type: PaymentType.HONORARIUM,
+          status: { in: ['PENDING', 'PROCESSING', 'PAID'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return {
+        paymentId: existing?.id ?? null,
+        created: false,
+        alreadyRequested: true as const,
+      };
     }
 
     if (program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {
       throw new BadRequestException('Complete and acknowledge the post-event survey first.');
     }
 
-    const u = await this.prisma.user.findUnique({
+    const payUser = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { billVendorId: true, w9Submitted: true },
+      select: { specialty: true, npiNumber: true, billVendorId: true, w9Submitted: true },
     });
-    if (!u?.billVendorId) {
+    if (!payUser) throw new NotFoundException('User not found');
+    assertProfileCompleteForPayments(payUser);
+    if (!payUser.billVendorId) {
       throw new BadRequestException('Add your payment profile under Payments before requesting an honorarium.');
     }
-    if (!u.w9Submitted) {
+    if (!payUser.w9Submitted) {
       throw new BadRequestException('Submit your W-9 under Payments before requesting an honorarium.');
     }
 
-    const result = await this.paymentsService.ensurePendingHonorariumForProgram(userId, programId);
-
-    await this.prisma.programRegistration.update({
-      where: { id: reg.id },
+    const claimed = await this.prisma.programRegistration.updateMany({
+      where: {
+        id: reg.id,
+        honorariumRequestedAt: null,
+      },
       data: { honorariumRequestedAt: new Date() },
     });
 
-    return result;
+    if (claimed.count === 0) {
+      const existing = await this.prisma.payment.findFirst({
+        where: {
+          userId,
+          programId,
+          type: PaymentType.HONORARIUM,
+          status: { in: ['PENDING', 'PROCESSING', 'PAID'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      return {
+        paymentId: existing?.id ?? null,
+        created: false,
+        alreadyRequested: true as const,
+      };
+    }
+
+    const queued = await this.queueService.processPayment(
+      userId,
+      program.honorariumAmount,
+      'HONORARIUM',
+      programId,
+      `honorarium:${userId}:${programId}`,
+    );
+
+    if (!queued) {
+      await this.prisma.programRegistration.update({
+        where: { id: reg.id },
+        data: { honorariumRequestedAt: null },
+      });
+      throw new ServiceUnavailableException(
+        'Could not queue honorarium. Check configuration or try again in a moment.',
+      );
+    }
+
+    return {
+      paymentId: null,
+      created: true,
+    };
   }
 
   async adminSetPostEventAttendance(

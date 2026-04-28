@@ -97,12 +97,18 @@ export const paymentsApi = {
     return result;
   },
 
-  requestPayout: async (userId: string, amount?: number) => {
+  requestPayout: async (userId: string, amount?: number, idempotencyKey?: string) => {
     try {
+      const key =
+        idempotencyKey ||
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `payout-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       const { data } = await apiClient.post(`/payments/payout`, {
         userId,
         amount: amount ? Math.round(amount * 100) : 0,
         description: 'Payout request',
+        idempotencyKey: key,
       });
       return data;
     } catch (err) {

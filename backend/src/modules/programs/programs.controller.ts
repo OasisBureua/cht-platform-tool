@@ -113,7 +113,7 @@ export class ProgramsController {
   }
 
   /**
-   * POST /api/programs/:id/post-event/request-honorarium — learner confirms payout details; creates PENDING payment for admin Pay now.
+   * POST /api/programs/:id/post-event/request-honorarium — learner confirms payout details; enqueues payment job (worker inserts PENDING row).
    */
   @Post(':id/post-event/request-honorarium')
   @UseGuards(JwtAuthGuard)

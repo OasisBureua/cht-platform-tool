@@ -1,5 +1,6 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { PaymentType, ProgramZoomSessionType } from '@prisma/client';
+import { randomUUID } from 'crypto';
+import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
+import { Prisma, ProgramZoomSessionType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
@@ -130,54 +131,6 @@ export class PaymentsService {
       if (t) return `••••${t}`;
     }
     return null;
-  }
-
-  /**
-   * Create a single PENDING honorarium row for admin Bill.com pay-now (idempotent).
-   */
-  async ensurePendingHonorariumForProgram(
-    userId: string,
-    programId: string,
-  ): Promise<{ paymentId: string; created: boolean }> {
-    const payUser = await this.prisma.user.findUnique({
-      where: { id: userId },
-      select: { specialty: true, npiNumber: true },
-    });
-    if (!payUser) throw new NotFoundException('User not found');
-    assertProfileCompleteForPayments(payUser);
-
-    const program = await this.prisma.program.findUnique({
-      where: { id: programId },
-      select: { honorariumAmount: true, title: true },
-    });
-    if (!program?.honorariumAmount || program.honorariumAmount <= 0) {
-      throw new BadRequestException('This program does not offer an honorarium');
-    }
-
-    const existing = await this.prisma.payment.findFirst({
-      where: {
-        userId,
-        programId,
-        type: PaymentType.HONORARIUM,
-        status: { in: ['PENDING', 'PROCESSING', 'PAID'] },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (existing) {
-      return { paymentId: existing.id, created: false };
-    }
-
-    const payment = await this.prisma.payment.create({
-      data: {
-        userId,
-        programId,
-        amount: program.honorariumAmount,
-        type: PaymentType.HONORARIUM,
-        status: 'PENDING',
-        description: `Honorarium — ${program.title} (learner confirmed)`,
-      },
-    });
-    return { paymentId: payment.id, created: true };
   }
 
   /**
@@ -446,12 +399,17 @@ export class PaymentsService {
       throw new NotFoundException('Payment not found');
     }
 
+    if (payment.status === 'PAID') {
+      throw new BadRequestException('Payment already completed');
+    }
+    if (payment.status === 'PROCESSING') {
+      throw new ConflictException('Payment is already being processed. Refresh and try again.');
+    }
     if (payment.status !== 'PENDING') {
       throw new BadRequestException(`Payment is not pending (status: ${payment.status})`);
     }
 
     const user = payment.user;
-    const amountDollars = (payment.amount / 100).toFixed(2);
 
     if (!user.billVendorId) {
       this.logger.warn(`Pay now blocked: user ${user.id} has no Bill.com vendor`);
@@ -464,6 +422,17 @@ export class PaymentsService {
       this.logger.warn(`Pay now blocked: user ${user.id} has not completed W9`);
       throw new BadRequestException(
         'HCP has not completed W-9. Notification sent to complete before getting paid.',
+      );
+    }
+
+    const locked = await this.prisma.payment.updateMany({
+      where: { id: paymentId, status: 'PENDING' },
+      data: { status: 'PROCESSING' },
+    });
+
+    if (locked.count !== 1) {
+      throw new ConflictException(
+        'Could not start payment (another request may have started it). Refresh and try again.',
       );
     }
 
@@ -515,6 +484,7 @@ export class PaymentsService {
   /**
    * Create payout to user via Bill.com (admin only).
    * Admins decide who gets paid, choose ACH or check in Bill.com, and verify W-9 before paying.
+   * Pass `idempotencyKey` (or reuse the same key on retry) for safe deduplication; omit only if double-submit protection is unnecessary.
    */
   async createPayout(dto: CreatePayoutDto): Promise<PayoutResponseDto> {
     this.logger.log(`Creating payout for user ${dto.userId}: $${dto.amount / 100}`);
@@ -535,16 +505,71 @@ export class PaymentsService {
       throw new BadRequestException('User does not have a Bill.com vendor account');
     }
 
-    const payment = await this.prisma.payment.create({
-      data: {
-        userId: dto.userId,
-        programId: dto.programId,
-        amount: dto.amount,
-        type: 'HONORARIUM',
-        status: 'PENDING',
-        description: dto.description,
-      },
+    const rawKey = dto.idempotencyKey?.trim();
+    const idempotencyKey = (rawKey || `admin_payout:${randomUUID()}`).slice(0, 200);
+
+    const existingByKey = await this.prisma.payment.findUnique({
+      where: { idempotencyKey },
     });
+    if (existingByKey) {
+      if (existingByKey.status === 'PAID' && existingByKey.billPaymentId) {
+        this.logger.log(`createPayout idempotent replay key=${idempotencyKey} payment=${existingByKey.id}`);
+        return {
+          paymentId: existingByKey.id,
+          amount: existingByKey.amount,
+          status: 'PAID',
+          transferId: existingByKey.billPaymentId,
+        };
+      }
+      if (existingByKey.status === 'PROCESSING') {
+        throw new ConflictException('This payout idempotency key is already being processed.');
+      }
+      if (existingByKey.status === 'PENDING') {
+        throw new ConflictException(
+          'A payout with this idempotency key is already pending. Wait for it to finish or use a new key.',
+        );
+      }
+      throw new BadRequestException(
+        'A payout with this idempotency key previously failed. Retry with a new idempotency key.',
+      );
+    }
+
+    let payment;
+    try {
+      payment = await this.prisma.payment.create({
+        data: {
+          userId: dto.userId,
+          programId: dto.programId,
+          amount: dto.amount,
+          type: 'HONORARIUM',
+          status: 'PENDING',
+          description: dto.description,
+          idempotencyKey,
+        },
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
+        const lostRace = await this.prisma.payment.findUnique({ where: { idempotencyKey } });
+        if (lostRace?.status === 'PAID' && lostRace.billPaymentId) {
+          return {
+            paymentId: lostRace.id,
+            amount: lostRace.amount,
+            status: 'PAID',
+            transferId: lostRace.billPaymentId,
+          };
+        }
+        throw new ConflictException('Duplicate payout request (idempotency key collision). Try again.');
+      }
+      throw e;
+    }
+
+    const locked = await this.prisma.payment.updateMany({
+      where: { id: payment.id, status: 'PENDING' },
+      data: { status: 'PROCESSING' },
+    });
+    if (locked.count !== 1) {
+      throw new ConflictException('Could not start payout processing.');
+    }
 
     try {
       const billPayment = await this.billService.createPayment(
@@ -585,11 +610,11 @@ export class PaymentsService {
         data: {
           status: 'FAILED',
           failedAt: new Date(),
-          failureReason: error.message,
+          failureReason: (error as Error).message,
         },
       });
 
-      throw new BadRequestException(`Payout failed: ${error.message}`);
+      throw new BadRequestException(`Payout failed: ${(error as Error).message}`);
     }
   }
 

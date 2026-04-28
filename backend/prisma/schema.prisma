@@ -468,7 +468,10 @@ model Payment {
   // Bill.com integration
   billPaymentIntentId String? @unique
   billPaymentId       String? @unique
-  
+
+  /// Unique per logical payout; worker uses ON CONFLICT DO NOTHING for SQS at-least-once / duplicate enqueue.
+  idempotencyKey String? @unique
+
   // W9 tracking
   w9Collected Boolean  @default(false)
   

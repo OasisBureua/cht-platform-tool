@@ -253,10 +253,18 @@ export const programsApi = {
     await apiClient.post(`/programs/${encodeURIComponent(programId)}/post-event/acknowledge-survey`);
   },
 
-  requestPostEventHonorarium: async (programId: string): Promise<{ paymentId: string; created: boolean }> => {
-    const { data } = await apiClient.post<{ paymentId: string; created: boolean }>(
-      `/programs/${encodeURIComponent(programId)}/post-event/request-honorarium`,
-    );
+  requestPostEventHonorarium: async (
+    programId: string,
+  ): Promise<{
+    paymentId: string | null;
+    created: boolean;
+    alreadyRequested?: true;
+  }> => {
+    const { data } = await apiClient.post<{
+      paymentId: string | null;
+      created: boolean;
+      alreadyRequested?: true;
+    }>(`/programs/${encodeURIComponent(programId)}/post-event/request-honorarium`);
     return data;
   },
 

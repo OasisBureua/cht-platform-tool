@@ -579,12 +579,18 @@ export class SurveysService {
     // Send SURVEY_BONUS payment message if amount is configured
     const surveyBonusAmount = this.configService.get<number>('surveys.bonusAmountCents');
     if (surveyBonusAmount && surveyBonusAmount > 0) {
-      await this.queueService.processPayment(
+      const queued = await this.queueService.processPayment(
         userId,
         surveyBonusAmount,
         'SURVEY_BONUS',
         survey.programId,
+        `survey_bonus:${userId}:${surveyId}`,
       );
+      if (!queued) {
+        this.logger.warn(
+          `SURVEY_BONUS queue not sent for user ${userId} survey ${surveyId} (queue unavailable)`,
+        );
+      }
       this.logger.log(`Queued SURVEY_BONUS payment for user ${userId}: $${surveyBonusAmount / 100}`);
     }
 
