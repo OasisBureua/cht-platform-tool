@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
@@ -46,7 +46,6 @@ type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
 
 export default function VideosPage() {
   const location = useLocation();
-  const navigate = useNavigate();
   const isInApp = location.pathname.startsWith('/app');
   const [libraryView, setLibraryView] = useState<'clips' | 'playlists'>('clips');
   const [query, setQuery] = useState('');
@@ -192,33 +191,50 @@ export default function VideosPage() {
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
 
+  const inAppPlaylistsStrip =
+    playlists.length > 0 ? (
+      <section className="space-y-0">
+        <ConversationRow
+          title="Playlists"
+          subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
+          seeAllHref="/app/catalog?view=playlists"
+          seeAllLabel="See all playlists"
+        >
+          {playlists.slice(0, 12).map((p) => (
+            <StripCard
+              key={p.id}
+              to={`/app/catalog/playlist/${p.id}`}
+              title={p.title}
+              imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
+              description={playlistDescription(p)}
+              videoLabel={
+                p.videoCount != null && p.videoCount > 0
+                  ? `${p.videoCount.toLocaleString()} video${p.videoCount !== 1 ? 's' : ''}`
+                  : p.videoNames && p.videoNames.length > 0
+                    ? `${p.videoNames.length} video${p.videoNames.length !== 1 ? 's' : ''}`
+                    : undefined
+              }
+            />
+          ))}
+        </ConversationRow>
+      </section>
+    ) : null;
+
   return (
     <div className="min-h-screen min-w-0 bg-transparent">
       <div
         className={[
           isInApp
             ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
-            : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
+            : 'mx-auto max-w-7xl px-4 sm:px-6 pt-5 sm:pt-7 pb-6 sm:pb-9 space-y-5 sm:space-y-7',
         ].join(' ')}
       >
         {!isInApp ? (
-          <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
+          <div className="flex items-center gap-2.5 pt-3 text-zinc-900 sm:pt-5">
             <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
               Explore our catalogue
             </h1>
-          </div>
-        ) : null}
-
-        {isInApp ? (
-          <div className="mb-2">
-            <ContentLibraryNavTabs
-              isInApp={isInApp}
-              libraryView={effectiveLibraryView}
-              playlistsAvailable={playlists.length > 0}
-              onSelectClips={() => {}}
-              onSelectPlaylists={() => navigate('/app/catalog?view=playlists')}
-            />
           </div>
         ) : null}
 
@@ -325,38 +341,10 @@ export default function VideosPage() {
           )
         )}
 
-        {isInApp && effectiveLibraryView === 'clips' && playlists.length > 0 ? (
-          <section className="space-y-0">
-            <ConversationRow
-              title="YouTube playlists"
-              subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
-              seeAllHref="/app/catalog?view=playlists"
-              seeAllLabel="See all playlists"
-            >
-              {playlists.slice(0, 12).map((p) => (
-                <StripCard
-                  key={p.id}
-                  to={`/app/catalog/playlist/${p.id}`}
-                  title={p.title}
-                  imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
-                  description={playlistDescription(p)}
-                  videoLabel={
-                    p.videoCount != null && p.videoCount > 0
-                      ? `${p.videoCount.toLocaleString()} video${p.videoCount !== 1 ? 's' : ''}`
-                      : p.videoNames && p.videoNames.length > 0
-                        ? `${p.videoNames.length} video${p.videoNames.length !== 1 ? 's' : ''}`
-                        : undefined
-                  }
-                />
-              ))}
-            </ConversationRow>
-          </section>
-        ) : null}
-
         {effectiveLibraryView === 'playlists' ? (
           <section className="space-y-4">
             <div className="flex flex-wrap items-end justify-between gap-3">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">YouTube playlists</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">Playlists</h2>
               {isInApp ? (
                 <Link
                   to="/app/catalog"
@@ -375,7 +363,7 @@ export default function VideosPage() {
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
+                <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
                 <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                 <Link
                   to="/app/catalog"
@@ -385,11 +373,14 @@ export default function VideosPage() {
                 </Link>
               </div>
             ) : !useMediaHub && playlists.length > 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
-                <p className="text-pretty text-gray-600">
-                  MediaHub is not connected. Add API keys in the server to load the featured banner and conversation rows.
-                </p>
-              </div>
+              <>
+                {inAppPlaylistsStrip}
+                <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
+                  <p className="text-pretty text-gray-600">
+                    MediaHub is not connected. Add API keys in the server to load the featured banner and conversation rows.
+                  </p>
+                </div>
+              </>
             ) : useMediaHub && isLoading && displayItems.length === 0 ? (
               <>
                 <ConversationRow title="Loading conversations" seeAllHref="/app/catalog">
@@ -398,12 +389,16 @@ export default function VideosPage() {
                 <ConversationRow title="Loading popular conversations" seeAllHref="/app/catalog">
                   <StripRowLoading />
                 </ConversationRow>
+                {inAppPlaylistsStrip}
               </>
             ) : useMediaHub && displayItems.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                <p className="mb-2 text-pretty text-gray-600">No results match.</p>
-                <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
-              </div>
+              <>
+                {inAppPlaylistsStrip}
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                </div>
+              </>
             ) : (
               <>
                 {newestItems.length > 0 ? (
@@ -423,6 +418,7 @@ export default function VideosPage() {
                     ))}
                   </ConversationRow>
                 ) : null}
+                {inAppPlaylistsStrip}
                 {popularItems.length > 0 ? (
                   <ConversationRow
                     title="Popular now"
@@ -472,7 +468,7 @@ export default function VideosPage() {
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {!useMediaHub && playlists.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or YouTube playlists.</p>
+                  <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
                   <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                   <Link
                     to={isInApp ? '/app/catalog' : '/catalog'}

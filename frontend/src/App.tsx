@@ -181,7 +181,7 @@ function App() {
             {/* Clip detail (MediaHub clips - stays in app) */}
             <Route path="clip/:id" element={<ClipDetail />} />
 
-            {/* Catalog (YouTube playlists - same as public, stays in app) */}
+            {/* Catalog (playlists + clips; stays in app) */}
             <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
             <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
             <Route path="catalog" element={<VideosPage />} />
