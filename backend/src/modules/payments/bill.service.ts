@@ -50,6 +50,30 @@ export interface BillElementSession {
   devKey: string;
 }
 
+/** Organization bank funding account (BILL list API: GET .../funding-accounts/banks). IDs typically begin with `bac`. */
+export interface BillBankFundingAccount {
+  id: string;
+  archived: boolean;
+  status?: string;
+  bankName?: string;
+  nameOnAccount?: string;
+  default?: { payables?: boolean; receivables?: boolean };
+}
+
+export interface ListBankFundingAccountsResponse {
+  results?: BillBankFundingAccount[];
+  nextPage?: string;
+  prevPage?: string;
+}
+
+/** Same as Bill list API, plus recommended BILL_FUNDING_ACCOUNT_ID (default payables). */
+export interface BillFundingAccountsWithRecommendation extends ListBankFundingAccountsResponse {
+  recommendedFundingAccountId: string | null;
+  recommendationNote: string;
+  configuredFundingAccountId?: string | null;
+  configuredMatchesRecommended?: boolean;
+}
+
 @Injectable()
 export class BillService {
   private readonly logger = new Logger(BillService.name);
@@ -109,6 +133,51 @@ export class BillService {
     const orgId = this.orgId || '';
     this.logger.log(`Bill.com connection test OK: orgId=${orgId}`);
     return { success: true, organizationId: orgId };
+  }
+
+  /**
+   * List organization bank funding accounts (Connect v3: GET /funding-accounts/banks).
+   * Use the `id` from the account you use for AP payables as BILL_FUNDING_ACCOUNT_ID (often starts with `bac`).
+   */
+  async listBankFundingAccounts(max = 100): Promise<ListBankFundingAccountsResponse> {
+    const cap = Math.min(100, Math.max(1, max));
+    return this.request<ListBankFundingAccountsResponse>(
+      'GET',
+      `/funding-accounts/banks?max=${cap}`,
+    );
+  }
+
+  /**
+   * Lists funding banks and the id Bill marks as default for payables (usual BILL_FUNDING_ACCOUNT_ID).
+   */
+  async listBankFundingAccountsWithRecommendation(
+    max = 100,
+  ): Promise<BillFundingAccountsWithRecommendation> {
+    const data = await this.listBankFundingAccounts(max);
+    const results = data.results ?? [];
+    const defaultPayables = results.find((a) => !a.archived && a.default?.payables === true);
+    const recommendedFundingAccountId = defaultPayables?.id ?? null;
+    const recommendationNote = recommendedFundingAccountId
+      ? 'Use this id as BILL_FUNDING_ACCOUNT_ID: organization default for payables (AP debits).'
+      : 'No non-archived account has default.payables=true. Pick an id from results or set a default in Bill.com.';
+
+    const configured =
+      (this.configService.get<string>('bill.fundingAccountId') || '').trim() || null;
+
+    const out: BillFundingAccountsWithRecommendation = {
+      ...data,
+      recommendedFundingAccountId,
+      recommendationNote,
+    };
+
+    if (configured) {
+      out.configuredFundingAccountId = configured;
+      if (recommendedFundingAccountId) {
+        out.configuredMatchesRecommended = configured === recommendedFundingAccountId;
+      }
+    }
+
+    return out;
   }
 
   /**

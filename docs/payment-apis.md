@@ -107,7 +107,13 @@ GET /api/payments/test-connection
 
 **Organization ID:** `00802JRVLQNWWQB3hgkt`
 
-**Funding account ID** (required only for Pay now): Only Seth Laderman has access. Path: Settings → Bank & Payment Accounts → Bank accounts. To add app@communityhealth.media as authorized user: click arrow next to default account → View authorized users → Add user.
+**Funding account ID** (required for **Pay now**): Use the org bank account BILL should debit for AP payables. You can get it in the app (Settings → Bank & Payment Accounts) or **via API**: `GET https://gateway.stage.bill.com/connect/v3/funding-accounts/banks` (or prod host) with `devKey` + `sessionId` from `POST .../login`. Each account’s `id` usually starts with `bac`; pick the one with `default.payables: true` for payouts.
+
+**Backend helper (admin or dev):**
+```
+GET /api/payments/bill-funding-accounts
+```
+Returns the same list as the API (`results` with `id`, `status`, `default`, `bankName`, etc.). Set `BILL_FUNDING_ACCOUNT_ID` to the chosen `id`.
 
 ---
 

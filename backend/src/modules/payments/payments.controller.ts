@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Delete, Body, Param, Query, Logger, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiOkResponse, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
@@ -13,6 +13,7 @@ import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/c
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { SubmitW9Dto } from './dto/submit-w9.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
+import { BillFundingAccountsResponseDto } from './dto/bill-funding-accounts.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -56,6 +57,23 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, AdminOrDevGuard)
   async testConnection() {
     return this.paymentsService.testBillConnection();
+  }
+
+  /**
+   * GET /api/payments/bill-funding-accounts
+   * Lists Bill.com org bank funding accounts (GET /v3/funding-accounts/banks). Use an account `id` (often `bac*`) for BILL_FUNDING_ACCOUNT_ID.
+   */
+  @Get('bill-funding-accounts')
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'List Bill.com funding bank accounts (recommended BILL_FUNDING_ACCOUNT_ID)',
+    description:
+      'Uses server env Bill.com credentials to call GET /v3/funding-accounts/banks. Returns `recommendedFundingAccountId` when Bill marks an account as default for payables. Does not return passwords, dev keys, or session IDs.',
+  })
+  @ApiOkResponse({ type: BillFundingAccountsResponseDto })
+  async listBillFundingAccounts(): Promise<BillFundingAccountsResponseDto> {
+    return this.billService.listBankFundingAccountsWithRecommendation();
   }
 
   /**
