@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
@@ -44,8 +44,12 @@ const CLIPS_PAGE_SIZE = 24;
 
 type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
 
+/** Valid values for ?sort= / sort_by (MediaHub catalog API). */
+const SORT_PARAM_VALUES = new Set(['views', 'likes', 'recent', 'posted']);
+
 export default function VideosPage() {
   const location = useLocation();
+  const navigate = useNavigate();
   const isInApp = location.pathname.startsWith('/app');
   const [libraryView, setLibraryView] = useState<'clips' | 'playlists'>('clips');
   const [query, setQuery] = useState('');
@@ -55,21 +59,56 @@ export default function VideosPage() {
   const [sortBy, setSortBy] = useState('');
   const [sortOpen, setSortOpen] = useState(false);
 
-  // Use location.search so /catalog and /app/catalog behave the same under nested <Outlet /> (avoids useSearchParams edge cases).
+  const effectiveLibraryView: 'clips' | 'playlists' = useMemo(() => {
+    if (isInApp) return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
+    return libraryView;
+  }, [isInApp, location.search, libraryView]);
+
+  // Apply URL → state (shared for /catalog and /app/catalog).
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const q = params.get('q');
-    if (q != null && q !== '') setQuery(q);
-    const tag = params.get('tag');
-    if (tag != null && tag !== '') setTagFilter(tag);
-    const view = params.get('view');
-    if (view === 'playlists') setLibraryView('playlists');
-  }, [location.search]);
+    setQuery(params.get('q') ?? '');
+    setTagFilter(params.get('tag') ?? '');
+    setDoctorFilter(params.get('doctor') ?? '');
+    const sort = params.get('sort') ?? params.get('sort_by') ?? '';
+    setSortBy(SORT_PARAM_VALUES.has(sort) ? sort : '');
+    if (!isInApp) {
+      setLibraryView(params.get('view') === 'playlists' ? 'playlists' : 'clips');
+    }
+  }, [location.search, isInApp]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [query]);
+
+  // Keep query string in sync with filters (search text uses live `query` so deep links with ?q= aren’t wiped before debounce).
+  useEffect(() => {
+    const params = new URLSearchParams();
+    const q = query.trim();
+    if (q) params.set('q', q);
+    if (tagFilter) params.set('tag', tagFilter);
+    if (doctorFilter) params.set('doctor', doctorFilter);
+    if (sortBy) params.set('sort', sortBy);
+    const playlistView = isInApp
+      ? new URLSearchParams(location.search).get('view') === 'playlists'
+      : libraryView === 'playlists';
+    if (playlistView) params.set('view', 'playlists');
+    const next = params.toString();
+    const cur = (location.search || '').replace(/^\?/, '');
+    if (next === cur) return;
+    navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
+  }, [
+    query,
+    tagFilter,
+    doctorFilter,
+    sortBy,
+    isInApp,
+    libraryView,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
 
   const { data: tags = {} } = useQuery({
     queryKey: ['catalog', 'tags'],
@@ -86,11 +125,6 @@ export default function VideosPage() {
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
   const useMediaHub = tagOptions.length > 0;
-  /** In-app: `?view=playlists` opens the same playlist grid as public /catalog?view=playlists (was incorrectly forced to clips only). */
-  const viewFromSearch = useMemo((): 'clips' | 'playlists' => {
-    return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
-  }, [location.search]);
-  const effectiveLibraryView: 'clips' | 'playlists' = isInApp ? viewFromSearch : libraryView;
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -173,12 +207,15 @@ export default function VideosPage() {
   const isInitialClipsLoad =
     useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && clipsPageCount === 0;
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
+  const filterOrSortActive = !!(debouncedQuery.trim() || tagFilter || doctorFilter || sortBy);
   const popularItems = useMemo(
     () =>
-      [...gridItems]
-        .sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
-        .slice(0, 14),
-    [gridItems],
+      filterOrSortActive
+        ? []
+        : [...gridItems]
+            .sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
+            .slice(0, 14),
+    [gridItems, filterOrSortActive],
   );
   const shortItems = useMemo(
     () =>
@@ -248,8 +285,15 @@ export default function VideosPage() {
           />
         ) : null}
 
-        {!isInApp && effectiveLibraryView === 'clips' && useMediaHub && (
-          <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
+        {effectiveLibraryView === 'clips' && useMediaHub && (
+          <section
+            className={[
+              'flex flex-col gap-3 md:flex-row md:flex-wrap',
+              isInApp ? 'px-4 sm:px-6 lg:px-8' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
             <div className="flex-1 min-w-[200px] relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
               <input
@@ -403,7 +447,7 @@ export default function VideosPage() {
               <>
                 {newestItems.length > 0 ? (
                   <ConversationRow
-                    title="Recently added"
+                    title={filterOrSortActive ? 'Matching videos' : 'Recently added'}
                     subtitle={`${newestItems.length} videos`}
                     seeAllHref="/app/catalog"
                   >

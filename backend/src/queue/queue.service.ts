@@ -106,7 +106,13 @@ export class QueueService {
       this.logger.log(`Message sent to PAYMENT_QUEUE: ${response.MessageId}`);
       return true;
     } catch (error) {
-      this.logger.error(`Failed to send message to PAYMENT_QUEUE`, error);
+      const detail =
+        error && typeof error === 'object' && 'name' in error && 'message' in error
+          ? `${String((error as { name: string }).name)}: ${String((error as { message: string }).message)}`
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      this.logger.error(`Failed to send message to PAYMENT_QUEUE: ${detail}`, error as Error);
       return false;
     }
   }

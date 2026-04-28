@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 import ThemeToggle from '../ThemeToggle';
 import { NotificationBell } from './NotificationBell';
@@ -10,6 +11,7 @@ import { NotificationBell } from './NotificationBell';
 export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { resolvedTheme, toggleColorScheme } = useTheme();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
   const displayName = (
@@ -53,7 +55,7 @@ export default function Layout() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-            <ThemeToggle className="shrink-0" />
+            <ThemeToggle className="hidden shrink-0 md:inline-flex" />
             <NotificationBell />
             <div className="relative" ref={profileMenuRef}>
               <button
@@ -72,6 +74,14 @@ export default function Layout() {
                   role="menu"
                   className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-xl border border-gray-100/90 bg-white p-1.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_40px_-18px_rgba(0,0,0,0.2)] dark:border-zinc-700/80 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_16px_40px_-18px_rgba(0,0,0,0.55)]"
                 >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => toggleColorScheme()}
+                    className="md:hidden flex min-h-[44px] w-full items-center rounded-lg px-3 text-left text-sm font-medium text-gray-700 transition-[background-color,color] duration-200 ease-out hover:bg-gray-50 hover:text-gray-900 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                  </button>
                   <Link
                     to="/app/settings"
                     role="menuitem"

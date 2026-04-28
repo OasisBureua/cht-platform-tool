@@ -45,17 +45,18 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         ]
         Resource = var.secrets_arns
       },
+      # CMK-encrypted secrets: GetSecretValue fails with KMS AccessDeniedException without this.
       {
         Effect = "Allow"
         Action = [
-          "kms:Decrypt"
+          "kms:Decrypt",
+          "kms:DescribeKey"
         ]
         Resource = var.kms_key_arns
       }
     ]
   })
 }
-
 # ECS Task Role (used by application code running in containers)
 resource "aws_iam_role" "ecs_task" {
   name = "${local.prefix}-ecs-task"
@@ -94,6 +95,15 @@ resource "aws_iam_role_policy" "backend_task" {
           "sqs:GetQueueUrl"
         ]
         Resource = var.sqs_queue_arns
+      },
+      # SSE-KMS SQS queues require KMS permissions on SendMessage (encrypt data key for the message body).
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey*"
+        ]
+        Resource = var.kms_key_arns
       },
       {
         Effect = "Allow"
@@ -166,6 +176,14 @@ resource "aws_iam_role_policy" "worker_task" {
       {
         Effect = "Allow"
         Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey*"
+        ]
+        Resource = var.kms_key_arns
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "s3:PutObject",
           "s3:GetObject",
           "s3:PutObjectAcl"
@@ -178,13 +196,6 @@ resource "aws_iam_role_policy" "worker_task" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = var.secrets_arns
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt"
-        ]
-        Resource = var.kms_key_arns
       }
     ]
   })

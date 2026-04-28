@@ -5,7 +5,6 @@ import {
   MonitorPlay,
   ClipboardList,
   Banknote,
-  Mic2,
   Bot,
   CalendarClock,
 } from 'lucide-react';
@@ -16,7 +15,6 @@ const nav = [
   { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
   { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
-  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
   { to: '/app/chatbot', label: 'Chatbot', icon: Bot, end: false },
 ];

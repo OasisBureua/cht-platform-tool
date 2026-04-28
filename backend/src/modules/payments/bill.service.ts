@@ -87,10 +87,15 @@ export class BillService {
 
   constructor(private configService: ConfigService) {
     this.devKey = this.configService.get<string>('bill.devKey') || '';
-    this.sessionId = this.configService.get<string>('bill.sessionId') || null;
     this.username = this.configService.get<string>('bill.username') || null;
     this.password = this.configService.get<string>('bill.password') || null;
     this.orgId = this.configService.get<string>('bill.orgId') || null;
+
+    const envSession = (this.configService.get<string>('bill.sessionId') || '').trim() || null;
+    const hasPasswordLogin = !!(this.username?.trim() && this.password && this.orgId?.trim());
+    // Stale BILL_SESSION_ID in AWS/GSecrets often triggers Bill.com BDC_1361 "Untrusted session". When
+    // username/password login is configured, obtain a fresh session via POST /login instead.
+    this.sessionId = hasPasswordLogin ? null : envSession;
 
     const env = this.configService.get<string>('NODE_ENV') || 'development';
     this.baseUrl = env === 'production'
@@ -232,11 +237,18 @@ export class BillService {
     );
   }
 
+  private billSessionRetryable(status: number, bodyText: string): boolean {
+    if (status === 401) return true;
+    if (status !== 403) return false;
+    const t = bodyText.toLowerCase();
+    return t.includes('untrusted session') || t.includes('bdc_1361');
+  }
+
   private async request<T>(
     method: string,
     path: string,
     body?: unknown,
-    retryOn401 = true,
+    retryOnSessionFailure = true,
   ): Promise<T> {
     const sessionId = await this.ensureSession();
     const url = `${this.baseUrl}${path}`;
@@ -253,9 +265,13 @@ export class BillService {
 
     const text = await res.text();
 
-    // Session expired - retry with fresh login
-    if (res.status === 401 && retryOn401 && this.username && this.password && this.orgId) {
-      this.logger.warn('Bill.com session expired, re-logging in');
+    const canPasswordLogin = !!(this.username && this.password && this.orgId);
+    if (
+      retryOnSessionFailure &&
+      canPasswordLogin &&
+      this.billSessionRetryable(res.status, text)
+    ) {
+      this.logger.warn(`Bill.com session rejected (${res.status}), re-logging in`);
       this.sessionId = null;
       return this.request<T>(method, path, body, false);
     }

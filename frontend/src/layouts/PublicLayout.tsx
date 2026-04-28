@@ -89,14 +89,7 @@ export default function PublicLayout() {
             </div>
 
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
-              <Link
-                to="/catalog"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-brand-800 transition-colors hover:bg-white/50 hover:text-brand-900 sm:hidden dark:text-brand-300 dark:hover:bg-white/10"
-                aria-label="Browse library"
-              >
-                <Search className="h-5 w-5" />
-              </Link>
-              <ThemeToggle className="shrink-0" />
+              <ThemeToggle className="hidden sm:inline-flex shrink-0" />
               <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-white/35 bg-black/75 p-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/90">
                 <Link
                   to="/login"
@@ -179,6 +172,10 @@ export default function PublicLayout() {
                 {label}
               </NavLink>
             ))}
+          </div>
+          <div className="sm:hidden shrink-0 flex items-center justify-between gap-3 border-t border-gray-200/90 px-4 py-3 dark:border-zinc-800/90">
+            <span className="text-sm font-medium text-gray-700 dark:text-zinc-200">Appearance</span>
+            <ThemeToggle />
           </div>
           <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)] sm:hidden">
             <Link
