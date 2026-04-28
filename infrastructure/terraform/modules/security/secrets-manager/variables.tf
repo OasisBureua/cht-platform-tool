@@ -209,6 +209,20 @@ variable "bill_webhook_secret" {
   default     = ""
 }
 
+variable "bill_mfa_remember_me_id" {
+  description = "From POST /v3/mfa/challenge/validate with rememberMe: true; expires ~30 days. Pair with bill_mfa_device_name."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_mfa_device_name" {
+  description = "Stable device label paired with bill_mfa_remember_me_id on POST /v3/login"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "admin_bootstrap_secret" {
   description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
   type        = string

@@ -67,7 +67,9 @@ export default function VideosPage() {
   // Apply URL → state (shared for /catalog and /app/catalog).
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    setQuery(params.get('q') ?? '');
+    const qRaw = params.get('q') ?? '';
+    setQuery(qRaw);
+    setDebouncedQuery(qRaw.trim());
     setTagFilter(params.get('tag') ?? '');
     setDoctorFilter(params.get('doctor') ?? '');
     const sort = params.get('sort') ?? params.get('sort_by') ?? '';
@@ -110,13 +112,13 @@ export default function VideosPage() {
     navigate,
   ]);
 
-  const { data: tags = {} } = useQuery({
+  const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
     staleTime: 10 * 60 * 1000,
   });
 
-  const { data: doctors = [] } = useQuery({
+  const { data: doctors = [], isSuccess: doctorsReady } = useQuery({
     queryKey: ['catalog', 'doctors'],
     queryFn: catalogApi.getDoctors,
     staleTime: 10 * 60 * 1000,
@@ -124,7 +126,8 @@ export default function VideosPage() {
 
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
-  const useMediaHub = tagOptions.length > 0;
+  /** Clips/filters load once tags + doctors requests finish — do not block on empty tag list (MediaHub can return {}). */
+  const useMediaHub = tagsReady && doctorsReady;
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],

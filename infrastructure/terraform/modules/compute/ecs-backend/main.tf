@@ -188,6 +188,14 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
         },
         {
+          name      = "BILL_MFA_REMEMBER_ME_ID"
+          valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
+        },
+        {
+          name      = "BILL_MFA_DEVICE_NAME"
+          valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
+        },
+        {
           name      = "ADMIN_BOOTSTRAP_SECRET"
           valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
         },

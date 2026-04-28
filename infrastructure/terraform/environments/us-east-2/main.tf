@@ -12,11 +12,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "cht-platform-terraform-state-dev"
-    key            = "us-east-2-standby/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    use_lockfile   = true
+    bucket       = "cht-platform-terraform-state-dev"
+    key          = "us-east-2-standby/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 

@@ -24,6 +24,10 @@ export const validationSchema = Joi.object({
   BILL_ORG_ID: Joi.string().allow('').optional(),
   BILL_FUNDING_ACCOUNT_ID: Joi.string().allow('').optional(),
   BILL_API_URL: Joi.string().allow('').optional(),
+  BILL_MFA_REMEMBER_ME_ID: Joi.string().allow('').optional(),
+  BILL_MFA_DEVICE_NAME: Joi.string().allow('').optional(),
+  BILL_ALLOW_UNTRUSTED_PAYMENTS: Joi.string().valid('true', 'false', '1', '0', '').optional(),
+  BILL_PAY_SESSION_CACHE_MS: Joi.string().allow('').optional(),
 
   // AWS (optional - empty strings allowed)
   AWS_REGION: Joi.string().default('us-east-1'),

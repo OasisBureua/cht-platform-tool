@@ -279,6 +279,20 @@ variable "bill_webhook_secret" {
   default     = ""
 }
 
+variable "bill_mfa_remember_me_id" {
+  description = "Bill MFA remember-me id (~30d); from /v3/mfa/challenge/validate with rememberMe true"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_mfa_device_name" {
+  description = "Must match the device string used when obtaining rememberMeId"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "admin_bootstrap_secret" {
   description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
   type        = string

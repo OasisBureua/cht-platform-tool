@@ -41,6 +41,22 @@ interface BillLoginResponse {
   sessionId: string;
   organizationId: string;
   userId: string;
+  /** True when session is MFA-trusted (required for POST /v3/payments). */
+  trusted?: boolean;
+}
+
+/** GET /v3/login/session — https://developer.bill.com/reference/getsessioninfo */
+interface BillSessionInfoResponse {
+  organizationId?: string;
+  userId?: string;
+  /**
+   * Organization MFA state for this session (Bill enum).
+   * COMPLETE = API session is MFA-trusted (payments allowed). DISABLED = MFA off for org.
+   * SETUP / CHALLENGE = not trusted for payments until MFA path completes.
+   */
+  mfaStatus?: 'DISABLED' | 'SETUP' | 'CHALLENGE' | 'COMPLETE' | 'UNDEFINED';
+  /** When true, MFA is disabled at developer-key level; orgs on this key skip MFA. */
+  mfaBypass?: boolean;
 }
 
 export interface BillElementSession {
@@ -74,6 +90,15 @@ export interface BillFundingAccountsWithRecommendation extends ListBankFundingAc
   configuredMatchesRecommended?: boolean;
 }
 
+/**
+ * Bill.com Connect v3 client.
+ *
+ * - Most paths use `ensureSession()` (env `BILL_SESSION_ID` or `POST /v3/login`).
+ * - **Payments** use `ensurePaymentSessionCached()`: in-memory `sessionId` from the last successful
+ *   `POST /v3/login`, refreshed when older than `bill.paySessionCacheTtlMs` (default 30 minutes).
+ * - Bill still enforces MFA trust for `POST /v3/payments` unless you set `BILL_ALLOW_UNTRUSTED_PAYMENTS`
+ *   (local guard only; Bill may still reject with BDC_1361).
+ */
 @Injectable()
 export class BillService {
   private readonly logger = new Logger(BillService.name);
@@ -84,6 +109,12 @@ export class BillService {
   private username: string | null = null;
   private password: string | null = null;
   private orgId: string | null = null;
+  /** Known only after POST /v3/login or GET /v3/login/session. */
+  private sessionTrusted: boolean | null = null;
+  /** True when BILL_SESSION_ID was set at startup (vs password login only). */
+  private readonly initialSessionFromEnv: boolean;
+  /** Set when `login()` succeeds; used to TTL-cache payment sessions without re-calling POST /login. */
+  private passwordSessionIssuedAtMs: number | null = null;
 
   constructor(private configService: ConfigService) {
     this.devKey = this.configService.get<string>('bill.devKey') || '';
@@ -93,9 +124,24 @@ export class BillService {
 
     const envSession = (this.configService.get<string>('bill.sessionId') || '').trim() || null;
     const hasPasswordLogin = !!(this.username?.trim() && this.password && this.orgId?.trim());
-    // Stale BILL_SESSION_ID in AWS/GSecrets often triggers Bill.com BDC_1361 "Untrusted session". When
-    // username/password login is configured, obtain a fresh session via POST /login instead.
-    this.sessionId = hasPasswordLogin ? null : envSession;
+
+    // Prefer BILL_SESSION_ID when set (automation / Lambda-rotated secrets, MFA-trusted session from Bill).
+    // Password login remains available as fallback after 401/403 clears the in-memory session.
+    if (envSession) {
+      this.sessionId = envSession;
+      this.initialSessionFromEnv = true;
+      if (hasPasswordLogin) {
+        this.logger.log(
+          'Bill.com: using BILL_SESSION_ID; username/password will be used only if the session is rejected (401/403).',
+        );
+      }
+    } else if (hasPasswordLogin) {
+      this.sessionId = null;
+      this.initialSessionFromEnv = false;
+    } else {
+      this.sessionId = null;
+      this.initialSessionFromEnv = false;
+    }
 
     const env = this.configService.get<string>('NODE_ENV') || 'development';
     this.baseUrl = env === 'production'
@@ -110,6 +156,13 @@ export class BillService {
         `Bill.com login credentials incomplete. Have: devKey=${!!this.devKey} username=${!!this.username} password=${!!this.password} orgId=${!!this.orgId}`,
       );
     }
+  }
+
+  private clearInMemoryBillSession(): void {
+    this.sessionId = null;
+    this.userId = null;
+    this.sessionTrusted = null;
+    this.passwordSessionIssuedAtMs = null;
   }
 
   /**
@@ -130,14 +183,27 @@ export class BillService {
   }
 
   /**
-   * Test Bill.com connection (login only). Does not require funding account ID.
-   * Use to verify org ID, username, password, dev key before enabling payouts.
+   * Test Bill.com session (env session and/or login). Does not require funding account ID.
    */
-  async testConnection(): Promise<{ success: true; organizationId: string }> {
-    const sessionId = await this.login();
+  async testConnection(): Promise<{
+    success: true;
+    organizationId: string;
+    /** True / false from Bill after login or GET /login/session; use unknown until hydrated. */
+    mfaTrusted: boolean | null;
+    sessionFromEnv: boolean;
+  }> {
+    await this.ensureSession();
     const orgId = this.orgId || '';
-    this.logger.log(`Bill.com connection test OK: orgId=${orgId}`);
-    return { success: true, organizationId: orgId };
+    const mfaTrusted = this.sessionTrusted;
+    this.logger.log(
+      `Bill.com connection test OK: orgId=${orgId} mfaTrusted=${String(mfaTrusted)} sessionFromEnv=${this.initialSessionFromEnv}`,
+    );
+    return {
+      success: true,
+      organizationId: orgId,
+      mfaTrusted,
+      sessionFromEnv: this.initialSessionFromEnv,
+    };
   }
 
   /**
@@ -204,15 +270,27 @@ export class BillService {
     }
 
     const url = `${this.baseUrl}/login`;
+    const body: Record<string, string> = {
+      username: this.username!,
+      password: this.password!,
+      organizationId: this.orgId!,
+      devKey: this.devKey,
+    };
+    const rememberMeId = (this.configService.get<string>('bill.mfaRememberMeId') || '').trim();
+    const device = (this.configService.get<string>('bill.mfaDeviceName') || '').trim();
+    if (rememberMeId && device) {
+      body.rememberMeId = rememberMeId;
+      body.device = device;
+    } else if (rememberMeId || device) {
+      this.logger.warn(
+        'Bill.com: set both BILL_MFA_REMEMBER_ME_ID and BILL_MFA_DEVICE_NAME for MFA-trusted login; ignoring partial MFA config.',
+      );
+    }
+
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: this.username,
-        password: this.password,
-        organizationId: this.orgId,
-        devKey: this.devKey,
-      }),
+      body: JSON.stringify(body),
     });
 
     const text = await res.text();
@@ -223,18 +301,123 @@ export class BillService {
     const data = JSON.parse(text) as BillLoginResponse;
     this.sessionId = data.sessionId;
     this.userId = data.userId;
-    this.logger.log('Bill.com session established');
+    this.sessionTrusted = data.trusted === true;
+    if (!this.sessionTrusted) {
+      this.logger.warn(
+        'Bill.com: login OK but session is not MFA-trusted (trusted=false). Pay now needs BILL_MFA_REMEMBER_ME_ID + BILL_MFA_DEVICE_NAME from MFA validate (rememberMe: true).',
+      );
+    } else {
+      this.logger.log('Bill.com session established (MFA-trusted)');
+    }
+    this.passwordSessionIssuedAtMs = Date.now();
     return this.sessionId;
   }
 
+  /**
+   * Fills userId / orgId / sessionTrusted for BILL_SESSION_ID-only setups (GET /v3/login/session).
+   * Avoids recursion into request(); uses raw fetch.
+   */
+  private async hydrateSessionInfo(): Promise<void> {
+    const sessionId = this.sessionId;
+    if (!sessionId || !this.devKey?.trim()) return;
+
+    const url = `${this.baseUrl}/login/session`;
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        devKey: this.devKey,
+        sessionId,
+      },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      throw new Error(`Bill.com GET /login/session failed (${res.status}): ${text}`);
+    }
+    const data = text ? (JSON.parse(text) as BillSessionInfoResponse) : {};
+    if (data.userId) this.userId = data.userId;
+    if (data.organizationId) this.orgId = data.organizationId;
+
+    // https://developer.bill.com/reference/getsessioninfo
+    if (data.mfaBypass === true || data.mfaStatus === 'COMPLETE' || data.mfaStatus === 'DISABLED') {
+      this.sessionTrusted = true;
+    } else if (data.mfaStatus && data.mfaStatus !== 'UNDEFINED') {
+      this.sessionTrusted = false;
+    }
+
+    this.logger.log(
+      `Bill.com GET /login/session: mfaStatus=${data.mfaStatus ?? 'n/a'} mfaBypass=${data.mfaBypass === true} ` +
+        `sessionTrusted=${this.sessionTrusted}`,
+    );
+  }
+
   private async ensureSession(): Promise<string> {
-    if (this.sessionId) return this.sessionId;
+    if (this.sessionId) {
+      if (!this.userId) {
+        await this.hydrateSessionInfo();
+      }
+      return this.sessionId;
+    }
     if (this.username && this.password && this.orgId) {
       return this.login();
     }
     throw new Error(
       'Bill.com sessionId not configured. Set BILL_SESSION_ID or BILL_USERNAME+BILL_PASSWORD+BILL_ORG_ID.',
     );
+  }
+
+  /**
+   * Pay flow: keep the last successful `POST /v3/login` session in memory and only call Bill login
+   * again after `bill.paySessionCacheTtlMs` (default 30 minutes). Still requires Bill pay creds in env.
+   */
+  async ensurePaymentSessionCached(): Promise<void> {
+    const canLogin = !!(
+      this.devKey?.trim() &&
+      this.username?.trim() &&
+      this.password &&
+      this.orgId?.trim()
+    );
+    if (!canLogin) {
+      throw new Error(
+        'Bill.com payments require BILL_DEV_KEY, BILL_USERNAME, BILL_PASSWORD, and BILL_ORG_ID so the server can POST /v3/login.',
+      );
+    }
+    const ttlMs = this.configService.get<number>('bill.paySessionCacheTtlMs') ?? 30 * 60 * 1000;
+    const cacheFresh =
+      !!this.sessionId &&
+      this.passwordSessionIssuedAtMs !== null &&
+      Date.now() - this.passwordSessionIssuedAtMs < ttlMs;
+    if (cacheFresh) {
+      this.logger.debug(`Bill.com payment session cache hit (TTL ${ttlMs}ms)`);
+      return;
+    }
+    this.logger.log('Bill.com: POST /v3/login for payment session (cache miss or TTL expired)');
+    this.clearInMemoryBillSession();
+    await this.login();
+  }
+
+  /**
+   * MFA-trusted session required for POST /v3/payments unless `BILL_ALLOW_UNTRUSTED_PAYMENTS` is set.
+   */
+  private assertMfaTrustedForPayments(): void {
+    const allowUntrusted = this.configService.get<boolean>('bill.allowUntrustedPayments');
+    if (allowUntrusted) {
+      if (this.sessionTrusted === false) {
+        this.logger.warn(
+          'BILL_ALLOW_UNTRUSTED_PAYMENTS: proceeding to POST /v3/payments; Bill may still reject with BDC_1361.',
+        );
+      }
+      return;
+    }
+    if (this.sessionTrusted === false) {
+      throw new Error(
+        'Bill.com session is not MFA-trusted (BDC_1361). For Pay now, use a trusted sessionId: set BILL_SESSION_ID ' +
+          'to a session from MFA-complete login (Bill UI or API), refresh it periodically (~35 min inactivity), ' +
+          'or automate rotation via Lambda updating Secrets Manager. Optional: BILL_MFA_REMEMBER_ME_ID + BILL_MFA_DEVICE_NAME. ' +
+          'If you cannot obtain MFA trust (e.g. sandbox only), set BILL_ALLOW_UNTRUSTED_PAYMENTS=true to skip this check locally ' +
+          '(Bill may still block the request). See https://developer.bill.com/reference/getsessioninfo.',
+      );
+    }
   }
 
   private billSessionRetryable(status: number, bodyText: string): boolean {
@@ -272,7 +455,7 @@ export class BillService {
       this.billSessionRetryable(res.status, text)
     ) {
       this.logger.warn(`Bill.com session rejected (${res.status}), re-logging in`);
-      this.sessionId = null;
+      this.clearInMemoryBillSession();
       return this.request<T>(method, path, body, false);
     }
 
@@ -391,6 +574,9 @@ export class BillService {
   ): Promise<BillPayment> {
     const amountDollars = amountCents / 100;
     this.logger.log(`Creating Bill.com payment: $${amountDollars} to ${vendorId}`);
+
+    await this.ensurePaymentSessionCached();
+    this.assertMfaTrustedForPayments();
 
     const fundingAccountId = this.configService.get<string>('bill.fundingAccountId');
     if (!fundingAccountId) {

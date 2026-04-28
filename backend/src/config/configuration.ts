@@ -40,6 +40,23 @@ export default () => ({
     fundingAccountId: process.env.BILL_FUNDING_ACCOUNT_ID,
     apiUrl: process.env.BILL_API_URL,
     webhookSecret: process.env.BILL_WEBHOOK_SECRET,
+    /** From POST /v3/mfa/challenge/validate with rememberMe: true (expires ~30 days). Required for MFA-trusted operations like payments. */
+    mfaRememberMeId: process.env.BILL_MFA_REMEMBER_ME_ID,
+    /** Device nickname; must be set together with mfaRememberMeId on POST /v3/login. */
+    mfaDeviceName: process.env.BILL_MFA_DEVICE_NAME,
+    /**
+     * When true, skips the local MFA-trust guard before POST /v3/payments. Bill may still return BDC_1361.
+     * Use only when you cannot obtain rememberMe / trusted session (e.g. sandbox), not as a prod workaround.
+     */
+    allowUntrustedPayments:
+      process.env.BILL_ALLOW_UNTRUSTED_PAYMENTS === 'true' ||
+      process.env.BILL_ALLOW_UNTRUSTED_PAYMENTS === '1',
+    /** Min time between POST /v3/login for the pay flow; default 30m (Bill idle ~35m). */
+    paySessionCacheTtlMs: (() => {
+      const d = parseInt(process.env.BILL_PAY_SESSION_CACHE_MS || '', 10);
+      if (Number.isNaN(d) || d < 60_000) return 30 * 60 * 1000;
+      return d;
+    })(),
   },
 
   // AWS
