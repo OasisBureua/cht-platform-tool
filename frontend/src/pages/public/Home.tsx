@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, Monitor, Headphones, FileText, Video, Clock, LayoutGrid, Loader2 } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
 import { getShortClipId } from '../../utils/clipUrl';
-import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
+import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
 import DISEASE_AREAS from '../../data/disease-areas';
 
 const resourceImages: Record<string, string> = {
@@ -228,7 +228,7 @@ export default function Home() {
             style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
           >
             <ConversationRow title="Featured videos" seeAllHref="/catalog" seeAllLabel="See all in library">
-              <StripRowLoading />
+              <StripRowLoadingThumbnails />
             </ConversationRow>
           </div>
         )}
@@ -250,7 +250,7 @@ export default function Home() {
                   to={v.id.startsWith('home-placeholder') ? '/catalog' : `/catalog/clip/${getShortClipId(v.id)}`}
                   title={v.title}
                   imageUrl={v.imageUrl}
-                  description={v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                  variant="thumbnailOnly"
                 />
               ))}
             </ConversationRow>
