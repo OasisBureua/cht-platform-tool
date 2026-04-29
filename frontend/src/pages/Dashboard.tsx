@@ -8,6 +8,7 @@ import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } fr
 import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
+import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -145,13 +146,6 @@ export default function Dashboard() {
     staleTime: 2 * 60 * 1000,
   });
 
-  const { data: viewsData, isLoading: viewsLoading } = useQuery({
-    queryKey: ['catalog', 'clips', 'dashboard', 'views'],
-    queryFn: () => catalogApi.getClips({ limit: CLIP_LIMIT, sort_by: 'views' }),
-    enabled: useMediaHub,
-    staleTime: 2 * 60 * 1000,
-  });
-
   const { data: topicData, isLoading: topicLoading } = useQuery({
     queryKey: ['catalog', 'clips', 'dashboard', 'topic', topicTag],
     queryFn: () =>
@@ -169,12 +163,11 @@ export default function Dashboard() {
 
   const latestWebinar = useMemo(() => getLatestWebinar(webinars), [webinars]);
   const recentItems = recentData?.items ?? [];
-  const viewsItems = viewsData?.items ?? [];
   const topicItems = topicData?.items ?? [];
   const playlistStrip = (playlists as CatalogItem[]).slice(0, 10);
 
   const isLoading =
-    webinarsLoading || (useMediaHub && (recentLoading || viewsLoading || playlistsLoading || (!!topicTag && topicLoading)));
+    webinarsLoading || (useMediaHub && (recentLoading || playlistsLoading || (!!topicTag && topicLoading)));
   const featuredPanel = useMemo(() => {
     if (recentItems.length > 0) {
       const c = recentItems[0];
@@ -394,26 +387,25 @@ export default function Dashboard() {
                 </ConversationRow>
               ) : null}
 
-              {viewsItems.length > 0 ? (
+              {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
                 <ConversationRow
-                  title="Popular"
-                  subtitle={`${viewsItems.length} videos`}
+                  key={section.label}
+                  title={section.label}
+                  subtitle={section.subtitle}
                   seeAllHref="/app/catalog"
                 >
-                  {viewsItems.map((c) => (
+                  {section.items.map((item) => (
                     <StripCard
-                      key={c.id}
-                      to={`/app/clip/${getShortClipId(c.id)}`}
-                      title={c.title}
-                      imageUrl={getMediaHubThumbnail(c)}
-                      description={clipMetaString(c, 'recent')}
-                      videoLabel={
-                        c.view_count != null ? `${c.view_count.toLocaleString()} views` : undefined
-                      }
+                      key={item.id}
+                      to={item.href}
+                      title={item.title}
+                      imageUrl={item.imageUrl}
+                      description={item.speakers}
+                      videoLabel={item.tag}
                     />
                   ))}
                 </ConversationRow>
-              ) : null}
+              ))}
 
               {topicTag && topicItems.length > 0 ? (
                 <ConversationRow

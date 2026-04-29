@@ -120,46 +120,72 @@ export type StripCardProps = {
   videoLabel?: string;
 };
 
-export function StripCard({ to, title, imageUrl, description, meta, videoLabel }: StripCardProps) {
+const stripCardClassName =
+  'group/card flex h-[300px] w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:h-[320px] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+
+function StripCardInner({
+  title,
+  imageUrl,
+  description,
+  meta,
+  videoLabel,
+}: Pick<StripCardProps, 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel'>) {
   const line1 = description ?? meta;
   return (
-    <div className="snap-start" style={{ scrollSnapAlign: 'start' }}>
-      <Link
-        to={to}
-        className="group/card flex h-[300px] w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:h-[320px] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]"
-      >
-        <div className="relative h-[180px] w-full overflow-hidden sm:h-[200px]">
-          <img
-            src={imageUrl}
-            alt={title}
-            className="h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            draggable={false}
-          />
-        </div>
-        <div className="flex min-h-[6.25rem] flex-1 flex-col p-2.5 pt-2 sm:min-h-[6.5rem]">
+    <>
+      <div className="relative h-[180px] w-full overflow-hidden sm:h-[200px]">
+        <img
+          src={imageUrl}
+          alt={title}
+          className="h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          draggable={false}
+        />
+      </div>
+      <div className="flex min-h-[6.25rem] flex-1 flex-col p-2.5 pt-2 sm:min-h-[6.5rem]">
+        <p
+          className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 [overflow-wrap:anywhere] dark:text-zinc-100"
+          title={title}
+        >
+          {title}
+        </p>
+        {line1 ? (
           <p
-            className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 [overflow-wrap:anywhere] dark:text-zinc-100"
-            title={title}
+            className="mt-1 line-clamp-2 text-left text-[11px] leading-snug text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400"
+            title={line1}
           >
-            {title}
+            {line1}
           </p>
-          {line1 ? (
-            <p
-              className="mt-1 line-clamp-1 text-left text-[11px] leading-snug text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400"
-              title={line1}
-            >
-              {line1}
-            </p>
-          ) : null}
-          {videoLabel ? (
-            <span className="mt-1.5 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-2 py-1 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100">
-              {videoLabel}
-            </span>
-          ) : null}
-        </div>
-      </Link>
+        ) : null}
+        {videoLabel ? (
+          <span className="mt-1.5 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-2 py-1 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100">
+            {videoLabel}
+          </span>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+export function StripCard({ to, title, imageUrl, description, meta, videoLabel }: StripCardProps) {
+  const external = /^https?:\/\//i.test(to);
+  return (
+    <div className="snap-start" style={{ scrollSnapAlign: 'start' }}>
+      {external ? (
+        <a
+          href={to}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={stripCardClassName}
+        >
+          <StripCardInner title={title} imageUrl={imageUrl} description={description} meta={meta} videoLabel={videoLabel} />
+        </a>
+      ) : (
+        <Link to={to} className={stripCardClassName}>
+          <StripCardInner title={title} imageUrl={imageUrl} description={description} meta={meta} videoLabel={videoLabel} />
+        </Link>
+      )}
     </div>
   );
 }

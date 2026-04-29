@@ -3,13 +3,15 @@ import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubClip, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
+import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistGrid } from '../../components/content/PlaylistGrid';
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
+import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -156,13 +158,6 @@ export default function VideosPage() {
   const isInitialClipsLoad =
     useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && (clipsData?.pages?.length ?? 0) === 0;
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
-  const popularItems = useMemo(
-    () =>
-      [...gridItems]
-        .sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
-        .slice(0, 14),
-    [gridItems],
-  );
   const shortItems = useMemo(
     () =>
       gridItems
@@ -180,12 +175,12 @@ export default function VideosPage() {
         className={[
           isInApp
             ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
-            : 'mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
+            : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
         {!isInApp ? (
-          <div className="flex items-center gap-2.5 px-4 pt-6 text-zinc-900 sm:px-6 sm:pt-8 lg:px-8">
-            <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+          <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
+            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
               Explore our catalogue
             </h1>
@@ -327,15 +322,36 @@ export default function VideosPage() {
                 <ConversationRow title="Loading conversations" seeAllHref="/app/catalog">
                   <StripRowLoading />
                 </ConversationRow>
-                <ConversationRow title="Loading popular conversations" seeAllHref="/app/catalog">
+                <ConversationRow title="Browse by series" seeAllHref="/app/catalog">
                   <StripRowLoading />
                 </ConversationRow>
               </>
             ) : useMediaHub && displayItems.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                <p className="mb-2 text-pretty text-gray-600">No results match.</p>
-                <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
-              </div>
+              <>
+                <div className="col-span-full flex flex-col items-center justify-center py-10 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                </div>
+                {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
+                  <ConversationRow
+                    key={section.label}
+                    title={section.label}
+                    subtitle={section.subtitle}
+                    seeAllHref="/app/catalog"
+                  >
+                    {section.items.map((item) => (
+                      <StripCard
+                        key={item.id}
+                        to={item.href}
+                        title={item.title}
+                        imageUrl={item.imageUrl}
+                        description={item.speakers}
+                        videoLabel={item.tag}
+                      />
+                    ))}
+                  </ConversationRow>
+                ))}
+              </>
             ) : (
               <>
                 {newestItems.length > 0 ? (
@@ -355,24 +371,25 @@ export default function VideosPage() {
                     ))}
                   </ConversationRow>
                 ) : null}
-                {popularItems.length > 0 ? (
+                {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
                   <ConversationRow
-                    title="Popular now"
-                    subtitle={`${popularItems.length} videos`}
+                    key={section.label}
+                    title={section.label}
+                    subtitle={section.subtitle}
                     seeAllHref="/app/catalog"
                   >
-                    {popularItems.map((item) => (
+                    {section.items.map((item) => (
                       <StripCard
-                        key={`pop-${item.id}`}
-                        to={`/app/clip/${getShortClipId(item.id)}`}
+                        key={item.id}
+                        to={item.href}
                         title={item.title}
-                        imageUrl={getMediaHubThumbnail(item)}
-                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
-                        videoLabel={`${(item.view_count ?? 0).toLocaleString()} views`}
+                        imageUrl={item.imageUrl}
+                        description={item.speakers}
+                        videoLabel={item.tag}
                       />
                     ))}
                   </ConversationRow>
-                ) : null}
+                ))}
                 {shortItems.length > 0 ? (
                   <ConversationRow
                     title="Short clips"
