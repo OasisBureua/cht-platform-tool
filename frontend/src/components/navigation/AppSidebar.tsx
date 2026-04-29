@@ -1,13 +1,13 @@
 import { NavLink, Link } from 'react-router-dom';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
-import { APP_NAV_ITEMS, APP_CATALOG_CONVERSATIONS_HUB } from './appNavItems';
+import { APP_NAV_ITEMS } from './appNavItems';
 
 export default function AppSidebar() {
   return (
     <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col border-r border-white/50 bg-white/70 shadow-[1px_0_0_0_rgba(0,0,0,0.04),4px_0_24px_-12px_rgba(0,0,0,0.06)] backdrop-blur-xl backdrop-saturate-150 md:flex dark:border-zinc-800/80 dark:bg-zinc-950/85 dark:shadow-[1px_0_0_0_rgba(255,255,255,0.04),4px_0_24px_-12px_rgba(0,0,0,0.45)]">
       <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-white/40 dark:border-zinc-800/80">
         <Link
-          to={APP_CATALOG_CONVERSATIONS_HUB}
+          to="/app/home"
           className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-2xl text-brand-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-brand-700 hover:opacity-95 active:scale-[0.96] dark:text-brand-400 dark:hover:text-brand-300"
           aria-label="Community Health Media, app home"
         >

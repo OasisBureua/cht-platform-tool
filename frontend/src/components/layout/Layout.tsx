@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu } from 'lucide-react';
 import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
-import { APP_NAV_ITEMS, APP_CATALOG_CONVERSATIONS_HUB } from '../navigation/appNavItems';
+import { APP_NAV_ITEMS } from '../navigation/appNavItems';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
@@ -83,7 +83,7 @@ export default function Layout() {
           aria-label="Primary navigation"
         >
           <Link
-            to={APP_CATALOG_CONVERSATIONS_HUB}
+            to="/app/home"
             onClick={() => setMobileDrawerOpen(false)}
             className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-brand-600 transition-[opacity,transform] duration-200 hover:text-brand-700 active:scale-[0.98]"
             aria-label="Community Health Media, app home"
