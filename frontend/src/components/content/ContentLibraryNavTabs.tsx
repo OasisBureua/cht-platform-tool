@@ -19,7 +19,7 @@ type ContentLibraryNavTabsProps = {
 };
 
 /**
- * Shared icon nav: Catalog (same hub as former Videos page: clips + filters + playlists), Webinars, Surveys, Playlists.
+ * Shared icon nav: Catalog (clips + filters + playlists), Conversations (LIVE), Surveys, Playlists.
  */
 export function ContentLibraryNavTabs({
   isInApp,
@@ -51,7 +51,7 @@ export function ContentLibraryNavTabs({
       </Link>
       <Link to={webinarsTo} className={tabClass(false)}>
         <Monitor className="h-8 w-8" />
-        <span className="text-sm font-medium">Webinars</span>
+        <span className="text-sm font-medium">Conversations</span>
       </Link>
       <Link to={surveysTo} className={tabClass(false)}>
         <ClipboardList className="h-8 w-8" />

@@ -11,6 +11,7 @@ import { PlaylistGrid } from '../../components/content/PlaylistGrid';
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
+import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -266,12 +267,12 @@ export default function VideosPage() {
         className={[
           isInApp
             ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
-            : 'mx-auto max-w-7xl px-4 sm:px-6 pt-5 sm:pt-7 pb-6 sm:pb-9 space-y-5 sm:space-y-7',
+            : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
         {!isInApp ? (
-          <div className="flex items-center gap-2.5 pt-3 text-zinc-900 sm:pt-5">
-            <MonitorPlay className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+          <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
+            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
               Explore our catalogue
             </h1>
@@ -433,7 +434,7 @@ export default function VideosPage() {
                 <ConversationRow title="Loading conversations" seeAllHref="/app/catalog">
                   <StripRowLoading />
                 </ConversationRow>
-                <ConversationRow title="Loading popular conversations" seeAllHref="/app/catalog">
+                <ConversationRow title="Browse by series" seeAllHref="/app/catalog">
                   <StripRowLoading />
                 </ConversationRow>
                 {inAppPlaylistsStrip}
@@ -441,10 +442,29 @@ export default function VideosPage() {
             ) : useMediaHub && displayItems.length === 0 ? (
               <>
                 {inAppPlaylistsStrip}
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                <div className="col-span-full flex flex-col items-center justify-center py-10 text-center">
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
+                {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
+                  <ConversationRow
+                    key={section.label}
+                    title={section.label}
+                    subtitle={section.subtitle}
+                    seeAllHref="/app/catalog"
+                  >
+                    {section.items.map((item) => (
+                      <StripCard
+                        key={item.id}
+                        to={item.href}
+                        title={item.title}
+                        imageUrl={item.imageUrl}
+                        description={item.speakers}
+                        videoLabel={item.tag}
+                      />
+                    ))}
+                  </ConversationRow>
+                ))}
               </>
             ) : (
               <>
@@ -484,6 +504,25 @@ export default function VideosPage() {
                     ))}
                   </ConversationRow>
                 ) : null}
+                {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
+                  <ConversationRow
+                    key={section.label}
+                    title={section.label}
+                    subtitle={section.subtitle}
+                    seeAllHref="/app/catalog"
+                  >
+                    {section.items.map((item) => (
+                      <StripCard
+                        key={item.id}
+                        to={item.href}
+                        title={item.title}
+                        imageUrl={item.imageUrl}
+                        description={item.speakers}
+                        videoLabel={item.tag}
+                      />
+                    ))}
+                  </ConversationRow>
+                ))}
                 {shortItems.length > 0 ? (
                   <ConversationRow
                     title="Short clips"
