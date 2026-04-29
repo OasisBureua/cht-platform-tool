@@ -17,6 +17,10 @@ const TIMEZONES = [
   'UTC',
 ];
 
+/** Default Jotforms for Zoom Webinar schedules (registration intake + post-session survey). */
+const DEFAULT_WEBINAR_INTAKE_JOTFORM_URL = 'https://communityhealthmedia.jotform.com/261116295463861';
+const DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL = 'https://communityhealthmedia.jotform.com/260698533879881';
+
 export type AdminWebinarSchedulerProps = {
   /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
   defaultZoomSessionType?: ZoomSessionType;
@@ -33,16 +37,12 @@ export default function AdminWebinarScheduler({
 
   const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
   const [honorariumUsd, setHonorariumUsd] = useState('');
-
-  useEffect(() => {
-    setZoomSessionType(defaultZoomSessionType);
-  }, [defaultZoomSessionType]);
-
-  useEffect(() => {
-    if (zoomSessionType === 'MEETING') {
-      setHonorariumUsd('');
-    }
-  }, [zoomSessionType]);
+  const [jotformIntakeFormUrl, setJotformIntakeFormUrl] = useState(
+    () => (defaultZoomSessionType === 'WEBINAR' ? DEFAULT_WEBINAR_INTAKE_JOTFORM_URL : ''),
+  );
+  const [postEventJotformFormIdOrUrl, setPostEventJotformFormIdOrUrl] = useState(
+    () => (defaultZoomSessionType === 'WEBINAR' ? DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL : ''),
+  );
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -53,17 +53,31 @@ export default function AdminWebinarScheduler({
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
   const [duration, setDuration] = useState('60');
-  const [jotformIntakeFormUrl, setJotformIntakeFormUrl] = useState('');
-  const [postEventJotformFormIdOrUrl, setPostEventJotformFormIdOrUrl] = useState('');
+
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [zoomWarning, setZoomWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    setZoomSessionType(defaultZoomSessionType);
+  }, [defaultZoomSessionType]);
+
+  useEffect(() => {
+    if (zoomSessionType === 'MEETING') {
+      setHonorariumUsd('');
+      setJotformIntakeFormUrl('');
+      setPostEventJotformFormIdOrUrl('');
+      return;
+    }
+    /** WEBINAR: pre-fill CHM Jotforms when switching from office hours or restoring empty inputs */
+    setJotformIntakeFormUrl((v) => (v.trim() ? v : DEFAULT_WEBINAR_INTAKE_JOTFORM_URL));
+    setPostEventJotformFormIdOrUrl((v) => (v.trim() ? v : DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL));
+  }, [zoomSessionType]);
 
   const { data: adminConfig } = useQuery({
     queryKey: ['admin', 'config'],
     queryFn: () => adminApi.getAdminConfig(),
     staleTime: 5 * 60 * 1000,
   });
-
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [zoomWarning, setZoomWarning] = useState<string | null>(null);
 
   const successPath = zoomSessionType === 'MEETING' ? '/admin/office-hours' : '/admin/programs';
   const isWebinar = zoomSessionType === 'WEBINAR';
@@ -113,10 +127,18 @@ export default function AdminWebinarScheduler({
       return;
     }
 
-    if (isWebinar && !jotformIntakeFormUrl.trim()) {
+    const intakeTrimmed = jotformIntakeFormUrl.trim();
+    const intakeUrl =
+      (isWebinar ? intakeTrimmed || DEFAULT_WEBINAR_INTAKE_JOTFORM_URL : intakeTrimmed) || '';
+    if (isWebinar && !intakeUrl) {
       setValidationError('Registration intake (Jotform URL) is required for webinars.');
       return;
     }
+
+    const postEventMerged =
+      isWebinar
+        ? postEventJotformFormIdOrUrl.trim() || DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL
+        : postEventJotformFormIdOrUrl.trim();
 
     let honorariumNum: number | undefined;
     if (isWebinar && honorariumUsd.trim()) {
@@ -146,10 +168,8 @@ export default function AdminWebinarScheduler({
       timezone,
       zoomSessionType,
       status: 'PUBLISHED',
-      ...(isWebinar ? { jotformIntakeFormUrl: jotformIntakeFormUrl.trim() } : {}),
-      ...(postEventJotformFormIdOrUrl.trim()
-        ? { postEventJotformFormIdOrUrl: postEventJotformFormIdOrUrl.trim() }
-        : {}),
+      ...(isWebinar ? { jotformIntakeFormUrl: intakeUrl } : {}),
+      ...(postEventMerged ? { postEventJotformFormIdOrUrl: postEventMerged } : {}),
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
     };
 

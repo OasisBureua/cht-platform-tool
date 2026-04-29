@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Presentation, ClipboardList, PlayCircle, X } from 'lucide-react';
+import { Presentation, ClipboardList, CalendarClock, PlayCircle, X } from 'lucide-react';
 import { format, isPast, startOfWeek, endOfWeek } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } from '../api/catalog';
@@ -9,6 +9,7 @@ import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
+import { resolveCatalogSectionSeeAllHref, VIEW_PLAYLIST_LABEL } from '../utils/playlistFocusFilters';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -26,6 +27,12 @@ const QUICK_START_ACTIONS = [
     desc: 'Attend live education sessions and earn for participation.',
     icon: Presentation,
     to: '/app/live',
+  },
+  {
+    title: 'CHM Office Hours',
+    desc: 'Drop in for interactive Q&A with experts—book a slot and join.',
+    icon: CalendarClock,
+    to: '/app/chm-office-hours',
   },
   {
     title: 'Surveys',
@@ -121,6 +128,12 @@ export default function Dashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
+    queryKey: ['office-hours'],
+    queryFn: webinarsApi.listOfficeHours,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: tags = {} } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
@@ -208,50 +221,6 @@ export default function Dashboard() {
     };
   }, [latestWebinar, recentItems]);
 
-  const releaseCarouselItems = useMemo(() => {
-    const items: { href: string; title: string; imageUrl: string; meta?: string }[] = [];
-
-    webinars
-      .slice(0, 4)
-      .forEach((w, i) =>
-        items.push({
-          href: w.id ? `/app/live/${w.id}` : '/app/live',
-          title: w.title,
-          imageUrl: w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length],
-          meta: w.startTime
-            ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d')}`
-            : 'LIVE session',
-        }),
-      );
-
-    const podcastThumb = '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png';
-    items.push(
-      {
-        href: '/app/podcasts',
-        title: 'Breast Friends · New episode',
-        imageUrl: podcastThumb,
-        meta: 'Podcast release',
-      },
-      {
-        href: '/app/podcasts',
-        title: 'More podcast series coming soon',
-        imageUrl: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
-        meta: 'Podcast update',
-      },
-    );
-
-    recentItems.slice(0, 4).forEach((c) =>
-      items.push({
-        href: `/app/clip/${getShortClipId(c.id)}`,
-        title: c.title,
-        imageUrl: getMediaHubThumbnail(c),
-        meta: 'Conversation release',
-      }),
-    );
-
-    return items.slice(0, 12);
-  }, [recentItems, webinars]);
-
   return (
     <div className="space-y-8 md:space-y-10">
       {isOnboardingOpen ? (
@@ -272,7 +241,7 @@ export default function Dashboard() {
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {QUICK_START_ACTIONS.map((item) => (
                 <Link
                   key={item.title}
@@ -340,27 +309,6 @@ export default function Dashboard() {
           </div>
         </section>
 
-      {releaseCarouselItems.length > 0 ? (
-        <section className="relative -top-[10px] space-y-4">
-          <ConversationRow
-            title="New releases"
-            subtitle={`${releaseCarouselItems.length} items`}
-            seeAllHref="/app/live"
-            seeAllLabel="View all releases"
-          >
-            {releaseCarouselItems.map((item, i) => (
-              <StripCard
-                key={`${item.href}-${i}`}
-                to={item.href}
-                title={item.title}
-                imageUrl={item.imageUrl}
-                description={item.meta}
-              />
-            ))}
-          </ConversationRow>
-        </section>
-      ) : null}
-
       {useMediaHub ? (
         <div className="space-y-10">
           {isLoading ? (
@@ -392,7 +340,8 @@ export default function Dashboard() {
                   key={section.label}
                   title={section.label}
                   subtitle={section.subtitle}
-                  seeAllHref="/app/catalog"
+                  seeAllHref={resolveCatalogSectionSeeAllHref(true, section)}
+                  seeAllLabel={VIEW_PLAYLIST_LABEL}
                 >
                   {section.items.map((item) => (
                     <StripCard
@@ -486,6 +435,38 @@ export default function Dashboard() {
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Medical education'
+                }
+              />
+            ))
+          )}
+        </ConversationRow>
+      </section>
+
+      <section className="space-y-4">
+        <ConversationRow
+          title="CHM Office Hours"
+          subtitle={officeHoursLoading ? 'Loading' : `${officeHours.length} listed`}
+          seeAllHref="/app/chm-office-hours"
+          seeAllLabel="Full schedule"
+        >
+          {officeHoursLoading ? (
+            <StripRowLoading />
+          ) : officeHours.length === 0 ? (
+            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-200/90 bg-zinc-50/80 px-4 py-8 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]">
+              <p className="text-sm font-medium text-zinc-800">No office hours scheduled yet</p>
+              <p className="mt-1 text-pretty text-sm text-zinc-600">When sessions are published, they will appear here.</p>
+            </div>
+          ) : (
+            officeHours.slice(0, 12).map((w, i) => (
+              <StripCard
+                key={w.id}
+                to={w.id ? `/app/chm-office-hours/${w.id}` : '/app/chm-office-hours'}
+                title={w.title}
+                imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
+                description={
+                  w.startTime
+                    ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
+                    : 'Interactive Q&A'
                 }
               />
             ))

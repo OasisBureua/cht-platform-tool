@@ -30,6 +30,7 @@ interface YouTubePlaylistResponse {
 }
 
 interface YouTubePlaylistItemsResponse {
+  nextPageToken?: string;
   items: Array<{
     snippet: {
       title: string;
@@ -136,12 +137,14 @@ export class CatalogService implements OnModuleInit {
           || playlist.snippet?.thumbnails?.medium
           || playlist.snippet?.thumbnails?.default;
 
+        /** YouTube’s total playlist size (prefer over truncated preview titles). */
+        const itemTotal = playlist.contentDetails?.itemCount;
         items.push({
           id: playlist.id,
           title: playlist.snippet?.title || 'Untitled Playlist',
           thumbnailUrl: thumb?.url || '',
           videoNames: videoTitles,
-          videoCount: videoTitles.length || playlist.contentDetails?.itemCount || 0,
+          videoCount: itemTotal != null ? itemTotal : videoTitles.length,
           playUrl: `https://www.youtube.com/playlist?list=${playlistId}`,
         });
       } catch (err) {
@@ -174,19 +177,33 @@ export class CatalogService implements OnModuleInit {
     }
   }
 
+  /** First N video titles per playlist for catalog/home previews (full list uses getPlaylistVideosFull). */
+  private static readonly PLAYLIST_PREVIEW_TITLE_MAX = 50;
+
   private async getPlaylistVideoTitles(apiKey: string, playlistId: string): Promise<string[]> {
+    const titles: string[] = [];
+    let pageToken: string | undefined;
     try {
-      const { data } = await firstValueFrom(
-        this.http.get<YouTubePlaylistItemsResponse>(`${this.youtubeBase}/playlistItems`, {
-          params: {
-            part: 'snippet',
-            playlistId,
-            maxResults: 10,
-            key: apiKey,
-          },
-        }),
-      );
-      return (data?.items || []).map((i) => i.snippet?.title || 'Video').filter(Boolean);
+      do {
+        const { data } = await firstValueFrom(
+          this.http.get<YouTubePlaylistItemsResponse>(`${this.youtubeBase}/playlistItems`, {
+            params: {
+              part: 'snippet',
+              playlistId,
+              maxResults: 50,
+              pageToken,
+              key: apiKey,
+            },
+          }),
+        );
+        for (const i of data?.items || []) {
+          const t = i.snippet?.title || '';
+          if (t) titles.push(t);
+          if (titles.length >= CatalogService.PLAYLIST_PREVIEW_TITLE_MAX) break;
+        }
+        pageToken = titles.length >= CatalogService.PLAYLIST_PREVIEW_TITLE_MAX ? undefined : data?.nextPageToken;
+      } while (pageToken && titles.length < CatalogService.PLAYLIST_PREVIEW_TITLE_MAX);
+      return titles;
     } catch (err: unknown) {
       const ax = err as { response?: { status?: number; data?: { error?: { message?: string } } } };
       const msg = ax?.response?.data?.error?.message ?? (err instanceof Error ? err.message : String(err));

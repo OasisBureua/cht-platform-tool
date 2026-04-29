@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { CalendarClock } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { getPercentChangeLabel } from '../../utils/percentChange';
 
@@ -22,6 +23,36 @@ export default function AdminDashboard() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+      </div>
+
+      <div className="rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 to-white p-5 shadow-sm dark:border-teal-900/50 dark:from-teal-950/40 dark:to-zinc-950">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-100">
+              <CalendarClock className="h-5 w-5" aria-hidden />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">CHM Office Hours</h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">
+                Manage interactive Zoom Meetings, time slots (Program hub), and the office-hours approval queue alongside Live webinars.
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 sm:shrink-0">
+            <Link
+              to="/admin/office-hours"
+              className="inline-flex items-center justify-center rounded-lg border border-teal-300 bg-white px-4 py-2 text-sm font-semibold text-teal-900 transition-colors hover:bg-teal-50 dark:border-teal-800 dark:bg-zinc-900 dark:text-teal-100 dark:hover:bg-teal-950/50"
+            >
+              View sessions
+            </Link>
+            <Link
+              to="/admin/office-hours-scheduler"
+              className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+            >
+              Schedule office hours
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards */}

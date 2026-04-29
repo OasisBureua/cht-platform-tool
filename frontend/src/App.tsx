@@ -163,7 +163,7 @@ function App() {
             <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
             <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
-            {/* CHM Docs + Podcasts: hidden from nav; direct URLs redirect home */}
+            {/* CHM Docs; direct URLs redirect home */}
             <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
 
             {/* Disease Areas: hidden from nav; bookmarked URLs redirect home */}
@@ -173,6 +173,7 @@ function App() {
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
+            {/* Podcasts page hidden; bookmarked URLs go home */}
             <Route path="podcasts" element={<Navigate to="/app/home" replace />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />

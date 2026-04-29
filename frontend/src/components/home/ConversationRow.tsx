@@ -27,6 +27,7 @@ export function ConversationRow({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
+  const seeAllExternal = /^https?:\/\//i.test(seeAllHref.trim());
 
   const updateArrows = () => {
     const el = scrollerRef.current;
@@ -64,13 +65,26 @@ export function ConversationRow({
             <span className="shrink-0 text-xs font-medium text-zinc-500 tabular-nums dark:text-zinc-400 md:text-sm">{subtitle}</span>
           ) : null}
         </div>
-        <Link
-          to={seeAllHref}
-          className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-brand-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-brand-300 dark:hover:text-brand-200"
-        >
-          <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          {seeAllLabel}
-        </Link>
+        {seeAllExternal ? (
+          <a
+            href={seeAllHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-brand-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-brand-300 dark:hover:text-brand-200"
+          >
+            <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {seeAllLabel}
+          </a>
+        ) : (
+          <Link
+            to={seeAllHref}
+            className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-brand-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-brand-300 dark:hover:text-brand-200"
+          >
+            <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {seeAllLabel}
+          </Link>
+        )}
+
       </div>
 
       <div className="relative -mx-1 px-1">

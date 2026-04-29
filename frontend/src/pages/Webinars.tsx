@@ -65,7 +65,8 @@ export default function Webinars() {
       .sort((a, b) => withDate(a) - withDate(b));
     const pastList = webinars
       .filter((w) => isExpired(w))
-      .sort((a, b) => withDate(b) - withDate(a));
+      .sort((a, b) => withDate(b) - withDate(a))
+      .slice(0, 5);
     return { upcoming: upcomingList, past: pastList };
   }, [webinars]);
 
@@ -120,7 +121,7 @@ export default function Webinars() {
           {past.length > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Past · {past.length}
+                Past · last 5
               </h2>
               <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {past.map((w, i) => (

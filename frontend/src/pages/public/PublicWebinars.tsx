@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock } from 'lucide-react';
-import { format, isPast, isFuture, subMonths, formatDistanceToNow } from 'date-fns';
+import { format, isPast, isFuture, formatDistanceToNow } from 'date-fns';
 import { webinarsApi } from '../../api/webinars';
 
 type WebinarRow = {
@@ -21,22 +21,16 @@ export default function PublicWebinars() {
   });
 
   const { upcoming, recent } = useMemo(() => {
-    const now = new Date();
-    const oneMonthAgo = subMonths(now, 1);
-
-    const upcoming = webinars
+    const upcomingList = webinars
       .filter((w) => w.startTime && isFuture(new Date(w.startTime)))
       .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime());
 
-    const recent = webinars
-      .filter((w) => {
-        if (!w.startTime) return false;
-        const d = new Date(w.startTime);
-        return isPast(d) && d >= oneMonthAgo;
-      })
-      .sort((a, b) => new Date(b.startTime!).getTime() - new Date(a.startTime!).getTime());
+    const recentPast = webinars
+      .filter((w) => w.startTime && isPast(new Date(w.startTime)))
+      .sort((a, b) => new Date(b.startTime!).getTime() - new Date(a.startTime!).getTime())
+      .slice(0, 5);
 
-    return { upcoming, recent };
+    return { upcoming: upcomingList, recent: recentPast };
   }, [webinars]);
 
   return (
@@ -76,7 +70,7 @@ export default function PublicWebinars() {
             {recent.length > 0 && (
               <section className="space-y-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Recent · last 30 days · {recent.length}
+                  Past · last 5
                 </h2>
                 <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-80">
                   {recent.map((w) => (
