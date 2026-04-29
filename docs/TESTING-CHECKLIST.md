@@ -213,8 +213,8 @@ aws ce get-cost-and-usage \
 
 - [ ] SSL certificate valid (production domain)
 - [ ] All health checks passing
-- [ ] Login with production Auth0
-- [ ] Stripe production keys working
+- [ ] Login with production GoTrue
+- [ ] Bill.com production keys working
 - [ ] SES emails sending
 - [ ] All integrations working
 

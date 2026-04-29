@@ -18,8 +18,8 @@ cht-platform/
 ### Backend
 - NestJS (TypeScript)
 - PostgreSQL + Prisma ORM
-- Auth0 (Authentication)
-- Stripe Connect (Payments)
+- Supabase / GoTrue (Authentication, hosted by MediaHub)
+- Bill.com (Honorarium payouts via ACH/check)
 - AWS SQS (Job queuing)
 
 ### Worker

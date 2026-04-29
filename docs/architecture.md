@@ -43,8 +43,8 @@ User → CloudFront → Frontend (React)
 - API response caching
 - Rate limiting
 
-### Why Stripe Connect?
-- No W9 storage needed
-- Automatic 1099 generation
-- Identity verification built-in
-- International support
+### Why Bill.com?
+- ACH and paper check payouts to HCPs
+- W-9 capture handled in-platform (native CHT flow, not third-party)
+- 1099 generation via Bill.com reports
+- Familiar to CHM finance team

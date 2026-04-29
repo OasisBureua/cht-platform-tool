@@ -45,26 +45,6 @@ variable "sns_topic_arn" {
 }
 
 # Application secrets
-variable "stripe_secret_key" {
-  description = "Stripe secret key"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "stripe_publishable_key" {
-  description = "Stripe publishable key"
-  type        = string
-  default     = ""
-}
-
-variable "stripe_webhook_secret" {
-  description = "Stripe webhook secret"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "auth0_domain" {
   description = "Auth0 domain"
   type        = string
