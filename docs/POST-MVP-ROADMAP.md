@@ -1,107 +1,109 @@
-# Post-MVP roadmap: next steps & phases
+# Post-MVP product roadmap — executive briefing
 
-This document consolidates **planned work after the MVP presentation**: phases, dependencies, reconciliation detail, and pointers to adjacent specs (`payment-apis`, Media Hub).
-
----
-
-## Themes
-
-| Theme | Goal |
-|--------|------|
-| **Operations & payouts** | Less manual intervention, reliable Bill.com workflows, audit-friendly finance. |
-| **Analytics & data** | One place for product and partner insights; align with Media Hub. |
-| **Learner UX & content** | Better discovery (filters, playlists) and richer formats (podcasts). |
-| **Commercial / partner** | Clear surfaces for KOL and pharmaceutical stakeholders—designed intentionally, not improvised. |
+Strategic roadmap for work following MVP delivery: phased initiatives, sequencing, financing controls, dependencies, and reference material for stakeholder alignment. Operational detail resides in engineering documentation referenced below.
 
 ---
 
-## Phase 0 — Design spikes (parallel, unblock build)
+## Strategic themes
 
-Complete before or alongside heavy engineering so you avoid rework.
-
-- **Analytics design** — Event vocabulary, dashboards per persona (learner, admin, partner), success metrics (completion, retention, payouts, attendance). Decide warehouse vs in-app aggregates.
-- **KOL / pharma / BI surfaces** — Information architecture and what “good” looks like for sponsors (reports, not only marketing pages).
-
-*Dependencies:* Stakeholder workshops; aligns Phase 3 and Media Hub integration.
+| Theme | Outcome |
+|--------|---------|
+| **Operations & disbursements** | Reduced manual intervention, predictable Bill.com–aligned payouts, audit-ready finance processes. |
+| **Analytics & data** | Consolidated insights for operational and sponsor decision-making; alignment with Community Health Media (Media Hub) where integrated. |
+| **Learner experience & content** | Improved discovery through filters and playlists; expanded formats including podcasts. |
+| **Commercial / partner** | Defined experiences for Key Opinion Leaders (KOL) and pharmaceutical partners, supported by deliberate information design rather than incremental page-level additions. |
 
 ---
 
-## Phase 1 — Stability, money flow, hygiene (near term)
+## Phase 0 — Design foundations (parallel discovery)
 
-**Objective:** Reliable operations immediately after MVP; visible UX wins without new product pillars.
+Design and architecture work undertaken in parallel with delivery to constrain rework and clarify scope downstream.
 
-| Item | Description |
-|------|-------------|
-| **Bulk / scheduled payments** | Background process (e.g. Lambda on a **15-minute** cadence, or cadence tuned with Bill.com limits) to progress queued payouts and reduce purely manual Pay-now churn. |
-| **MFA / remember-me rotation (~28 days)** | Automate rotation **ahead** of typical ~30-day trust boundaries so batch jobs and admin sessions fail predictably—with monitoring—rather than mid-month surprises. Works with payout automation. See [payment APIs](payment-apis.md) re: Bill session semantics. |
-| **Filtering fixes & more playlists** | Improve discovery and organization of learning/content; lowers support burden post-MVP. |
+| Focus area | Scope |
+|------------|--------|
+| **Analytics architecture** | Event definitions, persona-based dashboards (learner, administrator, partner), success metrics—including completion, retention, disbursements, and attendance. Architectural choice between data warehouse versus in-application aggregates where applicable. |
+| **KOL, pharmaceutical & BI interfaces** | Information architecture and measurable success criteria for sponsor-facing outputs (beyond marketing-only surfaces). |
 
-**Suggested order:** bulk/scheduled payouts + MFA/session health **together** (money path), then filtering/playlists UX.
+**Dependencies:** Stakeholder input; informs Phase 3 and Media Hub analytics integration.
+
+---
+
+## Phase 1 — Operational stability & platform refinement (immediate post-MVP)
+
+**Objective.** Establish dependable operations after MVP launch and visible quality improvements without requiring net-new core product pillars.
+
+| Initiative | Description |
+|----------------|-------------|
+| **Bulk / scheduled disbursements** | Automated background execution (for example Lambda on fifteen-minute cadence, subject to Bill.com constraints) for queued payouts, complementing administrator-initiated payment flows and reducing reliance on repetitive manual disbursement handling. |
+| **Credential rotation (approximately 28 days)** | Proactive rotation of MFA and remember-me identifiers prior to customary thirty-day cycles to align batch disbursement jobs and privileged sessions with monitoring and predictable renewal—mitigating mid-cycle authentication failures tied to payout automation. Reference: [payment APIs](payment-apis.md), Bill session behavior. |
+| **Discovery: filters & playlists** | Improvements to filtering and playlist capabilities to strengthen content organization and reduce post-MVP support load. |
+
+**Recommended sequencing.** Disbursement automation and session/credential hygiene as a jointly sequenced milestone on the disbursement pathway; thereafter, discovery-related user experience enhancements.
 
 ---
 
 ## Phase 2 — Finance controls & reconciliation
 
-**Objective:** Accounting can close periods without ad hoc spreadsheets.
+**Objective.** Enable finance and accounting teams to execute period-close activities without reliance on improvised spreadsheets as the sole system of reconciliation.
 
-| Item | Description |
-|------|-------------|
-| **Reconciliation report process** | Dedicated batch that outputs period-based **CSV/Excel-ready** files: platform payments vs Bill.com identifiers; control totals and exception lists—full spec in [Appendix: Payment reconciliation (accounting)](#appendix-payment-reconciliation-accounting). |
+| Initiative | Description |
+|----------------|-------------|
+| **Automated reconciliation reporting** | Batch process producing interval-based extracts (CSV/Excel-compatible) reconciling platform payment records against Bill.com identifiers; control totals and exception identification. Specifications in [Appendix: Payment reconciliation (accounting)](#appendix-payment-reconciliation-accounting). |
 
-*Dependency:* Stable payment fields and IDs from Phase 1; can ship **Phase A** (report from DB + manual Bill extracts) before full API reconciliation.
+**Dependencies.** Stable payment identifiers resulting from Phase 1 disbursement modernization. Incremental deployment is viable: Phase A aggregates from primary data stores plus supplementary Bill extracts; Phase B expands to API-mediated reconciliation once integration patterns stabilize.
 
 ---
 
 ## Phase 3 — In-product analytics & surveys
 
-**Objective:** Enough insight to run programs **inside** CHM instead of scattering tools.
+**Objective.** Operational and program-management insight natively within the Community Health Media platform rather than dispersed across disparate tools where avoidable.
 
-| Item | Description |
-|------|-------------|
-| **Surveys in platform** | Collect feedback tied to learners/programs/events; structured storage and admin views so “everything lives here.” Prefer one high-value journey first (e.g. post–office hours / post-webinar). |
-| **Platform analytics** | Dashboards or embedded views grounded in Phase 0 schema—activation, completions, funnel steps, payouts summary as appropriate for role. |
+| Initiative | Description |
+|----------------|-------------|
+| **Surveys** | Structured learner and program-feedback capture aligned to milestones (for example following office-hours or webinars), with persisted storage and administrator visibility. Prioritization favors a narrowly scoped journey before broader rollout. |
+| **Platform analytics** | Dashboard or embedded analytic views anchored to Phase 0 definitions—including activation, completion, funnel milestones, role-appropriate disbursement summaries. |
 
-*Dependency:* Phase 0 analytics design; overlaps with reconciliation **metrics** but different audience (product vs accounting).
-
----
-
-## Phase 4 — Integrations & external truth
-
-**Objective:** Consistent narrative from Media Hub → CHM.
-
-| Item | Description |
-|------|-------------|
-| **Analytics from Media Hub ↔ CHM** | Shared identifiers, consent, delivery model (embedded vs synced events vs warehouse). Depends on Phase 0 and [Media Hub API](MEDIAHUB-API.md) patterns (update if integration shape changes). |
-
-*Dependency:* Strongest after Phase 0 and initial internal analytics contracts exist.
+**Dependencies.** Completion of Phase 0 analytics foundations. Audience distinction: product and program analytics versus reconciliation metrics intended for accounting (Phase 2).
 
 ---
 
-## Phase 5 — Content & formats
+## Phase 4 — Cross-property analytics integration
 
-**Objective:** richer catalog without breaking navigation patterns established in Phase 1.
+**Objective.** Coherent analytic narrative bridging Media Hub and the CHM platform.
 
-| Item | Description |
-|------|-------------|
-| **Podcasts page** | Dedicated surface; integrate playback and metadata similarly to playlists; reuse IA from filtering/playlist work where possible. |
+| Initiative | Description |
+|----------------|-------------|
+| **Media Hub ↔ CHM analytics** | Aligned identifiers, consent posture, delivery model options (embedded dashboards, synchronized events, centralized warehouse)—contingent on Phase 0 direction and patterns documented under [Media Hub API](MEDIAHUB-API.md), subject to update as integration design finalizes. |
 
-*Dependency:* Playlists/filtering UX patterns (Phase 1) reduces duplicate layout work.
-
----
-
-## Phase 6 — Partner & commercial readiness
-
-**Objective:** repeatable reporting for sponsors and leadership.
-
-| Item | Description |
-|------|-------------|
-| **KOL / pharmaceutical page + BI** | Public or gated partner views plus **business intelligence**: what cohorts engage, completions, attribution—paired with Phase 0 design. |
-
-**Dependency:** Phase 3 analytics foundation; optionally Phase 4 for cross-property numbers.
+**Dependencies.** Phase 0 outcomes and stabilized internal analytic contracts precede enterprise-wide integration commitments.
 
 ---
 
-## Dependency overview
+## Phase 5 — Content expansion
+
+**Objective.** Expanded catalog richness while preserving navigational coherence established during Phase 1.
+
+| Initiative | Description |
+|----------------|-------------|
+| **Podcasts** | Dedicated learner-facing surface integrating playback and metadata modeling, consistent with playlist and discovery patterns developed in preceding phases. |
+
+**Dependencies.** Phase 1 discovery and playlist design patterns constrain duplicate layout rework.
+
+---
+
+## Phase 6 — Partner & revenue readiness
+
+**Objective.** Reliable sponsor-facing analytics and differentiated experiences for pharmaceutical and leadership stakeholders.
+
+| Initiative | Description |
+|----------------|-------------|
+| **KOL & pharmaceutical portals & BI** | Public or entitlement-gated interfaces delivering business intelligence (engagement segments, completions, attributable outcomes), consistent with Phase 0 design commitments. |
+
+**Dependencies.** Phase 3 analytic implementation; optionally Phase 4 for unified cross-property reporting.
+
+---
+
+## Cross-phase dependency overview
 
 ```mermaid
 flowchart TB
@@ -142,26 +144,28 @@ flowchart TB
 
 ---
 
-## If you can only ship a few items first
+## Prioritized focus under constraint
 
-1. **Scheduled/bulk payouts** + **MFA/session rotation** — Keeps revenue and ops stable.
-2. **Reconciliation reporting** ([appendix](#appendix-payment-reconciliation-accounting)) — Unblocks accounting.
-3. **Analytics design spike** (Phase 0) — Unlocks surveys, dashboards, Media Hub, and sponsor BI **once**, coherently.
-4. **Filtering/playlists**, then **podcasts** — Learner-visible momentum.
-5. **Media Hub analytics**, **KOL/pharma BI** — After internal analytics contracts exist.
+Should prioritization narrow to discrete deliverables initially, recommended ordering is:
+
+1. **Scheduled / bulk disbursements** jointly with **MFA/session rotation** — stabilizes disbursement throughput and privileged access patterns.
+2. **Reconciliation reporting** ([appendix](#appendix-payment-reconciliation-accounting)) — satisfies finance-period requirements and strengthens control environment narrative.
+3. **Phase 0 analytics design completion** — single coherent foundation supporting surveys, internal dashboards, Media Hub linkage, and sponsor BI.
+4. **Filters / playlists**, then **podcasts** — externally visible enhancements to learner satisfaction and content breadth.
+5. **Media Hub analytics integration**, then **KOL / pharmaceutical BI** — after internal analytic schemas and integrations are anchored.
 
 ---
 
-## Related docs
+## Reference documentation
 
 - [Payment APIs](payment-apis.md)
 - [Media Hub API](MEDIAHUB-API.md)
 
 ---
 
-## Maintenance
+## Document governance
 
-Revise phases when MVP scope or sponsor priorities change—this file is the **single index** for post-MVP program work unless superseded.
+Quarterly—or upon material change to MVP baseline or sponsor commitments—leadership review is recommended so this roadmap reflects current prioritization.
 
 ---
 
@@ -169,77 +173,71 @@ Revise phases when MVP scope or sponsor priorities change—this file is the **s
 
 ### Purpose
 
-Add a repeatable process—separate from the core pay flow—that produces **reconciliation reports** so accounting can verify that:
+A discrete operational process—not conflated with standard pay flows—yielding periodic **reconciliation extracts** verifying that platform-recorded payments align with Bill.com disbursements (and downstream bank activity where applicable).
 
-- Platform-recorded payments align with **Bill.com** disbursements (and bank activity, where applicable).
-- Period close (monthly or ad hoc) can be supported with an auditable trail: amounts, payees, dates, and statuses.
+Support for monthly or discretionary period-close is intended to incorporate auditable lineage: monetary amounts, payee references, transactional dates, lifecycle status.
 
-This complements [payment APIs](payment-apis.md) (onboarding, pending queue, **Pay now**), which focus on operations; reconciliation focuses on **finance controls and reporting**.
+Operational payment flows—including onboarding, queue management, administrator Pay now initiation—remain per [payment APIs](payment-apis.md); this appendix addresses financial control and supervisory reporting.
 
-### Problem
+### Current gap
 
-Today, earnings and payouts are tracked in the app and executed via Bill.com, but accounting still needs a **structured export or report** to:
+Ledger activity is maintained application-side and executes through Bill.com; finance nevertheless requires structured exports to:
 
-- Match internal `Payment` records to Bill.com payment / vendor IDs for a date range.
-- Summarize totals by status (e.g. PENDING, PAID, failed or voided if modeled).
-- Spot gaps (initiated in app but not cleared in Bill, or the reverse) without manual spreadsheet work.
+- Reconcile internal payment records to Bill.com payment and vendor identifiers by reporting interval.
+- Summarize aggregates by transactional status (pending, cleared, exceptions if modeled administratively).
+- Surface variance between application state and clearinghouse state without uncompensated manual spreadsheet reconciliation across high-volume histories.
 
-### Proposed outcome
+### Target state
 
-A **dedicated process** (batch job or scheduled Lambda; cadence TBD—e.g. daily plus on-demand) that:
+Automated workload (scheduled batch compute; cadence—for example daily with ad hoc remediation—subject to stakeholder approval), performing:
 
-1. **Pulls** authoritative payment data for a configurable window (default: prior calendar day or prior month).
-2. **Enriches** rows with identifiers needed for accounting (Bill payment ID, vendor ID, ACH/check metadata if available via API).
-3. **Produces** outputs suitable for reconciliation:
-   - **CSV** (or **Excel-ready** flat file) attached to secure storage **and/or**
-   - **Structured summary** (JSON) for downstream tooling.
-4. **Optional:** email or notify a configured distribution list when a report is generated, with link to secured artifact only (no sensitive data in email body).
+1. Retrieve authoritative disbursement payloads for parameterized windows (baseline defaults often prior operational day or month).
+2. Enrich extracts with accountant-relevant correlators (Bill payment identifier, vendor profile, ACH or check lineage where exposed by API contracts).
+3. Publish reconciliation-grade outputs: machine-readable CSV (or workbook-compatible equivalents) to hardened storage optionally augmented by structured payloads for supervisory tooling integration.
+4. Non-sensitive notification channels may signal availability of secured artifacts omitting substantive PII within message bodies.
 
-### Report contents (initial scope)
+### Report structure (representative baseline)
 
-Tune with accounting; starter columns:
+Subject to finance sign-off—illustrative field structure:
 
-| Field | Notes |
-|--------|--------|
-| Report period / generated at | UTC and org timezone |
-| Internal payment ID | Stable platform key |
-| User / vendor display name | As shown in admin |
-| Bill vendor ID | From connect flow |
-| Bill payment ID | After **Pay now** succeeds |
-| Amount (USD / cents) | Single source of truth format |
-| Status | Platform lifecycle |
-| Initiated / paid timestamps | ISO-8601 |
-| Program or earning source | If attribution is stored on payment |
+| Field | Guidance |
+|--------|----------|
+| Report interval / compilation timestamp | Coordinated Universal Time aligned to organizational timezone |
+| Platform payment surrogate key | Immutable internal identifier |
+| Payee nomenclature | Administrator-visible designation |
+| Bill vendor correlation | Provisioned onboarding relationship |
+| Bill payment correlation | Post–Pay now affirmation |
+| Denominated amount | Single canonical precision |
+| Operational status | Lifecycle state within platform workflows |
+| Initiation / settlement timestamps | ISO-8601 presentation |
+| Attributional source | Program linkage where modeled |
 
-Additional sections accounting often wants:
+Supplementary elements frequently specified:
 
-- **Control totals**: sum PAID vs PENDING; count of rows.
-- **Exceptions list**: mismatches between DB and Bill.com when a sync/API compare is implemented.
+- Aggregate control footing (sums by cleared versus queued volume; deterministic row cardinalities).
+- Exception registers upon introduction of deterministic database-to-clearing compare logic.
 
-### Technical direction (outline)
+### Technical approach (summarized)
 
-1. **Data source**: Read from existing `Payment` (and related) tables plus Bill.com pulls where IDs are stored at pay time.
-2. **Reconciliation pass** (phased):
-   - **Phase A**: Report-only from DB + exported Bill extracts (manual paste into accounting)—lowest lift.
-   - **Phase B**: API reconciliation against Bill endpoints for payments in scope (requires stable session/key handling documented in payment APIs).
-3. **Orchestration**: Same family as future **bulk-pay / scheduled Lambda** work—reuse IAM, VPC, secrets, and logging patterns; isolate reconciliation in its own Lambda or job so payout automation changes do not break reporting.
+1. Primary persistence layer: existing payment tables augmented by Bill-derived correlation stored at disbursement initiation.
+2. Phasing: initial publication from authoritative database alongside manually imported clearing extracts establishes governance quickly; succeeding releases introduce API-mediated Bill reconciliation subject to stabilized authentication contracts described in engineering payment documentation.
+3. Infrastructure alignment: shared deployment patterns with disbursement automation (IAM, network isolation, confidentiality management, centralized logging)—reconciliation execution isolated independently to constrain blast radius from disbursement refactor events.
 
-### Security and compliance
+### Security & retention
 
-- Reports contain **PII and financial identifiers**—store in **private S3** (or equivalent) with encryption, tight IAM, signed URLs or internal-only access.
-- Retention policy should match finance policy (often 7+ years for payment artifacts).
+Artifacts retain personally identifiable attributes and fiduciary identifiers requiring encrypted private object storage with least-privilege access controls and audited retrieval paths consistent with institutional policy frameworks (retention aligning with customary seven-year horizons or formally adopted enterprise policy superseding illustrative baseline).
 
-### Reconciliation-specific dependencies & cadence
+### Reconciliation prerequisites
 
-- [Payment APIs](payment-apis.md): Bill login, vendor creation, funding account, Pay now behavior.
-- Agreed **periodicity** with accounting (daily vs weekly vs month-end).
+- Operational alignment with contractual Bill integration behavior ([payment APIs](payment-apis.md)).
+- Finance-defined reporting cadence (daily, weekly, or month-end-aligned).
 
-### Open questions
+### Decisions awaiting finance endorsement
 
-- Fiscal calendar vs rolling windows?
-- Required file format (**CSV**, **Excel**, QuickBooks-compatible)?
-- Single org vs multi-tenant reporting if scope expands?
+- Fiscal calendar boundary definitions versus trailing operational windows for extract windows.
+- File format conformance (comma-separated values, workbook formats, interoperability with bookkeeping platforms).
+- Multi-tenant scope should organizational structure expand beyond consolidated reporting domains.
 
-### Placement in roadmap
+### Roadmap alignment
 
-Ties to **Phase 1** (stable payout pipeline and IDs), **Phase 2** (reconciliation outputs), alongside automated bulk payments and MFA/session health so batch failures are visible before period close.
+Initiative corresponds to Phase 1 (disbursement pipeline stability and deterministic identifiers), Phase 2 (regulated reconciliation outputs), and coordination with disbursement scaling and MFA rotation so operational failures surface visibly prior to supervisory close.
