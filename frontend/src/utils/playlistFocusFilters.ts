@@ -1,8 +1,7 @@
 import type { CatalogItem } from '../api/catalog';
-import type { AppPlaylistSection } from '../data/catalogPlaylistRows';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
 
-/** URL `?playlistFocus=` — home row links + curated catalogue “View videos” rows per section. (`hr` matches home + HR strip.) */
+/** URL `?playlistFocus=` — cohort strips + catalogue browse (`hr` matches home + HR strip.) */
 export type PlaylistFocus = 'her2' | 'hr' | 'her2-low' | 'tnbc' | 'high-risk';
 
 const VALID_FOCUS = new Set<string>(['her2', 'hr', 'her2-low', 'tnbc', 'high-risk']);
@@ -23,38 +22,11 @@ export function buildCatalogSectionPlaylistsHref(isInApp: boolean, sectionLabel:
   return `${base}?view=playlists&playlistFocus=${encodeURIComponent(focus)}`;
 }
 
-/**
- * Canonical CHM browse targets for curated strips — “See all” opens off-platform here.
- * Override per section with optional `browseHref` on `AppPlaylistSection` in `_generated-catalog-playlists.json`.
- */
-export const CATALOG_SECTION_EXTERNAL_BROWSE_URL: Partial<Record<string, string>> = {
-  'HER2+ Conversations':
-    'https://communityhealth.media/her2-breast-cancer-the-most-transformed-disease-in-oncology/',
-  'HER2-Low / Ultra-Low': 'https://communityhealth.media/her2-low-biomarker-not-driver/',
-  'HR+ · CDK4/6 · Endocrine':
-    'https://communityhealth.media/parp-vs-cdk4-6-inhibitors-which-comes-first-in-hr-brca-disease/',
-  'TNBC & Triple Negative': 'https://communityhealth.media/series/iyengar-hamilton/',
-  'High Risk Breast Cancer':
-    'https://communityhealth.media/neoadjuvant-t-dxd-why-destiny-breast11-data-turned-heads/',
-};
-
-/** Public home HER2+ / HR+ strips (narrower titles — same cohort browse intent as curated catalogue sections). */
-export const HOMEPAGE_HER2_STRIP_SEE_ALL_HREF = CATALOG_SECTION_EXTERNAL_BROWSE_URL['HER2+ Conversations']!;
-export const HOMEPAGE_HR_STRIP_SEE_ALL_HREF = CATALOG_SECTION_EXTERNAL_BROWSE_URL['HR+ · CDK4/6 · Endocrine']!;
-
-/** Link label for curated catalog rows (“View playlist” opens CHM browse when external href is configured). */
+/** Row CTA; opens in-app / public playlist focus (`?playlistFocus=`). */
 export const VIEW_PLAYLIST_LABEL = 'View playlist';
 
-/**
- * Prefer off-platform editorial browse; optional JSON `browseHref`; else in-app playlists + focus filter.
- */
-export function resolveCatalogSectionSeeAllHref(isInApp: boolean, section: AppPlaylistSection): string {
-  const trimmed = section.browseHref?.trim();
-  if (trimmed) return trimmed;
-  const ext = CATALOG_SECTION_EXTERNAL_BROWSE_URL[section.label];
-  if (ext) return ext;
-  return buildCatalogSectionPlaylistsHref(isInApp, section.label);
-}
+/** Playlist chips on **public** `/catalog?view=playlists` only (HER2 + HR; homepage parity). */
+export const PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS: readonly PlaylistFocus[] = ['her2', 'hr'];
 
 /** Parse `playlistFocus` from a location search string. */
 export function parsePlaylistFocus(search: string): PlaylistFocus | null {
@@ -88,7 +60,6 @@ function titleMatchesStrip(playlistTitle: string, stripTitle: string): boolean {
   return false;
 }
 
-/** Playlists belonging to one curated dashboard strip (`section.label` ↔ `playlistFocus`). */
 function stripTitlesForFocus(focus: PlaylistFocus): string[] | null {
   const entry = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
   if (!entry) return null;
@@ -101,12 +72,9 @@ function stripTitlesForFocus(focus: PlaylistFocus): string[] | null {
 export function filterPlaylistsByFocus(playlists: CatalogItem[], focus: PlaylistFocus): CatalogItem[] {
   const stripTitles = stripTitlesForFocus(focus);
   if (stripTitles?.length) {
-    return playlists.filter((p) =>
-      stripTitles.some((st) => titleMatchesStrip(p.title, st)),
-    );
+    return playlists.filter((p) => stripTitles.some((st) => titleMatchesStrip(p.title, st)));
   }
 
-  /** Fallback if JSON is out of sync with `focus`. */
   const t = (p: CatalogItem) => p.title ?? '';
   switch (focus) {
     case 'her2':

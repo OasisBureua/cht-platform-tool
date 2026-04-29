@@ -16,12 +16,18 @@ export type AppNavItem = {
   end?: boolean;
 };
 
-/** Primary app destinations — sidebar, bottom nav, and mobile slide-reveal drawer */
+/** Logo + sidebar Conversations: catalogue home (clips); use ?view=playlists only after Playlists is chosen. */
+export const APP_CATALOG_CONVERSATIONS_HUB = '/app/catalog';
+
+/** Breadcrumb / back from playlist detail → playlists browse UI. */
+export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
+
+/** Primary app destinations — sidebar, slide drawer */
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { to: '/app/search', label: 'Search', icon: Search, end: false },
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
-  { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
+  { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
   { to: '/app/chatbot', label: 'Chatbot', icon: Bot, end: false },

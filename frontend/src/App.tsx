@@ -32,6 +32,7 @@ import Terms from './pages/public/Terms';
 
 // App layout (existing)
 import Layout from './components/layout/Layout';
+import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavItems';
 
 // App pages
 import ExploreOpportunities from './pages/ExploreOpportunities';
@@ -177,7 +178,7 @@ function App() {
             <Route path="podcasts" element={<Navigate to="/app/home" replace />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />
-            <Route path="watch" element={<Navigate to="/app/catalog" replace />} />
+            <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
 
             {/* Clip detail (MediaHub clips - stays in app) */}
             <Route path="clip/:id" element={<ClipDetail />} />

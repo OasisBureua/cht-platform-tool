@@ -14,12 +14,14 @@ import { ConversationsClipCard } from '../../components/content/ConversationsCli
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
 import {
+  buildCatalogSectionPlaylistsHref,
   filterPlaylistsByFocus,
   parsePlaylistFocus,
   playlistBrowseHeading as playlistBrowseHeadingText,
-  resolveCatalogSectionSeeAllHref,
+  PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS,
   VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
+import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
 
 const SORT_OPTIONS = [
@@ -277,22 +279,6 @@ export default function VideosPage() {
     useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && clipsPageCount === 0;
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
   const filterOrSortActive = !!(debouncedQuery.trim() || tagFilter || doctorFilter || sortBy);
-  const popularItems = useMemo(
-    () =>
-      filterOrSortActive
-        ? []
-        : [...gridItems]
-            .sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0))
-            .slice(0, 14),
-    [gridItems, filterOrSortActive],
-  );
-  const shortItems = useMemo(
-    () =>
-      gridItems
-        .filter((c) => c.is_short)
-        .slice(0, 14),
-    [gridItems],
-  );
 
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
@@ -335,7 +321,7 @@ export default function VideosPage() {
             : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        {!isInApp ? (
+        {!isInApp && effectiveLibraryView === 'clips' ? (
           <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
             <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
@@ -344,7 +330,9 @@ export default function VideosPage() {
           </div>
         ) : null}
 
-        {!isInApp ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
+        {!isInApp && effectiveLibraryView === 'clips' ? (
+          <ContentLibraryNavTabs isInApp={false} />
+        ) : null}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInApp && (
           <section
@@ -454,7 +442,7 @@ export default function VideosPage() {
                 key={section.label}
                 title={section.label}
                 subtitle={section.subtitle}
-                seeAllHref={resolveCatalogSectionSeeAllHref(false, section)}
+                seeAllHref={buildCatalogSectionPlaylistsHref(false, section.label)}
                 seeAllLabel={VIEW_PLAYLIST_LABEL}
               >
                 {section.items.map((item) => (
@@ -473,42 +461,41 @@ export default function VideosPage() {
         )}
 
         {effectiveLibraryView === 'playlists' ? (
-          <section className={[isInApp ? 'px-4 sm:px-6 lg:px-8' : '', 'space-y-4'].filter(Boolean).join(' ')}>
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div className="min-w-0 space-y-1">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">{playlistBrowseHeadingText(playlistFocus)}</h2>
-                {playlistFocus ? (
-                  <p className="text-sm text-gray-600 dark:text-zinc-400">
-                    {focusPlaylistVideosFetch.isLoading
-                      ? 'Loading videos…'
-                      : focusPlaylistVideosFetch.entries.length > 0
-                        ? `${focusPlaylistVideosFetch.entries.length} videos from ${playlistsForPlaylistView.length} playlist${
-                            playlistsForPlaylistView.length !== 1 ? 's' : ''
-                          }`
-                        : playlistsForPlaylistView.length === 0
-                          ? ''
-                          : 'Videos from playlists in this category'}
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-600 dark:text-zinc-400">Curated YouTube playlists</p>
-                )}
+            <section className={[isInApp ? 'px-4 sm:px-6 lg:px-8' : '', 'space-y-4'].filter(Boolean).join(' ')}>
+              <PlaylistFocusNav
+                isInApp={isInApp}
+                allowedPlaylistFocusFilters={isInApp ? undefined : PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS}
+              />
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">
+                    {playlistBrowseHeadingText(playlistFocus)}
+                  </h2>
+                  {playlistFocus ? (
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">
+                      {focusPlaylistVideosFetch.isLoading
+                        ? 'Loading videos…'
+                        : focusPlaylistVideosFetch.entries.length > 0
+                          ? `${focusPlaylistVideosFetch.entries.length} videos from ${playlistsForPlaylistView.length} playlist${
+                              playlistsForPlaylistView.length !== 1 ? 's' : ''
+                            }`
+                          : playlistsForPlaylistView.length === 0
+                            ? ''
+                            : 'Videos from playlists in this category'}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">Curated YouTube playlists</p>
+                  )}
+                </div>
+                {!isInApp ? (
+                  <Link
+                    to="/catalog?view=clips"
+                    className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                  >
+                    Browse conversations
+                  </Link>
+                ) : null}
               </div>
-              {isInApp ? (
-                <Link
-                  to="/app/catalog"
-                  className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
-                >
-                  Browse conversations
-                </Link>
-              ) : (
-                <Link
-                  to="/catalog?view=clips"
-                  className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
-                >
-                  Browse conversations
-                </Link>
-              )}
-            </div>
             {playlistFocus ? (
               focusPlaylistVideosFetch.isLoading ? (
                 <div className="flex justify-center py-16" aria-busy="true">
@@ -582,7 +569,7 @@ export default function VideosPage() {
                     key={section.label}
                     title={section.label}
                     subtitle={section.subtitle}
-                    seeAllHref={resolveCatalogSectionSeeAllHref(true, section)}
+                    seeAllHref={buildCatalogSectionPlaylistsHref(true, section.label)}
                     seeAllLabel={VIEW_PLAYLIST_LABEL}
                   >
                     {section.items.map((item) => (
@@ -618,30 +605,12 @@ export default function VideosPage() {
                   </ConversationRow>
                 ) : null}
                 {playlistsCarouselStrip}
-                {popularItems.length > 0 ? (
-                  <ConversationRow
-                    title="Popular now"
-                    subtitle={`${popularItems.length} videos`}
-                    seeAllHref="/app/catalog"
-                  >
-                    {popularItems.map((item) => (
-                      <StripCard
-                        key={`pop-${item.id}`}
-                        to={`/app/clip/${getShortClipId(item.id)}`}
-                        title={item.title}
-                        imageUrl={getMediaHubThumbnail(item)}
-                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
-                        videoLabel={`${(item.view_count ?? 0).toLocaleString()} views`}
-                      />
-                    ))}
-                  </ConversationRow>
-                ) : null}
                 {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
                   <ConversationRow
                     key={section.label}
                     title={section.label}
                     subtitle={section.subtitle}
-                    seeAllHref={resolveCatalogSectionSeeAllHref(true, section)}
+                    seeAllHref={buildCatalogSectionPlaylistsHref(true, section.label)}
                     seeAllLabel={VIEW_PLAYLIST_LABEL}
                   >
                     {section.items.map((item) => (
@@ -656,23 +625,6 @@ export default function VideosPage() {
                     ))}
                   </ConversationRow>
                 ))}
-                {shortItems.length > 0 ? (
-                  <ConversationRow
-                    title="Short clips"
-                    subtitle={`${shortItems.length} videos`}
-                    seeAllHref="/app/catalog"
-                  >
-                    {shortItems.map((item) => (
-                      <StripCard
-                        key={`short-${item.id}`}
-                        to={`/app/clip/${getShortClipId(item.id)}`}
-                        title={item.title}
-                        imageUrl={getMediaHubThumbnail(item)}
-                        description="Short conversation"
-                      />
-                    ))}
-                  </ConversationRow>
-                ) : null}
               </>
             )}
             {useMediaHub && (

@@ -8,11 +8,10 @@ import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../com
 import DISEASE_AREAS from '../../data/disease-areas';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
 import {
+  buildCatalogSectionPlaylistsHref,
   filterPlaylistsByFocus,
   CATALOG_SECTION_TO_FOCUS,
   VIEW_PLAYLIST_LABEL,
-  HOMEPAGE_HER2_STRIP_SEE_ALL_HREF,
-  HOMEPAGE_HR_STRIP_SEE_ALL_HREF,
 } from '../../utils/playlistFocusFilters';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
 
@@ -401,7 +400,7 @@ export default function Home() {
               <ConversationRow
                 title="HER2+"
                 subtitle={her2StripSubtitle}
-                seeAllHref={HOMEPAGE_HER2_STRIP_SEE_ALL_HREF}
+                seeAllHref={buildCatalogSectionPlaylistsHref(false, 'HER2+ Conversations')}
                 seeAllLabel={VIEW_PLAYLIST_LABEL}
               >
                 {her2FlattenedVideos.isLoading ? (
@@ -439,7 +438,7 @@ export default function Home() {
               <ConversationRow
                 title="HR+"
                 subtitle={hrStripSubtitle}
-                seeAllHref={HOMEPAGE_HR_STRIP_SEE_ALL_HREF}
+                seeAllHref={buildCatalogSectionPlaylistsHref(false, 'HR+ · CDK4/6 · Endocrine')}
                 seeAllLabel={VIEW_PLAYLIST_LABEL}
               >
                 {hrFlattenedVideos.isLoading ? (

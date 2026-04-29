@@ -5,12 +5,13 @@ import { Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
+import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNavItems';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
   const location = useLocation();
   const isInApp = location.pathname.startsWith('/app');
-  const catalogUrl = isInApp ? '/app/catalog' : '/catalog';
+  const catalogUrl = isInApp ? APP_CATALOG_PLAYLISTS_BROWSE : '/catalog?view=playlists';
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
 
   const { data, isLoading } = useQuery({

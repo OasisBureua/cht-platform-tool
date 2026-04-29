@@ -15,8 +15,6 @@ export type AppPlaylistStripItem = {
 export type AppPlaylistSection = {
   label: string;
   subtitle: string;
-  /** Optional: override destination for strip “See all” (default: cohort CHM page from `playlistFocusFilters`). */
-  browseHref?: string;
   items: AppPlaylistStripItem[];
 };
 

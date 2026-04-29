@@ -12,8 +12,8 @@ type ContentLibraryNavTabsProps = {
   isInApp: boolean;
 };
 
-/** Clips vs playlists for tab highlighting — matches VideosPage URL rules. */
-function effectiveContentView(search: string): 'clips' | 'playlists' {
+/** Clips vs playlists for tab highlighting — matches VideosPage URL rules (in-app defaults to clips). */
+function effectiveContentView(search: string, isInApp: boolean): 'clips' | 'playlists' {
   const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
   const v = p.get('view');
   if (v === 'clips') return 'clips';
@@ -23,6 +23,7 @@ function effectiveContentView(search: string): 'clips' | 'playlists' {
     !!p.get('tag') ||
     !!p.get('doctor') ||
     !!(p.get('sort') || p.get('sort_by'));
+  if (isInApp) return 'clips';
   return hasFilters ? 'clips' : 'playlists';
 }
 
@@ -48,7 +49,7 @@ export function ContentLibraryNavTabs({ isInApp }: ContentLibraryNavTabsProps) {
     pathname === '/watch' ||
     pathname === '/app/watch';
 
-  const activeView = effectiveContentView(search);
+  const activeView = effectiveContentView(search, isInApp);
   const catalogTabActive = onCatalogHub && activeView === 'clips';
   const playlistsTabActive = activeView === 'playlists';
 

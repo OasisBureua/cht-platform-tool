@@ -9,7 +9,8 @@ import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
-import { resolveCatalogSectionSeeAllHref, VIEW_PLAYLIST_LABEL } from '../utils/playlistFocusFilters';
+import { APP_CATALOG_CONVERSATIONS_HUB } from '../components/navigation/appNavItems';
+import { buildCatalogSectionPlaylistsHref, VIEW_PLAYLIST_LABEL } from '../utils/playlistFocusFilters';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -44,7 +45,7 @@ const QUICK_START_ACTIONS = [
     title: 'Conversations',
     desc: 'Watch short clips and playlists from the catalog.',
     icon: PlayCircle,
-    to: '/app/catalog',
+    to: APP_CATALOG_CONVERSATIONS_HUB,
   },
 ];
 
@@ -190,7 +191,7 @@ export default function Dashboard() {
         description: clipMetaString(c, 'recent') || 'Watch this newly released clinical conversation.',
         imageUrl: getMediaHubThumbnail(c),
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
-        secondaryHref: '/app/catalog',
+        secondaryHref: APP_CATALOG_CONVERSATIONS_HUB,
         primaryCta: 'Play',
         secondaryCta: 'Explore more',
       };
@@ -215,7 +216,7 @@ export default function Dashboard() {
       description: 'Catch newly released conversations, upcoming Live sessions, and fresh podcast drops in one place.',
       imageUrl: WEBINAR_PLACEHOLDER_IMAGES[0],
       primaryHref: '/app/catalog',
-      secondaryHref: '/app/catalog',
+      secondaryHref: APP_CATALOG_CONVERSATIONS_HUB,
       primaryCta: 'Play',
       secondaryCta: 'Explore more',
     };
@@ -340,7 +341,7 @@ export default function Dashboard() {
                   key={section.label}
                   title={section.label}
                   subtitle={section.subtitle}
-                  seeAllHref={resolveCatalogSectionSeeAllHref(true, section)}
+                  seeAllHref={buildCatalogSectionPlaylistsHref(true, section.label)}
                   seeAllLabel={VIEW_PLAYLIST_LABEL}
                 >
                   {section.items.map((item) => (
