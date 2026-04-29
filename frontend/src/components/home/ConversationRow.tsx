@@ -118,48 +118,72 @@ export type StripCardProps = {
   meta?: string;
   /** Playlist-style count line, shown prominently below the description */
   videoLabel?: string;
+  /**
+   * `compact` — thumbnail + tight text; height follows content (default).
+   * `thumbnailOnly` — poster-style tile; title exposed to AT via sr-only (use when the row heading supplies context).
+   */
+  variant?: 'compact' | 'thumbnailOnly';
 };
 
-const stripCardClassName =
-  'group/card flex h-[300px] w-[248px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:h-[320px] sm:w-[288px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+const stripCardShell =
+  'group/card flex min-h-0 min-w-0 w-[226px] flex-col overflow-hidden rounded-xl bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[250px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+
+const thumbnailOnlyShell =
+  'group/card relative block w-[226px] shrink-0 overflow-hidden rounded-xl bg-zinc-100 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[259px] aspect-video hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] dark:bg-zinc-800 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
 
 function StripCardInner({
+  variant,
   title,
   imageUrl,
   description,
   meta,
   videoLabel,
-}: Pick<StripCardProps, 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel'>) {
+}: Pick<StripCardProps, 'variant' | 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel'>) {
   const line1 = description ?? meta;
-  return (
-    <>
-      <div className="relative h-[180px] w-full overflow-hidden sm:h-[200px]">
+  const v = variant ?? 'compact';
+
+  if (v === 'thumbnailOnly') {
+    return (
+      <>
         <img
           src={imageUrl}
-          alt={title}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          draggable={false}
+        />
+        <span className="sr-only">{title}</span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+        <img
+          src={imageUrl}
+          alt=""
           className="h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
           loading="lazy"
           referrerPolicy="no-referrer"
           draggable={false}
         />
       </div>
-      <div className="flex min-h-[6.25rem] flex-1 flex-col p-2.5 pt-2 sm:min-h-[6.5rem]">
-        <p
-          className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 [overflow-wrap:anywhere] dark:text-zinc-100"
-          title={title}
-        >
+      <div className="flex min-w-0 flex-col px-2 pb-2 pt-1.5">
+        <p className="truncate text-left text-[12px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100" title={title}>
           {title}
         </p>
         {line1 ? (
           <p
-            className="mt-1 line-clamp-2 text-left text-[11px] leading-snug text-zinc-600 [overflow-wrap:anywhere] dark:text-zinc-400"
+            className="mt-0.5 truncate text-left text-[10px] leading-snug text-zinc-600 dark:text-zinc-400"
             title={line1}
           >
             {line1}
           </p>
         ) : null}
         {videoLabel ? (
-          <span className="mt-1.5 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-2 py-1 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100">
+          <span className="mt-1 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100">
             {videoLabel}
           </span>
         ) : null}
@@ -168,22 +192,71 @@ function StripCardInner({
   );
 }
 
-export function StripCard({ to, title, imageUrl, description, meta, videoLabel }: StripCardProps) {
+export function StripCard({
+  to,
+  title,
+  imageUrl,
+  description,
+  meta,
+  videoLabel,
+  variant,
+}: StripCardProps) {
   const external = /^https?:\/\//i.test(to);
+  const v = variant ?? 'compact';
+
+  if (v === 'thumbnailOnly') {
+    return (
+      <div className="snap-start" style={{ scrollSnapAlign: 'start' }}>
+        {external ? (
+          <a href={to} target="_blank" rel="noopener noreferrer" className={thumbnailOnlyShell}>
+            <StripCardInner
+              variant="thumbnailOnly"
+              title={title}
+              imageUrl={imageUrl}
+              description={description}
+              meta={meta}
+              videoLabel={videoLabel}
+            />
+          </a>
+        ) : (
+          <Link to={to} className={thumbnailOnlyShell}>
+            <StripCardInner
+              variant="thumbnailOnly"
+              title={title}
+              imageUrl={imageUrl}
+              description={description}
+              meta={meta}
+              videoLabel={videoLabel}
+            />
+          </Link>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="snap-start" style={{ scrollSnapAlign: 'start' }}>
       {external ? (
-        <a
-          href={to}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={stripCardClassName}
-        >
-          <StripCardInner title={title} imageUrl={imageUrl} description={description} meta={meta} videoLabel={videoLabel} />
+        <a href={to} target="_blank" rel="noopener noreferrer" className={stripCardShell}>
+          <StripCardInner
+            variant="compact"
+            title={title}
+            imageUrl={imageUrl}
+            description={description}
+            meta={meta}
+            videoLabel={videoLabel}
+          />
         </a>
       ) : (
-        <Link to={to} className={stripCardClassName}>
-          <StripCardInner title={title} imageUrl={imageUrl} description={description} meta={meta} videoLabel={videoLabel} />
+        <Link to={to} className={stripCardShell}>
+          <StripCardInner
+            variant="compact"
+            title={title}
+            imageUrl={imageUrl}
+            description={description}
+            meta={meta}
+            videoLabel={videoLabel}
+          />
         </Link>
       )}
     </div>
@@ -192,13 +265,12 @@ export function StripCard({ to, title, imageUrl, description, meta, videoLabel }
 
 function RowSkeleton() {
   return (
-    <div className="flex h-[300px] w-[248px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-zinc-100/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:h-[320px] sm:w-[288px] dark:bg-zinc-800/80 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
-      <div className="h-[180px] w-full animate-pulse bg-zinc-200/90 sm:h-[200px] dark:bg-zinc-700/80" />
-      <div className="space-y-1.5 p-2.5 pt-2">
-        <div className="h-3.5 w-4/5 animate-pulse rounded bg-zinc-200/80" />
-        <div className="h-3.5 w-[90%] animate-pulse rounded bg-zinc-200/70" />
-        <div className="h-3 w-full animate-pulse rounded bg-zinc-200/60" />
-        <div className="mt-1 h-6 w-16 animate-pulse rounded-md bg-zinc-200/80" />
+    <div className="flex w-[226px] shrink-0 snap-start flex-col overflow-hidden rounded-xl bg-zinc-100/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:w-[250px] dark:bg-zinc-800/80 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]">
+      <div className="aspect-[16/10] w-full animate-pulse bg-zinc-200/90 dark:bg-zinc-700/80" />
+      <div className="space-y-1 px-2 pb-2 pt-1.5">
+        <div className="h-3 w-[92%] animate-pulse rounded bg-zinc-200/80" />
+        <div className="h-2.5 w-[75%] animate-pulse rounded bg-zinc-200/70" />
+        <div className="mt-1 h-5 w-14 animate-pulse rounded-md bg-zinc-200/70" />
       </div>
     </div>
   );
@@ -209,6 +281,21 @@ export function StripRowLoading() {
     <>
       {Array.from({ length: 6 }).map((_, i) => (
         <RowSkeleton key={i} />
+      ))}
+    </>
+  );
+}
+
+/** Matches `StripCard` `thumbnailOnly` — use while Featured carousel loads */
+export function StripRowLoadingThumbnails() {
+  return (
+    <>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="aspect-video w-[226px] shrink-0 snap-start animate-pulse overflow-hidden rounded-xl bg-zinc-200/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:w-[259px] dark:bg-zinc-700/70 dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+          style={{ scrollSnapAlign: 'start' }}
+        />
       ))}
     </>
   );

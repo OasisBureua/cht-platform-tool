@@ -1,24 +1,6 @@
 import { NavLink, Link } from 'react-router-dom';
-import {
-  Search,
-  Radio,
-  MonitorPlay,
-  ClipboardList,
-  Banknote,
-  CalendarClock,
-  Bot,
-} from 'lucide-react';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
-
-const nav = [
-  { to: '/app/search', label: 'Search', icon: Search, end: false },
-  { to: '/app/live', label: 'Live', icon: Radio, end: false },
-  { to: '/app/chm-office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
-  { to: '/app/catalog', label: 'Conversations', icon: MonitorPlay, end: false },
-  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
-  { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
-  { to: '/app/chatbot', label: 'Chatbot', icon: Bot, end: false },
-];
+import { APP_NAV_ITEMS } from './appNavItems';
 
 export default function AppSidebar() {
   return (
@@ -37,7 +19,7 @@ export default function AppSidebar() {
         className="app-sidebar-nav flex flex-1 flex-col items-center justify-between gap-1 overflow-hidden px-1.5 py-3"
         aria-label="Primary"
       >
-        {nav.map(({ to, label, icon: Icon, end }) => (
+        {APP_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
