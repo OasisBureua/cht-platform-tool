@@ -213,18 +213,24 @@ export default function SurveyDetail() {
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
             {!started ? (
               surveySaved && hasJotform ? (
-                <div className="space-y-3">
+                isPostEventFeedback ? (
                   <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                     Your responses are saved. Thank you for completing this survey.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => setStarted(true)}
-                    className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
-                  >
-                    Open embedded form
-                  </button>
-                </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                      Your responses are saved. Thank you for completing this survey.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setStarted(true)}
+                      className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
+                    >
+                      Open embedded form
+                    </button>
+                  </div>
+                )
               ) : surveySaved && !hasJotform ? (
                 <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                   Your responses are saved. Thank you for completing this survey.

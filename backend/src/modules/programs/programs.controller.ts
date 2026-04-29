@@ -8,9 +8,13 @@ import {
   Logger,
   UseGuards,
   BadRequestException,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
+import { UserRole } from '@prisma/client';
 import { FormJotformScope } from './form-jotform-scope';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../../auth/optional-jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthUser } from '../../auth/auth.service';
@@ -163,12 +167,17 @@ export class ProgramsController {
 
   /**
    * GET /api/programs/:id
-   * Get single program by ID (public)
+   * Get single program by ID (public). Zoom host start URL is returned only when the caller is an authenticated admin.
    */
   @Get(':id')
-  async getProgramById(@Param('id') id: string): Promise<ProgramResponseDto> {
+  @UseGuards(OptionalJwtAuthGuard)
+  async getProgramById(
+    @Param('id') id: string,
+    @Req() req: Request & { user?: AuthUser },
+  ): Promise<ProgramResponseDto> {
     this.logger.log(`Getting program: ${id}`);
-    return this.programsService.getProgramById(id);
+    const includeZoomHostLink = req.user?.role === UserRole.ADMIN;
+    return this.programsService.getProgramById(id, { includeZoomHostLink });
   }
 
   /**

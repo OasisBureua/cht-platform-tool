@@ -155,7 +155,10 @@ export class ProgramsService {
   /**
    * Get single program by ID
    */
-  async getProgramById(programId: string): Promise<ProgramResponseDto> {
+  async getProgramById(
+    programId: string,
+    opts?: { includeZoomHostLink?: boolean },
+  ): Promise<ProgramResponseDto> {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
       include: {
@@ -223,6 +226,9 @@ export class ProgramsService {
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,
+      ...(opts?.includeZoomHostLink && program.zoomStartUrl?.trim()
+        ? { zoomStartUrl: program.zoomStartUrl.trim() }
+        : {}),
     };
   }
 

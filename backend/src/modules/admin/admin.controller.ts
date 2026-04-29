@@ -878,6 +878,11 @@ export class AdminController {
         jotformIntakeSubmissionViewUrl: intakeRequired
           ? buildJotformIntakeSubmissionViewUrl(r.program.jotformIntakeFormUrl, r.intakeJotformSubmissionId)
           : null,
+        postEventJotformSubmissionId: r.postEventJotformSubmissionId,
+        jotformPostEventSubmissionViewUrl:
+          r.program.jotformSurveyUrl?.trim() && r.postEventJotformSubmissionId?.trim()
+            ? buildJotformIntakeSubmissionViewUrl(r.program.jotformSurveyUrl, r.postEventJotformSubmissionId)
+            : null,
         user: r.user,
         slot: r.slot
           ? {

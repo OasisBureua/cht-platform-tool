@@ -259,6 +259,7 @@ export class ProgramRegistrationsService {
       reviewedAt: reg.reviewedAt?.toISOString(),
       postEventAttendanceStatus: reg.postEventAttendanceStatus,
       postEventSurveyAcknowledgedAt: reg.postEventSurveyAcknowledgedAt?.toISOString(),
+      postEventJotformSubmissionId: reg.postEventJotformSubmissionId ?? undefined,
       honorariumRequestedAt: reg.honorariumRequestedAt?.toISOString(),
       honorariumPayment: honorariumPayment
         ? { id: honorariumPayment.id, status: honorariumPayment.status }
@@ -575,7 +576,7 @@ export class ProgramRegistrationsService {
       include: {
         user: { select: { id: true, email: true, firstName: true, lastName: true, specialty: true } },
         slot: true,
-        program: { select: { jotformIntakeFormUrl: true, zoomSessionType: true } },
+        program: { select: { jotformIntakeFormUrl: true, jotformSurveyUrl: true, zoomSessionType: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -660,6 +661,7 @@ export class ProgramRegistrationsService {
           ...(status === ProgramRegistrationStatus.REJECTED
             ? {
                 postEventSurveyAcknowledgedAt: null,
+                postEventJotformSubmissionId: null,
                 honorariumRequestedAt: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
@@ -717,6 +719,7 @@ export class ProgramRegistrationsService {
             honorariumAmount: reg.program.honorariumAmount,
             hostDisplayName: reg.program.hostDisplayName,
             sponsorName: reg.program.sponsorName,
+            zoomJoinUrl: reg.program.zoomJoinUrl,
           },
           sessionKind: reg.program.zoomSessionType!,
         });
@@ -776,6 +779,7 @@ export class ProgramRegistrationsService {
             status: ProgramRegistrationStatus.REJECTED,
             postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
             postEventSurveyAcknowledgedAt: null,
+            postEventJotformSubmissionId: null,
             honorariumRequestedAt: null,
             postEventAttendanceReviewedAt: null,
             postEventAttendanceReviewedByUserId: null,
@@ -821,6 +825,10 @@ export class ProgramRegistrationsService {
     }
     if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
       throw new ForbiddenException('Attendance was not verified for this session.');
+    }
+
+    if (reg.postEventSurveyAcknowledgedAt) {
+      return reg;
     }
 
     return this.prisma.programRegistration.update({

@@ -124,14 +124,33 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-3">
           {surveyReadyForAck ? (
             <p className="text-sm text-gray-600">
-              Submit the embedded survey, then tap <strong>Complete survey</strong> to record your response
-              {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+              {betweenAckHelpAndButton ? (
+                <>
+                  Submit the embedded survey, then tap <strong>Complete survey</strong> to record your response
+                  {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+                </>
+              ) : (
+                <>
+                  We&apos;ve received your survey responses. Tap <strong>Complete survey</strong> to record your
+                  response
+                  {hasHonorarium ? ' before continuing to payout' : ''}.
+                </>
+              )}
             </p>
           ) : (
             <p className="text-sm text-gray-600">
-              Use <strong>Start survey</strong> above (or open the embedded form), submit your responses, then return
-              here and tap <strong>Complete survey</strong>
-              {hasHonorarium ? ' before confirming your honorarium' : ''}.
+              {betweenAckHelpAndButton ? (
+                <>
+                  Submit the embedded survey below, then return here and tap <strong>Complete survey</strong>
+                  {hasHonorarium ? ' before confirming your honorarium' : ''}.
+                </>
+              ) : (
+                <>
+                  Use <strong>Start survey</strong> above (or open the embedded form), submit your responses, then return
+                  here and tap <strong>Complete survey</strong>
+                  {hasHonorarium ? ' before confirming your honorarium' : ''}.
+                </>
+              )}
             </p>
           )}
           {betweenAckHelpAndButton}

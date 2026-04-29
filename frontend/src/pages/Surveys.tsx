@@ -71,7 +71,7 @@ export default function Surveys() {
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Survey eligible for payment</p>
               <h2 className="mt-1 text-balance text-lg font-bold text-zinc-900 dark:text-zinc-100 md:text-xl">
-                Surveys open after each webinar session
+                Surveys open after each live session
               </h2>
               <p className="mt-1 text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
                 Join a webinar first. Once the session ends, the survey appears here for completion.

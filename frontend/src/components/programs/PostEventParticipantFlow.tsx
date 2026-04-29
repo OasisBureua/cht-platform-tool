@@ -177,16 +177,19 @@ export default function PostEventParticipantFlow(props: {
           userId={userId}
           myRegistration={myRegistration}
           hasHonorarium={hasHonorarium}
-          surveyReadyForAck
+          surveyReadyForAck={Boolean(myRegistration?.postEventJotformSubmissionId)}
           betweenAckHelpAndButton={
-            <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-              <iframe
-                title="Post-event survey"
-                src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
-                className="w-full h-[480px]"
-                allow="camera; microphone"
-              />
-            </div>
+            myRegistration?.postEventJotformSubmissionId &&
+            !myRegistration.postEventSurveyAcknowledgedAt ? null : (
+              <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                <iframe
+                  title="Post-event survey"
+                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
+                  className="w-full h-[480px]"
+                  allow="camera; microphone"
+                />
+              </div>
+            )
           }
           onSurveyAcknowledged={({ hasHonorarium: h }) => {
             if (h) setPhase('payout');

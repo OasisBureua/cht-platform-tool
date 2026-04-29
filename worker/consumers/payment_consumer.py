@@ -90,6 +90,10 @@ class PaymentConsumer(SQSBaseConsumer):
                     logger.error(f"User not found: {user_id}")
                     return False
 
+                description = self._pending_payment_description(
+                    session, payment_type, program_id,
+                )
+
                 row = session.execute(
                     text(
                         """
@@ -106,7 +110,7 @@ class PaymentConsumer(SQSBaseConsumer):
                         "program_id": program_id,
                         "amount": amount,
                         "ptype": payment_type,
-                        "desc": f"Pending admin review - {payment_type}",
+                        "desc": description,
                         "idempotency_key": idempotency_key,
                     },
                 ).fetchone()
@@ -125,6 +129,27 @@ class PaymentConsumer(SQSBaseConsumer):
         except Exception as e:
             logger.error(f"Failed to record pending payment: {e}", exc_info=True)
             return False
+
+    def _pending_payment_description(
+        self,
+        session,
+        payment_type: str,
+        program_id: Optional[str],
+    ) -> str:
+        """Human-readable pending row label for admin payment queues."""
+        if payment_type == "HONORARIUM" and program_id:
+            prow = session.execute(
+                text('SELECT title FROM "Program" WHERE id = :pid'),
+                {"pid": program_id},
+            ).fetchone()
+            if prow and prow[0]:
+                title = str(prow[0]).strip()
+                # Keep reasonable length for Payment.description
+                if len(title) > 180:
+                    title = title[:177] + "…"
+                return f"HONORARIUM for {title}"
+            return "HONORARIUM"
+        return f"Pending admin review - {payment_type}"
 
     def poll_queue(self):
         """Alias for poll() for backward compatibility."""

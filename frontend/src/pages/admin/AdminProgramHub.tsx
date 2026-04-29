@@ -16,7 +16,7 @@ export default function AdminProgramHub() {
   const [formKind, setFormKind] = useState<'INTAKE' | 'PRE_EVENT' | 'POST_EVENT' | 'CUSTOM'>('CUSTOM');
   const [formLabel, setFormLabel] = useState('');
   const [formUrl, setFormUrl] = useState('');
-  const [webinarHubTab, setWebinarHubTab] = useState<'approvals' | 'enrolled'>('approvals');
+  const [webinarHubTab, setWebinarHubTab] = useState<'approvals' | 'enrolled' | 'surveys'>('approvals');
 
   const { data: program, isLoading: pLoading } = useQuery({
     queryKey: ['admin', 'program', programId],
@@ -506,6 +506,16 @@ export default function AdminProgramHub() {
             </button>
             <button
               type="button"
+              onClick={() => setWebinarHubTab('surveys')}
+              className={[
+                'rounded-lg px-3 py-1.5 text-sm font-semibold',
+                webinarHubTab === 'surveys' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50',
+              ].join(' ')}
+            >
+              Survey submissions
+            </button>
+            <button
+              type="button"
               onClick={() => setWebinarHubTab('enrolled')}
               className={[
                 'rounded-lg px-3 py-1.5 text-sm font-semibold',
@@ -638,6 +648,88 @@ export default function AdminProgramHub() {
                     {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
                   </div>
                 </>
+              )}
+            </>
+          ) : webinarHubTab === 'surveys' ? (
+            <>
+              <h2 className="text-lg font-semibold text-gray-900">Survey submissions</h2>
+              <p className="text-sm text-gray-600">
+                Intake (registration) and post-event Jotform submissions recorded on each learner&apos;s registration.
+              </p>
+              {rLoading ? (
+                <p className="text-sm text-gray-500">Loading…</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200 text-left text-gray-600">
+                        <th className="py-2 pr-4">User</th>
+                        <th className="py-2 pr-4">Status</th>
+                        <th className="py-2 pr-4">Intake survey</th>
+                        <th className="py-2 pr-4">Post-event survey</th>
+                        <th className="py-2 pr-4">Survey acknowledged</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {registrations.map((r) => {
+                        const intakeRequired = r.intakeRequired ?? false;
+                        const intakeOk = r.intakeComplete ?? false;
+                        return (
+                          <tr key={r.id}>
+                            <td className="py-2 pr-4">
+                              {r.user.firstName} {r.user.lastName}
+                              <div className="text-xs text-gray-500">{r.user.email}</div>
+                            </td>
+                            <td className="py-2 pr-4 font-medium">{r.status}</td>
+                            <td className="py-2 pr-4 text-gray-600">
+                              <div className="space-y-1">
+                                <span>{!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}</span>
+                                {r.jotformIntakeSubmissionViewUrl ? (
+                                  <a
+                                    href={r.jotformIntakeSubmissionViewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+                                  >
+                                    View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
+                                  </a>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="py-2 pr-4 text-gray-600">
+                              <div className="space-y-1">
+                                <span>{r.postEventJotformSubmissionId ? 'Recorded' : '—'}</span>
+                                {r.postEventJotformSubmissionId ? (
+                                  <code className="block text-xs text-gray-500 break-all max-w-[14rem]">
+                                    {r.postEventJotformSubmissionId}
+                                  </code>
+                                ) : null}
+                                {r.jotformPostEventSubmissionViewUrl ? (
+                                  <a
+                                    href={r.jotformPostEventSubmissionViewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+                                  >
+                                    View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
+                                  </a>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="py-2 pr-4 text-gray-600">
+                              {r.postEventSurveyAcknowledgedAt
+                                ? format(parseISO(r.postEventSurveyAcknowledgedAt), 'MMM d, yyyy h:mm a')
+                                : '—'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {registrations.length === 0 && (
+                    <p className="text-sm text-gray-500 py-4">No registrations yet.</p>
+                  )}
+                </div>
               )}
             </>
           ) : (

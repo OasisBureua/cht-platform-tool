@@ -310,6 +310,16 @@ function WebinarRow({
                 <ExternalLink className="h-3 w-3" /> Join link
               </a>
             )}
+            {webinar.zoomStartUrl && (
+              <a
+                href={webinar.zoomStartUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Host start
+              </a>
+            )}
           </div>
         ) : (
           <span className="text-xs text-gray-400">No Zoom</span>

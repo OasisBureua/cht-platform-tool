@@ -30,6 +30,7 @@ export default function WebinarDetail() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  const isAdmin = user?.role === 'ADMIN';
   const [postEventNavLock, setPostEventNavLock] = useState(false);
   const isZoomWebinar = id?.startsWith('zoom-') ?? false;
   /** Intake often redirects to the session page; forward submission id to the registration wizard. */
@@ -66,6 +67,47 @@ export default function WebinarDetail() {
     enabled: !!id && !isZoomWebinar && program?.zoomSessionType === 'MEETING',
   });
 
+  const { data: enrollments } = useQuery({
+    queryKey: ['enrollments', userId],
+    queryFn: () => programsApi.getEnrollments(userId),
+    enabled: !!userId,
+    refetchInterval: () => {
+      const reg = queryClient.getQueryData<Awaited<ReturnType<typeof programsApi.getMyRegistration>>>([
+        'program',
+        id,
+        'registration',
+      ]);
+      return reg?.status === 'PENDING' ? 4000 : false;
+    },
+  });
+
+  const enrolledProgramIds = useMemo(
+    () => new Set(enrollments?.map((e) => e.programId) || []),
+    [enrollments],
+  );
+
+  const pollRegistrationWhilePendingOrAwaitingPostEventWebhook = (
+    registration:
+      | Awaited<ReturnType<typeof programsApi.getMyRegistration>>
+      | null
+      | undefined,
+  ): number | false => {
+    if (registration?.status === 'PENDING') return 4000;
+    const enrolledHere = id ? enrolledProgramIds.has(id) : false;
+    if (
+      enrolledHere &&
+      program?.jotformSurveyUrl?.trim() &&
+      registration?.status === 'APPROVED' &&
+      !registration.postEventSurveyAcknowledgedAt &&
+      !registration.postEventJotformSubmissionId &&
+      (registration.postEventAttendanceStatus === 'VERIFIED' ||
+        registration.postEventAttendanceStatus === 'NOT_REQUIRED')
+    ) {
+      return 4000;
+    }
+    return false;
+  };
+
   const { data: myRegistration } = useQuery({
     queryKey: ['program', id, 'registration'],
     queryFn: () => programsApi.getMyRegistration(id!),
@@ -75,22 +117,8 @@ export default function WebinarDetail() {
       !isZoomWebinar &&
       !!program &&
       (program.zoomSessionType === 'WEBINAR' || program.zoomSessionType === 'MEETING'),
-    refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
+    refetchInterval: (q) => pollRegistrationWhilePendingOrAwaitingPostEventWebhook(q.state.data ?? undefined),
   });
-
-  const pollWhileRegistrationPending = myRegistration?.status === 'PENDING';
-
-  const { data: enrollments } = useQuery({
-    queryKey: ['enrollments', userId],
-    queryFn: () => programsApi.getEnrollments(userId),
-    enabled: !!userId,
-    refetchInterval: pollWhileRegistrationPending ? 4000 : false,
-  });
-
-  const enrolledProgramIds = useMemo(
-    () => new Set(enrollments?.map((e) => e.programId) || []),
-    [enrollments]
-  );
 
   const enrollMutation = useMutation({
     mutationFn: ({ programId }: { programId: string }) =>
@@ -301,10 +329,12 @@ export default function WebinarDetail() {
                 <span className="font-medium">{program.sponsorName}</span>
               )}
 
-              <span className="inline-flex items-center gap-1">
-                <Award className="h-4 w-4" />
-                {program.creditAmount} CME Credits
-              </span>
+              {program.creditAmount > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <Award className="h-4 w-4" />
+                  {program.creditAmount} CME Credits
+                </span>
+              ) : null}
 
               {program.honorariumAmount ? (
                 <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
@@ -431,6 +461,25 @@ export default function WebinarDetail() {
               webinar is linked to this program.
             </p>
           )}
+          {isAdmin && program.zoomStartUrl?.trim() ? (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
+              <p className="text-xs font-semibold text-violet-900">Admin — start as Zoom host</p>
+              <p className="text-xs text-violet-800">
+                Learners use <strong>Join session</strong> above. This link opens Zoom as the webinar host (use the host
+                Zoom account).
+              </p>
+              <a
+                href={program.zoomStartUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
+              >
+                <Video className="h-4 w-4" />
+                Open host start link
+                <ExternalLink className="h-4 w-4 opacity-90" />
+              </a>
+            </div>
+          ) : null}
         </section>
       ) : null}
 

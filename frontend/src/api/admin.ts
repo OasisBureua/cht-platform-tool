@@ -261,6 +261,9 @@ export const adminApi = {
       intakeRequired?: boolean;
       intakeComplete?: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;
+      postEventJotformSubmissionId?: string | null;
+      jotformPostEventSubmissionViewUrl?: string | null;
+      postEventSurveyAcknowledgedAt?: string | null;
       user: { id: string; email: string; firstName: string; lastName: string };
       slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
     }>;

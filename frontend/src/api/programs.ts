@@ -29,6 +29,8 @@ export interface Program {
   videos: Video[];
   zoomSessionType?: 'WEBINAR' | 'MEETING';
   zoomJoinUrl?: string;
+  /** Returned from GET /programs/:id only when the viewer is an authenticated admin (Zoom host start URL). */
+  zoomStartUrl?: string;
   startDate?: string;
   duration?: number;
   /** ISO timestamp from Zoom session-ended webhooks (preferred for showing post-event survey). */
@@ -67,6 +69,7 @@ export interface ProgramRegistrationState {
   reviewedAt?: string;
   postEventAttendanceStatus?: PostEventAttendanceStatus;
   postEventSurveyAcknowledgedAt?: string;
+  postEventJotformSubmissionId?: string;
   honorariumRequestedAt?: string;
   honorariumPayment?: { id: string; status: string } | null;
 }

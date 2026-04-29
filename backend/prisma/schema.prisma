@@ -220,6 +220,8 @@ model ProgramRegistration {
   postEventAttendanceReviewedAt        DateTime?
   postEventAttendanceReviewedByUserId  String?
   postEventSurveyAcknowledgedAt        DateTime?
+  /// Jotform submission id for post-event survey (first submission wins; webhook sets).
+  postEventJotformSubmissionId        String?
   honorariumRequestedAt                DateTime?
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt

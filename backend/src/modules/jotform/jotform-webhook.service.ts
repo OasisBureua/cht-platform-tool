@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SurveyType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
@@ -63,13 +64,18 @@ export class JotformWebhookService {
       return this.processWebinarIntakeSubmission(payload, String(submissionId), webinarProgramId);
     }
 
+    const standalonePostEventProgramId = await this.findStandalonePostEventProgramId(String(formId));
+    if (standalonePostEventProgramId) {
+      return this.processStandalonePostEventSubmission(payload, String(submissionId), standalonePostEventProgramId);
+    }
+
     this.logger.warn(`Jotform webhook: no survey or webinar intake match for formID ${formId}`);
     return { received: true };
   }
 
   private async processSurveySubmission(
     payload: JotformWebhookPayload,
-    survey: { id: string; programId: string },
+    survey: { id: string; programId: string; type: SurveyType },
     submissionId: string,
   ): Promise<{ received: boolean; surveyResponseId?: string }> {
     const userId = this.extractUserId(payload);
@@ -100,6 +106,12 @@ export class JotformWebhookService {
       where: { userId_surveyId: { userId, surveyId: survey.id } },
     });
     if (existingUserResponse) {
+      if (survey.type === SurveyType.FEEDBACK) {
+        this.logger.log(
+          `Jotform webhook: ignoring duplicate FEEDBACK submission ${submissionId} for user ${userId} survey ${survey.id} (existing submission ${existingUserResponse.jotformSubmissionId ?? existingUserResponse.id})`,
+        );
+        return { received: true, surveyResponseId: existingUserResponse.id };
+      }
       const answers = this.buildAnswersFromPayload(payload);
       const updated = await this.prisma.surveyResponse.update({
         where: { id: existingUserResponse.id },
@@ -131,6 +143,17 @@ export class JotformWebhookService {
     await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, survey.id).catch(() => {});
 
     this.logger.log(`Survey ${survey.id} submitted via Jotform by user ${userId} (submission ${submissionId})`);
+
+    if (survey.type === SurveyType.FEEDBACK) {
+      await this.prisma.programRegistration
+        .updateMany({
+          where: { userId, programId: survey.programId },
+          data: { postEventJotformSubmissionId: String(submissionId) },
+        })
+        .catch((err: unknown) => {
+          this.logger.warn(`Could not sync post-event Jotform submission id to registration: ${String(err)}`);
+        });
+    }
 
     const surveyBonusAmount = this.config.get<number>('surveys.bonusAmountCents');
     if (surveyBonusAmount && surveyBonusAmount > 0) {
@@ -254,6 +277,66 @@ export class JotformWebhookService {
     if (recorded) {
       await this.formJotformProgress.clear(userId, FormJotformScope.INTAKE, programId).catch(() => {});
     }
+    return { received: true };
+  }
+
+  /** When post-event URL is configured on Program without a matching Survey row, match webhook by form id. */
+  private async findStandalonePostEventProgramId(formId: string): Promise<string | null> {
+    const programs = await this.prisma.program.findMany({
+      where: {
+        status: 'PUBLISHED',
+        jotformSurveyUrl: { not: null },
+      },
+      select: { id: true, jotformSurveyUrl: true },
+    });
+    const matches = programs.filter((p) => {
+      const fid = extractJotformFormIdFromUrl(p.jotformSurveyUrl!);
+      return fid === String(formId);
+    });
+    if (matches.length === 1) return matches[0].id;
+    if (matches.length > 1) {
+      this.logger.warn(
+        `Jotform webhook: multiple programs share post-event form ${formId}; disambiguate with a FEEDBACK Survey row or hidden program_id`,
+      );
+    }
+    return null;
+  }
+
+  private async processStandalonePostEventSubmission(
+    payload: JotformWebhookPayload,
+    submissionId: string,
+    programId: string,
+  ): Promise<{ received: boolean }> {
+    const userId = this.extractUserId(payload);
+    if (!userId) {
+      this.logger.warn(`Jotform post-event webhook: no user_id in submission ${submissionId}`);
+      return { received: true };
+    }
+    const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!userExists) {
+      this.logger.warn(`Jotform post-event webhook: user ${userId} not found`);
+      return { received: true };
+    }
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (!reg) {
+      this.logger.warn(`Jotform post-event webhook: no registration for user ${userId} program ${programId}`);
+      return { received: true };
+    }
+    if (reg.postEventJotformSubmissionId?.trim()) {
+      this.logger.log(
+        `Jotform post-event webhook: ignoring duplicate submission ${submissionId}; registration already has ${reg.postEventJotformSubmissionId}`,
+      );
+      return { received: true };
+    }
+    await this.prisma.programRegistration.update({
+      where: { id: reg.id },
+      data: { postEventJotformSubmissionId: String(submissionId) },
+    });
+    this.logger.log(
+      `Jotform post-event webhook: recorded submission ${submissionId} for user ${userId} program ${programId}`,
+    );
     return { received: true };
   }
 

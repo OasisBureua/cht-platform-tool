@@ -4,6 +4,11 @@ import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { ProgramZoomSessionType } from '@prisma/client';
 import { buildRegistrationApprovedEmail } from './templates/registration-approved-email';
 import {
+  buildApprovalEmailMimeBuffer,
+  buildLiveSessionIcs,
+  googleCalendarTemplateUrl,
+} from './live-session-calendar';
+import {
   buildRegistrationRejectedEmail,
   type RejectionEmailReason,
 } from './templates/registration-rejected-email';
@@ -49,6 +54,7 @@ export class SesEmailService {
       honorariumAmount: number | null;
       hostDisplayName: string | null;
       sponsorName: string;
+      zoomJoinUrl?: string | null;
     };
     sessionKind: ProgramZoomSessionType;
   }): Promise<void> {
@@ -63,44 +69,111 @@ export class SesEmailService {
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
     const supportEmail = this.from;
-    const { subject, text, html } = buildRegistrationApprovedEmail(
-      {
-        firstName,
-        programTitle: program.title,
-        programDescription: program.description,
-        startDate: program.startDate,
-        durationMinutes: program.duration,
-        honorariumCents: program.honorariumAmount,
-        hostDisplayName: program.hostDisplayName,
-        sponsorName: program.sponsorName,
-        sessionKind,
-        appSessionUrl,
-        supportEmail,
-      },
-      escapeHtml,
-    );
-    try {
-      await this.client.send(
-        new SendEmailCommand({
-          FromEmailAddress: this.from,
-          Destination: { ToAddresses: [to] },
-          Content: {
-            Simple: {
-              Subject: { Data: subject, Charset: 'UTF-8' },
-              Body: {
-                Text: { Data: text, Charset: 'UTF-8' },
-                Html: { Data: html, Charset: 'UTF-8' },
-              },
-            },
-          },
-        }),
+    const zoomTrim = program.zoomJoinUrl?.trim() || null;
+    const googleDetails = (
+      sanitizePlainDescription(program.description) + (zoomTrim ? `\n\nJoin on Zoom: ${zoomTrim}` : '')
+    ).slice(0, 800);
+    const googleCalendarUrl =
+      program.startDate != null
+        ? googleCalendarTemplateUrl({
+            title: program.title,
+            details: googleDetails,
+            start: program.startDate,
+            end: new Date(program.startDate.getTime() + (program.duration ?? 60) * 60_000),
+          })
+        : null;
+
+    const buildApproved = (calendarInviteIncluded: boolean) =>
+      buildRegistrationApprovedEmail(
+        {
+          firstName,
+          programTitle: program.title,
+          programDescription: program.description,
+          startDate: program.startDate,
+          durationMinutes: program.duration,
+          honorariumCents: program.honorariumAmount,
+          hostDisplayName: program.hostDisplayName,
+          sponsorName: program.sponsorName,
+          zoomJoinUrl: zoomTrim,
+          sessionKind,
+          appSessionUrl,
+          supportEmail,
+          googleCalendarUrl: calendarInviteIncluded ? googleCalendarUrl : null,
+          calendarInviteIncluded,
+        },
+        escapeHtml,
       );
-      this.logger.log(`Sent registration-approved email to ${to} for program ${program.id}`);
+
+    try {
+      if (!program.startDate) {
+        const { subject, text, html } = buildApproved(false);
+        await this.sendSimpleApproval(to, subject, text, html);
+        this.logger.log(`Sent registration-approved email to ${to} for program ${program.id}`);
+        return;
+      }
+
+      const withInvite = buildApproved(true);
+      try {
+        const ics = buildLiveSessionIcs({
+          programId: program.id,
+          title: program.title,
+          description: program.description,
+          start: program.startDate,
+          durationMinutes: program.duration ?? 60,
+          appSessionUrl,
+          zoomJoinUrl: program.zoomJoinUrl,
+          organizerEmail: this.from,
+        });
+        const raw = buildApprovalEmailMimeBuffer({
+          from: this.from,
+          to,
+          subject: withInvite.subject,
+          textPlain: withInvite.text,
+          html: withInvite.html,
+          icsFilename: 'live-session.ics',
+          icsBody: ics,
+        });
+        await this.client.send(
+          new SendEmailCommand({
+            FromEmailAddress: this.from,
+            Destination: { ToAddresses: [to] },
+            Content: { Raw: { Data: raw } },
+          }),
+        );
+        this.logger.log(`Sent registration-approved email (with calendar invite) to ${to} for program ${program.id}`);
+        return;
+      } catch (mimeErr) {
+        this.logger.warn(
+          `MIME registration-approved email failed for ${to} program ${program.id}, falling back to Simple: ${(mimeErr as Error).message}`,
+        );
+      }
+
+      const fallback = buildApproved(false);
+      await this.sendSimpleApproval(to, fallback.subject, fallback.text, fallback.html);
+      this.logger.log(`Sent registration-approved email (simple) to ${to} for program ${program.id}`);
     } catch (err) {
       this.logger.warn(
         `Failed to send registration-approved email to ${to} for program ${program.id}: ${(err as Error).message}`,
       );
     }
+  }
+
+  private async sendSimpleApproval(to: string, subject: string, text: string, html: string): Promise<void> {
+    await this.client.send(
+      new SendEmailCommand({
+        FromEmailAddress: this.from,
+        Destination: { ToAddresses: [to] },
+        Content: {
+          Simple: {
+            Subject: { Data: subject, Charset: 'UTF-8' },
+            Body: {
+              Text: { Data: text, Charset: 'UTF-8' },
+              Html: { Data: html, Charset: 'UTF-8' },
+            },
+          },
+        },
+      }),
+    );
   }
 
   /**
@@ -168,4 +241,8 @@ function escapeHtml(s: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function sanitizePlainDescription(htmlOrText: string): string {
+  return htmlOrText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }

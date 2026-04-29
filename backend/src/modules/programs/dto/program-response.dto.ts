@@ -75,6 +75,10 @@ export class ProgramResponseDto {
 
   @IsString()
   @IsOptional()
+  zoomStartUrl?: string;
+
+  @IsString()
+  @IsOptional()
   startDate?: string;
 
   @IsNumber()

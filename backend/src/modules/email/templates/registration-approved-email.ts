@@ -9,9 +9,15 @@ export type RegistrationApprovedTemplateInput = {
   honorariumCents: number | null;
   hostDisplayName: string | null;
   sponsorName: string;
+  /** Populated when the program has a Zoom join URL (added to calendar + body). */
+  zoomJoinUrl?: string | null;
   sessionKind: ProgramZoomSessionType;
   appSessionUrl: string;
   supportEmail: string;
+  /** Optional Google Calendar deep link */
+  googleCalendarUrl?: string | null;
+  /** True when email includes an .ics attachment (copy mentions calendar file). */
+  calendarInviteIncluded?: boolean;
 };
 
 /**
@@ -32,9 +38,10 @@ export function buildRegistrationApprovedEmail(
   const formatLine =
     p.sessionKind === ProgramZoomSessionType.MEETING
       ? 'CHM Office Hours (interactive Q&A; join from the platform)'
-      : 'Virtual webinar (attend from anywhere; join and participate from the platform)';
+      : 'Live session (virtual; attend from the platform)';
 
   const honorariumLine = formatHonorariumLine(p.honorariumCents, escape);
+  const zoomPlain = p.zoomJoinUrl?.trim() || '';
   const participationLine =
     p.sessionKind === ProgramZoomSessionType.MEETING
       ? 'Interactive Q&A in a small-group format when applicable.'
@@ -43,6 +50,19 @@ export function buildRegistrationApprovedEmail(
   const bodyIntro = buildIntroParagraphs(p, escape);
 
   const subject = `You're approved — ${p.programTitle}`;
+
+  const calendarBlock: string[] = [];
+  if (p.calendarInviteIncluded && p.startDate) {
+    calendarBlock.push('');
+    if (p.googleCalendarUrl) {
+      calendarBlock.push(
+        'Calendar: open the attached live-session.ics file (best for Outlook & Apple Calendar), or add to Google Calendar:',
+        p.googleCalendarUrl,
+      );
+    } else {
+      calendarBlock.push('Calendar: open the attached live-session.ics file to add this session to your calendar.');
+    }
+  }
 
   const text = [
     `Thank you, ${p.firstName.trim() || 'there'},`,
@@ -55,12 +75,14 @@ export function buildRegistrationApprovedEmail(
     `Format: ${formatLine}`,
     honorariumLine ? `Compensation: ${honorariumLine.plain}` : null,
     `When: ${when.plain}`,
+    zoomPlain ? `Zoom: ${zoomPlain}` : null,
     `Participation: ${participationLine}`,
     host ? `Faculty / host: ${p.hostDisplayName}` : null,
     `Sponsored by: ${p.sponsorName}`,
     '',
-    'Open your session in the Community Health Media app:',
+    `Open your session in the Community Health Media app:`,
     p.appSessionUrl,
+    ...calendarBlock,
     '',
     "You're confirmed for this session. Join details and the Zoom experience are available on the session page in the app when it's time to attend.",
     '',
@@ -95,6 +117,11 @@ export function buildRegistrationApprovedEmail(
                 <p style="margin:0 0 8px 0;"><strong>Format</strong> — ${escape(formatLine)}</p>
                 ${honorariumLine ? `<p style="margin:0 0 8px 0;"><strong>Compensation</strong> — ${honorariumLine.html}</p>` : ''}
                 <p style="margin:0 0 8px 0;"><strong>When</strong> — ${when.html}</p>
+                ${
+                  zoomPlain
+                    ? `<p style="margin:0 0 8px 0;"><strong>Zoom</strong> — <a href="${escape(zoomPlain)}" style="color:#2563eb;font-weight:600;word-break:break-all;">${escape(zoomPlain)}</a></p>`
+                    : ''
+                }
                 <p style="margin:0 0 8px 0;"><strong>Participation</strong> — ${escape(participationLine)}</p>
                 ${host ? `<p style="margin:0 0 8px 0;"><strong>Faculty / host</strong> — ${host}</p>` : ''}
                 <p style="margin:0;"><strong>Sponsored by</strong> — ${sponsor}</p>
@@ -107,6 +134,15 @@ export function buildRegistrationApprovedEmail(
             <p style="margin:16px 0 0 0;font-size:13px;color:#6b7280;word-break:break-all;">
               <a href="${escape(p.appSessionUrl)}" style="color:#4b5563;">${escape(p.appSessionUrl)}</a>
             </p>
+            ${
+              p.calendarInviteIncluded && p.startDate
+                ? `<p style="margin:20px 0 0 0;font-size:14px;line-height:1.65;color:#374151;"><strong>Calendar</strong> — An invitation file (<span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;">live-session.ics</span>) is attached to this email.${
+                    p.googleCalendarUrl
+                      ? ` You can also <a href="${escape(p.googleCalendarUrl)}" style="color:#2563eb;font-weight:600;">add to Google Calendar</a>.`
+                      : ''
+                  }</p>`
+                : ''
+            }
             <p style="margin:24px 0 0 0;line-height:1.6;">We ask participants to come prepared to ask questions, share perspectives, and engage with the discussion where invited.</p>
             <p style="margin:16px 0 0 0;line-height:1.6;">If you have any questions or need assistance before the event, contact us at <a href="mailto:${support}" style="color:#2563eb;">${support}</a>.</p>
             <p style="margin:24px 0 0 0;line-height:1.5;">Best regards,<br /><strong>The Community Health Media Team</strong></p>
@@ -167,6 +203,7 @@ function formatEventWhen(
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: 'America/New_York',
     timeZoneName: 'short',
   }).format(start);
   const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';

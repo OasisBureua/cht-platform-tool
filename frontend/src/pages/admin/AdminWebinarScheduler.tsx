@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Video, Calendar } from 'lucide-react';
+import { DateTime } from 'luxon';
 import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
+import { wallClockToUtcIso } from '../../utils/wallClockToUtcIso';
 
 const TIMEZONES = [
   'America/New_York',
@@ -100,12 +102,13 @@ export default function AdminWebinarScheduler({
       return;
     }
 
-    const startDateTime = new Date(`${date}T${time}:00`);
-    if (isNaN(startDateTime.getTime())) {
+    const startUtcIso = wallClockToUtcIso(date, time, timezone);
+    if (!startUtcIso) {
       setValidationError('Invalid date or time.');
       return;
     }
-    if (startDateTime <= new Date()) {
+    const startInstantMs = DateTime.fromISO(startUtcIso).toMillis();
+    if (startInstantMs <= Date.now()) {
       setValidationError('Start date and time must be in the future.');
       return;
     }
@@ -138,7 +141,7 @@ export default function AdminWebinarScheduler({
       title: title.trim(),
       description: fullDescription || title.trim(),
       sponsorName: sponsorName.trim() || 'General',
-      startDate: `${date}T${time}:00`,
+      startDate: startUtcIso,
       duration: durationNum,
       timezone,
       zoomSessionType,
@@ -352,6 +355,11 @@ export default function AdminWebinarScheduler({
               />
             </div>
           </div>
+
+          <p className="text-xs text-gray-600">
+            Date and time use the timezone you select above; we save the instant in UTC so the app and Zoom show the same
+            local time (fixes wrong times when the server runs in UTC).
+          </p>
 
           {isWebinar ? (
             <div>
