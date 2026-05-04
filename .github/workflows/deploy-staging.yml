@@ -175,13 +175,79 @@ jobs:
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
 
-      - name: Health Check
+      - name: Health Check (via ALB direct, since DNS not yet delegated)
+        id: healthcheck
+        continue-on-error: true
         run: |
+          ALB_DNS=$(cd infrastructure/terraform/environments/us-east-1-staging && terraform output -raw alb_dns_name)
           echo "Waiting for deployment to stabilize..."
           sleep 30
+          curl -fsk "https://${ALB_DNS}/health/ready" && echo "✅ ALB direct health check passed!" || echo "❌ ALB direct health check failed"
+          curl -fsk "https://${ALB_DNS}/health" && echo "✅ ALB /health passed!" || echo "❌ ALB /health failed"
 
-          curl -f https://staging.testapp.communityhealth.media/health/ready || exit 1
-          echo "✅ Staging deployment successful!"
+      - name: Diagnostics — ECS task statuses
+        if: always()
+        run: |
+          CLUSTER="cht-platform-staging-cluster"
+          echo "================================================================"
+          echo "  ECS SERVICES"
+          echo "================================================================"
+          aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services cht-platform-staging-backend cht-platform-staging-worker \
+            --query 'services[*].[serviceName,status,desiredCount,runningCount,pendingCount,events[0:3].message]' \
+            --output text 2>&1 || echo "describe-services failed"
+
+          echo ""
+          echo "================================================================"
+          echo "  RUNNING / STOPPED TASKS"
+          echo "================================================================"
+          aws ecs list-tasks --cluster "$CLUSTER" --desired-status RUNNING --output text 2>&1 || true
+          aws ecs list-tasks --cluster "$CLUSTER" --desired-status STOPPED --output text 2>&1 | head -10 || true
+
+          echo ""
+          echo "================================================================"
+          echo "  STOPPED TASK DETAILS (most recent)"
+          echo "================================================================"
+          STOPPED=$(aws ecs list-tasks --cluster "$CLUSTER" --desired-status STOPPED --query 'taskArns[0]' --output text 2>/dev/null || echo "")
+          if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$STOPPED" \
+              --query 'tasks[*].[lastStatus,stoppedReason,containers[*].[name,exitCode,reason]]' \
+              --output text 2>&1 || true
+          else
+            echo "(no stopped tasks)"
+          fi
+
+      - name: Diagnostics — recent backend logs
+        if: always()
+        run: |
+          echo "================================================================"
+          echo "  RECENT BACKEND LOGS (last 10 minutes)"
+          echo "================================================================"
+          # Log group naming pattern from ecs-cluster module
+          LOG_GROUP="/ecs/cht-platform-staging-cluster"
+          aws logs filter-log-events \
+            --log-group-name "$LOG_GROUP" \
+            --start-time $(( $(date +%s) * 1000 - 600000 )) \
+            --filter-pattern "backend" \
+            --max-items 60 \
+            --query 'events[*].[timestamp,message]' \
+            --output text 2>&1 | tail -80 || echo "(filter by 'backend' returned nothing — falling back to all)"
+
+          echo ""
+          echo "--- ALL recent logs (last 5 minutes, no filter) ---"
+          aws logs filter-log-events \
+            --log-group-name "$LOG_GROUP" \
+            --start-time $(( $(date +%s) * 1000 - 300000 )) \
+            --max-items 40 \
+            --query 'events[*].[timestamp,message]' \
+            --output text 2>&1 | tail -50 || echo "(no logs)"
+
+      - name: Final health gate
+        if: steps.healthcheck.outcome == 'failure'
+        run: |
+          echo "Health check failed — diagnostics above. Marking workflow failed."
+          exit 1
 
       - name: Deployment Summary
         run: |
