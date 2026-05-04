@@ -129,6 +129,17 @@ jobs:
           terraform output -json route53_nameservers | jq -r '.[]'
           echo "================================================================"
 
+      - name: Print direct AWS URLs (for testing without DNS delegation)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          echo "================================================================"
+          echo "  DIRECT AWS URLs (use until DNS delegates)"
+          echo "================================================================"
+          echo "ALB DNS:        $(terraform output -raw alb_dns_name)"
+          echo "CloudFront URL: https://$(terraform output -raw cloudfront_domain_name)"
+          echo "Frontend bucket: $(terraform output -raw frontend_bucket)"
+          echo "================================================================"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
