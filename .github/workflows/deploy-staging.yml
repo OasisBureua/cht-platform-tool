@@ -218,30 +218,34 @@ jobs:
             echo "(no stopped tasks)"
           fi
 
-      - name: Diagnostics — recent backend logs
+      - name: Diagnostics — recent ECS logs
         if: always()
         run: |
           echo "================================================================"
-          echo "  RECENT BACKEND LOGS (last 10 minutes)"
+          echo "  AVAILABLE LOG GROUPS (cht-platform-staging-*)"
           echo "================================================================"
-          # Log group naming pattern from ecs-cluster module
-          LOG_GROUP="/ecs/cht-platform-staging-cluster"
-          aws logs filter-log-events \
-            --log-group-name "$LOG_GROUP" \
-            --start-time $(( $(date +%s) * 1000 - 600000 )) \
-            --filter-pattern "backend" \
-            --max-items 60 \
-            --query 'events[*].[timestamp,message]' \
-            --output text 2>&1 | tail -80 || echo "(filter by 'backend' returned nothing — falling back to all)"
+          aws logs describe-log-groups --log-group-name-prefix "/ecs/cht-platform-staging" \
+            --query 'logGroups[*].[logGroupName,storedBytes]' --output text 2>&1 | head -10
 
           echo ""
-          echo "--- ALL recent logs (last 5 minutes, no filter) ---"
+          echo "================================================================"
+          echo "  RECENT LOGS — /ecs/cht-platform-staging (last 5 min)"
+          echo "================================================================"
+          LOG_GROUP="/ecs/cht-platform-staging"
           aws logs filter-log-events \
             --log-group-name "$LOG_GROUP" \
             --start-time $(( $(date +%s) * 1000 - 300000 )) \
-            --max-items 40 \
+            --max-items 60 \
             --query 'events[*].[timestamp,message]' \
-            --output text 2>&1 | tail -50 || echo "(no logs)"
+            --output text 2>&1 | tail -80 || echo "(no logs in $LOG_GROUP)"
+
+          echo ""
+          echo "================================================================"
+          echo "  LOG STREAMS in $LOG_GROUP (most recent 10)"
+          echo "================================================================"
+          aws logs describe-log-streams --log-group-name "$LOG_GROUP" \
+            --order-by LastEventTime --descending --max-items 10 \
+            --query 'logStreams[*].[logStreamName,lastEventTimestamp]' --output text 2>&1 | head -15 || true
 
       - name: Final health gate
         if: steps.healthcheck.outcome == 'failure'
