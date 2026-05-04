@@ -32,6 +32,8 @@ build/
 *.tfplan
 # Platform tfvars contains API keys - use platform.tfvars.example as template
 infrastructure/terraform/environments/variables/platform.tfvars
+# Staging tfvars contains secrets - use staging.tfvars.example as template
+infrastructure/terraform/environments/variables/staging.tfvars
 
 # Testing
 coverage/
