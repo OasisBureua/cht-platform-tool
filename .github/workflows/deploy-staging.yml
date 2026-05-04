@@ -118,6 +118,17 @@ jobs:
           echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
 
+      - name: Print Route53 nameservers (for GoDaddy NS delegation)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          echo "================================================================"
+          echo "  ROUTE 53 NAMESERVERS FOR staging.testapp.communityhealth.media"
+          echo "  Add these as NS records on the testapp.communityhealth.media"
+          echo "  zone in GoDaddy (Type: NS, Name: staging, TTL: 300)"
+          echo "================================================================"
+          terraform output -json route53_nameservers | jq -r '.[]'
+          echo "================================================================"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
