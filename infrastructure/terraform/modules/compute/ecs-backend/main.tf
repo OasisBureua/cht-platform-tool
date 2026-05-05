@@ -76,6 +76,14 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name  = "REDIS_TLS_REJECT_UNAUTHORIZED"
             value = "false"
+          },
+          {
+            # ElastiCache transit_encryption_enabled=true requires TLS.
+            # Backend's configuration.ts treats unset REDIS_TLS as `false` (not undefined),
+            # which defeats the auto-detect-from-hostname fallback in redis.service.ts.
+            # Setting explicitly here so TLS is always used for ElastiCache connections.
+            name  = "REDIS_TLS"
+            value = "true"
           }
         ],
         concat(
