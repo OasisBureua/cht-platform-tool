@@ -140,6 +140,62 @@ jobs:
           echo "Frontend bucket: $(terraform output -raw frontend_bucket)"
           echo "================================================================"
 
+      - name: Delegate staging zone in parent (testapp.communityhealth.media → AWS Route53)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          set -e
+          echo "================================================================"
+          echo "  DELEGATING staging.testapp.communityhealth.media"
+          echo "  (adding NS records in parent testapp.communityhealth.media zone)"
+          echo "================================================================"
+
+          # 1. Find the parent zone (testapp.communityhealth.media)
+          PARENT_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name testapp.communityhealth.media \
+            --max-items 5 \
+            --query 'HostedZones[?Name==`testapp.communityhealth.media.` && Config.PrivateZone==`false`].Id' \
+            --output text | sed 's|/hostedzone/||')
+
+          if [ -z "$PARENT_ZONE_ID" ]; then
+            echo "❌ Could not find public hosted zone for testapp.communityhealth.media"
+            exit 1
+          fi
+          echo "Parent zone ID: $PARENT_ZONE_ID"
+
+          # 2. Get staging zone nameservers from terraform output
+          STAGING_NS=$(terraform output -json route53_nameservers | jq -r '.[]')
+          echo "Staging nameservers:"
+          echo "$STAGING_NS"
+
+          # 3. Build ResourceRecords JSON
+          RR_JSON=$(echo "$STAGING_NS" | jq -R '.' | jq -s '[.[] | {"Value": .}]')
+
+          # 4. Submit UPSERT change
+          CHANGE_BATCH=$(jq -n --argjson rr "$RR_JSON" '{
+            "Comment": "Delegate staging.testapp to AWS Route53 staging zone",
+            "Changes": [{
+              "Action": "UPSERT",
+              "ResourceRecordSet": {
+                "Name": "staging.testapp.communityhealth.media",
+                "Type": "NS",
+                "TTL": 300,
+                "ResourceRecords": $rr
+              }
+            }]
+          }')
+
+          echo ""
+          echo "Submitting change..."
+          CHANGE_ID=$(aws route53 change-resource-record-sets \
+            --hosted-zone-id "$PARENT_ZONE_ID" \
+            --change-batch "$CHANGE_BATCH" \
+            --query 'ChangeInfo.Id' --output text)
+
+          echo "✓ Change submitted: $CHANGE_ID"
+          echo ""
+          echo "Propagation typically completes in 5-30 min."
+          echo "Verify with: dig +short NS staging.testapp.communityhealth.media @8.8.8.8"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
