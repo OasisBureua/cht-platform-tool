@@ -76,6 +76,14 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name  = "REDIS_TLS_REJECT_UNAUTHORIZED"
             value = "false"
+          },
+          {
+            # ElastiCache transit_encryption_enabled=true requires TLS.
+            # Backend's configuration.ts treats unset REDIS_TLS as `false` (not undefined),
+            # which defeats the auto-detect-from-hostname fallback in redis.service.ts.
+            # Setting explicitly here so TLS is always used for ElastiCache connections.
+            name  = "REDIS_TLS"
+            value = "true"
           }
         ],
         concat(
@@ -233,7 +241,14 @@ resource "aws_ecs_service" "backend" {
     container_port   = 3000
   }
 
-  deployment_maximum_percent         = 100
+  # Rolling deploy: max=200% + min=50% allows ECS to run 2 tasks transiently
+  # during deployment, drain the old, then scale back. With desired_count=1 +
+  # max=100% (previous setting), ECS could not add a new task without first
+  # stopping the old one — deadlocking rolling deploys. Symptom: ECS event
+  # "was unable to stop or start tasks during a deployment because of the
+  # service deployment configuration." New task definition revisions never
+  # reached running state. Affected all environments using this module.
+  deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 50
 
   deployment_circuit_breaker {
