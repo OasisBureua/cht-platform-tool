@@ -12,6 +12,10 @@ import {
   buildRegistrationRejectedEmail,
   type RejectionEmailReason,
 } from './templates/registration-rejected-email';
+import { buildMissedWebinarEmail } from './templates/missed-webinar-email';
+import { buildPostWebinarSurveyEmail } from './templates/post-webinar-survey-email';
+import { buildWebinarAccessEmail } from './templates/webinar-access-email';
+import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
 
 /**
  * Transactional email via [Amazon SES](https://docs.aws.amazon.com/ses/) (SESv2 `SendEmail` with Simple content).
@@ -107,7 +111,7 @@ export class SesEmailService {
     try {
       if (!program.startDate) {
         const { subject, text, html } = buildApproved(false);
-        await this.sendSimpleApproval(to, subject, text, html);
+        await this.sendSimpleEmail(to, subject, text, html);
         this.logger.log(`Sent registration-approved email to ${to} for program ${program.id}`);
         return;
       }
@@ -149,31 +153,13 @@ export class SesEmailService {
       }
 
       const fallback = buildApproved(false);
-      await this.sendSimpleApproval(to, fallback.subject, fallback.text, fallback.html);
+      await this.sendSimpleEmail(to, fallback.subject, fallback.text, fallback.html);
       this.logger.log(`Sent registration-approved email (simple) to ${to} for program ${program.id}`);
     } catch (err) {
       this.logger.warn(
         `Failed to send registration-approved email to ${to} for program ${program.id}: ${(err as Error).message}`,
       );
     }
-  }
-
-  private async sendSimpleApproval(to: string, subject: string, text: string, html: string): Promise<void> {
-    await this.client.send(
-      new SendEmailCommand({
-        FromEmailAddress: this.from,
-        Destination: { ToAddresses: [to] },
-        Content: {
-          Simple: {
-            Subject: { Data: subject, Charset: 'UTF-8' },
-            Body: {
-              Text: { Data: text, Charset: 'UTF-8' },
-              Html: { Data: html, Charset: 'UTF-8' },
-            },
-          },
-        },
-      }),
-    );
   }
 
   /**
@@ -211,27 +197,228 @@ export class SesEmailService {
       escapeHtml,
     );
     try {
-      await this.client.send(
-        new SendEmailCommand({
-          FromEmailAddress: this.from,
-          Destination: { ToAddresses: [to] },
-          Content: {
-            Simple: {
-              Subject: { Data: subject, Charset: 'UTF-8' },
-              Body: {
-                Text: { Data: text, Charset: 'UTF-8' },
-                Html: { Data: html, Charset: 'UTF-8' },
-              },
-            },
-          },
-        }),
-      );
+      await this.sendSimpleEmail(to, subject, text, html);
       this.logger.log(`Sent registration-rejected email to ${to} for program ${program.id} (${reason})`);
     } catch (err) {
       this.logger.warn(
         `Failed to send registration-rejected email to ${to} for program ${program.id}: ${(err as Error).message}`,
       );
     }
+  }
+  /**
+   * User registered for a webinar but did not attend.
+   * Must NOT be called for users who attended — they enter the survey/payment workflow instead.
+   */
+  async sendMissedWebinarEmail(opts: {
+    to: string;
+    firstName: string;
+    program: {
+      id: string;
+      title: string;
+      description: string;
+      startDate: Date | null;
+      sponsorName: string;
+    };
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip missed-webinar email');
+      return;
+    }
+    const { to, firstName, program } = opts;
+    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const appHomeUrl = `${base}/app/home`;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildMissedWebinarEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        programDescription: program.description,
+        startDate: program.startDate,
+        appHomeUrl,
+        supportEmail,
+        sponsorName: program.sponsorName,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(`Sent missed-webinar email to ${to} for program ${program.id}`);
+    } catch (err) {
+      this.logger.warn(`Failed to send missed-webinar email to ${to} for program ${program.id}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Attendee completed the webinar — prompt them to fill in the post-event survey.
+   * Survey completion drives payment eligibility.
+   */
+  async sendPostWebinarSurveyEmail(opts: {
+    to: string;
+    firstName: string;
+    program: {
+      id: string;
+      title: string;
+      sponsorName: string;
+      honorariumAmount: number | null;
+      zoomSessionType: ProgramZoomSessionType;
+    };
+    surveyUrl: string;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip post-webinar-survey email');
+      return;
+    }
+    const { to, firstName, program, surveyUrl } = opts;
+    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const appSessionUrl =
+      program.zoomSessionType === ProgramZoomSessionType.MEETING
+        ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
+        : `${base}/app/live/${encodeURIComponent(program.id)}`;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildPostWebinarSurveyEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        surveyUrl,
+        appSessionUrl,
+        supportEmail,
+        sponsorName: program.sponsorName,
+        honorariumCents: program.honorariumAmount,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(`Sent post-webinar-survey email to ${to} for program ${program.id}`);
+    } catch (err) {
+      this.logger.warn(`Failed to send post-webinar-survey email to ${to} for program ${program.id}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Send the Zoom join link to an approved attendee.
+   * Intended to be called 24–48 h before the session starts, or immediately on approval when the event is imminent.
+   */
+  async sendWebinarAccessEmail(opts: {
+    to: string;
+    firstName: string;
+    program: {
+      id: string;
+      title: string;
+      description: string;
+      startDate: Date | null;
+      duration: number | null;
+      zoomJoinUrl: string;
+      hostDisplayName: string | null;
+      sponsorName: string;
+      zoomSessionType: ProgramZoomSessionType;
+    };
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip webinar-access email');
+      return;
+    }
+    const { to, firstName, program } = opts;
+    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const appSessionUrl =
+      program.zoomSessionType === ProgramZoomSessionType.MEETING
+        ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
+        : `${base}/app/live/${encodeURIComponent(program.id)}`;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildWebinarAccessEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        programDescription: program.description,
+        startDate: program.startDate,
+        durationMinutes: program.duration,
+        zoomJoinUrl: program.zoomJoinUrl,
+        hostDisplayName: program.hostDisplayName,
+        sponsorName: program.sponsorName,
+        appSessionUrl,
+        supportEmail,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(`Sent webinar-access email to ${to} for program ${program.id}`);
+    } catch (err) {
+      this.logger.warn(`Failed to send webinar-access email to ${to} for program ${program.id}: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Pre-event reminder sent to approved attendees before the webinar starts.
+   * Pass hoursUntilStart=24 for a day-before reminder, hoursUntilStart=1 for a same-day nudge.
+   */
+  async sendPreWebinarReminderEmail(opts: {
+    to: string;
+    firstName: string;
+    hoursUntilStart: number;
+    program: {
+      id: string;
+      title: string;
+      description: string;
+      startDate: Date | null;
+      duration: number | null;
+      zoomJoinUrl: string | null;
+      hostDisplayName: string | null;
+      sponsorName: string;
+      zoomSessionType: ProgramZoomSessionType;
+    };
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip pre-webinar-reminder email');
+      return;
+    }
+    const { to, firstName, hoursUntilStart, program } = opts;
+    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const appSessionUrl =
+      program.zoomSessionType === ProgramZoomSessionType.MEETING
+        ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
+        : `${base}/app/live/${encodeURIComponent(program.id)}`;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildPreWebinarReminderEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        programDescription: program.description,
+        startDate: program.startDate,
+        durationMinutes: program.duration,
+        zoomJoinUrl: program.zoomJoinUrl,
+        hostDisplayName: program.hostDisplayName,
+        sponsorName: program.sponsorName,
+        appSessionUrl,
+        supportEmail,
+        hoursUntilStart,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(`Sent pre-webinar-reminder email to ${to} for program ${program.id} (${hoursUntilStart}h out)`);
+    } catch (err) {
+      this.logger.warn(`Failed to send pre-webinar-reminder email to ${to} for program ${program.id}: ${(err as Error).message}`);
+    }
+  }
+
+  private async sendSimpleEmail(to: string, subject: string, text: string, html: string): Promise<void> {
+    await this.client.send(
+      new SendEmailCommand({
+        FromEmailAddress: this.from,
+        Destination: { ToAddresses: [to] },
+        Content: {
+          Simple: {
+            Subject: { Data: subject, Charset: 'UTF-8' },
+            Body: {
+              Text: { Data: text, Charset: 'UTF-8' },
+              Html: { Data: html, Charset: 'UTF-8' },
+            },
+          },
+        },
+      }),
+    );
   }
 }
 

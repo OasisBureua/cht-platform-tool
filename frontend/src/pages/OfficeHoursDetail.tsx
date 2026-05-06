@@ -128,6 +128,11 @@ export default function OfficeHoursDetail() {
         )}
         <p className="text-gray-600 whitespace-pre-wrap">{session.description}</p>
 
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="note">
+          <strong>Confidentiality notice:</strong> CHM Office Hours are not conducted over a HIPAA-enabled environment.
+          Please do not disclose patient-identifiable information during these sessions.
+        </div>
+
         {!enrolled ? (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <strong>How it works:</strong> Complete registration (and pick a time slot if offered). An administrator
@@ -141,18 +146,39 @@ export default function OfficeHoursDetail() {
         ) : (
           <div className="flex flex-col gap-3 pt-2">
             {registrationPendingApproval ? (
-              <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Your registration is waiting for an administrator to approve it. Join unlocks below after approval—this
-                page updates automatically.
-              </p>
-            ) : !enrolled && needsRegistrationWizard ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-amber-400 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">Registration submitted — pending approval</p>
+                    <p className="mt-0.5 text-sm text-amber-800">
+                      Your request has been received. An administrator will review it shortly. Join link unlocks here automatically after approval.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : enrolled ? (
+              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <svg className="mt-0.5 h-5 w-5 shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-green-900">You&apos;re registered and approved</p>
+                    <p className="mt-0.5 text-sm text-green-800">Use the join button below when it&apos;s time for your session.</p>
+                  </div>
+                </div>
+              </div>
+            ) : needsRegistrationWizard ? (
               <Link
                 to={`/app/chm-office-hours/${id}/register`}
                 className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
               >
                 Register for this session
               </Link>
-            ) : !enrolled ? (
+            ) : (
               <button
                 type="button"
                 onClick={() => enrollMutation.mutate()}
@@ -161,7 +187,7 @@ export default function OfficeHoursDetail() {
               >
                 {enrollMutation.isPending ? 'Saving…' : 'Register for this session'}
               </button>
-            ) : null}
+            )}
 
             {session.joinUrl ? (
               enrolled ? (

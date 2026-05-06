@@ -47,8 +47,7 @@ export default function AdminWebinarScheduler({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sponsorName, setSponsorName] = useState('');
-  const [speakerName, setSpeakerName] = useState('');
-  const [speakerBio, setSpeakerBio] = useState('');
+  const [kols, setKols] = useState([{ name: '', bio: '' }]);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
@@ -156,13 +155,20 @@ export default function AdminWebinarScheduler({
     }
 
     let fullDescription = description.trim();
-    if (speakerName.trim()) fullDescription += `\n\nSpeaker: ${speakerName.trim()}`;
-    if (speakerBio.trim()) fullDescription += `\n\n${speakerBio.trim()}`;
+    const kolLines = kols
+      .filter((k) => k.name.trim())
+      .map((k) => (k.bio.trim() ? `${k.name.trim()} — ${k.bio.trim()}` : k.name.trim()));
+    if (kolLines.length > 0) {
+      fullDescription += `\n\n${kolLines.length === 1 ? 'Speaker' : 'Speakers'}: ${kolLines.join('; ')}`;
+    }
+
+    const primaryKolName = kols[0]?.name.trim() || '';
 
     const payload: CreateWebinarPayload = {
       title: title.trim(),
       description: fullDescription || title.trim(),
       sponsorName: sponsorName.trim() || 'General',
+      ...(primaryKolName ? { hostDisplayName: primaryKolName } : {}),
       startDate: startUtcIso,
       duration: durationNum,
       timezone,
@@ -304,27 +310,53 @@ export default function AdminWebinarScheduler({
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Host / speaker name</label>
-              <input
-                type="text"
-                value={speakerName}
-                onChange={(e) => setSpeakerName(e.target.value)}
-                placeholder="Dr. Jane Smith"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-gray-900">
+                {isWebinar ? 'Speakers / KOLs' : 'Host / KOLs'}
+                <span className="ml-1 font-normal text-gray-500">— optional; add one or more</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setKols((prev) => [...prev, { name: '', bio: '' }])}
+                className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition-colors"
+              >
+                + Add KOL
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Host note / bio</label>
-              <input
-                type="text"
-                value={speakerBio}
-                onChange={(e) => setSpeakerBio(e.target.value)}
-                placeholder="Brief note…"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
+            <div className="space-y-3">
+              {kols.map((kol, idx) => (
+                <div key={idx} className="flex gap-3 items-start rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={kol.name}
+                      onChange={(e) => setKols((prev) => prev.map((k, i) => i === idx ? { ...k, name: e.target.value } : k))}
+                      placeholder="Dr. Jane Smith"
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                    />
+                    <input
+                      type="text"
+                      value={kol.bio}
+                      onChange={(e) => setKols((prev) => prev.map((k, i) => i === idx ? { ...k, bio: e.target.value } : k))}
+                      placeholder="Title, specialty, or brief note…"
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                    />
+                  </div>
+                  {kols.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setKols((prev) => prev.filter((_, i) => i !== idx))}
+                      className="shrink-0 mt-0.5 text-xs font-semibold text-red-600 hover:text-red-800"
+                      aria-label={`Remove KOL ${idx + 1}`}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
+            <p className="mt-1 text-xs text-gray-500">First KOL name is used as the session host display name.</p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -12,7 +12,7 @@ const PROFESSION_OPTIONS = [
   { value: 'Pharmacist', label: 'Pharmacist' },
   { value: 'Nurse', label: 'Nurse (RN/LPN)' },
   { value: 'Other HCP', label: 'Other Healthcare Professional' },
-  { value: 'Pharmaceuticals', label: 'Pharmaceuticals / Industry' },
+  { value: 'Industry', label: 'Industry / Non-Clinical' },
   { value: 'Researcher', label: 'Researcher / Scientist' },
   { value: 'Patient Advocate', label: 'Patient / Patient Advocate' },
   { value: 'Caregiver', label: 'Caregiver' },
@@ -22,6 +22,10 @@ const PROFESSION_OPTIONS = [
 
 const NPI_REQUIRED_PROFESSIONS = new Set([
   'Physician', 'Nurse Practitioner', 'Physician Assistant', 'Pharmacist', 'Nurse', 'Other HCP',
+]);
+
+const NON_HCP_PROFESSIONS = new Set([
+  'Industry', 'Pharmaceuticals', 'Researcher', 'Patient Advocate', 'Caregiver', 'Student', 'Other',
 ]);
 
 const US_STATES = [
@@ -304,6 +308,11 @@ export default function Join() {
                   options={PROFESSION_OPTIONS}
                   required
                 />
+                {profession && NON_HCP_PROFESSIONS.has(profession) && (
+                  <p className="mt-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                    <strong>Note:</strong> NPI is not required for your role. Honorarium programs are designed for licensed healthcare professionals — you can still access all educational content and events.
+                  </p>
+                )}
               </div>
               {requiresNpi && (
                 <div className="min-w-0 space-y-1.5 sm:col-span-2">

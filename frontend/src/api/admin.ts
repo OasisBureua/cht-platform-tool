@@ -280,6 +280,31 @@ export const adminApi = {
     }>;
   },
 
+  listPaymentEligibleNotYetRequested: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/payment-eligible');
+    return data as Array<{
+      id: string;
+      postEventSurveyAcknowledgedAt: string | null;
+      createdAt: string;
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
+      program: {
+        id: string;
+        title: string;
+        honorariumAmount: number | null;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+        startDate?: string | null;
+      };
+    }>;
+  },
+
   listPendingPostEventAttendance: async () => {
     const { data } = await apiClient.get('/admin/webinar-registrations/pending-attendance');
     return data as Array<{

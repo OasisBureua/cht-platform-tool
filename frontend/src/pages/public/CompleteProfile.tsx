@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardApi } from '../../api/dashboard';
-import { PROFESSION_OPTIONS } from '../../data/profession-options';
+import { PROFESSION_OPTIONS, NON_HCP_PROFESSIONS } from '../../data/profession-options';
 
 export default function CompleteProfile() {
   const navigate = useNavigate();
@@ -49,8 +49,8 @@ export default function CompleteProfile() {
       setError('Please select your profession.');
       return;
     }
-    const isPharmaceuticals = profession === 'Pharmaceuticals';
-    if (!isPharmaceuticals && npi.length !== 10) {
+    const isNonHcp = NON_HCP_PROFESSIONS.has(profession);
+    if (!isNonHcp && npi.length !== 10) {
       setError('NPI number must be 10 digits.');
       return;
     }
@@ -63,7 +63,7 @@ export default function CompleteProfile() {
     try {
       await dashboardApi.updateProfile(userId, {
         specialty: profession,
-        npiNumber: isPharmaceuticals ? undefined : (npi || undefined),
+        npiNumber: isNonHcp ? undefined : (npi || undefined),
         institution: institution.trim() || undefined,
         city: city.trim() || undefined,
         state: state.trim().toUpperCase().slice(0, 2) || undefined,
@@ -119,20 +119,26 @@ export default function CompleteProfile() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              NPI number {profession === 'Pharmaceuticals' && <span className="font-normal text-gray-500">(optional)</span>}
-            </label>
-            <input
-              type="text"
-              value={npiNumber}
-              onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-              placeholder={profession === 'Pharmaceuticals' ? 'Not required for Pharmaceuticals' : '10-digit National Provider Identifier'}
-              required={profession !== 'Pharmaceuticals'}
-              maxLength={10}
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
-            />
-          </div>
+          {profession && NON_HCP_PROFESSIONS.has(profession) && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" role="note">
+              <strong>Note:</strong> NPI number is not required for your role. Honorarium programs and payment eligibility are designed for licensed healthcare professionals. You can still access all educational content and register for events.
+            </div>
+          )}
+
+          {!NON_HCP_PROFESSIONS.has(profession) && (
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">NPI number</label>
+              <input
+                type="text"
+                value={npiNumber}
+                onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                placeholder="10-digit National Provider Identifier"
+                required
+                maxLength={10}
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-1">Institution <span className="font-normal text-gray-500">(optional)</span></label>

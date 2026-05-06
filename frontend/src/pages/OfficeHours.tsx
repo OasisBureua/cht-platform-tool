@@ -65,6 +65,11 @@ export default function OfficeHours() {
         </p>
       </header>
 
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="note">
+        <strong>Confidentiality notice:</strong> CHM Office Hours are not conducted over a HIPAA-enabled environment.
+        Please do not disclose patient-identifiable information during these sessions.
+      </div>
+
       {isLoading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-10 w-10 animate-spin text-gray-400" />

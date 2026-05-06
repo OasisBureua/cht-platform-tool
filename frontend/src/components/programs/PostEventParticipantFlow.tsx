@@ -134,9 +134,54 @@ export default function PostEventParticipantFlow(props: {
     else setPhase('done');
   };
 
+  const steps = [
+    { key: 'survey', label: 'Survey required', active: phase === 'intro' || phase === 'survey' },
+    { key: 'payout', label: hasHonorarium ? 'Payment info needed' : 'Payment info', active: phase === 'payout' },
+    { key: 'done', label: 'Complete', active: phase === 'done' },
+  ];
+  const activeStep =
+    phase === 'intro' || phase === 'survey' ? 0 : phase === 'payout' ? 1 : 2;
+
   return (
     <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
       <h2 className="text-base font-semibold text-gray-900">Post-event steps</h2>
+
+      {/* Status ladder */}
+      <ol className="flex items-center gap-0" aria-label="Post-event progress">
+        {steps.map((step, idx) => {
+          const done = idx < activeStep;
+          const current = idx === activeStep;
+          return (
+            <li key={step.key} className="flex items-center min-w-0">
+              <div className="flex flex-col items-center">
+                <div
+                  className={[
+                    'h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+                    done
+                      ? 'bg-green-600 text-white'
+                      : current
+                        ? 'bg-gray-900 text-white ring-2 ring-offset-1 ring-gray-400'
+                        : 'bg-gray-100 text-gray-400',
+                  ].join(' ')}
+                >
+                  {done ? '✓' : idx + 1}
+                </div>
+                <span
+                  className={[
+                    'mt-1 text-[11px] font-semibold text-center whitespace-nowrap',
+                    done ? 'text-green-700' : current ? 'text-gray-900' : 'text-gray-400',
+                  ].join(' ')}
+                >
+                  {step.label}
+                </span>
+              </div>
+              {idx < steps.length - 1 && (
+                <div className={['mx-2 h-px w-8 shrink-0 self-start mt-3', done ? 'bg-green-400' : 'bg-gray-200'].join(' ')} />
+              )}
+            </li>
+          );
+        })}
+      </ol>
 
       {phase === 'intro' ? (
         <>

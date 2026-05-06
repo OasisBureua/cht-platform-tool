@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
-import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
-import { Prisma, ProgramZoomSessionType } from '@prisma/client';
+import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
+import { Prisma, PostEventAttendanceStatus, ProgramZoomSessionType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
@@ -411,6 +411,40 @@ export class PaymentsService {
 
     const user = payment.user;
 
+    // For honorarium payments tied to a program, enforce the eligibility contract:
+    // attendance must be VERIFIED (or NOT_REQUIRED) AND the survey must be acknowledged.
+    if (payment.type === 'HONORARIUM' && payment.programId) {
+      const reg = await this.prisma.programRegistration.findUnique({
+        where: { userId_programId: { userId: payment.userId, programId: payment.programId } },
+        include: { program: { select: { jotformSurveyUrl: true } } },
+      });
+
+      if (!reg) {
+        throw new ForbiddenException('No matching registration found for this honorarium payment.');
+      }
+
+      const attendanceOk =
+        reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
+        reg.postEventAttendanceStatus === PostEventAttendanceStatus.NOT_REQUIRED;
+
+      if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
+        throw new ForbiddenException(
+          `Cannot pay: attendance was denied for ${user.id} on program ${payment.programId}.`,
+        );
+      }
+      if (!attendanceOk) {
+        throw new ForbiddenException(
+          `Cannot pay: attendance has not been verified for ${user.id} on program ${payment.programId}.`,
+        );
+      }
+
+      if (reg.program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {
+        throw new ForbiddenException(
+          `Cannot pay: post-event survey has not been acknowledged for ${user.id} on program ${payment.programId}.`,
+        );
+      }
+    }
+
     if (!user.billVendorId) {
       this.logger.warn(`Pay now blocked: user ${user.id} has no Bill.com vendor`);
       throw new BadRequestException(
@@ -503,6 +537,39 @@ export class PaymentsService {
 
     if (!user.billVendorId) {
       throw new BadRequestException('User does not have a Bill.com vendor account');
+    }
+
+    // Enforce eligibility contract for honorarium payouts linked to a program.
+    if (dto.programId) {
+      const reg = await this.prisma.programRegistration.findUnique({
+        where: { userId_programId: { userId: dto.userId, programId: dto.programId } },
+        include: { program: { select: { jotformSurveyUrl: true } } },
+      });
+
+      if (!reg) {
+        throw new ForbiddenException('No matching registration found for this program payout.');
+      }
+
+      const attendanceOk =
+        reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
+        reg.postEventAttendanceStatus === PostEventAttendanceStatus.NOT_REQUIRED;
+
+      if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
+        throw new ForbiddenException(
+          `Cannot pay: attendance was denied for ${dto.userId} on program ${dto.programId}.`,
+        );
+      }
+      if (!attendanceOk) {
+        throw new ForbiddenException(
+          `Cannot pay: attendance has not been verified for ${dto.userId} on program ${dto.programId}.`,
+        );
+      }
+
+      if (reg.program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {
+        throw new ForbiddenException(
+          `Cannot pay: post-event survey has not been acknowledged for ${dto.userId} on program ${dto.programId}.`,
+        );
+      }
     }
 
     const rawKey = dto.idempotencyKey?.trim();

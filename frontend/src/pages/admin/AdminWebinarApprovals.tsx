@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { adminApi } from '../../api/admin';
 import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { HCP_PROFESSIONS } from '../../data/profession-options';
 
 type AdminApprovalsTab = 'registrations' | 'attendance';
 
@@ -13,11 +14,24 @@ function displayOrNA(value: string | null | undefined): string {
   return t ? t : 'N/A';
 }
 
+function hcpLabel(specialty?: string | null): string {
+  if (!specialty) return 'N/A';
+  return HCP_PROFESSIONS.has(specialty) ? 'Yes' : 'No';
+}
+
+function hcpBadgeClass(specialty?: string | null): string {
+  if (!specialty) return 'bg-gray-100 text-gray-500';
+  return HCP_PROFESSIONS.has(specialty)
+    ? 'bg-green-50 text-green-800 border border-green-200'
+    : 'bg-amber-50 text-amber-800 border border-amber-200';
+}
+
 export default function AdminWebinarApprovals() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<AdminApprovalsTab>('registrations');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [rejectModalIds, setRejectModalIds] = useState<string[] | null>(null);
+  const [programFilter, setProgramFilter] = useState<string>('all');
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ['admin', 'webinar-registrations', 'pending'],
@@ -35,7 +49,29 @@ export default function AdminWebinarApprovals() {
     enabled: tab === 'attendance',
   });
 
-  const rowIds = useMemo(() => rows.map((r) => r.id), [rows]);
+  const programOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) seen.set(r.program.id, r.program.title);
+    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
+  const attendanceProgramOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of attendanceRows) seen.set(r.program.id, r.program.title);
+    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [attendanceRows]);
+
+  const filteredRows = useMemo(
+    () => (programFilter === 'all' ? rows : rows.filter((r) => r.program.id === programFilter)),
+    [rows, programFilter],
+  );
+
+  const filteredAttendanceRows = useMemo(
+    () => (programFilter === 'all' ? attendanceRows : attendanceRows.filter((r) => r.program.id === programFilter)),
+    [attendanceRows, programFilter],
+  );
+
+  const rowIds = useMemo(() => filteredRows.map((r) => r.id), [filteredRows]);
 
   useEffect(() => {
     setSelectedIds((prev) => {
@@ -47,14 +83,18 @@ export default function AdminWebinarApprovals() {
     });
   }, [rowIds]);
 
-  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
-  const someSelected = selectedIds.size > 0 && !allSelected;
+  const allSelected = filteredRows.length > 0 && filteredRows.every((r) => selectedIds.has(r.id));
+  const someSelected = filteredRows.some((r) => selectedIds.has(r.id)) && !allSelected;
 
   const toggleAll = () => {
     if (allSelected) {
-      setSelectedIds(new Set());
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        for (const r of filteredRows) next.delete(r.id);
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(rows.map((r) => r.id)));
+      setSelectedIds((prev) => new Set([...prev, ...filteredRows.map((r) => r.id)]));
     }
   };
 
@@ -127,7 +167,7 @@ export default function AdminWebinarApprovals() {
 
   const busy =
     approveMut.isPending || rejectMut.isPending || bulkMut.isPending || attendanceMut.isPending;
-  const selectedList = rows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
+  const selectedList = filteredRows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
@@ -175,6 +215,29 @@ export default function AdminWebinarApprovals() {
             can unlock.
           </p>
         ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <label className="text-sm font-semibold text-gray-700 shrink-0">Filter by program:</label>
+          <select
+            value={programFilter}
+            onChange={(e) => { setProgramFilter(e.target.value); setSelectedIds(new Set()); }}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          >
+            <option value="all">All programs</option>
+            {(tab === 'registrations' ? programOptions : attendanceProgramOptions).map(([id, title]) => (
+              <option key={id} value={id}>{title}</option>
+            ))}
+          </select>
+          {programFilter !== 'all' && (
+            <button
+              type="button"
+              onClick={() => { setProgramFilter('all'); setSelectedIds(new Set()); }}
+              className="text-xs font-semibold text-gray-500 underline hover:text-gray-800"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {tab === 'registrations' && isLoading ? (
@@ -201,7 +264,7 @@ export default function AdminWebinarApprovals() {
         </div>
       ) : null}
 
-      {tab === 'registrations' && !isLoading && !isError && rows.length > 0 ? (
+      {tab === 'registrations' && !isLoading && !isError && filteredRows.length > 0 ? (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
           <span className="text-sm text-gray-700">
             {selectedIds.size === 0 ? 'Select rows below, or use Select all.' : `${selectedIds.size} selected`}
@@ -243,13 +306,14 @@ export default function AdminWebinarApprovals() {
                 <th className="py-3 px-4">Program</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4">HCP</th>
                 <th className="py-3 px-4">Hospital</th>
                 <th className="py-3 px-4">City</th>
                 <th className="py-3 px-4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {attendanceRows.map((r) => (
+              {filteredAttendanceRows.map((r) => (
                 <tr key={r.id}>
                   <td className="py-3 px-4">
                     <span className="font-medium text-gray-900">{r.program.title}</span>
@@ -268,6 +332,12 @@ export default function AdminWebinarApprovals() {
                   <td className="py-3 px-4">
                     {r.user.firstName} {r.user.lastName}
                     <div className="text-xs text-gray-500">{r.user.email}</div>
+                    {r.user.specialty && <div className="text-xs text-gray-400">{r.user.specialty}</div>}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${hcpBadgeClass(r.user.specialty)}`}>
+                      {hcpLabel(r.user.specialty)}
+                    </span>
                   </td>
                   <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.institution)}</td>
                   <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.city)}</td>
@@ -295,8 +365,10 @@ export default function AdminWebinarApprovals() {
               ))}
             </tbody>
           </table>
-          {attendanceRows.length === 0 && (
-            <p className="text-sm text-gray-500 px-4 py-8 text-center">No registrations waiting for attendance verification.</p>
+          {filteredAttendanceRows.length === 0 && (
+            <p className="text-sm text-gray-500 px-4 py-8 text-center">
+              {programFilter !== 'all' ? 'No attendance records for the selected program.' : 'No registrations waiting for attendance verification.'}
+            </p>
           )}
         </div>
       ) : null}
@@ -315,13 +387,14 @@ export default function AdminWebinarApprovals() {
                     if (el) el.indeterminate = someSelected;
                   }}
                   onChange={toggleAll}
-                  disabled={rows.length === 0 || busy}
+                  disabled={filteredRows.length === 0 || busy}
                   aria-label="Select all pending registrations"
                 />
               </th>
               <th className="py-3 px-4">Program</th>
               <th className="py-3 px-4">Type</th>
               <th className="py-3 px-4">User</th>
+              <th className="py-3 px-4">HCP</th>
               <th className="py-3 px-4">Hospital</th>
               <th className="py-3 px-4">City</th>
               <th className="py-3 px-4">Last submitted</th>
@@ -329,7 +402,7 @@ export default function AdminWebinarApprovals() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {rows.map((r) => (
+            {filteredRows.map((r) => (
               <tr key={r.id}>
                 <td className="py-3 pl-4 pr-2">
                   <input
@@ -358,6 +431,12 @@ export default function AdminWebinarApprovals() {
                 <td className="py-3 px-4">
                   {r.user.firstName} {r.user.lastName}
                   <div className="text-xs text-gray-500">{r.user.email}</div>
+                  {r.user.specialty && <div className="text-xs text-gray-400">{r.user.specialty}</div>}
+                </td>
+                <td className="py-3 px-4">
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${hcpBadgeClass(r.user.specialty)}`}>
+                    {hcpLabel(r.user.specialty)}
+                  </span>
                 </td>
                 <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.institution)}</td>
                 <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.city)}</td>
@@ -388,8 +467,10 @@ export default function AdminWebinarApprovals() {
             ))}
           </tbody>
         </table>
-        {rows.length === 0 && (
-          <p className="text-sm text-gray-500 px-4 py-8 text-center">No pending registrations.</p>
+        {filteredRows.length === 0 && (
+          <p className="text-sm text-gray-500 px-4 py-8 text-center">
+            {programFilter !== 'all' ? 'No pending registrations for the selected program.' : 'No pending registrations.'}
+          </p>
         )}
       </div>
       ) : null}

@@ -9,7 +9,7 @@ import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
 import { getApiErrorMessage } from '../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { PROFESSION_OPTIONS } from '../data/profession-options';
+import { PROFESSION_OPTIONS, NON_HCP_PROFESSIONS } from '../data/profession-options';
 import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
 
 function getInitials(name: string, email?: string): string {
@@ -92,9 +92,9 @@ export default function Settings() {
         return;
       }
       const npi = npiNumber.replace(/\D/g, '');
-      const isPharmaceuticals = specialty === 'Pharmaceuticals';
-      if (!isPharmaceuticals && npi.length !== 10) {
-        setSaveError('NPI number must be 10 digits (or choose Pharmaceuticals if it does not apply).');
+      const isNonHcp = NON_HCP_PROFESSIONS.has(specialty);
+      if (!isNonHcp && npi.length !== 10) {
+        setSaveError('NPI number must be 10 digits (required for licensed healthcare professionals).');
         setSaving(false);
         return;
       }
@@ -109,7 +109,7 @@ export default function Settings() {
         lastName: lastName.trim(),
         specialty: specialty.trim(),
         // Sending '' for Pharma without 10-digit NPI clears any previous NPI (backend stores null).
-        npiNumber: isPharmaceuticals ? (npi.length === 10 ? npi : '') : npi,
+        npiNumber: isNonHcp ? (npi.length === 10 ? npi : '') : npi,
         institution: institution.trim() || undefined,
         city: city.trim() || undefined,
         state: state.trim().toUpperCase().slice(0, 2) || undefined,
@@ -234,11 +234,16 @@ export default function Settings() {
                 </select>
                 <p className="mt-0.5 text-xs text-gray-500">Used as your professional role for eligibility and payments</p>
               </div>
+              {specialty && NON_HCP_PROFESSIONS.has(specialty) && (
+                <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-900" role="note">
+                  <strong>Note:</strong> NPI number is not required for your role. Honorarium programs are designed for licensed healthcare professionals. You can still access all content and sessions.
+                </div>
+              )}
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-gray-700 mb-1">
                   NPI number{' '}
-                  {specialty === 'Pharmaceuticals' && (
-                    <span className="font-normal text-gray-500">(optional for Pharmaceuticals)</span>
+                  {specialty && NON_HCP_PROFESSIONS.has(specialty) && (
+                    <span className="font-normal text-gray-500">(optional for your role)</span>
                   )}
                 </label>
                 <input
@@ -248,7 +253,7 @@ export default function Settings() {
                   value={npiNumber}
                   onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                   placeholder={
-                    specialty === 'Pharmaceuticals'
+                    specialty && NON_HCP_PROFESSIONS.has(specialty)
                       ? 'Optional 10-digit NPI if applicable'
                       : '10-digit National Provider Identifier'
                   }

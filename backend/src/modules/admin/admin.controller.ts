@@ -809,6 +809,25 @@ export class AdminController {
     });
   }
 
+  @Get('webinar-registrations/payment-eligible')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Registrations where attendance is verified + survey complete + honorarium set, but payment not yet requested.',
+  })
+  async listPaymentEligibleNotYetRequested() {
+    const rows = await this.programRegistrations.listPaymentEligibleNotYetRequestedForAdmin();
+    return rows.map((r) => ({
+      id: r.id,
+      postEventSurveyAcknowledgedAt: r.postEventSurveyAcknowledgedAt?.toISOString(),
+      createdAt: r.createdAt.toISOString(),
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
   @Get('webinar-registrations/pending-attendance')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

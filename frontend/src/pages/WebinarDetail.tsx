@@ -419,18 +419,31 @@ export default function WebinarDetail() {
       {showJoinSessionCard ? (
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
           <h2 className="text-base font-semibold text-gray-900">Live webinar</h2>
-          <p className="text-sm text-gray-600">
-            {registrationPendingApproval && !enrolled ? (
-              <>
-                Your join link is shown below so you know what to expect. It stays inactive until an administrator
-                approves your registration—then you can open Zoom as usual (browser or app).
-              </>
-            ) : (
-              <>
-                Use <strong>Join session</strong> to open Zoom the usual way (browser or Zoom app).
-              </>
-            )}
-          </p>
+
+          {registrationPendingApproval && !enrolled ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-amber-400 flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-amber-900">Registration submitted — pending approval</p>
+                  <p className="mt-0.5 text-sm text-amber-800">
+                    Your request has been received. An administrator will review it shortly. Your join link will activate here automatically after approval.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : enrolled ? (
+            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <svg className="h-5 w-5 shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                <p className="text-sm font-semibold text-green-900">You&apos;re registered and approved — use <strong>Join session</strong> when it&apos;s time.</p>
+              </div>
+            </div>
+          ) : null}
           {program.zoomJoinUrl?.trim() ? (
             enrolled ? (
               <a

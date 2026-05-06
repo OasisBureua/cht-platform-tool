@@ -864,11 +864,15 @@ export class ProgramRegistrationsService {
     if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
       throw new ForbiddenException('Your registration must be approved.');
     }
-    if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.PENDING_VERIFICATION) {
-      throw new BadRequestException('Attendance must be verified before requesting payment.');
-    }
+    const attendanceEligible =
+      reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
+      reg.postEventAttendanceStatus === PostEventAttendanceStatus.NOT_REQUIRED;
+
     if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
       throw new ForbiddenException('Attendance was not verified for this session.');
+    }
+    if (!attendanceEligible) {
+      throw new BadRequestException('Attendance must be verified before requesting payment.');
     }
 
     if (reg.honorariumRequestedAt) {
@@ -1018,6 +1022,49 @@ export class ProgramRegistrationsService {
         },
       },
       orderBy: { updatedAt: 'asc' },
+    });
+  }
+
+  /**
+   * Registrations that are APPROVED, attendance VERIFIED, survey acknowledged,
+   * and have a program honorarium — but the user has not yet requested payment.
+   * Used by the admin payments panel to surface actionable follow-up items.
+   */
+  async listPaymentEligibleNotYetRequestedForAdmin() {
+    return this.prisma.programRegistration.findMany({
+      where: {
+        status: ProgramRegistrationStatus.APPROVED,
+        postEventAttendanceStatus: PostEventAttendanceStatus.VERIFIED,
+        postEventSurveyAcknowledgedAt: { not: null },
+        honorariumRequestedAt: null,
+        program: {
+          honorariumAmount: { gt: 0 },
+          status: 'PUBLISHED',
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            institution: true,
+            city: true,
+          },
+        },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            honorariumAmount: true,
+            zoomSessionType: true,
+            startDate: true,
+          },
+        },
+      },
+      orderBy: { postEventSurveyAcknowledgedAt: 'asc' },
     });
   }
 
