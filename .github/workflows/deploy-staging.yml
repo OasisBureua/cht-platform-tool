@@ -1,9 +1,9 @@
-name: Deploy to Development
+name: Deploy to Staging
 
 on:
   push:
     branches:
-      - main
+      - staging
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -20,10 +20,10 @@ permissions:
 
 jobs:
   deploy:
-    name: Deploy to Development
+    name: Deploy to Staging
     runs-on: ubuntu-latest
-    environment: development
-    
+    environment: staging
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,7 +42,7 @@ jobs:
         id: meta
         run: |
           SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          IMAGE_TAG="dev-${SHORT_SHA}-$(date +%s)"
+          IMAGE_TAG="staging-${SHORT_SHA}-$(date +%s)"
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "Building with tag: ${IMAGE_TAG}"
 
@@ -56,19 +56,18 @@ jobs:
           push: true
           tags: |
             ${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}
-            ${{ env.ECR_REGISTRY }}/cht-platform-backend:dev-latest
+            ${{ env.ECR_REGISTRY }}/cht-platform-backend:staging-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Build and push worker image
-        id: worker
         uses: docker/build-push-action@v5
         with:
           context: ./worker
           push: true
           tags: |
             ${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}
-            ${{ env.ECR_REGISTRY }}/cht-platform-worker:dev-latest
+            ${{ env.ECR_REGISTRY }}/cht-platform-worker:staging-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -78,30 +77,43 @@ jobs:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform Init
-        working-directory: infrastructure/terraform/environments/us-east-1
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
         run: terraform init
 
       - name: Terraform Apply
-        working-directory: infrastructure/terraform/environments/us-east-1
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
         run: |
           terraform apply \
-            -var-file="../variables/dev.tfvars" \
+            -var-file="../variables/staging.tfvars" \
             -var="backend_image=${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}" \
-            -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker@${{ steps.worker.outputs.digest }}" \
+            -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}" \
             -auto-approve
         env:
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
           TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
-          TF_VAR_auth0_domain: ${{ secrets.AUTH0_DOMAIN }}
-          TF_VAR_auth0_client_id: ${{ secrets.AUTH0_CLIENT_ID }}
-          TF_VAR_auth0_audience: ${{ secrets.AUTH0_AUDIENCE }}
+          TF_VAR_supabase_url: ${{ secrets.SUPABASE_URL }}
+          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
+          TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
+          TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
+          TF_VAR_youtube_api_key: ${{ secrets.YOUTUBE_API_KEY }}
+          TF_VAR_youtube_playlist_ids: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
           TF_VAR_zoom_account_id: ${{ secrets.ZOOM_ACCOUNT_ID }}
           TF_VAR_zoom_client_id: ${{ secrets.ZOOM_CLIENT_ID }}
           TF_VAR_zoom_client_secret: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          TF_VAR_zoom_webhook_secret: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
+          TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
+          TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
+          TF_VAR_bill_password: ${{ secrets.BILL_PASSWORD }}
+          TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
+          TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
+          TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
+          TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
 
       - name: Get Terraform outputs
         id: outputs
-        working-directory: infrastructure/terraform/environments/us-east-1
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
         run: |
           echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
@@ -119,11 +131,10 @@ jobs:
           npm ci
           npm run build
         env:
-          VITE_API_URL: https://api.communityhealth.media/api
-          VITE_APP_URL: https://testapp.communityhealth.media
-          VITE_AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
-          VITE_AUTH0_CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
-          VITE_AUTH0_AUDIENCE: ${{ secrets.AUTH0_AUDIENCE }}
+          VITE_API_URL: https://staging.testapp.communityhealth.media/api
+          VITE_APP_URL: https://staging.testapp.communityhealth.media
+          VITE_SUPABASE_URL: https://mediahub.communityhealth.media
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload to S3
         working-directory: ./frontend
@@ -132,7 +143,7 @@ jobs:
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html"
-          
+
           aws s3 cp dist/index.html s3://${{ steps.outputs.outputs.frontend_bucket }}/index.html \
             --cache-control "public, max-age=0, must-revalidate"
 
@@ -146,14 +157,14 @@ jobs:
         run: |
           echo "Waiting for deployment to stabilize..."
           sleep 30
-          
-          curl -f https://api.communityhealth.media/health/ready || exit 1
-          echo "✅ Development deployment successful!"
+
+          curl -f https://staging.testapp.communityhealth.media/health/ready || exit 1
+          echo "✅ Staging deployment successful!"
 
       - name: Deployment Summary
         run: |
-          echo "🎉 Deployment Complete!"
+          echo "🎉 Staging Deployment Complete!"
           echo ""
-          echo "Frontend: https://testapp.communityhealth.media"
-          echo "Backend: https://api.communityhealth.media"
+          echo "Frontend: https://staging.testapp.communityhealth.media"
+          echo "API:      https://staging.testapp.communityhealth.media/api"
           echo "Image Tag: ${{ steps.meta.outputs.image_tag }}"

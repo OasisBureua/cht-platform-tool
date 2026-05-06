@@ -156,7 +156,8 @@ From `infrastructure/terraform`, the helper script passes the same var file when
 
 Sensitive values can be set via environment variables:
 ```bash
-export TF_VAR_stripe_secret_key="sk_test_..."
+export TF_VAR_gotrue_jwt_secret="..."
+export TF_VAR_bill_dev_key="..."
 # Email via Amazon SES - worker uses IAM role, verify domain in SES
 ```
 

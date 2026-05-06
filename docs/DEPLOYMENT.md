@@ -103,7 +103,7 @@ acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/..."
 domain_aliases = ["app.example.com"]
 
 # Secrets (or use environment variables)
-stripe_secret_key = "sk_test_..."
+# Set bill_dev_key, gotrue_jwt_secret, etc. via TF_VAR_* or fill from secrets file
 # Email via Amazon SES - verify domain in SES, worker uses IAM role
 ```
 
