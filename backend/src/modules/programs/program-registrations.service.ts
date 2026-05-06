@@ -966,7 +966,13 @@ export class ProgramRegistrationsService {
     if (status !== 'VERIFIED' && status !== 'DENIED') {
       throw new BadRequestException('status must be VERIFIED or DENIED');
     }
-    const reg = await this.prisma.programRegistration.findUnique({ where: { id: registrationId } });
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { id: registrationId },
+      include: {
+        user: { select: { email: true, firstName: true } },
+        program: { select: { id: true, title: true, description: true, startDate: true, sponsorName: true } },
+      },
+    });
     if (!reg) throw new NotFoundException('Registration not found');
     if (reg.status !== ProgramRegistrationStatus.APPROVED) {
       throw new BadRequestException('Registration must be approved first.');
@@ -979,7 +985,7 @@ export class ProgramRegistrationsService {
         ? PostEventAttendanceStatus.VERIFIED
         : PostEventAttendanceStatus.DENIED;
 
-    return this.prisma.programRegistration.update({
+    const updated = await this.prisma.programRegistration.update({
       where: { id: registrationId },
       data: {
         postEventAttendanceStatus: next,
@@ -987,6 +993,28 @@ export class ProgramRegistrationsService {
         postEventAttendanceReviewedByUserId: adminUserId,
       },
     });
+
+    if (status === 'DENIED' && reg.user?.email) {
+      this.sesEmail
+        .sendMissedWebinarEmail({
+          to: reg.user.email,
+          firstName: reg.user.firstName ?? '',
+          program: {
+            id: reg.program.id,
+            title: reg.program.title,
+            description: reg.program.description,
+            startDate: reg.program.startDate,
+            sponsorName: reg.program.sponsorName,
+          },
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `Failed to send missed-webinar email for registration ${registrationId}: ${err.message}`,
+          ),
+        );
+    }
+
+    return updated;
   }
 
   async listPendingPostEventAttendanceForAdmin() {
