@@ -33,6 +33,7 @@ export interface WebinarItem {
   /** Present when sourced from our DB - distinguishes CME webinars vs Zoom Meeting office hours. */
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
+  hostBio?: string;
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
   /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
@@ -104,6 +105,7 @@ export class WebinarsService {
         source: 'program',
         sessionKind: 'WEBINAR',
         hostDisplayName: p.hostDisplayName || undefined,
+        hostBio: p.hostBio || undefined,
         jotformIntakeFormUrl:
           effectiveWebinarIntakeFormUrl(p.zoomSessionType, p.jotformIntakeFormUrl, defaultIntake) || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
@@ -176,6 +178,7 @@ export class WebinarsService {
         source: 'program',
         sessionKind: 'MEETING',
         hostDisplayName: p.hostDisplayName || undefined,
+        hostBio: p.hostBio || undefined,
         jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
         honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
@@ -226,6 +229,7 @@ export class WebinarsService {
       source: 'program',
       sessionKind: 'WEBINAR',
       hostDisplayName: program.hostDisplayName || undefined,
+      hostBio: program.hostBio || undefined,
       jotformIntakeFormUrl:
         effectiveWebinarIntakeFormUrl(program.zoomSessionType, program.jotformIntakeFormUrl, defaultIntake) ||
         undefined,
@@ -259,6 +263,7 @@ export class WebinarsService {
       source: 'program',
       sessionKind: 'MEETING',
       hostDisplayName: program.hostDisplayName || undefined,
+      hostBio: program.hostBio || undefined,
       jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,

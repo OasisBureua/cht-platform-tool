@@ -68,6 +68,8 @@ export class ProgramsService {
     zoomSessionType?: 'WEBINAR' | 'MEETING';
     registrationRequiresApproval?: boolean;
     jotformIntakeFormUrl?: string | null;
+    hostDisplayName?: string;
+    hostBio?: string;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -89,10 +91,10 @@ export class ProgramsService {
         ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
         registrationRequiresApproval: dto.registrationRequiresApproval ?? true,
         ...(dto.jotformIntakeFormUrl !== undefined && dto.jotformIntakeFormUrl !== null
-          ? {
-              jotformIntakeFormUrl: dto.jotformIntakeFormUrl?.trim() || null,
-            }
+          ? { jotformIntakeFormUrl: dto.jotformIntakeFormUrl?.trim() || null }
           : {}),
+        ...(dto.hostDisplayName ? { hostDisplayName: dto.hostDisplayName.trim() } : {}),
+        ...(dto.hostBio ? { hostBio: dto.hostBio.trim() } : {}),
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);
@@ -226,6 +228,7 @@ export class ProgramsService {
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,
+      hostBio: program.hostBio || undefined,
       ...(opts?.includeZoomHostLink && program.zoomStartUrl?.trim()
         ? { zoomStartUrl: program.zoomStartUrl.trim() }
         : {}),

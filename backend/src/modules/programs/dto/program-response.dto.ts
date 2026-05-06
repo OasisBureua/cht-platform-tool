@@ -108,4 +108,8 @@ export class ProgramResponseDto {
   @IsString()
   @IsOptional()
   hostDisplayName?: string;
+
+  @IsString()
+  @IsOptional()
+  hostBio?: string;
 }

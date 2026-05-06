@@ -40,6 +40,7 @@ export interface Program {
   jotformPreEventUrl?: string;
   registrationRequiresApproval?: boolean;
   hostDisplayName?: string;
+  hostBio?: string;
 }
 
 export interface OfficeHoursSlotOption {

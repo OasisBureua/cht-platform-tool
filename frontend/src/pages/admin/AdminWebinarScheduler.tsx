@@ -154,21 +154,26 @@ export default function AdminWebinarScheduler({
       return;
     }
 
-    let fullDescription = description.trim();
-    const kolLines = kols
+    const primaryKol = kols[0];
+    const primaryKolName = primaryKol?.name.trim() || '';
+    const primaryKolBio = primaryKol?.bio.trim() || '';
+
+    // Additional KOLs (2nd+) get appended to description so they still surface in the UI.
+    const extraKolLines = kols
+      .slice(1)
       .filter((k) => k.name.trim())
       .map((k) => (k.bio.trim() ? `${k.name.trim()} — ${k.bio.trim()}` : k.name.trim()));
-    if (kolLines.length > 0) {
-      fullDescription += `\n\n${kolLines.length === 1 ? 'Speaker' : 'Speakers'}: ${kolLines.join('; ')}`;
+    let fullDescription = description.trim();
+    if (extraKolLines.length > 0) {
+      fullDescription += `\n\nAdditional speakers: ${extraKolLines.join('; ')}`;
     }
-
-    const primaryKolName = kols[0]?.name.trim() || '';
 
     const payload: CreateWebinarPayload = {
       title: title.trim(),
       description: fullDescription || title.trim(),
       sponsorName: sponsorName.trim() || 'General',
       ...(primaryKolName ? { hostDisplayName: primaryKolName } : {}),
+      ...(primaryKolBio ? { hostBio: primaryKolBio } : {}),
       startDate: startUtcIso,
       duration: durationNum,
       timezone,

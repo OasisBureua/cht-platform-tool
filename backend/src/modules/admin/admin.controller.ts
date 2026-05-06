@@ -506,6 +506,10 @@ export class AdminController {
       jotformIntakeFormUrl?: string;
       /** WEBINAR only. Dollars (e.g. 250 = $250); stored as cents on Program. */
       honorariumAmount?: number;
+      /** Primary speaker / KOL display name. */
+      hostDisplayName?: string;
+      /** Short speaker bio shown on the program detail page. */
+      hostBio?: string;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -584,6 +588,8 @@ export class AdminController {
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
+      ...(body.hostDisplayName?.trim() ? { hostDisplayName: body.hostDisplayName.trim() } : {}),
+      ...(body.hostBio?.trim() ? { hostBio: body.hostBio.trim() } : {}),
       ...(sessionType === 'WEBINAR' &&
       body.honorariumAmount != null &&
       body.honorariumAmount > 0
@@ -761,6 +767,7 @@ export class AdminController {
       jotformIntakeFormUrl?: string | null;
       jotformPreEventUrl?: string | null;
       hostDisplayName?: string | null;
+      hostBio?: string | null;
       registrationRequiresApproval?: boolean;
     },
   ) {
@@ -770,6 +777,7 @@ export class AdminController {
     if (body.jotformIntakeFormUrl !== undefined) data.jotformIntakeFormUrl = body.jotformIntakeFormUrl;
     if (body.jotformPreEventUrl !== undefined) data.jotformPreEventUrl = body.jotformPreEventUrl;
     if (body.hostDisplayName !== undefined) data.hostDisplayName = body.hostDisplayName;
+    if (body.hostBio !== undefined) data.hostBio = body.hostBio;
     if (body.registrationRequiresApproval !== undefined) {
       data.registrationRequiresApproval = body.registrationRequiresApproval;
     }

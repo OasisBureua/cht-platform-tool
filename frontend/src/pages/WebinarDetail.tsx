@@ -15,12 +15,37 @@ import {
   Circle,
   ExternalLink,
   Video,
+  Calendar,
+  Clock,
+  User,
 } from 'lucide-react';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
   return `$${value.toLocaleString()}`;
+}
+
+function formatEventDate(iso?: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatEventTime(iso?: string | null) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+}
+
+function humanStatus(status: string) {
+  const map: Record<string, string> = {
+    PUBLISHED: 'Published',
+    DRAFT: 'Draft',
+    ARCHIVED: 'Archived',
+    COMPLETED: 'Completed',
+  };
+  return map[status] ?? status;
 }
 
 export default function WebinarDetail() {
@@ -317,45 +342,79 @@ export default function WebinarDetail() {
       {/* Header / Overview */}
       <section className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-3 min-w-0">
-            <p className="text-sm font-semibold text-gray-900">{program.title}</p>
+          <div className="space-y-4 min-w-0">
 
-            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-              {program.description}
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
-              {program.sponsorName && (
-                <span className="font-medium">{program.sponsorName}</span>
-              )}
-
-              {program.creditAmount > 0 ? (
-                <span className="inline-flex items-center gap-1">
-                  <Award className="h-4 w-4" />
-                  {program.creditAmount} CME Credits
-                </span>
-              ) : null}
-
-              {program.honorariumAmount ? (
-                <span className="inline-flex items-center gap-1 font-semibold text-gray-900">
-                  <DollarSign className="h-4 w-4" />
-                  {formatMoney(program.honorariumAmount)} honorarium
+            {/* Status chips */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2.5 py-1">
+                Live
+              </span>
+              <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
+                {humanStatus(program.status)}
+              </span>
+              {program.accreditationBody ? (
+                <span className="text-xs font-medium text-gray-600 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
+                  {program.accreditationBody}
                 </span>
               ) : null}
             </div>
 
+            {/* Title */}
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+              {program.title}
+            </h1>
+
+            {/* Description */}
+            {program.description ? (
+              <p className="text-base text-gray-700 leading-relaxed">{program.description}</p>
+            ) : null}
+
+            {/* Speaker / Host */}
+            {program.hostDisplayName ? (
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 shrink-0 text-gray-400" />
+                  <span className="text-sm text-gray-500 font-medium">Speaker</span>
+                  <span className="text-sm font-semibold text-gray-900">{program.hostDisplayName}</span>
+                </div>
+                {program.hostBio ? (
+                  <p className="pl-6 text-sm text-gray-600">{program.hostBio}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {/* Date / time */}
+            {program.startDate ? (
+              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar className="h-4 w-4 shrink-0 text-gray-400" />
+                  {formatEventDate(program.startDate)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="h-4 w-4 shrink-0 text-gray-400" />
+                  {formatEventTime(program.startDate)}
+                  {program.duration ? <span className="text-gray-400">· {program.duration} min</span> : null}
+                </span>
+              </div>
+            ) : null}
+
+            {/* Reward / sponsor chips */}
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-                Live
-              </span>
-
-              <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-                {program.status}
-              </span>
-
-              {program.accreditationBody ? (
-                <span className="text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2 py-1">
-                  {program.accreditationBody}
+              {program.sponsorName ? (
+                <span className="text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
+                  {program.sponsorName}
+                </span>
+              ) : null}
+              {program.creditAmount > 0 ? (
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
+                  <Award className="h-3.5 w-3.5" />
+                  {program.creditAmount} CME Credits
+                </span>
+              ) : null}
+              {program.honorariumAmount ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  {formatMoney(program.honorariumAmount)} honorarium
                 </span>
               ) : null}
             </div>

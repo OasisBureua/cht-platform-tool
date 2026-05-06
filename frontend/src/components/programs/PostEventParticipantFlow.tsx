@@ -5,6 +5,25 @@ import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActio
 
 type Phase = 'intro' | 'survey' | 'payout' | 'done';
 
+/** Persists across refresh: user clicked Continue for this program and is committed to the flow. */
+function flowStartedKey(programId: string) {
+  return `post-event-flow-started:${programId}`;
+}
+
+function readFlowStarted(programId: string): boolean {
+  try {
+    return localStorage.getItem(flowStartedKey(programId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeFlowStarted(programId: string) {
+  try {
+    localStorage.setItem(flowStartedKey(programId), '1');
+  } catch {}
+}
+
 export default function PostEventParticipantFlow(props: {
   program: Pick<
     Program,
@@ -24,6 +43,7 @@ export default function PostEventParticipantFlow(props: {
 }) {
   const { program, userId, enrolled, myRegistration, onPostEventNavLockChange } = props;
   const [phase, setPhase] = useState<Phase>('intro');
+  const [flowStarted, setFlowStarted] = useState(() => readFlowStarted(program.id));
 
   const hasSurvey = !!program.jotformSurveyUrl?.trim();
   const hasHonorarium = !!program.honorariumAmount && program.honorariumAmount > 0;
@@ -60,6 +80,7 @@ export default function PostEventParticipantFlow(props: {
 
   useEffect(() => {
     setPhase('intro');
+    setFlowStarted(readFlowStarted(program.id));
   }, [program.id]);
 
   // Resume from server (e.g. refresh) when sitting at intro.
@@ -68,7 +89,14 @@ export default function PostEventParticipantFlow(props: {
     if (phase !== 'intro') return;
     const ack = !!myRegistration.postEventSurveyAcknowledgedAt;
     const req = !!myRegistration.honorariumRequestedAt;
-    if (hasSurvey && !ack) return;
+
+    if (hasSurvey && !ack) {
+      // User already clicked Continue in a previous session — skip the intro gating screen
+      // and drop them back into the survey so they can complete it.
+      if (flowStarted) setPhase('survey');
+      return;
+    }
+
     if (hasHonorarium) {
       if (req || myRegistration.honorariumPayment) {
         setPhase('done');
@@ -78,7 +106,7 @@ export default function PostEventParticipantFlow(props: {
     } else if (ack) {
       setPhase('done');
     }
-  }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id]);
+  }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id, flowStarted]);
 
   /** Refresh mid-flow: survey already saved server-side → advance to payout or done. */
   useEffect(() => {
@@ -129,14 +157,27 @@ export default function PostEventParticipantFlow(props: {
   }
 
   const begin = () => {
+    writeFlowStarted(program.id);
+    setFlowStarted(true);
     if (hasSurvey) setPhase('survey');
     else if (hasHonorarium) setPhase('payout');
     else setPhase('done');
   };
 
+  const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
+  const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
+
+  const surveyStepLabel = hasSurvey
+    ? surveyAcked
+      ? 'Survey complete'
+      : flowStarted && phase === 'survey'
+        ? 'Survey pending'
+        : 'Survey required'
+    : 'Survey required';
+
   const steps = [
-    { key: 'survey', label: 'Survey required', active: phase === 'intro' || phase === 'survey' },
-    { key: 'payout', label: hasHonorarium ? 'Payment info needed' : 'Payment info', active: phase === 'payout' },
+    { key: 'survey', label: surveyStepLabel, active: phase === 'intro' || phase === 'survey' },
+    { key: 'payout', label: hasHonorarium ? (honorariumDone ? 'Payment submitted' : 'Payment info needed') : 'Payment info', active: phase === 'payout' },
     { key: 'done', label: 'Complete', active: phase === 'done' },
   ];
   const activeStep =

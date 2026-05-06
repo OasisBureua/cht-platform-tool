@@ -98,6 +98,7 @@ module "rds" {
   allowed_security_groups = [module.ecs_backend.security_group_id, aws_security_group.worker.id]
   kms_key_arn             = module.kms.rds_kms_key_arn
   instance_class          = var.rds_instance_class
+  engine_version          = var.rds_engine_version
   allocated_storage       = var.rds_allocated_storage
   multi_az                = var.rds_multi_az
   backup_retention_period = var.rds_backup_retention

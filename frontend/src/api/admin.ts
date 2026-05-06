@@ -60,6 +60,10 @@ export interface CreateWebinarPayload {
    * Optional. Honorarium in USD for learners (paid via Bill.com after post-event flow). WEBINAR only.
    */
   honorariumAmount?: number;
+  /** Primary speaker / KOL display name. */
+  hostDisplayName?: string;
+  /** Short speaker bio shown on the program detail page. */
+  hostBio?: string;
 }
 
 export interface UpdateWebinarPayload {

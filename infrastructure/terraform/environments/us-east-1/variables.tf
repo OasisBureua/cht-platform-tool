@@ -30,6 +30,12 @@ variable "rds_instance_class" {
   type        = string
 }
 
+variable "rds_engine_version" {
+  description = "PostgreSQL engine version — must match or exceed the version currently running in AWS (downgrades are not allowed)"
+  type        = string
+  default     = "15.17"
+}
+
 variable "rds_allocated_storage" {
   description = "RDS allocated storage (GB)"
   type        = number

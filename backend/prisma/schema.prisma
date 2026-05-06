@@ -133,6 +133,8 @@ model Program {
   jotformPreEventUrl   String?
   /// KOL / host display name for office hours marketing ("Get time with …")
   hostDisplayName      String?
+  /// Short speaker bio shown on the webinar/office-hours detail page
+  hostBio              String?
   /// When true, users submit registration; admin approves before enrollment (webinars and office hours).
   registrationRequiresApproval Boolean @default(false)
   
