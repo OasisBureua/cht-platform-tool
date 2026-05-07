@@ -227,6 +227,14 @@ export default function AdminProgramHub() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'form-links'] }),
   });
 
+  const attendanceMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: 'VERIFIED' | 'DENIED' }) =>
+      adminApi.updatePostEventAttendance(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
+    },
+  });
+
   const downloadIcs = async (registrationId: string) => {
     const blob = await adminApi.downloadRegistrationIcsBlob(registrationId);
     const url = URL.createObjectURL(blob);
@@ -666,6 +674,7 @@ export default function AdminProgramHub() {
                         <th className="py-2 pr-4">User</th>
                         <th className="py-2 pr-4">Status</th>
                         <th className="py-2 pr-4">Intake survey</th>
+                        <th className="py-2 pr-4">Attendance</th>
                         <th className="py-2 pr-4">Post-event survey</th>
                         <th className="py-2 pr-4">Survey acknowledged</th>
                       </tr>
@@ -674,6 +683,8 @@ export default function AdminProgramHub() {
                       {registrations.map((r) => {
                         const intakeRequired = r.intakeRequired ?? false;
                         const intakeOk = r.intakeComplete ?? false;
+                        const att = r.postEventAttendanceStatus;
+                        const attBusy = attendanceMut.isPending && attendanceMut.variables?.id === r.id;
                         return (
                           <tr key={r.id}>
                             <td className="py-2 pr-4">
@@ -694,6 +705,52 @@ export default function AdminProgramHub() {
                                     View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
                                   </a>
                                 ) : null}
+                              </div>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <div className="space-y-1.5">
+                                <span
+                                  className={[
+                                    'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                    att === 'VERIFIED'
+                                      ? 'bg-green-100 text-green-800'
+                                      : att === 'DENIED'
+                                        ? 'bg-red-100 text-red-800'
+                                        : att === 'PENDING_VERIFICATION'
+                                          ? 'bg-amber-50 text-amber-800'
+                                          : 'bg-gray-100 text-gray-500',
+                                  ].join(' ')}
+                                >
+                                  {att === 'VERIFIED'
+                                    ? 'Verified'
+                                    : att === 'DENIED'
+                                      ? 'Denied'
+                                      : att === 'PENDING_VERIFICATION'
+                                        ? 'Pending'
+                                        : '—'}
+                                </span>
+                                {r.status === 'APPROVED' && att !== 'VERIFIED' && (
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={attBusy}
+                                      onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
+                                      className="rounded bg-green-700 px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40 hover:bg-green-800"
+                                    >
+                                      Verify
+                                    </button>
+                                    {att !== 'DENIED' && (
+                                      <button
+                                        type="button"
+                                        disabled={attBusy}
+                                        onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
+                                        className="rounded border border-gray-300 px-2 py-0.5 text-[11px] font-semibold text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+                                      >
+                                        Deny
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="py-2 pr-4 text-gray-600">

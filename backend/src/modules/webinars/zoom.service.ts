@@ -335,6 +335,39 @@ export class ZoomService implements OnModuleInit {
     this.logger.log(`Zoom: updated webinar ${webinarId}`);
   }
 
+  /**
+   * Add panelists to a Zoom Webinar.
+   * Returns each panelist's unique join URL.
+   * Docs: POST /v2/webinars/{webinarId}/panelists
+   */
+  async addWebinarPanelists(
+    webinarId: string,
+    panelists: Array<{ name: string; email: string }>,
+  ): Promise<Array<{ id: string; name: string; email: string; joinUrl: string }>> {
+    if (!this.isConfigured()) throw new Error('Zoom not configured');
+    if (!panelists.length) return [];
+
+    const token = await this.getAccessToken();
+    const { data } = await firstValueFrom(
+      this.http.post<{
+        id: string;
+        panelists: Array<{ id: string; name: string; email: string; join_url: string }>;
+      }>(
+        `https://api.zoom.us/v2/webinars/${webinarId}/panelists`,
+        { panelists },
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+
+    this.logger.log(`Zoom: added ${data.panelists?.length ?? 0} panelist(s) to webinar ${webinarId}`);
+    return (data.panelists || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      email: p.email,
+      joinUrl: p.join_url,
+    }));
+  }
+
   async deleteWebinar(webinarId: string): Promise<void> {
     if (!this.isConfigured()) return;
 

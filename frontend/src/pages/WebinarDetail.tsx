@@ -272,6 +272,12 @@ export default function WebinarDetail() {
   const surveyDone =
     enrolled &&
     (!hasPostEventSurvey || (postEventSurveyWindowOpen && !postEventReminder));
+  const surveyInProgress =
+    enrolled &&
+    hasPostEventSurvey &&
+    !surveyDone &&
+    !!myRegistration?.postEventJotformSubmissionId &&
+    !myRegistration?.postEventSurveyAcknowledgedAt;
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
   const showJoinSessionCard =
@@ -589,6 +595,7 @@ export default function WebinarDetail() {
             <RequirementRow
               label="Complete required survey"
               done={surveyDone}
+              inProgress={surveyInProgress}
               locked={!enrolled}
             />
           </ul>
@@ -679,18 +686,22 @@ export default function WebinarDetail() {
 function RequirementRow(props: {
   label: string;
   done?: boolean;
+  /** Survey Jotform submitted but "Complete survey" not yet clicked */
+  inProgress?: boolean;
   /** No access until admin approves registration */
   locked?: boolean;
   /** Registration submitted; waiting on admin */
   pendingApproval?: boolean;
 }) {
-  const { label, done, locked, pendingApproval } = props;
+  const { label, done, inProgress, locked, pendingApproval } = props;
 
   return (
     <li className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         {done ? (
           <CheckCircle2 className="h-5 w-5 text-green-600" />
+        ) : inProgress ? (
+          <CheckCircle2 className="h-5 w-5 text-blue-500" />
         ) : (
           <Circle className={['h-5 w-5', locked ? 'text-gray-200' : 'text-gray-300'].join(' ')} />
         )}
@@ -701,6 +712,10 @@ function RequirementRow(props: {
       {done ? (
         <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-1">
           Done
+        </span>
+      ) : inProgress ? (
+        <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 rounded-full px-2 py-1">
+          In progress
         </span>
       ) : pendingApproval ? (
         <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-2 py-1">

@@ -487,6 +487,12 @@ export class AdminController {
           description:
             'Optional. Honorarium in USD for learners (stored as cents). WEBINAR only; not allowed for Office Hours (MEETING).',
         },
+        speakers: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Optional (WEBINAR). Speaker/KOL display names. Each gets a unique panelist link (zsoccerguy+user1@gmail.com, +user2, …). CHM Staff panelist is always added automatically.',
+        },
       },
     },
   })
@@ -510,6 +516,8 @@ export class AdminController {
       hostDisplayName?: string;
       /** Short speaker bio shown on the program detail page. */
       hostBio?: string;
+      /** WEBINAR only. Speaker/KOL names. Generates unique panelist join links per speaker plus a fixed CHM Staff panelist. */
+      speakers?: string[];
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -539,6 +547,7 @@ export class AdminController {
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
     let zoomError: string | undefined;
+    let zoomPanelistLinks: Array<{ name: string; email: string; joinUrl: string }> = [];
 
     if (this.zoom.isConfigured()) {
       try {
@@ -564,6 +573,24 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+
+          // Build panelist list: CHM Staff (fixed) + each named speaker with an indexed email
+          const speakerNames = (body.speakers ?? []).map((s) => s.trim()).filter(Boolean);
+          const panelistsToAdd: Array<{ name: string; email: string }> = [
+            { name: 'CHM Staff', email: 'zsoccerguy@gmail.com' },
+            ...speakerNames.map((name, idx) => ({
+              name,
+              email: `zsoccerguy+user${idx + 1}@gmail.com`,
+            })),
+          ];
+
+          try {
+            const added = await this.zoom.addWebinarPanelists(created.id, panelistsToAdd);
+            zoomPanelistLinks = added.map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+          } catch (pErr) {
+            const pMsg = pErr instanceof Error ? pErr.message : String(pErr);
+            this.logger.warn(`Zoom addWebinarPanelists failed for ${created.id}: ${pMsg}`);
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -651,6 +678,7 @@ export class AdminController {
       zoomMeetingId: zoomMeetingId ?? null,
       zoomJoinUrl: zoomJoinUrl ?? null,
       zoomStartUrl: zoomStartUrl ?? null,
+      ...(zoomPanelistLinks.length ? { zoomPanelistLinks } : {}),
       ...(zoomError ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` } : {}),
       ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
     };

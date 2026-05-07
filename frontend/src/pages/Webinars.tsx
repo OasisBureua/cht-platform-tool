@@ -164,7 +164,7 @@ function WebinarRow({
       to={`/app/live/${w.id}`}
       className="group flex items-center gap-3 px-4 py-3 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.995] sm:gap-4 sm:px-5"
     >
-      {/* Left thumbnail (Replit-like row card structure) */}
+      {/* Left thumbnail */}
       <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-16 sm:w-24">
         <img
           src={imageUrl}
@@ -193,6 +193,12 @@ function WebinarRow({
             </span>
           )}
         </div>
+        {w.hostDisplayName && (
+          <p className="text-xs font-medium text-gray-700 truncate">
+            {w.hostDisplayName}
+            {w.hostBio ? <span className="font-normal text-gray-500"> · {w.hostBio}</span> : null}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
@@ -213,7 +219,7 @@ function WebinarRow({
             <span>{formatDuration(w.duration)}</span>
           )}
         </div>
-        {w.description && (
+        {!w.hostDisplayName && w.description && (
           <p className="text-xs text-gray-500 line-clamp-1">{w.description}</p>
         )}
       </div>

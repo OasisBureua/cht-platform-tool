@@ -17,6 +17,12 @@ export interface AdminProgram {
 
 export type ZoomSessionType = 'WEBINAR' | 'MEETING';
 
+export interface ZoomPanelistLink {
+  name: string;
+  email: string;
+  joinUrl: string;
+}
+
 export interface AdminWebinar {
   id: string;
   title: string;
@@ -34,6 +40,8 @@ export interface AdminWebinar {
   /** USD; webinars only (Office Hours sessions omit this). */
   honorariumAmount?: number;
   createdAt: string;
+  /** Present on creation response only (WEBINAR). Unique join URLs per panelist (CHM Staff + each speaker). */
+  zoomPanelistLinks?: ZoomPanelistLink[];
 }
 
 export interface CreateWebinarPayload {
@@ -64,6 +72,12 @@ export interface CreateWebinarPayload {
   hostDisplayName?: string;
   /** Short speaker bio shown on the program detail page. */
   hostBio?: string;
+  /**
+   * Optional (WEBINAR). Speaker/KOL display names.
+   * Each gets a unique panelist join link (zsoccerguy+user1@gmail.com, +user2, …).
+   * CHM Staff is always added as a panelist automatically.
+   */
+  speakers?: string[];
 }
 
 export interface UpdateWebinarPayload {
@@ -268,6 +282,8 @@ export const adminApi = {
       postEventJotformSubmissionId?: string | null;
       jotformPostEventSubmissionViewUrl?: string | null;
       postEventSurveyAcknowledgedAt?: string | null;
+      postEventAttendanceStatus?: string | null;
+      postEventAttendanceReviewedAt?: string | null;
       user: { id: string; email: string; firstName: string; lastName: string };
       slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
     }>;

@@ -1,10 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Video, Calendar } from 'lucide-react';
+import { Video, Calendar, Copy, Check, ExternalLink } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
+import { adminApi, type CreateWebinarPayload, type ZoomSessionType, type ZoomPanelistLink } from '../../api/admin';
 import { wallClockToUtcIso } from '../../utils/wallClockToUtcIso';
+
+/** One-shot copy button — shows a checkmark for 2 s then resets. */
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      className="shrink-0 inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+      title="Copy link"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
 
 const TIMEZONES = [
   'America/New_York',
@@ -55,6 +78,12 @@ export default function AdminWebinarScheduler({
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
+  const [createdLinks, setCreatedLinks] = useState<{
+    zoomStartUrl?: string | null;
+    zoomJoinUrl?: string | null;
+    zoomPanelistLinks?: ZoomPanelistLink[];
+    jotformFormsWarning?: string;
+  } | null>(null);
 
   useEffect(() => {
     setZoomSessionType(defaultZoomSessionType);
@@ -90,6 +119,16 @@ export default function AdminWebinarScheduler({
       queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
       if (data?.zoomWarning) {
         setZoomWarning(data.zoomWarning);
+        return;
+      }
+      // For webinars, show the generated links before navigating away.
+      if (isWebinar && (data?.zoomStartUrl || data?.zoomJoinUrl || data?.zoomPanelistLinks?.length)) {
+        setCreatedLinks({
+          zoomStartUrl: data.zoomStartUrl,
+          zoomJoinUrl: data.zoomJoinUrl,
+          zoomPanelistLinks: data.zoomPanelistLinks,
+          jotformFormsWarning: data.jotformFormsWarning,
+        });
         return;
       }
       navigate(successPath, {
@@ -168,6 +207,9 @@ export default function AdminWebinarScheduler({
       fullDescription += `\n\nAdditional speakers: ${extraKolLines.join('; ')}`;
     }
 
+    // Collect all speaker names for Zoom panelist registration (WEBINAR only).
+    const speakerNames = kols.map((k) => k.name.trim()).filter(Boolean);
+
     const payload: CreateWebinarPayload = {
       title: title.trim(),
       description: fullDescription || title.trim(),
@@ -182,10 +224,102 @@ export default function AdminWebinarScheduler({
       ...(isWebinar ? { jotformIntakeFormUrl: intakeUrl } : {}),
       ...(postEventMerged ? { postEventJotformFormIdOrUrl: postEventMerged } : {}),
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
+      ...(isWebinar && speakerNames.length > 0 ? { speakers: speakerNames } : {}),
     };
 
     createMutation.mutate(payload);
   };
+
+  // Success state: show all generated links, then let admin navigate away.
+  if (createdLinks) {
+    const { zoomStartUrl, zoomJoinUrl, zoomPanelistLinks = [], jotformFormsWarning } = createdLinks;
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100">
+            <Check className="h-5 w-5 text-green-700" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Webinar scheduled</h1>
+            <p className="text-sm text-gray-500">Copy the links below before leaving this page.</p>
+          </div>
+        </div>
+
+        {jotformFormsWarning && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {jotformFormsWarning}
+          </div>
+        )}
+
+        <div className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100">
+          {/* Host / Start URL */}
+          {zoomStartUrl && (
+            <div className="flex items-start gap-3 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Host start link</p>
+                <a
+                  href={zoomStartUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline break-all"
+                >
+                  {zoomStartUrl} <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              </div>
+              <CopyButton value={zoomStartUrl} />
+            </div>
+          )}
+
+          {/* Attendee join URL */}
+          {zoomJoinUrl && (
+            <div className="flex items-start gap-3 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Attendee join link</p>
+                <a
+                  href={zoomJoinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline break-all"
+                >
+                  {zoomJoinUrl} <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              </div>
+              <CopyButton value={zoomJoinUrl} />
+            </div>
+          )}
+
+          {/* Panelist links */}
+          {zoomPanelistLinks.map((p) => (
+            <div key={p.email} className="flex items-start gap-3 px-5 py-4">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                  Panelist — {p.name}
+                  <span className="ml-1.5 font-normal normal-case text-gray-400">{p.email}</span>
+                </p>
+                <a
+                  href={p.joinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline break-all"
+                >
+                  {p.joinUrl} <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+              </div>
+              <CopyButton value={p.joinUrl} />
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate(successPath)}
+          className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
+        >
+          Done — view sessions
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-3xl">

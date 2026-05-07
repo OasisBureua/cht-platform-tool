@@ -89,11 +89,12 @@ export default function PostEventParticipantFlow(props: {
     if (phase !== 'intro') return;
     const ack = !!myRegistration.postEventSurveyAcknowledgedAt;
     const req = !!myRegistration.honorariumRequestedAt;
+    // Jotform submission recorded server-side → user already filled the form; drop into survey phase
+    // so they can click "Complete survey" even if localStorage was cleared (new device, incognito, etc.)
+    const jotformSubmitted = !!myRegistration.postEventJotformSubmissionId;
 
     if (hasSurvey && !ack) {
-      // User already clicked Continue in a previous session — skip the intro gating screen
-      // and drop them back into the survey so they can complete it.
-      if (flowStarted) setPhase('survey');
+      if (flowStarted || jotformSubmitted) setPhase('survey');
       return;
     }
 
@@ -167,12 +168,15 @@ export default function PostEventParticipantFlow(props: {
   const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
   const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
 
+  const jotformSubmitted = !!myRegistration?.postEventJotformSubmissionId;
   const surveyStepLabel = hasSurvey
     ? surveyAcked
       ? 'Survey complete'
-      : flowStarted && phase === 'survey'
-        ? 'Survey pending'
-        : 'Survey required'
+      : jotformSubmitted
+        ? 'Survey in progress'
+        : flowStarted && phase === 'survey'
+          ? 'Survey pending'
+          : 'Survey required'
     : 'Survey required';
 
   const steps = [
