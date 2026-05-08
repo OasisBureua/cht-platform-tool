@@ -49,6 +49,7 @@ import Earnings from './pages/Earnings';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
+import Podcasts from './pages/Podcasts';
 // =======================
 // ADMIN ROUTES
 // =======================
@@ -174,8 +175,8 @@ function App() {
             <Route path="surveys" element={<Surveys />} />
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
-            {/* Podcasts page hidden; bookmarked URLs go home */}
-            <Route path="podcasts" element={<Navigate to="/app/home" replace />} />
+            {/* Podcasts */}
+            <Route path="podcasts" element={<Podcasts />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />
             <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />

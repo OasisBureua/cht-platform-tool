@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useEffect, useRef, useState } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
 import { APP_NAV_ITEMS } from '../navigation/appNavItems';
@@ -68,7 +68,7 @@ export default function Layout() {
       <AppBottomNav />
 
       <div
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#18181b] md:overflow-visible md:bg-gray-50 md:dark:bg-zinc-950"
+        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-gray-50 dark:bg-zinc-950 max-md:bg-[#18181b] md:overflow-visible"
         onClick={(e) => {
           if (!mobileDrawerOpen) return;
           const front = mobileFrontRef.current;
@@ -166,7 +166,21 @@ export default function Layout() {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-              <ThemeToggle className="hidden shrink-0 md:inline-flex" />
+              <NavLink
+                to="/app/search"
+                end={false}
+                aria-label="Search"
+                title="Search"
+                className={({ isActive }) =>
+                  [
+                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-white/60 hover:text-gray-900 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100',
+                    isActive ? 'bg-brand-50 text-brand-800 dark:bg-brand-950/45 dark:text-brand-200' : '',
+                  ].join(' ')
+                }
+              >
+                <Search className="h-5 w-5" strokeWidth={2} aria-hidden />
+              </NavLink>
+              <ThemeToggle className="shrink-0" />
               <NotificationBell />
               <div className="relative" ref={profileMenuRef}>
                 <button

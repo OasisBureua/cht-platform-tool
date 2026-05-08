@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  Search,
+  Mic2,
   Radio,
   CalendarClock,
   MonitorPlay,
@@ -22,9 +22,9 @@ export const APP_CATALOG_CONVERSATIONS_HUB = '/app/catalog';
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
 export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
 
-/** Primary app destinations — sidebar, slide drawer */
+/** Primary app destinations — desktop sidebar + mobile slide-reveal drawer (Search lives in header) */
 export const APP_NAV_ITEMS: AppNavItem[] = [
-  { to: '/app/search', label: 'Search', icon: Search, end: false },
+  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
   { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, end: false },
