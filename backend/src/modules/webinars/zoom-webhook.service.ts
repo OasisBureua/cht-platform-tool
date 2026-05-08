@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { SurveysService } from '../surveys/surveys.service';
+import { ZoomService } from './zoom.service';
 import { createHmac } from 'crypto';
 
 /**
@@ -65,6 +66,7 @@ export class ZoomWebhookService {
     private readonly config: ConfigService,
     private readonly hubspot: HubSpotService,
     private readonly surveys: SurveysService,
+    private readonly zoom: ZoomService,
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
@@ -214,17 +216,40 @@ export class ZoomWebhookService {
       if (!Number.isNaN(parsed.getTime())) startDate = parsed;
     }
 
+    // Zoom's webinar.created/meeting.created webhook omits start_url (it's a signed token URL).
+    // Fetch the full session detail from the Zoom API to get the host start link.
+    let startUrl: string | null = obj.start_url?.trim() || null;
+    let joinUrl: string | null = obj.join_url?.trim() || null;
+
+    if (this.zoom.isConfigured()) {
+      try {
+        const detail = sessionType === 'WEBINAR'
+          ? await this.zoom.getWebinarById(zoomMeetingId)
+          : await this.zoom.getMeetingById(zoomMeetingId);
+        if (detail?.startUrl) startUrl = detail.startUrl;
+        if (detail?.joinUrl) joinUrl = detail.joinUrl;
+        this.logger.log(
+          `[Zoom webhook] Fetched session detail for ${zoomMeetingId} — startUrl=${startUrl ? 'present' : 'missing'}`,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `[Zoom webhook] Could not fetch session detail for ${zoomMeetingId} (start_url will be missing): ${msg}`,
+        );
+      }
+    }
+
     const program = await this.prisma.program.create({
       data: {
         title,
         description,
-        sponsorName: 'TBD',
+        sponsorName: '',
         creditAmount: 0,
         status: 'DRAFT',
         zoomSessionType: sessionType,
         zoomMeetingId,
-        zoomJoinUrl: obj.join_url?.trim() || null,
-        zoomStartUrl: obj.start_url?.trim() || null,
+        zoomJoinUrl: joinUrl,
+        zoomStartUrl: startUrl,
         startDate,
         duration: obj.duration ?? null,
         importedViaWebhook: true,

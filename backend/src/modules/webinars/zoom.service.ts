@@ -142,11 +142,15 @@ export class ZoomService implements OnModuleInit {
     const all: ZoomWebinar[] = [];
     let pageToken: string | undefined;
 
+    // Only fetch upcoming sessions; filter to current month + next month as a buffer
+    const now = new Date();
+    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59); // last ms of next month
+
     try {
       do {
         const token = await this.getAccessToken();
         const params: Record<string, string | number> = {
-          type: 'scheduled',
+          type: 'upcoming',   // Only sessions that haven't started yet (Zoom filters server-side)
           page_size: 100,
         };
         if (pageToken) params.page_token = pageToken;
@@ -161,22 +165,35 @@ export class ZoomService implements OnModuleInit {
           ),
         );
 
-        const batch = (data.webinars || []).map((w) => ({
-          id: String(w.id),
-          uuid: w.uuid,
-          topic: w.topic,
-          agenda: w.agenda,
-          startTime: w.start_time,
-          duration: w.duration,
-          joinUrl: w.join_url,
-          startUrl: w.start_url,
-          timezone: w.timezone,
-        }));
+        const batch = (data.webinars || [])
+          .filter((w) => {
+            // Keep only sessions within the current + next month window
+            if (!w.start_time) return true; // no date = include (let DB logic sort it out)
+            const t = new Date(w.start_time).getTime();
+            return t <= endOfNextMonth.getTime();
+          })
+          .map((w) => ({
+            id: String(w.id),
+            uuid: w.uuid,
+            topic: w.topic,
+            agenda: w.agenda,
+            startTime: w.start_time,
+            duration: w.duration,
+            joinUrl: w.join_url,
+            startUrl: w.start_url,
+            timezone: w.timezone,
+          }));
         all.push(...batch);
+
+        // Stop paginating if all items in the last page are beyond our window
+        const lastItem = data.webinars?.[data.webinars.length - 1];
+        const lastTime = lastItem?.start_time ? new Date(lastItem.start_time).getTime() : 0;
+        if (lastTime > endOfNextMonth.getTime()) break;
+
         pageToken = data.next_page_token;
       } while (pageToken);
 
-      this.logger.log(`Zoom: fetched ${all.length} scheduled webinars`);
+      this.logger.log(`Zoom: fetched ${all.length} upcoming webinar(s) within current + next month`);
       return all;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -191,11 +208,14 @@ export class ZoomService implements OnModuleInit {
     const all: ZoomWebinar[] = [];
     let pageToken: string | undefined;
 
+    const now = new Date();
+    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59);
+
     try {
       do {
         const token = await this.getAccessToken();
         const params: Record<string, string | number> = {
-          type: 'scheduled',
+          type: 'upcoming',   // Only upcoming meetings
           page_size: 100,
         };
         if (pageToken) params.next_page_token = pageToken;
@@ -207,22 +227,33 @@ export class ZoomService implements OnModuleInit {
           }),
         );
 
-        const batch = (data.meetings || []).map((m) => ({
-          id: String(m.id),
-          uuid: m.uuid,
-          topic: m.topic,
-          agenda: m.agenda,
-          startTime: m.start_time,
-          duration: m.duration,
-          joinUrl: m.join_url,
-          startUrl: m.start_url,
-          timezone: m.timezone,
-        }));
+        const batch = (data.meetings || [])
+          .filter((m) => {
+            if (!m.start_time) return true;
+            const t = new Date(m.start_time).getTime();
+            return t <= endOfNextMonth.getTime();
+          })
+          .map((m) => ({
+            id: String(m.id),
+            uuid: m.uuid,
+            topic: m.topic,
+            agenda: m.agenda,
+            startTime: m.start_time,
+            duration: m.duration,
+            joinUrl: m.join_url,
+            startUrl: m.start_url,
+            timezone: m.timezone,
+          }));
         all.push(...batch);
+
+        const lastItem = data.meetings?.[data.meetings.length - 1];
+        const lastTime = lastItem?.start_time ? new Date(lastItem.start_time).getTime() : 0;
+        if (lastTime > endOfNextMonth.getTime()) break;
+
         pageToken = data.next_page_token;
       } while (pageToken);
 
-      this.logger.log(`Zoom: fetched ${all.length} scheduled meetings`);
+      this.logger.log(`Zoom: fetched ${all.length} upcoming meeting(s) within current + next month`);
       return all;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
