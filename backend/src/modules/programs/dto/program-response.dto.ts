@@ -112,4 +112,8 @@ export class ProgramResponseDto {
   @IsString()
   @IsOptional()
   hostBio?: string;
+
+  @IsArray()
+  @IsOptional()
+  speakers?: string[];
 }

@@ -145,6 +145,7 @@ export class AdminController {
       /** @deprecated use jotformPostEventTemplateFormId */
       jotformTemplateFormId: postEvent,
       webinarJotformTemplatesConfigured: !!(invitation && (postEvent || postEventShared)),
+      zoomConfigured: this.zoom.isConfigured(),
     };
   }
 
@@ -448,6 +449,7 @@ export class AdminController {
             ? p.honorariumAmount / 100
             : undefined,
         createdAt: p.createdAt.toISOString(),
+        zoomPanelistLinks: (p.zoomPanelistLinks as Array<{ name: string; email: string; joinUrl: string }> | null) ?? undefined,
       };
     });
 
@@ -547,6 +549,7 @@ export class AdminController {
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
     let zoomError: string | undefined;
+    let zoomPanelistError: string | undefined;
     let zoomPanelistLinks: Array<{ name: string; email: string; joinUrl: string }> = [];
 
     if (this.zoom.isConfigured()) {
@@ -574,11 +577,16 @@ export class AdminController {
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
 
-          // Build panelist list: CHM Staff (fixed) + each named speaker with an indexed email
+          // Build panelist list: CHM Staff (fixed) + host (if set) + each speaker with an indexed email
           const speakerNames = (body.speakers ?? []).map((s) => s.trim()).filter(Boolean);
+          const hostName = body.hostDisplayName?.trim();
+          const allPanelistNames: string[] = [
+            ...(hostName ? [hostName] : []),
+            ...speakerNames,
+          ];
           const panelistsToAdd: Array<{ name: string; email: string }> = [
             { name: 'CHM Staff', email: 'zsoccerguy@gmail.com' },
-            ...speakerNames.map((name, idx) => ({
+            ...allPanelistNames.map((name, idx) => ({
               name,
               email: `zsoccerguy+user${idx + 1}@gmail.com`,
             })),
@@ -586,10 +594,20 @@ export class AdminController {
 
           try {
             const added = await this.zoom.addWebinarPanelists(created.id, panelistsToAdd);
-            zoomPanelistLinks = added.map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+            zoomPanelistLinks = added
+              .filter((p) => p.joinUrl)
+              .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+            if (!zoomPanelistLinks.length && added.length) {
+              zoomPanelistError =
+                'Panelists were added to Zoom but their join URLs were not returned. ' +
+                'Check that your Zoom account has the Webinar add-on and that panelist join URLs are enabled.';
+              this.logger.warn(`Zoom addWebinarPanelists returned no join_urls for webinar ${created.id}`);
+            }
           } catch (pErr) {
             const pMsg = pErr instanceof Error ? pErr.message : String(pErr);
             this.logger.warn(`Zoom addWebinarPanelists failed for ${created.id}: ${pMsg}`);
+            zoomPanelistError = `Webinar created on Zoom, but panelist links could not be generated: ${pMsg}. ` +
+              'Check your Zoom app has webinar:write:admin scope and your account includes the Webinar add-on.';
           }
         }
       } catch (err) {
@@ -617,6 +635,8 @@ export class AdminController {
       registrationRequiresApproval: true,
       ...(body.hostDisplayName?.trim() ? { hostDisplayName: body.hostDisplayName.trim() } : {}),
       ...(body.hostBio?.trim() ? { hostBio: body.hostBio.trim() } : {}),
+      speakers: (body.speakers ?? []).map((s) => s.trim()).filter(Boolean),
+      ...(zoomPanelistLinks.length ? { zoomPanelistLinks } : {}),
       ...(sessionType === 'WEBINAR' &&
       body.honorariumAmount != null &&
       body.honorariumAmount > 0
@@ -679,7 +699,16 @@ export class AdminController {
       zoomJoinUrl: zoomJoinUrl ?? null,
       zoomStartUrl: zoomStartUrl ?? null,
       ...(zoomPanelistLinks.length ? { zoomPanelistLinks } : {}),
-      ...(zoomError ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` } : {}),
+      ...(zoomPanelistError ? { zoomPanelistError } : {}),
+      ...(zoomError
+        ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` }
+        : !this.zoom.isConfigured()
+          ? {
+              zoomWarning:
+                'Session saved, but Zoom is not connected — no meeting was created on Zoom. ' +
+                'Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET to your environment variables to enable Zoom meeting creation.',
+            }
+          : {}),
       ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
     };
   }

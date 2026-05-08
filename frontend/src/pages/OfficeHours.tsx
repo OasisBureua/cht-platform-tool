@@ -166,15 +166,25 @@ function SessionRow({
               {listBadge}
             </span>
           ) : null}
-          {w.hostDisplayName ? (
-            <span className="text-xs font-medium text-gray-600 shrink-0">· Get time with {w.hostDisplayName}</span>
-          ) : null}
           {expired && (
             <span className="shrink-0 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
               Ended
             </span>
           )}
         </div>
+        {w.hostDisplayName && (
+          <p className="text-xs text-gray-600 truncate">
+            <span className="font-semibold">Host:</span>{' '}
+            {w.hostDisplayName}
+            {w.hostBio ? <span className="text-gray-500"> · {w.hostBio}</span> : null}
+          </p>
+        )}
+        {w.speakers && w.speakers.length > 0 && (
+          <p className="text-xs text-gray-600 truncate">
+            <span className="font-semibold">{w.speakers.length === 1 ? 'Speaker:' : 'Speakers:'}</span>{' '}
+            {w.speakers.join(', ')}
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
@@ -193,7 +203,7 @@ function SessionRow({
           )}
           {w.duration && <span>{formatDuration(w.duration)}</span>}
         </div>
-        {w.description && (
+        {!w.hostDisplayName && !w.speakers?.length && w.description && (
           <p className="text-xs text-gray-500 line-clamp-1">{w.description}</p>
         )}
       </div>

@@ -275,6 +275,8 @@ export class ZoomService implements OnModuleInit {
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
+    this.logger.log(`Zoom: creating webinar "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`);
+
     const token = await this.getAccessToken();
     const { data } = await firstValueFrom(
       this.http.post<ZoomWebinarResponse>(
@@ -291,7 +293,7 @@ export class ZoomService implements OnModuleInit {
       ),
     );
 
-    this.logger.log(`Zoom: created webinar ${data.id} - ${data.topic}`);
+    this.logger.log(`Zoom: webinar created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`);
     return {
       id: String(data.id),
       uuid: data.uuid,
@@ -347,25 +349,50 @@ export class ZoomService implements OnModuleInit {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
     if (!panelists.length) return [];
 
-    const token = await this.getAccessToken();
-    const { data } = await firstValueFrom(
-      this.http.post<{
-        id: string;
-        panelists: Array<{ id: string; name: string; email: string; join_url: string }>;
-      }>(
-        `https://api.zoom.us/v2/webinars/${webinarId}/panelists`,
-        { panelists },
-        { headers: { Authorization: `Bearer ${token}` } },
-      ),
+    this.logger.log(
+      `Zoom: adding ${panelists.length} panelist(s) to webinar ${webinarId}: ${panelists.map((p) => p.email).join(', ')}`,
     );
 
+    const token = await this.getAccessToken();
+    let data: { id: string; panelists: Array<{ id: string; name: string; email: string; join_url: string }> };
+    try {
+      const res = await firstValueFrom(
+        this.http.post<typeof data>(
+          `https://api.zoom.us/v2/webinars/${webinarId}/panelists`,
+          { panelists },
+          { headers: { Authorization: `Bearer ${token}` } },
+        ),
+      );
+      data = res.data;
+    } catch (err: unknown) {
+      const axiosBody =
+        err != null && typeof err === 'object' && 'response' in err
+          ? (err as { response?: { data?: unknown; status?: number } }).response
+          : undefined;
+      const detail = axiosBody?.data ? JSON.stringify(axiosBody.data) : '';
+      const status = axiosBody?.status ? ` (HTTP ${axiosBody.status})` : '';
+      const base = err instanceof Error ? err.message : String(err);
+      throw new Error(`${base}${status}${detail ? ` — Zoom response: ${detail}` : ''}`);
+    }
+
     this.logger.log(`Zoom: added ${data.panelists?.length ?? 0} panelist(s) to webinar ${webinarId}`);
-    return (data.panelists || []).map((p) => ({
+
+    const results = (data.panelists || []).map((p) => ({
       id: p.id,
       name: p.name,
       email: p.email,
       joinUrl: p.join_url,
     }));
+
+    results.forEach((p) => {
+      if (p.joinUrl) {
+        this.logger.log(`Zoom: panelist join URL — ${p.name} <${p.email}>: ${p.joinUrl}`);
+      } else {
+        this.logger.warn(`Zoom: no join_url returned for panelist ${p.email} on webinar ${webinarId}`);
+      }
+    });
+
+    return results;
   }
 
   async deleteWebinar(webinarId: string): Promise<void> {
@@ -402,6 +429,8 @@ export class ZoomService implements OnModuleInit {
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
+    this.logger.log(`Zoom: creating meeting (office hours) "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`);
+
     const token = await this.getAccessToken();
     const { data } = await firstValueFrom(
       this.http.post<ZoomMeetingApiResponse>(
@@ -428,7 +457,7 @@ export class ZoomService implements OnModuleInit {
       ),
     );
 
-    this.logger.log(`Zoom: created meeting (office hours) ${data.id} - ${data.topic}`);
+    this.logger.log(`Zoom: meeting (office hours) created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`);
     return {
       id: String(data.id),
       uuid: data.uuid,

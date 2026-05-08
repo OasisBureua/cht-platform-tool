@@ -11,6 +11,8 @@ export interface WebinarItem {
   source: 'zoom' | 'program';
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
+  hostBio?: string;
+  speakers?: string[];
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
   /** Whole dollars from API (converted from DB cents on the server). */

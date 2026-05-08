@@ -19,7 +19,8 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 export default function AdminPrograms() {
   const location = useLocation();
   const navigate = useNavigate();
-  const jotformScheduleFlash = (location.state as { jotformFormsWarning?: string } | null)?.jotformFormsWarning;
+  const locationState = location.state as { jotformFormsWarning?: string; warning?: string } | null;
+  const jotformScheduleFlash = locationState?.warning ?? locationState?.jotformFormsWarning;
   const isOfficeHours = location.pathname.includes('/office-hours');
   const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
 
@@ -320,6 +321,19 @@ function WebinarRow({
                 <ExternalLink className="h-3 w-3" /> Host start
               </a>
             )}
+            {webinar.zoomPanelistLinks?.map((p) => (
+              <a
+                key={p.email}
+                href={p.joinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors truncate max-w-[180px]"
+                title={`${p.name} (${p.email})`}
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                Panelist: {p.name}
+              </a>
+            ))}
           </div>
         ) : (
           <span className="text-xs text-gray-400">No Zoom</span>

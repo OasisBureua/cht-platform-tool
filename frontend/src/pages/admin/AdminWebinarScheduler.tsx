@@ -1,33 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Video, Calendar, Copy, Check, ExternalLink } from 'lucide-react';
+import { Video, Calendar } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { adminApi, type CreateWebinarPayload, type ZoomSessionType, type ZoomPanelistLink } from '../../api/admin';
+import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import { wallClockToUtcIso } from '../../utils/wallClockToUtcIso';
 
-/** One-shot copy button — shows a checkmark for 2 s then resets. */
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {}
-  };
-  return (
-    <button
-      type="button"
-      onClick={copy}
-      className="shrink-0 inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-      title="Copy link"
-    >
-      {copied ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-      {copied ? 'Copied' : 'Copy'}
-    </button>
-  );
-}
 
 const TIMEZONES = [
   'America/New_York',
@@ -70,7 +48,9 @@ export default function AdminWebinarScheduler({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sponsorName, setSponsorName] = useState('');
-  const [kols, setKols] = useState([{ name: '', bio: '' }]);
+  const [hostName, setHostName] = useState('');
+  const [hostBio, setHostBio] = useState('');
+  const [speakers, setSpeakers] = useState<string[]>(['']);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
@@ -78,12 +58,6 @@ export default function AdminWebinarScheduler({
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
-  const [createdLinks, setCreatedLinks] = useState<{
-    zoomStartUrl?: string | null;
-    zoomJoinUrl?: string | null;
-    zoomPanelistLinks?: ZoomPanelistLink[];
-    jotformFormsWarning?: string;
-  } | null>(null);
 
   useEffect(() => {
     setZoomSessionType(defaultZoomSessionType);
@@ -117,22 +91,16 @@ export default function AdminWebinarScheduler({
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
-      if (data?.zoomWarning) {
-        setZoomWarning(data.zoomWarning);
-        return;
-      }
-      // For webinars, show the generated links before navigating away.
-      if (isWebinar && (data?.zoomStartUrl || data?.zoomJoinUrl || data?.zoomPanelistLinks?.length)) {
-        setCreatedLinks({
-          zoomStartUrl: data.zoomStartUrl,
-          zoomJoinUrl: data.zoomJoinUrl,
-          zoomPanelistLinks: data.zoomPanelistLinks,
-          jotformFormsWarning: data.jotformFormsWarning,
-        });
-        return;
-      }
+
+      // Collect any non-fatal warnings to surface on the list page.
+      const warnings = [
+        data?.zoomWarning,
+        data?.zoomPanelistError,
+        data?.jotformFormsWarning,
+      ].filter(Boolean) as string[];
+
       navigate(successPath, {
-        state: data?.jotformFormsWarning ? { jotformFormsWarning: data.jotformFormsWarning } : undefined,
+        state: warnings.length ? { warning: warnings.join('\n\n') } : undefined,
       });
     },
   });
@@ -193,29 +161,16 @@ export default function AdminWebinarScheduler({
       return;
     }
 
-    const primaryKol = kols[0];
-    const primaryKolName = primaryKol?.name.trim() || '';
-    const primaryKolBio = primaryKol?.bio.trim() || '';
-
-    // Additional KOLs (2nd+) get appended to description so they still surface in the UI.
-    const extraKolLines = kols
-      .slice(1)
-      .filter((k) => k.name.trim())
-      .map((k) => (k.bio.trim() ? `${k.name.trim()} — ${k.bio.trim()}` : k.name.trim()));
-    let fullDescription = description.trim();
-    if (extraKolLines.length > 0) {
-      fullDescription += `\n\nAdditional speakers: ${extraKolLines.join('; ')}`;
-    }
-
-    // Collect all speaker names for Zoom panelist registration (WEBINAR only).
-    const speakerNames = kols.map((k) => k.name.trim()).filter(Boolean);
+    const cleanHost = hostName.trim();
+    const cleanHostBio = hostBio.trim();
+    const cleanSpeakers = speakers.map((s) => s.trim()).filter(Boolean);
 
     const payload: CreateWebinarPayload = {
       title: title.trim(),
-      description: fullDescription || title.trim(),
+      description: description.trim() || title.trim(),
       sponsorName: sponsorName.trim() || 'General',
-      ...(primaryKolName ? { hostDisplayName: primaryKolName } : {}),
-      ...(primaryKolBio ? { hostBio: primaryKolBio } : {}),
+      ...(cleanHost ? { hostDisplayName: cleanHost } : {}),
+      ...(cleanHostBio ? { hostBio: cleanHostBio } : {}),
       startDate: startUtcIso,
       duration: durationNum,
       timezone,
@@ -224,102 +179,11 @@ export default function AdminWebinarScheduler({
       ...(isWebinar ? { jotformIntakeFormUrl: intakeUrl } : {}),
       ...(postEventMerged ? { postEventJotformFormIdOrUrl: postEventMerged } : {}),
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
-      ...(isWebinar && speakerNames.length > 0 ? { speakers: speakerNames } : {}),
+      ...(cleanSpeakers.length > 0 ? { speakers: cleanSpeakers } : {}),
     };
 
     createMutation.mutate(payload);
   };
-
-  // Success state: show all generated links, then let admin navigate away.
-  if (createdLinks) {
-    const { zoomStartUrl, zoomJoinUrl, zoomPanelistLinks = [], jotformFormsWarning } = createdLinks;
-    return (
-      <div className="space-y-6 max-w-3xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100">
-            <Check className="h-5 w-5 text-green-700" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Webinar scheduled</h1>
-            <p className="text-sm text-gray-500">Copy the links below before leaving this page.</p>
-          </div>
-        </div>
-
-        {jotformFormsWarning && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            {jotformFormsWarning}
-          </div>
-        )}
-
-        <div className="rounded-2xl border border-gray-200 bg-white divide-y divide-gray-100">
-          {/* Host / Start URL */}
-          {zoomStartUrl && (
-            <div className="flex items-start gap-3 px-5 py-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Host start link</p>
-                <a
-                  href={zoomStartUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline break-all"
-                >
-                  {zoomStartUrl} <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
-              </div>
-              <CopyButton value={zoomStartUrl} />
-            </div>
-          )}
-
-          {/* Attendee join URL */}
-          {zoomJoinUrl && (
-            <div className="flex items-start gap-3 px-5 py-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Attendee join link</p>
-                <a
-                  href={zoomJoinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline break-all"
-                >
-                  {zoomJoinUrl} <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
-              </div>
-              <CopyButton value={zoomJoinUrl} />
-            </div>
-          )}
-
-          {/* Panelist links */}
-          {zoomPanelistLinks.map((p) => (
-            <div key={p.email} className="flex items-start gap-3 px-5 py-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                  Panelist — {p.name}
-                  <span className="ml-1.5 font-normal normal-case text-gray-400">{p.email}</span>
-                </p>
-                <a
-                  href={p.joinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-blue-700 hover:underline break-all"
-                >
-                  {p.joinUrl} <ExternalLink className="h-3 w-3 shrink-0" />
-                </a>
-              </div>
-              <CopyButton value={p.joinUrl} />
-            </div>
-          ))}
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate(successPath)}
-          className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
-        >
-          Done — view sessions
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -334,15 +198,13 @@ export default function AdminWebinarScheduler({
         </p>
       </div>
 
+      {/* Post-submit: session saved but Zoom was not available */}
       {zoomWarning && (
         <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
           <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-yellow-800">Saved. Zoom sync failed</p>
-            <p className="text-sm text-yellow-700 mt-0.5">
-              The session was saved but could not be created on Zoom. Fix Zoom app scopes, then edit the session to
-              retry.
-            </p>
+            <p className="text-sm font-semibold text-yellow-800">Session saved — no Zoom meeting created</p>
+            <p className="text-sm text-yellow-700 mt-0.5">{zoomWarning}</p>
           </div>
           <button
             type="button"
@@ -354,7 +216,33 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {!zoomWarning && !isOfficeHoursOnly && (
+      {/* Pre-form: warn when Zoom env vars are not set */}
+      {!zoomWarning && adminConfig !== undefined && !adminConfig.zoomConfigured && (
+        <div className="flex items-start gap-3 rounded-xl bg-orange-50 border border-orange-300 px-4 py-3">
+          <Video className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-orange-800">Zoom not connected</p>
+            <p className="text-sm text-orange-700 mt-0.5">
+              Sessions will be saved, but <strong>no Zoom meeting will be created</strong> until you add{' '}
+              <code className="font-mono text-xs">ZOOM_ACCOUNT_ID</code>,{' '}
+              <code className="font-mono text-xs">ZOOM_CLIENT_ID</code>, and{' '}
+              <code className="font-mono text-xs">ZOOM_CLIENT_SECRET</code>{' '}
+              to your environment variables (Server-to-Server OAuth app from{' '}
+              <a
+                href="https://marketplace.zoom.us"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                marketplace.zoom.us
+              </a>
+              ).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!zoomWarning && !isOfficeHoursOnly && adminConfig?.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
@@ -364,7 +252,7 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {!zoomWarning && isOfficeHoursOnly && (
+      {!zoomWarning && isOfficeHoursOnly && adminConfig?.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
@@ -449,45 +337,68 @@ export default function AdminWebinarScheduler({
             />
           </div>
 
+          {/* Host */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              Host
+              <span className="ml-1 font-normal text-gray-500">— optional</span>
+            </label>
+            <div className="flex gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={hostName}
+                  onChange={(e) => setHostName(e.target.value)}
+                  placeholder="Dr. Jane Smith"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                />
+                <input
+                  type="text"
+                  value={hostBio}
+                  onChange={(e) => setHostBio(e.target.value)}
+                  placeholder="Title, specialty, or brief note…"
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                />
+              </div>
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              {isWebinar
+                ? 'Person moderating/running the session. Shown as "Host:" on the webinar card.'
+                : 'Person hosting the office hours. Shown as "Get time with…" on the session card.'}
+            </p>
+          </div>
+
+          {/* Speakers / KOLs */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-900">
-                {isWebinar ? 'Speakers / KOLs' : 'Host / KOLs'}
+                Speakers / KOLs
                 <span className="ml-1 font-normal text-gray-500">— optional; add one or more</span>
               </label>
               <button
                 type="button"
-                onClick={() => setKols((prev) => [...prev, { name: '', bio: '' }])}
+                onClick={() => setSpeakers((prev) => [...prev, ''])}
                 className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition-colors"
               >
-                + Add KOL
+                + Add speaker
               </button>
             </div>
-            <div className="space-y-3">
-              {kols.map((kol, idx) => (
-                <div key={idx} className="flex gap-3 items-start rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
-                  <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      value={kol.name}
-                      onChange={(e) => setKols((prev) => prev.map((k, i) => i === idx ? { ...k, name: e.target.value } : k))}
-                      placeholder="Dr. Jane Smith"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
-                    />
-                    <input
-                      type="text"
-                      value={kol.bio}
-                      onChange={(e) => setKols((prev) => prev.map((k, i) => i === idx ? { ...k, bio: e.target.value } : k))}
-                      placeholder="Title, specialty, or brief note…"
-                      className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
-                    />
-                  </div>
-                  {kols.length > 1 && (
+            <div className="space-y-2">
+              {speakers.map((sp, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={sp}
+                    onChange={(e) => setSpeakers((prev) => prev.map((s, i) => (i === idx ? e.target.value : s)))}
+                    placeholder="Dr. John Doe"
+                    className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                  {speakers.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => setKols((prev) => prev.filter((_, i) => i !== idx))}
-                      className="shrink-0 mt-0.5 text-xs font-semibold text-red-600 hover:text-red-800"
-                      aria-label={`Remove KOL ${idx + 1}`}
+                      onClick={() => setSpeakers((prev) => prev.filter((_, i) => i !== idx))}
+                      className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-800"
+                      aria-label={`Remove speaker ${idx + 1}`}
                     >
                       Remove
                     </button>
@@ -495,7 +406,9 @@ export default function AdminWebinarScheduler({
                 </div>
               ))}
             </div>
-            <p className="mt-1 text-xs text-gray-500">First KOL name is used as the session host display name.</p>
+            <p className="mt-1 text-xs text-gray-500">
+              Shown as "Speaker(s):" on the card. Each speaker also gets a unique Zoom panelist join URL.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -194,9 +194,16 @@ function WebinarRow({
           )}
         </div>
         {w.hostDisplayName && (
-          <p className="text-xs font-medium text-gray-700 truncate">
+          <p className="text-xs text-gray-600 truncate">
+            <span className="font-semibold">Host:</span>{' '}
             {w.hostDisplayName}
-            {w.hostBio ? <span className="font-normal text-gray-500"> · {w.hostBio}</span> : null}
+            {w.hostBio ? <span className="text-gray-500"> · {w.hostBio}</span> : null}
+          </p>
+        )}
+        {w.speakers && w.speakers.length > 0 && (
+          <p className="text-xs text-gray-600 truncate">
+            <span className="font-semibold">{w.speakers.length === 1 ? 'Speaker:' : 'Speakers:'}</span>{' '}
+            {w.speakers.join(', ')}
           </p>
         )}
         <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
@@ -219,7 +226,7 @@ function WebinarRow({
             <span>{formatDuration(w.duration)}</span>
           )}
         </div>
-        {!w.hostDisplayName && w.description && (
+        {!w.hostDisplayName && !w.speakers?.length && w.description && (
           <p className="text-xs text-gray-500 line-clamp-1">{w.description}</p>
         )}
       </div>

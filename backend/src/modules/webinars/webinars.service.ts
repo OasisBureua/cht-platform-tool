@@ -34,6 +34,7 @@ export interface WebinarItem {
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
   hostBio?: string;
+  speakers?: string[];
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
   /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
@@ -106,6 +107,7 @@ export class WebinarsService {
         sessionKind: 'WEBINAR',
         hostDisplayName: p.hostDisplayName || undefined,
         hostBio: p.hostBio || undefined,
+        speakers: p.speakers?.length ? p.speakers : undefined,
         jotformIntakeFormUrl:
           effectiveWebinarIntakeFormUrl(p.zoomSessionType, p.jotformIntakeFormUrl, defaultIntake) || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
@@ -179,6 +181,7 @@ export class WebinarsService {
         sessionKind: 'MEETING',
         hostDisplayName: p.hostDisplayName || undefined,
         hostBio: p.hostBio || undefined,
+        speakers: p.speakers?.length ? p.speakers : undefined,
         jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
         honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
@@ -230,6 +233,7 @@ export class WebinarsService {
       sessionKind: 'WEBINAR',
       hostDisplayName: program.hostDisplayName || undefined,
       hostBio: program.hostBio || undefined,
+      speakers: program.speakers?.length ? program.speakers : undefined,
       jotformIntakeFormUrl:
         effectiveWebinarIntakeFormUrl(program.zoomSessionType, program.jotformIntakeFormUrl, defaultIntake) ||
         undefined,
@@ -264,6 +268,7 @@ export class WebinarsService {
       sessionKind: 'MEETING',
       hostDisplayName: program.hostDisplayName || undefined,
       hostBio: program.hostBio || undefined,
+      speakers: program.speakers?.length ? program.speakers : undefined,
       jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,

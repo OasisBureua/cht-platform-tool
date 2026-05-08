@@ -40,8 +40,10 @@ export interface AdminWebinar {
   /** USD; webinars only (Office Hours sessions omit this). */
   honorariumAmount?: number;
   createdAt: string;
-  /** Present on creation response only (WEBINAR). Unique join URLs per panelist (CHM Staff + each speaker). */
+  /** Persisted panelist join URLs (Host + Speakers + CHM Staff). Available in list after creation. */
   zoomPanelistLinks?: ZoomPanelistLink[];
+  /** Present when panelists were attempted but URLs could not be generated (scope issue, plan issue, etc.). */
+  zoomPanelistError?: string;
 }
 
 export interface CreateWebinarPayload {
@@ -205,6 +207,7 @@ export const adminApi = {
     jotformPostEventSharedFormId: string;
     jotformTemplateFormId: string;
     webinarJotformTemplatesConfigured: boolean;
+    zoomConfigured: boolean;
   }> => {
     const { data } = await apiClient.get('/admin/config');
     return data as {
@@ -213,6 +216,7 @@ export const adminApi = {
       jotformPostEventSharedFormId: string;
       jotformTemplateFormId: string;
       webinarJotformTemplatesConfigured: boolean;
+      zoomConfigured: boolean;
     };
   },
 

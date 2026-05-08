@@ -131,10 +131,14 @@ model Program {
   jotformIntakeFormUrl String?
   /// Pre-event questionnaire URL (iframe on program register flow)
   jotformPreEventUrl   String?
-  /// KOL / host display name for office hours marketing ("Get time with …")
+  /// Host display name ("Get time with …" / "Host: …")
   hostDisplayName      String?
-  /// Short speaker bio shown on the webinar/office-hours detail page
+  /// Short host bio shown on the detail page
   hostBio              String?
+  /// Speaker / KOL names for the session (distinct from host); stored for display and Zoom panelist registration
+  speakers             String[]
+  /// Panelist join URLs returned by Zoom when the webinar was created (JSON array of {name,email,joinUrl})
+  zoomPanelistLinks    Json?
   /// When true, users submit registration; admin approves before enrollment (webinars and office hours).
   registrationRequiresApproval Boolean @default(false)
   

@@ -70,6 +70,8 @@ export class ProgramsService {
     jotformIntakeFormUrl?: string | null;
     hostDisplayName?: string;
     hostBio?: string;
+    speakers?: string[];
+    zoomPanelistLinks?: Array<{ name: string; email: string; joinUrl: string }>;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -95,6 +97,10 @@ export class ProgramsService {
           : {}),
         ...(dto.hostDisplayName ? { hostDisplayName: dto.hostDisplayName.trim() } : {}),
         ...(dto.hostBio ? { hostBio: dto.hostBio.trim() } : {}),
+        speakers: dto.speakers?.map((s) => s.trim()).filter(Boolean) ?? [],
+        ...(dto.zoomPanelistLinks?.length
+          ? { zoomPanelistLinks: dto.zoomPanelistLinks }
+          : {}),
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);
@@ -229,6 +235,7 @@ export class ProgramsService {
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,
       hostBio: program.hostBio || undefined,
+      speakers: program.speakers ?? [],
       ...(opts?.includeZoomHostLink && program.zoomStartUrl?.trim()
         ? { zoomStartUrl: program.zoomStartUrl.trim() }
         : {}),
