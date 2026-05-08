@@ -153,6 +153,9 @@ model Program {
   zoomStartUrl      String?  // For host/KOL
   /// Set from Zoom meeting.ended / webinar.ended webhooks when configured (preferred for post-event survey timing).
   zoomSessionEndedAt DateTime?
+  /// True when this program was auto-created by a webinar.created / meeting.created Zoom webhook (outside the app).
+  /// Indicates admin review is required to fill in sponsor, honorarium, Jotform forms, host bio, etc.
+  importedViaWebhook Boolean @default(false)
 
   // Timestamps
   createdAt         DateTime @default(now())

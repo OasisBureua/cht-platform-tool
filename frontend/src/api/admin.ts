@@ -152,6 +152,14 @@ export interface AdminStats {
   paymentsPaidCount: number;
 }
 
+export interface WebhookImportedProgram {
+  id: string;
+  title: string;
+  startDate: string | null;
+  createdAt: string;
+  missingFields: string[];
+}
+
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     try {
@@ -502,5 +510,10 @@ export const adminApi = {
   deletePayment: async (paymentId: string) => {
     const { data } = await apiClient.delete(`/payments/${paymentId}`);
     return data;
+  },
+
+  getWebhookImports: async (): Promise<WebhookImportedProgram[]> => {
+    const { data } = await apiClient.get<WebhookImportedProgram[]>('/admin/programs/webhook-imports');
+    return data ?? [];
   },
 };

@@ -196,6 +196,49 @@ export class AdminController {
     return this.programsService.getAllProgramsForAdmin();
   }
 
+  @Get('programs/webhook-imports')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Programs auto-imported via Zoom webhook that need admin review' })
+  async getWebhookImports() {
+    const programs = await this.prisma.program.findMany({
+      where: { importedViaWebhook: true, status: 'DRAFT' },
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        createdAt: true,
+        sponsorName: true,
+        honorariumAmount: true,
+        description: true,
+        hostDisplayName: true,
+        hostBio: true,
+        jotformIntakeFormUrl: true,
+        jotformSurveyUrl: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return programs.map((p) => {
+      const missingFields: string[] = [];
+      if (!p.sponsorName || p.sponsorName === 'TBD') missingFields.push('Sponsor');
+      if (p.honorariumAmount == null) missingFields.push('Honorarium');
+      if (!p.description?.trim()) missingFields.push('Description');
+      if (!p.hostDisplayName?.trim()) missingFields.push('Host');
+      if (!p.jotformIntakeFormUrl?.trim()) missingFields.push('Intake form');
+      if (!p.jotformSurveyUrl?.trim()) missingFields.push('Post-event survey');
+
+      return {
+        id: p.id,
+        title: p.title,
+        startDate: p.startDate?.toISOString() ?? null,
+        createdAt: p.createdAt.toISOString(),
+        missingFields,
+      };
+    });
+  }
+
   @Post('programs')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

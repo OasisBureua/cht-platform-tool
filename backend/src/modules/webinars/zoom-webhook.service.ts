@@ -28,6 +28,17 @@ interface ZoomSessionEndedObject {
   end_time?: string;
 }
 
+interface ZoomCreatedObject {
+  id?: string | number;
+  uuid?: string;
+  topic?: string;
+  agenda?: string;
+  start_time?: string;
+  duration?: number;
+  join_url?: string;
+  start_url?: string;
+}
+
 interface ZoomWebhookPayload {
   event?: string;
   Event?: string;
@@ -103,6 +114,10 @@ export class ZoomWebhookService {
 
     if (eventNorm === 'meeting.ended' || eventNorm === 'webinar.ended') {
       await this.handleSessionEnded(obj as ZoomSessionEndedObject | undefined, eventNorm);
+    } else if (eventNorm === 'webinar.created') {
+      await this.handleSessionCreated(obj as ZoomCreatedObject | undefined, 'WEBINAR');
+    } else if (eventNorm === 'meeting.created') {
+      await this.handleSessionCreated(obj as ZoomCreatedObject | undefined, 'MEETING');
     } else if (event === 'meeting.participant_joined' || event === 'meeting.participant_left') {
       await this.handleParticipantEvent(event, obj, payload);
     } else {
@@ -155,6 +170,68 @@ export class ZoomWebhookService {
     });
 
     this.logger.log(`[Zoom webhook] ${eventNorm} → program ${program.id} zoomSessionEndedAt=${endAt.toISOString()}`);
+  }
+
+  /**
+   * webinar.created / meeting.created — auto-create a DRAFT Program from the Zoom session.
+   * Skips if a program with this Zoom ID already exists (idempotent).
+   * Admin must fill in sponsor, honorarium, Jotform forms, and host bio via Program Hub.
+   */
+  private async handleSessionCreated(
+    obj: ZoomCreatedObject | undefined,
+    sessionType: 'WEBINAR' | 'MEETING',
+  ): Promise<void> {
+    if (!obj) {
+      this.logger.warn(`[Zoom webhook] ${sessionType.toLowerCase()}.created missing object`);
+      return;
+    }
+
+    const zoomMeetingId = obj.id != null ? String(obj.id) : obj.uuid;
+    if (!zoomMeetingId) {
+      this.logger.warn(`[Zoom webhook] ${sessionType.toLowerCase()}.created missing id/uuid`);
+      return;
+    }
+
+    const existing = await this.prisma.program.findFirst({
+      where: { zoomMeetingId },
+      select: { id: true },
+    });
+
+    if (existing) {
+      this.logger.debug(
+        `[Zoom webhook] ${sessionType.toLowerCase()}.created: program ${existing.id} already exists for Zoom id ${zoomMeetingId} — skipping`,
+      );
+      return;
+    }
+
+    const title = obj.topic?.trim() || `Untitled ${sessionType === 'WEBINAR' ? 'Webinar' : 'Meeting'}`;
+    const description = obj.agenda?.trim() || '';
+    let startDate: Date | null = null;
+    if (obj.start_time?.trim()) {
+      const parsed = new Date(obj.start_time);
+      if (!Number.isNaN(parsed.getTime())) startDate = parsed;
+    }
+
+    const program = await this.prisma.program.create({
+      data: {
+        title,
+        description,
+        sponsorName: 'TBD',
+        creditAmount: 0,
+        status: 'DRAFT',
+        zoomSessionType: sessionType,
+        zoomMeetingId,
+        zoomJoinUrl: obj.join_url?.trim() || null,
+        zoomStartUrl: obj.start_url?.trim() || null,
+        startDate,
+        duration: obj.duration ?? null,
+        importedViaWebhook: true,
+      },
+    });
+
+    this.logger.log(
+      `[Zoom webhook] ${sessionType.toLowerCase()}.created → auto-created DRAFT program ${program.id} ("${title}") — admin review required`,
+    );
   }
 
   private async handleParticipantEvent(

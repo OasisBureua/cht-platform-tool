@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { programsApi } from '../../api/programs';
+import { adminApi } from '../../api/admin';
 
 export function NotificationBell() {
   const { user } = useAuth();
@@ -11,6 +12,7 @@ export function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const profileIncomplete = user?.profileComplete === false;
+  const isAdmin = user?.role === 'ADMIN';
 
   const { data: items = [] } = useQuery({
     queryKey: ['programs', 'live-action-items'],
@@ -19,7 +21,14 @@ export function NotificationBell() {
     staleTime: 30_000,
   });
 
-  const hasIndicator = (items.length > 0 || profileIncomplete) && !!user?.userId;
+  const { data: webhookImports = [] } = useQuery({
+    queryKey: ['admin', 'webhook-imports'],
+    queryFn: () => adminApi.getWebhookImports(),
+    enabled: isAdmin,
+    staleTime: 60_000,
+  });
+
+  const hasIndicator = (items.length > 0 || profileIncomplete || webhookImports.length > 0) && !!user?.userId;
 
   /** Open the panel once per login session when profession/NPI still required (cleared on logout). */
   useEffect(() => {
@@ -51,7 +60,10 @@ export function NotificationBell() {
         type="button"
         onClick={() => {
           setOpen((v) => !v);
-          if (!open) queryClient.invalidateQueries({ queryKey: ['programs', 'live-action-items'] });
+          if (!open) {
+            queryClient.invalidateQueries({ queryKey: ['programs', 'live-action-items'] });
+            if (isAdmin) queryClient.invalidateQueries({ queryKey: ['admin', 'webhook-imports'] });
+          }
         }}
         className="relative p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         aria-label="Notifications"
@@ -94,6 +106,38 @@ export function NotificationBell() {
                 Complete required profile
               </Link>
             </div>
+          ) : null}
+
+          {isAdmin && webhookImports.length > 0 ? (
+            <>
+              <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 dark:border-zinc-800 dark:text-zinc-400">
+                Admin — Zoom imports need review
+              </p>
+              <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
+                {webhookImports.map((prog) => (
+                  <li key={prog.id}>
+                    <Link
+                      to={`/admin/programs/${prog.id}`}
+                      onClick={() => setOpen(false)}
+                      className="block px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                    >
+                      <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{prog.title}</p>
+                      <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
+                        Imported from Zoom
+                        {prog.startDate
+                          ? ` · ${new Date(prog.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+                          : ''}
+                      </p>
+                      {prog.missingFields.length > 0 ? (
+                        <p className="text-xs text-gray-500 dark:text-zinc-500 mt-0.5">
+                          Missing: {prog.missingFields.join(', ')}
+                        </p>
+                      ) : null}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : null}
 
           <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 dark:border-zinc-800 dark:text-zinc-400">
