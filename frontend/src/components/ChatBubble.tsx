@@ -20,7 +20,20 @@ export default function ChatBubble() {
             src={CHATBOT_WIDGET_URL}
             title="CHM ChatBot"
             className="flex-1 w-full border-0"
-            sandbox="allow-scripts allow-same-origin allow-forms"
+            // Sandbox permissions needed by the chatbot widget:
+            // - allow-popups + allow-popups-to-escape-sandbox: "Watch on CHM"
+            //   external links and PDF/video open actions. Without these,
+            //   window.open() and target="_blank" silently fail.
+            // - allow-modals: delete-conversation confirmation dialog.
+            //   Without this, window.confirm() is suppressed and the
+            //   conversation never gets deleted.
+            // - allow-top-navigation-by-user-activation: lets the widget
+            //   navigate the parent CHT tab to a referenced CHM video on
+            //   click, which is more intuitive than opening a new tab.
+            // - allow-downloads: PDF reference cards let the user download
+            //   the source PDF; without this the download is silently
+            //   blocked.
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-top-navigation-by-user-activation allow-downloads"
           />
         </div>
       )}

@@ -17,7 +17,7 @@ on:
         type: boolean
 
 env:
-  TERRAFORM_VERSION: 1.6.0
+  TERRAFORM_VERSION: 1.9.8
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
 
 permissions:
@@ -94,9 +94,6 @@ jobs:
           TF_VAR_auth0_domain: ${{ secrets.AUTH0_DOMAIN }}
           TF_VAR_auth0_client_id: ${{ secrets.AUTH0_CLIENT_ID }}
           TF_VAR_auth0_audience: ${{ secrets.AUTH0_AUDIENCE }}
-          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
-          TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
-          TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           TF_VAR_sns_topic_arn: ${{ secrets.SNS_TOPIC_ARN }}
 
       - name: Get Terraform outputs

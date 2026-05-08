@@ -6,12 +6,12 @@ import { GoTrueStrategy } from './gotrue.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { PrismaModule } from '../prisma/prisma.module';
-import { HubSpotModule } from '../modules/hubspot/hubspot.module';
+import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
 
 @Module({
   controllers: [AuthController],
   imports: [
-    HubSpotModule,
+    OutboundSyncModule,
     ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     PrismaModule,

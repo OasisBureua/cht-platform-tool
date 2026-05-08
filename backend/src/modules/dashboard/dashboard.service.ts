@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { EarningsResponseDto, WeeklyEarnings } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
@@ -11,7 +11,7 @@ export class DashboardService {
 
   constructor(
     private prisma: PrismaService,
-    private hubspot: HubSpotService,
+    private outboundSync: OutboundSyncService,
   ) {}
 
   /**
@@ -131,17 +131,19 @@ export class DashboardService {
         ...(data.zipCode !== undefined && { zipCode: data.zipCode.trim() || null }),
       },
     });
-    this.hubspot.createOrUpdateContact({
-      email: updated.email,
-      firstname: updated.firstName,
-      lastname: updated.lastName,
-      jobtitle: updated.specialty ?? undefined,
-      company: updated.institution ?? undefined,
-      city: updated.city ?? undefined,
-      state: updated.state ?? undefined,
-      zip: updated.zipCode ?? undefined,
-      npi_number: updated.npiNumber ?? undefined,
-    }).catch(() => {});
+    this.outboundSync
+      .syncUser({
+        email: updated.email,
+        firstName: updated.firstName,
+        lastName: updated.lastName,
+        npiNumber: updated.npiNumber,
+        specialty: updated.specialty,
+        institution: updated.institution,
+        city: updated.city,
+        state: updated.state,
+        zipCode: updated.zipCode,
+      })
+      .catch((err) => this.logger.error('[Dashboard] outbound-sync error:', err));
     return this.getProfile(userId);
   }
 
