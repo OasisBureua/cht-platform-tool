@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
+import { SurveysService } from '../surveys/surveys.service';
 import { createHmac } from 'crypto';
 
 /**
@@ -63,6 +64,7 @@ export class ZoomWebhookService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly hubspot: HubSpotService,
+    private readonly surveys: SurveysService,
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
@@ -232,6 +234,13 @@ export class ZoomWebhookService {
     this.logger.log(
       `[Zoom webhook] ${sessionType.toLowerCase()}.created → auto-created DRAFT program ${program.id} ("${title}") — admin review required`,
     );
+
+    if (sessionType === 'WEBINAR') {
+      this.surveys.attachJotformFormsFromConfig(program.id, title).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`[Zoom webhook] Jotform form attachment failed for program ${program.id}: ${msg}`);
+      });
+    }
   }
 
   private async handleParticipantEvent(

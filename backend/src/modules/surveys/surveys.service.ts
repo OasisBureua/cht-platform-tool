@@ -393,6 +393,42 @@ export class SurveysService {
   }
 
   /**
+   * Attach Jotform forms to a webhook-imported program without cloning.
+   * Uses env-configured form IDs/URLs directly:
+   *  - Intake: JOTFORM_WEBINAR_DEFAULT_INTAKE_URL (preferred) or constructed from invitationTemplateFormId
+   *  - Post-event: postEventSharedFormId (preferred) or postEventTemplateFormId — no clone, just links the Survey record
+   * Fails gracefully if none of the env vars are set.
+   */
+  async attachJotformFormsFromConfig(programId: string, programTitle: string): Promise<void> {
+    const defaultIntakeUrl = this.configService.get<string>('jotform.webinarDefaultIntakeUrl')?.trim();
+    const invFormId = this.configService.get<string>('jotform.invitationTemplateFormId')?.trim();
+    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
+    const postTemplate = this.configService.get<string>('jotform.postEventTemplateFormId')?.trim();
+
+    // 1. Intake / invitation form — no clone, just set the URL
+    const intakeUrl = defaultIntakeUrl || (invFormId ? `https://communityhealthmedia.jotform.com/${invFormId}` : null);
+    if (intakeUrl) {
+      await this.prisma.program.update({
+        where: { id: programId },
+        data: { jotformIntakeFormUrl: intakeUrl },
+      });
+      this.logger.log(`Webhook import: attached intake form for program ${programId}`);
+    }
+
+    // 2. Post-event survey — use shared form (preferred) or template form ID directly, no clone
+    const postFormId = sharedPost || postTemplate;
+    if (postFormId) {
+      await this.attachSharedPostEventSurvey(programId, programTitle, postFormId);
+    }
+
+    if (!intakeUrl && !postFormId) {
+      this.logger.warn(
+        `Webhook import: no Jotform env vars configured for program ${programId} — skipping form attachment`,
+      );
+    }
+  }
+
+  /**
    * Clone invitation + post-event forms from env template IDs, add webhooks, set program intake URL + FEEDBACK survey.
    */
   async createWebinarJotformPairFromTemplates(programId: string, programTitle: string) {

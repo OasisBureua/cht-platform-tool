@@ -44,6 +44,11 @@ export interface AdminWebinar {
   zoomPanelistLinks?: ZoomPanelistLink[];
   /** Present when panelists were attempted but URLs could not be generated (scope issue, plan issue, etc.). */
   zoomPanelistError?: string;
+  hostDisplayName?: string;
+  hostBio?: string;
+  speakers?: string[];
+  /** True when this program was auto-created by a Zoom webhook (webinar.created). */
+  importedViaWebhook?: boolean;
 }
 
 export interface CreateWebinarPayload {
@@ -91,6 +96,9 @@ export interface UpdateWebinarPayload {
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
   /** WEBINAR only. USD; use 0 to clear. */
   honorariumAmount?: number;
+  hostDisplayName?: string;
+  hostBio?: string;
+  speakers?: string[];
 }
 
 export interface CreateProgramPayload {

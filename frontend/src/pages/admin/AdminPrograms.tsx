@@ -406,6 +406,9 @@ function EditWebinarModal({
   const [honorariumUsd, setHonorariumUsd] = useState(
     webinar.honorariumAmount != null ? String(webinar.honorariumAmount) : '',
   );
+  const [hostDisplayName, setHostDisplayName] = useState(webinar.hostDisplayName ?? '');
+  const [hostBio, setHostBio] = useState(webinar.hostBio ?? '');
+  const [speakers, setSpeakers] = useState<string[]>(webinar.speakers ?? []);
   const [error, setError] = useState<string | null>(null);
 
   const updateMutation = useMutation({
@@ -458,15 +461,18 @@ function EditWebinarModal({
       ...(sessionKind === 'WEBINAR' && honorariumPayload !== undefined
         ? { honorariumAmount: honorariumPayload }
         : {}),
+      hostDisplayName: hostDisplayName.trim() || undefined,
+      hostBio: hostBio.trim() || undefined,
+      speakers: speakers.map((s) => s.trim()).filter(Boolean),
     };
     updateMutation.mutate(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="font-semibold text-gray-900">
             {sessionKind === 'MEETING' ? 'Edit Office Hours' : 'Edit webinar'}
           </h2>
@@ -476,7 +482,7 @@ function EditWebinarModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Title *</label>
             <input
@@ -563,6 +569,77 @@ function EditWebinarModal({
             </div>
           ) : null}
 
+          {sessionKind === 'WEBINAR' ? (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Host <span className="font-normal text-gray-400">— optional</span>
+                </label>
+                <input
+                  type="text"
+                  value={hostDisplayName}
+                  onChange={(e) => setHostDisplayName(e.target.value)}
+                  placeholder="Dr. Jane Smith"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Person moderating/running the session. Shown as "Host:" on the webinar card.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Host bio <span className="font-normal text-gray-400">— optional</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={hostBio}
+                  onChange={(e) => setHostBio(e.target.value)}
+                  placeholder="Title, specialty, or brief note…"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Speakers / KOLs <span className="font-normal text-gray-400">— optional; add one or more</span>
+                </label>
+                <div className="space-y-2">
+                  {speakers.map((sp, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={sp}
+                        onChange={(e) => {
+                          const next = [...speakers];
+                          next[i] = e.target.value;
+                          setSpeakers(next);
+                        }}
+                        placeholder={`Speaker ${i + 1}`}
+                        className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSpeakers(speakers.filter((_, idx) => idx !== i))}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        aria-label="Remove speaker"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setSpeakers([...speakers, ''])}
+                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                  >
+                    <span className="text-lg leading-none">+</span> Add speaker
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+
           {webinar.zoomMeetingId && (
             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
               Changes to title, date, and duration will also be synced to Zoom{' '}
@@ -576,7 +653,7 @@ function EditWebinarModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={onClose}
             className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

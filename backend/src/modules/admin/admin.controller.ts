@@ -493,6 +493,10 @@ export class AdminController {
             : undefined,
         createdAt: p.createdAt.toISOString(),
         zoomPanelistLinks: (p.zoomPanelistLinks as Array<{ name: string; email: string; joinUrl: string }> | null) ?? undefined,
+        hostDisplayName: p.hostDisplayName ?? undefined,
+        hostBio: p.hostBio ?? undefined,
+        speakers: p.speakers ?? [],
+        importedViaWebhook: p.importedViaWebhook,
       };
     });
 
@@ -1209,9 +1213,15 @@ export class AdminController {
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
       /** WEBINAR only. Dollars; omit to leave unchanged. Set to 0 to clear. */
       honorariumAmount?: number;
+      hostDisplayName?: string;
+      hostBio?: string;
+      speakers?: string[];
     },
   ) {
-    const existing = await this.prisma.program.findUnique({ where: { id } });
+    const existing = await this.prisma.program.findUnique({
+      where: { id },
+      include: { surveys: { where: { type: 'FEEDBACK' }, select: { id: true }, take: 1 } },
+    });
     if (!existing) throw new NotFoundException('Webinar not found');
 
     if (body.honorariumAmount !== undefined) {
@@ -1252,8 +1262,22 @@ export class AdminController {
       updateData.honorariumAmount =
         body.honorariumAmount <= 0 ? null : Math.round(body.honorariumAmount * 100);
     }
+    if (body.hostDisplayName !== undefined) updateData.hostDisplayName = body.hostDisplayName.trim() || null;
+    if (body.hostBio !== undefined) updateData.hostBio = body.hostBio.trim() || null;
+    if (body.speakers !== undefined) updateData.speakers = body.speakers.map((s) => s.trim()).filter(Boolean);
 
     const updated = await this.prisma.program.update({ where: { id }, data: updateData });
+
+    // For webhook-imported webinars that have no Jotform forms yet, attach them from env config on first save.
+    const noFeedbackSurvey = existing.surveys.length === 0;
+    if (existing.importedViaWebhook && existing.zoomSessionType === 'WEBINAR' && noFeedbackSurvey) {
+      const programTitle = (body.title?.trim()) || existing.title;
+      this.surveysService.attachJotformFormsFromConfig(id, programTitle).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Jotform form attachment on first save failed for program ${id}: ${msg}`);
+      });
+    }
+
     return updated;
   }
 
