@@ -5,12 +5,11 @@ import { Presentation, ClipboardList, CalendarClock, PlayCircle, X } from 'lucid
 import { format, isPast, startOfWeek, endOfWeek } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } from '../api/catalog';
-import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, hasRealThumbnail } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
-import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
 import { APP_CATALOG_CONVERSATIONS_HUB } from '../components/navigation/appNavItems';
-import { buildCatalogSectionPlaylistsHref, VIEW_PLAYLIST_LABEL } from '../utils/playlistFocusFilters';
+import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -176,8 +175,8 @@ export default function Dashboard() {
   });
 
   const latestWebinar = useMemo(() => getLatestWebinar(webinars), [webinars]);
-  const recentItems = recentData?.items ?? [];
-  const topicItems = topicData?.items ?? [];
+  const recentItems = (recentData?.items ?? []).filter(hasRealThumbnail);
+  const topicItems = (topicData?.items ?? []).filter(hasRealThumbnail);
   const playlistStrip = (playlists as CatalogItem[]).slice(0, 10);
 
   const isLoading =
@@ -336,25 +335,8 @@ export default function Dashboard() {
                 </ConversationRow>
               ) : null}
 
-              {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
-                <ConversationRow
-                  key={section.label}
-                  title={section.label}
-                  subtitle={section.subtitle}
-                  seeAllHref={buildCatalogSectionPlaylistsHref(true, section.label)}
-                  seeAllLabel={VIEW_PLAYLIST_LABEL}
-                >
-                  {section.items.map((item) => (
-                    <StripCard
-                      key={item.id}
-                      to={item.href}
-                      title={item.title}
-                      imageUrl={item.imageUrl}
-                      description={item.speakers}
-                      videoLabel={item.tag}
-                    />
-                  ))}
-                </ConversationRow>
+              {BIOMARKER_ROWS.map((row) => (
+                <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
               ))}
 
               {topicTag && topicItems.length > 0 ? (

@@ -147,25 +147,16 @@ export default function Layout() {
           onClick={(e) => e.stopPropagation()}
         >
           <header className="nav-liquid-glass sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 px-4 sm:h-16 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
-              <button
-                type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-zinc-200/90 bg-white/90 text-gray-800 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[background-color,color,transform] duration-200 hover:bg-white hover:text-gray-900 active:scale-[0.96] md:hidden dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-zinc-800"
-                aria-expanded={mobileDrawerOpen}
-                aria-controls="app-slide-drawer-nav"
-                aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                onClick={() => setMobileDrawerOpen((o) => !o)}
-              >
-                <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
-              </button>
-              <Link
-                to="/app/home"
-                className="hidden shrink-0 text-brand-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-brand-700 active:scale-[0.96] md:inline-flex"
-                aria-label="Community Health Media, app home"
-              >
-                <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
-              </Link>
-            </div>
+            <button
+              type="button"
+              className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-zinc-200/90 bg-white/90 text-gray-800 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[background-color,color,transform] duration-200 hover:bg-white hover:text-gray-900 active:scale-[0.96] md:hidden dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-zinc-800"
+              aria-expanded={mobileDrawerOpen}
+              aria-controls="app-slide-drawer-nav"
+              aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              onClick={() => setMobileDrawerOpen((o) => !o)}
+            >
+              <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </button>
             <div className="min-w-0 flex-1 pr-2 md:pr-3">
               <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
                 Welcome, {displayName}!

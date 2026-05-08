@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, hasRealThumbnail } from '../../utils/clipUrl';
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
@@ -12,9 +12,8 @@ import { PlaylistVideosFlattenGrid } from '../../components/content/PlaylistVide
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
-import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
+import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../../components/content/BiomarkerConversationRow';
 import {
-  buildCatalogSectionPlaylistsHref,
   filterPlaylistsByFocus,
   parsePlaylistFocus,
   playlistBrowseHeading as playlistBrowseHeadingText,
@@ -261,14 +260,14 @@ export default function VideosPage() {
   }, [handleObserver]);
 
   const mediaHubItems = useMemo(
-    () => clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? [],
+    () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(hasRealThumbnail),
     [clipsData?.pages],
   );
 
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
 
-  const firstPageItems = clipsData?.pages?.[0]?.items ?? [];
+  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter(hasRealThumbnail);
   const featuredClip = firstPageItems[0] ?? null;
   const gridItems = useMemo(
     () => (featuredClip ? displayItems.filter((c) => c.id !== featuredClip.id) : displayItems),
@@ -437,25 +436,8 @@ export default function VideosPage() {
         {!isInApp && effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && (
           <section className="mx-auto max-w-7xl space-y-10 px-3 sm:px-6 pb-2 sm:pb-6">
             {playlistsCarouselStrip}
-            {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
-              <ConversationRow
-                key={section.label}
-                title={section.label}
-                subtitle={section.subtitle}
-                seeAllHref={buildCatalogSectionPlaylistsHref(false, section.label)}
-                seeAllLabel={VIEW_PLAYLIST_LABEL}
-              >
-                {section.items.map((item) => (
-                  <StripCard
-                    key={item.id}
-                    to={item.href}
-                    title={item.title}
-                    imageUrl={item.imageUrl}
-                    description={item.speakers}
-                    videoLabel={item.tag}
-                  />
-                ))}
-              </ConversationRow>
+            {BIOMARKER_ROWS.map((row) => (
+              <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={false} />
             ))}
           </section>
         )}
@@ -564,25 +546,8 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
-                {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
-                  <ConversationRow
-                    key={section.label}
-                    title={section.label}
-                    subtitle={section.subtitle}
-                    seeAllHref={buildCatalogSectionPlaylistsHref(true, section.label)}
-                    seeAllLabel={VIEW_PLAYLIST_LABEL}
-                  >
-                    {section.items.map((item) => (
-                      <StripCard
-                        key={item.id}
-                        to={item.href}
-                        title={item.title}
-                        imageUrl={item.imageUrl}
-                        description={item.speakers}
-                        videoLabel={item.tag}
-                      />
-                    ))}
-                  </ConversationRow>
+                {BIOMARKER_ROWS.map((row) => (
+                  <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
                 ))}
               </>
             ) : (
@@ -605,25 +570,8 @@ export default function VideosPage() {
                   </ConversationRow>
                 ) : null}
                 {playlistsCarouselStrip}
-                {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
-                  <ConversationRow
-                    key={section.label}
-                    title={section.label}
-                    subtitle={section.subtitle}
-                    seeAllHref={buildCatalogSectionPlaylistsHref(true, section.label)}
-                    seeAllLabel={VIEW_PLAYLIST_LABEL}
-                  >
-                    {section.items.map((item) => (
-                      <StripCard
-                        key={item.id}
-                        to={item.href}
-                        title={item.title}
-                        imageUrl={item.imageUrl}
-                        description={item.speakers}
-                        videoLabel={item.tag}
-                      />
-                    ))}
-                  </ConversationRow>
+                {BIOMARKER_ROWS.map((row) => (
+                  <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
                 ))}
               </>
             )}
