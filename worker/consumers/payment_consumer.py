@@ -1,10 +1,11 @@
 import os
 import boto3
+from botocore.config import Config
 from typing import Optional, Tuple
 
 from sqlalchemy import text
 from utils.logger import setup_logger
-from utils.sqs_base import SQSBaseConsumer
+from utils.sqs_base import PermanentFailure, SQSBaseConsumer
 from services.database import get_db_session
 
 logger = setup_logger(__name__)
@@ -18,14 +19,18 @@ class PaymentConsumer(SQSBaseConsumer):
 
         sqs = None
         if queue_url:
-            sqs = boto3.client("sqs", region_name=os.getenv("AWS_REGION", "us-east-1"))
+            sqs = boto3.client(
+                "sqs",
+                region_name=os.getenv("AWS_REGION", "us-east-1"),
+                config=Config(retries={"max_attempts": 5, "mode": "adaptive"}),
+            )
             logger.info(f"Payment consumer queue: {queue_url}")
 
         super().__init__(
             queue_url=queue_url,
             sqs_client=sqs,
             queue_name="payment",
-            visibility_timeout=60,
+            visibility_timeout=180,  # 3-min window; heartbeat extends as needed
         )
 
     def _validate_message(self, body: dict) -> Tuple[bool, Optional[str]]:
@@ -53,8 +58,8 @@ class PaymentConsumer(SQSBaseConsumer):
         """Process payment message. Returns True on success."""
         valid, err = self._validate_message(body)
         if not valid:
-            logger.error(f"Invalid message: {err}")
-            return False
+            # Structural/schema errors never fix themselves — remove from queue immediately
+            raise PermanentFailure(f"Invalid message: {err}")
 
         user_id = body["userId"]
         amount = int(body["amount"])
@@ -87,8 +92,8 @@ class PaymentConsumer(SQSBaseConsumer):
                 ).fetchone()
 
                 if not result:
-                    logger.error(f"User not found: {user_id}")
-                    return False
+                    # User doesn't exist — no amount of retries will fix this
+                    raise PermanentFailure(f"User not found: {user_id}")
 
                 description = self._pending_payment_description(
                     session, payment_type, program_id,

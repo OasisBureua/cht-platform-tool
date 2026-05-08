@@ -375,24 +375,59 @@ export class ZoomService implements OnModuleInit {
       throw new Error(`${base}${status}${detail ? ` — Zoom response: ${detail}` : ''}`);
     }
 
-    this.logger.log(`Zoom: added ${data.panelists?.length ?? 0} panelist(s) to webinar ${webinarId}`);
+    // Zoom's POST response body is unreliable — it sometimes returns an empty panelists
+    // array or omits the key entirely. Always do a follow-up GET to get the authoritative
+    // list with join_url values populated.
+    this.logger.log(`Zoom: POST accepted for webinar ${webinarId}, fetching panelist list via GET to retrieve join URLs`);
 
-    const results = (data.panelists || []).map((p) => ({
+    let results: Array<{ id: string; name: string; email: string; joinUrl: string }> = [];
+    try {
+      results = await this.getWebinarPanelists(webinarId);
+    } catch (gErr) {
+      const gMsg = gErr instanceof Error ? gErr.message : String(gErr);
+      this.logger.warn(`Zoom: GET panelists failed for webinar ${webinarId}: ${gMsg}`);
+      // Fall back to whatever the POST returned, even if join_url is missing
+      results = (data.panelists || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        joinUrl: p.join_url,
+      }));
+    }
+
+    this.logger.log(`Zoom: retrieved ${results.length} panelist(s) for webinar ${webinarId}`);
+    results.forEach((p) => {
+      if (p.joinUrl) {
+        this.logger.log(`Zoom: panelist join URL — ${p.name} <${p.email}>: ${p.joinUrl}`);
+      } else {
+        this.logger.warn(`Zoom: no join_url for panelist ${p.email} on webinar ${webinarId}`);
+      }
+    });
+
+    return results;
+  }
+
+  /**
+   * Fetch the current panelist list for a Zoom Webinar (with join URLs).
+   * Docs: GET /v2/webinars/{webinarId}/panelists
+   */
+  async getWebinarPanelists(
+    webinarId: string,
+  ): Promise<Array<{ id: string; name: string; email: string; joinUrl: string }>> {
+    if (!this.isConfigured()) return [];
+    const token = await this.getAccessToken();
+    const res = await firstValueFrom(
+      this.http.get<{ panelists: Array<{ id: string; name: string; email: string; join_url: string }> }>(
+        `https://api.zoom.us/v2/webinars/${webinarId}/panelists`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+    );
+    return (res.data.panelists ?? []).map((p) => ({
       id: p.id,
       name: p.name,
       email: p.email,
       joinUrl: p.join_url,
     }));
-
-    results.forEach((p) => {
-      if (p.joinUrl) {
-        this.logger.log(`Zoom: panelist join URL — ${p.name} <${p.email}>: ${p.joinUrl}`);
-      } else {
-        this.logger.warn(`Zoom: no join_url returned for panelist ${p.email} on webinar ${webinarId}`);
-      }
-    });
-
-    return results;
   }
 
   async deleteWebinar(webinarId: string): Promise<void> {

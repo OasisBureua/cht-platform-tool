@@ -67,6 +67,9 @@ export default function SurveyDetail() {
     },
   });
   const surveySaved = Boolean(myResponse?.submitted);
+  const surveyAcked = isPostEventFeedback && !!programRegistration?.postEventSurveyAcknowledgedAt;
+  // For FEEDBACK surveys, once acknowledged the form is permanently locked — no resubmission.
+  const formLocked = surveyAcked;
 
   const { data: jotformResume } = useQuery({
     queryKey: ['survey', id, 'jotform-resume'],
@@ -212,25 +215,25 @@ export default function SurveyDetail() {
           {/* Start / Embed */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
             {!started ? (
-              surveySaved && hasJotform ? (
-                isPostEventFeedback ? (
+              formLocked || (surveySaved && hasJotform && isPostEventFeedback) ? (
+                <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  {formLocked
+                    ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
+                    : 'Your responses are saved. Thank you for completing this survey.'}
+                </p>
+              ) : surveySaved && hasJotform ? (
+                <div className="space-y-3">
                   <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                     Your responses are saved. Thank you for completing this survey.
                   </p>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                      Your responses are saved. Thank you for completing this survey.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setStarted(true)}
-                      className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
-                    >
-                      Open embedded form
-                    </button>
-                  </div>
-                )
+                  <button
+                    type="button"
+                    onClick={() => setStarted(true)}
+                    className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
+                  >
+                    Open embedded form
+                  </button>
+                </div>
               ) : surveySaved && !hasJotform ? (
                 <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                   Your responses are saved. Thank you for completing this survey.
@@ -249,7 +252,7 @@ export default function SurveyDetail() {
               )
             ) : null}
 
-            {started ? (
+            {started && !formLocked ? (
               <div>
                 {hasJotform && jotformEmbedUrl ? (
                   <div className="space-y-4">

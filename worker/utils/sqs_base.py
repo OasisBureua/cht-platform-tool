@@ -6,23 +6,38 @@ VisibilityTimeout. Configure the main queue's redrive policy to send to DLQ afte
 maxReceiveCount (e.g. 5) receives.
 """
 import json
+import os
+import threading
 import time
 import traceback
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+HEARTBEAT_PATH = os.getenv("WORKER_HEARTBEAT_PATH", "/tmp/worker_heartbeat")
+
+
+class PermanentFailure(Exception):
+    """
+    Raise inside process_message() for messages that should be deleted immediately
+    rather than retried (e.g. missing user, unknown message type). The message is
+    removed from the queue to avoid burning through maxReceiveCount on a dead message.
+    """
+
 
 class SQSBaseConsumer(ABC):
     """
     Base class for SQS consumers with:
-    - Retry on failure (don't delete, message becomes visible again)
-    - Structured logging with message_id, receive_count
+    - Retry on transient failure (don't delete; message becomes visible again after timeout)
+    - Immediate delete on PermanentFailure (bad message type, missing entity, etc.)
+    - Visibility timeout heartbeat (prevents duplicate processing on slow handlers)
+    - Structured logging with message_id and receive_count
     - Full traceback on errors
-    - Graceful handling of malformed messages
+    - ECS health heartbeat file touch on every successful poll
     """
 
     def __init__(
@@ -30,7 +45,7 @@ class SQSBaseConsumer(ABC):
         queue_url: Optional[str],
         sqs_client: Optional[Any],
         queue_name: str = "queue",
-        visibility_timeout: int = 300,
+        visibility_timeout: int = 180,
         max_messages: int = 10,
         wait_time_seconds: int = 20,
     ):
@@ -43,7 +58,7 @@ class SQSBaseConsumer(ABC):
         self._shutdown = False
 
     def _log_message_event(self, event: str, message: Dict[str, Any], success: Optional[bool] = None):
-        """Structured log for message events."""
+        """Structured log for message lifecycle events."""
         attrs = message.get("Attributes", {})
         receive_count = int(attrs.get("ApproximateReceiveCount", 1))
         msg_id = message.get("MessageId", "unknown")
@@ -52,9 +67,31 @@ class SQSBaseConsumer(ABC):
             msg += f" success={success}"
         logger.info(msg)
 
+    def _extend_visibility(self, receipt_handle: str, msg_id: str, stop_event: threading.Event):
+        """
+        Background thread: extends visibility timeout every (timeout/2) seconds so
+        the message stays invisible while process_message() is running. Prevents
+        duplicate delivery when processing takes longer than the initial timeout.
+        """
+        interval = max(30, self.visibility_timeout // 2)
+        while not stop_event.wait(interval):
+            if not self.sqs or not self.queue_url:
+                break
+            try:
+                self.sqs.change_message_visibility(
+                    QueueUrl=self.queue_url,
+                    ReceiptHandle=receipt_handle,
+                    VisibilityTimeout=self.visibility_timeout,
+                )
+                logger.debug(f"Extended visibility for message_id={msg_id}")
+            except Exception as e:
+                logger.warning(f"Failed to extend visibility for message_id={msg_id}: {e}")
+
     def _handle_message(self, message: Dict[str, Any]) -> bool:
         """
-        Process a single message. Returns True if processed successfully (message will be deleted).
+        Process a single SQS message with heartbeat and permanent-failure handling.
+        Returns True if the message was processed (and deleted). False means it will
+        become visible again after the visibility timeout.
         """
         msg_id = message.get("MessageId", "unknown")
         receipt_handle = message.get("ReceiptHandle", "")
@@ -65,10 +102,22 @@ class SQSBaseConsumer(ABC):
         try:
             body = json.loads(body_str)
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in message message_id={msg_id} error={e} body_preview={body_str[:200]}")
-            # Delete malformed messages to prevent infinite retries
+            logger.error(
+                f"Invalid JSON in message message_id={msg_id} error={e} "
+                f"body_preview={body_str[:200]}"
+            )
+            # Malformed messages can never succeed — delete immediately
             self._delete_message(receipt_handle, msg_id)
-            return True  # Consider "handled" - we removed the bad message
+            return True
+
+        # Start heartbeat thread so the message stays invisible during processing
+        stop_event = threading.Event()
+        heartbeat = threading.Thread(
+            target=self._extend_visibility,
+            args=(receipt_handle, msg_id, stop_event),
+            daemon=True,
+        )
+        heartbeat.start()
 
         try:
             success = self.process_message(body)
@@ -77,15 +126,28 @@ class SQSBaseConsumer(ABC):
                 self._log_message_event("processed", message, success=True)
                 return True
             else:
-                logger.warning(f"Processing returned False - message will retry message_id={msg_id}")
+                logger.warning(
+                    f"Processing returned False — message will retry message_id={msg_id}"
+                )
                 return False
+        except PermanentFailure as e:
+            logger.error(
+                f"Permanent failure — deleting message immediately message_id={msg_id}: {e}"
+            )
+            self._delete_message(receipt_handle, msg_id)
+            return True  # Removed — no point retrying
         except Exception as e:
-            logger.error(f"Processing failed message_id={msg_id} error={e}\n{traceback.format_exc()}")
-            # Don't delete - message will become visible again for retry
+            logger.error(
+                f"Processing failed message_id={msg_id} error={e}\n{traceback.format_exc()}"
+            )
+            # Transient error — don't delete; SQS will redeliver after visibility timeout
             return False
+        finally:
+            stop_event.set()
+            heartbeat.join(timeout=5)
 
     def _delete_message(self, receipt_handle: str, message_id: str):
-        """Delete message from queue after successful processing."""
+        """Delete a message from the queue after successful (or permanently failed) processing."""
         if not self.sqs or not self.queue_url:
             return
         try:
@@ -97,20 +159,27 @@ class SQSBaseConsumer(ABC):
         except Exception as e:
             logger.error(f"Failed to delete message message_id={message_id} error={e}")
 
+    def _touch_heartbeat(self):
+        """Touch the heartbeat file so the ECS health check sees the worker is alive."""
+        try:
+            Path(HEARTBEAT_PATH).touch()
+        except Exception:
+            pass  # Non-fatal; don't let a filesystem glitch kill the poll loop
+
     @abstractmethod
     def process_message(self, body: Dict[str, Any]) -> bool:
         """
-        Process the message body. Return True on success, False on failure.
-        On False, message will not be deleted and will retry.
+        Process the message body. Return True on success, False on transient failure.
+        Raise PermanentFailure for messages that should never be retried.
         """
         pass
 
     def poll(self):
-        """Main polling loop."""
+        """Main long-polling loop."""
         logger.info(f"Starting {self.queue_name} consumer...")
 
         if not self.sqs or not self.queue_url:
-            logger.info(f"{self.queue_name}: Mock mode - no SQS configured")
+            logger.info(f"{self.queue_name}: Mock mode — no SQS configured")
             while not self._shutdown:
                 time.sleep(10)
             return
@@ -131,7 +200,8 @@ class SQSBaseConsumer(ABC):
                 )
 
                 messages = response.get("Messages", [])
-                consecutive_errors = 0  # Reset on successful poll
+                consecutive_errors = 0  # Reset only on a successful AWS API call
+                self._touch_heartbeat()  # ECS health check: worker is alive
 
                 for message in messages:
                     if self._shutdown:
@@ -140,14 +210,17 @@ class SQSBaseConsumer(ABC):
 
             except Exception as e:
                 consecutive_errors += 1
-                logger.error(f"Poll error (attempt {consecutive_errors}/{max_consecutive_errors}): {e}\n{traceback.format_exc()}")
+                logger.error(
+                    f"Poll error (attempt {consecutive_errors}/{max_consecutive_errors}): "
+                    f"{e}\n{traceback.format_exc()}"
+                )
                 if consecutive_errors >= max_consecutive_errors:
-                    logger.error("Max consecutive errors reached - backing off 60s")
+                    logger.error("Max consecutive errors reached — backing off 60s")
                     time.sleep(60)
                     consecutive_errors = 0
                 else:
                     time.sleep(error_backoff)
 
     def shutdown(self):
-        """Signal consumer to stop gracefully."""
+        """Signal the consumer to stop polling after the current message batch."""
         self._shutdown = True

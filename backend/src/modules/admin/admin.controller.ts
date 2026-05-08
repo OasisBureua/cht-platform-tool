@@ -268,6 +268,41 @@ export class AdminController {
     return p;
   }
 
+  /**
+   * POST /admin/programs/:id/refresh-zoom-panelists
+   * Re-fetches panelists directly from Zoom and persists their join URLs.
+   * Useful for programs created before the always-GET fix, or where links are missing.
+   */
+  @Post('programs/:id/refresh-zoom-panelists')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Re-fetch panelist join URLs from Zoom and save to program' })
+  async refreshZoomPanelists(@Param('id') id: string) {
+    const p = await this.prisma.program.findUnique({ where: { id } });
+    if (!p) throw new NotFoundException('Program not found');
+    if (!p.zoomMeetingId) throw new BadRequestException('Program has no linked Zoom webinar');
+    if (p.zoomSessionType !== 'WEBINAR') throw new BadRequestException('Panelist links are only available for Zoom Webinars, not Meetings');
+    if (!this.zoom.isConfigured()) throw new BadRequestException('Zoom is not configured');
+
+    const panelists = await this.zoom.getWebinarPanelists(p.zoomMeetingId);
+    const links = panelists
+      .filter((pan) => pan.joinUrl)
+      .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+
+    await this.prisma.program.update({
+      where: { id },
+      data: { zoomPanelistLinks: links.length ? links : undefined },
+    });
+
+    this.logger.log(`Refreshed ${links.length} panelist link(s) for program ${id} (webinar ${p.zoomMeetingId})`);
+
+    return {
+      refreshed: links.length,
+      panelists: links,
+    };
+  }
+
   @Patch('programs/:id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -624,13 +659,10 @@ export class AdminController {
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
 
-          // Build panelist list: CHM Staff (fixed) + host (if set) + each speaker with an indexed email
+          // Build panelist list: CHM Staff (fixed) + each speaker with an indexed email
+          // Host does not get a personal Zoom URL — they start the session via the host start link.
           const speakerNames = (body.speakers ?? []).map((s) => s.trim()).filter(Boolean);
-          const hostName = body.hostDisplayName?.trim();
-          const allPanelistNames: string[] = [
-            ...(hostName ? [hostName] : []),
-            ...speakerNames,
-          ];
+          const allPanelistNames: string[] = [...speakerNames];
           const panelistsToAdd: Array<{ name: string; email: string }> = [
             { name: 'CHM Staff', email: 'zsoccerguy@gmail.com' },
             ...allPanelistNames.map((name, idx) => ({

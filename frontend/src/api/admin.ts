@@ -480,6 +480,11 @@ export const adminApi = {
     return data;
   },
 
+  refreshZoomPanelists: async (programId: string): Promise<{ refreshed: number; panelists: { name: string; email: string; joinUrl: string }[] }> => {
+    const { data } = await apiClient.post(`/admin/programs/${encodeURIComponent(programId)}/refresh-zoom-panelists`);
+    return data as { refreshed: number; panelists: { name: string; email: string; joinUrl: string }[] };
+  },
+
   // ─── Users ───────────────────────────────────────────────────────────────
 
   getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {

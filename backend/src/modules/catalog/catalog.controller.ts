@@ -87,6 +87,8 @@ export class CatalogController {
    * GET /api/catalog/clips/:id
    * MediaHub: Single clip detail.
    * Accepts full ID (e.g. official:youtube:E1tTwDQgMBc) or short YouTube video ID (e.g. E1tTwDQgMBc).
+   * Returns null (200) instead of throwing when the clip is not found in MediaHub, so the
+   * frontend can show "not available" placeholders rather than an error page.
    */
   @Get('clips/:id')
   async getClip(@Param('id') id: string) {
@@ -102,7 +104,12 @@ export class CatalogController {
         // Fall through to try raw id
       }
     }
-    return this.mediahub.getClip(id);
+    try {
+      return await this.mediahub.getClip(id);
+    } catch {
+      // Clip not found in MediaHub — return null so frontend shows "not available"
+      return null;
+    }
   }
 
   /**
@@ -157,13 +164,18 @@ export class CatalogController {
   /**
    * GET /api/catalog/transcripts/:shootId
    * MediaHub: Full diarized transcript with speaker names.
+   * Returns null (200) on missing shoot so the frontend shows "not available" rather than an error.
    */
   @Get('transcripts/:shootId')
   async getTranscript(@Param('shootId') shootId: string) {
     if (!this.mediahub.isConfigured()) {
       return null;
     }
-    return this.mediahub.getTranscript(shootId);
+    try {
+      return await this.mediahub.getTranscript(shootId);
+    } catch {
+      return null;
+    }
   }
 
   /**

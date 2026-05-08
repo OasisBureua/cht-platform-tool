@@ -61,12 +61,14 @@ export default function ClipDetail() {
     queryKey: ['catalog', 'clip', id],
     queryFn: () => catalogApi.getClip(id!),
     enabled: !!id,
+    retry: 0, // 404s from MediaHub are expected; don't retry
   });
 
   const { data: transcript, isLoading: transcriptLoading } = useQuery({
     queryKey: ['catalog', 'transcript', clip?.shoot_id],
     queryFn: () => catalogApi.getTranscript(clip!.shoot_id!),
     enabled: !!clip?.shoot_id,
+    retry: 0,
   });
 
   if (!id) {
@@ -169,49 +171,88 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {descriptionBody && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
+        {/* Summary — always shown; falls back to description, then placeholder */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
+          {descriptionBody ? (
             <p className="text-gray-600 whitespace-pre-wrap">{descriptionBody}</p>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-gray-400 italic">Summary not yet available for this clip.</p>
+          )}
+        </div>
 
         {/* Share */}
         <ShareButtons title={clip.title} url={shareUrl} />
 
-        {/* Transcript */}
-        {clip.shoot_id && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h2>
-            {transcriptLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            ) : transcript ? (
-              <TranscriptDisplay data={transcript} />
-            ) : (
-              <p className="text-sm text-gray-500">Transcript not available.</p>
-            )}
-          </div>
-        )}
+        {/* Transcript — always shown; content depends on shoot_id availability */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h2>
+          {!clip.shoot_id ? (
+            <p className="text-sm text-gray-400 italic">Transcript not available for this clip.</p>
+          ) : transcriptLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          ) : transcript ? (
+            <TranscriptDisplay data={transcript} />
+          ) : (
+            <p className="text-sm text-gray-400 italic">Transcript not available.</p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function TranscriptDisplay({ data }: { data: unknown }) {
-  if (!data || typeof data !== 'object') return null;
-  const arr = Array.isArray(data) ? data : (data as Record<string, unknown>).segments;
-  if (!Array.isArray(arr)) return <p className="text-gray-600">No transcript segments.</p>;
+  if (!data) return null;
 
+  // MediaHub returns { transcript: string, shoot_id, shoot_name, doctors, length }
+  if (typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+
+    // Plain-string transcript (primary MediaHub shape)
+    if (typeof obj.transcript === 'string' && obj.transcript.trim()) {
+      const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
+      return (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+          {obj.shoot_name && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
+          )}
+          {paragraphs.map((para, i) => (
+            <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
+          ))}
+        </div>
+      );
+    }
+
+    // Segment array under a `segments` key
+    const segments = obj.segments;
+    if (Array.isArray(segments)) {
+      return <SegmentList segments={segments} />;
+    }
+  }
+
+  // Top-level array of segments
+  if (Array.isArray(data)) {
+    return <SegmentList segments={data} />;
+  }
+
+  return <p className="text-sm text-gray-400 italic">Transcript not available.</p>;
+}
+
+function SegmentList({ segments }: { segments: unknown[] }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
-      {arr.map((seg: { speaker?: string; text?: string; start?: number }, i: number) => (
-        <div key={i} className="flex gap-3">
-          {seg.speaker && (
-            <span className="font-medium text-gray-900 shrink-0">{seg.speaker}:</span>
-          )}
-          <span className="text-gray-600">{seg.text ?? JSON.stringify(seg)}</span>
-        </div>
-      ))}
+      {segments.map((seg, i) => {
+        const s = seg as { speaker?: string; text?: string };
+        return (
+          <div key={i} className="flex gap-3">
+            {s.speaker && (
+              <span className="font-medium text-gray-900 shrink-0">{s.speaker}:</span>
+            )}
+            <span className="text-gray-600 text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -118,7 +118,7 @@ export default function Podcasts() {
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
                   <a
-                    href="https://communityhealth.media"
+                    href="https://linkin.bio/breastfriendspodcast/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(43,168,154,0.45)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:scale-[0.96]"
@@ -133,14 +133,24 @@ export default function Podcasts() {
           <div className="border-t border-gray-200/90 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600 dark:text-zinc-400">Listen on</span>
-              {['Apple Podcasts', 'Spotify', 'Amazon Music', 'iHeartRadio', 'Castbox', 'Pocket Casts'].map((platform) => (
-                <button
-                  key={platform}
-                  type="button"
+              {[
+                { label: 'Apple Podcasts', href: 'https://podcasts.apple.com/us/podcast/community-health-media/id1837428248' },
+                { label: 'Spotify', href: 'https://open.spotify.com/show/7e6ZVY93ogJny9AJJpANq4' },
+                { label: 'Amazon Music', href: 'https://music.amazon.com/podcasts/a6e36e68-9e9f-4f2b-88b7-e82a896de4a3/community-health-media-conversations' },
+                { label: 'iHeartRadio', href: 'https://www.iheart.com/podcast/269-community-health-media-291542082' },
+                { label: 'Castbox', href: 'https://castbox.fm/channel/id6735434?country=us' },
+                { label: 'Pocket Casts', href: 'https://pocketcasts.com/podcast/community-health-media/4b3c4980-695c-013e-60d1-0affd6caf14d' },
+                { label: 'Goodpods', href: 'https://goodpods.com/profile/chm-111066' },
+              ].map(({ label, href }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
                 >
-                  {platform}
-                </button>
+                  {label}
+                </a>
               ))}
             </div>
           </div>

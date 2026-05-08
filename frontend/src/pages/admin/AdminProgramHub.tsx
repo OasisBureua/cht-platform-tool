@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
 import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { ChevronLeft, Download, ExternalLink, Loader2, Plus, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, Copy, Download, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
 export default function AdminProgramHub() {
@@ -374,6 +374,8 @@ export default function AdminProgramHub() {
           {settingsMutation.isPending ? 'Saving…' : 'Save settings'}
         </button>
       </section>
+
+      <ZoomLinksSection program={program} programId={programId} />
 
       {zoomType === 'MEETING' && (
         <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
@@ -1020,5 +1022,182 @@ export default function AdminProgramHub() {
         </>
       )}
     </div>
+  );
+}
+
+// ─── Zoom Links Section ────────────────────────────────────────────────────────
+
+type PanelistLink = { name: string; email: string; joinUrl: string };
+
+function CopyButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+      aria-label="Copy link"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-green-600" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
+
+function ZoomLinksSection({
+  program,
+  programId,
+}: {
+  program: Record<string, unknown> | undefined;
+  programId: string | undefined;
+}) {
+  const queryClient = useQueryClient();
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [refreshedCount, setRefreshedCount] = useState<number | null>(null);
+
+  const refreshMutation = useMutation({
+    mutationFn: () => adminApi.refreshZoomPanelists(programId!),
+    onSuccess: (result) => {
+      setRefreshedCount(result.refreshed);
+      setRefreshError(null);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to refresh panelist links';
+      setRefreshError(msg);
+    },
+  });
+
+  if (!program) return null;
+  const pr = program as Record<string, unknown>;
+  const rawLinks = pr.zoomPanelistLinks;
+  const links: PanelistLink[] = Array.isArray(rawLinks)
+    ? (rawLinks as PanelistLink[]).filter((p) => p?.joinUrl)
+    : [];
+  const joinUrl = (pr.zoomJoinUrl as string | null | undefined) ?? null;
+  const startUrl = (pr.zoomStartUrl as string | null | undefined) ?? null;
+  const isWebinar = String(pr.zoomSessionType || '') === 'WEBINAR';
+  const hasMeetingId = !!pr.zoomMeetingId;
+
+  if (!startUrl && !joinUrl && links.length === 0) return null;
+
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold text-gray-900">Zoom links</h2>
+        {isWebinar && hasMeetingId && (
+          <button
+            type="button"
+            onClick={() => { setRefreshedCount(null); setRefreshError(null); refreshMutation.mutate(); }}
+            disabled={refreshMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors disabled:opacity-50"
+            title="Re-fetch panelist join URLs from Zoom"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshMutation.isPending ? 'animate-spin' : ''}`} aria-hidden />
+            {refreshMutation.isPending ? 'Refreshing…' : 'Refresh panelist links'}
+          </button>
+        )}
+      </div>
+
+      {refreshedCount !== null && (
+        <p className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          {refreshedCount > 0
+            ? `✓ Refreshed ${refreshedCount} panelist link${refreshedCount === 1 ? '' : 's'} from Zoom.`
+            : 'No panelist links found on Zoom. Make sure panelists have been added to the webinar in Zoom.'}
+        </p>
+      )}
+      {refreshError && (
+        <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {refreshError}
+        </p>
+      )}
+
+      <div className="flex flex-col gap-3">
+
+        {/* Host start link */}
+        {startUrl && (
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-violet-100 bg-violet-50 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-violet-900">Host start link</p>
+              <p className="mt-0.5 text-xs text-violet-700">Use this to start the session as the host.</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <CopyButton url={startUrl} />
+              <a
+                href={startUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Open
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Attendee join link */}
+        {joinUrl && (
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800">Attendee join link</p>
+              <p className="mt-0.5 text-xs text-gray-500">Public link shown to enrolled learners.</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <CopyButton url={joinUrl} />
+              <a
+                href={joinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Open
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Panelist / speaker personal join links */}
+        {links.length > 0 ? (
+          <>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-1">
+              Panelist / speaker links — share individually
+            </p>
+            {links.map((p) => (
+              <div
+                key={p.email}
+                className="flex items-center justify-between gap-4 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-indigo-900 truncate">{p.name}</p>
+                  <p className="mt-0.5 text-xs text-indigo-600 truncate">{p.email}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <CopyButton url={p.joinUrl} />
+                  <a
+                    href={p.joinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Open
+                  </a>
+                </div>
+              </div>
+            ))}
+          </>
+        ) : isWebinar && hasMeetingId ? (
+          <p className="text-xs text-gray-400 italic">
+            No panelist links saved yet. Click "Refresh panelist links" to pull them from Zoom.
+          </p>
+        ) : null}
+
+      </div>
+    </section>
   );
 }

@@ -2,7 +2,24 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { paymentsApi } from '../../api/payments';
 import { getApiErrorMessage } from '../../api/client';
-import { Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+
+/** ABA routing number checksum: 3(d1+d4+d7) + 7(d2+d5+d8) + (d3+d6+d9) ≡ 0 mod 10 */
+function isValidRoutingNumber(digits: string): boolean {
+  if (!/^\d{9}$/.test(digits)) return false;
+  const d = digits.split('').map(Number);
+  const sum = 3 * (d[0] + d[3] + d[6]) + 7 * (d[1] + d[4] + d[7]) + (d[2] + d[5] + d[8]);
+  return sum % 10 === 0;
+}
+
+/** US bank account numbers: 4–17 digits */
+function validateAccountNumber(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 0) return 'Account number is required.';
+  if (digits.length < 4) return `Too short — must be at least 4 digits (${digits.length}/4).`;
+  if (digits.length > 17) return `Too long — must be at most 17 digits.`;
+  return null;
+}
 
 export function BillVendorSetupForm(props: {
   userId: string;
@@ -24,6 +41,22 @@ export function BillVendorSetupForm(props: {
     routingNumber: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [showAccount, setShowAccount] = useState(false);
+
+  const routingDigits = form.routingNumber.replace(/\D/g, '');
+  const accountDigits = form.accountNumber.replace(/\D/g, '');
+
+  const routingHint =
+    routingDigits.length === 0 ? null
+    : routingDigits.length < 9 ? `${routingDigits.length}/9 digits`
+    : !isValidRoutingNumber(routingDigits) ? 'Invalid routing number (checksum failed)'
+    : '✓ Valid';
+
+  const accountHint =
+    accountDigits.length === 0 ? null
+    : accountDigits.length < 4 ? `${accountDigits.length} digit${accountDigits.length === 1 ? '' : 's'} — minimum 4`
+    : accountDigits.length > 17 ? `${accountDigits.length} digits — maximum 17`
+    : `${accountDigits.length} digit${accountDigits.length === 1 ? '' : 's'} ✓`;
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -46,8 +79,13 @@ export function BillVendorSetupForm(props: {
   });
 
   function set(field: keyof typeof form) {
-    return (e: React.ChangeEvent<HTMLInputElement>) =>
-      setForm((prev) => ({ ...prev, [field]: e.target.value }));
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      let value = e.target.value;
+      // Strip non-digits for numeric banking fields
+      if (field === 'routingNumber') value = value.replace(/\D/g, '').slice(0, 9);
+      if (field === 'accountNumber') value = value.replace(/\D/g, '').slice(0, 17);
+      setForm((prev) => ({ ...prev, [field]: value }));
+    };
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -61,8 +99,10 @@ export function BillVendorSetupForm(props: {
     const zipDigits = form.zipCode.replace(/\D/g, '');
     if (zipDigits.length !== 5 && zipDigits.length !== 9) return setError('Enter a valid ZIP code (5 or 9 digits).');
     if (!form.nameOnAccount.trim()) return setError('Name on account is required.');
-    if (!/^\d{9}$/.test(form.routingNumber.replace(/\D/g, ''))) return setError('Routing number must be 9 digits.');
-    if (form.accountNumber.trim().length < 4) return setError('Account number is required.');
+    if (routingDigits.length !== 9) return setError('Routing number must be exactly 9 digits.');
+    if (!isValidRoutingNumber(routingDigits)) return setError('Invalid routing number — please double-check the 9-digit ABA number on your check.');
+    const accountErr = validateAccountNumber(form.accountNumber);
+    if (accountErr) return setError(accountErr);
     mutation.mutate();
   }
 
@@ -127,8 +167,58 @@ export function BillVendorSetupForm(props: {
       <fieldset className="space-y-3">
         <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bill.com — bank account (ACH)</legend>
         {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
-        {field('Routing number', 'routingNumber', { placeholder: '9-digit ABA number', maxLength: 9 })}
-        {field('Account number', 'accountNumber', { placeholder: 'Checking or savings', type: 'password' })}
+
+        {/* Routing number with live hint */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-700">Routing number</label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={form.routingNumber}
+            onChange={set('routingNumber')}
+            placeholder="9-digit ABA number"
+            maxLength={9}
+            className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            disabled={mutation.isPending || locked}
+          />
+          {routingHint && (
+            <p className={`text-xs ${routingHint.startsWith('✓') ? 'text-green-700' : routingHint.includes('Invalid') ? 'text-red-600' : 'text-gray-500'}`}>
+              {routingHint}
+            </p>
+          )}
+        </div>
+
+        {/* Account number with show/hide toggle and live hint */}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-700">Account number</label>
+          <div className="relative">
+            <input
+              type={showAccount ? 'text' : 'password'}
+              inputMode="numeric"
+              value={form.accountNumber}
+              onChange={set('accountNumber')}
+              placeholder="Checking or savings (4–17 digits)"
+              maxLength={17}
+              className="w-full rounded-xl border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              disabled={mutation.isPending || locked}
+            />
+            <button
+              type="button"
+              onClick={() => setShowAccount((v) => !v)}
+              className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
+              aria-label={showAccount ? 'Hide account number' : 'Show account number'}
+              tabIndex={-1}
+            >
+              {showAccount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {accountHint && (
+            <p className={`text-xs ${accountHint.includes('✓') ? 'text-green-700' : 'text-amber-700'}`}>
+              {accountHint}
+            </p>
+          )}
+          <p className="text-xs text-gray-400">4–17 digits. Numbers only — no spaces or dashes.</p>
+        </div>
       </fieldset>
 
       {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
