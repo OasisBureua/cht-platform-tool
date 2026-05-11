@@ -100,7 +100,6 @@ export default function VideosPage() {
     setSortBy(SORT_PARAM_VALUES.has(sort) ? sort : '');
   }, [location.search, isInApp]);
 
-/** Landing from focussed playlist/browse deep links (`?view=playlists`) — scroll to top. */
   useLayoutEffect(() => {
     const qs = location.search ?? '';
     const p = new URLSearchParams(qs.startsWith('?') ? qs.slice(1) : qs);

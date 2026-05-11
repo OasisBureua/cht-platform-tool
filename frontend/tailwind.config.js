@@ -8,8 +8,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        serif: ['Cormorant Garamond', 'Georgia', 'serif'],
+        /** Chillax replaces Inter everywhere via `font-sans`; sizing/weights stay the previous UI scale */
+        sans: ['Chillax', 'system-ui', 'sans-serif'],
+        serif: ['Chillax', 'Georgia', 'serif'],
       },
       borderRadius: {
         'card': '1rem',

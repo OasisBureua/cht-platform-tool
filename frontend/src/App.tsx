@@ -37,6 +37,9 @@ const PublicSurveys         = lazy(() => import('./pages/public/PublicSurveys'))
 const WhatWeDo              = lazy(() => import('./pages/public/WhatWeDo'));
 const Services              = lazy(() => import('./pages/public/Services'));
 const Portfolios            = lazy(() => import('./pages/public/Portfolios'));
+const DolNetwork            = lazy(() => import('./pages/public/DolNetwork'));
+const DolRegionDetail       = lazy(() => import('./pages/public/DolRegionDetail'));
+const KolProfilePage        = lazy(() => import('./pages/public/KolProfilePage'));
 
 // ── App pages (lazy) ─────────────────────────────────────────────────────────
 const Dashboard             = lazy(() => import('./pages/Dashboard'));
@@ -48,13 +51,15 @@ const OfficeHoursDetail     = lazy(() => import('./pages/OfficeHoursDetail'));
 const ProgramRegisterWizard = lazy(() => import('./pages/ProgramRegisterWizard'));
 const Surveys               = lazy(() => import('./pages/Surveys'));
 const SurveyDetail          = lazy(() => import('./pages/SurveyDetail'));
-const Watch                 = lazy(() => import('./pages/Watch'));
 const WatchVideo            = lazy(() => import('./pages/WatchVideo'));
 const Earnings              = lazy(() => import('./pages/Earnings'));
 const Payments              = lazy(() => import('./pages/Payments'));
 const Settings              = lazy(() => import('./pages/Settings'));
 const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
+const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
+const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
+const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -121,6 +126,7 @@ function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
 
+
               <Route path="/search" element={<Search />} />
               <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
               <Route path="/watch" element={<Navigate to="/catalog" replace />} />
@@ -136,8 +142,9 @@ function App() {
               <Route path="/for-hcps" element={<ForHCPs />} />
               <Route path="/what-we-do" element={<WhatWeDo />} />
               <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
-              <Route path="/kol-network" element={<Navigate to="/home" replace />} />
-              <Route path="/kol-network/:regionSlug" element={<Navigate to="/home" replace />} />
+              <Route path="/kol-network" element={<DolNetwork />} />
+              <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />
+              <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
             </Route>
 
             {/* =======================

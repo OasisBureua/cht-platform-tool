@@ -1,3 +1,27 @@
+/** Optional MediaHub / NPPES-style enrichment (mock today; replace with API later). */
+export type KolIntel = {
+  npi?: string;
+  /** MediaHub catalogue doctor slug — use when KOL `id` does not match the catalog doctors list */
+  catalogDoctorSlug?: string;
+  /** Twitter-style handle, e.g. @NameInstitution */
+  handle?: string;
+  specialty?: string;
+  location?: string;
+  phone?: string;
+  email?: string;
+  affiliation?: string;
+  rosterOnly?: boolean;
+  bannerImageUrl?: string;
+  linkedInUrl?: string;
+  twitterUrl?: string;
+  webUrl?: string;
+  openPayments?: { total: number; records: number; years: string };
+  publicationsApprox?: number;
+  awards?: string[];
+  researchHighlights?: string;
+  aiBrief?: { whoTheyAre?: string; focus?: string; chmContext?: string };
+};
+
 export type DolEntry = {
   id: string;
   name: string;
@@ -7,6 +31,7 @@ export type DolEntry = {
   isNew?: boolean;
   /** ISO date when the entry was added; used to auto-expire the "New" badge after 7 days */
   addedAt?: string;
+  intel?: KolIntel;
 };
 
 export type DolRegion = {
@@ -25,6 +50,14 @@ export function getRegionBySlug(slug: string): DolRegion | null {
   return dolNetwork.find((r) => r.id === resolvedSlug) ?? null;
 }
 
+export function findKolWithRegion(kolId: string): { region: DolRegion; entry: DolEntry } | null {
+  for (const region of dolNetwork) {
+    const entry = region.entries.find((e) => e.id === kolId);
+    if (entry) return { region, entry };
+  }
+  return null;
+}
+
 export const dolNetwork: DolRegion[] = [
   {
     id: 'ny-northeast',
@@ -37,6 +70,26 @@ export const dolNetwork: DolRegion[] = [
         role: 'Vice Chair of Oncology Care; Section Head, Triple-Negative Breast Cancer (TNBC).',
         bio: 'A global authority on TNBC who leads early-phase trials for novel therapeutics and antibody-drug conjugates.',
         education: 'Cornell Medical College (MD); Memorial Sloan Kettering (Residency & Fellowship).',
+        intel: {
+          npi: '1003000123',
+          handle: '@TiffanyTraina',
+          specialty: 'Medical Oncology · Breast Cancer (TNBC)',
+          location: 'New York, NY',
+          affiliation: 'Memorial Sloan Kettering Cancer Center · Vice Chair, Oncology Care',
+          rosterOnly: true,
+          openPayments: { total: 12400, records: 8, years: '2021–2023' },
+          publicationsApprox: 120,
+          aiBrief: {
+            whoTheyAre:
+              'Dr. Traina leads the Triple-Negative Breast Cancer program at MSK and is internationally recognized for early-phase trials of novel therapeutics and antibody-drug conjugates.',
+            focus: 'TNBC, ADC sequencing, and integration of biomarker-driven trials into community-aligned workflows.',
+            chmContext:
+              'No CHM platform engagement recorded yet—webinars, RSVPs, and content activity will appear here when available.',
+          },
+          awards: ['NCI-funded trial leadership', 'MSK leadership in early-phase breast cancer development'],
+          researchHighlights:
+            'Principal investigator on multiple phase I–III trials; foundational work supporting ADC pathways in TNBC.',
+        },
       },
       {
         id: 'jhaveri',

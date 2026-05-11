@@ -69,6 +69,12 @@ export default function DolRegionDetail() {
                       <span className="ml-2 text-xs font-medium text-gray-500">★ NEW</span>
                     )}
                   </h3>
+                  <Link
+                    to={`/kol-network/profile/${entry.id}`}
+                    className="shrink-0 text-sm font-semibold text-[#0d4f6c] hover:text-[#0a3d54]"
+                  >
+                    View profile →
+                  </Link>
                 </div>
                 <p className="text-sm font-medium text-gray-700">
                   <span className="text-gray-500">Role:</span> {entry.role}

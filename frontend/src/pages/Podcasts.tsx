@@ -1,248 +1,318 @@
-import { useMemo, useState } from 'react';
-import { Mic2, Play, ChevronRight, Bell, Sparkles, ArrowUpDown } from 'lucide-react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
+import { Mic2, Play, PlayCircle, Bell, Headphones } from 'lucide-react';
+import {
+  PODCAST_SHOWS,
+  UPCOMING_PLACEHOLDER,
+  type PodcastEpisode,
+  type PodcastShow,
+} from '../data/podcastsCatalog';
+import { SeriesSection, latestEpisode } from '../components/podcasts/PodcastSeriesSection';
 
-type Episode = {
-  num: string;
-  title: string;
-  guests: string;
-  date: string;
-  dateIso: string;
-  duration: string;
-  description?: string;
-};
+function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
+  const n = shows.length;
+  const [index, setIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const idKey = shows.map((s) => s.id).join('|');
 
-const BREAST_FRIENDS: {
-  id: string;
-  title: string;
-  tagline: string;
-  image: string;
-  episodes: Episode[];
-} = {
-  id: 'breast-friends',
-  title: 'Breast Friends',
-  tagline:
-    'Direct, expert-led conversations about breast cancer, built for patients and clinicians. We pair first-line data with what it feels like in the exam room and at home.',
-  image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
-  episodes: [
-    {
-      num: 'Ep 1',
-      title: 'Welcome to Breast Friends: Why This Podcast Exists',
-      guests: 'Community Health Media',
-      date: 'Oct 22, 2025',
-      dateIso: '2025-10-22',
-      duration: '18 min',
-      description:
-        'The first episode lays out the goal: expert oncology talk that anyone in breast cancer can actually use, without the jargon wall.',
-    },
-    {
-      num: 'Ep 2',
-      title: 'Navigating Your First Diagnosis',
-      guests: 'Community Health Media',
-      date: 'Nov 4, 2025',
-      dateIso: '2025-11-04',
-      duration: '38 min',
-      description:
-        'Questions to bring to your team, how to read a pathology report, and what HER2+ means for your case.',
-    },
-    {
-      num: 'Ep 3',
-      title: 'Treatment Options Demystified',
-      guests: 'Community Health Media',
-      date: 'Nov 18, 2025',
-      dateIso: '2025-11-18',
-      duration: '42 min',
-      description: 'Surgery, radiation, and systemic therapy in plain language, with no sales pitch.',
-    },
-  ],
-};
+  useEffect(() => {
+    setIndex(0);
+  }, [idKey]);
 
-const UPCOMING_SHOW = {
-  id: 'coming-soon-1',
-  title: 'More series',
-  tagline:
-    'We are recording new disease-area shows and short-run seasons. When they ship, you will see them here first.',
-  image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
-};
+  const goPrev = useCallback(() => {
+    if (n <= 1) return;
+    setIndex((i) => (i - 1 + n) % n);
+  }, [n]);
 
-export default function Podcasts() {
-  const [sortNewestFirst, setSortNewestFirst] = useState(true);
-  const sortedEpisodes = useMemo(() => {
-    return [...BREAST_FRIENDS.episodes].sort((a, b) => {
-      const aTime = new Date(a.dateIso).getTime();
-      const bTime = new Date(b.dateIso).getTime();
-      return sortNewestFirst ? bTime - aTime : aTime - bTime;
-    });
-  }, [sortNewestFirst]);
+  const goNext = useCallback(() => {
+    if (n <= 1) return;
+    setIndex((i) => (i + 1) % n);
+  }, [n]);
+
+  if (n === 0) return null;
 
   return (
-    <div className="space-y-8 pb-24 font-['DM_Sans',system-ui,sans-serif] md:pb-0">
-      <header className="md:flex md:items-end md:justify-between md:gap-6">
-        <div>
-          <div className="mb-2 flex items-center gap-2.5 text-gray-900 dark:text-zinc-100">
-            <Mic2 className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-            <h1 className="text-balance text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-3xl">Podcasts</h1>
-          </div>
-          <p className="max-w-2xl font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Long-form audio from CHM. Same editorial standards as the main hub, built for headphones and a little more room to breathe.
-          </p>
-        </div>
-        <p className="mt-3 hidden text-xs font-medium uppercase tracking-[0.2em] text-gray-500 dark:text-zinc-500 md:mt-0 md:block">CHM original</p>
-      </header>
-
-      <section
-        className="overflow-hidden rounded-2xl border border-gray-200/90 bg-white text-gray-900 shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_40px_-18px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:border-zinc-800/90 dark:bg-zinc-900 dark:text-zinc-100 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_12px_40px_-18px_rgba(0,0,0,0.5)]"
-        aria-label="Breast Friends series"
+    <div className="relative isolate">
+      <div
+        className="overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
+        onTouchStart={(e) => {
+          touchStartX.current = e.touches[0].clientX;
+        }}
+        onTouchEnd={(e) => {
+          if (touchStartX.current == null || n <= 1) {
+            touchStartX.current = null;
+            return;
+          }
+          const dx = e.changedTouches[0].clientX - touchStartX.current;
+          touchStartX.current = null;
+          if (dx > 60) goPrev();
+          else if (dx < -60) goNext();
+        }}
       >
-        <div className="min-w-0">
-          <div className="relative overflow-hidden bg-gradient-to-r from-violet-100 via-brand-50 to-white px-5 py-5 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 sm:px-7 sm:py-6 md:px-10 md:py-7">
-            <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-violet-200/35 blur-3xl" />
-            <div className="pointer-events-none absolute left-1/4 top-0 h-40 w-40 rounded-full bg-brand-200/30 blur-3xl" />
-            <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
-              <img
-                src={BREAST_FRIENDS.image}
-                alt="Breast Friends podcast cover art"
-                className="h-24 w-24 shrink-0 rounded-xl object-cover outline outline-1 -outline-offset-1 outline-black/10 sm:h-28 sm:w-28"
-                loading="eager"
-                referrerPolicy="no-referrer"
-              />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-800">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden />
-                  <span>Original series</span>
-                </div>
-                <h2 className="mt-1 text-balance text-3xl font-extrabold tracking-tight text-gray-900 dark:text-zinc-100 sm:text-4xl">
-                  {BREAST_FRIENDS.title}
-                </h2>
-                <p className="mt-1.5 max-w-2xl font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
-                  {BREAST_FRIENDS.tagline}
-                </p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
-                  <a
-                    href="https://linkin.bio/breastfriendspodcast/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(43,168,154,0.45)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:scale-[0.96]"
-                  >
-                    <Play className="h-4 w-4 fill-current" aria-hidden />
-                    Play latest
-                  </a>
+        <div
+          className="flex transition-transform duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none"
+          style={{
+            width: `${n * 100}%`,
+            transform: n <= 1 ? 'translateX(0)' : `translateX(-${(index / n) * 100}%)`,
+          }}
+        >
+          {shows.map((show) => (
+            <div key={show.id} className="relative shrink-0" style={{ width: `${100 / n}%` }}>
+              <div className="relative h-[min(59.8vh,460px)] min-h-[322px] w-full sm:min-h-[368px]">
+                <img
+                  src={show.image}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover object-center"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  draggable={false}
+                />
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
+                <div className="relative z-10 flex h-full -translate-y-2.5 flex-col justify-end p-5 text-white sm:p-7 md:p-8">
+                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-300">{show.category}</p>
+                  <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">
+                    {show.title}
+                  </h3>
+                  <p className="mb-4 line-clamp-2 max-w-lg text-pretty text-sm leading-relaxed text-white/90 md:text-[15px]">
+                    {show.updateNote}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link
+                      to={`/app/podcasts/${show.id}`}
+                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
+                    >
+                      <PlayCircle className="h-4 w-4" aria-hidden />
+                      Open series
+                    </Link>
+                    <a
+                      href="#podcast-catalog"
+                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(43,168,154,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
+                    >
+                      Full catalog
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="border-t border-gray-200/90 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600 dark:text-zinc-400">Listen on</span>
-              {[
-                { label: 'Apple Podcasts', href: 'https://podcasts.apple.com/us/podcast/community-health-media/id1837428248' },
-                { label: 'Spotify', href: 'https://open.spotify.com/show/7e6ZVY93ogJny9AJJpANq4' },
-                { label: 'Amazon Music', href: 'https://music.amazon.com/podcasts/a6e36e68-9e9f-4f2b-88b7-e82a896de4a3/community-health-media-conversations' },
-                { label: 'iHeartRadio', href: 'https://www.iheart.com/podcast/269-community-health-media-291542082' },
-                { label: 'Castbox', href: 'https://castbox.fm/channel/id6735434?country=us' },
-                { label: 'Pocket Casts', href: 'https://pocketcasts.com/podcast/community-health-media/4b3c4980-695c-013e-60d1-0affd6caf14d' },
-                { label: 'Goodpods', href: 'https://goodpods.com/profile/chm-111066' },
-              ].map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                >
-                  {label}
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-200/90 bg-gray-50 px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-600 dark:text-zinc-400">All episodes</h3>
-            <button
-              type="button"
-              onClick={() => setSortNewestFirst((v) => !v)}
-              aria-pressed={sortNewestFirst}
-              className="inline-flex min-h-[32px] items-center rounded-full border border-gray-200 bg-white px-3 text-xs font-medium text-gray-700 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 hover:text-gray-900 active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-            >
-              <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-              {sortNewestFirst ? 'Newest first' : 'Oldest first'}
-            </button>
-          </div>
-        </div>
-
-        <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
-          {sortedEpisodes.map((ep) => (
-            <li key={ep.num + ep.title}>
-              <button
-                type="button"
-                className="group flex w-full gap-3 px-4 py-4 text-left transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50/90 focus-visible:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500 active:scale-[0.995] dark:hover:bg-zinc-800/70 dark:focus-visible:bg-zinc-800 sm:gap-4 sm:px-6 sm:py-5"
-                aria-label={`Episode ${ep.num.replace(/\D/g, '')}: ${ep.title}`}
-              >
-                <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-2.5 py-2 text-center shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-zinc-900 sm:min-w-[3.5rem] sm:px-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-gray-500 dark:text-zinc-500">Ep</span>
-                  <span className="text-lg font-extrabold leading-none text-gray-900 tabular-nums dark:text-zinc-100">
-                    {ep.num.replace(/\D/g, '')}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-balance font-semibold leading-snug text-gray-900 dark:text-zinc-100 sm:text-base">{ep.title}</p>
-                  <p className="mt-1 line-clamp-1 text-xs font-normal text-gray-500 dark:text-zinc-500 sm:text-sm">{ep.guests}</p>
-                  {ep.description ? (
-                    <p className="mt-1.5 line-clamp-2 font-sans text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
-                      {ep.description}
-                    </p>
-                  ) : null}
-                  <p className="mt-1.5 text-xs text-gray-600 tabular-nums dark:text-zinc-500 sm:hidden">
-                    {ep.date} <span className="text-gray-400 dark:text-zinc-600">|</span> {ep.duration}
-                  </p>
-                </div>
-                <div className="hidden shrink-0 flex-col items-end justify-center gap-1 text-right sm:flex">
-                  <time className="whitespace-nowrap text-xs text-gray-600 tabular-nums dark:text-zinc-500" dateTime={ep.dateIso}>
-                    {ep.date}
-                  </time>
-                  <span className="text-xs font-semibold text-brand-800 tabular-nums dark:text-brand-300">{ep.duration}</span>
-                </div>
-                <ChevronRight
-                  className="h-5 w-5 shrink-0 self-center text-gray-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-gray-600 dark:text-zinc-600 dark:group-hover:text-zinc-300"
-                  aria-hidden
-                />
-              </button>
-            </li>
           ))}
-        </ul>
+        </div>
+      </div>
+
+      {n > 1 ? (
+        <div
+          className="mt-4 flex flex-wrap items-center justify-center gap-2"
+          role="tablist"
+          aria-label="New and noteworthy slides"
+        >
+          {shows.map((show, i) => (
+            <button
+              key={show.id}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              aria-label={`Show ${show.title}`}
+              onClick={() => setIndex(i)}
+              className={[
+                'h-2 rounded-full transition-[width,background-color] duration-300',
+                i === index ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+              ].join(' ')}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
+  return (
+    <div className="flex items-start gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {shows.map((show) => (
+        <a
+          key={`top-${show.id}`}
+          href={`#${show.id}`}
+          className="group shrink-0 w-[5.5rem] text-center"
+        >
+          <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-zinc-100 shadow-[0_8px_28px_-18px_rgba(0,0,0,0.18),0_2px_10px_-4px_rgba(0,0,0,0.08)] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.2),0_4px_14px_-4px_rgba(0,0,0,0.1)] dark:bg-zinc-800 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
+            <img
+              src={show.image}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+          <p className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-tight text-zinc-800 dark:text-zinc-200">
+            {show.title}
+          </p>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode }) {
+  return (
+    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_12px_36px_-20px_rgba(0,0,0,0.35)] sm:max-h-[300px] dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
+      <img
+        src={show.image}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-black/30" aria-hidden />
+      <div className="relative z-10 mt-auto flex min-w-0 flex-col p-4 sm:p-4">
+        <div className="mb-1.5 flex min-w-0 flex-nowrap items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/85">
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 backdrop-blur-sm">
+            <Headphones className="h-2.5 w-2.5" aria-hidden />
+            Audio
+          </span>
+          <span className="min-w-0 flex-1 truncate">{show.title}</span>
+        </div>
+        <h3
+          className="line-clamp-1 min-w-0 text-base font-bold leading-snug text-white sm:text-lg"
+          title={episode.title}
+        >
+          {episode.title}
+        </h3>
+        {episode.description ? (
+          <p className="mt-1.5 line-clamp-2 text-pretty text-xs leading-relaxed text-white/90">{episode.description}</p>
+        ) : null}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Link
+            to={`/app/podcasts/${show.id}`}
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white px-4 text-xs font-semibold text-zinc-900 shadow-md transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.98] sm:text-sm"
+          >
+            <Play className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" aria-hidden />
+            {episode.duration}
+          </Link>
+          <span className="text-[10px] text-white/70 tabular-nums sm:text-xs">{episode.date}</span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export default function Podcasts() {
+  const [sortNewestFirst, setSortNewestFirst] = useState(true);
+  const shows = PODCAST_SHOWS;
+
+  const worthListen = useMemo(() => {
+    return shows.slice(0, 3).map((show) => ({
+      show,
+      episode: latestEpisode(show),
+    }));
+  }, [shows]);
+
+  return (
+    <div className="flex flex-col gap-6 pb-24 md:gap-8 md:pb-16">
+      <header>
+        <div>
+          <div className="mb-2 flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
+            <Mic2 className="h-5 w-5 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
+            <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
+              Podcasts
+            </h1>
+          </div>
+          <p className="max-w-2xl text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
+            Browse CHM audio like a catalog: new drops, featured episodes, and every series in one place.
+          </p>
+        </div>
+      </header>
+
+      {/* New & noteworthy - same carousel mechanics as Dashboard Featured */}
+      <section aria-labelledby="podcasts-new" className="-mt-2 md:-mt-4">
+        <h2 id="podcasts-new" className="sr-only">
+          New & noteworthy
+        </h2>
+        <NewNoteworthyCarousel shows={shows} />
       </section>
 
+      {/* Worth the Watch analogue: tall hero cards */}
+      <section aria-labelledby="podcasts-worth" className="space-y-3">
+        <h2 id="podcasts-worth" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          Worth the listen
+        </h2>
+        <p className="-mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+          Latest standout episodes: full art, quick play, then open the show page for the full run.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {worthListen.map(({ show, episode }) => (
+            <WorthListenCard key={show.id} show={show} episode={episode} />
+          ))}
+        </div>
+      </section>
+
+      {/* Compact thumb row + view all */}
+      <section aria-labelledby="podcasts-top" className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="podcasts-top" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Top shows
+          </h2>
+          <a
+            href="#podcast-catalog"
+            className="text-sm font-semibold text-brand-700 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+          >
+            View all shows
+          </a>
+        </div>
+        <TopShowsRow shows={shows} />
+      </section>
+
+      {/* Full catalog */}
+      <div id="podcast-catalog" className="scroll-mt-24 space-y-8 md:space-y-10">
+        <div className="pt-10 shadow-[0_-24px_48px_-36px_rgba(15,23,42,0.07)] dark:shadow-[0_-24px_48px_-36px_rgba(0,0,0,0.35)]">
+          <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">All series</h2>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            Every CHM podcast with full episode lists and listen links.
+          </p>
+        </div>
+        {shows.map((show) => (
+          <SeriesSection
+            key={show.id}
+            show={show}
+            sortNewestFirst={sortNewestFirst}
+            onToggleSort={() => setSortNewestFirst((v) => !v)}
+          />
+        ))}
+      </div>
+
       <section
-        className="overflow-hidden rounded-2xl border-2 border-dashed border-gray-300/90 bg-zinc-50/90 shadow-[0_1px_0_rgba(0,0,0,0.03),0_6px_24px_-12px_rgba(0,0,0,0.08)] dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_6px_24px_-12px_rgba(0,0,0,0.45)]"
+        className="overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-50/95 to-zinc-100/80 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.1),0_4px_20px_-16px_rgba(15,23,42,0.06)] dark:from-zinc-900/90 dark:to-zinc-950/95 dark:shadow-[0_16px_48px_-28px_rgba(0,0,0,0.55),0_8px_28px_-20px_rgba(0,0,0,0.35)]"
         aria-label="Upcoming series"
       >
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:gap-6 sm:p-6 md:p-8">
           <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl sm:max-w-xs sm:shrink-0">
             <img
-              src={UPCOMING_SHOW.image}
+              src={UPCOMING_PLACEHOLDER.image}
               alt=""
-              className="h-full w-full object-cover !outline-none ring-1 ring-black/10"
+              className="h-full w-full object-cover"
               loading="lazy"
               referrerPolicy="no-referrer"
             />
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 ring-1 ring-black/5">
-              <span className="text-sm font-bold tracking-[0.2em] text-gray-700">Soon</span>
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-950/40">
+              <span className="text-sm font-bold tracking-[0.2em] text-zinc-700 dark:text-zinc-200">Soon</span>
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <h2 className="text-balance text-xl font-bold text-gray-900 dark:text-zinc-100">{UPCOMING_SHOW.title}</h2>
-            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-gray-600 dark:text-zinc-400">{UPCOMING_SHOW.tagline}</p>
+            <h2 className="text-balance text-xl font-bold text-zinc-900 dark:text-zinc-100">{UPCOMING_PLACEHOLDER.title}</h2>
+            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
+              {UPCOMING_PLACEHOLDER.tagline}
+            </p>
             <button
               type="button"
-              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-gray-300 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
               disabled
               aria-disabled
             >
               <Bell className="h-4 w-4 shrink-0" aria-hidden />
               Notify me when live
             </button>
-            <p className="mt-2 text-xs text-gray-500 dark:text-zinc-500">We will use the email on your account when this goes live.</p>
+            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+              We will use the email on your account when this goes live.
+            </p>
           </div>
         </div>
       </section>
