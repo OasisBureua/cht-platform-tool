@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
-import { clipDisplaySummary } from '../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { surveysApi } from '../api/surveys';
 
 const FALLBACK_IMAGES = {
@@ -151,7 +151,7 @@ export default function ExploreOpportunities() {
           type: 'clip',
           id: `clip-${c.id ?? ''}`,
           title: c.title ?? '',
-          description: clipDisplaySummary(c),
+          description: clipStripeSubtitle(c),
           imageUrl: getMediaHubThumbnail(c) || FALLBACK_IMAGES.clip,
           href: `/app/clip/${getShortClipId(c.id ?? '')}`,
           subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,

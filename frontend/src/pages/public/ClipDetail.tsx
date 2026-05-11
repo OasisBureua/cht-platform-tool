@@ -127,9 +127,8 @@ export default function ClipDetail() {
   const aiSummary = clipAiSummaryText(clip);
   const catalogDescription = clipCatalogDescriptionText(clip);
   const shootIdDisplay = transcriptShootId;
-  const showCatalogDescription =
-    catalogDescription !== '' &&
-    (aiSummary === '' || catalogDescription.trim() !== aiSummary.trim());
+  /** Catalog copy is only shown when there is no usable AI summary */
+  const showCatalogDescription = aiSummary === '' && catalogDescription !== '';
 
   return (
     <div className="min-h-screen bg-white min-w-0">
@@ -201,7 +200,7 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {/* AI summary + optional catalog description (playable YouTube clips get both when upstream provides them) */}
+        {/* AI summary — catalog description only when AI summary is absent */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">AI summary</h2>
           <p className="mb-3 text-xs text-gray-500">

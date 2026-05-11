@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon, SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 
 type ResultType = 'Video' | 'Webinar' | 'Collection';
 
@@ -95,7 +95,7 @@ export default function Search() {
       .map((clip) => ({
         id: `api-${clip.id}`,
         title: clip.title,
-        subtitle: clipDisplaySummary(clip) || clip.doctors?.join(', ') || 'Video',
+        subtitle: clipStripeSubtitle(clip) || 'Video',
         type: 'Video' as const,
         tag: Array.isArray(clip.tags) ? clip.tags[0] : undefined,
         href: `/catalog/clip/${getShortClipId(clip.id)}`,

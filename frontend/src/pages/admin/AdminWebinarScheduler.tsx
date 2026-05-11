@@ -186,7 +186,7 @@ export default function AdminWebinarScheduler({
   };
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="mx-auto w-full max-w-[min(100%,100rem)] space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           {isWebinar ? 'Webinar scheduler' : 'Office hours scheduler'}

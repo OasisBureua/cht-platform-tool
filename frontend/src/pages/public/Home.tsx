@@ -14,6 +14,7 @@ import {
   VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
+import { PUBLIC_CATALOG_CLIPS_URL } from '../../components/navigation/appNavItems';
 
 const resourceImages: Record<string, string> = {
   webinars: '/images/resource-webinars.png',
@@ -353,7 +354,7 @@ export default function Home() {
             className="home-enter mx-auto max-w-7xl px-4 sm:px-6"
             style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
           >
-            <ConversationRow title="Featured videos" seeAllHref="/catalog?view=clips" seeAllLabel="See all in library">
+            <ConversationRow title="Featured videos" seeAllHref={PUBLIC_CATALOG_CLIPS_URL} seeAllLabel="See all in library">
               <StripRowLoadingThumbnails />
             </ConversationRow>
           </div>
@@ -367,7 +368,7 @@ export default function Home() {
             <ConversationRow
               title="Featured videos"
               subtitle={`${featuredVideos.length} items`}
-              seeAllHref="/catalog?view=clips"
+              seeAllHref={PUBLIC_CATALOG_CLIPS_URL}
               seeAllLabel="See all in library"
             >
               {featuredVideos.map((v) => (

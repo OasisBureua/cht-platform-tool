@@ -88,57 +88,6 @@ export const PODCAST_SHOWS: PodcastShow[] = [
       },
     ],
   },
-  {
-    id: 'practice-change',
-    title: 'Practice Change Pulse',
-    tagline:
-      'Short runs on how evidence moves into real-world care: pathways, payer reality, and what changed in the last guideline cycle.',
-    image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
-    category: 'Professional · Practice',
-    updateNote: 'Biweekly',
-    episodes: [
-      {
-        num: 'Ep 1',
-        title: 'From Trial to Clinic: One Pathway at a Time',
-        guests: 'CHM Editorial',
-        date: 'Jan 8, 2026',
-        dateIso: '2026-01-08',
-        duration: '24 min',
-        description: 'How multidisciplinary teams convert a readout into a workflow patients can navigate.',
-      },
-      {
-        num: 'Ep 2',
-        title: 'Prior Auth Without the Panic',
-        guests: 'CHM Editorial',
-        date: 'Jan 22, 2026',
-        dateIso: '2026-01-22',
-        duration: '31 min',
-        description: 'Templates, documentation, and timing that keep appeals out of the critical path.',
-      },
-    ],
-  },
-  {
-    id: 'office-side',
-    title: 'Office Hours Side Sessions',
-    tagline:
-      'Extended Q&A lifted from CHM live sessions: deeper dives your team can replay between conferences.',
-    /** Same stock stack as elsewhere in the app; replace with Q&A-specific art when licensed. */
-    image: '/images/iStock-1938555104-3986b580-5ef8-4aae-989f-05a2edd0bc12.png',
-    category: 'Education · Q&A',
-    updateNote: 'Updated after each Office Hours',
-    playLatest: { kind: 'app', to: '/app/chm-office-hours' },
-    episodes: [
-      {
-        num: 'Bonus 1',
-        title: 'Staging Questions Oncologists Hear Every Week',
-        guests: 'Live audience',
-        date: 'Dec 2, 2025',
-        dateIso: '2025-12-02',
-        duration: '46 min',
-        description: 'A rhythm for tough conversations, follow-up imaging, and shared decision-making moments.',
-      },
-    ],
-  },
 ];
 
 export const UPCOMING_PLACEHOLDER = {

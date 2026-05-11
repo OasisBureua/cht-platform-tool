@@ -20,9 +20,9 @@ import { dashboardApi } from '../api/dashboard';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } from '../api/catalog';
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
-import { clipDisplaySummary } from '../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
-import { APP_CATALOG_CONVERSATIONS_HUB } from '../components/navigation/appNavItems';
+import { APP_CATALOG_CLIPS_URL, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
 import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -98,12 +98,12 @@ function getNextUpcomingWebinar(webinars: WebinarItem[]): WebinarItem | null {
 }
 
 function clipMetaString(c: MediaHubClip, kind: 'recent' | 'views'): string {
-  const summary = clipDisplaySummary(c);
-  if (summary) return summary;
+  const stripe = clipStripeSubtitle(c);
+  if (stripe) return stripe;
   if (kind === 'views' && c.view_count != null) {
     return `${c.view_count.toLocaleString()} views`;
   }
-  return c.doctors?.[0] ?? '';
+  return '';
 }
 
 const CLIP_LIMIT = 14;
@@ -275,7 +275,7 @@ export default function Dashboard() {
         imageUrl: getMediaHubThumbnail(c),
         thumbTrackKey: `clip:${c.id}`,
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
-        secondaryHref: APP_CATALOG_CONVERSATIONS_HUB,
+        secondaryHref: APP_CATALOG_CLIPS_URL,
         primaryCta: 'Play',
         secondaryCta: 'Browse catalog',
       });
@@ -287,8 +287,8 @@ export default function Dashboard() {
         description:
           'Browse short expert-led videos, disease-area playlists, and new catalog releases in one place.',
         imageUrl: WEBINAR_PLACEHOLDER_IMAGES[4],
-        primaryHref: '/app/catalog',
-        secondaryHref: '/app/catalog',
+        primaryHref: APP_CATALOG_CLIPS_URL,
+        secondaryHref: APP_CATALOG_PLAYLISTS_BROWSE,
         primaryCta: 'Browse catalog',
         secondaryCta: 'Playlists',
       });
@@ -705,7 +705,7 @@ export default function Dashboard() {
       {useMediaHub ? (
         <div className="space-y-10">
           {isLoading ? (
-            <ConversationRow title="Loading catalog" seeAllHref="/app/catalog">
+            <ConversationRow title="Loading catalog" seeAllHref={APP_CATALOG_CLIPS_URL}>
               <StripRowLoading />
             </ConversationRow>
           ) : (
@@ -714,7 +714,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Recently added"
                   subtitle={`${recentCatalogForHome.length} videos`}
-                  seeAllHref="/app/catalog"
+                  seeAllHref={APP_CATALOG_CLIPS_URL}
                 >
                   {recentCatalogForHome.map((c) => (
                     <StripCard
@@ -744,7 +744,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title={topicLabel ? `Clips · ${topicLabel}` : 'Clips by tag'}
                   subtitle={`${topicCatalogForHome.length} videos`}
-                  seeAllHref={`/app/catalog?tag=${encodeURIComponent(topicTag)}`}
+                  seeAllHref={`${APP_CATALOG_CLIPS_URL}&tag=${encodeURIComponent(topicTag)}`}
                 >
                   {topicCatalogForHome.map((c) => (
                     <StripCard
@@ -764,7 +764,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Playlists"
                   subtitle={`${playlistStrip.length} playlists`}
-                  seeAllHref="/app/catalog?view=playlists"
+                  seeAllHref={APP_CATALOG_PLAYLISTS_BROWSE}
                   seeAllLabel="See all playlists"
                 >
                   {playlistStrip.map((p) => (

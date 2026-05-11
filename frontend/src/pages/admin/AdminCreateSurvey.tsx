@@ -89,7 +89,7 @@ export default function AdminCreateSurvey() {
   const programOptions = programs ?? [];
 
   return (
-    <div className="space-y-8 max-w-3xl">
+    <div className="mx-auto w-full max-w-[min(100%,100rem)] space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Create Survey</h1>
         <p className="text-sm text-gray-600 mt-1">

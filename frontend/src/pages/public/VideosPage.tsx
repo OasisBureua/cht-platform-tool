@@ -4,7 +4,7 @@ import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-q
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistGrid } from '../../components/content/PlaylistGrid';
@@ -22,6 +22,12 @@ import {
 } from '../../utils/playlistFocusFilters';
 import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
+import {
+  APP_CATALOG_CLIPS_URL,
+  APP_CATALOG_PLAYLISTS_BROWSE,
+  PUBLIC_CATALOG_CLIPS_URL,
+  PUBLIC_CATALOG_PLAYLISTS_URL,
+} from '../../components/navigation/appNavItems';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -287,7 +293,7 @@ export default function VideosPage() {
         <ConversationRow
           title="Playlists"
           subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
-          seeAllHref={isInApp ? '/app/catalog?view=playlists' : '/catalog?view=playlists'}
+          seeAllHref={isInApp ? APP_CATALOG_PLAYLISTS_BROWSE : PUBLIC_CATALOG_PLAYLISTS_URL}
           seeAllLabel="See all playlists"
         >
           {playlists.slice(0, 12).map((p) => (
@@ -470,7 +476,7 @@ export default function VideosPage() {
                 </div>
                 {!isInApp ? (
                   <Link
-                    to="/catalog?view=clips"
+                    to={PUBLIC_CATALOG_CLIPS_URL}
                     className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
                   >
                     Browse conversations
@@ -513,7 +519,7 @@ export default function VideosPage() {
                 <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
                 <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                 <Link
-                  to="/app/catalog"
+                  to={APP_CATALOG_CLIPS_URL}
                   className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                 >
                   Browse catalog
@@ -530,10 +536,10 @@ export default function VideosPage() {
               </>
             ) : useMediaHub && isLoading && displayItems.length === 0 ? (
               <>
-                <ConversationRow title="Loading conversations" seeAllHref="/app/catalog">
+                <ConversationRow title="Loading conversations" seeAllHref={APP_CATALOG_CLIPS_URL}>
                   <StripRowLoading />
                 </ConversationRow>
-                <ConversationRow title="Browse by series" seeAllHref="/app/catalog">
+                <ConversationRow title="Browse by series" seeAllHref={APP_CATALOG_CLIPS_URL}>
                   <StripRowLoading />
                 </ConversationRow>
                 {playlistsCarouselStrip}
@@ -555,7 +561,7 @@ export default function VideosPage() {
                   <ConversationRow
                     title={filterOrSortActive ? 'Matching videos' : 'Recently added'}
                     subtitle={`${newestItems.length} videos`}
-                    seeAllHref="/app/catalog"
+                    seeAllHref={APP_CATALOG_CLIPS_URL}
                   >
                     {newestItems.map((item) => (
                       <StripCard
@@ -563,7 +569,7 @@ export default function VideosPage() {
                         to={`/app/clip/${getShortClipId(item.id)}`}
                         title={item.title}
                         imageUrl={getMediaHubThumbnail(item)}
-                        description={clipDisplaySummary(item) || item.doctors?.[0] || 'Conversation'}
+                        description={clipStripeSubtitle(item) || 'Conversation'}
                       />
                     ))}
                   </ConversationRow>
@@ -589,7 +595,7 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
                   <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                   <Link
-                    to={isInApp ? '/app/catalog' : '/catalog'}
+                    to={isInApp ? APP_CATALOG_CLIPS_URL : PUBLIC_CATALOG_CLIPS_URL}
                     className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                   >
                     Browse catalog
@@ -601,7 +607,7 @@ export default function VideosPage() {
                     MediaHub is not connected. Add API keys in the server to load the featured banner and conversation grid.
                   </p>
                   <Link
-                    to={isInApp ? '/app/catalog' : '/catalog'}
+                    to={isInApp ? APP_CATALOG_CLIPS_URL : PUBLIC_CATALOG_CLIPS_URL}
                     className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                   >
                     Open catalog
