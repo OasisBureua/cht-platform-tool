@@ -3,6 +3,7 @@ import {
   Radio,
   CalendarClock,
   ClipboardList,
+  ClipboardCheck,
   PlayCircle,
   DollarSign,
   Users,
@@ -19,6 +20,7 @@ export type AdminNavItem = {
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: '/admin/programs', label: 'LIVE', icon: Radio, end: false },
   { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
+  { to: '/admin/webinar-approvals', label: 'Approvals', icon: ClipboardCheck, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/admin/programs', label: 'Conversations', icon: PlayCircle, end: false },
   { to: '/admin/payments', label: 'Earnings', icon: DollarSign, end: false },
