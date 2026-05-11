@@ -58,7 +58,7 @@ export default function PublicLayout() {
           <div className="grid h-14 sm:h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 min-w-0">
             <div className="flex justify-start min-w-0">
               <Link
-                to="/"
+                to="/home"
                 className="flex items-center shrink-0 text-brand-600 transition-[color,opacity] hover:text-brand-700 hover:opacity-95"
                 aria-label="Community Health Media, home"
               >
@@ -206,7 +206,7 @@ export default function PublicLayout() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-16">
             <div className="space-y-6 max-w-md">
-              <Link to="/" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
+              <Link to="/home" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
                 <ChmWordmarkOption2 className="h-8 w-[5rem] text-white" />
               </Link>
               <address className="not-italic text-sm text-gray-300 space-y-1 leading-relaxed">

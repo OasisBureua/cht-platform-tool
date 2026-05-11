@@ -1,11 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { adminApi, type PendingPayment } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2 } from 'lucide-react';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -13,6 +13,7 @@ function formatMoney(cents: number) {
 
 export default function AdminPayments() {
   const queryClient = useQueryClient();
+  const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
 
   const { data: pending, isLoading } = useQuery({
     queryKey: ['admin', 'pending-payments'],
@@ -35,6 +36,7 @@ export default function AdminPayments() {
     mutationFn: (paymentId: string) => adminApi.deletePayment(paymentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      setDeleteConfirmPaymentId(null);
     },
   });
 
@@ -96,7 +98,7 @@ export default function AdminPayments() {
                   key={p.id}
                   payment={p}
                   onPayNow={() => payNowMutation.mutate(p.id)}
-                  onDelete={() => deleteMutation.mutate(p.id)}
+                  onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
                   isPaying={payNowMutation.isPending && payNowMutation.variables === p.id}
                   isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
                 />
@@ -190,6 +192,49 @@ export default function AdminPayments() {
         </section>
       )}
 
+      {deleteConfirmPaymentId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="font-semibold text-gray-900">Delete payment?</h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  This permanently removes this pending payout row. This action cannot be undone.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmPaymentId(null)}
+                className="shrink-0 text-gray-400 hover:text-gray-600"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmPaymentId(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (deleteConfirmPaymentId) deleteMutation.mutate(deleteConfirmPaymentId);
+                }}
+                disabled={deleteMutation.isPending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(payNowMutation.isError || deleteMutation.isError) && (
         <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertCircle className="h-5 w-5 shrink-0" />
@@ -216,13 +261,13 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
 function PendingRow({
   payment,
   onPayNow,
-  onDelete,
+  onRequestDelete,
   isPaying,
   isDeleting,
 }: {
   payment: PendingPayment;
   onPayNow: () => void;
-  onDelete: () => void;
+  onRequestDelete: () => void;
   isPaying: boolean;
   isDeleting: boolean;
 }) {
@@ -258,7 +303,7 @@ function PendingRow({
           </button>
           <button
             type="button"
-            onClick={onDelete}
+            onClick={onRequestDelete}
             disabled={isDeleting}
             title="Delete (remove test entry)"
             className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"

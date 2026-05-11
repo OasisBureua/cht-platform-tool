@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, LayoutGrid, Loader2 } from 'lucide-react';
@@ -213,6 +213,12 @@ const HOME_STAGGER_MS = {
 const HOME_STRIP_VIDEO_CAP = 40;
 
 export default function Home() {
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   const { data: playlistsData, isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,

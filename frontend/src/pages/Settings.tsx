@@ -9,7 +9,12 @@ import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
 import { getApiErrorMessage } from '../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { PROFESSION_OPTIONS, NON_HCP_PROFESSIONS } from '../data/profession-options';
+import {
+  specialtyToSelectValue,
+  professionRequiresNpi,
+  professionOptionsForSelect,
+  settingsLocationPreset,
+} from '../data/profession-options';
 import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
 
 function getInitials(name: string, email?: string): string {
@@ -72,7 +77,7 @@ export default function Settings() {
     if (profile) {
       setFirstName(profile.firstName ?? '');
       setLastName(profile.lastName ?? '');
-      setSpecialty(profile.specialty ?? '');
+      setSpecialty(specialtyToSelectValue(profile.specialty ?? ''));
       setNpiNumber((profile.npiNumber ?? '').replace(/\D/g, '').slice(0, 10));
       setInstitution(profile.institution ?? '');
       setCity(profile.city ?? '');
@@ -92,8 +97,8 @@ export default function Settings() {
         return;
       }
       const npi = npiNumber.replace(/\D/g, '');
-      const isNonHcp = NON_HCP_PROFESSIONS.has(specialty);
-      if (!isNonHcp && npi.length !== 10) {
+      const needsNpi = professionRequiresNpi(specialty.trim());
+      if (needsNpi && npi.length !== 10) {
         setSaveError('NPI number must be 10 digits (required for licensed healthcare professionals).');
         setSaving(false);
         return;
@@ -108,8 +113,7 @@ export default function Settings() {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         specialty: specialty.trim(),
-        // Sending '' for Pharma without 10-digit NPI clears any previous NPI (backend stores null).
-        npiNumber: isNonHcp ? (npi.length === 10 ? npi : '') : npi,
+        npiNumber: needsNpi ? npi : '',
         institution: institution.trim() || undefined,
         city: city.trim() || undefined,
         state: state.trim().toUpperCase().slice(0, 2) || undefined,
@@ -140,6 +144,23 @@ export default function Settings() {
     : '-';
   const totalEarnings = profile?.totalEarnings ?? 0;
   const completionRate = stats?.completionRate ?? 0;
+
+  const locationPreset = settingsLocationPreset(specialty);
+  const locationSectionHeading =
+    locationPreset === 'studentResearcher'
+      ? 'Institution Location'
+      : locationPreset === 'industry'
+        ? 'Company Location'
+        : 'Practice Location';
+  const institutionFieldLabel = locationPreset === 'industry' ? 'Company' : 'Institution';
+  const institutionPlaceholder =
+    locationPreset === 'industry'
+      ? 'Company name'
+      : locationPreset === 'studentResearcher'
+        ? 'School, university, or research institution'
+        : 'Hospital, clinic, or practice';
+  const tuckEmailInsideLocation =
+    locationPreset === 'studentResearcher' || locationPreset === 'industry';
 
   return (
     <div className="space-y-8 min-w-0">
@@ -223,10 +244,14 @@ export default function Settings() {
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Profession</label>
                 <select
                   value={specialty}
-                  onChange={(e) => setSpecialty(e.target.value)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setSpecialty(v);
+                    if (!professionRequiresNpi(v)) setNpiNumber('');
+                  }}
                   className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900"
                 >
-                  {PROFESSION_OPTIONS.map((opt) => (
+                  {professionOptionsForSelect(profile?.specialty, specialty).map((opt) => (
                     <option key={opt.value || 'empty'} value={opt.value}>
                       {opt.label}
                     </option>
@@ -234,43 +259,38 @@ export default function Settings() {
                 </select>
                 <p className="mt-0.5 text-xs text-gray-500">Used as your professional role for eligibility and payments</p>
               </div>
-              {specialty && NON_HCP_PROFESSIONS.has(specialty) && (
+              {specialty && !professionRequiresNpi(specialty) ? (
                 <div className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-sm text-blue-900" role="note">
                   <strong>Note:</strong> NPI number is not required for your role. Honorarium programs are designed for licensed healthcare professionals. You can still access all content and sessions.
                 </div>
-              )}
-              <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-1">
-                  NPI number{' '}
-                  {specialty && NON_HCP_PROFESSIONS.has(specialty) && (
-                    <span className="font-normal text-gray-500">(optional for your role)</span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={npiNumber}
-                  onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder={
-                    specialty && NON_HCP_PROFESSIONS.has(specialty)
-                      ? 'Optional 10-digit NPI if applicable'
-                      : '10-digit National Provider Identifier'
-                  }
-                  maxLength={10}
-                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
-                />
-              </div>
+              ) : null}
+              {specialty && professionRequiresNpi(specialty) ? (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">NPI number</label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={npiNumber}
+                    onChange={(e) => setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    placeholder="10-digit National Provider Identifier"
+                    maxLength={10}
+                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
+              ) : null}
               <div className="md:col-span-2 pt-2 border-t border-gray-100">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">Practice Location</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-3">
+                  {locationSectionHeading}
+                </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Institution</label>
+                  <div className={tuckEmailInsideLocation ? 'md:col-span-2' : undefined}>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">{institutionFieldLabel}</label>
                     <input
                       type="text"
                       value={institution}
                       onChange={(e) => setInstitution(e.target.value)}
-                      placeholder="Hospital, clinic, or practice"
+                      placeholder={institutionPlaceholder}
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                     />
                   </div>
@@ -305,26 +325,30 @@ export default function Settings() {
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                     />
                   </div>
+                  {tuckEmailInsideLocation ? (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={profile?.email ?? user?.email ?? ''}
+                        readOnly
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
+                      />
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={profile?.email ?? user?.email ?? ''}
-                  readOnly
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Role</label>
-                <input
-                  type="text"
-                  value={profile?.role ?? user?.role ?? ''}
-                  readOnly
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
-                />
-              </div>
+              {!tuckEmailInsideLocation ? (
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={profile?.email ?? user?.email ?? ''}
+                    readOnly
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50"
+                  />
+                </div>
+              ) : null}
               <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-2">
                 <button
                   type="button"
