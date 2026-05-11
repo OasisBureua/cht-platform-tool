@@ -1,6 +1,10 @@
 import { Children, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, List } from 'lucide-react';
+import {
+  catalogConversationBrowseFingerFromHref,
+  catalogConversationBrowseFingerFromLocation,
+} from '../../utils/catalogBrowseLocation';
 
 export type ConversationRowProps = {
   title: string;
@@ -24,10 +28,21 @@ export function ConversationRow({
   className = '',
   children,
 }: ConversationRowProps) {
+  const location = useLocation();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
   const seeAllExternal = /^https?:\/\//i.test(seeAllHref.trim());
+
+  const handleCatalogSeeAllClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (seeAllExternal) return;
+    const destFinger = catalogConversationBrowseFingerFromHref(seeAllHref);
+    const hereFinger = catalogConversationBrowseFingerFromLocation(location);
+    if (destFinger && hereFinger && destFinger === hereFinger) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const updateArrows = () => {
     const el = scrollerRef.current;
@@ -80,6 +95,7 @@ export function ConversationRow({
         ) : (
           <Link
             to={seeAllHref}
+            onClick={handleCatalogSeeAllClick}
             className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-brand-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-brand-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-brand-300 dark:hover:text-brand-200"
           >
             <List className="h-3.5 w-3.5 shrink-0" aria-hidden />

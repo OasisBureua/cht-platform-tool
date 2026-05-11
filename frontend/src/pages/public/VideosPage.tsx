@@ -22,12 +22,8 @@ import {
 } from '../../utils/playlistFocusFilters';
 import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
-import {
-  APP_CATALOG_CLIPS_URL,
-  APP_CATALOG_PLAYLISTS_BROWSE,
-  PUBLIC_CATALOG_CLIPS_URL,
-  PUBLIC_CATALOG_PLAYLISTS_URL,
-} from '../../components/navigation/appNavItems';
+import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
+import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
 
 const SORT_OPTIONS = [
   { value: '', label: 'Sort by' },
@@ -63,20 +59,6 @@ type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
 
 /** Valid values for ?sort= / sort_by (MediaHub catalog API). */
 const SORT_PARAM_VALUES = new Set(['views', 'likes', 'recent', 'posted']);
-
-/** Public /catalog `?view=` clips vs playlists — same rules as ContentLibraryNavTabs. */
-function getPublicLibraryViewFromSearch(search: string): 'clips' | 'playlists' {
-  const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
-  const view = p.get('view');
-  if (view === 'clips') return 'clips';
-  if (view === 'playlists') return 'playlists';
-  const hasFilters =
-    !!(p.get('q')?.trim()) ||
-    !!p.get('tag') ||
-    !!p.get('doctor') ||
-    !!(p.get('sort') || p.get('sort_by'));
-  return hasFilters ? 'clips' : 'playlists';
-}
 
 export default function VideosPage() {
   const location = useLocation();
@@ -145,7 +127,7 @@ export default function VideosPage() {
         const pf = parsePlaylistFocus('?' + curParams.toString());
         if (pf) params.set('playlistFocus', pf);
       }
-    } else if (curParams.get('view') === 'playlists') {
+    } else if (isInApp && curParams.get('view') === 'playlists') {
       params.set('view', 'playlists');
       const pfApp = parsePlaylistFocus('?' + curParams.toString());
       if (pfApp) params.set('playlistFocus', pfApp);
@@ -259,10 +241,12 @@ export default function VideosPage() {
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
+    const clipsPagerActive = effectiveLibraryView === 'clips' && !isInApp;
+    if (!clipsPagerActive) return;
     const observer = new IntersectionObserver(handleObserver, { rootMargin: '200px', threshold: 0.1 });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [handleObserver]);
+  }, [effectiveLibraryView, handleObserver, isInApp]);
 
   const mediaHubItems = useMemo(
     () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(shouldSurfaceCatalogClip),
@@ -293,7 +277,7 @@ export default function VideosPage() {
         <ConversationRow
           title="Playlists"
           subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
-          seeAllHref={isInApp ? APP_CATALOG_PLAYLISTS_BROWSE : PUBLIC_CATALOG_PLAYLISTS_URL}
+          seeAllHref={isInApp ? '/app/search' : '/catalog?view=playlists'}
           seeAllLabel="See all playlists"
         >
           {playlists.slice(0, 12).map((p) => (
@@ -334,33 +318,27 @@ export default function VideosPage() {
           </div>
         ) : null}
 
-        {!isInApp && effectiveLibraryView === 'clips' ? (
-          <ContentLibraryNavTabs isInApp={false} />
-        ) : null}
+        {!isInApp && effectiveLibraryView === 'clips' ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
 
         {effectiveLibraryView === 'clips' && useMediaHub && !isInApp && (
-          <section
-            className={[
-              'flex flex-col gap-3 md:flex-row md:flex-wrap',
-              isInApp ? 'px-4 sm:px-6 lg:px-8' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            <div className="flex-1 min-w-[200px] relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-500" />
+          <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
+            <div className="relative min-w-[200px] flex-1">
+              <Search
+                className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500"
+                aria-hidden
+              />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search..."
-                className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
 
             <select
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 min-w-[160px]"
+              className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
             >
               <option value="">All tags</option>
               {tagOptions.slice(0, 100).map((opt) => (
@@ -373,7 +351,7 @@ export default function VideosPage() {
             <select
               value={doctorFilter}
               onChange={(e) => setDoctorFilter(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 min-w-[160px]"
+              className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
             >
               <option value="">All doctors</option>
               {doctorOptions.map((opt) => (
@@ -387,15 +365,15 @@ export default function VideosPage() {
               <button
                 type="button"
                 onClick={() => setSortOpen(!sortOpen)}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900 inline-flex items-center gap-2 min-w-[140px] justify-between"
+                className="inline-flex min-w-[140px] items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
               >
                 {SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort by'}
-                <ChevronDown className={`h-4 w-4 transition-transform ${sortOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 transition-transform ${sortOpen ? 'rotate-180' : ''}`} aria-hidden />
               </button>
               {sortOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
-                  <div className="absolute right-0 top-full mt-1 z-20 rounded-xl border border-gray-200 bg-white py-1 shadow-lg min-w-[160px]">
+                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
                     {SORT_OPTIONS.filter((o) => o.value !== '').map((opt) => (
                       <button
                         key={opt.value}
@@ -405,7 +383,7 @@ export default function VideosPage() {
                           setSortOpen(false);
                         }}
                         className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-                          sortBy === opt.value ? 'font-medium text-gray-900 bg-gray-50' : 'text-gray-600'
+                          sortBy === opt.value ? 'bg-gray-50 font-medium text-gray-900' : 'text-gray-600'
                         }`}
                       >
                         {opt.label}
@@ -476,7 +454,7 @@ export default function VideosPage() {
                 </div>
                 {!isInApp ? (
                   <Link
-                    to={PUBLIC_CATALOG_CLIPS_URL}
+                    to="/catalog?view=clips"
                     className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
                   >
                     Browse conversations
@@ -519,7 +497,7 @@ export default function VideosPage() {
                 <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
                 <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                 <Link
-                  to={APP_CATALOG_CLIPS_URL}
+                  to={APP_CATALOG_CLIPS_GRID}
                   className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                 >
                   Browse catalog
@@ -536,10 +514,10 @@ export default function VideosPage() {
               </>
             ) : useMediaHub && isLoading && displayItems.length === 0 ? (
               <>
-                <ConversationRow title="Loading conversations" seeAllHref={APP_CATALOG_CLIPS_URL}>
+                <ConversationRow title="Loading conversations" seeAllHref={APP_CATALOG_CLIPS_GRID}>
                   <StripRowLoading />
                 </ConversationRow>
-                <ConversationRow title="Browse by series" seeAllHref={APP_CATALOG_CLIPS_URL}>
+                <ConversationRow title="Browse by series" seeAllHref={APP_CATALOG_CLIPS_GRID}>
                   <StripRowLoading />
                 </ConversationRow>
                 {playlistsCarouselStrip}
@@ -561,7 +539,7 @@ export default function VideosPage() {
                   <ConversationRow
                     title={filterOrSortActive ? 'Matching videos' : 'Recently added'}
                     subtitle={`${newestItems.length} videos`}
-                    seeAllHref={APP_CATALOG_CLIPS_URL}
+                    seeAllHref={APP_CATALOG_CLIPS_GRID}
                   >
                     {newestItems.map((item) => (
                       <StripCard
@@ -580,11 +558,6 @@ export default function VideosPage() {
                 ))}
               </>
             )}
-            {useMediaHub && (
-              <div ref={loadMoreRef} className="flex justify-center py-2">
-                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
-              </div>
-            )}
           </section>
         ) : (
           <section className="space-y-4">
@@ -595,7 +568,7 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
                   <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                   <Link
-                    to={isInApp ? APP_CATALOG_CLIPS_URL : PUBLIC_CATALOG_CLIPS_URL}
+                    to={'/catalog?view=clips'}
                     className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                   >
                     Browse catalog
@@ -607,7 +580,7 @@ export default function VideosPage() {
                     MediaHub is not connected. Add API keys in the server to load the featured banner and conversation grid.
                   </p>
                   <Link
-                    to={isInApp ? APP_CATALOG_CLIPS_URL : PUBLIC_CATALOG_CLIPS_URL}
+                    to={'/catalog?view=clips'}
                     className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                   >
                     Open catalog

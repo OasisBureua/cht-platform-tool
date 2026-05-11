@@ -16,17 +16,11 @@ export type AppNavItem = {
   end?: boolean;
 };
 
-/** Logo + sidebar Conversations: catalogue home (clips); use ?view=playlists only after Playlists is chosen. */
+/** Logo + sidebar Conversations: catalogue home (featured + strips); playlists use ?view=playlists. */
 export const APP_CATALOG_CONVERSATIONS_HUB = '/app/catalog';
 
-/** Full clips grid (explicit tab) — use for “See all in library” in the app shell. */
-export const APP_CATALOG_CLIPS_URL = `${APP_CATALOG_CONVERSATIONS_HUB}?view=clips`;
-
-/** Public marketing site: full clips library. */
-export const PUBLIC_CATALOG_CLIPS_URL = '/catalog?view=clips';
-
-/** Public site: playlists browse tab. */
-export const PUBLIC_CATALOG_PLAYLISTS_URL = '/catalog?view=playlists';
+/** “See all in library” / full browse — routed to Explore (search) for now; avoid `/app/catalog/browse`. */
+export const APP_CATALOG_CLIPS_GRID = '/app/search';
 
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
 export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';

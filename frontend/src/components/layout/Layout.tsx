@@ -147,7 +147,7 @@ export default function Layout() {
           onClick={(e) => e.stopPropagation()}
         >
           <header className="nav-liquid-glass sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 px-4 sm:h-16 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
                 className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-white hover:text-gray-900 active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-zinc-100 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800"
@@ -158,21 +158,14 @@ export default function Layout() {
               >
                 <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
               </button>
-              <Link
-                to="/app/home"
-                className="hidden shrink-0 text-brand-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-brand-700 active:scale-[0.96] md:inline-flex"
-                aria-label="Community Health Media, app home"
-              >
-                <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
-              </Link>
-            </div>
-            <div className="min-w-0 flex-1 pr-2 md:pr-3">
-              <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
-                Welcome, {displayName}!
-              </h1>
-              <p className="mt-0.5 hidden text-pretty text-sm text-gray-600 dark:text-zinc-400 sm:block">
-                You have new opportunities to earn rewards today
-              </p>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
+                  Welcome, {displayName}!
+                </h1>
+                <p className="mt-0.5 hidden text-pretty text-sm text-gray-600 dark:text-zinc-400 sm:block">
+                  You have new opportunities to earn rewards today
+                </p>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <NavLink

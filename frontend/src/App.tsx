@@ -190,6 +190,7 @@ function App() {
 
               <Route path="clip/:id" element={<ClipDetail />} />
 
+              <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
               <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
               <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
               <Route path="catalog" element={<VideosPage />} />

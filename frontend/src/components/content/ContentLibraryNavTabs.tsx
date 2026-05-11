@@ -4,7 +4,9 @@ import { Monitor, ListVideo, Library } from 'lucide-react';
 function tabClass(active: boolean) {
   return [
     'flex flex-col items-center gap-2 transition-colors min-w-[3.5rem]',
-    active ? 'text-gray-900 font-medium' : 'text-gray-700 hover:text-gray-900',
+    active
+      ? 'font-medium text-zinc-900 dark:text-zinc-100'
+      : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
   ].join(' ');
 }
 

@@ -22,7 +22,7 @@ import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } fr
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
-import { APP_CATALOG_CLIPS_URL, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
+import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
 import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -275,7 +275,7 @@ export default function Dashboard() {
         imageUrl: getMediaHubThumbnail(c),
         thumbTrackKey: `clip:${c.id}`,
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
-        secondaryHref: APP_CATALOG_CLIPS_URL,
+        secondaryHref: APP_CATALOG_CLIPS_GRID,
         primaryCta: 'Play',
         secondaryCta: 'Browse catalog',
       });
@@ -287,7 +287,7 @@ export default function Dashboard() {
         description:
           'Browse short expert-led videos, disease-area playlists, and new catalog releases in one place.',
         imageUrl: WEBINAR_PLACEHOLDER_IMAGES[4],
-        primaryHref: APP_CATALOG_CLIPS_URL,
+        primaryHref: APP_CATALOG_CLIPS_GRID,
         secondaryHref: APP_CATALOG_PLAYLISTS_BROWSE,
         primaryCta: 'Browse catalog',
         secondaryCta: 'Playlists',
@@ -705,7 +705,7 @@ export default function Dashboard() {
       {useMediaHub ? (
         <div className="space-y-10">
           {isLoading ? (
-            <ConversationRow title="Loading catalog" seeAllHref={APP_CATALOG_CLIPS_URL}>
+            <ConversationRow title="Loading catalog" seeAllHref={APP_CATALOG_CLIPS_GRID}>
               <StripRowLoading />
             </ConversationRow>
           ) : (
@@ -714,7 +714,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Recently added"
                   subtitle={`${recentCatalogForHome.length} videos`}
-                  seeAllHref={APP_CATALOG_CLIPS_URL}
+                  seeAllHref={APP_CATALOG_CLIPS_GRID}
                 >
                   {recentCatalogForHome.map((c) => (
                     <StripCard
@@ -744,7 +744,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title={topicLabel ? `Clips · ${topicLabel}` : 'Clips by tag'}
                   subtitle={`${topicCatalogForHome.length} videos`}
-                  seeAllHref={`${APP_CATALOG_CLIPS_URL}&tag=${encodeURIComponent(topicTag)}`}
+                  seeAllHref={`${APP_CATALOG_CLIPS_GRID}?tag=${encodeURIComponent(topicTag)}`}
                 >
                   {topicCatalogForHome.map((c) => (
                     <StripCard
@@ -764,7 +764,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Playlists"
                   subtitle={`${playlistStrip.length} playlists`}
-                  seeAllHref={APP_CATALOG_PLAYLISTS_BROWSE}
+                  seeAllHref="/app/search"
                   seeAllLabel="See all playlists"
                 >
                   {playlistStrip.map((p) => (

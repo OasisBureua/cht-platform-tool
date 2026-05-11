@@ -200,12 +200,9 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {/* AI summary — catalog description only when AI summary is absent */}
+        {/* Summary — catalog description only shown when summary is absent */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">AI summary</h2>
-          <p className="mb-3 text-xs text-gray-500">
-            Auto-generated overview when Media Hub has finished processing this recording.
-          </p>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Summary</h2>
           {aiSummary ? (
             <p className="text-gray-600 whitespace-pre-wrap">{aiSummary}</p>
           ) : (
@@ -226,9 +223,6 @@ export default function ClipDetail() {
         {/* Transcript when shoot has speech-to-text in Media Hub */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Transcript</h2>
-          <p className="mb-3 text-xs text-gray-500">
-            Full transcript when speech-to-text is available for this shoot.
-          </p>
           {!shootIdDisplay ? (
             <p className="text-sm text-gray-400 italic">Transcript not linked for this recording yet.</p>
           ) : transcriptLoading ? (
