@@ -34,7 +34,8 @@ export class MailchimpSyncService {
 
   constructor(private readonly config: ConfigService) {
     this.apiKey = this.config.get<string>('mailchimp.apiKey')?.trim() || null;
-    this.audienceId = this.config.get<string>('mailchimp.audienceId')?.trim() || null;
+    this.audienceId =
+      this.config.get<string>('mailchimp.audienceId')?.trim() || null;
     // Mailchimp API keys are suffixed with the DC (e.g. `abc123-us14`); we
     // accept either `MAILCHIMP_SERVER_PREFIX=us14` or parse it from the key.
     this.serverPrefix =
@@ -72,7 +73,8 @@ export class MailchimpSyncService {
     const mergeFields: Record<string, string> = {};
     if (input.firstName) mergeFields.FNAME = input.firstName.trim();
     if (input.lastName) mergeFields.LNAME = input.lastName.trim();
-    if (input.npi) mergeFields.NPI = String(input.npi).replace(/\D/g, '').slice(0, 10);
+    if (input.npi)
+      mergeFields.NPI = String(input.npi).replace(/\D/g, '').slice(0, 10);
     if (input.institution) mergeFields.COMPANY = input.institution.trim();
     // specialty has no merge field in the audience today — drop silently.
 

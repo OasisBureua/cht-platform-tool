@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, UseGuards, Logger, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  UseGuards,
+  Logger,
+  Req,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
@@ -65,9 +73,11 @@ export class AuthController {
   ): Promise<{ error?: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) return { error: 'Please enter a valid email address.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
+      return { error: 'Please enter a valid email address.' };
     if (!password) return { error: 'Password is required.' };
-    if (password.length < 8) return { error: 'Password must be at least 8 characters.' };
+    if (password.length < 8)
+      return { error: 'Password must be at least 8 characters.' };
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
@@ -84,7 +94,8 @@ export class AuthController {
     ]);
     const npiOptional = !npiRequiredProfessions.has(professionTrim);
     const npi = (npiNumber || '').replace(/\D/g, '');
-    if (!npiOptional && npi.length !== 10) return { error: 'NPI number must be 10 digits.' };
+    if (!npiOptional && npi.length !== 10)
+      return { error: 'NPI number must be 10 digits.' };
     if (npiOptional && npi.length > 0 && npi.length !== 10) {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
@@ -109,38 +120,53 @@ export class AuthController {
             apikey: supabaseAnon,
           },
           body: JSON.stringify({
-          email: emailStr,
-          password,
-          data: {
-            first_name: (firstName || '').trim(),
-            last_name: (lastName || '').trim(),
-            full_name: [firstName, lastName].map((s) => (s || '').trim()).filter(Boolean).join(' '),
-            profession,
-            npi_number: npiOptional ? (npi || undefined) : npi,
-            institution: (institution || '').trim() || undefined,
-            city: (city || '').trim() || undefined,
-            state: (state || '').trim() || undefined,
-            zip_code: (zipCode || '').trim() || undefined,
-          },
-        }),
+            email: emailStr,
+            password,
+            data: {
+              first_name: (firstName || '').trim(),
+              last_name: (lastName || '').trim(),
+              full_name: [firstName, lastName]
+                .map((s) => (s || '').trim())
+                .filter(Boolean)
+                .join(' '),
+              profession,
+              npi_number: npiOptional ? npi || undefined : npi,
+              institution: (institution || '').trim() || undefined,
+              city: (city || '').trim() || undefined,
+              state: (state || '').trim() || undefined,
+              zip_code: (zipCode || '').trim() || undefined,
+            },
+          }),
         },
         SUPABASE_FETCH_TIMEOUT_MS,
       );
     } catch (err) {
-      const msg = err instanceof Error && err.name === 'AbortError'
-        ? 'Sign up request timed out. Please try again.'
-        : 'Sign up failed. Please try again.';
-      this.logger.warn(`[Auth] Signup error for ${emailStr} after ${Date.now() - signupStart}ms:`, err);
+      const msg =
+        err instanceof Error && err.name === 'AbortError'
+          ? 'Sign up request timed out. Please try again.'
+          : 'Sign up failed. Please try again.';
+      this.logger.warn(
+        `[Auth] Signup error for ${emailStr} after ${Date.now() - signupStart}ms:`,
+        err,
+      );
       return { error: msg };
     }
-    this.logger.log(`[Auth] Supabase signup fetch completed in ${Date.now() - signupStart}ms`);
+    this.logger.log(
+      `[Auth] Supabase signup fetch completed in ${Date.now() - signupStart}ms`,
+    );
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      const msg = data?.msg || data?.error_description || data?.error || 'Sign up failed. Please try again.';
+      const msg =
+        data?.msg ||
+        data?.error_description ||
+        data?.error ||
+        'Sign up failed. Please try again.';
       this.logger.warn(`[Auth] Signup failed for ${emailStr}: ${msg}`);
       if (msg.toLowerCase().includes('confirmation mail')) {
-        this.logger.log(`[Auth] Signup likely succeeded for ${emailStr} (email send failed)`);
+        this.logger.log(
+          `[Auth] Signup likely succeeded for ${emailStr} (email send failed)`,
+        );
         return {};
       }
       return { error: msg };
@@ -158,7 +184,9 @@ export class AuthController {
    * so it works regardless of signing algorithm (HS256 or ES256).
    */
   @Post('login-oauth')
-  async loginOAuth(@Body('access_token') accessToken: string): Promise<LoginSuccess | { error: string }> {
+  async loginOAuth(
+    @Body('access_token') accessToken: string,
+  ): Promise<LoginSuccess | { error: string }> {
     const token = accessToken?.trim();
     if (!token) {
       return { error: 'access_token is required.' };
@@ -171,7 +199,11 @@ export class AuthController {
       return { error: 'OAuth login is not configured.' };
     }
 
-    let userData: { id?: string; email?: string; user_metadata?: Record<string, unknown> };
+    let userData: {
+      id?: string;
+      email?: string;
+      user_metadata?: Record<string, unknown>;
+    };
     try {
       const res = await fetchWithTimeout(
         `${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`,
@@ -187,7 +219,9 @@ export class AuthController {
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         const msg = (body as { msg?: string })?.msg || res.statusText;
-        this.logger.warn(`[Auth] login-oauth GoTrue rejected token: ${res.status} ${msg}`);
+        this.logger.warn(
+          `[Auth] login-oauth GoTrue rejected token: ${res.status} ${msg}`,
+        );
         return { error: 'Invalid or expired token.' };
       }
       userData = await res.json();
@@ -201,8 +235,14 @@ export class AuthController {
     if (!authId) return { error: 'Invalid token.' };
 
     const meta = (userData.user_metadata || {}) as Record<string, string>;
-    const firstName = meta.first_name || (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
-    const lastName = meta.last_name || (meta.full_name ? String(meta.full_name).split(' ').slice(1).join(' ') : undefined);
+    const firstName =
+      meta.first_name ||
+      (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
+    const lastName =
+      meta.last_name ||
+      (meta.full_name
+        ? String(meta.full_name).split(' ').slice(1).join(' ')
+        : undefined);
 
     const user = await this.authService.findOrCreateByAuthId(
       authId,
@@ -222,7 +262,9 @@ export class AuthController {
     const dbUser = await this.authService.getUserById(user.userId);
     const profileComplete = this.authService.isProfileComplete(dbUser);
 
-    this.logger.log(`[Auth] OAuth login success: userId=${user.userId} email=${user.email}`);
+    this.logger.log(
+      `[Auth] OAuth login success: userId=${user.userId} email=${user.email}`,
+    );
     return {
       session_token: sessionToken,
       access_token: token,
@@ -248,7 +290,8 @@ export class AuthController {
   ): Promise<LoginSuccess | { error: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) return { error: 'Please enter a valid email address.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
+      return { error: 'Please enter a valid email address.' };
     if (!password) return { error: 'Password is required.' };
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
@@ -256,7 +299,9 @@ export class AuthController {
 
     if (supabaseUrl && supabaseAnon) {
       const loginStart = Date.now();
-      this.logger.log(`[Auth] Login attempt via Supabase for email: ${emailStr}`);
+      this.logger.log(
+        `[Auth] Login attempt via Supabase for email: ${emailStr}`,
+      );
       let res: Response;
       try {
         const supabaseStart = Date.now();
@@ -289,8 +334,11 @@ export class AuthController {
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data?.error_description || data?.msg || 'Invalid email or password.';
-        this.logger.warn(`[Auth] Supabase login failed for ${emailStr}: ${msg}`);
+        const msg =
+          data?.error_description || data?.msg || 'Invalid email or password.';
+        this.logger.warn(
+          `[Auth] Supabase login failed for ${emailStr}: ${msg}`,
+        );
         return { error: msg };
       }
 
@@ -316,13 +364,20 @@ export class AuthController {
         metadata.state || null,
         metadata.zip_code || null,
       );
-      this.logger.log(`[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`);
+      this.logger.log(
+        `[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`,
+      );
 
       if (!user) return { error: 'User not found.' };
 
       const sessionStart = Date.now();
-      const sessionToken = await this.authService.createSession(user, data.access_token);
-      this.logger.log(`[Auth] createSession completed in ${Date.now() - sessionStart}ms`);
+      const sessionToken = await this.authService.createSession(
+        user,
+        data.access_token,
+      );
+      this.logger.log(
+        `[Auth] createSession completed in ${Date.now() - sessionStart}ms`,
+      );
 
       const dbUser = await this.authService.getUserById(user.userId);
       const profileComplete = this.authService.isProfileComplete(dbUser);
@@ -343,16 +398,22 @@ export class AuthController {
       };
     }
 
-    this.logger.log(`[Auth] Login attempt via dev fallback (DB) for email: ${emailStr}`);
+    this.logger.log(
+      `[Auth] Login attempt via dev fallback (DB) for email: ${emailStr}`,
+    );
     const user = await this.authService.findByEmail(emailStr);
     if (!user) {
-      this.logger.warn(`[Auth] Dev login failed: user not found for ${emailStr}`);
+      this.logger.warn(
+        `[Auth] Dev login failed: user not found for ${emailStr}`,
+      );
       return { error: 'User not found. Run: cd backend && npx prisma db seed' };
     }
     const sessionToken = await this.authService.createSession(user);
     const dbUser = await this.authService.getUserById(user.userId);
     const profileComplete = this.authService.isProfileComplete(dbUser);
-    this.logger.log(`[Auth] Dev login success: userId=${user.userId} email=${user.email}`);
+    this.logger.log(
+      `[Auth] Dev login success: userId=${user.userId} email=${user.email}`,
+    );
     return {
       session_token: sessionToken,
       userId: user.userId,
@@ -400,14 +461,20 @@ export class AuthController {
         err instanceof Error && err.name === 'AbortError'
           ? 'Request timed out. Please try again.'
           : 'Password reset failed. Please try again.';
-      this.logger.warn(`[Auth] Recover error for ${emailStr} after ${Date.now() - recoverStart}ms:`, err);
+      this.logger.warn(
+        `[Auth] Recover error for ${emailStr} after ${Date.now() - recoverStart}ms:`,
+        err,
+      );
       return { error: msg };
     }
-    this.logger.log(`[Auth] Supabase recover fetch completed in ${Date.now() - recoverStart}ms`);
+    this.logger.log(
+      `[Auth] Supabase recover fetch completed in ${Date.now() - recoverStart}ms`,
+    );
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      const msg = data?.msg || data?.error_description || 'Password reset failed.';
+      const msg =
+        data?.msg || data?.error_description || 'Password reset failed.';
       this.logger.warn(`[Auth] Recover failed for ${emailStr}: ${msg}`);
       return { error: msg };
     }
@@ -429,7 +496,8 @@ export class AuthController {
         ? req.headers.authorization.slice(7).trim()
         : null);
     const sessionToken = Array.isArray(raw) ? raw[0] : raw;
-    if (!sessionToken || typeof sessionToken !== 'string') return { token: null };
+    if (!sessionToken || typeof sessionToken !== 'string')
+      return { token: null };
     const token = await this.authService.getChatbotToken(sessionToken);
     return { token };
   }
@@ -447,10 +515,16 @@ export class AuthController {
     const dbFirst = dbUser?.firstName?.trim();
     const dbLast = dbUser?.lastName?.trim();
     const firstName =
-      dbFirst && dbFirst !== 'User' ? dbFirst : nameParts[0] || dbFirst || 'User';
-    const lastName = dbLast ? dbLast : nameParts.slice(1).join(' ') || dbLast || '';
+      dbFirst && dbFirst !== 'User'
+        ? dbFirst
+        : nameParts[0] || dbFirst || 'User';
+    const lastName = dbLast
+      ? dbLast
+      : nameParts.slice(1).join(' ') || dbLast || '';
     const profileComplete = this.authService.isProfileComplete(dbUser);
-    this.logger.debug(`[Auth] /me OK: userId=${user.userId} email=${user.email}`);
+    this.logger.debug(
+      `[Auth] /me OK: userId=${user.userId} email=${user.email}`,
+    );
     return {
       userId: user.userId,
       authId: user.authId,

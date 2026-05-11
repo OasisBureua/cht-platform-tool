@@ -53,7 +53,9 @@ export function buildPostWebinarSurveyEmail(
     '',
     'Best regards,',
     'The Community Health Media Team',
-    sponsor !== 'Community Health Media' ? `\nSponsored by ${p.sponsorName}.` : null,
+    sponsor !== 'Community Health Media'
+      ? `\nSponsored by ${p.sponsorName}.`
+      : null,
   ]
     .filter((line) => line != null)
     .join('\n');
@@ -118,6 +120,10 @@ export function buildPostWebinarSurveyEmail(
 
 function formatHonorariumLine(honorariumCents: number): { plain: string } {
   const dollars = honorariumCents / 100;
-  const formatted = dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const formatted = dollars.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
   return { plain: `${formatted} subject to eligibility and program policy` };
 }

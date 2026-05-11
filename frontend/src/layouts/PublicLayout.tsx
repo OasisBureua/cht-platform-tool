@@ -9,6 +9,7 @@ const allNavLinks = [
   { to: '/about', label: 'About' },
   { to: '/what-we-do', label: 'What We Do' },
   { to: '/catalog', label: 'Content Library' },
+  { to: '/kol-network', label: 'KOL Network' },
   { to: '/live', label: 'Live' },
   { to: '/chm-office-hours', label: 'CHM Office Hours' },
   { to: '/for-hcps', label: 'For HCPs' },

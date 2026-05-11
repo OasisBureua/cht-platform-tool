@@ -2,7 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /** Bill.com GET /v3/funding-accounts/banks item (subset of fields). */
 export class BillBankFundingAccountItemDto {
-  @ApiProperty({ description: 'Funding bank account id (often `bac…`); use for BILL_FUNDING_ACCOUNT_ID' })
+  @ApiProperty({
+    description:
+      'Funding bank account id (often `bac…`); use for BILL_FUNDING_ACCOUNT_ID',
+  })
   id: string;
 
   @ApiProperty()
@@ -17,7 +20,10 @@ export class BillBankFundingAccountItemDto {
   @ApiPropertyOptional()
   nameOnAccount?: string;
 
-  @ApiPropertyOptional({ description: 'When payables is true, Bill uses this account by default for AP debits' })
+  @ApiPropertyOptional({
+    description:
+      'When payables is true, Bill uses this account by default for AP debits',
+  })
   default?: { payables?: boolean; receivables?: boolean };
 }
 
@@ -43,17 +49,20 @@ export class BillFundingAccountsResponseDto {
   recommendedFundingAccountId: string | null;
 
   @ApiProperty({
-    description: 'Why recommendedFundingAccountId was chosen, or what to do if it is null',
+    description:
+      'Why recommendedFundingAccountId was chosen, or what to do if it is null',
   })
   recommendationNote: string;
 
   @ApiPropertyOptional({
-    description: 'Current BILL_FUNDING_ACCOUNT_ID from server env (if set); not a secret',
+    description:
+      'Current BILL_FUNDING_ACCOUNT_ID from server env (if set); not a secret',
   })
   configuredFundingAccountId?: string | null;
 
   @ApiPropertyOptional({
-    description: 'True when configuredFundingAccountId equals recommendedFundingAccountId',
+    description:
+      'True when configuredFundingAccountId equals recommendedFundingAccountId',
   })
   configuredMatchesRecommended?: boolean;
 }

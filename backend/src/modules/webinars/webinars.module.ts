@@ -20,8 +20,17 @@ import { SurveysModule } from '../surveys/surveys.module';
     AuthModule,
     SurveysModule,
   ],
-  controllers: [WebinarsController, OfficeHoursController, ZoomWebhookController],
-  providers: [ZoomService, ZoomMeetingSdkService, ZoomWebhookService, WebinarsService],
+  controllers: [
+    WebinarsController,
+    OfficeHoursController,
+    ZoomWebhookController,
+  ],
+  providers: [
+    ZoomService,
+    ZoomMeetingSdkService,
+    ZoomWebhookService,
+    WebinarsService,
+  ],
   exports: [WebinarsService, ZoomService],
 })
 export class WebinarsModule {}

@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { FormJotformScope } from '../programs/form-jotform-scope';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
@@ -32,8 +40,15 @@ export class SurveysController {
    */
   @Get(':id/my-response')
   @UseGuards(JwtAuthGuard)
-  async getMyResponse(@CurrentUser() user: AuthUser, @Param('id') surveyId: string) {
-    return this.surveysService.getMyResponseStatus(surveyId, user.userId, user.role);
+  async getMyResponse(
+    @CurrentUser() user: AuthUser,
+    @Param('id') surveyId: string,
+  ) {
+    return this.surveysService.getMyResponseStatus(
+      surveyId,
+      user.userId,
+      user.role,
+    );
   }
 
   /**
@@ -41,9 +56,20 @@ export class SurveysController {
    */
   @Get(':id/jotform-resume')
   @UseGuards(JwtAuthGuard)
-  async getSurveyJotformResume(@Param('id') surveyId: string, @CurrentUser() user: AuthUser) {
-    await this.surveysService.ensureUserCanAccessSurvey(surveyId, user.userId, user.role);
-    return this.formJotformProgress.getResumeSession(user.userId, FormJotformScope.SURVEY, surveyId);
+  async getSurveyJotformResume(
+    @Param('id') surveyId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    await this.surveysService.ensureUserCanAccessSurvey(
+      surveyId,
+      user.userId,
+      user.role,
+    );
+    return this.formJotformProgress.getResumeSession(
+      user.userId,
+      FormJotformScope.SURVEY,
+      surveyId,
+    );
   }
 
   /**
@@ -56,7 +82,11 @@ export class SurveysController {
     @CurrentUser() user: AuthUser,
     @Body() body: JotformResumeDto,
   ) {
-    await this.surveysService.ensureUserCanAccessSurvey(surveyId, user.userId, user.role);
+    await this.surveysService.ensureUserCanAccessSurvey(
+      surveyId,
+      user.userId,
+      user.role,
+    );
     await this.formJotformProgress.saveResumeSession(
       user.userId,
       FormJotformScope.SURVEY,
@@ -88,6 +118,11 @@ export class SurveysController {
     @Param('id') surveyId: string,
     @Body() dto: SubmitSurveyResponseDto,
   ) {
-    return this.surveysService.submitResponse(surveyId, user.userId, user.role, dto);
+    return this.surveysService.submitResponse(
+      surveyId,
+      user.userId,
+      user.role,
+      dto,
+    );
   }
 }

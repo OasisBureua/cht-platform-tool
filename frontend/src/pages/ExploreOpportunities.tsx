@@ -7,7 +7,7 @@ import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { catalogApi, type MediaHubClip, type CatalogItem } from '../api/catalog';
-import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { surveysApi } from '../api/surveys';
 
@@ -143,7 +143,9 @@ export default function ExploreOpportunities() {
     });
 
     if (useMediaHub && clipsData?.items) {
-      const validClips = clipsData.items.filter((c) => c && (c.id || c.title));
+      const validClips = clipsData.items.filter(
+        (c) => c && (c.id || c.title) && shouldSurfaceCatalogClip(c as MediaHubClip),
+      );
       validClips.forEach((c) => {
         out.push({
           type: 'clip',

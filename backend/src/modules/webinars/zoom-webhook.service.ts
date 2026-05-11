@@ -70,7 +70,9 @@ export class ZoomWebhookService {
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
-      this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not configured - signature validation skipped');
+      this.logger.warn(
+        '[Zoom webhook] ZOOM_WEBHOOK_SECRET not configured - signature validation skipped',
+      );
     }
   }
 
@@ -93,12 +95,17 @@ export class ZoomWebhookService {
     if (event === 'endpoint.url_validation') {
       const plainToken = pl?.plainToken ?? pl?.PlainToken;
       if (!plainToken) {
-        this.logger.warn('[Zoom webhook] URL validation missing plainToken, payload keys:', pl ? Object.keys(pl) : []);
+        this.logger.warn(
+          '[Zoom webhook] URL validation missing plainToken, payload keys:',
+          pl ? Object.keys(pl) : [],
+        );
         return { received: true };
       }
       const encryptedToken = this.encryptToken(plainToken);
       if (!encryptedToken) {
-        this.logger.warn('[Zoom webhook] ZOOM_WEBHOOK_SECRET not set - cannot encrypt token for validation');
+        this.logger.warn(
+          '[Zoom webhook] ZOOM_WEBHOOK_SECRET not set - cannot encrypt token for validation',
+        );
       }
       this.logger.log('[Zoom webhook] URL validation response sent');
       return { plainToken, encryptedToken };
@@ -117,12 +124,26 @@ export class ZoomWebhookService {
     const eventNorm = typeof event === 'string' ? event.toLowerCase() : '';
 
     if (eventNorm === 'meeting.ended' || eventNorm === 'webinar.ended') {
-      await this.handleSessionEnded(obj as ZoomSessionEndedObject | undefined, eventNorm);
+      await this.handleSessionEnded(
+        obj as ZoomSessionEndedObject | undefined,
+        eventNorm,
+      );
     } else if (eventNorm === 'webinar.created') {
-      await this.handleSessionCreated(obj as ZoomCreatedObject | undefined, 'WEBINAR');
+      await this.handleSessionCreated(
+        obj as ZoomCreatedObject | undefined,
+        'WEBINAR',
+      );
     } else if (eventNorm === 'meeting.created') {
-      await this.handleSessionCreated(obj as ZoomCreatedObject | undefined, 'MEETING');
-    } else if (event === 'meeting.participant_joined' || event === 'meeting.participant_left') {
+      // Office Hours use Zoom Meetings — do not auto-import as programs (wrong list + wrong API shape).
+      // Create meetings only via Admin → Office Hours scheduler so zoomSessionType stays correct.
+      this.logger.log(
+        '[Zoom webhook] meeting.created received — ignoring (draft auto-import is webinars only). ' +
+          'Schedule office hours meetings from the admin app.',
+      );
+    } else if (
+      event === 'meeting.participant_joined' ||
+      event === 'meeting.participant_left'
+    ) {
       await this.handleParticipantEvent(event, obj, payload);
     } else {
       this.logger.debug(`[Zoom webhook] Ignoring event: ${event}`);
@@ -134,14 +155,18 @@ export class ZoomWebhookService {
   /**
    * meeting.ended / webinar.ended — store actual end time for in-app post-event survey gating.
    */
-  private async handleSessionEnded(obj: ZoomSessionEndedObject | undefined, eventNorm: string): Promise<void> {
+  private async handleSessionEnded(
+    obj: ZoomSessionEndedObject | undefined,
+    eventNorm: string,
+  ): Promise<void> {
     if (!obj) {
       this.logger.warn(`[Zoom webhook] ${eventNorm} missing object`);
       return;
     }
-    const idCandidates = [obj.id != null ? String(obj.id) : null, obj.uuid != null ? String(obj.uuid) : null].filter(
-      (x): x is string => !!x?.trim(),
-    );
+    const idCandidates = [
+      obj.id != null ? String(obj.id) : null,
+      obj.uuid != null ? String(obj.uuid) : null,
+    ].filter((x): x is string => !!x?.trim());
     if (idCandidates.length === 0) {
       this.logger.warn(`[Zoom webhook] ${eventNorm} missing id/uuid`);
       return;
@@ -159,7 +184,9 @@ export class ZoomWebhookService {
     });
 
     if (!program) {
-      this.logger.debug(`[Zoom webhook] ${eventNorm}: no program for Zoom id(s) ${idCandidates.join(', ')}`);
+      this.logger.debug(
+        `[Zoom webhook] ${eventNorm}: no program for Zoom id(s) ${idCandidates.join(', ')}`,
+      );
       return;
     }
 
@@ -173,11 +200,14 @@ export class ZoomWebhookService {
       data: { zoomSessionEndedAt: endAt },
     });
 
-    this.logger.log(`[Zoom webhook] ${eventNorm} → program ${program.id} zoomSessionEndedAt=${endAt.toISOString()}`);
+    this.logger.log(
+      `[Zoom webhook] ${eventNorm} → program ${program.id} zoomSessionEndedAt=${endAt.toISOString()}`,
+    );
   }
 
   /**
-   * webinar.created / meeting.created — auto-create a DRAFT Program from the Zoom session.
+   * webinar.created — auto-create a DRAFT Program from the Zoom webinar.
+   * meeting.created is not handled here (meetings belong to Office Hours only, created via admin).
    * Skips if a program with this Zoom ID already exists (idempotent).
    * Admin must fill in sponsor, honorarium, Jotform forms, and host bio via Program Hub.
    */
@@ -186,13 +216,17 @@ export class ZoomWebhookService {
     sessionType: 'WEBINAR' | 'MEETING',
   ): Promise<void> {
     if (!obj) {
-      this.logger.warn(`[Zoom webhook] ${sessionType.toLowerCase()}.created missing object`);
+      this.logger.warn(
+        `[Zoom webhook] ${sessionType.toLowerCase()}.created missing object`,
+      );
       return;
     }
 
     const zoomMeetingId = obj.id != null ? String(obj.id) : obj.uuid;
     if (!zoomMeetingId) {
-      this.logger.warn(`[Zoom webhook] ${sessionType.toLowerCase()}.created missing id/uuid`);
+      this.logger.warn(
+        `[Zoom webhook] ${sessionType.toLowerCase()}.created missing id/uuid`,
+      );
       return;
     }
 
@@ -208,7 +242,9 @@ export class ZoomWebhookService {
       return;
     }
 
-    const title = obj.topic?.trim() || `Untitled ${sessionType === 'WEBINAR' ? 'Webinar' : 'Meeting'}`;
+    const title =
+      obj.topic?.trim() ||
+      `Untitled ${sessionType === 'WEBINAR' ? 'Webinar' : 'Meeting'}`;
     const description = obj.agenda?.trim() || '';
     let startDate: Date | null = null;
     if (obj.start_time?.trim()) {
@@ -223,9 +259,10 @@ export class ZoomWebhookService {
 
     if (this.zoom.isConfigured()) {
       try {
-        const detail = sessionType === 'WEBINAR'
-          ? await this.zoom.getWebinarById(zoomMeetingId)
-          : await this.zoom.getMeetingById(zoomMeetingId);
+        const detail =
+          sessionType === 'WEBINAR'
+            ? await this.zoom.getWebinarById(zoomMeetingId)
+            : await this.zoom.getMeetingById(zoomMeetingId);
         if (detail?.startUrl) startUrl = detail.startUrl;
         if (detail?.joinUrl) joinUrl = detail.joinUrl;
         this.logger.log(
@@ -261,10 +298,14 @@ export class ZoomWebhookService {
     );
 
     if (sessionType === 'WEBINAR') {
-      this.surveys.attachJotformFormsFromConfig(program.id, title).catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`[Zoom webhook] Jotform form attachment failed for program ${program.id}: ${msg}`);
-      });
+      this.surveys
+        .attachJotformFormsFromConfig(program.id, title)
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `[Zoom webhook] Jotform form attachment failed for program ${program.id}: ${msg}`,
+          );
+        });
     }
   }
 
@@ -274,13 +315,17 @@ export class ZoomWebhookService {
     fullPayload?: ZoomWebhookPayload,
   ): Promise<void> {
     if (!obj?.participant) {
-      this.logger.warn('[Zoom webhook] participant_joined/left missing participant');
+      this.logger.warn(
+        '[Zoom webhook] participant_joined/left missing participant',
+      );
       return;
     }
 
     const meetingId = obj.id != null ? String(obj.id) : obj.uuid;
     if (!meetingId) {
-      this.logger.warn('[Zoom webhook] participant event missing meeting id/uuid');
+      this.logger.warn(
+        '[Zoom webhook] participant event missing meeting id/uuid',
+      );
       return;
     }
 
@@ -296,7 +341,9 @@ export class ZoomWebhookService {
     });
 
     if (!program) {
-      this.logger.debug(`[Zoom webhook] No program found for meeting ${meetingId} - skipping`);
+      this.logger.debug(
+        `[Zoom webhook] No program found for meeting ${meetingId} - skipping`,
+      );
       return;
     }
 
@@ -310,17 +357,20 @@ export class ZoomWebhookService {
       if (user) userId = user.id;
     }
 
-    const eventType = event === 'meeting.participant_joined' ? 'JOINED' : 'LEFT';
+    const eventType =
+      event === 'meeting.participant_joined' ? 'JOINED' : 'LEFT';
 
     if (eventType === 'JOINED' && participant.email) {
       const nameParts = (participant.user_name ?? '').trim().split(/\s+/);
       const firstname = nameParts[0] ?? '';
       const lastname = nameParts.slice(1).join(' ') ?? '';
-      this.hubspot.createOrUpdateContact({
-        email: participant.email.trim().toLowerCase(),
-        firstname: firstname || undefined,
-        lastname: lastname || undefined,
-      }).catch(() => {});
+      this.hubspot
+        .createOrUpdateContact({
+          email: participant.email.trim().toLowerCase(),
+          firstname: firstname || undefined,
+          lastname: lastname || undefined,
+        })
+        .catch(() => {});
     }
 
     await this.prisma.webinarParticipantEvent.create({
@@ -329,7 +379,8 @@ export class ZoomWebhookService {
         userId,
         event: eventType,
         zoomMeetingId: meetingId,
-        zoomParticipantId: participant.id ?? participant.participant_user_id ?? undefined,
+        zoomParticipantId:
+          participant.id ?? participant.participant_user_id ?? undefined,
         participantName: participant.user_name ?? undefined,
         participantEmail: participant.email ?? undefined,
         rawPayload: fullPayload as object,
@@ -343,18 +394,26 @@ export class ZoomWebhookService {
 
   private encryptToken(plainToken: string): string {
     if (!this.webhookSecret) return '';
-    return createHmac('sha256', this.webhookSecret).update(plainToken).digest('hex');
+    return createHmac('sha256', this.webhookSecret)
+      .update(plainToken)
+      .digest('hex');
   }
 
   /**
    * Validate Zoom webhook signature.
    * Zoom: message = "v0:" + timestamp + ":" + rawBody, hash = HMAC-SHA256(message, secret), header = "v0=" + hash
    */
-  private validateSignature(rawBody: string, signature: string, timestamp: string): boolean {
+  private validateSignature(
+    rawBody: string,
+    signature: string,
+    timestamp: string,
+  ): boolean {
     if (!this.webhookSecret) return true;
     try {
       const message = `v0:${timestamp}:${rawBody}`;
-      const hash = createHmac('sha256', this.webhookSecret).update(message).digest('hex');
+      const hash = createHmac('sha256', this.webhookSecret)
+        .update(message)
+        .digest('hex');
       const expected = `v0=${hash}`;
       return signature === expected;
     } catch {

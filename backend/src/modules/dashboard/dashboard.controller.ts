@@ -1,4 +1,12 @@
-import { Controller, Get, Patch, Param, Body, Logger, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Body,
+  Logger,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { DashboardService } from './dashboard.service';
@@ -19,7 +27,9 @@ export class DashboardController {
    * Get user's earnings breakdown (auth required)
    */
   @Get(':userId/earnings')
-  async getEarnings(@Param('userId') userId: string): Promise<EarningsResponseDto> {
+  async getEarnings(
+    @Param('userId') userId: string,
+  ): Promise<EarningsResponseDto> {
     this.logger.log(`Getting earnings for user: ${userId}`);
     return this.dashboardService.getEarnings(userId);
   }
@@ -39,7 +49,9 @@ export class DashboardController {
    * Get user profile for Settings page (auth required)
    */
   @Get(':userId/profile')
-  async getProfile(@Param('userId') userId: string): Promise<ProfileResponseDto> {
+  async getProfile(
+    @Param('userId') userId: string,
+  ): Promise<ProfileResponseDto> {
     this.logger.log(`Getting profile for user: ${userId}`);
     return this.dashboardService.getProfile(userId);
   }

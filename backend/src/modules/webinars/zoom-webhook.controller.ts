@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Headers, Req, Logger, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  Req,
+  Logger,
+  HttpCode,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { ZoomWebhookService } from './zoom-webhook.service';
 
@@ -25,7 +33,12 @@ export class ZoomWebhookController {
     @Headers('x-zm-request-timestamp') timestamp: string,
     @Req() req: Request,
   ): Promise<Record<string, unknown>> {
-    const rawBody = (req as Request & { rawBody?: string }).rawBody as string | undefined;
-    return this.webhookService.processWebhook(body, signature ?? '', timestamp ?? '', rawBody);
+    const rawBody = (req as Request & { rawBody?: string }).rawBody;
+    return this.webhookService.processWebhook(
+      body,
+      signature ?? '',
+      timestamp ?? '',
+      rawBody,
+    );
   }
 }

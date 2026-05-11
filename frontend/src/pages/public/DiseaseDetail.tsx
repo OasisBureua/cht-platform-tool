@@ -2,6 +2,7 @@ import { Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Play, ArrowRight } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
+import { shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { webinarsApi } from '../../api/webinars';
 import DISEASE_AREAS from '../../data/disease-areas';
 
@@ -34,9 +35,10 @@ export default function DiseaseDetail() {
   });
 
   const matchedPlaylists = tagRegex ? playlists.filter((p) => tagRegex.test(p.title)) : playlists;
-  const matchedClips = tagRegex
+  const matchedClips = (tagRegex
     ? (clips?.items ?? []).filter((c) => tagRegex.test(c.title) || c.tags?.some((t) => tagRegex.test(t)))
-    : (clips?.items ?? []);
+    : (clips?.items ?? [])
+  ).filter(shouldSurfaceCatalogClip);
   const matchedWebinars = tagRegex
     ? webinars.filter((w) => tagRegex.test(w.title) || tagRegex.test(w.description))
     : webinars;

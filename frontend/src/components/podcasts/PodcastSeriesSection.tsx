@@ -1,6 +1,11 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { Play, Sparkles, ArrowUpDown, ChevronRight } from 'lucide-react';
-import type { PodcastEpisode, PodcastShow } from '../../data/podcastsCatalog';
+import {
+  CHM_PODCAST_PLATFORM_LINKS,
+  type PodcastEpisode,
+  type PodcastShow,
+} from '../../data/podcastsCatalog';
 
 export function latestEpisode(show: PodcastShow): PodcastEpisode {
   const eps = [...show.episodes];
@@ -8,14 +13,7 @@ export function latestEpisode(show: PodcastShow): PodcastEpisode {
   return eps[0]!;
 }
 
-const LISTEN_PLATFORMS = [
-  'Apple Podcasts',
-  'Spotify',
-  'Amazon Music',
-  'iHeartRadio',
-  'Castbox',
-  'Pocket Casts',
-];
+const LISTEN_PLATFORMS = CHM_PODCAST_PLATFORM_LINKS;
 
 function EpisodeRow({ ep }: { ep: PodcastEpisode }) {
   return (
@@ -105,15 +103,27 @@ export function SeriesSection({
                 {show.tagline}
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2 sm:gap-3">
-                <a
-                  href="https://communityhealth.media"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-[0_8px_28px_-12px_rgba(43,168,154,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:scale-[0.96]"
-                >
-                  <Play className="h-4 w-4 fill-current" aria-hidden />
-                  Play latest
-                </a>
+                {(() => {
+                  const play =
+                    show.playLatest ??
+                    ({ kind: 'external' as const, href: 'https://communityhealth.media' });
+                  const playClass =
+                    'inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-[0_8px_28px_-12px_rgba(43,168,154,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:scale-[0.96]';
+                  if (play.kind === 'app') {
+                    return (
+                      <Link to={play.to} className={playClass}>
+                        <Play className="h-4 w-4 fill-current" aria-hidden />
+                        Play latest
+                      </Link>
+                    );
+                  }
+                  return (
+                    <a href={play.href} target="_blank" rel="noopener noreferrer" className={playClass}>
+                      <Play className="h-4 w-4 fill-current" aria-hidden />
+                      Play latest
+                    </a>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -124,13 +134,15 @@ export function SeriesSection({
               Listen on
             </span>
             {LISTEN_PLATFORMS.map((platform) => (
-              <button
-                key={platform}
-                type="button"
+              <a
+                key={platform.label}
+                href={platform.href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex min-h-[32px] items-center rounded-full bg-zinc-50 px-3 text-xs font-medium text-zinc-700 transition-[background-color,color,transform] duration-200 hover:bg-zinc-100 active:scale-[0.96] dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
               >
-                {platform}
-              </button>
+                {platform.label}
+              </a>
             ))}
           </div>
         </div>

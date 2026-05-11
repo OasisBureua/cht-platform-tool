@@ -36,10 +36,13 @@ export function BiomarkerConversationRow({
   label,
   focus,
   isInApp,
+  hideBrokenCatalogThumbnails = false,
 }: {
   label: string;
   focus: PlaylistFocus;
   isInApp: boolean;
+  /** When true (e.g. app dashboard home), omit tiles whose poster fails to load. */
+  hideBrokenCatalogThumbnails?: boolean;
 }) {
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -85,6 +88,7 @@ export function BiomarkerConversationRow({
         {filteredPlaylists.map((p) => (
           <StripCard
             key={p.id}
+            hideThumbnailOnError={hideBrokenCatalogThumbnails}
             to={isInApp ? `/app/catalog/playlist/${p.id}` : `/catalog/playlist/${p.id}`}
             title={p.title}
             imageUrl={p.thumbnailUrl || `https://img.youtube.com/vi/${p.id}/hqdefault.jpg`}
@@ -104,6 +108,7 @@ export function BiomarkerConversationRow({
       {entries.slice(0, ROW_VIDEO_CAP).map((e) => (
         <StripCard
           key={`${e.playlistId}-${e.video.id}`}
+          hideThumbnailOnError={hideBrokenCatalogThumbnails}
           to={
             isInApp
               ? `/app/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`

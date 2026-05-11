@@ -55,7 +55,9 @@ export function buildMissedWebinarEmail(
     '',
     'Best regards,',
     'The Community Health Media Team',
-    sponsor !== 'Community Health Media' ? `\nSponsored by ${p.sponsorName}.` : null,
+    sponsor !== 'Community Health Media'
+      ? `\nSponsored by ${p.sponsorName}.`
+      : null,
   ]
     .filter((line) => line != null)
     .join('\n');
@@ -107,5 +109,8 @@ export function buildMissedWebinarEmail(
 }
 
 function sanitizePlainDescription(s: string): string {
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

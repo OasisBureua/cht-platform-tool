@@ -35,9 +35,12 @@ export class CatalogController {
     try {
       return await this.mediahub.getTags();
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 401) {
-        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.');
+        this.logger.warn(
+          '[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.',
+        );
         return {};
       }
       throw err;
@@ -74,9 +77,12 @@ export class CatalogController {
         offset: offset ? parseInt(offset, 10) : undefined,
       });
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 401) {
-        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.');
+        this.logger.warn(
+          '[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.',
+        );
         return { items: [], total: 0 };
       }
       throw err;
@@ -125,9 +131,12 @@ export class CatalogController {
     try {
       return await this.mediahub.getDoctors();
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 401) {
-        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.');
+        this.logger.warn(
+          '[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.',
+        );
         return [];
       }
       throw err;
@@ -151,7 +160,11 @@ export class CatalogController {
    * MediaHub: Full-text search (alias for clips with q).
    */
   @Get('search')
-  async search(@Query('q') q?: string, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+  async search(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
     if (!this.mediahub.isConfigured() || !q) {
       return { items: [], total: 0 };
     }

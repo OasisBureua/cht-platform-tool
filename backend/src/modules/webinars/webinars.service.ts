@@ -94,7 +94,9 @@ export class WebinarsService {
           ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
           : undefined);
 
-      const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+      const defaultIntake =
+        this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+        undefined;
       items.push({
         id: p.id,
         title: p.title,
@@ -109,14 +111,23 @@ export class WebinarsService {
         hostBio: p.hostBio || undefined,
         speakers: p.speakers?.length ? p.speakers : undefined,
         jotformIntakeFormUrl:
-          effectiveWebinarIntakeFormUrl(p.zoomSessionType, p.jotformIntakeFormUrl, defaultIntake) || undefined,
+          effectiveWebinarIntakeFormUrl(
+            p.zoomSessionType,
+            p.jotformIntakeFormUrl,
+            defaultIntake,
+          ) || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
-        honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
+        honorariumAmount: p.honorariumAmount
+          ? p.honorariumAmount / 100
+          : undefined,
       });
     }
 
     // 2. Add Zoom webinars not yet in the DB (optional; off by default so LIVE uses DB + Jotform flow only)
-    if (this.config.get<boolean>('webinars.listZoomFallback') && this.zoom.isConfigured()) {
+    if (
+      this.config.get<boolean>('webinars.listZoomFallback') &&
+      this.zoom.isConfigured()
+    ) {
       try {
         const zoomWebinars = await this.zoom.listWebinars();
         for (const w of zoomWebinars) {
@@ -184,7 +195,9 @@ export class WebinarsService {
         speakers: p.speakers?.length ? p.speakers : undefined,
         jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
-        honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
+        honorariumAmount: p.honorariumAmount
+          ? p.honorariumAmount / 100
+          : undefined,
       });
     }
     return items;
@@ -220,7 +233,9 @@ export class WebinarsService {
         ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
         : undefined);
 
-    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
     return {
       id: program.id,
       title: program.title,
@@ -235,10 +250,15 @@ export class WebinarsService {
       hostBio: program.hostBio || undefined,
       speakers: program.speakers?.length ? program.speakers : undefined,
       jotformIntakeFormUrl:
-        effectiveWebinarIntakeFormUrl(program.zoomSessionType, program.jotformIntakeFormUrl, defaultIntake) ||
-        undefined,
+        effectiveWebinarIntakeFormUrl(
+          program.zoomSessionType,
+          program.jotformIntakeFormUrl,
+          defaultIntake,
+        ) || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
-      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
+      honorariumAmount: program.honorariumAmount
+        ? program.honorariumAmount / 100
+        : undefined,
     };
   }
 
@@ -271,7 +291,9 @@ export class WebinarsService {
       speakers: program.speakers?.length ? program.speakers : undefined,
       jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
-      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
+      honorariumAmount: program.honorariumAmount
+        ? program.honorariumAmount / 100
+        : undefined,
     };
   }
 
@@ -295,7 +317,9 @@ export class WebinarsService {
       where: { userId_programId: { userId, programId } },
     });
     if (!enrollment) {
-      throw new ForbiddenException('Register for this session before joining in the app.');
+      throw new ForbiddenException(
+        'Register for this session before joining in the app.',
+      );
     }
 
     const program = await this.prisma.program.findFirst({
@@ -305,7 +329,11 @@ export class WebinarsService {
       throw new BadRequestException('This session has no Zoom meeting ID yet.');
     }
 
-    const userName = (authUser.name?.trim() || authUser.email || 'Participant').slice(0, 200);
+    const userName = (
+      authUser.name?.trim() ||
+      authUser.email ||
+      'Participant'
+    ).slice(0, 200);
     const userEmail = (authUser.email || '').trim();
 
     const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');

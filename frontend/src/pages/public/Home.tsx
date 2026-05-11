@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, LayoutGrid, Loader2 } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
+import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
 import DISEASE_AREAS from '../../data/disease-areas';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
@@ -269,12 +269,14 @@ export default function Home() {
   const hrFlattenedVideos = useFlattenedPlaylistVideos(hrPlaylistIds, hrPlaylistIds.length > 0);
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
-    const mapped = randomVideos.map((v) => ({
-      id: v.id,
-      title: v.title,
-      imageUrl: v.thumbnailUrl || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
-      youtubeUrl: v.youtubeUrl,
-    }));
+    const mapped = randomVideos
+      .filter((v) => extractYoutubeVideoIdFromUrl(v.youtubeUrl))
+      .map((v) => ({
+        id: v.id,
+        title: v.title,
+        imageUrl: v.thumbnailUrl || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+        youtubeUrl: v.youtubeUrl,
+      }));
     if (mapped.length > 0) return mapped;
     return randomVideosLoading ? [] : FALLBACK_FEATURED;
   }, [randomVideos, randomVideosLoading]);

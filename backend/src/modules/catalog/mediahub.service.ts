@@ -54,7 +54,8 @@ export class MediaHubService {
     private config: ConfigService,
     private http: HttpService,
   ) {
-    this.baseUrl = this.config.get<string>('mediahub.baseUrl') || MEDIAHUB_BASE_URL;
+    this.baseUrl =
+      this.config.get<string>('mediahub.baseUrl') || MEDIAHUB_BASE_URL;
     this.apiKey = this.config.get<string>('mediahub.apiKey') || null;
   }
 
@@ -72,7 +73,10 @@ export class MediaHubService {
     };
   }
 
-  private async get<T>(path: string, params?: Record<string, string | number | undefined>): Promise<T> {
+  private async get<T>(
+    path: string,
+    params?: Record<string, string | number | undefined>,
+  ): Promise<T> {
     const url = `${this.baseUrl}${path}`;
     const cleanParams = params
       ? (Object.fromEntries(
@@ -125,7 +129,7 @@ export class MediaHubService {
     if (Array.isArray(result)) {
       return { items: result, total: result.length };
     }
-    return result as MediaHubClipsResponse;
+    return result;
   }
 
   /**
@@ -139,7 +143,9 @@ export class MediaHubService {
    * GET /doctors - Doctor profiles
    */
   async getDoctors(): Promise<MediaHubDoctor[]> {
-    const result = await this.get<MediaHubDoctor[] | { items?: MediaHubDoctor[] }>('/doctors');
+    const result = await this.get<
+      MediaHubDoctor[] | { items?: MediaHubDoctor[] }
+    >('/doctors');
     if (Array.isArray(result)) return result;
     return (result as { items?: MediaHubDoctor[] }).items || [];
   }
@@ -147,7 +153,9 @@ export class MediaHubService {
   /**
    * GET /doctors/{slug} - Doctor detail with clips
    */
-  async getDoctor(slug: string): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
+  async getDoctor(
+    slug: string,
+  ): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
     return this.get(`/doctors/${slug}`);
   }
 
@@ -169,7 +177,10 @@ export class MediaHubService {
   /**
    * GET /search?q= - Full-text search (alias for clips with query)
    */
-  async search(q: string, params?: { limit?: number; offset?: number }): Promise<MediaHubClipsResponse> {
+  async search(
+    q: string,
+    params?: { limit?: number; offset?: number },
+  ): Promise<MediaHubClipsResponse> {
     return this.getClips({ q, ...params });
   }
 }

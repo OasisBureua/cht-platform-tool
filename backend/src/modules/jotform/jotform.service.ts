@@ -29,7 +29,10 @@ export class JotformService {
   constructor(private config: ConfigService) {}
 
   private getBaseUrl(): string {
-    const raw = this.config.get<string>('jotform.baseUrl')?.replace(/\/$/, '').trim();
+    const raw = this.config
+      .get<string>('jotform.baseUrl')
+      ?.replace(/\/$/, '')
+      .trim();
     return raw || 'https://api.jotform.com';
   }
 
@@ -41,7 +44,11 @@ export class JotformService {
 
   /** Jotform uses responseCode in JSON body; success is any 2xx (same rule as official Node client). */
   private isJotformSuccess(responseCode: unknown): boolean {
-    return responseCode !== undefined && responseCode !== null && String(responseCode).startsWith('2');
+    return (
+      responseCode !== undefined &&
+      responseCode !== null &&
+      String(responseCode).startsWith('2')
+    );
   }
 
   private apiKeyHeaders(): Record<string, string> {
@@ -55,7 +62,9 @@ export class JotformService {
    * Clone a Jotform form (template). Returns the new form ID.
    * @see https://api.jotform.com/docs/#clone-form
    */
-  async cloneForm(templateFormId: string): Promise<{ formId: string; title: string; url: string }> {
+  async cloneForm(
+    templateFormId: string,
+  ): Promise<{ formId: string; title: string; url: string }> {
     const base = this.getBaseUrl();
     const id = encodeURIComponent(templateFormId.trim());
     const url = `${base}/form/${id}/clone`;
@@ -68,11 +77,14 @@ export class JotformService {
     try {
       data = JSON.parse(rawBody) as JotformCloneResponse;
     } catch {
-      throw new Error(`Clone failed: invalid JSON (HTTP ${res.status}) ${rawBody.slice(0, 200)}`);
+      throw new Error(
+        `Clone failed: invalid JSON (HTTP ${res.status}) ${rawBody.slice(0, 200)}`,
+      );
     }
     if (!this.isJotformSuccess(data?.responseCode) || !data?.content?.id) {
       throw new Error(
-        data?.message || `Clone failed: HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
+        data?.message ||
+          `Clone failed: HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
       );
     }
     return {
@@ -88,7 +100,8 @@ export class JotformService {
    */
   async addWebhook(formId: string, webhookUrl?: string): Promise<void> {
     const hookUrl = webhookUrl || this.config.get<string>('jotform.webhookUrl');
-    if (!hookUrl) throw new Error('JOTFORM_WEBHOOK_URL or FRONTEND_URL not configured');
+    if (!hookUrl)
+      throw new Error('JOTFORM_WEBHOOK_URL or FRONTEND_URL not configured');
     const base = this.getBaseUrl();
     const fid = encodeURIComponent(formId.trim());
     const url = `${base}/form/${fid}/webhooks`;
@@ -105,11 +118,14 @@ export class JotformService {
     try {
       data = JSON.parse(rawWebhook) as JotformWebhookResponse;
     } catch {
-      throw new Error(`Add webhook failed: invalid JSON (HTTP ${res.status}) ${rawWebhook.slice(0, 200)}`);
+      throw new Error(
+        `Add webhook failed: invalid JSON (HTTP ${res.status}) ${rawWebhook.slice(0, 200)}`,
+      );
     }
     if (!this.isJotformSuccess(data?.responseCode)) {
       throw new Error(
-        data?.message || `Add webhook failed: HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
+        data?.message ||
+          `Add webhook failed: HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
       );
     }
   }
@@ -119,7 +135,11 @@ export class JotformService {
    * Returns user info if the API key is valid.
    * @see https://api.jotform.com/docs/#user
    */
-  async testConnection(): Promise<{ connected: boolean; username?: string; error?: string }> {
+  async testConnection(): Promise<{
+    connected: boolean;
+    username?: string;
+    error?: string;
+  }> {
     const apiKey = this.config.get<string>('jotform.apiKey');
 
     if (!apiKey?.trim()) {
@@ -135,19 +155,24 @@ export class JotformService {
       try {
         data = JSON.parse(rawUser) as JotformUserResponse;
       } catch {
-        return { connected: false, error: `Invalid JSON from Jotform (HTTP ${res.status})` };
+        return {
+          connected: false,
+          error: `Invalid JSON from Jotform (HTTP ${res.status})`,
+        };
       }
 
       if (!this.isJotformSuccess(data?.responseCode)) {
         return {
           connected: false,
-          error: data?.message || `HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
+          error:
+            data?.message ||
+            `HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
         };
       }
 
       const content = data?.content;
       if (content?.username) {
-        return { connected: true, username: content.username as string };
+        return { connected: true, username: content.username };
       }
 
       return { connected: true };

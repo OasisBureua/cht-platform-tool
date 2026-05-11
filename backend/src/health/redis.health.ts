@@ -10,10 +10,10 @@ export class RedisHealthIndicator {
     try {
       const testKey = 'health:check';
       const testValue = Date.now().toString();
-      
+
       await this.redis.set(testKey, testValue, 5);
       const result = await this.redis.get(testKey);
-      
+
       if (result === testValue) {
         return {
           [key]: {
@@ -22,7 +22,7 @@ export class RedisHealthIndicator {
           },
         };
       }
-      
+
       // Redis not working but not critical - still return "up" with warning
       return {
         [key]: {

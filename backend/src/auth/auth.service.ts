@@ -49,7 +49,10 @@ export class AuthService {
 
     if (!user) {
       this.logger.log(`Creating new user for authId: ${authId}`);
-      const npi = npiNumber && String(npiNumber).replace(/\D/g, '').length === 10 ? String(npiNumber).replace(/\D/g, '').slice(0, 10) : undefined;
+      const npi =
+        npiNumber && String(npiNumber).replace(/\D/g, '').length === 10
+          ? String(npiNumber).replace(/\D/g, '').slice(0, 10)
+          : undefined;
       user = await this.prisma.user.create({
         data: {
           authId,
@@ -87,7 +90,9 @@ export class AuthService {
     authUser.authId = user.authId;
     authUser.userId = user.id;
     authUser.email = user.email;
-    authUser.name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+    authUser.name =
+      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+      user.email;
     authUser.role = user.role;
 
     return authUser;
@@ -113,7 +118,9 @@ export class AuthService {
     authUser.authId = user.authId;
     authUser.userId = user.id;
     authUser.email = user.email;
-    authUser.name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+    authUser.name =
+      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+      user.email;
     authUser.role = user.role;
     return authUser;
   }
@@ -122,7 +129,10 @@ export class AuthService {
    * Create a session. Uses DB only (Redis bypassed to avoid connection/timeout issues).
    * @param accessToken - Optional GoTrue JWT for chatbot (stored when Supabase login)
    */
-  async createSession(user: AuthUser, accessToken?: string | null): Promise<string> {
+  async createSession(
+    user: AuthUser,
+    accessToken?: string | null,
+  ): Promise<string> {
     const token = randomUUID();
     const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
     const expiresAt = new Date(Date.now() + ttl * 1000);
@@ -138,7 +148,9 @@ export class AuthService {
         accessToken: accessToken || undefined,
       },
     });
-    this.logger.debug(`Session created in DB for ${user.userId}, expires: ${expiresAt.toISOString()}`);
+    this.logger.debug(
+      `Session created in DB for ${user.userId}, expires: ${expiresAt.toISOString()}`,
+    );
     return token;
   }
 
@@ -167,9 +179,13 @@ export class AuthService {
       where: { token: trimmed },
     });
     if (!session || session.expiresAt < new Date()) {
-      this.logger.debug(`[Auth] getSession: not found or expired (found=${!!session})`);
+      this.logger.debug(
+        `[Auth] getSession: not found or expired (found=${!!session})`,
+      );
       if (session) {
-        await this.prisma.session.delete({ where: { id: session.id } }).catch(() => {});
+        await this.prisma.session
+          .delete({ where: { id: session.id } })
+          .catch(() => {});
       }
       return null;
     }
@@ -215,7 +231,9 @@ export class AuthService {
    * Check if user has completed required profile.
    * Requires: specialty. NPI required unless profession is Pharmaceuticals.
    */
-  isProfileComplete(user: { specialty: string | null; npiNumber: string | null } | null): boolean {
+  isProfileComplete(
+    user: { specialty: string | null; npiNumber: string | null } | null,
+  ): boolean {
     return isProfileCompleteForPayments(user);
   }
 
@@ -231,7 +249,9 @@ export class AuthService {
     authUser.authId = user.authId;
     authUser.userId = user.id;
     authUser.email = user.email;
-    authUser.name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+    authUser.name =
+      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+      user.email;
     authUser.role = user.role;
     return authUser;
   }

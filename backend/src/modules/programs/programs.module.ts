@@ -12,7 +12,16 @@ import { FormJotformProgressService } from './form-jotform-progress.service';
 @Module({
   imports: [AuthModule, EmailModule, HubSpotModule, PaymentsModule],
   controllers: [ProgramsController],
-  providers: [ProgramsService, ProgramRegistrationsService, FormJotformProgressService, OptionalJwtAuthGuard],
-  exports: [ProgramsService, ProgramRegistrationsService, FormJotformProgressService],
+  providers: [
+    ProgramsService,
+    ProgramRegistrationsService,
+    FormJotformProgressService,
+    OptionalJwtAuthGuard,
+  ],
+  exports: [
+    ProgramsService,
+    ProgramRegistrationsService,
+    FormJotformProgressService,
+  ],
 })
 export class ProgramsModule {}

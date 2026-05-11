@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
-import { getShortClipId, getMediaHubThumbnail, hasRealThumbnail } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
@@ -259,14 +259,14 @@ export default function VideosPage() {
   }, [handleObserver]);
 
   const mediaHubItems = useMemo(
-    () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(hasRealThumbnail),
+    () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(shouldSurfaceCatalogClip),
     [clipsData?.pages],
   );
 
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
 
-  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter(hasRealThumbnail);
+  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter(shouldSurfaceCatalogClip);
   const featuredClip = firstPageItems[0] ?? null;
   const gridItems = useMemo(
     () => (featuredClip ? displayItems.filter((c) => c.id !== featuredClip.id) : displayItems),

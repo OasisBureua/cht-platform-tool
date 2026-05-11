@@ -24,7 +24,10 @@ import { FormJotformProgressService } from './form-jotform-progress.service';
 import { PaymentsService } from '../payments/payments.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto } from './dto/program-response.dto';
-import { UpdateVideoProgressDto, VideoProgressResponseDto } from './dto/update-video-progress.dto';
+import {
+  UpdateVideoProgressDto,
+  VideoProgressResponseDto,
+} from './dto/update-video-progress.dto';
 
 @Controller('programs')
 export class ProgramsController {
@@ -74,7 +77,9 @@ export class ProgramsController {
   @Get('me/live-session-status')
   @UseGuards(JwtAuthGuard)
   async getMyLiveSessionStatus(@CurrentUser() user: AuthUser) {
-    return this.registrationsService.getMyLiveSessionStatusForLists(user.userId);
+    return this.registrationsService.getMyLiveSessionStatusForLists(
+      user.userId,
+    );
   }
 
   /**
@@ -90,7 +95,10 @@ export class ProgramsController {
    */
   @Get(':id/registration')
   @UseGuards(JwtAuthGuard)
-  async getMyRegistration(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+  async getMyRegistration(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.registrationsService.getMyRegistration(user.userId, id);
   }
 
@@ -102,9 +110,14 @@ export class ProgramsController {
   async submitRegistration(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
-    @Body() body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
+    @Body()
+    body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
   ) {
-    return this.registrationsService.submitRegistration(user.userId, id, body ?? {});
+    return this.registrationsService.submitRegistration(
+      user.userId,
+      id,
+      body ?? {},
+    );
   }
 
   /**
@@ -112,8 +125,14 @@ export class ProgramsController {
    */
   @Post(':id/post-event/acknowledge-survey')
   @UseGuards(JwtAuthGuard)
-  async acknowledgePostEventSurvey(@Param('id') id: string, @CurrentUser() user: AuthUser) {
-    return this.registrationsService.acknowledgePostEventSurvey(user.userId, id);
+  async acknowledgePostEventSurvey(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.registrationsService.acknowledgePostEventSurvey(
+      user.userId,
+      id,
+    );
   }
 
   /**
@@ -121,8 +140,14 @@ export class ProgramsController {
    */
   @Post(':id/post-event/request-honorarium')
   @UseGuards(JwtAuthGuard)
-  async requestPostEventHonorarium(@Param('id') id: string, @CurrentUser() user: AuthUser) {
-    return this.registrationsService.requestPostEventHonorariumPayout(user.userId, id);
+  async requestPostEventHonorarium(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.registrationsService.requestPostEventHonorariumPayout(
+      user.userId,
+      id,
+    );
   }
 
   /**
@@ -130,7 +155,10 @@ export class ProgramsController {
    */
   @Get(':id/honorarium-preview')
   @UseGuards(JwtAuthGuard)
-  async getHonorariumPreview(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+  async getHonorariumPreview(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.paymentsService.getHonorariumProgramPreview(user.userId, id);
   }
 
@@ -139,8 +167,15 @@ export class ProgramsController {
    */
   @Get(':id/jotform-resume')
   @UseGuards(JwtAuthGuard)
-  async getIntakeJotformResume(@Param('id') programId: string, @CurrentUser() user: AuthUser) {
-    return this.formJotformProgress.getResumeSession(user.userId, FormJotformScope.INTAKE, programId);
+  async getIntakeJotformResume(
+    @Param('id') programId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.formJotformProgress.getResumeSession(
+      user.userId,
+      FormJotformScope.INTAKE,
+      programId,
+    );
   }
 
   /**
@@ -191,7 +226,9 @@ export class ProgramsController {
     @Body() dto: EnrollUserDto,
   ): Promise<EnrollmentResponseDto> {
     const enrollDto = { ...dto, userId: user.userId };
-    this.logger.log(`Enrolling user ${user.userId} in program ${dto.programId}`);
+    this.logger.log(
+      `Enrolling user ${user.userId} in program ${dto.programId}`,
+    );
     return this.programsService.enrollUser(enrollDto);
   }
 

@@ -34,7 +34,11 @@ describe('AuthService', () => {
         },
         {
           provide: ConfigService,
-          useValue: { get: jest.fn((key: string) => (key === 'sessionTtlSeconds' ? 1800 : undefined)) },
+          useValue: {
+            get: jest.fn((key: string) =>
+              key === 'sessionTtlSeconds' ? 1800 : undefined,
+            ),
+          },
         },
       ],
     }).compile();
@@ -48,7 +52,10 @@ describe('AuthService', () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
       (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
 
-      const result = await service.findOrCreateByAuthId(mockUser.authId, mockUser.email);
+      const result = await service.findOrCreateByAuthId(
+        mockUser.authId,
+        mockUser.email,
+      );
 
       expect(result?.userId).toBe(mockUser.id);
       expect(prisma.user.create).toHaveBeenCalled();

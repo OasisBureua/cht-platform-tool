@@ -14,7 +14,10 @@ export type LiveSessionIcsParams = {
 };
 
 function formatIcsUtc(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  return d
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}Z$/, 'Z');
 }
 
 /** Escape text for iCalendar TEXT fields */
@@ -30,7 +33,9 @@ export function buildLiveSessionIcs(p: LiveSessionIcsParams): string {
   const uid = `${p.programId}-${p.start.getTime()}@communityhealth.media`;
   const dtStamp = formatIcsUtc(new Date());
   const dtStart = formatIcsUtc(p.start);
-  const end = new Date(p.start.getTime() + Math.max(1, p.durationMinutes) * 60_000);
+  const end = new Date(
+    p.start.getTime() + Math.max(1, p.durationMinutes) * 60_000,
+  );
   const dtEnd = formatIcsUtc(end);
   const summary = escapeIcsText(p.title.slice(0, 500));
   const zoom = p.zoomJoinUrl?.trim() || '';
@@ -39,7 +44,11 @@ export function buildLiveSessionIcs(p: LiveSessionIcsParams): string {
   const urlEsc = escapeIcsText(primaryUrl);
 
   const descLines = [
-    p.description.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600),
+    p.description
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 600),
     zoom ? `Join on Zoom: ${zoom}` : null,
     `Open in app: ${p.appSessionUrl}`,
   ].filter(Boolean);
@@ -77,7 +86,11 @@ export function googleCalendarTemplateUrl(params: {
   start: Date;
   end: Date;
 }): string {
-  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+  const fmt = (d: Date) =>
+    d
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}Z$/, 'Z');
   const dates = `${fmt(params.start)}/${fmt(params.end)}`;
   const q = new URLSearchParams();
   q.set('action', 'TEMPLATE');
@@ -98,16 +111,24 @@ export type MimeApprovalEmailParams = {
 };
 
 /** multipart/mixed: multipart/alternative (text + html) + text/calendar attachment */
-export function buildApprovalEmailMimeBuffer(p: MimeApprovalEmailParams): Buffer {
+export function buildApprovalEmailMimeBuffer(
+  p: MimeApprovalEmailParams,
+): Buffer {
   const boundaryMain = `mixed_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const boundaryAlt = `alt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const nl = '\r\n';
 
   const subjectEncoded = `=?UTF-8?B?${Buffer.from(p.subject, 'utf8').toString('base64')}?=`;
 
-  const plainB64 = Buffer.from(p.textPlain, 'utf8').toString('base64').replace(/(.{76})/g, `$1${nl}`);
-  const htmlB64 = Buffer.from(p.html, 'utf8').toString('base64').replace(/(.{76})/g, `$1${nl}`);
-  const icsB64 = Buffer.from(p.icsBody, 'utf8').toString('base64').replace(/(.{76})/g, `$1${nl}`);
+  const plainB64 = Buffer.from(p.textPlain, 'utf8')
+    .toString('base64')
+    .replace(/(.{76})/g, `$1${nl}`);
+  const htmlB64 = Buffer.from(p.html, 'utf8')
+    .toString('base64')
+    .replace(/(.{76})/g, `$1${nl}`);
+  const icsB64 = Buffer.from(p.icsBody, 'utf8')
+    .toString('base64')
+    .replace(/(.{76})/g, `$1${nl}`);
 
   const raw =
     [

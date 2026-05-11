@@ -10,7 +10,7 @@ export class PrismaHealthIndicator {
     try {
       // Simple query to check connectivity
       await this.prisma.$queryRaw`SELECT 1`;
-      
+
       return {
         [key]: {
           status: 'up',

@@ -122,8 +122,13 @@ export class BillService {
     this.password = this.configService.get<string>('bill.password') || null;
     this.orgId = this.configService.get<string>('bill.orgId') || null;
 
-    const envSession = (this.configService.get<string>('bill.sessionId') || '').trim() || null;
-    const hasPasswordLogin = !!(this.username?.trim() && this.password && this.orgId?.trim());
+    const envSession =
+      (this.configService.get<string>('bill.sessionId') || '').trim() || null;
+    const hasPasswordLogin = !!(
+      this.username?.trim() &&
+      this.password &&
+      this.orgId?.trim()
+    );
 
     // Prefer BILL_SESSION_ID when set (automation / Lambda-rotated secrets, MFA-trusted session from Bill).
     // Password login remains available as fallback after 401/403 clears the in-memory session.
@@ -144,9 +149,10 @@ export class BillService {
     }
 
     const env = this.configService.get<string>('NODE_ENV') || 'development';
-    this.baseUrl = env === 'production'
-      ? this.configService.get<string>('bill.apiUrl') || BILL_PROD_URL
-      : this.configService.get<string>('bill.apiUrl') || BILL_STAGE_URL;
+    this.baseUrl =
+      env === 'production'
+        ? this.configService.get<string>('bill.apiUrl') || BILL_PROD_URL
+        : this.configService.get<string>('bill.apiUrl') || BILL_STAGE_URL;
 
     if (!this.devKey) {
       this.logger.warn('Bill.com dev key not configured');
@@ -210,7 +216,9 @@ export class BillService {
    * List organization bank funding accounts (Connect v3: GET /funding-accounts/banks).
    * Use the `id` from the account you use for AP payables as BILL_FUNDING_ACCOUNT_ID (often starts with `bac`).
    */
-  async listBankFundingAccounts(max = 100): Promise<ListBankFundingAccountsResponse> {
+  async listBankFundingAccounts(
+    max = 100,
+  ): Promise<ListBankFundingAccountsResponse> {
     const cap = Math.min(100, Math.max(1, max));
     return this.request<ListBankFundingAccountsResponse>(
       'GET',
@@ -226,14 +234,17 @@ export class BillService {
   ): Promise<BillFundingAccountsWithRecommendation> {
     const data = await this.listBankFundingAccounts(max);
     const results = data.results ?? [];
-    const defaultPayables = results.find((a) => !a.archived && a.default?.payables === true);
+    const defaultPayables = results.find(
+      (a) => !a.archived && a.default?.payables === true,
+    );
     const recommendedFundingAccountId = defaultPayables?.id ?? null;
     const recommendationNote = recommendedFundingAccountId
       ? 'Use this id as BILL_FUNDING_ACCOUNT_ID: organization default for payables (AP debits).'
       : 'No non-archived account has default.payables=true. Pick an id from results or set a default in Bill.com.';
 
     const configured =
-      (this.configService.get<string>('bill.fundingAccountId') || '').trim() || null;
+      (this.configService.get<string>('bill.fundingAccountId') || '').trim() ||
+      null;
 
     const out: BillFundingAccountsWithRecommendation = {
       ...data,
@@ -244,7 +255,8 @@ export class BillService {
     if (configured) {
       out.configuredFundingAccountId = configured;
       if (recommendedFundingAccountId) {
-        out.configuredMatchesRecommended = configured === recommendedFundingAccountId;
+        out.configuredMatchesRecommended =
+          configured === recommendedFundingAccountId;
       }
     }
 
@@ -276,8 +288,12 @@ export class BillService {
       organizationId: this.orgId!,
       devKey: this.devKey,
     };
-    const rememberMeId = (this.configService.get<string>('bill.mfaRememberMeId') || '').trim();
-    const device = (this.configService.get<string>('bill.mfaDeviceName') || '').trim();
+    const rememberMeId = (
+      this.configService.get<string>('bill.mfaRememberMeId') || ''
+    ).trim();
+    const device = (
+      this.configService.get<string>('bill.mfaDeviceName') || ''
+    ).trim();
     if (rememberMeId && device) {
       body.rememberMeId = rememberMeId;
       body.device = device;
@@ -332,14 +348,20 @@ export class BillService {
     });
     const text = await res.text();
     if (!res.ok) {
-      throw new Error(`Bill.com GET /login/session failed (${res.status}): ${text}`);
+      throw new Error(
+        `Bill.com GET /login/session failed (${res.status}): ${text}`,
+      );
     }
     const data = text ? (JSON.parse(text) as BillSessionInfoResponse) : {};
     if (data.userId) this.userId = data.userId;
     if (data.organizationId) this.orgId = data.organizationId;
 
     // https://developer.bill.com/reference/getsessioninfo
-    if (data.mfaBypass === true || data.mfaStatus === 'COMPLETE' || data.mfaStatus === 'DISABLED') {
+    if (
+      data.mfaBypass === true ||
+      data.mfaStatus === 'COMPLETE' ||
+      data.mfaStatus === 'DISABLED'
+    ) {
       this.sessionTrusted = true;
     } else if (data.mfaStatus && data.mfaStatus !== 'UNDEFINED') {
       this.sessionTrusted = false;
@@ -382,7 +404,9 @@ export class BillService {
         'Bill.com payments require BILL_DEV_KEY, BILL_USERNAME, BILL_PASSWORD, and BILL_ORG_ID so the server can POST /v3/login.',
       );
     }
-    const ttlMs = this.configService.get<number>('bill.paySessionCacheTtlMs') ?? 30 * 60 * 1000;
+    const ttlMs =
+      this.configService.get<number>('bill.paySessionCacheTtlMs') ??
+      30 * 60 * 1000;
     const cacheFresh =
       !!this.sessionId &&
       this.passwordSessionIssuedAtMs !== null &&
@@ -391,7 +415,9 @@ export class BillService {
       this.logger.debug(`Bill.com payment session cache hit (TTL ${ttlMs}ms)`);
       return;
     }
-    this.logger.log('Bill.com: POST /v3/login for payment session (cache miss or TTL expired)');
+    this.logger.log(
+      'Bill.com: POST /v3/login for payment session (cache miss or TTL expired)',
+    );
     this.clearInMemoryBillSession();
     await this.login();
   }
@@ -400,7 +426,9 @@ export class BillService {
    * MFA-trusted session required for POST /v3/payments unless `BILL_ALLOW_UNTRUSTED_PAYMENTS` is set.
    */
   private assertMfaTrustedForPayments(): void {
-    const allowUntrusted = this.configService.get<boolean>('bill.allowUntrustedPayments');
+    const allowUntrusted = this.configService.get<boolean>(
+      'bill.allowUntrustedPayments',
+    );
     if (allowUntrusted) {
       if (this.sessionTrusted === false) {
         this.logger.warn(
@@ -454,7 +482,9 @@ export class BillService {
       canPasswordLogin &&
       this.billSessionRetryable(res.status, text)
     ) {
-      this.logger.warn(`Bill.com session rejected (${res.status}), re-logging in`);
+      this.logger.warn(
+        `Bill.com session rejected (${res.status}), re-logging in`,
+      );
       this.clearInMemoryBillSession();
       return this.request<T>(method, path, body, false);
     }
@@ -507,7 +537,10 @@ export class BillService {
   /**
    * Update vendor address and ACH details (Connect v3 PATCH). Requires at least one recognized top-level field.
    */
-  async updateVendorPaymentAndAddress(vendorId: string, input: CreateVendorInput): Promise<BillVendor> {
+  async updateVendorPaymentAndAddress(
+    vendorId: string,
+    input: CreateVendorInput,
+  ): Promise<BillVendor> {
     this.logger.log(`Updating Bill.com vendor payment/address: ${vendorId}`);
     const payload: Record<string, unknown> = {
       name: input.name,
@@ -552,7 +585,12 @@ export class BillService {
    */
   async updateVendorTaxInfo(
     vendorId: string,
-    data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string; track1099?: boolean },
+    data: {
+      taxId: string;
+      taxIdType: 'SSN' | 'EIN';
+      companyName?: string;
+      track1099?: boolean;
+    },
   ): Promise<BillVendor> {
     this.logger.log(`Updating Bill.com vendor tax info: ${vendorId}`);
     const additionalInfo: Record<string, unknown> = {
@@ -560,8 +598,11 @@ export class BillService {
       taxIdType: data.taxIdType,
       track1099: data.track1099 ?? true,
     };
-    if (data.companyName?.trim()) additionalInfo.companyName = data.companyName.trim();
-    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, { additionalInfo });
+    if (data.companyName?.trim())
+      additionalInfo.companyName = data.companyName.trim();
+    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, {
+      additionalInfo,
+    });
   }
 
   /**
@@ -573,12 +614,16 @@ export class BillService {
     description: string,
   ): Promise<BillPayment> {
     const amountDollars = amountCents / 100;
-    this.logger.log(`Creating Bill.com payment: $${amountDollars} to ${vendorId}`);
+    this.logger.log(
+      `Creating Bill.com payment: $${amountDollars} to ${vendorId}`,
+    );
 
     await this.ensurePaymentSessionCached();
     this.assertMfaTrustedForPayments();
 
-    const fundingAccountId = this.configService.get<string>('bill.fundingAccountId');
+    const fundingAccountId = this.configService.get<string>(
+      'bill.fundingAccountId',
+    );
     if (!fundingAccountId) {
       throw new Error('Bill.com funding account ID not configured');
     }
@@ -602,7 +647,11 @@ export class BillService {
       },
     };
 
-    const payment = await this.request<BillPayment>('POST', '/payments', payload);
+    const payment = await this.request<BillPayment>(
+      'POST',
+      '/payments',
+      payload,
+    );
     this.logger.log(`Bill.com payment created: ${payment.id}`);
     return payment;
   }

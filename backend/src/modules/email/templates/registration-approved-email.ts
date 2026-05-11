@@ -32,7 +32,9 @@ export function buildRegistrationApprovedEmail(
   const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const host = p.hostDisplayName?.trim() ? escape(p.hostDisplayName.trim()) : null;
+  const host = p.hostDisplayName?.trim()
+    ? escape(p.hostDisplayName.trim())
+    : null;
 
   const when = formatEventWhen(p.startDate, p.durationMinutes, escape);
   const formatLine =
@@ -60,7 +62,9 @@ export function buildRegistrationApprovedEmail(
         p.googleCalendarUrl,
       );
     } else {
-      calendarBlock.push('Calendar: open the attached live-session.ics file to add this session to your calendar.');
+      calendarBlock.push(
+        'Calendar: open the attached live-session.ics file to add this session to your calendar.',
+      );
     }
   }
 
@@ -86,7 +90,9 @@ export function buildRegistrationApprovedEmail(
     '',
     "You're confirmed for this session. Join details and the Zoom experience are available on the session page in the app when it's time to attend.",
     '',
-    "If you have any questions or need assistance before the event, contact us at " + p.supportEmail + '.',
+    'If you have any questions or need assistance before the event, contact us at ' +
+      p.supportEmail +
+      '.',
     '',
     'Best regards,',
     'The Community Health Media Team',
@@ -174,7 +180,10 @@ function buildIntroParagraphs(
 }
 
 function sanitizeForPlainEmail(s: string): string {
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function truncatePlain(s: string, max: number): string {
@@ -206,7 +215,8 @@ function formatEventWhen(
     timeZone: 'America/New_York',
     timeZoneName: 'short',
   }).format(start);
-  const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
+  const dur =
+    durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
   const line = long + dur;
   return { plain: line, html: escape(line) };
 }
@@ -219,7 +229,11 @@ function formatHonorariumLine(
     return null;
   }
   const dollars = honorariumCents / 100;
-  const formatted = dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const formatted = dollars.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
   const p = `Listed honorarium for this program: ${formatted} (subject to eligibility, completion, and program policy).`;
   return { plain: p, html: escape(p) };
 }

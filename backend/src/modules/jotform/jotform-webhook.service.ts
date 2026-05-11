@@ -30,7 +30,9 @@ export class JotformWebhookService {
     private formJotformProgress: FormJotformProgressService,
   ) {}
 
-  async processSubmission(rawRequest: string): Promise<{ received: boolean; surveyResponseId?: string }> {
+  async processSubmission(
+    rawRequest: string,
+  ): Promise<{ received: boolean; surveyResponseId?: string }> {
     let payload: JotformWebhookPayload;
     try {
       payload = JSON.parse(rawRequest) as JotformWebhookPayload;
@@ -39,11 +41,15 @@ export class JotformWebhookService {
     }
 
     const submissionId =
-      payload.submissionID ?? payload.submission_id ?? (payload as { submissionID?: string }).submissionID;
+      payload.submissionID ??
+      payload.submission_id ??
+      (payload as { submissionID?: string }).submissionID;
     const formId = payload.formID ?? payload.form_id;
 
     if (!submissionId || !formId) {
-      this.logger.warn(`Jotform webhook: missing submissionID or formID in payload`);
+      this.logger.warn(
+        `Jotform webhook: missing submissionID or formID in payload`,
+      );
       return { received: true };
     }
 
@@ -53,23 +59,43 @@ export class JotformWebhookService {
     });
 
     if (survey) {
-      return this.processSurveySubmission(payload, survey, String(submissionId));
+      return this.processSurveySubmission(
+        payload,
+        survey,
+        String(submissionId),
+      );
     }
 
-    let webinarProgramId = await this.findWebinarProgramIdForIntakeForm(String(formId));
+    let webinarProgramId = await this.findWebinarProgramIdForIntakeForm(
+      String(formId),
+    );
     if (!webinarProgramId) {
-      webinarProgramId = await this.resolveWebinarProgramIdFromPayload(String(formId), payload);
+      webinarProgramId = await this.resolveWebinarProgramIdFromPayload(
+        String(formId),
+        payload,
+      );
     }
     if (webinarProgramId) {
-      return this.processWebinarIntakeSubmission(payload, String(submissionId), webinarProgramId);
+      return this.processWebinarIntakeSubmission(
+        payload,
+        String(submissionId),
+        webinarProgramId,
+      );
     }
 
-    const standalonePostEventProgramId = await this.findStandalonePostEventProgramId(String(formId));
+    const standalonePostEventProgramId =
+      await this.findStandalonePostEventProgramId(String(formId));
     if (standalonePostEventProgramId) {
-      return this.processStandalonePostEventSubmission(payload, String(submissionId), standalonePostEventProgramId);
+      return this.processStandalonePostEventSubmission(
+        payload,
+        String(submissionId),
+        standalonePostEventProgramId,
+      );
     }
 
-    this.logger.warn(`Jotform webhook: no survey or webinar intake match for formID ${formId}`);
+    this.logger.warn(
+      `Jotform webhook: no survey or webinar intake match for formID ${formId}`,
+    );
     return { received: true };
   }
 
@@ -90,7 +116,9 @@ export class JotformWebhookService {
       where: { jotformSubmissionId: String(submissionId) },
     });
     if (existing) {
-      this.logger.log(`Jotform webhook: submission ${submissionId} already processed`);
+      this.logger.log(
+        `Jotform webhook: submission ${submissionId} already processed`,
+      );
       return { received: true, surveyResponseId: existing.id };
     }
 
@@ -121,7 +149,9 @@ export class JotformWebhookService {
           submittedAt: new Date(),
         },
       });
-      await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, survey.id).catch(() => {});
+      await this.formJotformProgress
+        .clear(userId, FormJotformScope.SURVEY, survey.id)
+        .catch(() => {});
       this.logger.log(
         `Jotform webhook: user ${userId} re-submitted survey ${survey.id} (submission ${submissionId}); updated submittedAt`,
       );
@@ -140,9 +170,13 @@ export class JotformWebhookService {
       },
     });
 
-    await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, survey.id).catch(() => {});
+    await this.formJotformProgress
+      .clear(userId, FormJotformScope.SURVEY, survey.id)
+      .catch(() => {});
 
-    this.logger.log(`Survey ${survey.id} submitted via Jotform by user ${userId} (submission ${submissionId})`);
+    this.logger.log(
+      `Survey ${survey.id} submitted via Jotform by user ${userId} (submission ${submissionId})`,
+    );
 
     if (survey.type === SurveyType.FEEDBACK) {
       await this.prisma.programRegistration
@@ -151,11 +185,15 @@ export class JotformWebhookService {
           data: { postEventJotformSubmissionId: String(submissionId) },
         })
         .catch((err: unknown) => {
-          this.logger.warn(`Could not sync post-event Jotform submission id to registration: ${String(err)}`);
+          this.logger.warn(
+            `Could not sync post-event Jotform submission id to registration: ${String(err)}`,
+          );
         });
     }
 
-    const surveyBonusAmount = this.config.get<number>('surveys.bonusAmountCents');
+    const surveyBonusAmount = this.config.get<number>(
+      'surveys.bonusAmountCents',
+    );
     if (surveyBonusAmount && surveyBonusAmount > 0) {
       const queued = await this.queueService.processPayment(
         userId,
@@ -175,7 +213,9 @@ export class JotformWebhookService {
     return { received: true, surveyResponseId: response.id };
   }
 
-  private async findWebinarProgramIdForIntakeForm(formId: string): Promise<string | null> {
+  private async findWebinarProgramIdForIntakeForm(
+    formId: string,
+  ): Promise<string | null> {
     const programs = await this.prisma.program.findMany({
       where: {
         status: 'PUBLISHED',
@@ -185,7 +225,8 @@ export class JotformWebhookService {
       select: { id: true, jotformIntakeFormUrl: true },
     });
     const matches = programs.filter(
-      (p) => extractJotformFormIdFromUrl(p.jotformIntakeFormUrl!) === String(formId),
+      (p) =>
+        extractJotformFormIdFromUrl(p.jotformIntakeFormUrl!) === String(formId),
     );
     if (matches.length === 1) return matches[0].id;
     if (matches.length > 1) {
@@ -195,8 +236,12 @@ export class JotformWebhookService {
       return null;
     }
 
-    const defaultUrl = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim();
-    const defaultFormId = defaultUrl ? extractJotformFormIdFromUrl(defaultUrl) : null;
+    const defaultUrl = this.config
+      .get<string>('jotform.webinarDefaultIntakeUrl')
+      ?.trim();
+    const defaultFormId = defaultUrl
+      ? extractJotformFormIdFromUrl(defaultUrl)
+      : null;
     if (!defaultFormId || String(formId) !== defaultFormId) return null;
 
     const noPerProgramUrl = await this.prisma.program.findMany({
@@ -235,7 +280,8 @@ export class JotformWebhookService {
     const effective = effectiveWebinarIntakeFormUrl(
       p.zoomSessionType,
       p.jotformIntakeFormUrl,
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined,
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+        undefined,
     );
     if (!effective) return null;
     const parsed = extractJotformFormIdFromUrl(effective);
@@ -263,25 +309,32 @@ export class JotformWebhookService {
       );
     }
 
-    const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
     if (!userExists) {
       this.logger.warn(`Jotform intake webhook: user ${userId} not found`);
       return { received: true };
     }
 
-    const recorded = await this.programRegistrations.recordWebinarIntakeFromJotformWebhook(
-      userId,
-      programId,
-      String(submissionId),
-    );
+    const recorded =
+      await this.programRegistrations.recordWebinarIntakeFromJotformWebhook(
+        userId,
+        programId,
+        String(submissionId),
+      );
     if (recorded) {
-      await this.formJotformProgress.clear(userId, FormJotformScope.INTAKE, programId).catch(() => {});
+      await this.formJotformProgress
+        .clear(userId, FormJotformScope.INTAKE, programId)
+        .catch(() => {});
     }
     return { received: true };
   }
 
   /** When post-event URL is configured on Program without a matching Survey row, match webhook by form id. */
-  private async findStandalonePostEventProgramId(formId: string): Promise<string | null> {
+  private async findStandalonePostEventProgramId(
+    formId: string,
+  ): Promise<string | null> {
     const programs = await this.prisma.program.findMany({
       where: {
         status: 'PUBLISHED',
@@ -309,10 +362,14 @@ export class JotformWebhookService {
   ): Promise<{ received: boolean }> {
     const userId = this.extractUserId(payload);
     if (!userId) {
-      this.logger.warn(`Jotform post-event webhook: no user_id in submission ${submissionId}`);
+      this.logger.warn(
+        `Jotform post-event webhook: no user_id in submission ${submissionId}`,
+      );
       return { received: true };
     }
-    const userExists = await this.prisma.user.findUnique({ where: { id: userId } });
+    const userExists = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
     if (!userExists) {
       this.logger.warn(`Jotform post-event webhook: user ${userId} not found`);
       return { received: true };
@@ -321,7 +378,9 @@ export class JotformWebhookService {
       where: { userId_programId: { userId, programId } },
     });
     if (!reg) {
-      this.logger.warn(`Jotform post-event webhook: no registration for user ${userId} program ${programId}`);
+      this.logger.warn(
+        `Jotform post-event webhook: no registration for user ${userId} program ${programId}`,
+      );
       return { received: true };
     }
     if (reg.postEventJotformSubmissionId?.trim()) {
@@ -348,13 +407,19 @@ export class JotformWebhookService {
   }
 
   private extractUserId(payload: JotformWebhookPayload): string | null {
-    const v = payload.user_id ?? payload.userId ?? payload.cht_user_id ?? payload.chtUserId;
+    const v =
+      payload.user_id ??
+      payload.userId ??
+      payload.cht_user_id ??
+      payload.chtUserId;
     if (typeof v === 'string' && v.trim()) return v.trim();
     if (typeof v === 'number') return String(v);
     return null;
   }
 
-  private buildAnswersFromPayload(payload: JotformWebhookPayload): Record<string, unknown> {
+  private buildAnswersFromPayload(
+    payload: JotformWebhookPayload,
+  ): Record<string, unknown> {
     const exclude = [
       'submissionID',
       'submission_id',

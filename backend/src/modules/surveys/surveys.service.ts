@@ -60,7 +60,9 @@ export class SurveysService {
       type: s.type,
       required: s.required,
       jotformFormId: s.jotformFormId,
-      jotformFormUrl: s.jotformFormId ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}` : null,
+      jotformFormUrl: s.jotformFormId
+        ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}`
+        : null,
       createdAt: s.createdAt.toISOString(),
       updatedAt: s.updatedAt.toISOString(),
       program: s.program,
@@ -71,7 +73,11 @@ export class SurveysService {
     const out: typeof mapped = [];
     for (const s of mapped) {
       if (s.type === 'FEEDBACK' && s.programId) {
-        const ok = await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(userId, s.programId);
+        const ok =
+          await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(
+            userId,
+            s.programId,
+          );
         if (!ok) {
           continue;
         }
@@ -105,7 +111,11 @@ export class SurveysService {
       throw new NotFoundException('Survey not found');
     }
     if (role !== UserRole.ADMIN) {
-      await this.assertUserCanAccessFeedbackSurvey(survey.type, survey.programId, userId);
+      await this.assertUserCanAccessFeedbackSurvey(
+        survey.type,
+        survey.programId,
+        userId,
+      );
     }
     const jotformFormUrl = survey.jotformFormId
       ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}`
@@ -134,7 +144,11 @@ export class SurveysService {
     if (type !== 'FEEDBACK' || !programId) {
       return;
     }
-    const ok = await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(userId, programId);
+    const ok =
+      await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(
+        userId,
+        programId,
+      );
     if (!ok) {
       throw new ForbiddenException(
         'This post-event survey is not available until your attendance is verified (and the session window has passed, when applicable).',
@@ -145,7 +159,11 @@ export class SurveysService {
   /**
    * Call before Jotform resume / my-response for a learner; admins bypass.
    */
-  async ensureUserCanAccessSurvey(surveyId: string, userId: string, role: UserRole): Promise<void> {
+  async ensureUserCanAccessSurvey(
+    surveyId: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<void> {
     if (role === UserRole.ADMIN) {
       return;
     }
@@ -156,7 +174,11 @@ export class SurveysService {
     if (!survey) {
       throw new NotFoundException('Survey not found');
     }
-    await this.assertUserCanAccessFeedbackSurvey(survey.type, survey.programId, userId);
+    await this.assertUserCanAccessFeedbackSurvey(
+      survey.type,
+      survey.programId,
+      userId,
+    );
   }
 
   /**
@@ -166,7 +188,11 @@ export class SurveysService {
     surveyId: string,
     userId: string,
     role: UserRole,
-  ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> {
+  ): Promise<{
+    submitted: boolean;
+    responseId?: string;
+    submittedAt?: string;
+  }> {
     await this.ensureUserCanAccessSurvey(surveyId, userId, role);
 
     const row = await this.prisma.surveyResponse.findUnique({
@@ -237,11 +263,15 @@ export class SurveysService {
       await this.prisma.program.update({
         where: { id: survey.programId },
         data: {
-          jotformSurveyUrl: fid ? `https://communityhealthmedia.jotform.com/${fid}` : null,
+          jotformSurveyUrl: fid
+            ? `https://communityhealthmedia.jotform.com/${fid}`
+            : null,
         },
       });
     }
-    this.logger.log(`Survey ${id} updated (jotformFormId: ${updated.jotformFormId ?? 'null'})`);
+    this.logger.log(
+      `Survey ${id} updated (jotformFormId: ${updated.jotformFormId ?? 'null'})`,
+    );
     return updated;
   }
 
@@ -274,9 +304,11 @@ export class SurveysService {
       throw new BadRequestException('Program not found');
     }
 
-    const { formId, title: clonedTitle, url: clonedFormUrl } = await this.jotformService.cloneForm(
-      dto.templateFormId,
-    );
+    const {
+      formId,
+      title: clonedTitle,
+      url: clonedFormUrl,
+    } = await this.jotformService.cloneForm(dto.templateFormId);
     await this.jotformService.addWebhook(formId);
 
     const survey = await this.prisma.survey.create({
@@ -296,7 +328,9 @@ export class SurveysService {
       data: { jotformSurveyUrl: jotformFormUrl },
     });
 
-    this.logger.log(`Survey created from Jotform template: ${survey.id} (form ${formId})`);
+    this.logger.log(
+      `Survey created from Jotform template: ${survey.id} (form ${formId})`,
+    );
     return {
       ...survey,
       jotformFormUrl,
@@ -311,9 +345,15 @@ export class SurveysService {
   }
 
   assertJotformConfiguredForWebinarClones(): void {
-    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')?.trim();
-    const postTemplate = this.configService.get<string>('jotform.postEventTemplateFormId')?.trim();
-    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
+    const inv = this.configService
+      .get<string>('jotform.invitationTemplateFormId')
+      ?.trim();
+    const postTemplate = this.configService
+      .get<string>('jotform.postEventTemplateFormId')
+      ?.trim();
+    const sharedPost = this.configService
+      .get<string>('jotform.postEventSharedFormId')
+      ?.trim();
     const apiKey = this.configService.get<string>('jotform.apiKey')?.trim();
     if (!inv || (!sharedPost && !postTemplate)) {
       throw new BadRequestException(this.webinarJotformTemplateConfigMessage());
@@ -327,7 +367,9 @@ export class SurveysService {
 
   /** Invitation clone only (used when admin supplies a manual post-event Jotform). */
   private assertJotformInvitationCloneRequirements(): void {
-    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')?.trim();
+    const inv = this.configService
+      .get<string>('jotform.invitationTemplateFormId')
+      ?.trim();
     if (!inv) {
       throw new BadRequestException(this.webinarJotformTemplateConfigMessage());
     }
@@ -342,13 +384,21 @@ export class SurveysService {
    * Link an existing Jotform as the program post-event (FEEDBACK) survey; replaces any FEEDBACK rows for this program.
    * Ensures the survey appears in GET /surveys and learners see it after the session.
    */
-  async applyManualPostEventJotform(programId: string, programTitle: string, formIdOrUrl: string) {
-    const program = await this.prisma.program.findUnique({ where: { id: programId } });
+  async applyManualPostEventJotform(
+    programId: string,
+    programTitle: string,
+    formIdOrUrl: string,
+  ) {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+    });
     if (!program) throw new BadRequestException('Program not found');
 
     const trimmed = formIdOrUrl.trim();
     const formId =
-      this.normalizeJotformFormId(trimmed) || extractJotformFormIdFromUrl(trimmed) || '';
+      this.normalizeJotformFormId(trimmed) ||
+      extractJotformFormIdFromUrl(trimmed) ||
+      '';
     if (!formId) {
       throw new BadRequestException(
         'Enter a valid Jotform form ID or form URL for the post-event survey (e.g. 123456789012345).',
@@ -357,7 +407,9 @@ export class SurveysService {
 
     const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
 
-    await this.prisma.survey.deleteMany({ where: { programId, type: 'FEEDBACK' } });
+    await this.prisma.survey.deleteMany({
+      where: { programId, type: 'FEEDBACK' },
+    });
 
     await this.prisma.survey.create({
       data: {
@@ -375,7 +427,9 @@ export class SurveysService {
       data: { jotformSurveyUrl: jotformFormUrl },
     });
 
-    this.logger.log(`Manual post-event Jotform for program ${programId}: form ${formId}`);
+    this.logger.log(
+      `Manual post-event Jotform for program ${programId}: form ${formId}`,
+    );
   }
 
   /**
@@ -387,9 +441,19 @@ export class SurveysService {
     postEventFormIdOrUrl: string,
   ) {
     this.assertJotformInvitationCloneRequirements();
-    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')!.trim();
-    await this.createInvitationFormFromJotformTemplate(programId, inv, `${programTitle} - Invitation`);
-    await this.applyManualPostEventJotform(programId, programTitle, postEventFormIdOrUrl);
+    const inv = this.configService
+      .get<string>('jotform.invitationTemplateFormId')!
+      .trim();
+    await this.createInvitationFormFromJotformTemplate(
+      programId,
+      inv,
+      `${programTitle} - Invitation`,
+    );
+    await this.applyManualPostEventJotform(
+      programId,
+      programTitle,
+      postEventFormIdOrUrl,
+    );
   }
 
   /**
@@ -399,26 +463,47 @@ export class SurveysService {
    *  - Post-event: postEventSharedFormId (preferred) or postEventTemplateFormId — no clone, just links the Survey record
    * Fails gracefully if none of the env vars are set.
    */
-  async attachJotformFormsFromConfig(programId: string, programTitle: string): Promise<void> {
-    const defaultIntakeUrl = this.configService.get<string>('jotform.webinarDefaultIntakeUrl')?.trim();
-    const invFormId = this.configService.get<string>('jotform.invitationTemplateFormId')?.trim();
-    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
-    const postTemplate = this.configService.get<string>('jotform.postEventTemplateFormId')?.trim();
+  async attachJotformFormsFromConfig(
+    programId: string,
+    programTitle: string,
+  ): Promise<void> {
+    const defaultIntakeUrl = this.configService
+      .get<string>('jotform.webinarDefaultIntakeUrl')
+      ?.trim();
+    const invFormId = this.configService
+      .get<string>('jotform.invitationTemplateFormId')
+      ?.trim();
+    const sharedPost = this.configService
+      .get<string>('jotform.postEventSharedFormId')
+      ?.trim();
+    const postTemplate = this.configService
+      .get<string>('jotform.postEventTemplateFormId')
+      ?.trim();
 
     // 1. Intake / invitation form — no clone, just set the URL
-    const intakeUrl = defaultIntakeUrl || (invFormId ? `https://communityhealthmedia.jotform.com/${invFormId}` : null);
+    const intakeUrl =
+      defaultIntakeUrl ||
+      (invFormId
+        ? `https://communityhealthmedia.jotform.com/${invFormId}`
+        : null);
     if (intakeUrl) {
       await this.prisma.program.update({
         where: { id: programId },
         data: { jotformIntakeFormUrl: intakeUrl },
       });
-      this.logger.log(`Webhook import: attached intake form for program ${programId}`);
+      this.logger.log(
+        `Webhook import: attached intake form for program ${programId}`,
+      );
     }
 
     // 2. Post-event survey — use shared form (preferred) or template form ID directly, no clone
     const postFormId = sharedPost || postTemplate;
     if (postFormId) {
-      await this.attachSharedPostEventSurvey(programId, programTitle, postFormId);
+      await this.attachSharedPostEventSurvey(
+        programId,
+        programTitle,
+        postFormId,
+      );
     }
 
     if (!intakeUrl && !postFormId) {
@@ -431,15 +516,32 @@ export class SurveysService {
   /**
    * Clone invitation + post-event forms from env template IDs, add webhooks, set program intake URL + FEEDBACK survey.
    */
-  async createWebinarJotformPairFromTemplates(programId: string, programTitle: string) {
+  async createWebinarJotformPairFromTemplates(
+    programId: string,
+    programTitle: string,
+  ) {
     this.assertJotformConfiguredForWebinarClones();
-    const inv = this.configService.get<string>('jotform.invitationTemplateFormId')!.trim();
-    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
-    await this.createInvitationFormFromJotformTemplate(programId, inv, `${programTitle} - Invitation`);
+    const inv = this.configService
+      .get<string>('jotform.invitationTemplateFormId')!
+      .trim();
+    const sharedPost = this.configService
+      .get<string>('jotform.postEventSharedFormId')
+      ?.trim();
+    await this.createInvitationFormFromJotformTemplate(
+      programId,
+      inv,
+      `${programTitle} - Invitation`,
+    );
     if (sharedPost) {
-      await this.attachSharedPostEventSurvey(programId, programTitle, sharedPost);
+      await this.attachSharedPostEventSurvey(
+        programId,
+        programTitle,
+        sharedPost,
+      );
     } else {
-      const post = this.configService.get<string>('jotform.postEventTemplateFormId')!.trim();
+      const post = this.configService
+        .get<string>('jotform.postEventTemplateFormId')!
+        .trim();
       await this.createSurveyFromJotformTemplate({
         programId,
         templateFormId: post,
@@ -453,13 +555,24 @@ export class SurveysService {
    * Post-event survey only from env (shared form or cloned post template). Use when intake URL is set manually and
    * invitation must not be cloned from the template.
    */
-  async createWebinarPostEventOnlyFromTemplates(programId: string, programTitle: string) {
-    const sharedPost = this.configService.get<string>('jotform.postEventSharedFormId')?.trim();
+  async createWebinarPostEventOnlyFromTemplates(
+    programId: string,
+    programTitle: string,
+  ) {
+    const sharedPost = this.configService
+      .get<string>('jotform.postEventSharedFormId')
+      ?.trim();
     if (sharedPost) {
-      await this.attachSharedPostEventSurvey(programId, programTitle, sharedPost);
+      await this.attachSharedPostEventSurvey(
+        programId,
+        programTitle,
+        sharedPost,
+      );
       return;
     }
-    const postTemplate = this.configService.get<string>('jotform.postEventTemplateFormId')?.trim();
+    const postTemplate = this.configService
+      .get<string>('jotform.postEventTemplateFormId')
+      ?.trim();
     if (!postTemplate) {
       throw new BadRequestException(
         'No Jotform post-event shared form or template is configured. Set JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID or JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID, or provide a manual post-event form when scheduling.',
@@ -481,13 +594,21 @@ export class SurveysService {
   /**
    * Link program to an existing Jotform for post-event (no clone; webhook should be configured on that form if needed).
    */
-  private async attachSharedPostEventSurvey(programId: string, programTitle: string, formIdRaw: string) {
-    const program = await this.prisma.program.findUnique({ where: { id: programId } });
+  private async attachSharedPostEventSurvey(
+    programId: string,
+    programTitle: string,
+    formIdRaw: string,
+  ) {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+    });
     if (!program) throw new BadRequestException('Program not found');
 
     const formId = this.normalizeJotformFormId(formIdRaw);
     if (!formId) {
-      throw new BadRequestException('Invalid JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID');
+      throw new BadRequestException(
+        'Invalid JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID',
+      );
     }
 
     const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
@@ -505,7 +626,9 @@ export class SurveysService {
       where: { id: programId },
       data: { jotformSurveyUrl: jotformFormUrl },
     });
-    this.logger.log(`Shared post-event Jotform for program ${programId}: form ${formId}`);
+    this.logger.log(
+      `Shared post-event Jotform for program ${programId}: form ${formId}`,
+    );
   }
 
   /** Accepts a numeric id or a full Jotform URL. */
@@ -523,10 +646,16 @@ export class SurveysService {
     templateFormId: string,
     titleHint?: string,
   ) {
-    const program = await this.prisma.program.findUnique({ where: { id: programId } });
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+    });
     if (!program) throw new BadRequestException('Program not found');
 
-    const { formId, title: clonedTitle, url: jotformFormUrl } = await this.jotformService.cloneForm(templateFormId);
+    const {
+      formId,
+      title: clonedTitle,
+      url: jotformFormUrl,
+    } = await this.jotformService.cloneForm(templateFormId);
     await this.jotformService.addWebhook(formId);
     await this.prisma.program.update({
       where: { id: programId },
@@ -573,8 +702,12 @@ export class SurveysService {
           submittedAt: new Date(),
         },
       });
-      await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, surveyId).catch(() => {});
-      this.logger.log(`Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt`);
+      await this.formJotformProgress
+        .clear(userId, FormJotformScope.SURVEY, surveyId)
+        .catch(() => {});
+      this.logger.log(
+        `Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt`,
+      );
       return {
         id: response.id,
         submittedAt: response.submittedAt.toISOString(),
@@ -591,29 +724,44 @@ export class SurveysService {
       },
     });
 
-    await this.formJotformProgress.clear(userId, FormJotformScope.SURVEY, surveyId).catch(() => {});
+    await this.formJotformProgress
+      .clear(userId, FormJotformScope.SURVEY, surveyId)
+      .catch(() => {});
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { email: true, firstName: true, lastName: true, specialty: true, institution: true, city: true, state: true, zipCode: true },
+      select: {
+        email: true,
+        firstName: true,
+        lastName: true,
+        specialty: true,
+        institution: true,
+        city: true,
+        state: true,
+        zipCode: true,
+      },
     });
     if (user) {
-      this.hubspot.createOrUpdateContact({
-        email: user.email,
-        firstname: user.firstName,
-        lastname: user.lastName,
-        jobtitle: user.specialty ?? undefined,
-        company: user.institution ?? undefined,
-        city: user.city ?? undefined,
-        state: user.state ?? undefined,
-        zip: user.zipCode ?? undefined,
-      }).catch(() => {});
+      this.hubspot
+        .createOrUpdateContact({
+          email: user.email,
+          firstname: user.firstName,
+          lastname: user.lastName,
+          jobtitle: user.specialty ?? undefined,
+          company: user.institution ?? undefined,
+          city: user.city ?? undefined,
+          state: user.state ?? undefined,
+          zip: user.zipCode ?? undefined,
+        })
+        .catch(() => {});
     }
 
     this.logger.log(`Survey ${surveyId} submitted by user ${userId}`);
 
     // Send SURVEY_BONUS payment message if amount is configured
-    const surveyBonusAmount = this.configService.get<number>('surveys.bonusAmountCents');
+    const surveyBonusAmount = this.configService.get<number>(
+      'surveys.bonusAmountCents',
+    );
     if (surveyBonusAmount && surveyBonusAmount > 0) {
       const queued = await this.queueService.processPayment(
         userId,
@@ -627,7 +775,9 @@ export class SurveysService {
           `SURVEY_BONUS queue not sent for user ${userId} survey ${surveyId} (queue unavailable)`,
         );
       }
-      this.logger.log(`Queued SURVEY_BONUS payment for user ${userId}: $${surveyBonusAmount / 100}`);
+      this.logger.log(
+        `Queued SURVEY_BONUS payment for user ${userId}: $${surveyBonusAmount / 100}`,
+      );
     }
 
     return {

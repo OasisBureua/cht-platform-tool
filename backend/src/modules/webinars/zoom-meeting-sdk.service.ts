@@ -47,8 +47,14 @@ export class ZoomMeetingSdkService {
     const encHeader = this.b64url(JSON.stringify(header));
     const encPayload = this.b64url(JSON.stringify(payload));
     const data = `${encHeader}.${encPayload}`;
-    const sig = crypto.createHmac('sha256', sdkSecret).update(data).digest('base64');
-    const encSig = sig.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const sig = crypto
+      .createHmac('sha256', sdkSecret)
+      .update(data)
+      .digest('base64');
+    const encSig = sig
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
     return `${data}.${encSig}`;
   }
 

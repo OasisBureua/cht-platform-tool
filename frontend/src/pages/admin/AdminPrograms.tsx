@@ -155,6 +155,7 @@ export default function AdminPrograms() {
       {/* Edit modal */}
       {editingId && (
         <EditWebinarModal
+          key={editingId}
           webinar={items.find((w) => w.id === editingId)!}
           onClose={() => setEditingId(null)}
           onSaved={() => {
@@ -392,7 +393,9 @@ function EditWebinarModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const sessionKind = webinar.zoomSessionType ?? 'WEBINAR';
+  const [sessionKind, setSessionKind] = useState<ZoomSessionType>(
+    webinar.zoomSessionType ?? 'WEBINAR',
+  );
   const localDate = webinar.startDate
     ? format(parseISO(webinar.startDate), "yyyy-MM-dd'T'HH:mm")
     : '';
@@ -458,6 +461,7 @@ function EditWebinarModal({
       startDate: startDate ? new Date(startDate).toISOString() : undefined,
       duration: durationNum,
       status,
+      zoomSessionType: sessionKind !== (webinar.zoomSessionType ?? 'WEBINAR') ? sessionKind : undefined,
       ...(sessionKind === 'WEBINAR' && honorariumPayload !== undefined
         ? { honorariumAmount: honorariumPayload }
         : {}),
@@ -525,6 +529,21 @@ function EditWebinarModal({
                 <option value="ARCHIVED">Archived</option>
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Session type</label>
+            <select
+              value={sessionKind}
+              onChange={(e) => setSessionKind(e.target.value as ZoomSessionType)}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            >
+              <option value="WEBINAR">Live webinar (Zoom Webinar)</option>
+              <option value="MEETING">CHM Office Hours (Zoom Meeting)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Must match how this session exists in Zoom; the wrong choice can fail when syncing title or schedule.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

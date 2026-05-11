@@ -89,17 +89,24 @@ export default () => ({
       return Number.isNaN(p) ? 6379 : p;
     })(),
     tls: process.env.REDIS_TLS === 'true' || process.env.REDIS_TLS === '1',
-    tlsRejectUnauthorized: process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false' && process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== '0',
+    tlsRejectUnauthorized:
+      process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false' &&
+      process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== '0',
   },
 
   // Surveys (optional survey bonus payment in cents, 0 = disabled)
   surveys: {
-    bonusAmountCents: parseInt(process.env.SURVEY_BONUS_AMOUNT_CENTS || '0', 10),
+    bonusAmountCents: parseInt(
+      process.env.SURVEY_BONUS_AMOUNT_CENTS || '0',
+      10,
+    ),
   },
 
   // MediaHub Public API (catalog - clips, tags, doctors, search)
   mediahub: {
-    baseUrl: process.env.MEDIAHUB_BASE_URL || 'https://mediahub.communityhealth.media/api/public',
+    baseUrl:
+      process.env.MEDIAHUB_BASE_URL ||
+      'https://mediahub.communityhealth.media/api/public',
     apiKey: process.env.MEDIAHUB_API_KEY,
   },
 
@@ -116,9 +123,11 @@ export default () => ({
         const dataDir = path.resolve(process.cwd(), '..', 'data');
         const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
           ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
-          : [path.join(dataDir, 'youtube-playlists.csv'), path.join(dataDir, 'YT Playlist IDs - Sheet1.csv')].find(
-              (p) => fs.existsSync(p),
-            ) || path.join(dataDir, 'youtube-playlists.csv');
+          : [
+              path.join(dataDir, 'youtube-playlists.csv'),
+              path.join(dataDir, 'YT Playlist IDs - Sheet1.csv'),
+            ].find((p) => fs.existsSync(p)) ||
+            path.join(dataDir, 'youtube-playlists.csv');
         if (fs.existsSync(csvPath)) {
           const content = fs.readFileSync(csvPath, 'utf8');
           const lines = content.split(/\r?\n/).filter((l) => l.trim());
@@ -160,11 +169,13 @@ export default () => ({
      * When set, webinars reuse this Jotform form ID for post-event FEEDBACK (no clone/webhook from our API).
      * Prefer this for a single org-wide post-event form; leave empty to clone from postEventTemplateFormId instead.
      */
-    postEventSharedFormId: process.env.JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID?.trim() || '',
+    postEventSharedFormId:
+      process.env.JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID?.trim() || '',
     /**
      * Optional fallback intake URL when a WEBINAR has no per-program `jotformIntakeFormUrl` (prefer per-webinar clones).
      */
-    webinarDefaultIntakeUrl: process.env.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL?.trim() || '',
+    webinarDefaultIntakeUrl:
+      process.env.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL?.trim() || '',
     webhookUrl:
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL
@@ -205,6 +216,7 @@ export default () => ({
   mailchimp: {
     apiKey: process.env.MAILCHIMP_API_KEY,
     audienceId: process.env.MAILCHIMP_AUDIENCE_ID,
-    serverPrefix: process.env.MAILCHIMP_SERVER || process.env.MAILCHIMP_SERVER_PREFIX,
+    serverPrefix:
+      process.env.MAILCHIMP_SERVER || process.env.MAILCHIMP_SERVER_PREFIX,
   },
 });

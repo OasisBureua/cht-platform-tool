@@ -29,7 +29,9 @@ export function buildPreWebinarReminderEmail(
   const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const host = p.hostDisplayName?.trim() ? escape(p.hostDisplayName.trim()) : null;
+  const host = p.hostDisplayName?.trim()
+    ? escape(p.hostDisplayName.trim())
+    : null;
   const zoomUrl = p.zoomJoinUrl?.trim() ? escape(p.zoomJoinUrl.trim()) : null;
 
   const when = formatEventWhen(p.startDate, p.durationMinutes, escape);
@@ -72,7 +74,9 @@ export function buildPreWebinarReminderEmail(
     'Quick tips:',
     '• Join 2–3 minutes early to test your audio.',
     '• Keep questions ready — there will be time for Q&A.',
-    zoomUrl ? '• The Zoom link above is your direct join link — no waiting room password needed.' : null,
+    zoomUrl
+      ? '• The Zoom link above is your direct join link — no waiting room password needed.'
+      : null,
     '',
     `Questions? Reach us at ${p.supportEmail}.`,
     '',
@@ -80,7 +84,9 @@ export function buildPreWebinarReminderEmail(
     '',
     'Best regards,',
     'The Community Health Media Team',
-    sponsor !== 'Community Health Media' ? `\nSponsored by ${p.sponsorName}.` : null,
+    sponsor !== 'Community Health Media'
+      ? `\nSponsored by ${p.sponsorName}.`
+      : null,
   ]
     .filter((line) => line != null)
     .join('\n');
@@ -175,11 +181,15 @@ function formatEventWhen(
     timeZone: 'America/New_York',
     timeZoneName: 'short',
   }).format(start);
-  const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
+  const dur =
+    durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
   const line = long + dur;
   return { plain: line, html: escape(line) };
 }
 
 function sanitizePlainDescription(s: string): string {
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

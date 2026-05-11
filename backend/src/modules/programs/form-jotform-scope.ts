@@ -7,4 +7,5 @@ export const FormJotformScope = {
   INTAKE: 'INTAKE',
 } as const;
 
-export type FormJotformScope = (typeof FormJotformScope)[keyof typeof FormJotformScope];
+export type FormJotformScope =
+  (typeof FormJotformScope)[keyof typeof FormJotformScope];

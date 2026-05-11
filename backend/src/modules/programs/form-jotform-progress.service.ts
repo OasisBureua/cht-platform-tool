@@ -22,13 +22,20 @@ export class FormJotformProgressService {
     });
     if (!row) return null;
     if (row.expiresAt.getTime() <= Date.now()) {
-      await this.prisma.formJotformProgress.delete({ where: { id: row.id } }).catch(() => {});
+      await this.prisma.formJotformProgress
+        .delete({ where: { id: row.id } })
+        .catch(() => {});
       return null;
     }
     return { sessionId: row.sessionId, expiresAt: row.expiresAt.toISOString() };
   }
 
-  async saveResumeSession(userId: string, scope: FormJotformScope, refId: string, sessionId: string) {
+  async saveResumeSession(
+    userId: string,
+    scope: FormJotformScope,
+    refId: string,
+    sessionId: string,
+  ) {
     const sid = sessionId.trim();
     return this.prisma.formJotformProgress.upsert({
       where: { userId_scope_refId: { userId, scope, refId } },
@@ -46,7 +53,11 @@ export class FormJotformProgressService {
     });
   }
 
-  async clear(userId: string, scope: FormJotformScope, refId: string): Promise<void> {
+  async clear(
+    userId: string,
+    scope: FormJotformScope,
+    refId: string,
+  ): Promise<void> {
     await this.prisma.formJotformProgress
       .deleteMany({ where: { userId, scope, refId } })
       .catch(() => {});

@@ -63,7 +63,7 @@ describe('Login', () => {
       target: { value: 'test@example.com' },
     });
     fireEvent.change(screen.getByPlaceholderText(/••••••••/), {
-      target: { value: 'wrong' },
+      target: { value: 'wrongpass' },
     });
     fireEvent.submit(screen.getByRole('button', { name: /login/i }).closest('form')!);
 

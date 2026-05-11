@@ -1,24 +1,24 @@
 import { IsNumber, IsArray, IsString, IsOptional } from 'class-validator';
 
 export class WeeklyEarnings {
-    @IsString()
-    weekStartDate: string;
+  @IsString()
+  weekStartDate: string;
 
-    @IsString()
-    weekEndDate: string;
+  @IsString()
+  weekEndDate: string;
 
-    @IsNumber()
-    amount: number;
+  @IsNumber()
+  amount: number;
 
-    @IsNumber()
-    activitiesCount: number;
+  @IsNumber()
+  activitiesCount: number;
 }
 
 export class EarningsResponseDto {
-    @IsNumber()
-    totalEarnings: number;
+  @IsNumber()
+  totalEarnings: number;
 
-    @IsArray()
+  @IsArray()
   weeklyEarnings: WeeklyEarnings[];
 
   @IsNumber()

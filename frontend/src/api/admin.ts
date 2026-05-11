@@ -94,6 +94,8 @@ export interface UpdateWebinarPayload {
   startDate?: string;
   duration?: number;
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  /** Live vs Office Hours listing; choose the type that matches the Zoom Webinar vs Meeting in Zoom. */
+  zoomSessionType?: ZoomSessionType;
   /** WEBINAR only. USD; use 0 to clear. */
   honorariumAmount?: number;
   hostDisplayName?: string;

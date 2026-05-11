@@ -46,3 +46,23 @@ export function clipDisplaySummary(
   if (fromAi) return fromAi;
   return stripRefusal(clipDescriptionRaw(raw));
 }
+
+/**
+ * Usable AI summary only (snake_case / camelCase; refusal stubs removed).
+ */
+export function clipAiSummaryText(
+  clip: { ai_summary?: string; aiSummary?: string } | Record<string, unknown>,
+): string {
+  const raw = clip as Record<string, unknown>;
+  return stripRefusal(clipAiSummaryRaw(raw));
+}
+
+/**
+ * Usable catalog description (refusal text removed).
+ */
+export function clipCatalogDescriptionText(
+  clip: { description?: string } | Record<string, unknown>,
+): string {
+  const raw = clip as Record<string, unknown>;
+  return stripRefusal(clipDescriptionRaw(raw));
+}

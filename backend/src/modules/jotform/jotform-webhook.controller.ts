@@ -1,4 +1,10 @@
-import { Controller, Post, Body, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
 import { JotformWebhookService } from './jotform-webhook.service';
 
 /**
@@ -16,7 +22,9 @@ export class JotformWebhookController {
    * Normalize body to the JSON string `processSubmission` expects.
    * Jotform usually sends `rawRequest` (stringified fields); some configs post submission keys at the top level.
    */
-  private extractRawRequestString(body: Record<string, unknown> | null | undefined): string | null {
+  private extractRawRequestString(
+    body: Record<string, unknown> | null | undefined,
+  ): string | null {
     if (!body || typeof body !== 'object') return null;
     const rr = body.rawRequest;
     if (typeof rr === 'string' && rr.trim()) return rr;
@@ -43,7 +51,9 @@ export class JotformWebhookController {
   async handleWebhook(@Body() body: Record<string, unknown>) {
     const rawRequest = this.extractRawRequestString(body);
     if (!rawRequest) {
-      this.logger.warn('Jotform webhook: missing rawRequest or submission/form identifiers in body');
+      this.logger.warn(
+        'Jotform webhook: missing rawRequest or submission/form identifiers in body',
+      );
       return { received: true };
     }
 

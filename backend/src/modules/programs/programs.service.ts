@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -7,7 +12,10 @@ import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
-import { UpdateVideoProgressDto, VideoProgressResponseDto } from './dto/update-video-progress.dto';
+import {
+  UpdateVideoProgressDto,
+  VideoProgressResponseDto,
+} from './dto/update-video-progress.dto';
 
 @Injectable()
 export class ProgramsService {
@@ -39,7 +47,9 @@ export class ProgramsService {
       sponsorLogo: p.sponsorLogo || undefined,
       status: p.status,
       creditAmount: p.creditAmount,
-      honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
+      honorariumAmount: p.honorariumAmount
+        ? p.honorariumAmount / 100
+        : undefined,
       startDate: p.startDate?.toISOString(),
       endDate: p.endDate?.toISOString(),
       enrollmentsCount: p._count.enrollments,
@@ -82,7 +92,10 @@ export class ProgramsService {
         creditAmount: dto.creditAmount ?? 0,
         accreditationBody: dto.accreditationBody,
         status: dto.status ?? 'DRAFT',
-        honorariumAmount: dto.honorariumAmount != null ? Math.round(dto.honorariumAmount * 100) : null,
+        honorariumAmount:
+          dto.honorariumAmount != null
+            ? Math.round(dto.honorariumAmount * 100)
+            : null,
         startDate: dto.startDate ? new Date(dto.startDate) : null,
         endDate: dto.endDate ? new Date(dto.endDate) : null,
         duration: dto.duration ?? null,
@@ -92,10 +105,13 @@ export class ProgramsService {
         zoomStartUrl: dto.zoomStartUrl ?? null,
         ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
         registrationRequiresApproval: dto.registrationRequiresApproval ?? true,
-        ...(dto.jotformIntakeFormUrl !== undefined && dto.jotformIntakeFormUrl !== null
+        ...(dto.jotformIntakeFormUrl !== undefined &&
+        dto.jotformIntakeFormUrl !== null
           ? { jotformIntakeFormUrl: dto.jotformIntakeFormUrl?.trim() || null }
           : {}),
-        ...(dto.hostDisplayName ? { hostDisplayName: dto.hostDisplayName.trim() } : {}),
+        ...(dto.hostDisplayName
+          ? { hostDisplayName: dto.hostDisplayName.trim() }
+          : {}),
         ...(dto.hostBio ? { hostBio: dto.hostBio.trim() } : {}),
         speakers: dto.speakers?.map((s) => s.trim()).filter(Boolean) ?? [],
         ...(dto.zoomPanelistLinks?.length
@@ -110,7 +126,10 @@ export class ProgramsService {
   /**
    * Update program status (admin)
    */
-  async updateProgramStatus(id: string, status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED') {
+  async updateProgramStatus(
+    id: string,
+    status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
+  ) {
     const program = await this.prisma.program.update({
       where: { id },
       data: {
@@ -146,7 +165,9 @@ export class ProgramsService {
       status: p.status,
       sponsorName: p.sponsorName,
       sponsorLogo: p.sponsorLogo || undefined,
-      honorariumAmount: p.honorariumAmount ? p.honorariumAmount / 100 : undefined,
+      honorariumAmount: p.honorariumAmount
+        ? p.honorariumAmount / 100
+        : undefined,
       videos: p.videos.map((v) => ({
         id: v.id,
         title: v.title,
@@ -180,7 +201,9 @@ export class ProgramsService {
       throw new NotFoundException('Program not found');
     }
 
-    const defaultIntake = this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() || undefined;
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
     const intakeForClient = effectiveWebinarIntakeFormUrl(
       program.zoomSessionType,
       program.jotformIntakeFormUrl,
@@ -213,7 +236,9 @@ export class ProgramsService {
       status: program.status,
       sponsorName: program.sponsorName,
       sponsorLogo: program.sponsorLogo || undefined,
-      honorariumAmount: program.honorariumAmount ? program.honorariumAmount / 100 : undefined,
+      honorariumAmount: program.honorariumAmount
+        ? program.honorariumAmount / 100
+        : undefined,
       videos: program.videos.map((v) => ({
         id: v.id,
         title: v.title,
@@ -248,8 +273,11 @@ export class ProgramsService {
   async enrollUser(dto: EnrollUserDto): Promise<EnrollmentResponseDto> {
     this.logger.log(`Enrolling user ${dto.userId} in program ${dto.programId}`);
 
-    const programRow = await this.prisma.program.findUnique({ where: { id: dto.programId } });
-    const approvalBlocksQuickEnroll = programRow?.registrationRequiresApproval === true;
+    const programRow = await this.prisma.program.findUnique({
+      where: { id: dto.programId },
+    });
+    const approvalBlocksQuickEnroll =
+      programRow?.registrationRequiresApproval === true;
     if (approvalBlocksQuickEnroll) {
       throw new BadRequestException(
         'This program uses admin-approved registration. Complete the registration flow instead of quick enroll.',
@@ -290,16 +318,18 @@ export class ProgramsService {
       },
     });
 
-    this.hubspot.createOrUpdateContact({
-      email: user.email,
-      firstname: user.firstName,
-      lastname: user.lastName,
-      jobtitle: user.specialty ?? undefined,
-      company: user.institution ?? undefined,
-      city: user.city ?? undefined,
-      state: user.state ?? undefined,
-      zip: user.zipCode ?? undefined,
-    }).catch(() => {});
+    this.hubspot
+      .createOrUpdateContact({
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        jobtitle: user.specialty ?? undefined,
+        company: user.institution ?? undefined,
+        city: user.city ?? undefined,
+        state: user.state ?? undefined,
+        zip: user.zipCode ?? undefined,
+      })
+      .catch(() => {});
 
     this.logger.log(`User enrolled successfully: ${enrollment.id}`);
 
@@ -343,7 +373,9 @@ export class ProgramsService {
         description: e.program.description,
         thumbnailUrl: e.program.thumbnailUrl || undefined,
         creditAmount: e.program.creditAmount,
-        honorariumAmount: e.program.honorariumAmount ? e.program.honorariumAmount / 100 : undefined,
+        honorariumAmount: e.program.honorariumAmount
+          ? e.program.honorariumAmount / 100
+          : undefined,
         videosCount: e.program.videos.length,
       },
     }));
@@ -352,8 +384,12 @@ export class ProgramsService {
   /**
    * Update video progress
    */
-  async updateVideoProgress(dto: UpdateVideoProgressDto): Promise<VideoProgressResponseDto> {
-    this.logger.debug(`Updating video progress: ${dto.videoId} for user ${dto.userId}`);
+  async updateVideoProgress(
+    dto: UpdateVideoProgressDto,
+  ): Promise<VideoProgressResponseDto> {
+    this.logger.debug(
+      `Updating video progress: ${dto.videoId} for user ${dto.userId}`,
+    );
 
     // Get or create video view
     const videoView = await this.prisma.videoView.upsert({
@@ -403,7 +439,10 @@ export class ProgramsService {
   /**
    * Update overall program progress
    */
-  private async updateProgramProgress(userId: string, programId: string): Promise<void> {
+  private async updateProgramProgress(
+    userId: string,
+    programId: string,
+  ): Promise<void> {
     // Get all videos in program
     const videos = await this.prisma.video.findMany({
       where: { programId },
@@ -422,7 +461,8 @@ export class ProgramsService {
     // Calculate overall progress
     const totalProgress = views.reduce((sum, v) => sum + v.progress, 0);
     const overallProgress = totalProgress / videos.length;
-    const allCompleted = views.length === videos.length && views.every((v) => v.completed);
+    const allCompleted =
+      views.length === videos.length && views.every((v) => v.completed);
 
     // Get enrollment
     const enrollment = await this.prisma.programEnrollment.findUnique({
@@ -449,7 +489,8 @@ export class ProgramsService {
       data: {
         overallProgress,
         completed: allCompleted,
-        completedAt: allCompleted && !wasCompleted ? new Date() : enrollment.completedAt,
+        completedAt:
+          allCompleted && !wasCompleted ? new Date() : enrollment.completedAt,
       },
     });
 
@@ -467,7 +508,9 @@ export class ProgramsService {
       include: { program: true; user: true };
     }>,
   ): Promise<void> {
-    this.logger.log(`Program completed: ${enrollment.programId} by user ${enrollment.userId}`);
+    this.logger.log(
+      `Program completed: ${enrollment.programId} by user ${enrollment.userId}`,
+    );
 
     const { user, program } = enrollment;
 
@@ -481,7 +524,8 @@ export class ProgramsService {
 
     // Honorarium for LIVE webinars / office hours is requested by the learner after post-event steps (admin pays via Bill.com).
     const isLiveSession =
-      program.zoomSessionType === 'WEBINAR' || program.zoomSessionType === 'MEETING';
+      program.zoomSessionType === 'WEBINAR' ||
+      program.zoomSessionType === 'MEETING';
     if (program.honorariumAmount && !isLiveSession) {
       const queued = await this.queueService.processPayment(
         enrollment.userId,
@@ -497,18 +541,22 @@ export class ProgramsService {
       }
     }
 
-    this.hubspot.createOrUpdateContact({
-      email: user.email,
-      firstname: user.firstName,
-      lastname: user.lastName,
-      jobtitle: user.specialty ?? undefined,
-      company: user.institution ?? undefined,
-      city: user.city ?? undefined,
-      state: user.state ?? undefined,
-      zip: user.zipCode ?? undefined,
-    }).catch(() => {});
+    this.hubspot
+      .createOrUpdateContact({
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        jobtitle: user.specialty ?? undefined,
+        company: user.institution ?? undefined,
+        city: user.city ?? undefined,
+        state: user.state ?? undefined,
+        zip: user.zipCode ?? undefined,
+      })
+      .catch(() => {});
 
-    this.logger.log(`Completion workflow triggered for program ${enrollment.programId}`);
+    this.logger.log(
+      `Completion workflow triggered for program ${enrollment.programId}`,
+    );
   }
 
   /** Admin hub — who is enrolled (e.g. webinars). */
@@ -517,7 +565,13 @@ export class ProgramsService {
       where: { programId },
       include: {
         user: {
-          select: { id: true, email: true, firstName: true, lastName: true, specialty: true },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+          },
         },
       },
       orderBy: { enrolledAt: 'desc' },
@@ -583,7 +637,9 @@ export class ProgramsService {
     ]);
 
     const enrolledSet = new Set(enrollments.map((e) => e.programId));
-    const attendanceByProgram = new Map(liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]));
+    const attendanceByProgram = new Map(
+      liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]),
+    );
     const feedbackByProgram = new Map(surveys.map((s) => [s.programId, s.id]));
 
     const feedbackIds = surveys.map((s) => s.id);
@@ -622,7 +678,8 @@ export class ProgramsService {
         postSurveyAllowed = now >= p.zoomSessionEndedAt;
       } else if (p.startDate) {
         const durationMin = p.duration ?? 60;
-        postSurveyAllowed = now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
+        postSurveyAllowed =
+          now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
       }
       if (!postSurveyAllowed) continue;
 

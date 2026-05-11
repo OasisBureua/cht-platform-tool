@@ -143,6 +143,10 @@ export type StripCardProps = {
    * Marketing homepage: wider cards (+25% vs default strip) and taller media (~+15% vs prior homepage media).
    */
   homepage?: boolean;
+  /** Omit the tile when `imageUrl` fails to load (e.g. broken remote thumbnail). */
+  hideThumbnailOnError?: boolean;
+  /** Runs after hiding when `hideThumbnailOnError`; optional side effects (analytics, tracking failed ids upstream). */
+  onThumbnailError?: () => void;
 };
 
 const stripCardShell =
@@ -167,7 +171,11 @@ function StripCardInner({
   description,
   meta,
   videoLabel,
-}: Pick<StripCardProps, 'variant' | 'homepage' | 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel'>) {
+  onThumbnailError,
+}: Pick<
+  StripCardProps,
+  'variant' | 'homepage' | 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel' | 'onThumbnailError'
+>) {
   const line1 = description ?? meta;
   const v = variant ?? 'compact';
   const home = homepage === true;
@@ -182,6 +190,7 @@ function StripCardInner({
           loading="lazy"
           referrerPolicy="no-referrer"
           draggable={false}
+          onError={onThumbnailError}
         />
         <span className="sr-only">{title}</span>
       </>
@@ -204,6 +213,7 @@ function StripCardInner({
           loading="lazy"
           referrerPolicy="no-referrer"
           draggable={false}
+          onError={onThumbnailError}
         />
       </div>
       <div className={home ? 'flex min-w-0 flex-col px-2.5 pb-2.5 pt-2' : 'flex min-w-0 flex-col px-2 pb-2 pt-1.5'}>
@@ -254,11 +264,27 @@ export function StripCard({
   videoLabel,
   variant,
   homepage,
+  hideThumbnailOnError,
+  onThumbnailError,
 }: StripCardProps) {
+  const [thumbFailed, setThumbFailed] = useState(false);
+  useEffect(() => {
+    setThumbFailed(false);
+  }, [imageUrl]);
+
   const external = /^https?:\/\//i.test(to);
   const v = variant ?? 'compact';
   const compactShell = homepage ? stripCardShellHomepage : stripCardShell;
   const thumbShell = homepage ? thumbnailOnlyShellHomepage : thumbnailOnlyShell;
+
+  if (thumbFailed) return null;
+
+  const bubbleError = hideThumbnailOnError
+    ? () => {
+        onThumbnailError?.();
+        setThumbFailed(true);
+      }
+    : onThumbnailError;
 
   if (v === 'thumbnailOnly') {
     return (
@@ -273,6 +299,7 @@ export function StripCard({
               description={description}
               meta={meta}
               videoLabel={videoLabel}
+              onThumbnailError={bubbleError}
             />
           </a>
         ) : (
@@ -285,6 +312,7 @@ export function StripCard({
               description={description}
               meta={meta}
               videoLabel={videoLabel}
+              onThumbnailError={bubbleError}
             />
           </Link>
         )}
@@ -304,6 +332,7 @@ export function StripCard({
             description={description}
             meta={meta}
             videoLabel={videoLabel}
+            onThumbnailError={bubbleError}
           />
         </a>
       ) : (
@@ -316,6 +345,7 @@ export function StripCard({
             description={description}
             meta={meta}
             videoLabel={videoLabel}
+            onThumbnailError={bubbleError}
           />
         </Link>
       )}

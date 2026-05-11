@@ -23,7 +23,9 @@ export function buildRegistrationRejectedEmail(
   const note = p.adminNote?.trim() ? escape(p.adminNote.trim()) : null;
 
   const typeLabel =
-    p.sessionKind === ProgramZoomSessionType.MEETING ? 'CHM Office Hours' : 'live webinar';
+    p.sessionKind === ProgramZoomSessionType.MEETING
+      ? 'CHM Office Hours'
+      : 'live webinar';
 
   const { mainTextPlain, mainHtml } =
     p.reason === 'INCOMPLETE_INTAKE'
@@ -57,9 +59,7 @@ export function buildRegistrationRejectedEmail(
     '',
     ...mainTextPlain,
     '',
-    ...(note
-      ? ['Note from the program team:', p.adminNote!.trim(), '']
-      : []),
+    ...(note ? ['Note from the program team:', p.adminNote.trim(), ''] : []),
     'Open the session in the app (to register again or read details):',
     p.appSessionUrl,
     '',

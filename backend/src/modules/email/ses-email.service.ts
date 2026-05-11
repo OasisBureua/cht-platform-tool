@@ -32,7 +32,8 @@ export class SesEmailService {
     const region = this.config.get<string>('aws.region') || 'us-east-1';
     const accessKeyId = this.config.get<string>('aws.accessKeyId');
     const secretAccessKey = this.config.get<string>('aws.secretAccessKey');
-    this.from = this.config.get<string>('email.from') || 'info@communityhealth.media';
+    this.from =
+      this.config.get<string>('email.from') || 'info@communityhealth.media';
     this.enabled = this.config.get<boolean>('email.enabled') !== false;
     this.client = new SESv2Client({
       region,
@@ -67,7 +68,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, sessionKind } = opts;
-    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const appSessionUrl =
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -75,7 +78,8 @@ export class SesEmailService {
     const supportEmail = this.from;
     const zoomTrim = program.zoomJoinUrl?.trim() || null;
     const googleDetails = (
-      sanitizePlainDescription(program.description) + (zoomTrim ? `\n\nJoin on Zoom: ${zoomTrim}` : '')
+      sanitizePlainDescription(program.description) +
+      (zoomTrim ? `\n\nJoin on Zoom: ${zoomTrim}` : '')
     ).slice(0, 800);
     const googleCalendarUrl =
       program.startDate != null
@@ -83,7 +87,9 @@ export class SesEmailService {
             title: program.title,
             details: googleDetails,
             start: program.startDate,
-            end: new Date(program.startDate.getTime() + (program.duration ?? 60) * 60_000),
+            end: new Date(
+              program.startDate.getTime() + (program.duration ?? 60) * 60_000,
+            ),
           })
         : null;
 
@@ -112,7 +118,9 @@ export class SesEmailService {
       if (!program.startDate) {
         const { subject, text, html } = buildApproved(false);
         await this.sendSimpleEmail(to, subject, text, html);
-        this.logger.log(`Sent registration-approved email to ${to} for program ${program.id}`);
+        this.logger.log(
+          `Sent registration-approved email to ${to} for program ${program.id}`,
+        );
         return;
       }
 
@@ -144,7 +152,9 @@ export class SesEmailService {
             Content: { Raw: { Data: raw } },
           }),
         );
-        this.logger.log(`Sent registration-approved email (with calendar invite) to ${to} for program ${program.id}`);
+        this.logger.log(
+          `Sent registration-approved email (with calendar invite) to ${to} for program ${program.id}`,
+        );
         return;
       } catch (mimeErr) {
         this.logger.warn(
@@ -153,8 +163,15 @@ export class SesEmailService {
       }
 
       const fallback = buildApproved(false);
-      await this.sendSimpleEmail(to, fallback.subject, fallback.text, fallback.html);
-      this.logger.log(`Sent registration-approved email (simple) to ${to} for program ${program.id}`);
+      await this.sendSimpleEmail(
+        to,
+        fallback.subject,
+        fallback.text,
+        fallback.html,
+      );
+      this.logger.log(
+        `Sent registration-approved email (simple) to ${to} for program ${program.id}`,
+      );
     } catch (err) {
       this.logger.warn(
         `Failed to send registration-approved email to ${to} for program ${program.id}: ${(err as Error).message}`,
@@ -178,7 +195,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, sessionKind, reason, adminNote } = opts;
-    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const appSessionUrl =
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -198,7 +217,9 @@ export class SesEmailService {
     );
     try {
       await this.sendSimpleEmail(to, subject, text, html);
-      this.logger.log(`Sent registration-rejected email to ${to} for program ${program.id} (${reason})`);
+      this.logger.log(
+        `Sent registration-rejected email to ${to} for program ${program.id} (${reason})`,
+      );
     } catch (err) {
       this.logger.warn(
         `Failed to send registration-rejected email to ${to} for program ${program.id}: ${(err as Error).message}`,
@@ -225,7 +246,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program } = opts;
-    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const appHomeUrl = `${base}/app/home`;
     const supportEmail = this.from;
     const { subject, text, html } = buildMissedWebinarEmail(
@@ -242,9 +265,13 @@ export class SesEmailService {
     );
     try {
       await this.sendSimpleEmail(to, subject, text, html);
-      this.logger.log(`Sent missed-webinar email to ${to} for program ${program.id}`);
+      this.logger.log(
+        `Sent missed-webinar email to ${to} for program ${program.id}`,
+      );
     } catch (err) {
-      this.logger.warn(`Failed to send missed-webinar email to ${to} for program ${program.id}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to send missed-webinar email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -269,7 +296,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, surveyUrl } = opts;
-    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const appSessionUrl =
       program.zoomSessionType === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -289,9 +318,13 @@ export class SesEmailService {
     );
     try {
       await this.sendSimpleEmail(to, subject, text, html);
-      this.logger.log(`Sent post-webinar-survey email to ${to} for program ${program.id}`);
+      this.logger.log(
+        `Sent post-webinar-survey email to ${to} for program ${program.id}`,
+      );
     } catch (err) {
-      this.logger.warn(`Failed to send post-webinar-survey email to ${to} for program ${program.id}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to send post-webinar-survey email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -319,7 +352,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program } = opts;
-    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const appSessionUrl =
       program.zoomSessionType === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -342,9 +377,13 @@ export class SesEmailService {
     );
     try {
       await this.sendSimpleEmail(to, subject, text, html);
-      this.logger.log(`Sent webinar-access email to ${to} for program ${program.id}`);
+      this.logger.log(
+        `Sent webinar-access email to ${to} for program ${program.id}`,
+      );
     } catch (err) {
-      this.logger.warn(`Failed to send webinar-access email to ${to} for program ${program.id}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to send webinar-access email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
     }
   }
 
@@ -373,7 +412,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, hoursUntilStart, program } = opts;
-    const base = (this.config.get<string>('frontendUrl') || 'https://communityhealth.media').replace(/\/$/, '');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const appSessionUrl =
       program.zoomSessionType === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -397,13 +438,22 @@ export class SesEmailService {
     );
     try {
       await this.sendSimpleEmail(to, subject, text, html);
-      this.logger.log(`Sent pre-webinar-reminder email to ${to} for program ${program.id} (${hoursUntilStart}h out)`);
+      this.logger.log(
+        `Sent pre-webinar-reminder email to ${to} for program ${program.id} (${hoursUntilStart}h out)`,
+      );
     } catch (err) {
-      this.logger.warn(`Failed to send pre-webinar-reminder email to ${to} for program ${program.id}: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to send pre-webinar-reminder email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
     }
   }
 
-  private async sendSimpleEmail(to: string, subject: string, text: string, html: string): Promise<void> {
+  private async sendSimpleEmail(
+    to: string,
+    subject: string,
+    text: string,
+    html: string,
+  ): Promise<void> {
     await this.client.send(
       new SendEmailCommand({
         FromEmailAddress: this.from,
@@ -431,5 +481,8 @@ function escapeHtml(s: string): string {
 }
 
 function sanitizePlainDescription(htmlOrText: string): string {
-  return htmlOrText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return htmlOrText
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

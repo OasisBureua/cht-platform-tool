@@ -14,11 +14,17 @@ describe('HealthController', () => {
       providers: [
         {
           provide: PrismaHealthIndicator,
-          useValue: { isHealthy: jest.fn().mockResolvedValue({ database: { status: 'up' } }) },
+          useValue: {
+            isHealthy: jest
+              .fn()
+              .mockResolvedValue({ database: { status: 'up' } }),
+          },
         },
         {
           provide: RedisHealthIndicator,
-          useValue: { isHealthy: jest.fn().mockResolvedValue({ redis: { status: 'up' } }) },
+          useValue: {
+            isHealthy: jest.fn().mockResolvedValue({ redis: { status: 'up' } }),
+          },
         },
       ],
     }).compile();

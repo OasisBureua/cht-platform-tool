@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ImgHTMLAttributes } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Presentation,
@@ -19,7 +19,7 @@ import { surveysApi } from '../api/surveys';
 import { dashboardApi } from '../api/dashboard';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } from '../api/catalog';
-import { getShortClipId, getMediaHubThumbnail, hasRealThumbnail } from '../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 import { clipDisplaySummary } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
 import { APP_CATALOG_CONVERSATIONS_HUB } from '../components/navigation/appNavItems';
@@ -125,12 +125,26 @@ type SpotlightSlide = {
   secondaryHref: string;
   primaryCta: string;
   secondaryCta: string;
+  /** When set, thumbnail load failure hides this promotional frame (see `thumbTrackKey`). */
+  thumbTrackKey?: string;
 };
 
 export default function Dashboard() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [brokenCarouselThumbIds, setBrokenCarouselThumbIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+
+  const markCarouselThumbBroken = useCallback((key: string) => {
+    setBrokenCarouselThumbIds((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -224,6 +238,20 @@ export default function Dashboard() {
   const requiredSurveysPending = useMemo(() => surveys.filter((s) => s.required), [surveys]);
   const recentItems = recentData?.items ?? [];
   const topicItems = topicData?.items ?? [];
+  /** Catalog clips that have a usable thumb URL — omit placeholder-only rows on the dashboard. */
+  const recentCatalogClips = useMemo(() => recentItems.filter(shouldSurfaceCatalogClip), [recentItems]);
+  const topicCatalogClips = useMemo(() => topicItems.filter(shouldSurfaceCatalogClip), [topicItems]);
+
+  /** After runtime image failures, omit cards so blanks do not stay in strip / spotlight. */
+  const recentCatalogForHome = useMemo(
+    () => recentCatalogClips.filter((c) => !brokenCarouselThumbIds.has(`clip:${c.id}`)),
+    [recentCatalogClips, brokenCarouselThumbIds],
+  );
+  const topicCatalogForHome = useMemo(
+    () => topicCatalogClips.filter((c) => !brokenCarouselThumbIds.has(`clip:${c.id}`)),
+    [topicCatalogClips, brokenCarouselThumbIds],
+  );
+
   const playlistStrip = (playlists as CatalogItem[]).slice(0, 10);
 
   const isLoading =
@@ -233,15 +261,19 @@ export default function Dashboard() {
     const slides: SpotlightSlide[] = [];
     const podcastThumb = '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png';
 
+    /** Prefer a catalog clip whose thumbnail resolves; omit broken / placeholder clips. */
+    const featuredConversation = recentCatalogForHome[0];
+
     /** Always include a conversation slide so the carousel can advance past podcasts. */
-    if (recentItems.length > 0) {
-      const c = recentItems[0];
+    if (featuredConversation) {
+      const c = featuredConversation;
       slides.push({
         id: 'featured-conversation',
         eyebrow: 'Featured conversation',
         title: c.title,
         description: clipMetaString(c, 'recent') || 'Watch this newly released clinical conversation.',
         imageUrl: getMediaHubThumbnail(c),
+        thumbTrackKey: `clip:${c.id}`,
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
         secondaryHref: APP_CATALOG_CONVERSATIONS_HUB,
         primaryCta: 'Play',
@@ -294,30 +326,40 @@ export default function Dashboard() {
     }
 
     return slides;
-  }, [recentItems, nextOfficeHoursSession]);
+  }, [recentCatalogForHome, nextOfficeHoursSession]);
+
+  /** Slides omitted when featured catalog image fails to load (fallback catalog slide). */
+  const spotlightSlidesRendered = useMemo(() => {
+    return spotlightSlides.filter((s) =>
+      !s.thumbTrackKey || !brokenCarouselThumbIds.has(s.thumbTrackKey),
+    );
+  }, [spotlightSlides, brokenCarouselThumbIds]);
 
   const [spotlightIndex, setSpotlightIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   const goSpotlightPrev = useCallback(() => {
     setSpotlightIndex((i) => {
-      const n = spotlightSlides.length;
+      const n = spotlightSlidesRendered.length;
       if (n <= 0) return 0;
       return (i - 1 + n) % n;
     });
-  }, [spotlightSlides.length]);
+  }, [spotlightSlidesRendered.length]);
 
   const goSpotlightNext = useCallback(() => {
     setSpotlightIndex((i) => {
-      const n = spotlightSlides.length;
+      const n = spotlightSlidesRendered.length;
       if (n <= 0) return 0;
       return (i + 1) % n;
     });
-  }, [spotlightSlides.length]);
+  }, [spotlightSlidesRendered.length]);
 
-  const spotlightIdKey = useMemo(() => spotlightSlides.map((s) => s.id).join('|'), [spotlightSlides]);
+  const spotlightIdKey = useMemo(
+    () => spotlightSlidesRendered.map((s) => s.id).join('|'),
+    [spotlightSlidesRendered],
+  );
 
-  const featuredSlideCount = spotlightSlides.length;
+  const featuredSlideCount = spotlightSlidesRendered.length;
 
   useEffect(() => {
     setSpotlightIndex(0);
@@ -330,13 +372,21 @@ export default function Dashboard() {
   }, [featuredSlideCount]);
 
   useEffect(() => {
-    if (spotlightSlides.length <= 1) return undefined;
+    if (spotlightSlidesRendered.length <= 1) return undefined;
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return undefined;
     }
     const t = window.setInterval(goSpotlightNext, 8000);
     return () => window.clearInterval(t);
-  }, [spotlightSlides.length, goSpotlightNext]);
+  }, [spotlightSlidesRendered.length, goSpotlightNext]);
+
+  const onSpotlightThumbError = useCallback<NonNullable<ImgHTMLAttributes<HTMLImageElement>['onError']>>(
+    (e) => {
+      const key = e.currentTarget.getAttribute('data-thumb-track');
+      if (key) markCarouselThumbBroken(key);
+    },
+    [markCarouselThumbBroken],
+  );
 
   return (
     <div className="-mt-4 space-y-8 sm:-mt-5 md:-mt-6 md:space-y-10 lg:-mt-8">
@@ -574,7 +624,7 @@ export default function Dashboard() {
                         : `translateX(-${(spotlightIndex / featuredSlideCount) * 100}%)`,
                   }}
                 >
-                  {spotlightSlides.map((slide) => (
+                  {spotlightSlidesRendered.map((slide) => (
                     <div
                       key={slide.id}
                       className="relative shrink-0"
@@ -584,10 +634,12 @@ export default function Dashboard() {
                         <img
                           src={slide.imageUrl}
                           alt=""
+                          data-thumb-track={slide.thumbTrackKey ?? undefined}
                           className="absolute inset-0 h-full w-full object-cover object-center"
                           loading="lazy"
                           referrerPolicy="no-referrer"
                           draggable={false}
+                          onError={slide.thumbTrackKey ? onSpotlightThumbError : undefined}
                         />
                         <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
@@ -629,7 +681,7 @@ export default function Dashboard() {
                     role="tablist"
                     aria-label="Featured slides"
                   >
-                    {spotlightSlides.map((s, i) => (
+                    {spotlightSlidesRendered.map((s, i) => (
                       <button
                         key={s.id}
                         type="button"
@@ -658,15 +710,17 @@ export default function Dashboard() {
             </ConversationRow>
           ) : (
             <>
-              {recentItems.length > 0 ? (
+              {recentCatalogForHome.length > 0 ? (
                 <ConversationRow
                   title="Recently added"
-                  subtitle={`${recentItems.length} videos`}
+                  subtitle={`${recentCatalogForHome.length} videos`}
                   seeAllHref="/app/catalog"
                 >
-                  {recentItems.map((c) => (
+                  {recentCatalogForHome.map((c) => (
                     <StripCard
                       key={c.id}
+                      hideThumbnailOnError
+                      onThumbnailError={() => markCarouselThumbBroken(`clip:${c.id}`)}
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
@@ -677,18 +731,26 @@ export default function Dashboard() {
               ) : null}
 
               {BIOMARKER_ROWS.map((row) => (
-                <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
+                <BiomarkerConversationRow
+                  key={row.focus}
+                  label={row.label}
+                  focus={row.focus}
+                  isInApp={true}
+                  hideBrokenCatalogThumbnails
+                />
               ))}
 
-              {topicTag && topicItems.length > 0 ? (
+              {topicTag && topicCatalogForHome.length > 0 ? (
                 <ConversationRow
                   title={topicLabel ? `Clips · ${topicLabel}` : 'Clips by tag'}
-                  subtitle={`${topicItems.length} videos`}
+                  subtitle={`${topicCatalogForHome.length} videos`}
                   seeAllHref={`/app/catalog?tag=${encodeURIComponent(topicTag)}`}
                 >
-                  {topicItems.map((c) => (
+                  {topicCatalogForHome.map((c) => (
                     <StripCard
                       key={c.id}
+                      hideThumbnailOnError
+                      onThumbnailError={() => markCarouselThumbBroken(`clip:${c.id}`)}
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
@@ -708,6 +770,7 @@ export default function Dashboard() {
                   {playlistStrip.map((p) => (
                     <StripCard
                       key={p.id}
+                      hideThumbnailOnError
                       to={`/app/catalog/playlist/${p.id}`}
                       title={p.title}
                       imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}

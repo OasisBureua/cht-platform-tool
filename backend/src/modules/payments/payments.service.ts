@@ -1,10 +1,24 @@
 import { randomUUID } from 'crypto';
-import { Injectable, Logger, BadRequestException, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
-import { Prisma, PostEventAttendanceStatus, ProgramZoomSessionType } from '@prisma/client';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
+import {
+  Prisma,
+  PostEventAttendanceStatus,
+  ProgramZoomSessionType,
+} from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
-import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
+import {
+  CreateConnectAccountResponseDto,
+  AccountLinkResponseDto,
+} from './dto/create-connect-account.dto';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
@@ -21,7 +35,8 @@ export class PaymentsService {
     private billService: BillService,
     private configService: ConfigService,
   ) {
-    this.frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
+    this.frontendUrl =
+      this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
   }
 
   /**
@@ -64,13 +79,17 @@ export class PaymentsService {
     assertProfileCompleteForPayments(user);
     if (!program) throw new NotFoundException('Program not found');
     if (!program.honorariumAmount || program.honorariumAmount <= 0) {
-      throw new BadRequestException('This program does not offer an honorarium');
+      throw new BadRequestException(
+        'This program does not offer an honorarium',
+      );
     }
     if (
       program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
       program.zoomSessionType !== ProgramZoomSessionType.MEETING
     ) {
-      throw new BadRequestException('Honorarium preview is only available for LIVE programs');
+      throw new BadRequestException(
+        'Honorarium preview is only available for LIVE programs',
+      );
     }
 
     const payeeDisplayName = `${user.firstName} ${user.lastName}`.trim();
@@ -78,7 +97,9 @@ export class PaymentsService {
     const zipTail = zip.length >= 4 ? zip.slice(-4) : zip ? '••••' : null;
     const addressSummary =
       user.city || user.state || zipTail
-        ? [user.city, user.state, zipTail ? `ZIP …${zipTail}` : null].filter(Boolean).join(', ')
+        ? [user.city, user.state, zipTail ? `ZIP …${zipTail}` : null]
+            .filter(Boolean)
+            .join(', ')
         : null;
 
     let maskedBankLast4: string | null = null;
@@ -87,7 +108,9 @@ export class PaymentsService {
         const raw = await this.billService.getVendorJson(user.billVendorId);
         maskedBankLast4 = this.extractMaskedBankLast4(raw);
       } catch (e) {
-        this.logger.warn(`Bill.com vendor read for preview failed: ${(e as Error).message}`);
+        this.logger.warn(
+          `Bill.com vendor read for preview failed: ${(e as Error).message}`,
+        );
       }
     }
 
@@ -102,7 +125,9 @@ export class PaymentsService {
     };
   }
 
-  private extractMaskedBankLast4(vendor: Record<string, unknown>): string | null {
+  private extractMaskedBankLast4(
+    vendor: Record<string, unknown>,
+  ): string | null {
     const tryFrom = (val: unknown): string | null => {
       if (val == null) return null;
       const s = String(val).replace(/\s/g, '');
@@ -114,7 +139,9 @@ export class PaymentsService {
       return null;
     };
 
-    const payInfo = vendor.paymentInformation as Record<string, unknown> | undefined;
+    const payInfo = vendor.paymentInformation as
+      | Record<string, unknown>
+      | undefined;
     const bank = payInfo?.bankAccount as Record<string, unknown> | undefined;
     const direct =
       tryFrom(bank?.accountNumber) ??
@@ -125,7 +152,9 @@ export class PaymentsService {
     if (direct) return `••••${direct}`;
 
     const nested = JSON.stringify(vendor);
-    const m = nested.match(/accountNumber"\s*:\s*"([^"]+)"/i) || nested.match(/last4"\s*:\s*"([^"]+)"/i);
+    const m =
+      nested.match(/accountNumber"\s*:\s*"([^"]+)"/i) ||
+      nested.match(/last4"\s*:\s*"([^"]+)"/i);
     if (m?.[1]) {
       const t = tryFrom(m[1]);
       if (t) return `••••${t}`;
@@ -136,8 +165,12 @@ export class PaymentsService {
   /**
    * Save Bill.com vendorId after frontend Elements SDK vendorSetupSuccess event.
    */
-  async saveVendorId(userId: string, vendorId: string): Promise<{ saved: boolean }> {
-    if (!vendorId?.trim()) throw new BadRequestException('vendorId is required');
+  async saveVendorId(
+    userId: string,
+    vendorId: string,
+  ): Promise<{ saved: boolean }> {
+    if (!vendorId?.trim())
+      throw new BadRequestException('vendorId is required');
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { specialty: true, npiNumber: true },
@@ -159,7 +192,10 @@ export class PaymentsService {
   /**
    * Test Bill.com API connection (login only). Does not require funding account ID.
    */
-  async testBillConnection(): Promise<{ success: true; organizationId: string }> {
+  async testBillConnection(): Promise<{
+    success: true;
+    organizationId: string;
+  }> {
     return this.billService.testConnection();
   }
 
@@ -182,7 +218,9 @@ export class PaymentsService {
 
     if (!vendorDto?.payeeName) {
       if (user.billVendorId) {
-        this.logger.log(`User already has Bill.com vendor: ${user.billVendorId}`);
+        this.logger.log(
+          `User already has Bill.com vendor: ${user.billVendorId}`,
+        );
         return {
           accountId: user.billVendorId,
           onboardingUrl: `${this.frontendUrl}/settings/payments`,
@@ -199,9 +237,18 @@ export class PaymentsService {
     assertProfileCompleteForPayments(user);
 
     const addressLine1 = vendorDto.addressLine1 || '';
-    const city = vendorDto.city || (user as Record<string, unknown>).city as string || '';
-    const stateOrProvince = vendorDto.state || (user as Record<string, unknown>).state as string || '';
-    const zipOrPostalCode = vendorDto.zipCode || (user as Record<string, unknown>).zipCode as string || '';
+    const city =
+      vendorDto.city ||
+      ((user as Record<string, unknown>).city as string) ||
+      '';
+    const stateOrProvince =
+      vendorDto.state ||
+      ((user as Record<string, unknown>).state as string) ||
+      '';
+    const zipOrPostalCode =
+      vendorDto.zipCode ||
+      ((user as Record<string, unknown>).zipCode as string) ||
+      '';
 
     if (!addressLine1 || !city || !zipOrPostalCode) {
       throw new BadRequestException(
@@ -228,10 +275,15 @@ export class PaymentsService {
 
     if (user.billVendorId) {
       if (!vendorDto.bankAccount) {
-        throw new BadRequestException('Bank account details are required to update payment information.');
+        throw new BadRequestException(
+          'Bank account details are required to update payment information.',
+        );
       }
       this.logger.log(`Updating Bill.com vendor for user: ${userId}`);
-      await this.billService.updateVendorPaymentAndAddress(user.billVendorId, vendorInput);
+      await this.billService.updateVendorPaymentAndAddress(
+        user.billVendorId,
+        vendorInput,
+      );
       return {
         accountId: user.billVendorId,
         onboardingUrl: `${this.frontendUrl}/settings/payments`,
@@ -267,7 +319,9 @@ export class PaymentsService {
     });
 
     if (!user?.billVendorId) {
-      throw new BadRequestException('User does not have a Bill.com vendor account');
+      throw new BadRequestException(
+        'User does not have a Bill.com vendor account',
+      );
     }
 
     return {
@@ -357,16 +411,23 @@ export class PaymentsService {
    * Delete payments by userId and optional programId (admin/dev only). For cleaning up test entries.
    * If programId omitted, deletes all payments for the user.
    */
-  async deleteByUserAndProgram(userId: string, programId?: string): Promise<{ deleted: number }> {
+  async deleteByUserAndProgram(
+    userId: string,
+    programId?: string,
+  ): Promise<{ deleted: number }> {
     if (!userId?.trim()) {
       throw new BadRequestException('userId is required');
     }
-    const where: { userId: string; programId?: string } = { userId: userId.trim() };
+    const where: { userId: string; programId?: string } = {
+      userId: userId.trim(),
+    };
     if (programId?.trim()) {
       where.programId = programId.trim();
     }
     const result = await this.prisma.payment.deleteMany({ where });
-    this.logger.log(`Deleted ${result.count} payment(s) for userId=${userId}${programId ? ` programId=${programId}` : ''}`);
+    this.logger.log(
+      `Deleted ${result.count} payment(s) for userId=${userId}${programId ? ` programId=${programId}` : ''}`,
+    );
     return { deleted: result.count };
   }
 
@@ -377,7 +438,15 @@ export class PaymentsService {
     const payments = await this.prisma.payment.findMany({
       where: { status: 'PENDING' },
       include: {
-        user: { select: { id: true, email: true, firstName: true, lastName: true, billVendorId: true } },
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            billVendorId: true,
+          },
+        },
         program: { select: { id: true, title: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -403,10 +472,14 @@ export class PaymentsService {
       throw new BadRequestException('Payment already completed');
     }
     if (payment.status === 'PROCESSING') {
-      throw new ConflictException('Payment is already being processed. Refresh and try again.');
+      throw new ConflictException(
+        'Payment is already being processed. Refresh and try again.',
+      );
     }
     if (payment.status !== 'PENDING') {
-      throw new BadRequestException(`Payment is not pending (status: ${payment.status})`);
+      throw new BadRequestException(
+        `Payment is not pending (status: ${payment.status})`,
+      );
     }
 
     const user = payment.user;
@@ -415,17 +488,25 @@ export class PaymentsService {
     // attendance must be VERIFIED (or NOT_REQUIRED) AND the survey must be acknowledged.
     if (payment.type === 'HONORARIUM' && payment.programId) {
       const reg = await this.prisma.programRegistration.findUnique({
-        where: { userId_programId: { userId: payment.userId, programId: payment.programId } },
+        where: {
+          userId_programId: {
+            userId: payment.userId,
+            programId: payment.programId,
+          },
+        },
         include: { program: { select: { jotformSurveyUrl: true } } },
       });
 
       if (!reg) {
-        throw new ForbiddenException('No matching registration found for this honorarium payment.');
+        throw new ForbiddenException(
+          'No matching registration found for this honorarium payment.',
+        );
       }
 
       const attendanceOk =
         reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
-        reg.postEventAttendanceStatus === PostEventAttendanceStatus.NOT_REQUIRED;
+        reg.postEventAttendanceStatus ===
+          PostEventAttendanceStatus.NOT_REQUIRED;
 
       if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
         throw new ForbiddenException(
@@ -438,7 +519,10 @@ export class PaymentsService {
         );
       }
 
-      if (reg.program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {
+      if (
+        reg.program.jotformSurveyUrl?.trim() &&
+        !reg.postEventSurveyAcknowledgedAt
+      ) {
         throw new ForbiddenException(
           `Cannot pay: post-event survey has not been acknowledged for ${user.id} on program ${payment.programId}.`,
         );
@@ -446,7 +530,9 @@ export class PaymentsService {
     }
 
     if (!user.billVendorId) {
-      this.logger.warn(`Pay now blocked: user ${user.id} has no Bill.com vendor`);
+      this.logger.warn(
+        `Pay now blocked: user ${user.id} has no Bill.com vendor`,
+      );
       throw new BadRequestException(
         'HCP has not added bank details. Notification sent to complete setup before getting paid.',
       );
@@ -491,7 +577,9 @@ export class PaymentsService {
         data: { totalEarnings: { increment: payment.amount } },
       });
 
-      this.logger.log(`Pay now successful: ${paymentId} -> Bill.com ${billPayment.id}`);
+      this.logger.log(
+        `Pay now successful: ${paymentId} -> Bill.com ${billPayment.id}`,
+      );
 
       return {
         paymentId: payment.id,
@@ -521,7 +609,9 @@ export class PaymentsService {
    * Pass `idempotencyKey` (or reuse the same key on retry) for safe deduplication; omit only if double-submit protection is unnecessary.
    */
   async createPayout(dto: CreatePayoutDto): Promise<PayoutResponseDto> {
-    this.logger.log(`Creating payout for user ${dto.userId}: $${dto.amount / 100}`);
+    this.logger.log(
+      `Creating payout for user ${dto.userId}: $${dto.amount / 100}`,
+    );
 
     const user = await this.prisma.user.findUnique({
       where: { id: dto.userId },
@@ -532,27 +622,36 @@ export class PaymentsService {
     }
 
     if (!user.paymentEnabled) {
-      throw new BadRequestException('User is not enabled for payments. Complete onboarding first.');
+      throw new BadRequestException(
+        'User is not enabled for payments. Complete onboarding first.',
+      );
     }
 
     if (!user.billVendorId) {
-      throw new BadRequestException('User does not have a Bill.com vendor account');
+      throw new BadRequestException(
+        'User does not have a Bill.com vendor account',
+      );
     }
 
     // Enforce eligibility contract for honorarium payouts linked to a program.
     if (dto.programId) {
       const reg = await this.prisma.programRegistration.findUnique({
-        where: { userId_programId: { userId: dto.userId, programId: dto.programId } },
+        where: {
+          userId_programId: { userId: dto.userId, programId: dto.programId },
+        },
         include: { program: { select: { jotformSurveyUrl: true } } },
       });
 
       if (!reg) {
-        throw new ForbiddenException('No matching registration found for this program payout.');
+        throw new ForbiddenException(
+          'No matching registration found for this program payout.',
+        );
       }
 
       const attendanceOk =
         reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
-        reg.postEventAttendanceStatus === PostEventAttendanceStatus.NOT_REQUIRED;
+        reg.postEventAttendanceStatus ===
+          PostEventAttendanceStatus.NOT_REQUIRED;
 
       if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
         throw new ForbiddenException(
@@ -565,7 +664,10 @@ export class PaymentsService {
         );
       }
 
-      if (reg.program.jotformSurveyUrl?.trim() && !reg.postEventSurveyAcknowledgedAt) {
+      if (
+        reg.program.jotformSurveyUrl?.trim() &&
+        !reg.postEventSurveyAcknowledgedAt
+      ) {
         throw new ForbiddenException(
           `Cannot pay: post-event survey has not been acknowledged for ${dto.userId} on program ${dto.programId}.`,
         );
@@ -573,14 +675,19 @@ export class PaymentsService {
     }
 
     const rawKey = dto.idempotencyKey?.trim();
-    const idempotencyKey = (rawKey || `admin_payout:${randomUUID()}`).slice(0, 200);
+    const idempotencyKey = (rawKey || `admin_payout:${randomUUID()}`).slice(
+      0,
+      200,
+    );
 
     const existingByKey = await this.prisma.payment.findUnique({
       where: { idempotencyKey },
     });
     if (existingByKey) {
       if (existingByKey.status === 'PAID' && existingByKey.billPaymentId) {
-        this.logger.log(`createPayout idempotent replay key=${idempotencyKey} payment=${existingByKey.id}`);
+        this.logger.log(
+          `createPayout idempotent replay key=${idempotencyKey} payment=${existingByKey.id}`,
+        );
         return {
           paymentId: existingByKey.id,
           amount: existingByKey.amount,
@@ -589,7 +696,9 @@ export class PaymentsService {
         };
       }
       if (existingByKey.status === 'PROCESSING') {
-        throw new ConflictException('This payout idempotency key is already being processed.');
+        throw new ConflictException(
+          'This payout idempotency key is already being processed.',
+        );
       }
       if (existingByKey.status === 'PENDING') {
         throw new ConflictException(
@@ -615,8 +724,13 @@ export class PaymentsService {
         },
       });
     } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        const lostRace = await this.prisma.payment.findUnique({ where: { idempotencyKey } });
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        const lostRace = await this.prisma.payment.findUnique({
+          where: { idempotencyKey },
+        });
         if (lostRace?.status === 'PAID' && lostRace.billPaymentId) {
           return {
             paymentId: lostRace.id,
@@ -625,7 +739,9 @@ export class PaymentsService {
             transferId: lostRace.billPaymentId,
           };
         }
-        throw new ConflictException('Duplicate payout request (idempotency key collision). Try again.');
+        throw new ConflictException(
+          'Duplicate payout request (idempotency key collision). Try again.',
+        );
       }
       throw e;
     }
@@ -681,7 +797,9 @@ export class PaymentsService {
         },
       });
 
-      throw new BadRequestException(`Payout failed: ${(error as Error).message}`);
+      throw new BadRequestException(
+        `Payout failed: ${(error as Error).message}`,
+      );
     }
   }
 
@@ -701,7 +819,9 @@ export class PaymentsService {
     });
 
     const paid = payments.filter((p) => p.status === 'PAID');
-    const pending = payments.filter((p) => p.status === 'PENDING' || p.status === 'PROCESSING');
+    const pending = payments.filter(
+      (p) => p.status === 'PENDING' || p.status === 'PROCESSING',
+    );
     const availableBalance = paid.reduce((s, p) => s + p.amount, 0) / 100;
     const pendingBalance = pending.reduce((s, p) => s + p.amount, 0) / 100;
     const lifetimeEarnings = (user.totalEarnings || 0) / 100;
@@ -756,12 +876,17 @@ export class PaymentsService {
     });
     if (!user) throw new NotFoundException('User not found');
     assertProfileCompleteForPayments(user);
-    if (!user.billVendorId) throw new BadRequestException('Add bank details first before submitting W-9');
+    if (!user.billVendorId)
+      throw new BadRequestException(
+        'Add bank details first before submitting W-9',
+      );
 
     const taxId = data.taxId.replace(/\D/g, '');
     const validation = validateTaxId(taxId, data.taxIdType);
     if (!validation.valid) {
-      throw new BadRequestException(validation.error || 'Invalid tax ID format');
+      throw new BadRequestException(
+        validation.error || 'Invalid tax ID format',
+      );
     }
 
     const companyName = sanitizeCompanyName(data.companyName);
@@ -796,7 +921,9 @@ export class PaymentsService {
     });
 
     if (!user?.billVendorId) {
-      throw new NotFoundException('User does not have a Bill.com vendor account');
+      throw new NotFoundException(
+        'User does not have a Bill.com vendor account',
+      );
     }
 
     try {
@@ -810,11 +937,16 @@ export class PaymentsService {
           billVendorStatus: status,
           paymentEnabled,
           w9Submitted: paymentEnabled,
-          w9SubmittedAt: paymentEnabled && !user.w9SubmittedAt ? new Date() : user.w9SubmittedAt,
+          w9SubmittedAt:
+            paymentEnabled && !user.w9SubmittedAt
+              ? new Date()
+              : user.w9SubmittedAt,
         },
       });
 
-      this.logger.log(`Synced user ${userId}: status=${status}, paymentEnabled=${paymentEnabled}`);
+      this.logger.log(
+        `Synced user ${userId}: status=${status}, paymentEnabled=${paymentEnabled}`,
+      );
 
       return {
         userId,

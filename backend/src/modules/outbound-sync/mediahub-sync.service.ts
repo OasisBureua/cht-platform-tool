@@ -42,7 +42,9 @@ export class MediaHubSyncService {
     if (!this.apiKey) return false;
     const npi = (input.npi || '').replace(/\D/g, '');
     if (npi.length !== 10) {
-      this.logger.debug(`[MediaHub] skip upsert: invalid NPI '${input.npi ?? ''}'`);
+      this.logger.debug(
+        `[MediaHub] skip upsert: invalid NPI '${input.npi ?? ''}'`,
+      );
       return false;
     }
 

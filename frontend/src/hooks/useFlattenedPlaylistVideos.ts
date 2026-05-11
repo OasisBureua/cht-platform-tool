@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { catalogApi } from '../api/catalog';
+import { extractYoutubeVideoIdFromUrl } from '../utils/clipUrl';
 
 export type FlatPlaylistVideo = {
   video: { id: string; title: string; thumbnailUrl: string; youtubeUrl: string };
@@ -25,6 +26,7 @@ export function useFlattenedPlaylistVideos(playlistIds: string[], enabled: boole
         const res = results[i];
         if (!res?.videos?.length) return;
         for (const v of res.videos) {
+          if (!extractYoutubeVideoIdFromUrl(v.youtubeUrl)) continue;
           if (seen.has(v.id)) continue;
           seen.add(v.id);
           out.push({

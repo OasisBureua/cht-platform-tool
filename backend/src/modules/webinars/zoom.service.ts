@@ -85,9 +85,13 @@ export class ZoomService implements OnModuleInit {
 
   onModuleInit() {
     if (this.isConfigured()) {
-      this.logger.log('Zoom API: configured (webinars + meetings / office hours)');
+      this.logger.log(
+        'Zoom API: configured (webinars + meetings / office hours)',
+      );
     } else {
-      this.logger.log('Zoom API: not configured. Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET for webinar integration.');
+      this.logger.log(
+        'Zoom API: not configured. Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET for webinar integration.',
+      );
     }
   }
 
@@ -144,13 +148,20 @@ export class ZoomService implements OnModuleInit {
 
     // Only fetch upcoming sessions; filter to current month + next month as a buffer
     const now = new Date();
-    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59); // last ms of next month
+    const endOfNextMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 2,
+      0,
+      23,
+      59,
+      59,
+    ); // last ms of next month
 
     try {
       do {
         const token = await this.getAccessToken();
         const params: Record<string, string | number> = {
-          type: 'upcoming',   // Only sessions that haven't started yet (Zoom filters server-side)
+          type: 'upcoming', // Only sessions that haven't started yet (Zoom filters server-side)
           page_size: 100,
         };
         if (pageToken) params.page_token = pageToken;
@@ -187,13 +198,17 @@ export class ZoomService implements OnModuleInit {
 
         // Stop paginating if all items in the last page are beyond our window
         const lastItem = data.webinars?.[data.webinars.length - 1];
-        const lastTime = lastItem?.start_time ? new Date(lastItem.start_time).getTime() : 0;
+        const lastTime = lastItem?.start_time
+          ? new Date(lastItem.start_time).getTime()
+          : 0;
         if (lastTime > endOfNextMonth.getTime()) break;
 
         pageToken = data.next_page_token;
       } while (pageToken);
 
-      this.logger.log(`Zoom: fetched ${all.length} upcoming webinar(s) within current + next month`);
+      this.logger.log(
+        `Zoom: fetched ${all.length} upcoming webinar(s) within current + next month`,
+      );
       return all;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -209,22 +224,32 @@ export class ZoomService implements OnModuleInit {
     let pageToken: string | undefined;
 
     const now = new Date();
-    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59);
+    const endOfNextMonth = new Date(
+      now.getFullYear(),
+      now.getMonth() + 2,
+      0,
+      23,
+      59,
+      59,
+    );
 
     try {
       do {
         const token = await this.getAccessToken();
         const params: Record<string, string | number> = {
-          type: 'upcoming',   // Only upcoming meetings
+          type: 'upcoming', // Only upcoming meetings
           page_size: 100,
         };
         if (pageToken) params.next_page_token = pageToken;
 
         const { data } = await firstValueFrom(
-          this.http.get<ZoomMeetingsListResponse>('https://api.zoom.us/v2/users/me/meetings', {
-            params,
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          this.http.get<ZoomMeetingsListResponse>(
+            'https://api.zoom.us/v2/users/me/meetings',
+            {
+              params,
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
         );
 
         const batch = (data.meetings || [])
@@ -247,13 +272,17 @@ export class ZoomService implements OnModuleInit {
         all.push(...batch);
 
         const lastItem = data.meetings?.[data.meetings.length - 1];
-        const lastTime = lastItem?.start_time ? new Date(lastItem.start_time).getTime() : 0;
+        const lastTime = lastItem?.start_time
+          ? new Date(lastItem.start_time).getTime()
+          : 0;
         if (lastTime > endOfNextMonth.getTime()) break;
 
         pageToken = data.next_page_token;
       } while (pageToken);
 
-      this.logger.log(`Zoom: fetched ${all.length} upcoming meeting(s) within current + next month`);
+      this.logger.log(
+        `Zoom: fetched ${all.length} upcoming meeting(s) within current + next month`,
+      );
       return all;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -306,7 +335,9 @@ export class ZoomService implements OnModuleInit {
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
-    this.logger.log(`Zoom: creating webinar "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`);
+    this.logger.log(
+      `Zoom: creating webinar "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`,
+    );
 
     const token = await this.getAccessToken();
     const { data } = await firstValueFrom(
@@ -324,7 +355,9 @@ export class ZoomService implements OnModuleInit {
       ),
     );
 
-    this.logger.log(`Zoom: webinar created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`);
+    this.logger.log(
+      `Zoom: webinar created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`,
+    );
     return {
       id: String(data.id),
       uuid: data.uuid,
@@ -359,11 +392,9 @@ export class ZoomService implements OnModuleInit {
     if (params.timezone) body.timezone = params.timezone;
 
     await firstValueFrom(
-      this.http.patch(
-        `https://api.zoom.us/v2/webinars/${webinarId}`,
-        body,
-        { headers: { Authorization: `Bearer ${token}` } },
-      ),
+      this.http.patch(`https://api.zoom.us/v2/webinars/${webinarId}`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
     );
     this.logger.log(`Zoom: updated webinar ${webinarId}`);
   }
@@ -376,7 +407,9 @@ export class ZoomService implements OnModuleInit {
   async addWebinarPanelists(
     webinarId: string,
     panelists: Array<{ name: string; email: string }>,
-  ): Promise<Array<{ id: string; name: string; email: string; joinUrl: string }>> {
+  ): Promise<
+    Array<{ id: string; name: string; email: string; joinUrl: string }>
+  > {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
     if (!panelists.length) return [];
 
@@ -385,7 +418,15 @@ export class ZoomService implements OnModuleInit {
     );
 
     const token = await this.getAccessToken();
-    let data: { id: string; panelists: Array<{ id: string; name: string; email: string; join_url: string }> };
+    let data: {
+      id: string;
+      panelists: Array<{
+        id: string;
+        name: string;
+        email: string;
+        join_url: string;
+      }>;
+    };
     try {
       const res = await firstValueFrom(
         this.http.post<typeof data>(
@@ -403,20 +444,31 @@ export class ZoomService implements OnModuleInit {
       const detail = axiosBody?.data ? JSON.stringify(axiosBody.data) : '';
       const status = axiosBody?.status ? ` (HTTP ${axiosBody.status})` : '';
       const base = err instanceof Error ? err.message : String(err);
-      throw new Error(`${base}${status}${detail ? ` — Zoom response: ${detail}` : ''}`);
+      throw new Error(
+        `${base}${status}${detail ? ` — Zoom response: ${detail}` : ''}`,
+      );
     }
 
     // Zoom's POST response body is unreliable — it sometimes returns an empty panelists
     // array or omits the key entirely. Always do a follow-up GET to get the authoritative
     // list with join_url values populated.
-    this.logger.log(`Zoom: POST accepted for webinar ${webinarId}, fetching panelist list via GET to retrieve join URLs`);
+    this.logger.log(
+      `Zoom: POST accepted for webinar ${webinarId}, fetching panelist list via GET to retrieve join URLs`,
+    );
 
-    let results: Array<{ id: string; name: string; email: string; joinUrl: string }> = [];
+    let results: Array<{
+      id: string;
+      name: string;
+      email: string;
+      joinUrl: string;
+    }> = [];
     try {
       results = await this.getWebinarPanelists(webinarId);
     } catch (gErr) {
       const gMsg = gErr instanceof Error ? gErr.message : String(gErr);
-      this.logger.warn(`Zoom: GET panelists failed for webinar ${webinarId}: ${gMsg}`);
+      this.logger.warn(
+        `Zoom: GET panelists failed for webinar ${webinarId}: ${gMsg}`,
+      );
       // Fall back to whatever the POST returned, even if join_url is missing
       results = (data.panelists || []).map((p) => ({
         id: p.id,
@@ -426,12 +478,18 @@ export class ZoomService implements OnModuleInit {
       }));
     }
 
-    this.logger.log(`Zoom: retrieved ${results.length} panelist(s) for webinar ${webinarId}`);
+    this.logger.log(
+      `Zoom: retrieved ${results.length} panelist(s) for webinar ${webinarId}`,
+    );
     results.forEach((p) => {
       if (p.joinUrl) {
-        this.logger.log(`Zoom: panelist join URL — ${p.name} <${p.email}>: ${p.joinUrl}`);
+        this.logger.log(
+          `Zoom: panelist join URL — ${p.name} <${p.email}>: ${p.joinUrl}`,
+        );
       } else {
-        this.logger.warn(`Zoom: no join_url for panelist ${p.email} on webinar ${webinarId}`);
+        this.logger.warn(
+          `Zoom: no join_url for panelist ${p.email} on webinar ${webinarId}`,
+        );
       }
     });
 
@@ -444,14 +502,22 @@ export class ZoomService implements OnModuleInit {
    */
   async getWebinarPanelists(
     webinarId: string,
-  ): Promise<Array<{ id: string; name: string; email: string; joinUrl: string }>> {
+  ): Promise<
+    Array<{ id: string; name: string; email: string; joinUrl: string }>
+  > {
     if (!this.isConfigured()) return [];
     const token = await this.getAccessToken();
     const res = await firstValueFrom(
-      this.http.get<{ panelists: Array<{ id: string; name: string; email: string; join_url: string }> }>(
-        `https://api.zoom.us/v2/webinars/${webinarId}/panelists`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      ),
+      this.http.get<{
+        panelists: Array<{
+          id: string;
+          name: string;
+          email: string;
+          join_url: string;
+        }>;
+      }>(`https://api.zoom.us/v2/webinars/${webinarId}/panelists`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
     );
     return (res.data.panelists ?? []).map((p) => ({
       id: p.id,
@@ -467,10 +533,9 @@ export class ZoomService implements OnModuleInit {
     try {
       const token = await this.getAccessToken();
       await firstValueFrom(
-        this.http.delete(
-          `https://api.zoom.us/v2/webinars/${webinarId}`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        ),
+        this.http.delete(`https://api.zoom.us/v2/webinars/${webinarId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
       );
       this.logger.log(`Zoom: deleted webinar ${webinarId}`);
     } catch (err) {
@@ -495,7 +560,9 @@ export class ZoomService implements OnModuleInit {
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
-    this.logger.log(`Zoom: creating meeting (office hours) "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`);
+    this.logger.log(
+      `Zoom: creating meeting (office hours) "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`,
+    );
 
     const token = await this.getAccessToken();
     const { data } = await firstValueFrom(
@@ -523,7 +590,9 @@ export class ZoomService implements OnModuleInit {
       ),
     );
 
-    this.logger.log(`Zoom: meeting (office hours) created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`);
+    this.logger.log(
+      `Zoom: meeting (office hours) created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`,
+    );
     return {
       id: String(data.id),
       uuid: data.uuid,
@@ -543,9 +612,12 @@ export class ZoomService implements OnModuleInit {
     try {
       const token = await this.getAccessToken();
       const { data } = await firstValueFrom(
-        this.http.get<ZoomMeetingApiResponse>(`https://api.zoom.us/v2/meetings/${meetingId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        this.http.get<ZoomMeetingApiResponse>(
+          `https://api.zoom.us/v2/meetings/${meetingId}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        ),
       );
 
       return {

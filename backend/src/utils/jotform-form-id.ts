@@ -6,8 +6,11 @@ export function extractJotformFormIdFromUrl(url: string): string | null {
   const trimmed = url.trim();
   if (!trimmed) return null;
   try {
-    const u = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
-    const fromQuery = u.searchParams.get('formId') || u.searchParams.get('formid');
+    const u = new URL(
+      trimmed.startsWith('http') ? trimmed : `https://${trimmed}`,
+    );
+    const fromQuery =
+      u.searchParams.get('formId') || u.searchParams.get('formid');
     if (fromQuery && /^\d{6,}$/.test(fromQuery)) return fromQuery;
     const pathMatch = u.pathname.match(/(\d{6,})\/?$/);
     if (pathMatch) return pathMatch[1];
