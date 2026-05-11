@@ -76,7 +76,7 @@ export default function Layout() {
         {/* Slide-reveal drawer — visible layer behind front pane on small screens */}
         <nav
           id="app-slide-drawer-nav"
-          className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[220px] flex-col overflow-y-auto overflow-x-hidden border-r border-black/[0.06] bg-gradient-to-b from-white to-zinc-50 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-6px_0_16px_-12px_rgba(0,0,0,0.05)] md:hidden dark:border-white/[0.06] dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-6px_0_16px_-12px_rgba(0,0,0,0.35)]"
+          className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[220px] flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-zinc-50 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-8px_0_24px_-16px_rgba(0,0,0,0.06)] md:hidden dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-8px_0_28px_-18px_rgba(0,0,0,0.5)]"
           aria-label="Primary navigation"
         >
           <Link
@@ -98,7 +98,7 @@ export default function Layout() {
                     [
                       'flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
                       isActive
-                        ? 'bg-brand-50 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.2)] dark:bg-brand-950/45 dark:text-brand-100'
+                        ? 'bg-brand-50 text-brand-900 shadow-[0_4px_18px_-10px_rgba(43,168,154,0.4)] dark:bg-brand-950/45 dark:text-brand-100'
                         : 'text-zinc-800 hover:bg-zinc-100/90 dark:text-zinc-200 dark:hover:bg-zinc-800/85',
                     ].join(' ')
                   }
@@ -147,7 +147,7 @@ export default function Layout() {
             <div className="flex min-w-0 shrink-0 items-center gap-2">
               <button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl border border-zinc-200/90 bg-white/90 text-gray-800 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[background-color,color,transform] duration-200 hover:bg-white hover:text-gray-900 active:scale-[0.96] md:hidden dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-zinc-800"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-white hover:text-gray-900 active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-zinc-100 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800"
                 aria-expanded={mobileDrawerOpen}
                 aria-controls="app-slide-drawer-nav"
                 aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}

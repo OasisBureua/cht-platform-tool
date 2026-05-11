@@ -30,6 +30,7 @@ import Services from './pages/public/Services';
 import Portfolios from './pages/public/Portfolios';
 import DolNetwork from './pages/public/DolNetwork';
 import DolRegionDetail from './pages/public/DolRegionDetail';
+import KolProfilePage from './pages/public/KolProfilePage';
 import Terms from './pages/public/Terms';
 
 // App layout (existing)
@@ -52,6 +53,7 @@ import Settings from './pages/Settings';
 import ChatBot from './pages/ChatBot';
 import ChmDocs from './pages/ChmDocs';
 import Podcasts from './pages/Podcasts';
+import PodcastShow from './pages/PodcastShow';
 import DiseaseAreas from './pages/DiseaseAreas';
 
 // =======================
@@ -130,6 +132,7 @@ function App() {
             <Route path="/for-hcps" element={<ForHCPs />} />
             <Route path="/what-we-do" element={<WhatWeDo />} />
             <Route path="/kol-network" element={<DolNetwork />} />
+            <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />
             <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
           </Route>
 
@@ -147,6 +150,7 @@ function App() {
             <Route index element={<Navigate to="/app/home" replace />} />
 
             {/* Home + Search */}
+            <Route path="dashboard" element={<Navigate to="/app/home" replace />} />
             <Route path="home" element={<Dashboard />} />
             <Route path="search" element={<ExploreOpportunities />} />
 
@@ -177,6 +181,7 @@ function App() {
             <Route path="surveys/:id" element={<SurveyDetail />} />
 
             {/* Podcasts */}
+            <Route path="podcasts/:showId" element={<PodcastShow />} />
             <Route path="podcasts" element={<Podcasts />} />
 
             <Route path="watch/:videoId" element={<WatchVideo />} />

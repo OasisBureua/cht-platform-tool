@@ -61,6 +61,8 @@ export default function VideosPage() {
     if (q != null && q !== '') setQuery(q);
     const tag = params.get('tag');
     if (tag != null && tag !== '') setTagFilter(tag);
+    const doctor = params.get('doctor');
+    if (doctor != null && doctor !== '') setDoctorFilter(doctor);
     const view = params.get('view');
     if (view === 'playlists') setLibraryView('playlists');
   }, [location.search]);

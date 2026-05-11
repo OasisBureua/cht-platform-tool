@@ -228,7 +228,7 @@ export default function Home() {
             style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
           >
             <ConversationRow title="Featured videos" seeAllHref="/catalog" seeAllLabel="See all in library">
-              <StripRowLoadingThumbnails />
+              <StripRowLoadingThumbnails homepage />
             </ConversationRow>
           </div>
         )}
@@ -251,6 +251,7 @@ export default function Home() {
                   title={v.title}
                   imageUrl={v.imageUrl}
                   variant="thumbnailOnly"
+                  homepage
                 />
               ))}
             </ConversationRow>
@@ -293,6 +294,7 @@ export default function Home() {
                         ? `${t.videoCount.toLocaleString()} video${t.videoCount !== 1 ? 's' : ''}`
                         : undefined
                     }
+                    homepage
                   />
                 ))}
               </ConversationRow>
@@ -322,6 +324,7 @@ export default function Home() {
                         ? `${t.videoCount.toLocaleString()} video${t.videoCount !== 1 ? 's' : ''}`
                         : undefined
                     }
+                    homepage
                   />
                 ))}
               </ConversationRow>
@@ -366,7 +369,7 @@ export default function Home() {
             Who We Reach
           </h4>
           <div
-            className="home-enter grid grid-cols-1 gap-6 md:grid-cols-3"
+            className="home-enter grid grid-cols-1 gap-6 sm:grid-cols-3"
             style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
           >
             <div className="rounded-2xl bg-white p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
@@ -432,7 +435,7 @@ export default function Home() {
             How We Help Pharma Educate Healthcare Audiences
           </h2>
           <div className="home-enter space-y-0" style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex cursor-pointer items-center justify-between border-b border-gray-200 py-5 group-open:border-b-0 dark:border-zinc-800">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600 dark:text-emerald-400" aria-hidden>
@@ -440,7 +443,7 @@ export default function Home() {
                   </span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 dark:text-zinc-100 md:text-[1.375rem]">AI-Powered Content Automation</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -448,13 +451,13 @@ export default function Home() {
                 Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex cursor-pointer items-center justify-between border-b border-gray-200 py-5 group-open:border-b-0 dark:border-zinc-800">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600 dark:text-emerald-400" aria-hidden>✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 dark:text-zinc-100 md:text-[1.375rem]">Multi-Audience Reach</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -462,13 +465,13 @@ export default function Home() {
                 Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">Entertainment-Grade Distribution</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -476,13 +479,13 @@ export default function Home() {
                 Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">First-Party HCP Intelligence</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -490,13 +493,13 @@ export default function Home() {
                 Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">Real Engagement Analytics</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -676,19 +679,22 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
 
       <div className="mx-auto flex max-w-7xl justify-center px-4 sm:px-6">
         <div
-          className="home-enter flex items-center justify-center gap-1"
+          className="home-enter flex flex-wrap items-center justify-center gap-2"
           style={{ animationDelay: `${staggerBaseMs + 270}ms` }}
+          role="tablist"
+          aria-label="Disease area slides"
         >
           {DISEASE_AREAS.map((_, idx) => (
             <button
               key={idx}
               type="button"
+              role="tab"
+              aria-selected={idx === activeIdx}
               onClick={() => scrollTo(idx)}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-[transform] after:block after:h-2 after:w-2 after:rounded-full after:content-[''] after:transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] ${
-                idx === activeIdx
-                  ? 'after:bg-gray-900 dark:after:bg-zinc-100'
-                  : 'after:bg-gray-300 hover:after:bg-gray-400 dark:after:bg-zinc-600 dark:hover:after:bg-zinc-500'
-              }`}
+              className={[
+                'h-2 rounded-full transition-[width,background-color] duration-300',
+                idx === activeIdx ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+              ].join(' ')}
               aria-label={`Go to disease area ${idx + 1}`}
             />
           ))}

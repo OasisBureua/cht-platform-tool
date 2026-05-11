@@ -85,7 +85,7 @@ export default function PublicSurveys() {
   }, [sortNewestFirst]);
 
   return (
-    <div className="space-y-8 bg-white pb-16 font-['DM_Sans',system-ui,sans-serif] text-gray-900 dark:bg-zinc-950 dark:text-zinc-100 md:pb-10">
+    <div className="space-y-8 bg-white pb-16 text-gray-900 dark:bg-zinc-950 dark:text-zinc-100 md:pb-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="md:flex md:items-end md:justify-between md:gap-6">
           <div>

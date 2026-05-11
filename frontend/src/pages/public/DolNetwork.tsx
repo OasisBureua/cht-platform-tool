@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, BadgeCheck, Building2, GraduationCap } from 'lucide-react';
 import { dolNetwork, type DolEntry, type DolRegion } from '../../data/dol-network';
 
 type FlatKol = DolEntry & {
@@ -265,7 +265,7 @@ export default function DolNetwork() {
                     </h2>
                     {meta.regionSubtitle && <span className="text-sm text-gray-500">{meta.regionSubtitle}</span>}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
                     {items.map((k) => (
                       <KolCard key={k.id} k={k} />
                     ))}
@@ -274,7 +274,7 @@ export default function DolNetwork() {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
               {sorted.map((k) => (
                 <KolCard key={`${k.regionId}-${k.id}`} k={k} />
               ))}
@@ -290,39 +290,102 @@ export default function DolNetwork() {
   );
 }
 
+function cardSummarySnippet(k: FlatKol): string {
+  const fromIntel = k.intel?.aiBrief?.whoTheyAre?.trim();
+  if (fromIntel) return fromIntel;
+  return k.bio.trim();
+}
+
+/** Catalogue clips & shorts where MediaHub tags this doctor (`GET /catalog/clips?doctor=`). */
+function catalogContentHref(k: FlatKol): string {
+  const slug = (k.intel?.catalogDoctorSlug ?? k.id).trim();
+  return `/catalog?${new URLSearchParams({ doctor: slug }).toString()}`;
+}
+
 function KolCard({ k }: { k: FlatKol }) {
-  const profileHref = `/kol-network/${k.regionId}#${k.id}`;
-  const aff = institutionHint(k);
-  const tagline = k.role.length > 120 ? `${k.role.slice(0, 117)}…` : k.role;
+  const profileHref = `/kol-network/profile/${k.id}`;
+  const contentHref = catalogContentHref(k);
+  const inst = institutionHint(k);
+  const roleLead = (k.role.split(/[.;]/)[0]?.trim() ?? k.role).slice(0, 72);
+  const summary = cardSummarySnippet(k);
+  const summaryShort = summary.length > 140 ? `${summary.slice(0, 137)}…` : summary;
+  const showBadge = Boolean(k.intel?.rosterOnly ?? k.isNew);
 
   return (
-    <article className="rounded-2xl border border-black/[0.08] bg-white shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-      <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 to-gray-100 relative overflow-hidden">
-        {k.isNew && (
-          <span className="absolute top-2 right-2 z-10 rounded-md bg-orange-700/95 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-            New
-          </span>
-        )}
-        <img
-          src={avatarUrl(k.name)}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-        />
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-[box-shadow,transform] hover:shadow-md">
+      <div className="border-b border-gray-100 p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="relative h-[4.75rem] w-[4.75rem] shrink-0 sm:h-[5.25rem] sm:w-[5.25rem]">
+            <img
+              src={avatarUrl(k.name)}
+              alt=""
+              className="h-full w-full rounded-[15px] border border-gray-100 object-cover shadow-inner"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+            {k.isNew ? (
+              <span className="absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm">
+                New
+              </span>
+            ) : null}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-col justify-center gap-0.5">
+              <div className="flex items-center gap-1">
+                <h3 className="min-w-0 flex-1 text-[11px] font-bold leading-tight text-gray-900 line-clamp-2 sm:text-xs">
+                  {k.name}
+                </h3>
+                {showBadge ? (
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-sky-600 text-white" aria-label="Listed in CHM network" />
+                ) : null}
+              </div>
+              <p className="text-[10px] leading-snug text-gray-500 line-clamp-2" title={k.role}>
+                {roleLead}
+                {roleLead.length >= 72 ? '…' : ''}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
-      <div className="p-4 space-y-1">
-        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem]">{k.name}</h3>
-        <p className="text-xs text-gray-500 line-clamp-1" title={aff}>
-          {aff}
-        </p>
-        <p className="text-xs text-gray-700 line-clamp-2">{tagline}</p>
-        <div className="pt-3 mt-2 border-t border-gray-100">
+
+      <div className="flex flex-1 flex-col p-3 pt-2">
+        <div className="rounded-xl bg-gray-100/90 p-2.5">
+          <div className="grid grid-cols-2 gap-2 gap-y-2.5">
+            <div className="min-w-0">
+              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Region</p>
+              <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight text-gray-900 line-clamp-2">
+                <Building2 className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
+                <span className="min-w-0">{k.regionTitle}</span>
+              </p>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Institution</p>
+              <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight text-gray-900 line-clamp-2">
+                <GraduationCap className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
+                <span className="min-w-0" title={inst}>
+                  {inst}
+                </span>
+              </p>
+            </div>
+          </div>
+          <div className="mt-2.5 border-t border-gray-200/80 pt-2.5">
+            <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Summary</p>
+            <p className="mt-1 text-[10px] leading-snug text-gray-600 line-clamp-3">{summaryShort}</p>
+          </div>
+        </div>
+
+        <div className="mt-auto flex flex-col gap-1.5 pt-3 sm:flex-row sm:gap-2">
           <Link
             to={profileHref}
-            className="text-xs font-semibold text-[#0d4f6c] hover:text-[#0a3d54] inline-flex items-center gap-0.5"
+            className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-full bg-gray-900 px-2 text-center text-[10px] font-semibold text-white transition hover:bg-gray-800 sm:text-[11px]"
           >
-            View profile →
+            Explore profile
+          </Link>
+          <Link
+            to={contentHref}
+            className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-full border border-gray-200 bg-white px-2 text-center text-[10px] font-semibold text-gray-900 transition hover:bg-gray-50 sm:text-[11px]"
+          >
+            View content
           </Link>
         </div>
       </div>
