@@ -192,7 +192,7 @@ The short version:
 ./scripts/deploy-primary.sh prod
 ```
 
-GitHub Actions handle CI on every PR (`pr-validation.yml`) and CD on merge to `main`/`staging`.
+GitHub Actions handle CI on every PR (`pr-validation.yml`) and CD on merge to `main`/`staging`. Workflow-oriented details live in [.github/CI_CD.md](.github/CI_CD.md).
 
 ---
 
@@ -224,6 +224,7 @@ Both scripts are optional — GitHub Actions remain the source of truth.
 | [docs/getting-started.md](docs/getting-started.md) | Detailed local dev setup + env variables |
 | [docs/architecture.md](docs/architecture.md) | System architecture |
 | [docs/deployment.md](docs/deployment.md) | Deployment guide |
+| [.github/CI_CD.md](.github/CI_CD.md) | GitHub Actions workflows (dev/prod, PR validation) |
 | [docs/ZOOM-WEBINAR-PARTICIPANT-TRACKING.md](docs/ZOOM-WEBINAR-PARTICIPANT-TRACKING.md) | Zoom webhook + attendance tracking |
 | [docs/JOTFORM-SETUP.md](docs/JOTFORM-SETUP.md) | JotForm webhook configuration |
 | [docs/payment-apis.md](docs/payment-apis.md) | Bill.com payment API reference |
