@@ -30,7 +30,7 @@ interface AuthContextValue {
   /** GoTrue JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
   accessToken: string | null;
   login: (email: string, password: string) => Promise<{ error?: AuthError }>;
-  /** Exchange GoTrue OAuth access_token (Google/Apple) for CHT session. Returns profileComplete when successful. */
+  /** Exchange GoTrue OAuth access_token (Google) for CHT session. Returns profileComplete when successful. */
   loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
   signUp: (
     email: string,
@@ -476,6 +476,9 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(SESSION_TOKEN_KEY);
         localStorage.removeItem(DEV_USER_KEY);
         localStorage.removeItem(ACCESS_TOKEN_KEY);
+      }
+      if (typeof sessionStorage?.removeItem === 'function') {
+        sessionStorage.removeItem('cht-profile-reminder-seen');
       }
     } catch {
       /* ignore */

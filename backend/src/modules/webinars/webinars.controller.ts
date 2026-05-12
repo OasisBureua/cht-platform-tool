@@ -1,4 +1,10 @@
-import { Controller, Get, Param, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { WebinarsService, WebinarItem } from './webinars.service';
 
 @Controller('webinars')

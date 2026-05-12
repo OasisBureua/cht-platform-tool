@@ -23,7 +23,7 @@ redis_num_nodes         = 1
 # Compute (scaled up for higher load)
 backend_task_cpu        = 512
 backend_task_memory     = 1024
-backend_desired_count   = 2
+backend_desired_count   = 3
 backend_min_capacity    = 2
 backend_max_capacity    = 6
 
@@ -56,6 +56,12 @@ youtube_api_key = ""
 
 # Comma-separated playlist IDs, or run: node scripts/load-youtube-playlists.js data/YT\ Playlist\ IDs\ -\ Sheet1.csv
 youtube_playlist_ids = ""
+
+# Bill.com Pay now: add MFA trust ids from https://developer.bill.com/reference/login
+# bill_mfa_remember_me_id = ""
+# bill_mfa_device_name   = "cht-platform-api"
+
+# bill_session_id = ""  # optional MFA-trusted session; Lambda can update app secret JSON key bill_session_id
 
 # Bill.com (payment processing - HCP payouts via ACH/check)
 # Test: GET /api/payments/test-connection (admin). Funding account ID required only for Pay now.

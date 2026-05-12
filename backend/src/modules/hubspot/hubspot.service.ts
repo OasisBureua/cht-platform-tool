@@ -23,9 +23,12 @@ export class HubSpotService {
   private readonly accessToken: string | null;
 
   constructor(private readonly config: ConfigService) {
-    this.accessToken = this.config.get<string>('hubspot.accessToken')?.trim() || null;
+    this.accessToken =
+      this.config.get<string>('hubspot.accessToken')?.trim() || null;
     if (!this.accessToken) {
-      this.logger.warn('HUBSPOT_ACCESS_TOKEN not configured — contact sync disabled');
+      this.logger.warn(
+        'HUBSPOT_ACCESS_TOKEN not configured - contact sync disabled',
+      );
     }
   }
 
@@ -37,7 +40,9 @@ export class HubSpotService {
    * Create or update a contact in HubSpot by email.
    * No-op when token is not configured.
    */
-  async createOrUpdateContact(properties: HubSpotContactProperties): Promise<void> {
+  async createOrUpdateContact(
+    properties: HubSpotContactProperties,
+  ): Promise<void> {
     if (!this.accessToken) return;
 
     const email = properties.email?.trim()?.toLowerCase();
@@ -56,26 +61,35 @@ export class HubSpotService {
       ...(properties.state && { state: properties.state.trim() }),
       ...(properties.zip && { zip: properties.zip.trim() }),
       ...(properties.jobtitle && { jobtitle: properties.jobtitle.trim() }),
-      ...(properties.npi_number && { npi_number: String(properties.npi_number).trim() }),
+      ...(properties.npi_number && {
+        npi_number: String(properties.npi_number).trim(),
+      }),
     };
 
     const body = {
-      inputs: [{ id: email, idProperty: 'email', properties: contactProperties }],
+      inputs: [
+        { id: email, idProperty: 'email', properties: contactProperties },
+      ],
     };
 
     try {
-      const res = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/contacts/batch/upsert`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
+      const res = await fetch(
+        `${HUBSPOT_API_BASE}/crm/v3/objects/contacts/batch/upsert`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      });
+      );
 
       if (!res.ok) {
         const errText = await res.text();
-        this.logger.error(`[HubSpot] Upsert failed: ${res.status} ${res.statusText} - ${errText}`);
+        this.logger.error(
+          `[HubSpot] Upsert failed: ${res.status} ${res.statusText} - ${errText}`,
+        );
         return;
       }
 

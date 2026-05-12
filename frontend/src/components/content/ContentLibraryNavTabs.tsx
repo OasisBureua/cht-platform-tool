@@ -1,38 +1,49 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Monitor, ClipboardList, ListVideo, Library } from 'lucide-react';
-
-export type LibraryViewMode = 'clips' | 'playlists';
+import { Monitor, ListVideo, Library } from 'lucide-react';
 
 function tabClass(active: boolean) {
   return [
     'flex flex-col items-center gap-2 transition-colors min-w-[3.5rem]',
-    active ? 'text-gray-900 font-medium' : 'text-gray-700 hover:text-gray-900',
+    active
+      ? 'font-medium text-zinc-900 dark:text-zinc-100'
+      : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
   ].join(' ');
 }
 
 type ContentLibraryNavTabsProps = {
   isInApp: boolean;
-  libraryView: LibraryViewMode;
-  playlistsAvailable: boolean;
-  onSelectClips: () => void;
-  onSelectPlaylists: () => void;
 };
 
+/** Clips vs playlists for tab highlighting — matches VideosPage URL rules (in-app defaults to clips). */
+function effectiveContentView(search: string, isInApp: boolean): 'clips' | 'playlists' {
+  const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const v = p.get('view');
+  if (v === 'clips') return 'clips';
+  if (v === 'playlists') return 'playlists';
+  const hasFilters =
+    !!(p.get('q')?.trim()) ||
+    !!p.get('tag') ||
+    !!p.get('doctor') ||
+    !!(p.get('sort') || p.get('sort_by'));
+  if (isInApp) return 'clips';
+  return hasFilters ? 'clips' : 'playlists';
+}
+
 /**
- * Shared icon nav: Catalog (same hub as former Videos page: clips + filters + playlists), Webinars, Surveys, Playlists.
+ * Icon nav under the public content library: Catalog (clips), Conversations (Live), Playlists.
  */
-export function ContentLibraryNavTabs({
-  isInApp,
-  libraryView,
-  playlistsAvailable,
-  onSelectClips,
-  onSelectPlaylists,
-}: ContentLibraryNavTabsProps) {
-  const { pathname } = useLocation();
-  const base = isInApp ? '/app' : '';
-  const catalogTo = base ? '/app/catalog' : '/catalog';
-  const webinarsTo = base ? '/app/webinars' : '/webinars';
-  const surveysTo = base ? '/app/surveys' : '/surveys';
+export function ContentLibraryNavTabs({ isInApp }: ContentLibraryNavTabsProps) {
+  const { pathname, search } = useLocation();
+  const catalogPath = isInApp ? '/app/catalog' : '/catalog';
+  const liveTo = isInApp ? '/app/live' : '/live';
+
+  const hrefWithView = (view: 'clips' | 'playlists') => {
+    const p = new URLSearchParams(search);
+    p.set('view', view);
+    if (view === 'clips') p.delete('playlistFocus');
+    const qs = p.toString();
+    return qs ? `${catalogPath}?${qs}` : `${catalogPath}?view=${view}`;
+  };
 
   const onCatalogHub =
     pathname.startsWith('/catalog') ||
@@ -40,34 +51,28 @@ export function ContentLibraryNavTabs({
     pathname === '/watch' ||
     pathname === '/app/watch';
 
-  const catalogTabActive = onCatalogHub && libraryView === 'clips';
-  const playlistsTabActive = libraryView === 'playlists';
+  const activeView = effectiveContentView(search, isInApp);
+  const catalogTabActive = onCatalogHub && activeView === 'clips';
+  const playlistsTabActive = activeView === 'playlists';
 
   return (
     <section className="flex flex-wrap gap-4" aria-label="Content library sections">
-      <Link to={catalogTo} className={tabClass(catalogTabActive)} onClick={() => onSelectClips()}>
+      <Link to={hrefWithView('clips')} className={tabClass(catalogTabActive)}>
         <ListVideo className="h-8 w-8" />
         <span className="text-sm font-medium">Catalog</span>
       </Link>
-      <Link to={webinarsTo} className={tabClass(false)}>
+      <Link to={liveTo} className={tabClass(false)}>
         <Monitor className="h-8 w-8" />
-        <span className="text-sm font-medium">Webinars</span>
+        <span className="text-sm font-medium">Conversations</span>
       </Link>
-      <Link to={surveysTo} className={tabClass(false)}>
-        <ClipboardList className="h-8 w-8" />
-        <span className="text-sm font-medium">Surveys</span>
+      <Link
+        to={hrefWithView('playlists')}
+        className={tabClass(playlistsTabActive)}
+        aria-current={playlistsTabActive ? 'page' : undefined}
+      >
+        <Library className="h-8 w-8" />
+        <span className="text-sm font-medium">Playlists</span>
       </Link>
-      {playlistsAvailable ? (
-        <button
-          type="button"
-          className={tabClass(playlistsTabActive)}
-          onClick={onSelectPlaylists}
-          aria-pressed={playlistsTabActive}
-        >
-          <Library className="h-8 w-8" />
-          <span className="text-sm font-medium">Playlists</span>
-        </button>
-      ) : null}
     </section>
   );
 }

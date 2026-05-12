@@ -8,7 +8,7 @@ export function getOAuthRedirectBase(): string {
   return import.meta.env.VITE_APP_URL || (typeof window !== 'undefined' ? window.location.origin : '');
 }
 
-export function buildOAuthAuthorizeUrl(provider: 'google' | 'apple', fromPath?: string): string {
+export function buildOAuthAuthorizeUrl(provider: 'google', fromPath?: string): string {
   const base = getOAuthRedirectBase();
   const callbackBase = `${base}/auth/callback`;
   const redirectTo =

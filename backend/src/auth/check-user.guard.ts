@@ -22,7 +22,7 @@ export class CheckUserGuard implements CanActivate {
     if (user.role === UserRole.ADMIN) return true;
 
     if (user.userId !== paramUserId) {
-      throw new ForbiddenException('Cannot access another user\'s resources');
+      throw new ForbiddenException("Cannot access another user's resources");
     }
     return true;
   }

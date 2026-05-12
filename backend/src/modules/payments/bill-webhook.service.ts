@@ -11,8 +11,8 @@ import { createHmac } from 'crypto';
 interface BillWebhookEvent {
   eventType: string;
   data?: {
-    id?: string;             // Bill.com payment ID
-    status?: string;         // PROCESSED, FAILED, IN_TRANSIT, etc.
+    id?: string; // Bill.com payment ID
+    status?: string; // PROCESSED, FAILED, IN_TRANSIT, etc.
     vendorId?: string;
     amount?: number;
     failureDescription?: string;
@@ -24,7 +24,12 @@ const PAID_STATUSES = new Set(['PROCESSED', 'PAID', 'COMPLETED']);
 /** Bill.com payment statuses that map to our FAILED status */
 const FAILED_STATUSES = new Set(['FAILED', 'DECLINED', 'RETURNED', 'VOID']);
 /** Bill.com payment statuses that map to our PROCESSING status */
-const PROCESSING_STATUSES = new Set(['IN_TRANSIT', 'SENT', 'SCHEDULED', 'PROCESSING']);
+const PROCESSING_STATUSES = new Set([
+  'IN_TRANSIT',
+  'SENT',
+  'SCHEDULED',
+  'PROCESSING',
+]);
 
 @Injectable()
 export class BillWebhookService {
@@ -35,18 +40,25 @@ export class BillWebhookService {
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    this.webhookSecret = this.configService.get<string>('bill.webhookSecret') || null;
+    this.webhookSecret =
+      this.configService.get<string>('bill.webhookSecret') || null;
     if (!this.webhookSecret) {
-      this.logger.warn('[Bill webhook] BILL_WEBHOOK_SECRET not configured — signature validation skipped');
+      this.logger.warn(
+        '[Bill webhook] BILL_WEBHOOK_SECRET not configured - signature validation skipped',
+      );
     }
   }
 
-  async processEvent(body: unknown, signature: string, timestamp: string): Promise<void> {
+  async processEvent(
+    body: unknown,
+    signature: string,
+    timestamp: string,
+  ): Promise<void> {
     // Validate signature when secret is configured
     if (this.webhookSecret) {
       const isValid = this.validateSignature(body, signature, timestamp);
       if (!isValid) {
-        this.logger.warn('[Bill webhook] Invalid signature — ignoring event');
+        this.logger.warn('[Bill webhook] Invalid signature - ignoring event');
         return;
       }
     }
@@ -54,7 +66,9 @@ export class BillWebhookService {
     const event = body as BillWebhookEvent;
     const { eventType, data } = event;
 
-    this.logger.log(`[Bill webhook] eventType=${eventType} id=${data?.id} status=${data?.status}`);
+    this.logger.log(
+      `[Bill webhook] eventType=${eventType} id=${data?.id} status=${data?.status}`,
+    );
 
     if (eventType === 'payment.updated' || eventType === 'payment.failed') {
       await this.handlePaymentEvent(data);
@@ -75,27 +89,35 @@ export class BillWebhookService {
     // Find the payment in our DB by Bill.com payment ID
     const payment = await this.prisma.payment.findFirst({
       where: {
-        OR: [
-          { billPaymentId },
-          { billPaymentIntentId: billPaymentId },
-        ],
+        OR: [{ billPaymentId }, { billPaymentIntentId: billPaymentId }],
       },
-      include: { user: { select: { id: true, email: true, totalEarnings: true } } },
+      include: {
+        user: { select: { id: true, email: true, totalEarnings: true } },
+      },
     });
 
     if (!payment) {
-      this.logger.warn(`[Bill webhook] No payment found for Bill.com ID: ${billPaymentId}`);
+      this.logger.warn(
+        `[Bill webhook] No payment found for Bill.com ID: ${billPaymentId}`,
+      );
       return;
     }
 
     if (PAID_STATUSES.has(billStatus)) {
-      await this.markPaid(payment.id, payment.userId, payment.amount, billPaymentId);
+      await this.markPaid(
+        payment.id,
+        payment.userId,
+        payment.amount,
+        billPaymentId,
+      );
     } else if (FAILED_STATUSES.has(billStatus)) {
       await this.markFailed(payment.id, data.failureDescription || billStatus);
     } else if (PROCESSING_STATUSES.has(billStatus)) {
       await this.markProcessing(payment.id);
     } else {
-      this.logger.log(`[Bill webhook] Unhandled status=${billStatus} for payment=${payment.id} — no action`);
+      this.logger.log(
+        `[Bill webhook] Unhandled status=${billStatus} for payment=${payment.id} - no action`,
+      );
     }
   }
 
@@ -105,9 +127,13 @@ export class BillWebhookService {
     amountCents: number,
     billPaymentId: string,
   ): Promise<void> {
-    const existing = await this.prisma.payment.findUnique({ where: { id: paymentId } });
+    const existing = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
     if (existing?.status === 'PAID') {
-      this.logger.log(`[Bill webhook] Payment ${paymentId} already PAID — skipping`);
+      this.logger.log(
+        `[Bill webhook] Payment ${paymentId} already PAID - skipping`,
+      );
       return;
     }
 
@@ -123,7 +149,9 @@ export class BillWebhookService {
       }),
     ]);
 
-    this.logger.log(`[Bill webhook] Payment ${paymentId} → PAID ($${(amountCents / 100).toFixed(2)})`);
+    this.logger.log(
+      `[Bill webhook] Payment ${paymentId} → PAID ($${(amountCents / 100).toFixed(2)})`,
+    );
   }
 
   private async markFailed(paymentId: string, reason: string): Promise<void> {
@@ -148,7 +176,11 @@ export class BillWebhookService {
    * Signature header: x-bill-signature
    * Timestamp header: x-bill-timestamp (used to prevent replay attacks)
    */
-  private validateSignature(body: unknown, signature: string, timestamp: string): boolean {
+  private validateSignature(
+    body: unknown,
+    signature: string,
+    timestamp: string,
+  ): boolean {
     if (!signature) return false;
     try {
       const payload = `${timestamp}.${JSON.stringify(body)}`;

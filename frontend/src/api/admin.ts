@@ -17,6 +17,12 @@ export interface AdminProgram {
 
 export type ZoomSessionType = 'WEBINAR' | 'MEETING';
 
+export interface ZoomPanelistLink {
+  name: string;
+  email: string;
+  joinUrl: string;
+}
+
 export interface AdminWebinar {
   id: string;
   title: string;
@@ -31,7 +37,18 @@ export interface AdminWebinar {
   zoomStartUrl: string | null;
   sponsorName: string;
   creditAmount: number;
+  /** USD; webinars only (Office Hours sessions omit this). */
+  honorariumAmount?: number;
   createdAt: string;
+  /** Persisted panelist join URLs (Host + Speakers + CHM Staff). Available in list after creation. */
+  zoomPanelistLinks?: ZoomPanelistLink[];
+  /** Present when panelists were attempted but URLs could not be generated (scope issue, plan issue, etc.). */
+  zoomPanelistError?: string;
+  hostDisplayName?: string;
+  hostBio?: string;
+  speakers?: string[];
+  /** True when this program was auto-created by a Zoom webhook (webinar.created). */
+  importedViaWebhook?: boolean;
 }
 
 export interface CreateWebinarPayload {
@@ -41,10 +58,33 @@ export interface CreateWebinarPayload {
   startDate: string;
   duration: number;
   timezone?: string;
-  /** WEBINAR = Zoom Webinar + optional Jotform survey; MEETING = Zoom Meeting (Office Hours). */
+  /** WEBINAR = Zoom Webinar + Jotform invitation & post-event clones from env; MEETING = Office Hours. */
   zoomSessionType?: ZoomSessionType;
-  createSurveyFromTemplate?: string;
   status?: 'DRAFT' | 'PUBLISHED';
+  /**
+   * Optional Jotform form ID or URL for the post-event (FEEDBACK) survey.
+   * Saved to the program and listed under Surveys for learners.
+   */
+  postEventJotformFormIdOrUrl?: string;
+  /**
+   * Optional (WEBINAR). Full Jotform form URL for registration / intake.
+   * When set, skips automatic invitation clone from env for this session.
+   */
+  jotformIntakeFormUrl?: string;
+  /**
+   * Optional. Honorarium in USD for learners (paid via Bill.com after post-event flow). WEBINAR only.
+   */
+  honorariumAmount?: number;
+  /** Primary speaker / KOL display name. */
+  hostDisplayName?: string;
+  /** Short speaker bio shown on the program detail page. */
+  hostBio?: string;
+  /**
+   * Optional (WEBINAR). Speaker/KOL display names.
+   * Each gets a unique panelist join link (zsoccerguy+user1@gmail.com, +user2, …).
+   * CHM Staff is always added as a panelist automatically.
+   */
+  speakers?: string[];
 }
 
 export interface UpdateWebinarPayload {
@@ -54,6 +94,13 @@ export interface UpdateWebinarPayload {
   startDate?: string;
   duration?: number;
   status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  /** Live vs Office Hours listing; choose the type that matches the Zoom Webinar vs Meeting in Zoom. */
+  zoomSessionType?: ZoomSessionType;
+  /** WEBINAR only. USD; use 0 to clear. */
+  honorariumAmount?: number;
+  hostDisplayName?: string;
+  hostBio?: string;
+  speakers?: string[];
 }
 
 export interface CreateProgramPayload {
@@ -67,8 +114,6 @@ export interface CreateProgramPayload {
   honorariumAmount?: number;
   startDate?: string;
   endDate?: string;
-  /** Jotform template form ID – when set, clones form, adds webhook, creates Survey */
-  createSurveyFromTemplate?: string;
 }
 
 export interface CreateSurveyPayload {
@@ -115,6 +160,14 @@ export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
   paymentsPaidCount: number;
+}
+
+export interface WebhookImportedProgram {
+  id: string;
+  title: string;
+  startDate: string | null;
+  createdAt: string;
+  missingFields: string[];
 }
 
 export const adminApi = {
@@ -166,9 +219,23 @@ export const adminApi = {
     await apiClient.delete(`/admin/surveys/${id}`);
   },
 
-  getAdminConfig: async (): Promise<{ jotformTemplateFormId: string }> => {
+  getAdminConfig: async (): Promise<{
+    jotformInvitationTemplateFormId: string;
+    jotformPostEventTemplateFormId: string;
+    jotformPostEventSharedFormId: string;
+    jotformTemplateFormId: string;
+    webinarJotformTemplatesConfigured: boolean;
+    zoomConfigured: boolean;
+  }> => {
     const { data } = await apiClient.get('/admin/config');
-    return data;
+    return data as {
+      jotformInvitationTemplateFormId: string;
+      jotformPostEventTemplateFormId: string;
+      jotformPostEventSharedFormId: string;
+      jotformTemplateFormId: string;
+      webinarJotformTemplatesConfigured: boolean;
+      zoomConfigured: boolean;
+    };
   },
 
   // ─── Webinar CRUD (Zoom-backed) ──────────────────────────────────────────
@@ -187,8 +254,11 @@ export const adminApi = {
 
   createWebinar: async (
     payload: CreateWebinarPayload,
-  ): Promise<AdminWebinar & { zoomWarning?: string }> => {
-    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string }>('/admin/webinars', payload);
+  ): Promise<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }>(
+      '/admin/webinars',
+      payload,
+    );
     return data;
   },
 
@@ -212,7 +282,6 @@ export const adminApi = {
       jotformIntakeFormUrl?: string | null;
       jotformPreEventUrl?: string | null;
       hostDisplayName?: string | null;
-      calendlySchedulingUrl?: string | null;
       registrationRequiresApproval?: boolean;
     },
   ) => {
@@ -226,17 +295,143 @@ export const adminApi = {
       id: string;
       status: string;
       createdAt: string;
+      updatedAt?: string;
+      lastSubmittedAt?: string;
+      intakeJotformSubmissionId?: string | null;
+      intakeRequired?: boolean;
+      intakeComplete?: boolean;
+      jotformIntakeSubmissionViewUrl?: string | null;
+      postEventJotformSubmissionId?: string | null;
+      jotformPostEventSubmissionViewUrl?: string | null;
+      postEventSurveyAcknowledgedAt?: string | null;
+      postEventAttendanceStatus?: string | null;
+      postEventAttendanceReviewedAt?: string | null;
       user: { id: string; email: string; firstName: string; lastName: string };
       slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
     }>;
   },
 
+  listProgramEnrollments: async (programId: string) => {
+    const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/enrollments`);
+    return data as Array<{
+      id: string;
+      enrolledAt: string;
+      completed: boolean;
+      overallProgress: number;
+      user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
+    }>;
+  },
+
+  listPaymentEligibleNotYetRequested: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/payment-eligible');
+    return data as Array<{
+      id: string;
+      postEventSurveyAcknowledgedAt: string | null;
+      createdAt: string;
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
+      program: {
+        id: string;
+        title: string;
+        honorariumAmount: number | null;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+        startDate?: string | null;
+      };
+    }>;
+  },
+
+  listPendingPostEventAttendance: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/pending-attendance');
+    return data as Array<{
+      id: string;
+      postEventAttendanceStatus: string;
+      createdAt: string;
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
+      program: {
+        id: string;
+        title: string;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+        startDate?: string | null;
+        zoomJoinUrl?: string | null;
+      };
+    }>;
+  },
+
+  updatePostEventAttendance: async (registrationId: string, status: 'VERIFIED' | 'DENIED') => {
+    const { data } = await apiClient.patch(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/post-event-attendance`,
+      { status },
+    );
+    return data;
+  },
+
+  listPendingWebinarRegistrations: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/pending');
+    return data as Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+      updatedAt?: string;
+      /** Max(createdAt, updatedAt, intake submitted) — use for “last request” after resubmits */
+      lastSubmittedAt?: string;
+      intakeJotformSubmissionId: string | null;
+      intakeRequired: boolean;
+      intakeComplete: boolean;
+      jotformIntakeSubmissionViewUrl?: string | null;
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
+      program: {
+        id: string;
+        title: string;
+        jotformIntakeFormUrl: string | null;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+        zoomJoinUrl?: string | null;
+        startDate?: string | null;
+        duration?: number | null;
+      };
+    }>;
+  },
+
   updateProgramRegistration: async (
     registrationId: string,
-    body: { status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED'; adminNotes?: string },
+    body: {
+      status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
+      adminNotes?: string | null;
+      /** When status is REJECTED, controls rejection email copy (Live / Office Hours). */
+      rejectEmailReason?: 'GENERIC' | 'INCOMPLETE_INTAKE';
+    },
   ) => {
     const { data } = await apiClient.patch(`/admin/registrations/${encodeURIComponent(registrationId)}`, body);
     return data;
+  },
+
+  removeProgramEnrollment: async (programId: string, enrollmentId: string) => {
+    const { data } = await apiClient.delete(
+      `/admin/programs/${encodeURIComponent(programId)}/enrollments/${encodeURIComponent(enrollmentId)}`,
+    );
+    return data as { removed: boolean };
   },
 
   downloadRegistrationIcsBlob: async (registrationId: string): Promise<Blob> => {
@@ -287,6 +482,11 @@ export const adminApi = {
     return data;
   },
 
+  refreshZoomPanelists: async (programId: string): Promise<{ refreshed: number; panelists: { name: string; email: string; joinUrl: string }[] }> => {
+    const { data } = await apiClient.post(`/admin/programs/${encodeURIComponent(programId)}/refresh-zoom-panelists`);
+    return data as { refreshed: number; panelists: { name: string; email: string; joinUrl: string }[] };
+  },
+
   // ─── Users ───────────────────────────────────────────────────────────────
 
   getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {
@@ -296,6 +496,12 @@ export const adminApi = {
 
   updateUserRole: async (userId: string, role: 'HCP' | 'KOL' | 'ADMIN') => {
     const { data } = await apiClient.patch(`/admin/users/${userId}/role`, { role });
+    return data;
+  },
+
+  /** HCP/KOL only; backend rejects ADMIN and self-delete. */
+  deleteUser: async (userId: string): Promise<{ deleted: boolean; id: string }> => {
+    const { data } = await apiClient.delete(`/admin/users/${encodeURIComponent(userId)}`);
     return data;
   },
 
@@ -319,5 +525,10 @@ export const adminApi = {
   deletePayment: async (paymentId: string) => {
     const { data } = await apiClient.delete(`/payments/${paymentId}`);
     return data;
+  },
+
+  getWebhookImports: async (): Promise<WebhookImportedProgram[]> => {
+    const { data } = await apiClient.get<WebhookImportedProgram[]>('/admin/programs/webhook-imports');
+    return data ?? [];
   },
 };

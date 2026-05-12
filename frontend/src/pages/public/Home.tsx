@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Monitor, Headphones, FileText, Video, Clock, LayoutGrid, Loader2 } from 'lucide-react';
+import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, LayoutGrid, Loader2 } from 'lucide-react';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
-import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
+import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
+import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
 import DISEASE_AREAS from '../../data/disease-areas';
+import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
+import {
+  buildCatalogSectionPlaylistsHref,
+  filterPlaylistsByFocus,
+  CATALOG_SECTION_TO_FOCUS,
+  VIEW_PLAYLIST_LABEL,
+} from '../../utils/playlistFocusFilters';
+import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
 
 const resourceImages: Record<string, string> = {
   webinars: '/images/resource-webinars.png',
@@ -31,6 +39,8 @@ type Treatment = {
   imageUrl: string;
   slug: string;
   videoNames: string[];
+  /** From YouTube `itemCount`; may exceed length of `videoNames` preview. */
+  videoCount: number;
   playlistUrl: string;
 };
 
@@ -44,26 +54,115 @@ type Resource = {
 
 function catalogToTreatment(p: CatalogItem): Treatment {
   const thumb = p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist';
+  const previewNames = p.videoNames || [];
+  const count = p.videoCount ?? previewNames.length;
   return {
     id: p.id,
     title: p.title,
     imageUrl: thumb,
     slug: p.id,
-    videoNames: p.videoNames || [],
+    videoNames: previewNames,
+    videoCount: count > 0 ? count : previewNames.length,
     playlistUrl: `/catalog/playlist/${p.id}`,
   };
 }
 
+function playlistRowSubtitle(focus: 'her2' | 'hr', treatments: Treatment[], usingFallback: boolean): string {
+  if (!usingFallback && treatments.length > 0) {
+    const total = treatments.reduce((s, t) => s + Math.max(0, t.videoCount), 0);
+    if (total > 0) return `${total} video${total === 1 ? '' : 's'}`;
+  }
+
+  const section = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
+  if (!section) return '';
+
+  /** HR-style rows often have "9 videos · …" on each strip item — sum those for a static fallback total. */
+  let hintedSum = 0;
+  let hintedCount = 0;
+  for (const item of section.items) {
+    const m = item.speakers?.match(/^(\d+)\s*videos?\b/i);
+    if (m) {
+      hintedSum += parseInt(m[1], 10);
+      hintedCount += 1;
+    }
+  }
+  if (hintedCount > 0) return `${hintedSum} video${hintedSum === 1 ? '' : 's'}`;
+
+  return section.subtitle?.trim() ?? '';
+}
+
+function playlistMetaLabel(videoCount: number, videoNamesSample: number): string {
+  if (videoCount > 0) {
+    const n = videoCount;
+    return `${n} video${n === 1 ? '' : 's'}`;
+  }
+  if (videoNamesSample > 0) return `${videoNamesSample} video${videoNamesSample === 1 ? '' : 's'}`;
+  return 'Playlist';
+}
+
 const FALLBACK_HER2: Treatment[] = [
-  { id: 'bp1', title: 'HER2+ Big Picture & Practice Change', slug: 'her2-big-picture', imageUrl: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'bp2', title: 'First-Line & Sequencing Decisions', slug: 'first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'bp3', title: 'High-Risk & CNS Disease', slug: 'high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  {
+    id: 'bp1',
+    title: 'HER2+ Big Picture & Practice Change',
+    slug: 'her2-big-picture',
+    imageUrl:
+      'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
+    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
+    videoCount: 4,
+    playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
+  },
+  {
+    id: 'bp2',
+    title: 'First-Line & Sequencing Decisions',
+    slug: 'first-line-sequencing',
+    imageUrl:
+      'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80',
+    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
+    videoCount: 4,
+    playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
+  },
+  {
+    id: 'bp3',
+    title: 'High-Risk & CNS Disease',
+    slug: 'high-risk-cns',
+    imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80',
+    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
+    videoCount: 4,
+    playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
+  },
 ];
 
 const FALLBACK_HR: Treatment[] = [
-  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
+  {
+    id: 'hr1',
+    title: 'HR+ Big Picture & Practice Change',
+    slug: 'hr-big-picture',
+    imageUrl:
+      'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80',
+    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
+    videoCount: 4,
+    playlistUrl: '/catalog?view=playlists&playlistFocus=hr',
+  },
+  {
+    id: 'hr2',
+    title: 'First-Line & Sequencing Decisions',
+    slug: 'hr-first-line-sequencing',
+    imageUrl:
+      'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
+    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
+    videoCount: 4,
+    playlistUrl: '/catalog?view=playlists&playlistFocus=hr',
+  },
+  {
+    id: 'hr3',
+    title: 'High-Risk & CNS Disease',
+    slug: 'hr-high-risk-cns',
+    imageUrl:
+      'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80',
+    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
+    videoCount: 4,
+    playlistUrl: '/catalog?view=playlists&playlistFocus=hr',
+  },
 ];
 
 /** Shown when `/catalog/random-videos` returns [] (e.g. YouTube not configured) so the carousel is never blank */
@@ -110,7 +209,16 @@ const HOME_STAGGER_MS = {
   closingCta: 1400,
 } as const;
 
+/** Max horizontally scrolled video tiles per biomarker strip (full list lives on catalogue). */
+const HOME_STRIP_VIDEO_CAP = 40;
+
 export default function Home() {
+  useLayoutEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
+
   const { data: playlistsData, isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
@@ -125,34 +233,56 @@ export default function Home() {
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
 
-  const biomarkerPlaylists = useMemo(() => {
-    if (playlists.length === 0) return FALLBACK_HER2;
-    const her2 = playlists.filter(
-      (p) => /HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
-    );
-    return her2.length > 0 ? her2.map(catalogToTreatment) : FALLBACK_HER2;
+  const her2PlaylistStrip = useMemo(() => {
+    if (playlists.length === 0) return { treatments: FALLBACK_HER2, fallback: true };
+    const her2 = filterPlaylistsByFocus(playlists, 'her2');
+    return her2.length > 0
+      ? { treatments: her2.map(catalogToTreatment), fallback: false }
+      : { treatments: FALLBACK_HER2, fallback: true };
   }, [playlists]);
 
-  const hrPlusPlaylists = useMemo(() => {
-    if (playlists.length === 0) return FALLBACK_HR;
-    const hrOrTnbc = playlists.filter(
-      (p) => /HR\+|hormone|TNBC|mTNBC|CDK4|endocrine|triple.?negative/i.test(p.title) &&
-        !/HER2|her2|DESTINY-Breast/i.test(p.title)
-    );
-    if (hrOrTnbc.length > 0) return hrOrTnbc.map(catalogToTreatment);
-    const nonHer2 = playlists.filter(
-      (p) => !/HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
-    );
-    return nonHer2.length > 0 ? nonHer2.map(catalogToTreatment) : FALLBACK_HR;
+  const hrPlaylistStrip = useMemo(() => {
+    if (playlists.length === 0) return { treatments: FALLBACK_HR, fallback: true };
+    const hr = filterPlaylistsByFocus(playlists, 'hr');
+    return hr.length > 0 ? { treatments: hr.map(catalogToTreatment), fallback: false } : { treatments: FALLBACK_HR, fallback: true };
   }, [playlists]);
+
+  const biomarkerPlaylists = her2PlaylistStrip.treatments;
+  const hrPlusPlaylists = hrPlaylistStrip.treatments;
+
+  const her2StripSubtitle = useMemo(
+    () =>
+      playlistRowSubtitle('her2', her2PlaylistStrip.treatments, her2PlaylistStrip.fallback),
+    [her2PlaylistStrip],
+  );
+
+  const hrStripSubtitle = useMemo(
+    () => playlistRowSubtitle('hr', hrPlaylistStrip.treatments, hrPlaylistStrip.fallback),
+    [hrPlaylistStrip],
+  );
+
+  /** YouTube playlist ids for stripping — used to hydrate individual videos on the carousel. */
+  const her2PlaylistIds = useMemo(
+    () => (her2PlaylistStrip.fallback ? [] : her2PlaylistStrip.treatments.map((t) => t.id)),
+    [her2PlaylistStrip],
+  );
+  const hrPlaylistIds = useMemo(
+    () => (hrPlaylistStrip.fallback ? [] : hrPlaylistStrip.treatments.map((t) => t.id)),
+    [hrPlaylistStrip],
+  );
+
+  const her2FlattenedVideos = useFlattenedPlaylistVideos(her2PlaylistIds, her2PlaylistIds.length > 0);
+  const hrFlattenedVideos = useFlattenedPlaylistVideos(hrPlaylistIds, hrPlaylistIds.length > 0);
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
-    const mapped = randomVideos.map((v) => ({
-      id: v.id,
-      title: v.title,
-      imageUrl: v.thumbnailUrl || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
-      youtubeUrl: v.youtubeUrl,
-    }));
+    const mapped = randomVideos
+      .filter((v) => extractYoutubeVideoIdFromUrl(v.youtubeUrl))
+      .map((v) => ({
+        id: v.id,
+        title: v.title,
+        imageUrl: v.thumbnailUrl || `https://img.youtube.com/vi/${v.id}/hqdefault.jpg`,
+        youtubeUrl: v.youtubeUrl,
+      }));
     if (mapped.length > 0) return mapped;
     return randomVideosLoading ? [] : FALLBACK_FEATURED;
   }, [randomVideos, randomVideosLoading]);
@@ -163,6 +293,13 @@ export default function Home() {
 
   const resources: Resource[] = [
     { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
+    {
+      id: 'office-hours',
+      title: 'CHM Office Hours',
+      href: '/chm-office-hours',
+      icon: <CalendarClock className="h-10 w-10" />,
+      imageUrl: resourceImages.webinars,
+    },
     { id: 'r2', title: 'Protocols', href: '/catalog', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
     { id: 'r3', title: 'Clinicals', href: '/catalog', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
     { id: 'r4', title: 'Conversations', href: '/catalog', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
@@ -222,8 +359,8 @@ export default function Home() {
             className="home-enter mx-auto max-w-7xl px-4 sm:px-6"
             style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
           >
-            <ConversationRow title="Featured videos" seeAllHref="/catalog" seeAllLabel="See all in library">
-              <StripRowLoading />
+            <ConversationRow title="Featured videos" seeAllHref="/catalog?view=clips" seeAllLabel="See all in library">
+              <StripRowLoadingThumbnails />
             </ConversationRow>
           </div>
         )}
@@ -236,15 +373,16 @@ export default function Home() {
             <ConversationRow
               title="Featured videos"
               subtitle={`${featuredVideos.length} items`}
-              seeAllHref="/catalog"
+              seeAllHref="/catalog?view=clips"
               seeAllLabel="See all in library"
             >
               {featuredVideos.map((v) => (
                 <StripCard
                   key={v.id}
-                  to={v.id.startsWith('home-placeholder') ? '/catalog' : `/catalog/clip/${getShortClipId(v.id)}`}
+                  to={v.id.startsWith('home-placeholder') ? '/catalog?view=clips' : `/catalog/clip/${getShortClipId(v.id)}`}
                   title={v.title}
                   imageUrl={v.imageUrl}
+                  variant="thumbnailOnly"
                   meta={v.youtubeUrl ? 'YouTube' : 'Conversation'}
                 />
               ))}
@@ -252,9 +390,6 @@ export default function Home() {
           </div>
         )}
       </section>
-
-      {/* Disease Areas - horizontal carousel */}
-      <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
 
       {playlistsLoading && playlists.length === 0 ? (
         <section className="py-10 sm:py-12" aria-live="polite" aria-busy="true">
@@ -271,20 +406,34 @@ export default function Home() {
           >
             <div className="mx-auto max-w-7xl px-4 sm:px-6">
               <ConversationRow
-                title="Biomarker playlists · HER2+"
-                subtitle={`${biomarkerPlaylists.length} playlists`}
-                seeAllHref="/catalog"
-                seeAllLabel="See all in library"
+                title="HER2+"
+                subtitle={her2StripSubtitle}
+                seeAllHref={buildCatalogSectionPlaylistsHref(false, 'HER2+ Conversations')}
+                seeAllLabel={VIEW_PLAYLIST_LABEL}
               >
-                {biomarkerPlaylists.map((t) => (
-                  <StripCard
-                    key={t.id}
-                    to={t.playlistUrl}
-                    title={t.title}
-                    imageUrl={t.imageUrl}
-                    meta={t.videoNames.length > 0 ? `${t.videoNames.length} videos` : 'Playlist'}
-                  />
-                ))}
+                {her2FlattenedVideos.isLoading ? (
+                  <StripRowLoadingThumbnails />
+                ) : her2FlattenedVideos.entries.length > 0 ? (
+                  her2FlattenedVideos.entries.slice(0, HOME_STRIP_VIDEO_CAP).map((e) => (
+                    <StripCard
+                      key={`${e.playlistId}-${e.video.id}`}
+                      to={`/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`}
+                      title={e.video.title}
+                      imageUrl={e.video.thumbnailUrl || `https://img.youtube.com/vi/${e.video.id}/hqdefault.jpg`}
+                      description={e.playlistTitle}
+                    />
+                  ))
+                ) : (
+                  biomarkerPlaylists.map((t) => (
+                    <StripCard
+                      key={t.id}
+                      to={t.playlistUrl}
+                      title={t.title}
+                      imageUrl={t.imageUrl}
+                      meta={playlistMetaLabel(t.videoCount, t.videoNames.length)}
+                    />
+                  ))
+                )}
               </ConversationRow>
             </div>
           </section>
@@ -295,23 +444,40 @@ export default function Home() {
           >
             <div className="mx-auto max-w-7xl px-4 sm:px-6">
               <ConversationRow
-                title="HR+ playlists"
-                subtitle={`${hrPlusPlaylists.length} playlists`}
-                seeAllHref="/catalog"
-                seeAllLabel="See all in library"
+                title="HR+"
+                subtitle={hrStripSubtitle}
+                seeAllHref={buildCatalogSectionPlaylistsHref(false, 'HR+ · CDK4/6 · Endocrine')}
+                seeAllLabel={VIEW_PLAYLIST_LABEL}
               >
-                {hrPlusPlaylists.map((t) => (
-                  <StripCard
-                    key={t.id}
-                    to={t.playlistUrl}
-                    title={t.title}
-                    imageUrl={t.imageUrl}
-                    meta={t.videoNames.length > 0 ? `${t.videoNames.length} videos` : 'Playlist'}
-                  />
-                ))}
+                {hrFlattenedVideos.isLoading ? (
+                  <StripRowLoadingThumbnails />
+                ) : hrFlattenedVideos.entries.length > 0 ? (
+                  hrFlattenedVideos.entries.slice(0, HOME_STRIP_VIDEO_CAP).map((e) => (
+                    <StripCard
+                      key={`${e.playlistId}-${e.video.id}`}
+                      to={`/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`}
+                      title={e.video.title}
+                      imageUrl={e.video.thumbnailUrl || `https://img.youtube.com/vi/${e.video.id}/hqdefault.jpg`}
+                      description={e.playlistTitle}
+                    />
+                  ))
+                ) : (
+                  hrPlusPlaylists.map((t) => (
+                    <StripCard
+                      key={t.id}
+                      to={t.playlistUrl}
+                      title={t.title}
+                      imageUrl={t.imageUrl}
+                      meta={playlistMetaLabel(t.videoCount, t.videoNames.length)}
+                    />
+                  ))
+                )}
               </ConversationRow>
             </div>
           </section>
+
+          {/* View treatment specific content — below HR+ playlists */}
+          <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
         </>
       )}
 
@@ -351,7 +517,7 @@ export default function Home() {
             Who We Reach
           </h4>
           <div
-            className="home-enter grid grid-cols-1 gap-6 md:grid-cols-3"
+            className="home-enter grid grid-cols-1 gap-6 sm:grid-cols-3"
             style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
           >
             <div className="rounded-2xl bg-white p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
@@ -417,7 +583,7 @@ export default function Home() {
             How We Help Pharma Educate Healthcare Audiences
           </h2>
           <div className="home-enter space-y-0" style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex cursor-pointer items-center justify-between border-b border-gray-200 py-5 group-open:border-b-0 dark:border-zinc-800">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600 dark:text-emerald-400" aria-hidden>
@@ -425,7 +591,7 @@ export default function Home() {
                   </span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 dark:text-zinc-100 md:text-[1.375rem]">AI-Powered Content Automation</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -433,13 +599,13 @@ export default function Home() {
                 Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex cursor-pointer items-center justify-between border-b border-gray-200 py-5 group-open:border-b-0 dark:border-zinc-800">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600 dark:text-emerald-400" aria-hidden>✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 dark:text-zinc-100 md:text-[1.375rem]">Multi-Audience Reach</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -447,13 +613,13 @@ export default function Home() {
                 Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">Entertainment-Grade Distribution</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -461,13 +627,13 @@ export default function Home() {
                 Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">First-Party HCP Intelligence</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -475,13 +641,13 @@ export default function Home() {
                 Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
               </p>
             </details>
-            <details className="group">
+            <details className="group home-faq-item">
               <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-green-600">✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">Real Engagement Analytics</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -508,10 +674,9 @@ export default function Home() {
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6">
           <h2
-            className="home-enter text-balance mx-auto mb-6 md:mb-8"
+            className="home-enter text-balance mx-auto mb-6 md:mb-8 text-gray-900 dark:text-white"
             style={{
               animationDelay: `${HOME_STAGGER_MS.closingHead}ms`,
-              color: '#000',
               fontFamily: '"Apple Garamond", Garamond, serif',
               fontSize: 'clamp(2.5rem, 8vw, 96px)',
               fontWeight: 400,
@@ -661,19 +826,22 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
 
       <div className="mx-auto flex max-w-7xl justify-center px-4 sm:px-6">
         <div
-          className="home-enter flex items-center justify-center gap-1"
+          className="home-enter flex flex-wrap items-center justify-center gap-2"
           style={{ animationDelay: `${staggerBaseMs + 270}ms` }}
+          role="tablist"
+          aria-label="Disease area slides"
         >
           {DISEASE_AREAS.map((_, idx) => (
             <button
               key={idx}
               type="button"
+              role="tab"
+              aria-selected={idx === activeIdx}
               onClick={() => scrollTo(idx)}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-[transform] after:block after:h-2 after:w-2 after:rounded-full after:content-[''] after:transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.96] ${
-                idx === activeIdx
-                  ? 'after:bg-gray-900 dark:after:bg-zinc-100'
-                  : 'after:bg-gray-300 hover:after:bg-gray-400 dark:after:bg-zinc-600 dark:hover:after:bg-zinc-500'
-              }`}
+              className={[
+                'h-2 rounded-full transition-[width,background-color] duration-300',
+                idx === activeIdx ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+              ].join(' ')}
               aria-label={`Go to disease area ${idx + 1}`}
             />
           ))}

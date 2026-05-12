@@ -29,15 +29,18 @@ export interface Program {
   videos: Video[];
   zoomSessionType?: 'WEBINAR' | 'MEETING';
   zoomJoinUrl?: string;
+  /** Returned from GET /programs/:id only when the viewer is an authenticated admin (Zoom host start URL). */
+  zoomStartUrl?: string;
   startDate?: string;
   duration?: number;
+  /** ISO timestamp from Zoom session-ended webhooks (preferred for showing post-event survey). */
+  zoomSessionEndedAt?: string;
   jotformSurveyUrl?: string;
   jotformIntakeFormUrl?: string;
   jotformPreEventUrl?: string;
   registrationRequiresApproval?: boolean;
   hostDisplayName?: string;
-  /** Configured in admin; actual URL only after enrollment via getCalendlyScheduling (app + signed in). */
-  hasCalendlyScheduling?: boolean;
+  hostBio?: string;
 }
 
 export interface OfficeHoursSlotOption {
@@ -49,13 +52,53 @@ export interface OfficeHoursSlotOption {
   remaining: number;
 }
 
+export type PostEventAttendanceStatus =
+  | 'NOT_REQUIRED'
+  | 'PENDING_VERIFICATION'
+  | 'VERIFIED'
+  | 'DENIED';
+
 export interface ProgramRegistrationState {
   id: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
   officeHoursSlotId?: string;
+  /** Present when intake Jotform redirect included a submission id */
+  intakeJotformSubmissionId?: string;
+  /** When intake was recorded (submit or webhook) */
+  intakeJotformSubmittedAt?: string;
   createdAt: string;
   reviewedAt?: string;
+  postEventAttendanceStatus?: PostEventAttendanceStatus;
+  postEventSurveyAcknowledgedAt?: string;
+  postEventJotformSubmissionId?: string;
+  honorariumRequestedAt?: string;
+  honorariumPayment?: { id: string; status: string } | null;
 }
+
+export type HonorariumProgramPreview = {
+  programTitle: string;
+  honorariumAmountCents: number;
+  payeeDisplayName: string;
+  maskedBankLast4: string | null;
+  addressSummary: string | null;
+  hasBillVendor: boolean;
+  w9Submitted: boolean;
+};
+
+export type LiveWebinarActionItem = {
+  id: string;
+  kind: 'WEBINAR_INVITATION_SURVEY' | 'WEBINAR_POST_EVENT_SURVEY';
+  title: string;
+  body: string;
+  programId: string;
+  href: string;
+};
+
+export type MyLiveSessionListStatus = {
+  programId: string;
+  enrolled: boolean;
+  registrationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED' | null;
+};
 
 export interface Enrollment {
   id: string;
@@ -77,6 +120,16 @@ export interface Enrollment {
 }
 
 export const programsApi = {
+  getLiveActionItems: async (): Promise<LiveWebinarActionItem[]> => {
+    const { data } = await apiClient.get<LiveWebinarActionItem[]>('/programs/live-action-items');
+    return data ?? [];
+  },
+
+  getMyLiveSessionStatus: async (): Promise<MyLiveSessionListStatus[]> => {
+    const { data } = await apiClient.get<MyLiveSessionListStatus[]>('/programs/me/live-session-status');
+    return data ?? [];
+  },
+
   getAll: async (): Promise<Program[]> => {
     try {
       const { data } = await apiClient.get('/programs');
@@ -189,11 +242,40 @@ export const programsApi = {
     return data;
   },
 
-  /** Enrolled users only; returns null if not enrolled or no URL configured. */
-  getCalendlyScheduling: async (programId: string): Promise<{ calendlySchedulingUrl: string | null }> => {
-    const { data } = await apiClient.get<{ calendlySchedulingUrl: string | null }>(
-      `/programs/${encodeURIComponent(programId)}/calendly-scheduling`,
+  getJotformResume: async (
+    programId: string,
+  ): Promise<{ sessionId: string; expiresAt: string } | null> => {
+    const { data } = await apiClient.get(`/programs/${encodeURIComponent(programId)}/jotform-resume`);
+    return data ?? null;
+  },
+
+  putJotformResume: async (programId: string, sessionId: string): Promise<void> => {
+    await apiClient.put(`/programs/${encodeURIComponent(programId)}/jotform-resume`, { sessionId });
+  },
+
+  acknowledgePostEventSurvey: async (programId: string): Promise<void> => {
+    await apiClient.post(`/programs/${encodeURIComponent(programId)}/post-event/acknowledge-survey`);
+  },
+
+  requestPostEventHonorarium: async (
+    programId: string,
+  ): Promise<{
+    paymentId: string | null;
+    created: boolean;
+    alreadyRequested?: true;
+  }> => {
+    const { data } = await apiClient.post<{
+      paymentId: string | null;
+      created: boolean;
+      alreadyRequested?: true;
+    }>(`/programs/${encodeURIComponent(programId)}/post-event/request-honorarium`);
+    return data;
+  },
+
+  getHonorariumPreview: async (programId: string): Promise<HonorariumProgramPreview> => {
+    const { data } = await apiClient.get<HonorariumProgramPreview>(
+      `/programs/${encodeURIComponent(programId)}/honorarium-preview`,
     );
-    return data ?? { calendlySchedulingUrl: null };
+    return data;
   },
 };

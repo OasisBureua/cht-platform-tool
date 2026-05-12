@@ -61,6 +61,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push worker image
+        id: worker
         uses: docker/build-push-action@v5
         with:
           context: ./worker
@@ -86,7 +87,7 @@ jobs:
           terraform apply \
             -var-file="../variables/dev.tfvars" \
             -var="backend_image=${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}" \
-            -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}" \
+            -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker@${{ steps.worker.outputs.digest }}" \
             -auto-approve
         env:
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}

@@ -87,7 +87,8 @@ async function syncMediahub(user: {
   const key = process.env.MEDIAHUB_API_KEY?.trim();
   if (!key || !user.npiNumber) return false;
   const base = (
-    process.env.MEDIAHUB_BASE_URL || 'https://mediahub.communityhealth.media/api/public'
+    process.env.MEDIAHUB_BASE_URL ||
+    'https://mediahub.communityhealth.media/api/public'
   ).replace(/\/$/, '');
   const res = await fetch(`${base}/hcp/upsert`, {
     method: 'POST',
@@ -195,17 +196,25 @@ async function run(dry: boolean): Promise<Stats> {
       const results = await Promise.allSettled([
         syncHubspot({ ...u, npiNumber: hasNpi ? npi : null }),
         syncMailchimp({ ...u, npiNumber: hasNpi ? npi : null }),
-        hasNpi ? syncMediahub({ ...u, npiNumber: npi }) : Promise.resolve(false),
+        hasNpi
+          ? syncMediahub({ ...u, npiNumber: npi })
+          : Promise.resolve(false),
       ]);
 
-      if (results[0].status === 'fulfilled' && results[0].value) stats.hubspot_ok++;
-      else if (results[0].status === 'rejected') stats.errors.push(`hubspot ${u.email}: ${results[0].reason}`);
+      if (results[0].status === 'fulfilled' && results[0].value)
+        stats.hubspot_ok++;
+      else if (results[0].status === 'rejected')
+        stats.errors.push(`hubspot ${u.email}: ${results[0].reason}`);
 
-      if (results[1].status === 'fulfilled' && results[1].value) stats.mailchimp_ok++;
-      else if (results[1].status === 'rejected') stats.errors.push(`mailchimp ${u.email}: ${results[1].reason}`);
+      if (results[1].status === 'fulfilled' && results[1].value)
+        stats.mailchimp_ok++;
+      else if (results[1].status === 'rejected')
+        stats.errors.push(`mailchimp ${u.email}: ${results[1].reason}`);
 
-      if (results[2].status === 'fulfilled' && results[2].value) stats.mediahub_ok++;
-      else if (results[2].status === 'rejected') stats.errors.push(`mediahub ${u.email}: ${results[2].reason}`);
+      if (results[2].status === 'fulfilled' && results[2].value)
+        stats.mediahub_ok++;
+      else if (results[2].status === 'rejected')
+        stats.errors.push(`mediahub ${u.email}: ${results[2].reason}`);
 
       // Be polite: throttle ~5 req/s so we don't tip over Mailchimp or HubSpot rate limits.
       await new Promise((r) => setTimeout(r, 200));

@@ -1,4 +1,12 @@
-import { Controller, Post, Body, Headers, Req, Logger, HttpCode } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  Req,
+  Logger,
+  HttpCode,
+} from '@nestjs/common';
 import type { Request } from 'express';
 import { ZoomWebhookService } from './zoom-webhook.service';
 
@@ -8,7 +16,7 @@ import { ZoomWebhookService } from './zoom-webhook.service';
  * Also handles endpoint.url_validation when adding webhook in Zoom App Marketplace.
  *
  * Configure in Zoom App Marketplace: Event Subscriptions → Add Endpoint
- * Events: meeting.participant_joined, meeting.participant_left
+ * Events: meeting.participant_joined, meeting.participant_left, meeting.ended, webinar.ended
  * Set ZOOM_WEBHOOK_SECRET to the Secret Token from Zoom.
  */
 @Controller('webhooks/zoom')
@@ -25,7 +33,12 @@ export class ZoomWebhookController {
     @Headers('x-zm-request-timestamp') timestamp: string,
     @Req() req: Request,
   ): Promise<Record<string, unknown>> {
-    const rawBody = (req as Request & { rawBody?: string }).rawBody as string | undefined;
-    return this.webhookService.processWebhook(body, signature ?? '', timestamp ?? '', rawBody);
+    const rawBody = (req as Request & { rawBody?: string }).rawBody;
+    return this.webhookService.processWebhook(
+      body,
+      signature ?? '',
+      timestamp ?? '',
+      rawBody,
+    );
   }
 }

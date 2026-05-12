@@ -152,17 +152,17 @@ resource "aws_appautoscaling_policy" "worker_sqs" {
         value = var.primary_queue_name
       }
     }
-    target_value = 10.0  # Scale when queue has >10 messages
+    target_value = 10.0 # Scale when queue has >10 messages
   }
 }
 
 resource "aws_appautoscaling_scheduled_action" "worker_scale_up" {
-  count               = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
-  name                = "${local.prefix}-worker-scale-up" 
-  service_namespace   = "ecs"
-  resource_id         = aws_appautoscaling_target.worker.resource_id
-  scalable_dimension  = aws_appautoscaling_target.worker.scalable_dimension
-  schedule            = "cron(0 13 ? * MON-FRI *)"
+  count              = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
+  name               = "${local.prefix}-worker-scale-up"
+  service_namespace  = "ecs"
+  resource_id        = aws_appautoscaling_target.worker.resource_id
+  scalable_dimension = aws_appautoscaling_target.worker.scalable_dimension
+  schedule           = "cron(0 13 ? * MON-FRI *)"
 
   scalable_target_action {
     min_capacity = var.min_capacity

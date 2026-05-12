@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 
 /**
- * OAuth callback page. GoTrue redirects here after Google/Apple sign-in.
+ * OAuth callback page. GoTrue redirects here after Google OAuth sign-in.
  * URL hash contains: access_token, refresh_token, etc.
  * Capture hash at module load (before Supabase client can clear it).
  */
@@ -43,10 +43,6 @@ export default function AuthCallback() {
       if (cancelled) return;
       if (result.error) {
         setError(result.error.message || 'Sign-in failed.');
-        return;
-      }
-      if (result.profileComplete === false) {
-        navigate('/complete-profile', { replace: true });
         return;
       }
       const fromParam = searchParams.get('from');

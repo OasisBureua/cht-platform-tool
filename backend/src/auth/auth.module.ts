@@ -5,6 +5,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { GoTrueStrategy } from './gotrue.strategy';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
 
@@ -18,6 +19,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
   ],
   providers: [
     AuthService,
+    JwtAuthGuard,
     {
       provide: JwtStrategy,
       useFactory: (config: ConfigService, auth: AuthService) => {
@@ -33,6 +35,6 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
       inject: [ConfigService, AuthService],
     },
   ],
-  exports: [AuthService],
+  exports: [AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

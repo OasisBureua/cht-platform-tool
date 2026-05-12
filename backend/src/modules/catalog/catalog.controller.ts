@@ -35,9 +35,12 @@ export class CatalogController {
     try {
       return await this.mediahub.getTags();
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 401) {
-        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.');
+        this.logger.warn(
+          '[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.',
+        );
         return {};
       }
       throw err;
@@ -74,9 +77,12 @@ export class CatalogController {
         offset: offset ? parseInt(offset, 10) : undefined,
       });
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 401) {
-        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.');
+        this.logger.warn(
+          '[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.',
+        );
         return { items: [], total: 0 };
       }
       throw err;
@@ -87,6 +93,8 @@ export class CatalogController {
    * GET /api/catalog/clips/:id
    * MediaHub: Single clip detail.
    * Accepts full ID (e.g. official:youtube:E1tTwDQgMBc) or short YouTube video ID (e.g. E1tTwDQgMBc).
+   * Returns null (200) instead of throwing when the clip is not found in MediaHub, so the
+   * frontend can show "not available" placeholders rather than an error page.
    */
   @Get('clips/:id')
   async getClip(@Param('id') id: string) {
@@ -102,7 +110,12 @@ export class CatalogController {
         // Fall through to try raw id
       }
     }
-    return this.mediahub.getClip(id);
+    try {
+      return await this.mediahub.getClip(id);
+    } catch {
+      // Clip not found in MediaHub — return null so frontend shows "not available"
+      return null;
+    }
   }
 
   /**
@@ -118,9 +131,12 @@ export class CatalogController {
     try {
       return await this.mediahub.getDoctors();
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 401) {
-        this.logger.warn('[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.');
+        this.logger.warn(
+          '[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.',
+        );
         return [];
       }
       throw err;
@@ -144,7 +160,11 @@ export class CatalogController {
    * MediaHub: Full-text search (alias for clips with q).
    */
   @Get('search')
-  async search(@Query('q') q?: string, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+  async search(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
     if (!this.mediahub.isConfigured() || !q) {
       return { items: [], total: 0 };
     }
@@ -157,13 +177,18 @@ export class CatalogController {
   /**
    * GET /api/catalog/transcripts/:shootId
    * MediaHub: Full diarized transcript with speaker names.
+   * Returns null (200) on missing shoot so the frontend shows "not available" rather than an error.
    */
   @Get('transcripts/:shootId')
   async getTranscript(@Param('shootId') shootId: string) {
     if (!this.mediahub.isConfigured()) {
       return null;
     }
-    return this.mediahub.getTranscript(shootId);
+    try {
+      return await this.mediahub.getTranscript(shootId);
+    } catch {
+      return null;
+    }
   }
 
   /**

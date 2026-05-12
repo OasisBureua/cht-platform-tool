@@ -20,10 +20,10 @@ The backend validates the GoTrue JWT with `GOTRUE_JWT_SECRET` and creates a CHT 
 ## Frontend
 
 - **Login & Join pages:** Google and Apple buttons call `supabase.auth.signInWithOAuth({ provider })`
-- **Redirect:** `redirectTo: ${origin}/auth/callback?from=/app/home` — always back to CHT platform
+- **Redirect:** `redirectTo: ${origin}/auth/callback?from=/app/home` - always back to CHT platform
 - **Callback:** Extracts token, calls `POST /api/auth/login-oauth`, stores session, navigates to `/app/home`
 
-## GoTrue Configuration (Sebastien) — Critical
+## GoTrue Configuration (Sebastien) - Critical
 
 **OAuth must redirect to the CHT platform, NOT MediaHub.** The fix is to pass `redirect_to` when calling the authorize endpoint:
 

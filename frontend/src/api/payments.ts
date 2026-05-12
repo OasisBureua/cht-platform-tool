@@ -83,6 +83,12 @@ export const paymentsApi = {
     return data;
   },
 
+  /** Re-fetch vendor state from Bill.com and update local user flags (after changes in Bill.com UI). */
+  syncAccountStatus: async (userId: string) => {
+    const { data } = await apiClient.post(`/payments/${userId}/sync-account`);
+    return data;
+  },
+
   submitW9: async (
     userId: string,
     data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },
@@ -91,12 +97,18 @@ export const paymentsApi = {
     return result;
   },
 
-  requestPayout: async (userId: string, amount?: number) => {
+  requestPayout: async (userId: string, amount?: number, idempotencyKey?: string) => {
     try {
+      const key =
+        idempotencyKey ||
+        (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `payout-${Date.now()}-${Math.random().toString(36).slice(2)}`);
       const { data } = await apiClient.post(`/payments/payout`, {
         userId,
         amount: amount ? Math.round(amount * 100) : 0,
         description: 'Payout request',
+        idempotencyKey: key,
       });
       return data;
     } catch (err) {

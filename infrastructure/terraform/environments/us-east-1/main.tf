@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -9,11 +9,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "cht-platform-terraform-state"  # Create with: aws s3 mb s3://cht-platform-terraform-state
-    key            = "us-east-1/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    dynamodb_table = "cht-platform-terraform-locks"
+    bucket       = "cht-platform-terraform-state" # Create with: aws s3 mb s3://cht-platform-terraform-state
+    key          = "us-east-1/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
@@ -54,12 +54,12 @@ module "kms" {
 module "vpc" {
   source = "../../modules/networking/vpc"
 
-  project            = var.project
-  environment        = var.environment
-  vpc_cidr           = "10.0.0.0/16"
-  availability_zones = ["us-east-1a", "us-east-1b"]
-  enable_nat_gateway = true
-  enable_flow_logs   = true
+  project                = var.project
+  environment            = var.environment
+  vpc_cidr               = "10.0.0.0/16"
+  availability_zones     = ["us-east-1a", "us-east-1b"]
+  enable_nat_gateway     = true
+  enable_flow_logs       = true
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
 }
 
@@ -94,12 +94,13 @@ module "rds" {
   project                 = var.project
   environment             = var.environment
   vpc_id                  = module.vpc.vpc_id
-  private_subnet_ids       = module.vpc.private_subnet_ids
-  allowed_security_groups  = [module.ecs_backend.security_group_id, aws_security_group.worker.id]
-  kms_key_arn            = module.kms.rds_kms_key_arn
-  instance_class         = var.rds_instance_class
-  allocated_storage      = var.rds_allocated_storage
-  multi_az               = var.rds_multi_az
+  private_subnet_ids      = module.vpc.private_subnet_ids
+  allowed_security_groups = [module.ecs_backend.security_group_id, aws_security_group.worker.id]
+  kms_key_arn             = module.kms.rds_kms_key_arn
+  instance_class          = var.rds_instance_class
+  engine_version          = var.rds_engine_version
+  allocated_storage       = var.rds_allocated_storage
+  multi_az                = var.rds_multi_az
   backup_retention_period = var.rds_backup_retention
 }
 
@@ -109,15 +110,15 @@ module "rds" {
 module "elasticache" {
   source = "../../modules/cache/elasticache"
 
-  project                = var.project
-  environment            = var.environment
-  vpc_id                 = module.vpc.vpc_id
-  private_subnet_ids     = module.vpc.private_subnet_ids
+  project                 = var.project
+  environment             = var.environment
+  vpc_id                  = module.vpc.vpc_id
+  private_subnet_ids      = module.vpc.private_subnet_ids
   allowed_security_groups = [module.ecs_backend.security_group_id]
-  kms_key_arn            = module.kms.elasticache_kms_key_arn
-  cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
-  node_type              = var.redis_node_type
-  num_cache_nodes        = var.redis_num_nodes
+  kms_key_arn             = module.kms.elasticache_kms_key_arn
+  cloudwatch_kms_key_arn  = module.kms.cloudwatch_kms_key_arn
+  node_type               = var.redis_node_type
+  num_cache_nodes         = var.redis_num_nodes
 }
 
 # ============================================
@@ -184,26 +185,32 @@ module "secrets" {
   redis_endpoint = module.elasticache.redis_endpoint
   redis_port     = module.elasticache.redis_port
 
-  supabase_url             = var.supabase_url
-  supabase_anon_key        = var.supabase_anon_key
-  gotrue_jwt_secret        = var.gotrue_jwt_secret
-  mediahub_base_url        = var.mediahub_base_url
-  mediahub_api_key         = var.mediahub_api_key
-  youtube_api_key          = var.youtube_api_key
-  youtube_playlist_ids     = var.youtube_playlist_ids
-  zoom_account_id          = var.zoom_account_id
-  zoom_client_id           = var.zoom_client_id
-  zoom_client_secret       = var.zoom_client_secret
-  zoom_webhook_secret      = var.zoom_webhook_secret
-  jotform_api_key          = var.jotform_api_key
-  bill_dev_key             = var.bill_dev_key
-  bill_username            = var.bill_username
-  bill_password            = var.bill_password
-  bill_org_id              = var.bill_org_id
-  bill_funding_account_id  = var.bill_funding_account_id
-  bill_webhook_secret      = var.bill_webhook_secret
-  admin_bootstrap_secret   = var.admin_bootstrap_secret
-  hubspot_access_token     = var.hubspot_access_token
+  supabase_url                              = var.supabase_url
+  supabase_anon_key                         = var.supabase_anon_key
+  gotrue_jwt_secret                         = var.gotrue_jwt_secret
+  mediahub_base_url                         = var.mediahub_base_url
+  mediahub_api_key                          = var.mediahub_api_key
+  youtube_api_key                           = var.youtube_api_key
+  youtube_playlist_ids                      = var.youtube_playlist_ids
+  zoom_account_id                           = var.zoom_account_id
+  zoom_client_id                            = var.zoom_client_id
+  zoom_client_secret                        = var.zoom_client_secret
+  zoom_webhook_secret                       = var.zoom_webhook_secret
+  zoom_sdk_key                              = var.zoom_sdk_key
+  zoom_sdk_secret                           = var.zoom_sdk_secret
+  jotform_api_key                           = var.jotform_api_key
+  jotform_webinar_default_intake_url        = var.jotform_webinar_default_intake_url
+  jotform_webinar_post_event_shared_form_id = var.jotform_webinar_post_event_shared_form_id
+  bill_dev_key                              = var.bill_dev_key
+  bill_username                             = var.bill_username
+  bill_password                             = var.bill_password
+  bill_org_id                               = var.bill_org_id
+  bill_funding_account_id                   = var.bill_funding_account_id
+  bill_webhook_secret                       = var.bill_webhook_secret
+  bill_mfa_remember_me_id                   = var.bill_mfa_remember_me_id
+  bill_mfa_device_name                      = var.bill_mfa_device_name
+  admin_bootstrap_secret                    = var.admin_bootstrap_secret
+  hubspot_access_token                      = var.hubspot_access_token
 }
 
 # ============================================
@@ -212,18 +219,18 @@ module "secrets" {
 module "iam" {
   source = "../../modules/security/iam"
 
-  project                 = var.project
-  environment             = var.environment
-  secrets_arns            = [
+  project     = var.project
+  environment = var.environment
+  secrets_arns = [
     module.secrets.database_secret_arn,
     module.secrets.redis_secret_arn,
     module.secrets.app_secrets_arn
   ]
-  kms_key_arns            = [
+  kms_key_arns = [
     module.kms.secrets_kms_key_arn,
     module.kms.sqs_kms_key_arn
   ]
-  sqs_queue_arns          = [
+  sqs_queue_arns = [
     module.sqs.email_queue_arn,
     module.sqs.payment_queue_arn,
     module.sqs.cme_queue_arn
@@ -251,11 +258,11 @@ module "alb" {
 module "ecs_cluster" {
   source = "../../modules/compute/ecs-cluster"
 
-  project                 = var.project
-  environment             = var.environment
+  project                   = var.project
+  environment               = var.environment
   enable_container_insights = true
-  log_retention_days     = (var.environment == "prod" || var.environment == "platform") ? 7 : 3
-  cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
+  log_retention_days        = (var.environment == "prod" || var.environment == "platform") ? 7 : 3
+  cloudwatch_kms_key_arn    = module.kms.cloudwatch_kms_key_arn
 }
 
 # ============================================
@@ -264,28 +271,28 @@ module "ecs_cluster" {
 module "ecs_backend" {
   source = "../../modules/compute/ecs-backend"
 
-  project                = var.project
-  environment            = var.environment
-  aws_region             = "us-east-1"
-  vpc_id                 = module.vpc.vpc_id
-  private_subnet_ids     = module.vpc.private_subnet_ids
-  cluster_id             = module.ecs_cluster.cluster_id
-  cluster_name           = module.ecs_cluster.cluster_name
-  execution_role_arn     = module.iam.ecs_task_execution_role_arn
-  task_role_arn          = module.iam.ecs_task_role_arn
-  alb_security_group_id  = module.alb.alb_security_group_id
-  target_group_arn       = module.alb.backend_target_group_arn
-  alb_listener_arn       = module.alb.https_listener_arn
-  log_group_name         = module.ecs_cluster.log_group_name
-  container_image        = var.backend_image
-  database_secret_arn    = module.secrets.database_secret_arn
-  redis_secret_arn       = module.secrets.redis_secret_arn
-  app_secrets_arn        = module.secrets.app_secrets_arn
-  task_cpu               = var.backend_task_cpu
-  task_memory            = var.backend_task_memory
-  desired_count          = var.backend_desired_count
-  min_capacity           = var.backend_min_capacity
-  max_capacity           = var.backend_max_capacity
+  project               = var.project
+  environment           = var.environment
+  aws_region            = "us-east-1"
+  vpc_id                = module.vpc.vpc_id
+  private_subnet_ids    = module.vpc.private_subnet_ids
+  cluster_id            = module.ecs_cluster.cluster_id
+  cluster_name          = module.ecs_cluster.cluster_name
+  execution_role_arn    = module.iam.ecs_task_execution_role_arn
+  task_role_arn         = module.iam.ecs_task_role_arn
+  alb_security_group_id = module.alb.alb_security_group_id
+  target_group_arn      = module.alb.backend_target_group_arn
+  alb_listener_arn      = module.alb.https_listener_arn
+  log_group_name        = module.ecs_cluster.log_group_name
+  container_image       = var.backend_image
+  database_secret_arn   = module.secrets.database_secret_arn
+  redis_secret_arn      = module.secrets.redis_secret_arn
+  app_secrets_arn       = module.secrets.app_secrets_arn
+  task_cpu              = var.backend_task_cpu
+  task_memory           = var.backend_task_memory
+  desired_count         = var.backend_desired_count
+  min_capacity          = var.backend_min_capacity
+  max_capacity          = var.backend_max_capacity
   frontend_url          = "https://${var.domain_name}"
   sqs_email_queue_url   = module.sqs.email_queue_url
   sqs_payment_queue_url = module.sqs.payment_queue_url
@@ -298,26 +305,26 @@ module "ecs_backend" {
 module "ecs_worker" {
   source = "../../modules/compute/ecs-worker"
 
-  project             = var.project
-  environment         = var.environment
-  aws_region          = "us-east-1"
-  vpc_id              = module.vpc.vpc_id
-  private_subnet_ids  = module.vpc.private_subnet_ids
-  cluster_id          = module.ecs_cluster.cluster_id
-  cluster_name        = module.ecs_cluster.cluster_name
-  execution_role_arn  = module.iam.ecs_task_execution_role_arn
-  task_role_arn       = module.iam.worker_task_role_arn
-  log_group_name      = module.ecs_cluster.log_group_name
-  container_image     = var.worker_image
-  database_secret_arn = module.secrets.database_secret_arn
-  app_secrets_arn     = module.secrets.app_secrets_arn
-  primary_queue_name  = "${local.resource_prefix}-email-queue"
-  task_cpu            = var.worker_task_cpu
-  task_memory         = var.worker_task_memory
-  desired_count       = var.worker_desired_count
-  min_capacity        = var.worker_min_capacity
-  max_capacity        = var.worker_max_capacity
-  security_group_ids  = [aws_security_group.worker.id]
+  project               = var.project
+  environment           = var.environment
+  aws_region            = "us-east-1"
+  vpc_id                = module.vpc.vpc_id
+  private_subnet_ids    = module.vpc.private_subnet_ids
+  cluster_id            = module.ecs_cluster.cluster_id
+  cluster_name          = module.ecs_cluster.cluster_name
+  execution_role_arn    = module.iam.ecs_task_execution_role_arn
+  task_role_arn         = module.iam.worker_task_role_arn
+  log_group_name        = module.ecs_cluster.log_group_name
+  container_image       = var.worker_image
+  database_secret_arn   = module.secrets.database_secret_arn
+  app_secrets_arn       = module.secrets.app_secrets_arn
+  primary_queue_name    = "${local.resource_prefix}-email-queue"
+  task_cpu              = var.worker_task_cpu
+  task_memory           = var.worker_task_memory
+  desired_count         = var.worker_desired_count
+  min_capacity          = var.worker_min_capacity
+  max_capacity          = var.worker_max_capacity
+  security_group_ids    = [aws_security_group.worker.id]
   sqs_email_queue_url   = module.sqs.email_queue_url
   sqs_payment_queue_url = module.sqs.payment_queue_url
   sqs_cme_queue_url     = module.sqs.cme_queue_url
@@ -331,7 +338,7 @@ module "waf_cloudfront" {
 
   project              = var.project
   environment          = var.environment
-  enable_managed_rules  = true
+  enable_managed_rules = true
   enable_rate_limit    = true
   rate_limit_count     = 2000
   allowed_countries    = [] # Empty = allow all; set e.g. ["US","CA"] to restrict
@@ -343,16 +350,16 @@ module "waf_cloudfront" {
 module "cloudfront" {
   source = "../../modules/networking/cloudfront"
 
-  project                  = var.project
-  environment              = var.environment
-  s3_bucket_id             = module.s3_frontend.bucket_id
-  s3_bucket_domain_name    = module.s3_frontend.bucket_domain_name
-  cloudfront_oai_path      = module.s3_frontend.cloudfront_oai_path
-  certificate_arn          = var.cloudfront_certificate_arn
-  domain_aliases           = [var.domain_name]
-  api_origin_domain        = module.alb.alb_dns_name
-  price_class              = "PriceClass_100"
-  web_acl_id               = module.waf_cloudfront.web_acl_arn
+  project               = var.project
+  environment           = var.environment
+  s3_bucket_id          = module.s3_frontend.bucket_id
+  s3_bucket_domain_name = module.s3_frontend.bucket_domain_name
+  cloudfront_oai_path   = module.s3_frontend.cloudfront_oai_path
+  certificate_arn       = var.cloudfront_certificate_arn
+  domain_aliases        = [var.domain_name]
+  api_origin_domain     = module.alb.alb_dns_name
+  price_class           = "PriceClass_100"
+  web_acl_id            = module.waf_cloudfront.web_acl_arn
 }
 
 # ============================================
@@ -361,8 +368,8 @@ module "cloudfront" {
 module "route53" {
   source = "../../modules/networking/route53"
 
-  project     = var.project
-  environment = var.environment
+  project        = var.project
+  environment    = var.environment
   subdomain_zone = var.domain_name
 
   primary_alb_dns            = module.alb.alb_dns_name

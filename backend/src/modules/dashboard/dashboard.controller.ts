@@ -1,4 +1,12 @@
-import { Controller, Get, Patch, Param, Body, Logger, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Body,
+  Logger,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { DashboardService } from './dashboard.service';
@@ -19,7 +27,9 @@ export class DashboardController {
    * Get user's earnings breakdown (auth required)
    */
   @Get(':userId/earnings')
-  async getEarnings(@Param('userId') userId: string): Promise<EarningsResponseDto> {
+  async getEarnings(
+    @Param('userId') userId: string,
+  ): Promise<EarningsResponseDto> {
     this.logger.log(`Getting earnings for user: ${userId}`);
     return this.dashboardService.getEarnings(userId);
   }
@@ -39,14 +49,16 @@ export class DashboardController {
    * Get user profile for Settings page (auth required)
    */
   @Get(':userId/profile')
-  async getProfile(@Param('userId') userId: string): Promise<ProfileResponseDto> {
+  async getProfile(
+    @Param('userId') userId: string,
+  ): Promise<ProfileResponseDto> {
     this.logger.log(`Getting profile for user: ${userId}`);
     return this.dashboardService.getProfile(userId);
   }
 
   /**
    * PATCH /api/dashboard/:userId/profile
-   * Update user profile (firstName, lastName only for now)
+   * Update name, profession (specialty), NPI, practice location, etc.
    */
   @Patch(':userId/profile')
   async updateProfile(
@@ -59,6 +71,10 @@ export class DashboardController {
       lastName: dto.lastName,
       specialty: dto.specialty,
       npiNumber: dto.npiNumber,
+      institution: dto.institution,
+      city: dto.city,
+      state: dto.state,
+      zipCode: dto.zipCode,
     });
   }
 }

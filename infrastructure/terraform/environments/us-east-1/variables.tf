@@ -30,6 +30,12 @@ variable "rds_instance_class" {
   type        = string
 }
 
+variable "rds_engine_version" {
+  description = "PostgreSQL engine version — must match or exceed the version currently running in AWS (downgrades are not allowed)"
+  type        = string
+  default     = "15.17"
+}
+
 variable "rds_allocated_storage" {
   description = "RDS allocated storage (GB)"
   type        = number
@@ -200,11 +206,39 @@ variable "zoom_webhook_secret" {
   default     = ""
 }
 
+variable "zoom_sdk_key" {
+  description = "Zoom Meeting SDK Client ID / SDK Key (in-browser join — separate from Server-to-Server OAuth)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_sdk_secret" {
+  description = "Zoom Meeting SDK Client Secret (Meeting SDK app at marketplace.zoom.us)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
 variable "jotform_api_key" {
   description = "Jotform API key for surveys (from Jotform enterprise account)"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "jotform_webinar_default_intake_url" {
+  description = "Optional public Jotform URL for webinar registration when a Program has no jotformIntakeFormUrl (set in Admin). Passed to backend as JOTFORM_WEBINAR_DEFAULT_INTAKE_URL."
+  type        = string
+  sensitive   = false
+  default     = ""
+}
+
+variable "jotform_webinar_post_event_shared_form_id" {
+  description = "Optional Jotform form ID for shared post-event survey (JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID on ECS)"
+  type        = string
+  sensitive   = false
   default     = ""
 }
 
@@ -246,6 +280,20 @@ variable "bill_funding_account_id" {
 
 variable "bill_webhook_secret" {
   description = "Bill.com webhook signing secret for validating payment events"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_mfa_remember_me_id" {
+  description = "Bill MFA remember-me id (~30d); from /v3/mfa/challenge/validate with rememberMe true"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_mfa_device_name" {
+  description = "Must match the device string used when obtaining rememberMeId"
   type        = string
   sensitive   = true
   default     = ""

@@ -46,4 +46,14 @@ apiClient.interceptors.response.use(
   },
 );
 
+/** NestJS often returns `{ message: string | string[] }` on 4xx; axios uses generic `Error` otherwise. */
+export function getApiErrorMessage(err: unknown, fallback = 'Something went wrong.'): string {
+  const ax = err as { response?: { data?: { message?: string | string[] } } };
+  const m = ax.response?.data?.message;
+  if (Array.isArray(m)) return m.filter(Boolean).join('; ');
+  if (typeof m === 'string' && m.trim()) return m;
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 export default apiClient;

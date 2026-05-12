@@ -20,15 +20,15 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
       override        = true
     }
     xss_protection {
-      mode_block  = true
-      protection  = true
-      override    = true
+      mode_block = true
+      protection = true
+      override   = true
     }
     strict_transport_security {
       access_control_max_age_sec = 63072000 # 2 years
-      include_subdomains        = true
-      preload                   = true
-      override                  = true
+      include_subdomains         = true
+      preload                    = true
+      override                   = true
     }
   }
 }
@@ -93,7 +93,7 @@ resource "aws_cloudfront_distribution" "frontend" {
       cached_methods             = ["GET", "HEAD"]
       target_origin_id           = "ALB-API"
       compress                   = true
-      viewer_protocol_policy      = "redirect-to-https"
+      viewer_protocol_policy     = "redirect-to-https"
       response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
       forwarded_values {
         query_string = true

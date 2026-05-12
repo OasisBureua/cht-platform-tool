@@ -5,12 +5,14 @@ import { Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
+import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNavItems';
+import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
   const location = useLocation();
   const isInApp = location.pathname.startsWith('/app');
-  const catalogUrl = isInApp ? '/app/catalog' : '/catalog';
+  const catalogUrl = isInApp ? APP_CATALOG_PLAYLISTS_BROWSE : '/catalog?view=playlists';
   const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
 
   const { data, isLoading } = useQuery({
@@ -31,6 +33,36 @@ export default function PlaylistDetail() {
     }
   }, [data?.videos, videoIdFromUrl]);
 
+  // Derive selected video safely — may be undefined before data loads
+  const videos = data?.videos ?? [];
+  const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));
+  const selectedVideo = videos[safeIndex];
+
+  // All hooks must come before any early returns (Rules of Hooks)
+  const { data: clipDetail } = useQuery({
+    queryKey: ['catalog', 'clip', selectedVideo?.id],
+    queryFn: () => catalogApi.getClip(selectedVideo!.id),
+    enabled: !!selectedVideo?.id,
+    staleTime: 10 * 60 * 1000,
+    retry: 0, // 404s from MediaHub are expected; don't retry
+  });
+
+  const shootId = (clipDetail as Record<string, unknown> | undefined)?.shoot_id as string | undefined;
+  const summary = clipDetail ? clipDisplaySummary(clipDetail as Record<string, unknown>) : '';
+
+  const { data: transcript, isLoading: transcriptLoading } = useQuery({
+    queryKey: ['catalog', 'transcript', shootId],
+    queryFn: () => catalogApi.getTranscript(shootId!),
+    enabled: !!shootId,
+    staleTime: 10 * 60 * 1000,
+    retry: 0,
+  });
+
+  const shareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${location.pathname}${selectedVideo ? `?v=${selectedVideo.id}` : ''}`
+    : '';
+
+  // Early returns after all hooks
   if (!playlistId) {
     return (
       <div className="bg-white min-h-screen flex items-center justify-center">
@@ -58,12 +90,7 @@ export default function PlaylistDetail() {
     );
   }
 
-  const { playlist, videos } = data;
-  const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));
-  const selectedVideo = videos[safeIndex] ?? videos[0];
-  const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${location.pathname}${selectedVideo ? `?v=${selectedVideo.id}` : ''}`
-    : '';
+  const { playlist } = data;
 
   return (
     <div className="bg-white min-h-screen min-w-0">
@@ -104,14 +131,32 @@ export default function PlaylistDetail() {
                   <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
                 </div>
 
-                {/* Description - use video title as placeholder since we don't have full description from YouTube */}
+                {/* Summary */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Description</h3>
-                  <p className="text-gray-600">{selectedVideo.title}</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Summary</h3>
+                  {summary ? (
+                    <p className="text-gray-600 whitespace-pre-wrap">{summary}</p>
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Summary not yet available for this clip.</p>
+                  )}
                 </div>
 
                 {/* Share buttons */}
                 <ShareButtons title={selectedVideo.title} url={shareUrl} />
+
+                {/* Transcript */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h3>
+                  {!shootId ? (
+                    <p className="text-sm text-gray-400 italic">Transcript not available for this clip.</p>
+                  ) : transcriptLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  ) : transcript ? (
+                    <PlaylistTranscriptDisplay data={transcript} />
+                  ) : (
+                    <p className="text-sm text-gray-400 italic">Transcript not available.</p>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -145,7 +190,7 @@ export default function PlaylistDetail() {
                           <div className="w-32 shrink-0 aspect-video bg-gray-200">
                             <img
                               src={video.thumbnailUrl}
-                              alt=""
+                              alt={video.title}
                               className="w-full h-full object-cover"
                               loading="lazy"
                               referrerPolicy="no-referrer"
@@ -166,6 +211,48 @@ export default function PlaylistDetail() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PlaylistTranscriptDisplay({ data }: { data: unknown }) {
+  if (!data) return null;
+  if (typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.transcript === 'string' && obj.transcript.trim()) {
+      const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
+      return (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+          {obj.shoot_name && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
+          )}
+          {paragraphs.map((para, i) => (
+            <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
+          ))}
+        </div>
+      );
+    }
+    const segments = obj.segments;
+    if (Array.isArray(segments)) {
+      return <SegmentList segments={segments} />;
+    }
+  }
+  if (Array.isArray(data)) return <SegmentList segments={data} />;
+  return <p className="text-sm text-gray-400 italic">Transcript not available.</p>;
+}
+
+function SegmentList({ segments }: { segments: unknown[] }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+      {segments.map((seg, i) => {
+        const s = seg as { speaker?: string; text?: string };
+        return (
+          <div key={i} className="flex gap-3">
+            {s.speaker && <span className="font-medium text-gray-900 shrink-0">{s.speaker}:</span>}
+            <span className="text-gray-600 text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

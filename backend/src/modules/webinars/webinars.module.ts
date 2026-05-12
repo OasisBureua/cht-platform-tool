@@ -10,6 +10,7 @@ import { WebinarsController } from './webinars.controller';
 import { OfficeHoursController } from './office-hours.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { HubSpotModule } from '../hubspot/hubspot.module';
+import { SurveysModule } from '../surveys/surveys.module';
 
 @Module({
   imports: [
@@ -17,9 +18,19 @@ import { HubSpotModule } from '../hubspot/hubspot.module';
     PrismaModule,
     HubSpotModule,
     AuthModule,
+    SurveysModule,
   ],
-  controllers: [WebinarsController, OfficeHoursController, ZoomWebhookController],
-  providers: [ZoomService, ZoomMeetingSdkService, ZoomWebhookService, WebinarsService],
+  controllers: [
+    WebinarsController,
+    OfficeHoursController,
+    ZoomWebhookController,
+  ],
+  providers: [
+    ZoomService,
+    ZoomMeetingSdkService,
+    ZoomWebhookService,
+    WebinarsService,
+  ],
   exports: [WebinarsService, ZoomService],
 })
 export class WebinarsModule {}

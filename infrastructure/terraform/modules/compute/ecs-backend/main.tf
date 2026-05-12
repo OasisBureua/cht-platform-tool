@@ -144,8 +144,24 @@ resource "aws_ecs_task_definition" "backend" {
           valueFrom = "${var.app_secrets_arn}:zoom_webhook_secret::"
         },
         {
+          name      = "ZOOM_SDK_KEY"
+          valueFrom = "${var.app_secrets_arn}:zoom_sdk_key::"
+        },
+        {
+          name      = "ZOOM_SDK_SECRET"
+          valueFrom = "${var.app_secrets_arn}:zoom_sdk_secret::"
+        },
+        {
           name      = "JOTFORM_API_KEY"
           valueFrom = "${var.app_secrets_arn}:jotform_api_key::"
+        },
+        {
+          name      = "JOTFORM_WEBINAR_DEFAULT_INTAKE_URL"
+          valueFrom = "${var.app_secrets_arn}:jotform_webinar_default_intake_url::"
+        },
+        {
+          name      = "JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID"
+          valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
         },
         {
           name      = "BILL_DEV_KEY"
@@ -170,6 +186,14 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "BILL_WEBHOOK_SECRET"
           valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
+        },
+        {
+          name      = "BILL_MFA_REMEMBER_ME_ID"
+          valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
+        },
+        {
+          name      = "BILL_MFA_DEVICE_NAME"
+          valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
         },
         {
           name      = "ADMIN_BOOTSTRAP_SECRET"
@@ -291,12 +315,12 @@ resource "aws_appautoscaling_policy" "backend_memory" {
 }
 
 resource "aws_appautoscaling_scheduled_action" "backend_scale_up" {
-  count               = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
-  name                = "${local.prefix}-backend-scale-up" 
-  service_namespace   = "ecs"
-  resource_id         = aws_appautoscaling_target.backend.resource_id
-  scalable_dimension  = aws_appautoscaling_target.backend.scalable_dimension
-  schedule            = "cron(0 13 ? * MON-FRI *)"
+  count              = var.enable_scheduled_scaling && !local.is_prod ? 1 : 0
+  name               = "${local.prefix}-backend-scale-up"
+  service_namespace  = "ecs"
+  resource_id        = aws_appautoscaling_target.backend.resource_id
+  scalable_dimension = aws_appautoscaling_target.backend.scalable_dimension
+  schedule           = "cron(0 13 ? * MON-FRI *)"
 
   scalable_target_action {
     min_capacity = var.min_capacity

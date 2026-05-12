@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsArray, IsEnum, IsBoolean, IsObject } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsArray,
+  IsEnum,
+  IsBoolean,
+  IsObject,
+} from 'class-validator';
 
 export class CreateSurveyDto {
   @IsString()

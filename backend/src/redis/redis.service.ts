@@ -76,7 +76,9 @@ export class RedisService implements OnModuleDestroy {
     try {
       const serialized = JSON.stringify(value);
       await this.client.setex(key, ttl, serialized);
-      this.logger.log(`✅ SET: ${key} (TTL: ${ttl}s, Size: ${serialized.length} bytes)`);
+      this.logger.log(
+        `✅ SET: ${key} (TTL: ${ttl}s, Size: ${serialized.length} bytes)`,
+      );
     } catch (error) {
       this.logger.error(`❌ SET failed for ${key}:`, error);
       throw error;
@@ -91,7 +93,7 @@ export class RedisService implements OnModuleDestroy {
 
     try {
       const value = await this.client.get(key);
-      
+
       if (!value) {
         this.logger.log(`❌ MISS: ${key}`);
         return null;
@@ -128,10 +130,15 @@ export class RedisService implements OnModuleDestroy {
       const keys = await this.client.keys(pattern);
       if (keys.length > 0) {
         await this.client.del(...keys);
-        this.logger.log(`��️  Invalidated ${keys.length} keys matching: ${pattern}`);
+        this.logger.log(
+          `��️  Invalidated ${keys.length} keys matching: ${pattern}`,
+        );
       }
     } catch (error) {
-      this.logger.error(`❌ Pattern invalidation failed for ${pattern}:`, error);
+      this.logger.error(
+        `❌ Pattern invalidation failed for ${pattern}:`,
+        error,
+      );
     }
   }
 
@@ -146,10 +153,10 @@ export class RedisService implements OnModuleDestroy {
   };
 
   ttl = {
-    session: 10800,      // 3 hours
-    dashboard: 300,      // 5 minutes
-    programs: 600,       // 10 minutes
-    user: 1800,          // 30 minutes
+    session: 10800, // 3 hours
+    dashboard: 300, // 5 minutes
+    programs: 600, // 10 minutes
+    user: 1800, // 30 minutes
   };
 
   async onModuleDestroy() {

@@ -23,7 +23,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const audience = configService.get<string>('auth0.audience');
 
     if (!domain) {
-      throw new Error('JwtStrategy requires AUTH0_DOMAIN - use dev bypass when Auth0 not configured');
+      throw new Error(
+        'JwtStrategy requires AUTH0_DOMAIN - use dev bypass when Auth0 not configured',
+      );
     }
 
     super({

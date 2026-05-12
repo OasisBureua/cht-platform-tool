@@ -1,11 +1,12 @@
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Clock, Eye, ThumbsUp, MessageCircle, Loader2, Calendar } from 'lucide-react';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { format, isValid } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { clipAiSummaryText, clipCatalogDescriptionText } from '../../utils/mediaHubClipText';
+import { isLinkedinCatalogClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 
 /** Normalize clip from API (handles snake_case and camelCase) */
 function normalizeClip(raw: Record<string, unknown>): {
@@ -51,22 +52,33 @@ function formatCount(n: number): string {
   return String(n);
 }
 
+function getClipShootId(raw: Record<string, unknown>): string | undefined {
+  const v = raw.shoot_id ?? raw.shootId;
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : undefined;
+}
+
 export default function ClipDetail() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const isInApp = location.pathname.startsWith('/app');
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${location.pathname}` : '';
+  const skipLinkedInClip = !!id && isLinkedinCatalogClipId(id);
 
   const { data: clip, isLoading, isError, error } = useQuery({
     queryKey: ['catalog', 'clip', id],
     queryFn: () => catalogApi.getClip(id!),
-    enabled: !!id,
+    enabled: !!id && !skipLinkedInClip,
+    retry: 0, // 404s from MediaHub are expected; don't retry
   });
 
+  const clipRecord = clip && typeof clip === 'object' ? (clip as unknown as Record<string, unknown>) : undefined;
+  const transcriptShootId = clipRecord ? getClipShootId(clipRecord) : undefined;
+
   const { data: transcript, isLoading: transcriptLoading } = useQuery({
-    queryKey: ['catalog', 'transcript', clip?.shoot_id],
-    queryFn: () => catalogApi.getTranscript(clip!.shoot_id!),
-    enabled: !!clip?.shoot_id,
+    queryKey: ['catalog', 'transcript', transcriptShootId],
+    queryFn: () => catalogApi.getTranscript(transcriptShootId!),
+    enabled: !!transcriptShootId,
+    retry: 0,
   });
 
   if (!id) {
@@ -75,6 +87,10 @@ export default function ClipDetail() {
         <p className="text-gray-600">Invalid clip ID</p>
       </div>
     );
+  }
+
+  if (skipLinkedInClip) {
+    return <Navigate to={isInApp ? '/app/catalog' : '/catalog'} replace />;
   }
 
   if (isLoading) {
@@ -96,8 +112,23 @@ export default function ClipDetail() {
     );
   }
 
+  const youtubeUrl =
+    typeof clip.youtube_url === 'string'
+      ? clip.youtube_url
+      : typeof (clip as { youtubeUrl?: unknown }).youtubeUrl === 'string'
+        ? (clip as { youtubeUrl: string }).youtubeUrl
+        : '';
+
+  if (!extractYoutubeVideoIdFromUrl(youtubeUrl)) {
+    return <Navigate to={isInApp ? '/app/catalog' : '/catalog'} replace />;
+  }
+
   const meta = normalizeClip(clip as unknown as Record<string, unknown>);
-  const descriptionBody = clipDisplaySummary(clip);
+  const aiSummary = clipAiSummaryText(clip);
+  const catalogDescription = clipCatalogDescriptionText(clip);
+  const shootIdDisplay = transcriptShootId;
+  /** Catalog copy is only shown when there is no usable AI summary */
+  const showCatalogDescription = aiSummary === '' && catalogDescription !== '';
 
   return (
     <div className="min-h-screen bg-white min-w-0">
@@ -112,7 +143,7 @@ export default function ClipDetail() {
         {/* Video embed - IFrame API with GA4 events */}
         <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
           <YouTubePlayer
-            youtubeUrl={clip.youtube_url}
+            youtubeUrl={youtubeUrl}
             title={clip.title}
             autoplay={false}
             muted={false}
@@ -169,49 +200,95 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {descriptionBody && (
+        {/* Summary — catalog description only shown when summary is absent */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Summary</h2>
+          {aiSummary ? (
+            <p className="text-gray-600 whitespace-pre-wrap">{aiSummary}</p>
+          ) : (
+            <p className="text-sm text-gray-400 italic">Not available yet for this recording.</p>
+          )}
+        </div>
+
+        {showCatalogDescription ? (
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
-            <p className="text-gray-600 whitespace-pre-wrap">{descriptionBody}</p>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Catalog description</h2>
+            <p className="text-gray-600 whitespace-pre-wrap">{catalogDescription}</p>
           </div>
-        )}
+        ) : null}
 
         {/* Share */}
         <ShareButtons title={clip.title} url={shareUrl} />
 
-        {/* Transcript */}
-        {clip.shoot_id && (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h2>
-            {transcriptLoading ? (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            ) : transcript ? (
-              <TranscriptDisplay data={transcript} />
-            ) : (
-              <p className="text-sm text-gray-500">Transcript not available.</p>
-            )}
-          </div>
-        )}
+        {/* Transcript when shoot has speech-to-text in Media Hub */}
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Transcript</h2>
+          {!shootIdDisplay ? (
+            <p className="text-sm text-gray-400 italic">Transcript not linked for this recording yet.</p>
+          ) : transcriptLoading ? (
+            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+          ) : transcript ? (
+            <TranscriptDisplay data={transcript} />
+          ) : (
+            <p className="text-sm text-gray-400 italic">Transcript not available.</p>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
 function TranscriptDisplay({ data }: { data: unknown }) {
-  if (!data || typeof data !== 'object') return null;
-  const arr = Array.isArray(data) ? data : (data as Record<string, unknown>).segments;
-  if (!Array.isArray(arr)) return <p className="text-gray-600">No transcript segments.</p>;
+  if (!data) return null;
 
+  // MediaHub returns { transcript: string, shoot_id, shoot_name, doctors, length }
+  if (typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+
+    // Plain-string transcript (primary MediaHub shape)
+    if (typeof obj.transcript === 'string' && obj.transcript.trim()) {
+      const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
+      return (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+          {obj.shoot_name && (
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
+          )}
+          {paragraphs.map((para, i) => (
+            <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
+          ))}
+        </div>
+      );
+    }
+
+    // Segment array under a `segments` key
+    const segments = obj.segments;
+    if (Array.isArray(segments)) {
+      return <SegmentList segments={segments} />;
+    }
+  }
+
+  // Top-level array of segments
+  if (Array.isArray(data)) {
+    return <SegmentList segments={data} />;
+  }
+
+  return <p className="text-sm text-gray-400 italic">Transcript not available.</p>;
+}
+
+function SegmentList({ segments }: { segments: unknown[] }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
-      {arr.map((seg: { speaker?: string; text?: string; start?: number }, i: number) => (
-        <div key={i} className="flex gap-3">
-          {seg.speaker && (
-            <span className="font-medium text-gray-900 shrink-0">{seg.speaker}:</span>
-          )}
-          <span className="text-gray-600">{seg.text ?? JSON.stringify(seg)}</span>
-        </div>
-      ))}
+      {segments.map((seg, i) => {
+        const s = seg as { speaker?: string; text?: string };
+        return (
+          <div key={i} className="flex gap-3">
+            {s.speaker && (
+              <span className="font-medium text-gray-900 shrink-0">{s.speaker}:</span>
+            )}
+            <span className="text-gray-600 text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

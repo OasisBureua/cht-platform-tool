@@ -24,6 +24,9 @@ dist/
 build/
 *.log
 
+# Vite dependency pre-bundle cache (local only)
+frontend/.vite/
+
 # Terraform
 *.tfstate
 *.tfstate.*

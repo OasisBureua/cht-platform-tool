@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { validateTaxId } from '../utils/w9Validation';
+import { getApiErrorMessage } from '../api/client';
 
 export function W9Modal({
   isOpen,
@@ -15,6 +16,7 @@ export function W9Modal({
 }) {
   const [taxIdType, setTaxIdType] = useState<'SSN' | 'EIN'>('SSN');
   const [taxId, setTaxId] = useState('');
+  const [showTaxId, setShowTaxId] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +42,7 @@ export function W9Modal({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to submit W-9');
+      setError(getApiErrorMessage(err, 'Failed to submit W-9'));
     } finally {
       setSubmitting(false);
     }
@@ -91,16 +93,33 @@ export function W9Modal({
                   ? 'Format: XXX-XX-XXXX. Must be a valid SSN per IRS rules.'
                   : 'Format: XX-XXXXXXX. Must be a valid EIN per IRS rules.'}
               </p>
-              <input
-                type="password"
-                inputMode="numeric"
-                value={taxId}
-                onChange={(e) => setTaxId(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                placeholder={taxIdType === 'SSN' ? 'XXX-XX-XXXX' : 'XX-XXXXXXX'}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                maxLength={9}
-                disabled={submitting}
-              />
+              <div className="relative">
+                <input
+                  type={showTaxId ? 'text' : 'password'}
+                  inputMode="numeric"
+                  value={taxId}
+                  onChange={(e) => setTaxId(e.target.value.replace(/\D/g, '').slice(0, 9))}
+                  placeholder={taxIdType === 'SSN' ? 'XXX-XX-XXXX' : 'XX-XXXXXXX'}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 pr-10 text-sm"
+                  maxLength={9}
+                  disabled={submitting}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowTaxId((v) => !v)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
+                  aria-label={showTaxId ? 'Hide tax ID' : 'Show tax ID'}
+                  tabIndex={-1}
+                >
+                  {showTaxId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {taxId.length > 0 && taxId.length < 9 && (
+                <p className="text-xs text-amber-700 mt-1">{taxId.length}/9 digits entered</p>
+              )}
+              {taxId.length === 9 && (
+                <p className="text-xs text-green-700 mt-1">✓ 9 digits entered</p>
+              )}
             </div>
 
             <div>

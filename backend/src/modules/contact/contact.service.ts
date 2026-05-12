@@ -11,13 +11,15 @@ export class ContactService {
     const firstName = dto.firstName.trim();
     const lastName = dto.lastName.trim();
 
-    this.hubspot.createOrUpdateContact({
-      email,
-      firstname: firstName,
-      lastname: lastName,
-      company: dto.organization?.trim(),
-      jobtitle: dto.role?.trim(),
-    }).catch(() => {});
+    this.hubspot
+      .createOrUpdateContact({
+        email,
+        firstname: firstName,
+        lastname: lastName,
+        company: dto.organization?.trim(),
+        jobtitle: dto.role?.trim(),
+      })
+      .catch(() => {});
 
     return { received: true };
   }

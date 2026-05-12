@@ -1,0 +1,296 @@
+[
+  {
+    "label": "HER2+ Conversations",
+    "subtitle": "15 videos",
+    "items": [
+      {
+        "id": "db11_neoadjuvant",
+        "title": "83% pCR: DESTINY-Breast11 Breaks the Neoadjuvant Ceiling",
+        "speakers": "Dr. Neil Iyengar & Dr. Komal Jhaveri",
+        "imageUrl": "https://communityhealth.media/thumbs/83-pcr-destiny-breast11-breaks-t.jpg",
+        "href": "https://communityhealth.media/83-pcr-destiny-breast11-breaks-the-neoadjuvant-ceiling/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "first_line_decision",
+        "title": "The 1st Line Decision: Why T-DXd is Redefining the Start",
+        "speakers": "Dr. Mark Pegram & Dr. Neil Iyengar",
+        "imageUrl": "https://communityhealth.media/thumbs/the-1st-line-decision-why-t-dxd.jpg",
+        "href": "https://communityhealth.media/the-1st-line-decision-why-t-dxd-is-redefining-the-start/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "forty_month_move_frontline",
+        "title": "40-Month PFS: Can T-DXd Move to the Frontline?",
+        "speakers": "Dr. Irene Kang & Dr. Aditya Bardia",
+        "imageUrl": "https://communityhealth.media/thumbs/40-month-pfs-can-t-dxd-move-to-t.jpg",
+        "href": "https://communityhealth.media/40-month-pfs-can-t-dxd-move-to-the-frontline/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "redefining_horizon",
+        "title": "Redefining the Horizon: Is Cure Possible in HER2+ mBC?",
+        "speakers": "Dr. Gregory Vidal & Dr. Nusayba Bagegni",
+        "imageUrl": "https://communityhealth.media/thumbs/redefining-the-horizon-is-cure-p.jpg",
+        "href": "https://communityhealth.media/redefining-the-horizon-is-cure-possible-in-her2-mbc/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "her2_binary",
+        "title": "HER2 Expression: Beyond the Binary",
+        "speakers": "Dr. Aditya Bardia & Dr. Reena Callahan",
+        "imageUrl": "https://communityhealth.media/thumbs/her2-expression-beyond-the-binar.jpg",
+        "href": "https://communityhealth.media/her2-expression-beyond-the-binary/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "db09_breakthrough",
+        "title": "DB09 Delivers 40-Month PFS: A First-Line Breakthrough",
+        "speakers": "Dr. Mark Pegram & Dr. Neil Iyengar",
+        "imageUrl": "https://communityhealth.media/thumbs/db09-delivers-40-month-pfs-a-fir.jpg",
+        "href": "https://communityhealth.media/db09-delivers-40-month-pfs-a-first-line-breakthrough/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "forty_month_game_changer",
+        "title": "40-Month PFS: Why Destiny-Breast09 Is a Game Changer",
+        "speakers": "Dr. Mark Pegram & Dr. Neil Iyengar",
+        "imageUrl": "https://communityhealth.media/thumbs/40-month-pfs-why-destiny-breast0.jpg",
+        "href": "https://communityhealth.media/40-month-pfs-why-destiny-breast09-is-a-game-changer/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "best_drug_first",
+        "title": "Frontline HER2+ Therapy: Why \"Best Drug First\" May Matter More",
+        "speakers": "Drs. Iyengar, Jhaveri & Makhlin",
+        "imageUrl": "https://communityhealth.media/thumbs/frontline-her2-therapy-why-best.jpg",
+        "href": "https://communityhealth.media/frontline-her2-therapy-why-best-drug-first-may-matter-more-than-sequencing/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "is_her2_curable",
+        "title": "Is HER2+ Metastatic Breast Cancer Curable? What Comes Next",
+        "speakers": "Dr. Gregory Vidal & Dr. Nusayba Bagegni",
+        "imageUrl": "https://communityhealth.media/thumbs/is-her2-metastatic-breast-cancer.jpg",
+        "href": "https://communityhealth.media/is-her2-metastatic-breast-cancer-curable-what-comes-next-dr-gregory-vidal-dr-nusayba-bagegni/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "first_line_changed",
+        "title": "Has HER2+ First-Line Treatment Officially Changed?",
+        "speakers": "Dr. Neil Iyengar & Dr. Martin Dietrich",
+        "imageUrl": "https://communityhealth.media/thumbs/has-her2-first-line-treatment-of.jpg",
+        "href": "https://communityhealth.media/has-her2-first-line-treatment-officially-changed-dr-neil-iyengar-dr-martin-dietrich/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "tdxd_rewriting",
+        "title": "Is T-DXd Rewriting First-Line HER2+ Metastatic Breast Cancer?",
+        "speakers": "Dr. Mark Pegram & Dr. Fengting Yan",
+        "imageUrl": "https://communityhealth.media/thumbs/is-t-dxd-rewriting-first-line-he.jpg",
+        "href": "https://communityhealth.media/is-t-dxd-rewriting-first-line-her2-metastatic-breast-cancer-dr-mark-pegram-dr-fengting-yan/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "rewriting_neoadjuvant",
+        "title": "Rewriting Neoadjuvant & Adjuvant HER2+ Breast Cancer Strategy",
+        "speakers": "Dr. Alison Conlin & Dr. Heather McArthur",
+        "imageUrl": "https://communityhealth.media/thumbs/chm-thumbnail_conlin-mcarthur-full.jpg",
+        "href": "https://communityhealth.media/rewriting-neoadjuvant-adjuvant-her2-breast-cancer-strategy-drs-alison-conlin-heather-mcarthur/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "db09_new_standard",
+        "title": "Is DB09 Leading Towards A New First-Line Standard Of Care?",
+        "speakers": "Drs. Krie, Mardones & O'Dea",
+        "imageUrl": "https://communityhealth.media/thumbs/is-db09-leading-towards-a-new-fi.jpg",
+        "href": "https://communityhealth.media/is-db09-leading-towards-a-new-first-line-standard-of-care-drs-krie-mardones-odea/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "new_first_line_strategies",
+        "title": "New First-Line Strategies in HER2+ Metastatic Breast Cancer",
+        "speakers": "Dr. Mark Pegram & Dr. Carol Tweed",
+        "imageUrl": "https://communityhealth.media/thumbs/new-first-line-strategies-in-her.jpg",
+        "href": "https://communityhealth.media/new-first-line-strategies-in-her2-metastatic-breast-cancer-dr-mark-pegram-dr-carol-tweed/",
+        "tag": "HER2+"
+      },
+      {
+        "id": "destiny_future",
+        "title": "DESTINY-Breast09 & the Future of Care",
+        "speakers": "Dr. Irene Kang & Dr. Aditya Bardia",
+        "imageUrl": "https://communityhealth.media/thumbs/destiny-breast09-the-future-of-c.jpg",
+        "href": "https://communityhealth.media/destiny-breast09-the-future-of-care-dr-irene-kang-dr-aditya-bardia/",
+        "tag": "HER2+"
+      }
+    ]
+  },
+  {
+    "label": "HER2-Low / Ultra-Low",
+    "subtitle": "6 series",
+    "items": [
+      {
+        "id": "mouabbi_cairo",
+        "title": "Dr. Jason Mouabbi & Dr. Michelina Cairo - Full Series",
+        "speakers": "9 videos · DB-04, DB-06, ultra-low disease",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-jason-mouabbi-dr-michelina-ca.jpg",
+        "href": "https://communityhealth.media/series/mouabbi-cairo/",
+        "tag": "HER2-Low"
+      },
+      {
+        "id": "mouabbi_kang_birhiray",
+        "title": "Dr. Jason Mouabbi, Dr. Irene Kang & Dr. Birhiray - Full Series",
+        "speakers": "11 videos · HER2-Low, ultra-low, ADC sequencing",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-jason-mouabbi-dr-irene-kang-a.jpg",
+        "href": "https://communityhealth.media/series/mouabbi-kang-birhiray/",
+        "tag": "HER2-Low"
+      },
+      {
+        "id": "mouabbi_rimawi",
+        "title": "Dr. Jason Mouabbi & Dr. Mothaffar Rimawi - Full Series",
+        "speakers": "10 videos · MBC treatment, CDK4/6 sequencing",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-jason-mouabbi-dr-mothaffar-ri.jpg",
+        "href": "https://communityhealth.media/series/mouabbi-rimawi/",
+        "tag": "HER2-Low"
+      },
+      {
+        "id": "mouabbi_osh_rimawi",
+        "title": "Rethinking First-Line Metastatic HER2+ Therapy with T-DXd",
+        "speakers": "Drs. Mouabbi, O'Shaughnessy & Rimawi",
+        "imageUrl": "https://communityhealth.media/thumbs/rethinking-first-line-metastatic.jpg",
+        "href": "https://communityhealth.media/rethinking-first-line-metastatic-her2-therapy-with-t-dxd-drs-mouabbi-oshaughnessy-rimawi/",
+        "tag": "HER2-Low"
+      },
+      {
+        "id": "gadi_yan",
+        "title": "Dr. VK Gadi & Dr. Fengting Yan - Full Series",
+        "speakers": "18 videos · HER2-Low biology & treatment landscape",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-vk-gadi-dr-fengting-yan-navig.jpg",
+        "href": "https://communityhealth.media/series/gadi-yan/",
+        "tag": "HER2-Low"
+      },
+      {
+        "id": "bardia_callahan",
+        "title": "Dr. Aditya Bardia & Dr. Reena Callahan - Full Series",
+        "speakers": "7 videos · HER2 classifications, dose optimization",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-aditya-bardia-and-dr-reena-ca.jpg",
+        "href": "https://communityhealth.media/series/bardia-callahan/",
+        "tag": "HER2-Low"
+      }
+    ]
+  },
+  {
+    "label": "HR+ · CDK4/6 · Endocrine",
+    "subtitle": "5 series",
+    "items": [
+      {
+        "id": "kang_bardia",
+        "title": "Dr. Irene Kang & Dr. Aditya Bardia - Full Series",
+        "speakers": "9 videos · DESTINY-Breast09, first-line T-DXd",
+        "imageUrl": "https://communityhealth.media/thumbs/destiny-breast09-the-future-of-c.jpg",
+        "href": "https://communityhealth.media/series/bardia-kang/",
+        "tag": "HR+"
+      },
+      {
+        "id": "iyengar_robson",
+        "title": "Dr. Neil Iyengar & Dr. Mark Robson - Full Series",
+        "speakers": "10 videos · HR+, BRCA, PARP inhibitors",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-neil-iyengar-dr-mark-robson-p.jpg",
+        "href": "https://communityhealth.media/series/iyengar-robson/",
+        "tag": "HR+"
+      },
+      {
+        "id": "iyengar_jhaveri_makhlin",
+        "title": "Drs. Neil Iyengar, Komal Jhaveri & Igor Makhlin",
+        "speakers": "9 videos · First-line HER2+ & HR+ strategies",
+        "imageUrl": "https://communityhealth.media/thumbs/is-t-dxd-pertuzumab-the-new-firs.jpg",
+        "href": "https://communityhealth.media/series/makhlin-iyengar-jhaveri/",
+        "tag": "HR+"
+      },
+      {
+        "id": "conlin_mcarthur",
+        "title": "Dr. Alison Conlin & Dr. Heather McArthur - Full Series",
+        "speakers": "7 videos · DESTINY-Breast05 & 11, early-stage HER2+",
+        "imageUrl": "https://communityhealth.media/thumbs/chm-thumbnail_conlin-mcarthur-full.jpg",
+        "href": "https://communityhealth.media/series/conlin-mcarthur/",
+        "tag": "HR+"
+      },
+      {
+        "id": "gadi_rao",
+        "title": "Dr. Ruta Rao & Dr. VK Gadi - Full Series",
+        "speakers": "7 videos · Early HER2+ breast cancer & adjuvant therapy",
+        "imageUrl": "https://communityhealth.media/thumbs/can-t-dxd-change-early-her2-brea.jpg",
+        "href": "https://communityhealth.media/series/gadi-rao/",
+        "tag": "HR+"
+      }
+    ]
+  },
+  {
+    "label": "TNBC & Triple Negative",
+    "subtitle": "3 series",
+    "items": [
+      {
+        "id": "iyengar_hamilton",
+        "title": "Dr. Neil Iyengar & Dr. Erika Hamilton - Full Series",
+        "speakers": "7 videos · TNBC landscape, Dato-DXd, SG",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-neil-iyengar-dr-erika-hamilto.jpg",
+        "href": "https://communityhealth.media/series/iyengar-hamilton/",
+        "tag": "TNBC"
+      },
+      {
+        "id": "gradishar_traina",
+        "title": "Dr. Bill Gradishar & Dr. Tiffany Traina - Full Series",
+        "speakers": "5 videos · Dato-DXd vs SG, first-line mTNBC",
+        "imageUrl": "https://communityhealth.media/thumbs/datopotamab-deruxtecan-vs-sacitu.jpg",
+        "href": "https://communityhealth.media/series/gradishar-traina/",
+        "tag": "TNBC"
+      },
+      {
+        "id": "pegram_garrido",
+        "title": "Dr. Mark Pegram & Dr. Ana Garrido-Castro - Full Series",
+        "speakers": "7 videos · ADC toxicity, risk-benefit in HER2+",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-mark-pegram-dr-ana-garrido-ca.jpg",
+        "href": "https://communityhealth.media/series/pegram-garrido-castro/",
+        "tag": "TNBC"
+      }
+    ]
+  },
+  {
+    "label": "High Risk Breast Cancer",
+    "subtitle": "4 series",
+    "items": [
+      {
+        "id": "gadi_mouabbi_odea",
+        "title": "Dr. VK Gadi, Dr. Jason Mouabbi & Dr. Anne O'Dea - Full Series",
+        "speakers": "17 videos · Advances in high-risk breast cancer",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-vk-gadi-dr-anne-odea-advances.jpg",
+        "href": "https://communityhealth.media/series/gadi-mouabbi-odea/",
+        "tag": "High Risk"
+      },
+      {
+        "id": "krie_mardones_odea",
+        "title": "Drs. Amy Krie, Mabel Mardones & Anne O'Dea - Full Series",
+        "speakers": "9 videos · DB09, community oncology perspectives",
+        "imageUrl": "https://communityhealth.media/thumbs/is-db09-leading-towards-a-new-fi.jpg",
+        "href": "https://communityhealth.media/series/krie-odea-mardones/",
+        "tag": "High Risk"
+      },
+      {
+        "id": "iyengar_hamilton",
+        "title": "Dr. Neil Iyengar & Dr. Erika Hamilton - Full Series",
+        "speakers": "7 videos · TNBC landscape, Dato-DXd, SG",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-neil-iyengar-dr-erika-hamilto.jpg",
+        "href": "https://communityhealth.media/series/iyengar-hamilton/",
+        "tag": "TNBC"
+      },
+      {
+        "id": "hamilton_vidal",
+        "title": "Dr. Gregory Vidal & Dr. Erika Hamilton - Full Series",
+        "speakers": "8 videos · Early-stage & metastatic HER2+",
+        "imageUrl": "https://communityhealth.media/thumbs/dr-gregory-vidal-and-dr-erika-ha.jpg",
+        "href": "https://communityhealth.media/series/hamilton-vidal/",
+        "tag": "High Risk"
+      }
+    ]
+  }
+]

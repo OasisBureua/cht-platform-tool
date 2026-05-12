@@ -1,20 +1,28 @@
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { Outlet, Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, Instagram, Menu, X } from 'lucide-react';
+import { Search, Instagram, Menu, X, Linkedin, Facebook } from 'lucide-react';
 import ChatBubble from '../components/ChatBubble';
+import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import ThemeToggle from '../components/ThemeToggle';
-import logoSrc from '../assets/logo/LOGO.svg';
 
-const navLinks = [
+const allNavLinks = [
   { to: '/about', label: 'About' },
   { to: '/what-we-do', label: 'What We Do' },
   { to: '/catalog', label: 'Content Library' },
-  { to: '/live', label: 'LIVE' },
+  { to: '/kol-network', label: 'KOL Network' },
+  { to: '/live', label: 'Live' },
   { to: '/chm-office-hours', label: 'CHM Office Hours' },
   { to: '/for-hcps', label: 'For HCPs' },
-  { to: '/kol-network', label: "CHM DOC's" },
   { to: '/contact', label: 'Contact' },
 ];
+
+const footerQuickLinks = allNavLinks.filter(
+  (l) => l.to !== '/about' && l.to !== '/what-we-do',
+);
+
+const drawerNavLinks = allNavLinks.filter(
+  (l) => l.to !== '/about' && l.to !== '/what-we-do' && l.to !== '/for-hcps',
+);
 
 export default function PublicLayout() {
   const navigate = useNavigate();
@@ -50,15 +58,15 @@ export default function PublicLayout() {
           <div className="grid h-14 sm:h-16 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 sm:gap-3 min-w-0">
             <div className="flex justify-start min-w-0">
               <Link
-                to="/"
+                to="/home"
                 className="flex items-center shrink-0 text-brand-600 transition-[color,opacity] hover:text-brand-700 hover:opacity-95"
                 aria-label="Community Health Media, home"
               >
-                <img src={logoSrc} alt="CHM" className="h-8 w-8 object-contain sm:h-9 sm:w-9" />
+                <ChmWordmarkOption2 className="h-7 w-[4.5rem] sm:h-8 sm:w-[5rem]" />
               </Link>
             </div>
 
-            <div className="hidden sm:flex justify-center min-w-0 px-1">
+            <div className="flex justify-center min-w-0 px-1">
               <form onSubmit={submitBrowse} className="w-full max-w-xl lg:max-w-2xl">
                 <div className="flex w-full overflow-hidden rounded-full border border-white/50 bg-white/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] backdrop-blur-md transition-[box-shadow,border-color] focus-within:border-brand-400/50 focus-within:ring-2 focus-within:ring-brand-500/25">
                   <input
@@ -82,14 +90,7 @@ export default function PublicLayout() {
             </div>
 
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
-              <Link
-                to="/catalog"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-brand-800 transition-colors hover:bg-white/50 hover:text-brand-900 sm:hidden dark:text-brand-300 dark:hover:bg-white/10"
-                aria-label="Browse library"
-              >
-                <Search className="h-5 w-5" />
-              </Link>
-              <ThemeToggle className="shrink-0" />
+              <ThemeToggle className="hidden sm:inline-flex shrink-0" />
               <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-white/35 bg-black/75 p-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] backdrop-blur-md dark:border-zinc-600/50 dark:bg-zinc-900/90">
                 <Link
                   to="/login"
@@ -135,17 +136,17 @@ export default function PublicLayout() {
           aria-label="Close menu"
         />
         <nav
-          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:bg-zinc-950/98 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_32px_64px_-24px_rgba(0,0,0,0.5)] ${
+          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:border-l dark:border-zinc-800/90 dark:bg-zinc-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_64px_-24px_rgba(0,0,0,0.55),inset_1px_0_0_0_rgba(255,255,255,0.04)] ${
             drawerOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           aria-label="Site navigation"
         >
-          <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.08)]">
-            <span className="text-balance text-lg font-semibold tracking-tight text-gray-900 dark:text-zinc-100">Menu</span>
+          <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
+            <span className="text-balance text-lg font-semibold tracking-tight text-gray-900 dark:text-white">Menu</span>
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96] dark:text-white dark:hover:bg-zinc-800 dark:active:bg-zinc-800/90"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" strokeWidth={2} />
@@ -155,7 +156,7 @@ export default function PublicLayout() {
             className="min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3 py-2"
             data-drawer-animating={drawerOpen ? 'true' : 'false'}
           >
-            {navLinks.map(({ to, label }) => (
+            {drawerNavLinks.map(({ to, label }) => (
               <NavLink
                 key={to}
                 to={to}
@@ -164,8 +165,8 @@ export default function PublicLayout() {
                   [
                     'public-drawer-link flex min-h-[48px] items-center rounded-2xl px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
                     isActive
-                      ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.22)] dark:bg-brand-950/40 dark:text-brand-100'
-                      : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
+                      ? 'bg-brand-50/95 text-brand-900 shadow-[inset_0_0_0_1px_rgba(43,168,154,0.22)] dark:bg-brand-950/50 dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(43,168,154,0.35)]'
+                      : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-white dark:hover:bg-zinc-800/90 dark:active:bg-zinc-800',
                   ].join(' ')
                 }
               >
@@ -173,7 +174,11 @@ export default function PublicLayout() {
               </NavLink>
             ))}
           </div>
-          <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] sm:hidden">
+          <div className="sm:hidden shrink-0 flex items-center justify-between gap-3 border-t border-gray-200/90 px-4 py-3 dark:border-zinc-800/90">
+            <span className="text-sm font-medium text-gray-700 dark:text-zinc-200">Appearance</span>
+            <ThemeToggle />
+          </div>
+          <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)] sm:hidden">
             <Link
               to="/login"
               onClick={() => setDrawerOpen(false)}
@@ -201,19 +206,18 @@ export default function PublicLayout() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-10 sm:py-12 md:py-16">
           <div className="flex flex-col lg:flex-row lg:justify-between gap-12 lg:gap-16">
             <div className="space-y-6 max-w-md">
-              <Link to="/" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
-                <img src={logoSrc} alt="CHM" className="h-9 w-9 object-contain brightness-0 invert" />
+              <Link to="/home" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
+                <ChmWordmarkOption2 className="h-8 w-[5rem] text-white" />
               </Link>
               <address className="not-italic text-sm text-gray-300 space-y-1 leading-relaxed">
                 <p>2471 18th St NW</p>
                 <p>Second Floor</p>
                 <p>Washington, DC 20009</p>
-                <p>Tel: (123) 456-7890</p>
                 <p>Email: info@communityhealth.media</p>
               </address>
               <div className="flex gap-4">
                 <a
-                  href="https://instagram.com"
+                  href="https://www.instagram.com/healthinourhands_/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
@@ -222,7 +226,7 @@ export default function PublicLayout() {
                   <Instagram className="h-5 w-5" />
                 </a>
                 <a
-                  href="https://youtube.com"
+                  href="https://youtube.com/@CommunityHealthMedia/videos"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors"
@@ -232,6 +236,24 @@ export default function PublicLayout() {
                     <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
                   </svg>
                 </a>
+                <a
+                  href="https://www.linkedin.com/company/community-health-media/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="LinkedIn"
+                >
+                  <Linkedin className="h-5 w-5" />
+                </a>
+                <a
+                  href="https://www.facebook.com/CHMediaHub/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
               </div>
             </div>
 
@@ -239,7 +261,7 @@ export default function PublicLayout() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Quick Links</p>
                 <ul className="space-y-3">
-                  {navLinks.map(({ to, label }) => (
+                  {footerQuickLinks.map(({ to, label }) => (
                     <li key={to}>
                       <Link to={to} className="text-sm text-gray-300 hover:text-white transition-colors">
                         {label}

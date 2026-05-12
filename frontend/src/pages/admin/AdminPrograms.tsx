@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Calendar,
@@ -18,6 +18,9 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminPrograms() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const locationState = location.state as { jotformFormsWarning?: string; warning?: string } | null;
+  const jotformScheduleFlash = locationState?.warning ?? locationState?.jotformFormsWarning;
   const isOfficeHours = location.pathname.includes('/office-hours');
   const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
 
@@ -59,6 +62,18 @@ export default function AdminPrograms() {
 
   return (
     <div className="space-y-6">
+      {jotformScheduleFlash ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>{jotformScheduleFlash}</span>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold text-amber-900 underline"
+            onClick={() => navigate(location.pathname, { replace: true, state: {} })}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
       {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -67,8 +82,8 @@ export default function AdminPrograms() {
           </h1>
           <p className="text-sm text-gray-600">
             {isOfficeHours
-              ? 'Live sessions for Q&A - host admits participants. Manage CHM Office Hours here.'
-              : 'Schedule and manage LIVE sessions.'}
+              ? 'Live sessions for Q&A — host admits participants. Manage CHM Office Hours here.'
+              : 'Schedule and manage Live sessions.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -140,6 +155,7 @@ export default function AdminPrograms() {
       {/* Edit modal */}
       {editingId && (
         <EditWebinarModal
+          key={editingId}
           webinar={items.find((w) => w.id === editingId)!}
           onClose={() => setEditingId(null)}
           onSaved={() => {
@@ -159,7 +175,7 @@ export default function AdminPrograms() {
           <p className="text-sm text-gray-500 mt-1">
             {isOfficeHours
               ? 'Create a new CHM Office Hours session for interactive Q&A.'
-              : 'Schedule your first LIVE session.'}
+              : 'Schedule your first Live session.'}
           </p>
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
@@ -258,6 +274,13 @@ function WebinarRow({
         {durationStr && (
           <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>
         )}
+        {webinar.zoomSessionType !== 'MEETING' &&
+          webinar.honorariumAmount != null &&
+          webinar.honorariumAmount > 0 && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Honorarium ${webinar.honorariumAmount.toLocaleString()}
+            </p>
+          )}
       </td>
 
       <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">
@@ -289,6 +312,29 @@ function WebinarRow({
                 <ExternalLink className="h-3 w-3" /> Join link
               </a>
             )}
+            {webinar.zoomStartUrl && (
+              <a
+                href={webinar.zoomStartUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Host start
+              </a>
+            )}
+            {webinar.zoomPanelistLinks?.map((p) => (
+              <a
+                key={p.email}
+                href={p.joinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors truncate max-w-[180px]"
+                title={`${p.name} (${p.email})`}
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                Panelist: {p.name}
+              </a>
+            ))}
           </div>
         ) : (
           <span className="text-xs text-gray-400">No Zoom</span>
@@ -347,7 +393,9 @@ function EditWebinarModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const sessionKind = webinar.zoomSessionType ?? 'WEBINAR';
+  const [sessionKind, setSessionKind] = useState<ZoomSessionType>(
+    webinar.zoomSessionType ?? 'WEBINAR',
+  );
   const localDate = webinar.startDate
     ? format(parseISO(webinar.startDate), "yyyy-MM-dd'T'HH:mm")
     : '';
@@ -358,12 +406,23 @@ function EditWebinarModal({
   const [startDate, setStartDate] = useState(localDate);
   const [duration, setDuration] = useState(String(webinar.duration ?? ''));
   const [status, setStatus] = useState<AdminWebinar['status']>(webinar.status);
+  const [honorariumUsd, setHonorariumUsd] = useState(
+    webinar.honorariumAmount != null ? String(webinar.honorariumAmount) : '',
+  );
+  const [hostDisplayName, setHostDisplayName] = useState(webinar.hostDisplayName ?? '');
+  const [hostBio, setHostBio] = useState(webinar.hostBio ?? '');
+  const [speakers, setSpeakers] = useState<string[]>(webinar.speakers ?? []);
   const [error, setError] = useState<string | null>(null);
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),
     onSuccess: onSaved,
-    onError: (err: Error) => setError(err.message || 'Failed to save. Please try again.'),
+    onError: (err: unknown) => {
+      const ax = err as { response?: { data?: { message?: string | string[] } } };
+      const m = ax.response?.data?.message;
+      const msg = Array.isArray(m) ? m.join('; ') : m;
+      setError(msg || (err instanceof Error ? err.message : 'Failed to save. Please try again.'));
+    },
   });
 
   const handleSave = () => {
@@ -380,6 +439,20 @@ function EditWebinarModal({
       if (isNaN(d.getTime())) { setError('Invalid date and time.'); return; }
     }
 
+    let honorariumPayload: number | undefined;
+    if (sessionKind === 'WEBINAR') {
+      if (honorariumUsd.trim() === '') {
+        honorariumPayload = 0;
+      } else {
+        const h = parseFloat(honorariumUsd);
+        if (Number.isNaN(h) || h < 0) {
+          setError('Honorarium must be a non-negative number (or leave blank to clear).');
+          return;
+        }
+        honorariumPayload = h;
+      }
+    }
+
     setError(null);
     const payload: UpdateWebinarPayload = {
       title: title.trim(),
@@ -388,15 +461,22 @@ function EditWebinarModal({
       startDate: startDate ? new Date(startDate).toISOString() : undefined,
       duration: durationNum,
       status,
+      zoomSessionType: sessionKind !== (webinar.zoomSessionType ?? 'WEBINAR') ? sessionKind : undefined,
+      ...(sessionKind === 'WEBINAR' && honorariumPayload !== undefined
+        ? { honorariumAmount: honorariumPayload }
+        : {}),
+      hostDisplayName: hostDisplayName.trim() || undefined,
+      hostBio: hostBio.trim() || undefined,
+      speakers: speakers.map((s) => s.trim()).filter(Boolean),
     };
     updateMutation.mutate(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="font-semibold text-gray-900">
             {sessionKind === 'MEETING' ? 'Edit Office Hours' : 'Edit webinar'}
           </h2>
@@ -406,7 +486,7 @@ function EditWebinarModal({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-1">Title *</label>
             <input
@@ -451,6 +531,21 @@ function EditWebinarModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Session type</label>
+            <select
+              value={sessionKind}
+              onChange={(e) => setSessionKind(e.target.value as ZoomSessionType)}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            >
+              <option value="WEBINAR">Live webinar (Zoom Webinar)</option>
+              <option value="MEETING">CHM Office Hours (Zoom Meeting)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Must match how this session exists in Zoom; the wrong choice can fail when syncing title or schedule.
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">Date & Time</label>
@@ -473,6 +568,97 @@ function EditWebinarModal({
             </div>
           </div>
 
+          {sessionKind === 'WEBINAR' ? (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Honorarium (USD) — optional
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={honorariumUsd}
+                onChange={(e) => setHonorariumUsd(e.target.value)}
+                placeholder="Leave blank to remove"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Webinars only. Save with an empty field to clear the honorarium for this program.
+              </p>
+            </div>
+          ) : null}
+
+          {sessionKind === 'WEBINAR' ? (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Host <span className="font-normal text-gray-400">— optional</span>
+                </label>
+                <input
+                  type="text"
+                  value={hostDisplayName}
+                  onChange={(e) => setHostDisplayName(e.target.value)}
+                  placeholder="Dr. Jane Smith"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Person moderating/running the session. Shown as "Host:" on the webinar card.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Host bio <span className="font-normal text-gray-400">— optional</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={hostBio}
+                  onChange={(e) => setHostBio(e.target.value)}
+                  placeholder="Title, specialty, or brief note…"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Speakers / KOLs <span className="font-normal text-gray-400">— optional; add one or more</span>
+                </label>
+                <div className="space-y-2">
+                  {speakers.map((sp, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={sp}
+                        onChange={(e) => {
+                          const next = [...speakers];
+                          next[i] = e.target.value;
+                          setSpeakers(next);
+                        }}
+                        placeholder={`Speaker ${i + 1}`}
+                        className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSpeakers(speakers.filter((_, idx) => idx !== i))}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        aria-label="Remove speaker"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setSpeakers([...speakers, ''])}
+                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                  >
+                    <span className="text-lg leading-none">+</span> Add speaker
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+
           {webinar.zoomMeetingId && (
             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
               Changes to title, date, and duration will also be synced to Zoom{' '}
@@ -486,7 +672,7 @@ function EditWebinarModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={onClose}
             className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

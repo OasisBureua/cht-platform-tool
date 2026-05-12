@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 
 /**
  * Server-side JWT for Zoom Meeting SDK (Web) join.
- * Credentials come from a Meeting SDK app on Zoom Marketplace — not the Server-to-Server OAuth app.
+ * Credentials come from a Meeting SDK app on Zoom Marketplace - not the Server-to-Server OAuth app.
  * @see https://developers.zoom.us/docs/meeting-sdk/auth/
  */
 @Injectable()
@@ -47,8 +47,14 @@ export class ZoomMeetingSdkService {
     const encHeader = this.b64url(JSON.stringify(header));
     const encPayload = this.b64url(JSON.stringify(payload));
     const data = `${encHeader}.${encPayload}`;
-    const sig = crypto.createHmac('sha256', sdkSecret).update(data).digest('base64');
-    const encSig = sig.replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const sig = crypto
+      .createHmac('sha256', sdkSecret)
+      .update(data)
+      .digest('base64');
+    const encSig = sig
+      .replace(/=/g, '')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_');
     return `${data}.${encSig}`;
   }
 

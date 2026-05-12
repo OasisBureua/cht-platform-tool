@@ -2,7 +2,7 @@
 # It is NOT deployed by default (manual failover only)
 
 terraform {
-  required_version = ">= 1.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -12,11 +12,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "cht-platform-terraform-state-dev"
-    key            = "us-east-2-standby/terraform.tfstate"
-    region         = "us-east-1"
-    encrypt        = true
-    dynamodb_table = "cht-platform-terraform-locks"
+    bucket       = "cht-platform-terraform-state-dev"
+    key          = "us-east-2-standby/terraform.tfstate"
+    region       = "us-east-1"
+    encrypt      = true
+    use_lockfile = true
   }
 }
 
