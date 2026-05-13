@@ -1,6 +1,10 @@
 import { Children, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, List } from 'lucide-react';
+import {
+  catalogConversationBrowseFingerFromHref,
+  catalogConversationBrowseFingerFromLocation,
+} from '../../utils/catalogBrowseLocation';
 
 export type ConversationRowProps = {
   title: string;
@@ -24,9 +28,21 @@ export function ConversationRow({
   className = '',
   children,
 }: ConversationRowProps) {
+  const location = useLocation();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(true);
+  const seeAllExternal = /^https?:\/\//i.test(seeAllHref.trim());
+
+  const handleCatalogSeeAllClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (seeAllExternal) return;
+    const destFinger = catalogConversationBrowseFingerFromHref(seeAllHref);
+    const hereFinger = catalogConversationBrowseFingerFromLocation(location);
+    if (destFinger && hereFinger && destFinger === hereFinger) {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   const updateArrows = () => {
     const el = scrollerRef.current;
@@ -66,13 +82,26 @@ export function ConversationRow({
             <span className="shrink-0 text-xs font-medium text-zinc-500 tabular-nums dark:text-zinc-400 md:text-sm">{subtitle}</span>
           ) : null}
         </div>
-        <Link
-          to={seeAllHref}
-          className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-[#c2410c] transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-[#ea580c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-[#fb923c] dark:hover:text-orange-300"
-        >
-          <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          {seeAllLabel}
-        </Link>
+        {seeAllExternal ? (
+          <a
+            href={seeAllHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-[#c2410c] transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-[#ea580c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-[#fb923c] dark:hover:text-orange-300"
+          >
+            <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {seeAllLabel}
+          </a>
+        ) : (
+          <Link
+            to={seeAllHref}
+            onClick={handleCatalogSeeAllClick}
+            className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-lg px-1 text-sm font-semibold text-[#c2410c] transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-[#ea580c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-[#fb923c] dark:hover:text-orange-300"
+          >
+            <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {seeAllLabel}
+          </Link>
+        )}
       </div>
 
       <div className="relative -mx-1 px-1">
@@ -129,6 +158,10 @@ export type StripCardProps = {
    * Marketing homepage: wider cards (+25% vs default strip) and taller media (~+15% vs prior homepage media).
    */
   homepage?: boolean;
+  /** Omit the tile when `imageUrl` fails to load (e.g. broken remote thumbnail). */
+  hideThumbnailOnError?: boolean;
+  /** Runs after hiding when `hideThumbnailOnError`; optional side effects (analytics, tracking failed ids upstream). */
+  onThumbnailError?: () => void;
 };
 
 const stripCardShell =
@@ -153,7 +186,11 @@ function StripCardInner({
   description,
   meta,
   videoLabel,
-}: Pick<StripCardProps, 'variant' | 'homepage' | 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel'>) {
+  onThumbnailError,
+}: Pick<
+  StripCardProps,
+  'variant' | 'homepage' | 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel' | 'onThumbnailError'
+>) {
   const line1 = description ?? meta;
   const v = variant ?? 'compact';
   const home = homepage === true;
@@ -168,6 +205,7 @@ function StripCardInner({
           loading="lazy"
           referrerPolicy="no-referrer"
           draggable={false}
+          onError={onThumbnailError}
         />
         <span className="sr-only">{title}</span>
       </>
@@ -190,6 +228,7 @@ function StripCardInner({
           loading="lazy"
           referrerPolicy="no-referrer"
           draggable={false}
+          onError={onThumbnailError}
         />
       </div>
       <div className={home ? 'flex min-w-0 flex-col px-2.5 pb-2.5 pt-2' : 'flex min-w-0 flex-col px-2 pb-2 pt-1.5'}>
@@ -240,11 +279,27 @@ export function StripCard({
   videoLabel,
   variant,
   homepage,
+  hideThumbnailOnError,
+  onThumbnailError,
 }: StripCardProps) {
+  const [thumbFailed, setThumbFailed] = useState(false);
+  useEffect(() => {
+    setThumbFailed(false);
+  }, [imageUrl]);
+
   const external = /^https?:\/\//i.test(to);
   const v = variant ?? 'compact';
   const compactShell = homepage ? stripCardShellHomepage : stripCardShell;
   const thumbShell = homepage ? thumbnailOnlyShellHomepage : thumbnailOnlyShell;
+
+  if (thumbFailed) return null;
+
+  const bubbleError = hideThumbnailOnError
+    ? () => {
+        onThumbnailError?.();
+        setThumbFailed(true);
+      }
+    : onThumbnailError;
 
   if (v === 'thumbnailOnly') {
     return (
@@ -259,6 +314,7 @@ export function StripCard({
               description={description}
               meta={meta}
               videoLabel={videoLabel}
+              onThumbnailError={bubbleError}
             />
           </a>
         ) : (
@@ -271,6 +327,7 @@ export function StripCard({
               description={description}
               meta={meta}
               videoLabel={videoLabel}
+              onThumbnailError={bubbleError}
             />
           </Link>
         )}
@@ -290,6 +347,7 @@ export function StripCard({
             description={description}
             meta={meta}
             videoLabel={videoLabel}
+            onThumbnailError={bubbleError}
           />
         </a>
       ) : (
@@ -302,6 +360,7 @@ export function StripCard({
             description={description}
             meta={meta}
             videoLabel={videoLabel}
+            onThumbnailError={bubbleError}
           />
         </Link>
       )}

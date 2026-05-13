@@ -51,7 +51,7 @@ resource "aws_secretsmanager_secret" "redis" {
 }
 
 resource "aws_secretsmanager_secret_version" "redis" {
-  secret_id     = aws_secretsmanager_secret.redis.id
+  secret_id = aws_secretsmanager_secret.redis.id
   secret_string = jsonencode({
     host = var.redis_endpoint
     # Store port as string so ECS env injection and backend parsing are unambiguous
@@ -75,25 +75,31 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    supabase_url             = var.supabase_url
-    supabase_anon_key        = var.supabase_anon_key
-    gotrue_jwt_secret        = var.gotrue_jwt_secret
-    mediahub_base_url        = var.mediahub_base_url
-    mediahub_api_key         = var.mediahub_api_key
-    youtube_api_key          = var.youtube_api_key
-    youtube_playlist_ids     = var.youtube_playlist_ids
-    zoom_account_id          = var.zoom_account_id
-    zoom_client_id           = var.zoom_client_id
-    zoom_client_secret       = var.zoom_client_secret
-    zoom_webhook_secret      = var.zoom_webhook_secret
-    jotform_api_key          = var.jotform_api_key
-    bill_dev_key             = var.bill_dev_key
-    bill_username            = var.bill_username
-    bill_password            = var.bill_password
-    bill_org_id              = var.bill_org_id
-    bill_funding_account_id  = var.bill_funding_account_id
-    bill_webhook_secret      = var.bill_webhook_secret
-    admin_bootstrap_secret   = var.admin_bootstrap_secret
-    hubspot_access_token     = var.hubspot_access_token
+    supabase_url                              = var.supabase_url
+    supabase_anon_key                         = var.supabase_anon_key
+    gotrue_jwt_secret                         = var.gotrue_jwt_secret
+    mediahub_base_url                         = var.mediahub_base_url
+    mediahub_api_key                          = var.mediahub_api_key
+    youtube_api_key                           = var.youtube_api_key
+    youtube_playlist_ids                      = var.youtube_playlist_ids
+    zoom_account_id                           = var.zoom_account_id
+    zoom_client_id                            = var.zoom_client_id
+    zoom_client_secret                        = var.zoom_client_secret
+    zoom_webhook_secret                       = var.zoom_webhook_secret
+    zoom_sdk_key                              = var.zoom_sdk_key
+    zoom_sdk_secret                           = var.zoom_sdk_secret
+    jotform_api_key                           = var.jotform_api_key
+    jotform_webinar_default_intake_url        = var.jotform_webinar_default_intake_url
+    jotform_webinar_post_event_shared_form_id = var.jotform_webinar_post_event_shared_form_id
+    bill_dev_key                              = var.bill_dev_key
+    bill_username                             = var.bill_username
+    bill_password                             = var.bill_password
+    bill_org_id                               = var.bill_org_id
+    bill_funding_account_id                   = var.bill_funding_account_id
+    bill_webhook_secret                       = var.bill_webhook_secret
+    bill_mfa_remember_me_id                   = var.bill_mfa_remember_me_id
+    bill_mfa_device_name                      = var.bill_mfa_device_name
+    admin_bootstrap_secret                    = var.admin_bootstrap_secret
+    hubspot_access_token                      = var.hubspot_access_token
   })
 }

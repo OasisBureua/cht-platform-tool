@@ -1,4 +1,10 @@
-import { IsString, IsNumber, IsBoolean, IsArray, IsOptional } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsBoolean,
+  IsArray,
+  IsOptional,
+} from 'class-validator';
 
 export class VideoDto {
   @IsString()
@@ -75,11 +81,19 @@ export class ProgramResponseDto {
 
   @IsString()
   @IsOptional()
+  zoomStartUrl?: string;
+
+  @IsString()
+  @IsOptional()
   startDate?: string;
 
   @IsNumber()
   @IsOptional()
   duration?: number;
+
+  @IsString()
+  @IsOptional()
+  zoomSessionEndedAt?: string;
 
   @IsString()
   @IsOptional()
@@ -101,8 +115,11 @@ export class ProgramResponseDto {
   @IsOptional()
   hostDisplayName?: string;
 
-  /** True when a Calendly URL is configured; actual URL is only returned after enrollment via GET .../calendly-scheduling. */
-  @IsBoolean()
+  @IsString()
   @IsOptional()
-  hasCalendlyScheduling?: boolean;
+  hostBio?: string;
+
+  @IsArray()
+  @IsOptional()
+  speakers?: string[];
 }

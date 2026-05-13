@@ -121,6 +121,26 @@ nano terraform.tfvars
 ```
 
 ### 3. Deploy Infrastructure
+
+**Platform (single stack, `us-east-1`)** — copy `infrastructure/terraform/environments/variables/platform.tfvars.example` to `platform.tfvars` in that same folder, then:
+
+```bash
+cd infrastructure/terraform/environments/us-east-1
+terraform init
+terraform plan  -var-file=../variables/platform.tfvars
+terraform apply -var-file=../variables/platform.tfvars
+```
+
+From `infrastructure/terraform`, the helper script passes the same var file when it exists:
+
+```bash
+./scripts/deploy.sh us-east-1 init
+./scripts/deploy.sh us-east-1 plan
+./scripts/deploy.sh us-east-1 apply
+```
+
+**Legacy / other env folders** (e.g. `dev`): if present, adjust the path and var file name.
+
 ```bash
 # Initialize Terraform
 ./scripts/deploy.sh dev init

@@ -1,88 +1,96 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ScrollToTop from './components/ScrollToTop';
+import { Loader2 } from 'lucide-react';
 
-// Public layout + pages
+// Layouts + guards — always needed immediately, keep static
 import PublicLayout from './layouts/PublicLayout';
-import Home from './pages/public/Home';
-import ClipDetail from './pages/public/ClipDetail';
-import PlaylistDetail from './pages/public/PlaylistDetail';
-import About from './pages/public/About';
-import Contact from './pages/public/Contact';
-import Join from './pages/public/Join';
-import Login from './pages/public/Login';
-import AdminLogin from './pages/public/AdminLogin';
-import ForgotPassword from './pages/public/ForgotPassword';
-import AuthCallback from './pages/public/AuthCallback';
-import CompleteProfile from './pages/public/CompleteProfile';
-import Privacy from './pages/public/Privacy';
-import DiseaseDetail from './pages/public/DiseaseDetail';
-import VideosPage from './pages/public/VideosPage';
-import Search from './pages/public/Search';
-import ForHCPs from './pages/public/ForHCPs';
-import PublicWebinars from './pages/public/PublicWebinars';
-import PublicWebinarDetail from './pages/public/PublicWebinarDetail';
-import PublicOfficeHours from './pages/public/PublicOfficeHours';
-import PublicOfficeHoursDetail from './pages/public/PublicOfficeHoursDetail';
-import PublicSurveys from './pages/public/PublicSurveys';
-import WhatWeDo from './pages/public/WhatWeDo';
-import Services from './pages/public/Services';
-import Portfolios from './pages/public/Portfolios';
-import DolNetwork from './pages/public/DolNetwork';
-import DolRegionDetail from './pages/public/DolRegionDetail';
-import KolProfilePage from './pages/public/KolProfilePage';
-import Terms from './pages/public/Terms';
-
-// App layout (existing)
 import Layout from './components/layout/Layout';
-
-// App pages
-import ExploreOpportunities from './pages/ExploreOpportunities';
-import Webinars from './pages/Webinars';
-import WebinarDetail from './pages/WebinarDetail';
-import OfficeHours from './pages/OfficeHours';
-import OfficeHoursDetail from './pages/OfficeHoursDetail';
-import ProgramRegisterWizard from './pages/ProgramRegisterWizard';
-import Surveys from './pages/Surveys';
-import SurveyDetail from './pages/SurveyDetail';
-import Watch from './pages/Watch';
-import WatchVideo from './pages/WatchVideo';
-import Earnings from './pages/Earnings';
-import Payments from './pages/Payments';
-import Settings from './pages/Settings';
-import ChatBot from './pages/ChatBot';
-import ChmDocs from './pages/ChmDocs';
-import Podcasts from './pages/Podcasts';
-import PodcastShow from './pages/PodcastShow';
-import DiseaseAreas from './pages/DiseaseAreas';
-
-// =======================
-// ADMIN ROUTES
-// =======================
 import AdminLayout from './layouts/AdminLayout';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminPrograms from './pages/admin/AdminPrograms';
-import AdminSurveys from './pages/admin/AdminSurveys';
-import AdminCreateSurvey from './pages/admin/AdminCreateSurvey';
-import AdminEditSurvey from './pages/admin/AdminEditSurvey';
-import AdminWebinarScheduler from './pages/admin/AdminWebinarScheduler';
-import AdminPayments from './pages/admin/AdminPayments';
-import AdminHcpExplorer from './pages/admin/AdminHcpExplorer';
-import AdminRxAnalytics from './pages/admin/AdminRxAnalytics';
-import AdminSettings from './pages/admin/AdminSettings';
-import AdminUsers from './pages/admin/AdminUsers';
-import AdminProgramHub from './pages/admin/AdminProgramHub';
-
-// optional legacy page
-import Dashboard from './pages/Dashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavItems';
+
+// ── Public pages (lazy) ───────────────────────────────────────────────────────
+const Home                  = lazy(() => import('./pages/public/Home'));
+const ClipDetail            = lazy(() => import('./pages/public/ClipDetail'));
+const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail'));
+const About                 = lazy(() => import('./pages/public/About'));
+const Contact               = lazy(() => import('./pages/public/Contact'));
+const Join                  = lazy(() => import('./pages/public/Join'));
+const Login                 = lazy(() => import('./pages/public/Login'));
+const AdminLogin            = lazy(() => import('./pages/public/AdminLogin'));
+const ForgotPassword        = lazy(() => import('./pages/public/ForgotPassword'));
+const AuthCallback          = lazy(() => import('./pages/public/AuthCallback'));
+const CompleteProfile       = lazy(() => import('./pages/public/CompleteProfile'));
+const Privacy               = lazy(() => import('./pages/public/Privacy'));
+const Terms                 = lazy(() => import('./pages/public/Terms'));
+const DiseaseDetail         = lazy(() => import('./pages/public/DiseaseDetail'));
+const VideosPage            = lazy(() => import('./pages/public/VideosPage'));
+const Search                = lazy(() => import('./pages/public/Search'));
+const ForHCPs               = lazy(() => import('./pages/public/ForHCPs'));
+const PublicWebinars        = lazy(() => import('./pages/public/PublicWebinars'));
+const PublicWebinarDetail   = lazy(() => import('./pages/public/PublicWebinarDetail'));
+const PublicOfficeHours     = lazy(() => import('./pages/public/PublicOfficeHours'));
+const PublicOfficeHoursDetail = lazy(() => import('./pages/public/PublicOfficeHoursDetail'));
+const PublicSurveys         = lazy(() => import('./pages/public/PublicSurveys'));
+const WhatWeDo              = lazy(() => import('./pages/public/WhatWeDo'));
+const Services              = lazy(() => import('./pages/public/Services'));
+const Portfolios            = lazy(() => import('./pages/public/Portfolios'));
+const DolNetwork            = lazy(() => import('./pages/public/DolNetwork'));
+const DolRegionDetail       = lazy(() => import('./pages/public/DolRegionDetail'));
+const KolProfilePage        = lazy(() => import('./pages/public/KolProfilePage'));
+
+// ── App pages (lazy) ─────────────────────────────────────────────────────────
+const Dashboard             = lazy(() => import('./pages/Dashboard'));
+const ExploreOpportunities  = lazy(() => import('./pages/ExploreOpportunities'));
+const Webinars              = lazy(() => import('./pages/Webinars'));
+const WebinarDetail         = lazy(() => import('./pages/WebinarDetail'));
+const OfficeHours           = lazy(() => import('./pages/OfficeHours'));
+const OfficeHoursDetail     = lazy(() => import('./pages/OfficeHoursDetail'));
+const ProgramRegisterWizard = lazy(() => import('./pages/ProgramRegisterWizard'));
+const Surveys               = lazy(() => import('./pages/Surveys'));
+const SurveyDetail          = lazy(() => import('./pages/SurveyDetail'));
+const WatchVideo            = lazy(() => import('./pages/WatchVideo'));
+const Earnings              = lazy(() => import('./pages/Earnings'));
+const Payments              = lazy(() => import('./pages/Payments'));
+const Settings              = lazy(() => import('./pages/Settings'));
+const ChatBot               = lazy(() => import('./pages/ChatBot'));
+const Podcasts              = lazy(() => import('./pages/Podcasts'));
+const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
+const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
+const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
+
+// ── Admin pages (lazy) ───────────────────────────────────────────────────────
+const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminPrograms         = lazy(() => import('./pages/admin/AdminPrograms'));
+const AdminSurveys          = lazy(() => import('./pages/admin/AdminSurveys'));
+const AdminCreateSurvey     = lazy(() => import('./pages/admin/AdminCreateSurvey'));
+const AdminEditSurvey       = lazy(() => import('./pages/admin/AdminEditSurvey'));
+const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarScheduler'));
+const AdminPayments         = lazy(() => import('./pages/admin/AdminPayments'));
+const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'));
+const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
+const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
+const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
+const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
+
+// ── Shared page-level loading fallback ───────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex min-h-[30vh] items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" aria-label="Loading…" />
+    </div>
+  );
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
@@ -92,159 +100,150 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <ScrollToTop />
-        <Routes>
-          {/* =======================
-              PUBLIC ROUTES
-              ======================= */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<Navigate to="/home" replace />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/catalog/clip/:id" element={<ClipDetail />} />
-            <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
-            <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
-            <Route path="/catalog" element={<VideosPage />} />
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
+            {/* =======================
+                PUBLIC ROUTES
+                ======================= */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<Navigate to="/home" replace />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/catalog/clip/:id" element={<ClipDetail />} />
+              <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+              <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
+              <Route path="/catalog" element={<VideosPage />} />
 
-            <Route path="/about" element={<About />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/portfolios" element={<Portfolios />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/join" element={<Join />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/complete-profile" element={<CompleteProfile />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-
-            <Route path="/search" element={<Search />} />
-            <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
-            <Route path="/watch" element={<Navigate to="/catalog" replace />} />
-            <Route path="/live" element={<PublicWebinars />} />
-            <Route path="/live/:id" element={<PublicWebinarDetail />} />
-            <Route path="/webinars" element={<Navigate to="/live" replace />} />
-            <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
-            <Route path="/chm-office-hours/:id" element={<PublicOfficeHoursDetail />} />
-            <Route path="/chm-office-hours" element={<PublicOfficeHours />} />
-            <Route path="/office-hours/:id" element={<Navigate to="/chm-office-hours/:id" replace />} />
-            <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
-            <Route path="/surveys" element={<PublicSurveys />} />
-            <Route path="/for-hcps" element={<ForHCPs />} />
-            <Route path="/what-we-do" element={<WhatWeDo />} />
-            <Route path="/kol-network" element={<DolNetwork />} />
-            <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />
-            <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
-          </Route>
-
-          {/* =======================
-              APP ROUTES (NOW UNDER /app)
-              ======================= */}
-          <Route
-            path="/app"
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<Navigate to="/app/home" replace />} />
-
-            {/* Home + Search */}
-            <Route path="dashboard" element={<Navigate to="/app/home" replace />} />
-            <Route path="home" element={<Dashboard />} />
-            <Route path="search" element={<ExploreOpportunities />} />
-
-            {/* LIVE (formerly Webinars) */}
-            <Route path="live" element={<Webinars />} />
-            <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
-            <Route path="live/:id" element={<WebinarDetail />} />
-            <Route path="webinars" element={<Navigate to="/app/live" replace />} />
-            <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
-            <Route path="webinars/:id" element={<WebinarDetail />} />
-
-            {/* CHM Office Hours */}
-            <Route path="chm-office-hours" element={<OfficeHours />} />
-            <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
-            <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
-            <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
-            <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
-            <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
-
-            {/* CHM DOC's */}
-            <Route path="chm-docs" element={<ChmDocs />} />
-
-            {/* Disease Areas */}
-            <Route path="disease-areas" element={<DiseaseAreas />} />
-
-            {/* Surveys */}
-            <Route path="surveys" element={<Surveys />} />
-            <Route path="surveys/:id" element={<SurveyDetail />} />
-
-            {/* Podcasts */}
-            <Route path="podcasts/:showId" element={<PodcastShow />} />
-            <Route path="podcasts" element={<Podcasts />} />
-
-            <Route path="watch/:videoId" element={<WatchVideo />} />
-            <Route path="watch" element={<Navigate to="/app/catalog" replace />} />
-
-            {/* Clip detail (MediaHub clips - stays in app) */}
-            <Route path="clip/:id" element={<ClipDetail />} />
-
-            {/* Catalog (YouTube playlists - same as public, stays in app) */}
-            <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
-            <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
-            <Route path="catalog" element={<VideosPage />} />
-
-            {/* Earnings + ChatBot + Settings (Payments moved to admin) */}
-            <Route path="earnings" element={<Earnings />} />
-            <Route path="chatbot" element={<ChatBot />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="payments" element={<Payments />} />
-
-            {/* Catch-all within /app */}
-            <Route path="*" element={<Navigate to="/app/home" replace />} />
-          </Route>
-
-          {/* =======================
-              BACK-COMPAT REDIRECTS
-              ======================= */}
-          <Route path="/surveys/:id" element={<SurveyRedirect />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/portfolios" element={<Portfolios />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/join" element={<Join />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/complete-profile" element={<CompleteProfile />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
 
 
-          <Route path="/earnings" element={<Navigate to="/app/earnings" replace />} />
-          <Route path="/payments" element={<Navigate to="/app/payments" replace />} />
-          <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
+              <Route path="/watch" element={<Navigate to="/catalog" replace />} />
+              <Route path="/live" element={<PublicWebinars />} />
+              <Route path="/live/:id" element={<PublicWebinarDetail />} />
+              <Route path="/webinars" element={<Navigate to="/live" replace />} />
+              <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
+              <Route path="/chm-office-hours/:id" element={<PublicOfficeHoursDetail />} />
+              <Route path="/chm-office-hours" element={<PublicOfficeHours />} />
+              <Route path="/office-hours/:id" element={<Navigate to="/chm-office-hours/:id" replace />} />
+              <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
+              <Route path="/surveys" element={<PublicSurveys />} />
+              <Route path="/for-hcps" element={<ForHCPs />} />
+              <Route path="/what-we-do" element={<WhatWeDo />} />
+              <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
+              <Route path="/kol-network" element={<DolNetwork />} />
+              <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />
+              <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
+            </Route>
 
-          {/* Old legacy paths you mentioned */}
-          <Route path="/programs" element={<Navigate to="/app/webinars" replace />} />
-          
-          <Route
-            path="/admin"
-            element={
-              <ProtectedRoute requireAdmin>
-                <AdminLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<AdminDashboard />} />
-            <Route path="programs" element={<AdminPrograms />} />
-            <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
-            <Route path="office-hours" element={<AdminPrograms />} />
-            <Route path="surveys" element={<AdminSurveys />} />
-            <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
-            <Route path="create-survey" element={<AdminCreateSurvey />} />
-            <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
+            {/* =======================
+                APP ROUTES (UNDER /app)
+                ======================= */}
             <Route
-              path="office-hours-scheduler"
-              element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" />}
-            />
-            <Route path="payments" element={<AdminPayments />} />
-            <Route path="settings" element={<AdminSettings />} />
-            <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="rx-analytics" element={<AdminRxAnalytics />} />
-          </Route>
-        </Routes>
+              path="/app"
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<Navigate to="/app/home" replace />} />
+
+              <Route path="home" element={<Dashboard />} />
+              <Route path="search" element={<ExploreOpportunities />} />
+
+              <Route path="live" element={<Webinars />} />
+              <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="live/:id" element={<WebinarDetail />} />
+              <Route path="webinars" element={<Navigate to="/app/live" replace />} />
+              <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="webinars/:id" element={<WebinarDetail />} />
+
+              <Route path="chm-office-hours" element={<OfficeHours />} />
+              <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
+              <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
+              <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
+
+              <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
+              <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
+
+              <Route path="surveys" element={<Surveys />} />
+              <Route path="surveys/:id" element={<SurveyDetail />} />
+
+              <Route path="podcasts" element={<Podcasts />} />
+
+              <Route path="watch/:videoId" element={<WatchVideo />} />
+              <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
+
+              <Route path="clip/:id" element={<ClipDetail />} />
+
+              <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
+              <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+              <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
+              <Route path="catalog" element={<VideosPage />} />
+
+              <Route path="earnings" element={<Earnings />} />
+              <Route path="chatbot" element={<ChatBot />} />
+              <Route path="settings" element={<Settings />} />
+              <Route path="payments" element={<Payments />} />
+
+              <Route path="*" element={<Navigate to="/app/home" replace />} />
+            </Route>
+
+            {/* =======================
+                BACK-COMPAT REDIRECTS
+                ======================= */}
+            <Route path="/surveys/:id" element={<SurveyRedirect />} />
+            <Route path="/earnings" element={<Navigate to="/app/earnings" replace />} />
+            <Route path="/payments" element={<Navigate to="/app/payments" replace />} />
+            <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+            <Route path="/programs" element={<Navigate to="/app/webinars" replace />} />
+
+            {/* =======================
+                ADMIN ROUTES
+                ======================= */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requireAdmin>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="programs" element={<AdminPrograms />} />
+              <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
+              <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
+              <Route path="office-hours" element={<AdminPrograms />} />
+              <Route path="surveys" element={<AdminSurveys />} />
+              <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
+              <Route path="create-survey" element={<AdminCreateSurvey />} />
+              <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
+              <Route
+                path="office-hours-scheduler"
+                element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" lockSessionType />}
+              />
+              <Route path="payments" element={<AdminPayments />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="rx-analytics" element={<AdminRxAnalytics />} />
+            </Route>
+          </Routes>
+        </Suspense>
       </BrowserRouter>
     </QueryClientProvider>
   );

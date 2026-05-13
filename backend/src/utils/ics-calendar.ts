@@ -1,7 +1,12 @@
 /** Minimal iCalendar (ICS) for calendar invites (download / attach). */
 
 function formatIcsUtc(d: Date): string {
-  return d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '') + 'Z';
+  return (
+    d
+      .toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}/, '') + 'Z'
+  );
 }
 
 function escapeText(s: string): string {

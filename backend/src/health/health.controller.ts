@@ -1,6 +1,11 @@
 import { Controller, Get } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
-import { HealthCheck, HealthCheckService, HealthCheckResult, HealthIndicatorResult } from '@nestjs/terminus';
+import {
+  HealthCheck,
+  HealthCheckService,
+  HealthCheckResult,
+  HealthIndicatorResult,
+} from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma.health';
 import { RedisHealthIndicator } from './redis.health';
 
@@ -20,9 +25,7 @@ export class HealthController {
   @Get('health')
   @HealthCheck()
   async check(): Promise<HealthCheckResult> {
-    return this.health.check([
-      async () => ({ app: { status: 'up' } }),
-    ]);
+    return this.health.check([async () => ({ app: { status: 'up' } })]);
   }
 
   /**

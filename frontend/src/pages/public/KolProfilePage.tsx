@@ -242,7 +242,7 @@ export default function KolProfilePage() {
                   </article>
                 ) : (
                   <p className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
-                    Connect MediaHub to surface AI briefs and Sunshine aggregates for this profile.
+                    More info coming soon
                   </p>
                 )}
 

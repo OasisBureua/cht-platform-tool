@@ -5,7 +5,8 @@
 
 /** Invalid SSN area numbers (first 3 digits) - never assigned by SSA */
 const INVALID_SSN_AREAS = new Set([
-  0, 666,  // 000 and 666 never assigned
+  0,
+  666, // 000 and 666 never assigned
   ...Array.from({ length: 100 }, (_, i) => 900 + i), // 900-999 never assigned
 ]);
 
@@ -73,7 +74,8 @@ export function validateTaxId(
   if (cleaned.length !== 9) {
     return {
       valid: false,
-      error: taxIdType === 'SSN' ? 'SSN must be 9 digits' : 'EIN must be 9 digits',
+      error:
+        taxIdType === 'SSN' ? 'SSN must be 9 digits' : 'EIN must be 9 digits',
     };
   }
   return taxIdType === 'SSN' ? validateSSN(cleaned) : validateEIN(cleaned);
@@ -83,7 +85,9 @@ export function validateTaxId(
  * Sanitize optional company name for W-9.
  * Max 200 chars, trim, reject empty-looking strings.
  */
-export function sanitizeCompanyName(value: string | undefined): string | undefined {
+export function sanitizeCompanyName(
+  value: string | undefined,
+): string | undefined {
   if (!value || typeof value !== 'string') return undefined;
   const trimmed = value.trim().slice(0, 200);
   return trimmed || undefined;

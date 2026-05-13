@@ -21,9 +21,9 @@ echo ""
 
 cd infrastructure/terraform/environments/us-east-1
 
-# Initialize
+# Initialize (-reconfigure picks up backend block changes, e.g. S3 use_lockfile)
 echo "🔧 Initializing Terraform..."
-terraform init
+terraform init -reconfigure
 
 # Validate
 echo ""

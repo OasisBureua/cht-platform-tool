@@ -31,6 +31,7 @@ export interface MediaHubClip {
   like_count: number;
   comment_count: number;
   shoot_id?: string;
+  shootId?: string;
   shoot_name?: string;
 }
 

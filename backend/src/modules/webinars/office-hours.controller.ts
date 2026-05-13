@@ -1,8 +1,20 @@
-import { Controller, Get, Post, Param, Logger, NotFoundException, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Logger,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthUser } from '../../auth/auth.service';
-import { WebinarsService, WebinarItem, OfficeHoursMeetingSdkAuthDto } from './webinars.service';
+import {
+  WebinarsService,
+  WebinarItem,
+  OfficeHoursMeetingSdkAuthDto,
+} from './webinars.service';
 
 @Controller('office-hours')
 export class OfficeHoursController {

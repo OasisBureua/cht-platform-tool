@@ -11,7 +11,6 @@ const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
 const STOCK_IMAGES = {
   featuredVideo: '/images/resource-watch.png',
   featuredWebinar: '/images/resource-webinars.png',
-  featuredStudy: '/images/resource-clinicals.png',
 } as const;
 
 type Treatment = {
@@ -27,7 +26,7 @@ function catalogToTreatment(p: CatalogItem): Treatment {
   return {
     id: p.id,
     title: p.title,
-    imageUrl: p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist',
+    imageUrl: p.thumbnailUrl || '/images/placeholder-playlist.svg',
     slug: p.id,
     videoNames: p.videoNames || [],
     playlistUrl: `/catalog/playlist/${p.id}`,
@@ -130,12 +129,6 @@ export default function ForHCPs() {
             cta="View sessions"
             to="/chm-office-hours"
             showNew
-          />
-          <FeaturedCard
-            title="KOL Network"
-            imageUrl={STOCK_IMAGES.featuredStudy}
-            cta="View directory"
-            to="/kol-network"
           />
         </section>
 

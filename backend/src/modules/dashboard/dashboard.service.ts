@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
-import { EarningsResponseDto, WeeklyEarnings } from './dto/earnings-response.dto';
+import {
+  EarningsResponseDto,
+  WeeklyEarnings,
+} from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
 
@@ -28,12 +31,14 @@ export class DashboardService {
 
     // Calculate total earnings (paid payments only)
     const paidPayments = payments.filter((p) => p.status === 'PAID');
-    const totalEarnings = paidPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
+    const totalEarnings =
+      paidPayments.reduce((sum, p) => sum + p.amount, 0) / 100;
 
     // Calculate pending payments
-    const pendingPayments = payments
-      .filter((p) => p.status === 'PENDING' || p.status === 'PROCESSING')
-      .reduce((sum, p) => sum + p.amount, 0) / 100;
+    const pendingPayments =
+      payments
+        .filter((p) => p.status === 'PENDING' || p.status === 'PROCESSING')
+        .reduce((sum, p) => sum + p.amount, 0) / 100;
 
     // Get last payment date
     const lastPaidPayment = paidPayments[0];
@@ -45,7 +50,9 @@ export class DashboardService {
     // Get current week earnings
     const currentWeekStart = this.getWeekStart(new Date());
     const currentWeekEarnings =
-      weeklyEarnings.find((w) => w.weekStartDate === currentWeekStart.toISOString())?.amount || 0;
+      weeklyEarnings.find(
+        (w) => w.weekStartDate === currentWeekStart.toISOString(),
+      )?.amount || 0;
 
     return {
       totalEarnings,
@@ -70,8 +77,12 @@ export class DashboardService {
       },
     });
 
-    const activitiesCompleted = enrollments.filter((e) => e.completed === true).length;
-    const activitiesInProgress = enrollments.filter((e) => e.completed === false).length;
+    const activitiesCompleted = enrollments.filter(
+      (e) => e.completed === true,
+    ).length;
+    const activitiesInProgress = enrollments.filter(
+      (e) => e.completed === false,
+    ).length;
 
     // Get surveys completed
     const surveysCompleted = await this.prisma.surveyResponse.count({
@@ -79,14 +90,19 @@ export class DashboardService {
     });
 
     // Calculate CME credits earned
-    const completedEnrollments = enrollments.filter((e) => e.completed === true);
+    const completedEnrollments = enrollments.filter(
+      (e) => e.completed === true,
+    );
     const cmeCreditsEarned = completedEnrollments.reduce(
       (sum, e) => sum + (e.program.creditAmount || 0),
       0,
     );
 
     // Calculate completion rate
-    const completionRate = enrollments.length > 0 ? (activitiesCompleted / enrollments.length) * 100 : 0;
+    const completionRate =
+      enrollments.length > 0
+        ? (activitiesCompleted / enrollments.length) * 100
+        : 0;
 
     // Get peer benchmark (anonymized)
     const peerBenchmark = await this.calculatePeerBenchmark(userId);
@@ -117,18 +133,29 @@ export class DashboardService {
       zipCode?: string;
     },
   ): Promise<ProfileResponseDto> {
-    const npi = data.npiNumber !== undefined ? data.npiNumber.replace(/\D/g, '').slice(0, 10) : undefined;
+    const npi =
+      data.npiNumber !== undefined
+        ? data.npiNumber.replace(/\D/g, '').slice(0, 10)
+        : undefined;
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        ...(data.firstName !== undefined && { firstName: data.firstName.trim() || 'User' }),
+        ...(data.firstName !== undefined && {
+          firstName: data.firstName.trim() || 'User',
+        }),
         ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
-        ...(data.specialty !== undefined && { specialty: data.specialty.trim() || null }),
+        ...(data.specialty !== undefined && {
+          specialty: data.specialty.trim() || null,
+        }),
         ...(npi !== undefined && { npiNumber: npi.length === 10 ? npi : null }),
-        ...(data.institution !== undefined && { institution: data.institution.trim() || null }),
+        ...(data.institution !== undefined && {
+          institution: data.institution.trim() || null,
+        }),
         ...(data.city !== undefined && { city: data.city.trim() || null }),
         ...(data.state !== undefined && { state: data.state.trim() || null }),
-        ...(data.zipCode !== undefined && { zipCode: data.zipCode.trim() || null }),
+        ...(data.zipCode !== undefined && {
+          zipCode: data.zipCode.trim() || null,
+        }),
       },
     });
     this.outboundSync
@@ -143,7 +170,9 @@ export class DashboardService {
         state: updated.state,
         zipCode: updated.zipCode,
       })
-      .catch((err) => this.logger.error('[Dashboard] outbound-sync error:', err));
+      .catch((err) =>
+        this.logger.error('[Dashboard] outbound-sync error:', err),
+      );
     return this.getProfile(userId);
   }
 
@@ -159,7 +188,9 @@ export class DashboardService {
     }
 
     const stats = await this.getStats(userId);
-    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email;
+    const name =
+      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+      user.email;
 
     return {
       firstName: user.firstName,
@@ -182,7 +213,9 @@ export class DashboardService {
   /**
    * Calculate weekly earnings for last 12 weeks
    */
-  private async calculateWeeklyEarnings(userId: string): Promise<WeeklyEarnings[]> {
+  private async calculateWeeklyEarnings(
+    userId: string,
+  ): Promise<WeeklyEarnings[]> {
     const weeks: WeeklyEarnings[] = [];
     const now = new Date();
 
@@ -221,7 +254,9 @@ export class DashboardService {
   /**
    * Calculate peer benchmark (anonymized)
    */
-  private async calculatePeerBenchmark(userId: string): Promise<PeerBenchmark | undefined> {
+  private async calculatePeerBenchmark(
+    userId: string,
+  ): Promise<PeerBenchmark | undefined> {
     // Get current user's total earnings
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -248,8 +283,12 @@ export class DashboardService {
     const averageEarnings = totalEarnings / allUsers.length / 100;
 
     // Calculate percentile
-    const sortedEarnings = allUsers.map((u) => u.totalEarnings).sort((a, b) => a - b);
-    const userRank = sortedEarnings.filter((e) => e <= user.totalEarnings).length;
+    const sortedEarnings = allUsers
+      .map((u) => u.totalEarnings)
+      .sort((a, b) => a - b);
+    const userRank = sortedEarnings.filter(
+      (e) => e <= user.totalEarnings,
+    ).length;
     const percentile = Math.round((userRank / sortedEarnings.length) * 100);
 
     // Get top earners range (top 10%)

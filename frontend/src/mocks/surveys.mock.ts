@@ -32,6 +32,7 @@ export const mockSurveys: Survey[] = [
       id: 'seed-program-1',
       title: 'Cardiology Treatment Webinar',
       sponsorName: 'Pfizer',
+      honorariumAmount: 35_000,
     },
   },
   {
@@ -58,6 +59,7 @@ export const mockSurveys: Survey[] = [
       id: 'program-2',
       title: 'Advances in Oncology',
       sponsorName: 'Novartis',
+      honorariumAmount: 50_000,
     },
   },
 ];

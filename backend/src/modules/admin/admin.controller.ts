@@ -9,15 +9,29 @@ import {
   Query,
   UseGuards,
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
   Logger,
   Res,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
-import { UserRole, UserStatus, PaymentStatus, ProgramRegistrationStatus } from '@prisma/client';
+import {
+  UserRole,
+  UserStatus,
+  PaymentStatus,
+  ProgramRegistrationStatus,
+} from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -33,6 +47,23 @@ import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
+import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+
+/** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
+function lastProgramRegistrationSubmittedAtIso(r: {
+  createdAt: Date;
+  updatedAt: Date;
+  intakeJotformSubmittedAt: Date | null;
+}): string {
+  return new Date(
+    Math.max(
+      r.createdAt.getTime(),
+      r.updatedAt.getTime(),
+      r.intakeJotformSubmittedAt?.getTime() ?? 0,
+    ),
+  ).toISOString();
+}
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -69,20 +100,28 @@ export class AdminController {
       required: ['email', 'secret'],
       properties: {
         email: { type: 'string', example: 'you@example.com' },
-        secret: { type: 'string', description: 'Must match ADMIN_BOOTSTRAP_SECRET env var' },
+        secret: {
+          type: 'string',
+          description: 'Must match ADMIN_BOOTSTRAP_SECRET env var',
+        },
       },
     },
   })
   @ApiResponse({ status: 200, description: 'User promoted to ADMIN' })
   @ApiResponse({ status: 403, description: 'Invalid bootstrap secret' })
-  @ApiResponse({ status: 400, description: 'User not found or ADMIN_BOOTSTRAP_SECRET not configured' })
+  @ApiResponse({
+    status: 400,
+    description: 'User not found or ADMIN_BOOTSTRAP_SECRET not configured',
+  })
   async bootstrapAdmin(
     @Body('email') email: string,
     @Body('secret') secret: string,
   ) {
     const bootstrapSecret = this.config.get<string>('adminBootstrapSecret');
     if (!bootstrapSecret) {
-      throw new BadRequestException('ADMIN_BOOTSTRAP_SECRET is not configured on this server.');
+      throw new BadRequestException(
+        'ADMIN_BOOTSTRAP_SECRET is not configured on this server.',
+      );
     }
     if (!secret || secret !== bootstrapSecret) {
       throw new ForbiddenException('Invalid bootstrap secret.');
@@ -111,10 +150,28 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Get admin config (e.g. Jotform template ID for webinar surveys)' })
+  @ApiOperation({
+    summary:
+      'Get admin config (Jotform webinar template form IDs from env — used when scheduling webinars)',
+  })
   getAdminConfig() {
+    const invitation =
+      this.config.get<string>('jotform.invitationTemplateFormId')?.trim() || '';
+    const postEvent =
+      this.config.get<string>('jotform.postEventTemplateFormId')?.trim() || '';
+    const postEventShared =
+      this.config.get<string>('jotform.postEventSharedFormId')?.trim() || '';
     return {
-      jotformTemplateFormId: this.config.get<string>('jotform.templateFormId') || '260698533879881',
+      jotformInvitationTemplateFormId: invitation,
+      jotformPostEventTemplateFormId: postEvent,
+      jotformPostEventSharedFormId: postEventShared,
+      /** @deprecated use jotformPostEventTemplateFormId */
+      jotformTemplateFormId: postEvent,
+      webinarJotformTemplatesConfigured: !!(
+        invitation &&
+        (postEvent || postEventShared)
+      ),
+      zoomConfigured: this.zoom.isConfigured(),
     };
   }
 
@@ -123,36 +180,42 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Get admin dashboard stats' })
-  @ApiResponse({ status: 200, description: 'Dashboard stats (active HCPs, etc.)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dashboard stats (active HCPs, etc.)',
+  })
   async getStats() {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount] = await Promise.all([
-      this.prisma.user.count({
-        where: {
-          role: UserRole.HCP,
-          status: UserStatus.ACTIVE,
-        },
-      }),
-      this.prisma.user.count({
-        where: {
-          role: UserRole.HCP,
-          status: UserStatus.ACTIVE,
-          createdAt: { lte: oneWeekAgo },
-        },
-      }),
-      this.prisma.payment.count({
-        where: { status: PaymentStatus.PAID },
-      }),
-    ]);
+    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount] =
+      await Promise.all([
+        this.prisma.user.count({
+          where: {
+            role: UserRole.HCP,
+            status: UserStatus.ACTIVE,
+          },
+        }),
+        this.prisma.user.count({
+          where: {
+            role: UserRole.HCP,
+            status: UserStatus.ACTIVE,
+            createdAt: { lte: oneWeekAgo },
+          },
+        }),
+        this.prisma.payment.count({
+          where: { status: PaymentStatus.PAID },
+        }),
+      ]);
     const pct =
       activeHcpsCountPreviousWeek === 0
         ? activeHcpsCount > 0
           ? '+100%'
           : '0%'
         : `${Math.round(((activeHcpsCount - activeHcpsCountPreviousWeek) / activeHcpsCountPreviousWeek) * 100)}%`;
-    this.logger.debug(`[Admin] stats: activeHcps=${activeHcpsCount} activeHcpsPrevWeek=${activeHcpsCountPreviousWeek} change=${pct}`);
+    this.logger.debug(
+      `[Admin] stats: activeHcps=${activeHcpsCount} activeHcpsPrevWeek=${activeHcpsCountPreviousWeek} change=${pct}`,
+    );
     return { activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount };
   }
 
@@ -165,6 +228,52 @@ export class AdminController {
     return this.programsService.getAllProgramsForAdmin();
   }
 
+  @Get('programs/webhook-imports')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Programs auto-imported via Zoom webhook that need admin review',
+  })
+  async getWebhookImports() {
+    const programs = await this.prisma.program.findMany({
+      where: { importedViaWebhook: true, status: 'DRAFT' },
+      select: {
+        id: true,
+        title: true,
+        startDate: true,
+        createdAt: true,
+        sponsorName: true,
+        honorariumAmount: true,
+        description: true,
+        hostDisplayName: true,
+        hostBio: true,
+        jotformIntakeFormUrl: true,
+        jotformSurveyUrl: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return programs.map((p) => {
+      const missingFields: string[] = [];
+      if (!p.sponsorName || p.sponsorName === 'TBD')
+        missingFields.push('Sponsor');
+      if (p.honorariumAmount == null) missingFields.push('Honorarium');
+      if (!p.description?.trim()) missingFields.push('Description');
+      if (!p.hostDisplayName?.trim()) missingFields.push('Host');
+      if (!p.jotformIntakeFormUrl?.trim()) missingFields.push('Intake form');
+      if (!p.jotformSurveyUrl?.trim()) missingFields.push('Post-event survey');
+
+      return {
+        id: p.id,
+        title: p.title,
+        startDate: p.startDate?.toISOString() ?? null,
+        createdAt: p.createdAt.toISOString(),
+        missingFields,
+      };
+    });
+  }
+
   @Post('programs')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -172,14 +281,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Create a new program' })
   async createProgram(@Body() dto: CreateProgramDto) {
     const program = await this.programsService.createProgram(dto);
-    if (dto.createSurveyFromTemplate?.trim()) {
-      await this.surveysService.createSurveyFromJotformTemplate({
-        programId: program.id,
-        templateFormId: dto.createSurveyFromTemplate.trim(),
-        title: `${program.title} - Post Event Survey`,
-        type: 'FEEDBACK',
-      });
-    }
+    // Webinar invitation + post-event Jotform clones are created via POST /admin/webinars or Zoom import (WEBINAR).
     return program;
   }
 
@@ -187,25 +289,101 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Single program (admin hub - forms, registration counts)' })
+  @ApiOperation({
+    summary: 'Single program (admin hub - forms, registration counts)',
+  })
   async getProgramByIdForAdmin(@Param('id') id: string) {
     const p = await this.prisma.program.findUnique({
       where: { id },
       include: {
-        surveys: { select: { id: true, title: true, jotformFormId: true, type: true } },
-        officeHoursSlots: { orderBy: [{ sortOrder: 'asc' }, { startsAt: 'asc' }] },
-        _count: { select: { enrollments: true, programRegistrations: true, officeHoursSlots: true } },
+        surveys: {
+          select: { id: true, title: true, jotformFormId: true, type: true },
+        },
+        officeHoursSlots: {
+          orderBy: [{ sortOrder: 'asc' }, { startsAt: 'asc' }],
+        },
+        _count: {
+          select: {
+            enrollments: true,
+            programRegistrations: true,
+            officeHoursSlots: true,
+          },
+        },
       },
     });
     if (!p) throw new NotFoundException('Program not found');
     return p;
   }
 
+  /**
+   * POST /admin/programs/:id/refresh-zoom-panelists
+   * Re-fetches panelists and host/attendee URLs directly from Zoom.
+   * Also backfills zoomStartUrl / zoomJoinUrl if missing (e.g. webhook-imported programs
+   * where Zoom omits start_url from the webhook payload).
+   */
+  @Post('programs/:id/refresh-zoom-panelists')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Re-fetch Zoom links (panelists + host/attendee URLs) and save to program',
+  })
+  async refreshZoomPanelists(@Param('id') id: string) {
+    const p = await this.prisma.program.findUnique({ where: { id } });
+    if (!p) throw new NotFoundException('Program not found');
+    if (!p.zoomMeetingId)
+      throw new BadRequestException('Program has no linked Zoom webinar');
+    if (!this.zoom.isConfigured())
+      throw new BadRequestException('Zoom is not configured');
+
+    // Fetch host/attendee URLs (backfills start_url which Zoom omits from webhook payloads)
+    const sessionDetail =
+      p.zoomSessionType === 'WEBINAR'
+        ? await this.zoom.getWebinarById(p.zoomMeetingId).catch(() => null)
+        : await this.zoom.getMeetingById(p.zoomMeetingId).catch(() => null);
+
+    const updateData: Record<string, unknown> = {};
+    if (sessionDetail?.startUrl && !p.zoomStartUrl) {
+      updateData.zoomStartUrl = sessionDetail.startUrl;
+    }
+    if (sessionDetail?.joinUrl && !p.zoomJoinUrl) {
+      updateData.zoomJoinUrl = sessionDetail.joinUrl;
+    }
+
+    // Fetch panelist links (webinars only)
+    let links: Array<{ name: string; email: string; joinUrl: string }> = [];
+    if (p.zoomSessionType === 'WEBINAR') {
+      const panelists = await this.zoom.getWebinarPanelists(p.zoomMeetingId);
+      links = panelists
+        .filter((pan) => pan.joinUrl)
+        .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+      if (links.length) updateData.zoomPanelistLinks = links;
+    }
+
+    if (Object.keys(updateData).length) {
+      await this.prisma.program.update({ where: { id }, data: updateData });
+    }
+
+    this.logger.log(
+      `Refreshed Zoom links for program ${id}: panelists=${links.length} startUrl=${updateData.zoomStartUrl ? 'backfilled' : 'already set'}`,
+    );
+
+    return {
+      refreshed: links.length,
+      panelists: links,
+      startUrlBackfilled: !!updateData.zoomStartUrl,
+      joinUrlBackfilled: !!updateData.zoomJoinUrl,
+    };
+  }
+
   @Patch('programs/:id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Update program status (DRAFT / PUBLISHED / ARCHIVED)' })
+  @ApiOperation({
+    summary: 'Update program status (DRAFT / PUBLISHED / ARCHIVED)',
+  })
   @ApiParam({ name: 'id', description: 'Program ID' })
   updateProgramStatus(
     @Param('id') id: string,
@@ -232,6 +410,19 @@ export class AdminController {
     return this.surveysService.createSurveyFromJotformTemplate(dto);
   }
 
+  @Patch('surveys/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Update survey (Jotform form ID); FEEDBACK surveys also update program post-event URL',
+  })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  updateSurvey(@Param('id') id: string, @Body() dto: UpdateSurveyDto) {
+    return this.surveysService.updateSurvey(id, dto);
+  }
+
   @Delete('surveys/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -247,9 +438,21 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Search users (server-side)' })
-  @ApiQuery({ name: 'q', required: false, description: 'Search by name or email' })
-  @ApiQuery({ name: 'role', required: false, description: 'Filter by role (HCP, KOL, ADMIN)' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Max results (default 50)' })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description: 'Search by name or email',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: false,
+    description: 'Filter by role (HCP, KOL, ADMIN)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max results (default 50)',
+  })
   async getUsers(
     @Query('q') q?: string,
     @Query('role') role?: string,
@@ -309,7 +512,9 @@ export class AdminController {
     @Body('role') role: UserRole,
   ) {
     if (!role || !['HCP', 'KOL', 'ADMIN'].includes(role)) {
-      throw new BadRequestException('Invalid role. Must be HCP, KOL, or ADMIN.');
+      throw new BadRequestException(
+        'Invalid role. Must be HCP, KOL, or ADMIN.',
+      );
     }
     const updated = await this.prisma.user.update({
       where: { id: userId },
@@ -319,20 +524,69 @@ export class AdminController {
     return updated;
   }
 
+  @Delete('users/:userId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Delete an HCP or KOL user',
+    description:
+      'Removes the user and cascaded data (enrollments, registrations, etc.). Admin accounts cannot be deleted. You cannot delete yourself.',
+  })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  async deleteParticipantUser(
+    @Param('userId') userId: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    if (userId === admin.userId) {
+      throw new BadRequestException('You cannot delete your own account.');
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, email: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (target.role === UserRole.ADMIN) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be deleted from the portal.',
+      );
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.programRegistration.updateMany({
+        where: { reviewedByUserId: userId },
+        data: { reviewedByUserId: null },
+      });
+      await tx.webinarParticipantEvent.updateMany({
+        where: { userId },
+        data: { userId: null },
+      });
+      await tx.user.delete({ where: { id: userId } });
+    });
+    this.logger.log(
+      `Admin ${admin.userId} deleted user ${userId} (${target.email})`,
+    );
+    return { deleted: true, id: userId };
+  }
+
   // ─── Admin Webinar Management ─────────────────────────────────────────────
 
   @Get('webinars')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List webinars or office hours (Zoom + Programs) for admin' })
+  @ApiOperation({
+    summary: 'List webinars or office hours (Zoom + Programs) for admin',
+  })
   @ApiQuery({
     name: 'zoomSessionType',
     required: false,
     enum: ['WEBINAR', 'MEETING'],
     description: 'Filter by session type (default: all)',
   })
-  async listAdminWebinars(@Query('zoomSessionType') zoomSessionType?: 'WEBINAR' | 'MEETING') {
+  async listAdminWebinars(
+    @Query('zoomSessionType') zoomSessionType?: 'WEBINAR' | 'MEETING',
+  ) {
     const programs = await this.prisma.program.findMany({
       where:
         zoomSessionType === 'WEBINAR' || zoomSessionType === 'MEETING'
@@ -343,7 +597,9 @@ export class AdminController {
     });
 
     let zoomWebinars: Awaited<ReturnType<ZoomService['listWebinars']>> = [];
-    let zoomMeetings: Awaited<ReturnType<ZoomService['listScheduledMeetings']>> = [];
+    let zoomMeetings: Awaited<
+      ReturnType<ZoomService['listScheduledMeetings']>
+    > = [];
     if (this.zoom.isConfigured()) {
       zoomWebinars = await this.zoom.listWebinars();
       zoomMeetings = await this.zoom.listScheduledMeetings();
@@ -372,7 +628,21 @@ export class AdminController {
         zoomStartUrl: zoom?.startUrl ?? p.zoomStartUrl ?? null,
         sponsorName: p.sponsorName,
         creditAmount: p.creditAmount,
+        honorariumAmount:
+          p.zoomSessionType === 'WEBINAR' && p.honorariumAmount != null
+            ? p.honorariumAmount / 100
+            : undefined,
         createdAt: p.createdAt.toISOString(),
+        zoomPanelistLinks:
+          (p.zoomPanelistLinks as Array<{
+            name: string;
+            email: string;
+            joinUrl: string;
+          }> | null) ?? undefined,
+        hostDisplayName: p.hostDisplayName ?? undefined,
+        hostBio: p.hostBio ?? undefined,
+        speakers: p.speakers ?? [],
+        importedViaWebhook: p.importedViaWebhook,
       };
     });
 
@@ -383,7 +653,9 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Create a webinar - schedules on Zoom and saves to DB' })
+  @ApiOperation({
+    summary: 'Create a webinar - schedules on Zoom and saves to DB',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -395,35 +667,103 @@ export class AdminController {
         startDate: { type: 'string', description: 'ISO 8601 datetime' },
         duration: { type: 'number', description: 'Duration in minutes' },
         timezone: { type: 'string', default: 'America/New_York' },
-        createSurveyFromTemplate: { type: 'string' },
-        status: { type: 'string', enum: ['DRAFT', 'PUBLISHED'], default: 'PUBLISHED' },
-        zoomSessionType: { type: 'string', enum: ['WEBINAR', 'MEETING'], default: 'WEBINAR' },
+        status: {
+          type: 'string',
+          enum: ['DRAFT', 'PUBLISHED'],
+          default: 'PUBLISHED',
+        },
+        zoomSessionType: {
+          type: 'string',
+          enum: ['WEBINAR', 'MEETING'],
+          default: 'WEBINAR',
+        },
+        postEventJotformFormIdOrUrl: {
+          type: 'string',
+          description:
+            'Optional. Jotform form ID or URL for post-event (FEEDBACK) survey; saved to Surveys and program hub.',
+        },
+        jotformIntakeFormUrl: {
+          type: 'string',
+          description:
+            'Required for WEBINAR. Registration / invitation Jotform URL used for learner intake.',
+        },
+        honorariumAmount: {
+          type: 'number',
+          description:
+            'Optional. Honorarium in USD for learners (stored as cents). WEBINAR only; not allowed for Office Hours (MEETING).',
+        },
+        speakers: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Optional (WEBINAR). Speaker/KOL display names. Each gets a unique panelist link (zsoccerguy+user1@gmail.com, +user2, …). CHM Staff panelist is always added automatically.',
+        },
       },
     },
   })
   async createAdminWebinar(
-    @Body() body: {
+    @Body()
+    body: {
       title: string;
       description?: string;
       sponsorName?: string;
       startDate: string;
       duration: number;
       timezone?: string;
-      createSurveyFromTemplate?: string;
       status?: 'DRAFT' | 'PUBLISHED';
       zoomSessionType?: 'WEBINAR' | 'MEETING';
+      /** When set for WEBINAR, clones invitation from template then uses this form for post-event (skips env post template). For MEETING, only attaches this survey. */
+      postEventJotformFormIdOrUrl?: string;
+      /** WEBINAR: required per-session intake URL. */
+      jotformIntakeFormUrl?: string;
+      /** WEBINAR only. Dollars (e.g. 250 = $250); stored as cents on Program. */
+      honorariumAmount?: number;
+      /** Primary speaker / KOL display name. */
+      hostDisplayName?: string;
+      /** Short speaker bio shown on the program detail page. */
+      hostBio?: string;
+      /** WEBINAR only. Speaker/KOL names. Generates unique panelist join links per speaker plus a fixed CHM Staff panelist. */
+      speakers?: string[];
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
     if (!body.startDate) throw new BadRequestException('startDate is required');
-    if (!body.duration || body.duration < 1) throw new BadRequestException('duration (minutes) is required');
+    if (!body.duration || body.duration < 1)
+      throw new BadRequestException('duration (minutes) is required');
 
     const sessionType = body.zoomSessionType ?? 'WEBINAR';
+
+    if (sessionType === 'MEETING' && body.honorariumAmount != null) {
+      throw new BadRequestException(
+        'Honorarium is only supported for Zoom Webinars. Remove honorariumAmount when scheduling Office Hours.',
+      );
+    }
+    if (
+      sessionType === 'WEBINAR' &&
+      body.honorariumAmount != null &&
+      (typeof body.honorariumAmount !== 'number' || body.honorariumAmount < 0)
+    ) {
+      throw new BadRequestException(
+        'honorariumAmount must be a non-negative number (USD).',
+      );
+    }
+
+    if (sessionType === 'WEBINAR' && !body.jotformIntakeFormUrl?.trim()) {
+      throw new BadRequestException(
+        'Jotform intake URL is required for webinars.',
+      );
+    }
 
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
     let zoomError: string | undefined;
+    let zoomPanelistError: string | undefined;
+    let zoomPanelistLinks: Array<{
+      name: string;
+      email: string;
+      joinUrl: string;
+    }> = [];
 
     if (this.zoom.isConfigured()) {
       try {
@@ -449,13 +789,59 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+
+          // Build panelist list: CHM Staff (fixed) + each speaker with an indexed email
+          // Host does not get a personal Zoom URL — they start the session via the host start link.
+          const speakerNames = (body.speakers ?? [])
+            .map((s) => s.trim())
+            .filter(Boolean);
+          const allPanelistNames: string[] = [...speakerNames];
+          const panelistsToAdd: Array<{ name: string; email: string }> = [
+            { name: 'CHM Staff', email: 'zsoccerguy@gmail.com' },
+            ...allPanelistNames.map((name, idx) => ({
+              name,
+              email: `zsoccerguy+user${idx + 1}@gmail.com`,
+            })),
+          ];
+
+          try {
+            const added = await this.zoom.addWebinarPanelists(
+              created.id,
+              panelistsToAdd,
+            );
+            zoomPanelistLinks = added
+              .filter((p) => p.joinUrl)
+              .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+            if (!zoomPanelistLinks.length && added.length) {
+              zoomPanelistError =
+                'Panelists were added to Zoom but their join URLs were not returned. ' +
+                'Check that your Zoom account has the Webinar add-on and that panelist join URLs are enabled.';
+              this.logger.warn(
+                `Zoom addWebinarPanelists returned no join_urls for webinar ${created.id}`,
+              );
+            }
+          } catch (pErr) {
+            const pMsg = pErr instanceof Error ? pErr.message : String(pErr);
+            this.logger.warn(
+              `Zoom addWebinarPanelists failed for ${created.id}: ${pMsg}`,
+            );
+            zoomPanelistError =
+              `Webinar created on Zoom, but panelist links could not be generated: ${pMsg}. ` +
+              'Check your Zoom app has webinar:write:admin scope and your account includes the Webinar add-on.';
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`Zoom create (${sessionType}) failed (saving to DB without Zoom): ${msg}`);
+        this.logger.warn(
+          `Zoom create (${sessionType}) failed (saving to DB without Zoom): ${msg}`,
+        );
         zoomError = msg;
       }
     }
+
+    let jotformFormsWarning: string | undefined;
+
+    const manualIntakeUrl = body.jotformIntakeFormUrl?.trim();
 
     const program = await this.programsService.createProgram({
       title: body.title.trim(),
@@ -468,15 +854,93 @@ export class AdminController {
       zoomStartUrl,
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
+      registrationRequiresApproval: true,
+      ...(body.hostDisplayName?.trim()
+        ? { hostDisplayName: body.hostDisplayName.trim() }
+        : {}),
+      ...(body.hostBio?.trim() ? { hostBio: body.hostBio.trim() } : {}),
+      speakers: (body.speakers ?? []).map((s) => s.trim()).filter(Boolean),
+      ...(zoomPanelistLinks.length ? { zoomPanelistLinks } : {}),
+      ...(sessionType === 'WEBINAR' &&
+      body.honorariumAmount != null &&
+      body.honorariumAmount > 0
+        ? { honorariumAmount: body.honorariumAmount }
+        : {}),
+      ...(sessionType === 'WEBINAR' && manualIntakeUrl
+        ? { jotformIntakeFormUrl: manualIntakeUrl }
+        : {}),
     });
 
-    if (sessionType === 'WEBINAR' && body.createSurveyFromTemplate?.trim()) {
-      await this.surveysService.createSurveyFromJotformTemplate({
-        programId: program.id,
-        templateFormId: body.createSurveyFromTemplate.trim(),
-        title: `${program.title} - Post Event Survey`,
-        type: 'FEEDBACK',
-      });
+    const manualPost = body.postEventJotformFormIdOrUrl?.trim();
+
+    if (sessionType === 'WEBINAR') {
+      try {
+        if (manualIntakeUrl) {
+          if (manualPost) {
+            await this.surveysService.applyManualPostEventJotform(
+              program.id,
+              program.title,
+              manualPost,
+            );
+          } else {
+            await this.surveysService.createWebinarPostEventOnlyFromTemplates(
+              program.id,
+              program.title,
+            );
+          }
+        } else if (manualPost) {
+          await this.surveysService.createWebinarInvitationAndManualPostSurvey(
+            program.id,
+            program.title,
+            manualPost,
+          );
+        } else {
+          await this.surveysService.createWebinarJotformPairFromTemplates(
+            program.id,
+            program.title,
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Webinar Jotform clone failed for program ${program.id}: ${msg}`,
+        );
+        jotformFormsWarning =
+          'The webinar was saved, but the invitation and post-event Jotforms were not created automatically. ' +
+          'This usually means Jotform templates or API access still need to be configured for this environment. ' +
+          'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
+          'Learner signup is not blocked.';
+        if (manualPost) {
+          try {
+            await this.surveysService.applyManualPostEventJotform(
+              program.id,
+              program.title,
+              manualPost,
+            );
+            this.logger.log(
+              `Saved manual post-event survey for program ${program.id} after invitation clone failure`,
+            );
+          } catch (e2) {
+            const m2 = e2 instanceof Error ? e2.message : String(e2);
+            this.logger.warn(
+              `Manual post-event survey could not be saved for program ${program.id}: ${m2}`,
+            );
+          }
+        }
+      }
+    } else if (manualPost) {
+      try {
+        await this.surveysService.applyManualPostEventJotform(
+          program.id,
+          program.title,
+          manualPost,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Post-event Jotform for office hours program ${program.id}: ${msg}`,
+        );
+      }
     }
 
     return {
@@ -484,17 +948,147 @@ export class AdminController {
       zoomMeetingId: zoomMeetingId ?? null,
       zoomJoinUrl: zoomJoinUrl ?? null,
       zoomStartUrl: zoomStartUrl ?? null,
-      ...(zoomError ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` } : {}),
+      ...(zoomPanelistLinks.length ? { zoomPanelistLinks } : {}),
+      ...(zoomPanelistError ? { zoomPanelistError } : {}),
+      ...(zoomError
+        ? { zoomWarning: `Session saved but Zoom sync failed: ${zoomError}` }
+        : !this.zoom.isConfigured()
+          ? {
+              zoomWarning:
+                'Session saved, but Zoom is not connected — no meeting was created on Zoom. ' +
+                'Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET to your environment variables to enable Zoom meeting creation.',
+            }
+          : {}),
+      ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
     };
   }
 
-  // ─── Program hub: Jotform URLs, Calendly, approvals, slots, ICS invites ───
+  /**
+   * Link an existing Zoom webinar or meeting (created outside this app) to a new Program so learners get the same
+   * Jotform intake, admin approval, and in-app join flow as app-scheduled sessions.
+   */
+  @Post('webinars/import-from-zoom')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Import existing Zoom webinar/meeting into DB (same registration flow as in-app sessions)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['zoomId'],
+      properties: {
+        zoomId: {
+          type: 'string',
+          description: 'Numeric Zoom webinar or meeting ID',
+        },
+        zoomSessionType: {
+          type: 'string',
+          enum: ['WEBINAR', 'MEETING'],
+          default: 'WEBINAR',
+        },
+        sponsorName: { type: 'string' },
+      },
+    },
+  })
+  async importZoomSession(
+    @Body()
+    body: {
+      zoomId: string;
+      zoomSessionType?: 'WEBINAR' | 'MEETING';
+      sponsorName?: string;
+    },
+  ) {
+    if (!this.zoom.isConfigured()) {
+      throw new BadRequestException(
+        'Zoom API is not configured (ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, ZOOM_CLIENT_SECRET).',
+      );
+    }
+    const zoomId = body.zoomId?.trim();
+    if (!zoomId) throw new BadRequestException('zoomId is required');
+    const sessionType = body.zoomSessionType ?? 'WEBINAR';
+
+    const existing = await this.prisma.program.findFirst({
+      where: { zoomMeetingId: zoomId, zoomSessionType: sessionType },
+      select: { id: true, title: true },
+    });
+    if (existing) {
+      throw new ConflictException(
+        `This Zoom ${sessionType} is already linked to program “${existing.title}” (${existing.id}). Open Admin → Program hub to manage it.`,
+      );
+    }
+
+    const zoomData =
+      sessionType === 'MEETING'
+        ? await this.zoom.getMeetingById(zoomId)
+        : await this.zoom.getWebinarById(zoomId);
+
+    if (!zoomData) {
+      throw new NotFoundException(
+        sessionType === 'MEETING'
+          ? `No Zoom meeting found for ID ${zoomId}. Use the meeting ID from the Zoom client or URL. The Server-to-Server OAuth app must have access to this meeting’s account.`
+          : `No Zoom webinar found for ID ${zoomId}. Use the webinar ID from the Zoom web portal. The Server-to-Server OAuth app must belong to the same Zoom account as the webinar.`,
+      );
+    }
+
+    const program = await this.programsService.createProgram({
+      title: zoomData.topic.trim(),
+      description: (zoomData.agenda?.trim() || zoomData.topic).trim(),
+      sponsorName: body.sponsorName?.trim() || 'General',
+      startDate: zoomData.startTime,
+      duration: zoomData.duration,
+      zoomMeetingId: zoomData.id,
+      zoomJoinUrl: zoomData.joinUrl,
+      zoomStartUrl: zoomData.startUrl,
+      status: 'PUBLISHED',
+      zoomSessionType: sessionType,
+      registrationRequiresApproval: true,
+    });
+
+    let jotformFormsWarning: string | undefined;
+    if (sessionType === 'WEBINAR') {
+      try {
+        await this.surveysService.createWebinarJotformPairFromTemplates(
+          program.id,
+          program.title,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Webinar Jotform clone failed for imported program ${program.id}: ${msg}`,
+        );
+        jotformFormsWarning =
+          'The webinar was saved, but the invitation and post-event Jotforms were not created automatically. ' +
+          'This usually means Jotform templates or API access still need to be configured for this environment. ' +
+          'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
+          'Learner signup is not blocked.';
+      }
+    }
+
+    this.logger.log(
+      `Imported Zoom ${sessionType} ${zoomId} → program ${program.id}`,
+    );
+    return {
+      ...program,
+      zoomMeetingId: zoomData.id,
+      zoomJoinUrl: zoomData.joinUrl,
+      zoomStartUrl: zoomData.startUrl,
+      ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
+    };
+  }
+
+  // ─── Program hub: Jotform URLs, approval gate (office hours), slots, ICS invites ───
 
   @Patch('programs/:id/registration-settings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Update program intake/pre-event forms, host label, Calendly, approval gate' })
+  @ApiOperation({
+    summary:
+      'Update program intake/pre-event forms, host label, manual approval before Zoom access',
+  })
   async patchProgramRegistrationSettings(
     @Param('id') id: string,
     @Body()
@@ -502,70 +1096,305 @@ export class AdminController {
       jotformIntakeFormUrl?: string | null;
       jotformPreEventUrl?: string | null;
       hostDisplayName?: string | null;
-      calendlySchedulingUrl?: string | null;
+      hostBio?: string | null;
       registrationRequiresApproval?: boolean;
     },
   ) {
-    const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
+    const exists = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!exists) throw new NotFoundException('Program not found');
     const data: Record<string, unknown> = {};
-    if (body.jotformIntakeFormUrl !== undefined) data.jotformIntakeFormUrl = body.jotformIntakeFormUrl;
-    if (body.jotformPreEventUrl !== undefined) data.jotformPreEventUrl = body.jotformPreEventUrl;
-    if (body.hostDisplayName !== undefined) data.hostDisplayName = body.hostDisplayName;
-    if (body.calendlySchedulingUrl !== undefined) data.calendlySchedulingUrl = body.calendlySchedulingUrl;
+    if (body.jotformIntakeFormUrl !== undefined)
+      data.jotformIntakeFormUrl = body.jotformIntakeFormUrl;
+    if (body.jotformPreEventUrl !== undefined)
+      data.jotformPreEventUrl = body.jotformPreEventUrl;
+    if (body.hostDisplayName !== undefined)
+      data.hostDisplayName = body.hostDisplayName;
+    if (body.hostBio !== undefined) data.hostBio = body.hostBio;
     if (body.registrationRequiresApproval !== undefined) {
       data.registrationRequiresApproval = body.registrationRequiresApproval;
     }
     return this.prisma.program.update({ where: { id }, data });
   }
 
+  @Get('webinar-registrations/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Pending LIVE webinar and Office Hours registration requests (all programs)',
+  })
+  async listPendingWebinarRegistrations() {
+    const rows =
+      await this.programRegistrations.listPendingWebinarRegistrationsForAdmin();
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
+    return rows.map((r) => {
+      const intakeRequired = !!effectiveWebinarIntakeFormUrl(
+        r.program.zoomSessionType,
+        r.program.jotformIntakeFormUrl,
+        defaultIntake,
+      );
+      const intakeComplete =
+        !intakeRequired || !!r.intakeJotformSubmissionId?.trim();
+      return {
+        id: r.id,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        lastSubmittedAt: lastProgramRegistrationSubmittedAtIso(r),
+        intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+        intakeRequired,
+        intakeComplete,
+        jotformIntakeSubmissionViewUrl: intakeRequired
+          ? buildJotformIntakeSubmissionViewUrl(
+              r.program.jotformIntakeFormUrl,
+              r.intakeJotformSubmissionId,
+            )
+          : null,
+        user: r.user,
+        program: r.program,
+      };
+    });
+  }
+
+  @Get('webinar-registrations/payment-eligible')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Registrations where attendance is verified + survey complete + honorarium set, but payment not yet requested.',
+  })
+  async listPaymentEligibleNotYetRequested() {
+    const rows =
+      await this.programRegistrations.listPaymentEligibleNotYetRequestedForAdmin();
+    return rows.map((r) => ({
+      id: r.id,
+      postEventSurveyAcknowledgedAt:
+        r.postEventSurveyAcknowledgedAt?.toISOString(),
+      createdAt: r.createdAt.toISOString(),
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
+  @Get('webinar-registrations/pending-attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Approved learners waiting for post-event attendance verification (unlocks survey / honorarium flow)',
+  })
+  async listPendingPostEventAttendance() {
+    const rows =
+      await this.programRegistrations.listPendingPostEventAttendanceForAdmin();
+    return rows.map((r) => ({
+      id: r.id,
+      postEventAttendanceStatus: r.postEventAttendanceStatus,
+      createdAt: r.createdAt.toISOString(),
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
+  @Get('programs/:id/enrollments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'List users enrolled in a program (webinar admin view)',
+  })
+  async listProgramEnrollments(@Param('id') id: string) {
+    const exists = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true },
+    });
+    if (!exists) throw new NotFoundException('Program not found');
+    const rows = await this.programsService.listProgramEnrollmentsForAdmin(id);
+    return rows.map((e) => ({
+      id: e.id,
+      enrolledAt: e.enrolledAt.toISOString(),
+      completed: e.completed,
+      overallProgress: e.overallProgress,
+      user: e.user,
+    }));
+  }
+
   @Get('programs/:id/registrations')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List registration requests for a program (approve / pick invitees)' })
+  @ApiOperation({
+    summary:
+      'List registration requests for a program (approve / pick invitees)',
+  })
   async listProgramRegistrations(@Param('id') id: string) {
-    const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
+    const exists = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!exists) throw new NotFoundException('Program not found');
     const rows = await this.programRegistrations.listRegistrationsForAdmin(id);
-    return rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      createdAt: r.createdAt.toISOString(),
-      reviewedAt: r.reviewedAt?.toISOString(),
-      calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
-      adminNotes: r.adminNotes,
-      intakeJotformSubmissionId: r.intakeJotformSubmissionId,
-      user: r.user,
-      slot: r.slot
-        ? {
-            id: r.slot.id,
-            startsAt: r.slot.startsAt.toISOString(),
-            endsAt: r.slot.endsAt.toISOString(),
-            label: r.slot.label,
-          }
-        : null,
-    }));
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
+    return rows.map((r) => {
+      const intakeRequired = !!effectiveWebinarIntakeFormUrl(
+        r.program.zoomSessionType,
+        r.program.jotformIntakeFormUrl,
+        defaultIntake,
+      );
+      const intakeComplete =
+        !intakeRequired || !!r.intakeJotformSubmissionId?.trim();
+      return {
+        id: r.id,
+        status: r.status,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+        lastSubmittedAt: lastProgramRegistrationSubmittedAtIso(r),
+        reviewedAt: r.reviewedAt?.toISOString(),
+        calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
+        adminNotes: r.adminNotes,
+        intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+        intakeRequired,
+        intakeComplete,
+        jotformIntakeSubmissionViewUrl: intakeRequired
+          ? buildJotformIntakeSubmissionViewUrl(
+              r.program.jotformIntakeFormUrl,
+              r.intakeJotformSubmissionId,
+            )
+          : null,
+        postEventJotformSubmissionId: r.postEventJotformSubmissionId,
+        jotformPostEventSubmissionViewUrl:
+          r.program.jotformSurveyUrl?.trim() &&
+          r.postEventJotformSubmissionId?.trim()
+            ? buildJotformIntakeSubmissionViewUrl(
+                r.program.jotformSurveyUrl,
+                r.postEventJotformSubmissionId,
+              )
+            : null,
+        user: r.user,
+        slot: r.slot
+          ? {
+              id: r.slot.id,
+              startsAt: r.slot.startsAt.toISOString(),
+              endsAt: r.slot.endsAt.toISOString(),
+              label: r.slot.label,
+            }
+          : null,
+        postEventAttendanceStatus: r.postEventAttendanceStatus,
+        postEventAttendanceReviewedAt:
+          r.postEventAttendanceReviewedAt?.toISOString(),
+        postEventSurveyAcknowledgedAt:
+          r.postEventSurveyAcknowledgedAt?.toISOString(),
+        honorariumRequestedAt: r.honorariumRequestedAt?.toISOString(),
+      };
+    });
   }
 
   @Patch('registrations/:registrationId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Approve, reject, or waitlist a registration (approve creates enrollment)' })
+  @ApiOperation({
+    summary:
+      'Approve, reject, or waitlist a registration (approve creates enrollment)',
+  })
   async adminUpdateRegistration(
     @Param('registrationId') registrationId: string,
-    @Body() body: { status: ProgramRegistrationStatus; adminNotes?: string },
+    @Body()
+    body: {
+      status: ProgramRegistrationStatus;
+      adminNotes?: string;
+      /** When status is REJECTED, which email copy to use for Live / Office Hours. */
+      rejectEmailReason?: 'GENERIC' | 'INCOMPLETE_INTAKE';
+    },
     @CurrentUser() admin: AuthUser,
   ) {
-    if (!body?.status || !Object.values(ProgramRegistrationStatus).includes(body.status)) {
-      throw new BadRequestException('status must be a valid ProgramRegistrationStatus');
+    if (
+      !body?.status ||
+      !Object.values(ProgramRegistrationStatus).includes(body.status)
+    ) {
+      throw new BadRequestException(
+        'status must be a valid ProgramRegistrationStatus',
+      );
+    }
+    if (body.status !== 'REJECTED' && body.rejectEmailReason) {
+      throw new BadRequestException(
+        'rejectEmailReason is only used when status is REJECTED',
+      );
+    }
+    if (
+      body.rejectEmailReason != null &&
+      body.rejectEmailReason !== 'GENERIC' &&
+      body.rejectEmailReason !== 'INCOMPLETE_INTAKE'
+    ) {
+      throw new BadRequestException(
+        'rejectEmailReason must be GENERIC or INCOMPLETE_INTAKE',
+      );
     }
     return this.programRegistrations.adminSetRegistrationStatus(
       admin.userId,
       registrationId,
       body.status,
       body.adminNotes,
+      body.status === 'REJECTED'
+        ? {
+            rejectEmailReason:
+              body.rejectEmailReason === 'INCOMPLETE_INTAKE'
+                ? 'INCOMPLETE_INTAKE'
+                : 'GENERIC',
+          }
+        : undefined,
+    );
+  }
+
+  @Patch('registrations/:registrationId/post-event-attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Verify or deny post-event attendance (unlocks survey when verified)',
+  })
+  async adminPatchPostEventAttendance(
+    @Param('registrationId') registrationId: string,
+    @Body() body: { status: 'VERIFIED' | 'DENIED' },
+    @CurrentUser() admin: AuthUser,
+  ) {
+    if (body?.status !== 'VERIFIED' && body?.status !== 'DENIED') {
+      throw new BadRequestException('status must be VERIFIED or DENIED');
+    }
+    return this.programRegistrations.adminSetPostEventAttendance(
+      admin.userId,
+      registrationId,
+      body.status,
+    );
+  }
+
+  @Delete('programs/:programId/enrollments/:enrollmentId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Remove a learner enrollment (revokes access); sets registration to rejected so they may re-register',
+  })
+  async adminRemoveProgramEnrollment(
+    @Param('programId') programId: string,
+    @Param('enrollmentId') enrollmentId: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.programRegistrations.adminRemoveEnrollment(
+      admin.userId,
+      programId,
+      enrollmentId,
     );
   }
 
@@ -573,12 +1402,15 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Download .ics calendar invite for an approved registration' })
+  @ApiOperation({
+    summary: 'Download .ics calendar invite for an approved registration',
+  })
   async downloadRegistrationIcs(
     @Param('registrationId') registrationId: string,
     @Res({ passthrough: false }) res: Response,
   ) {
-    const { filename, body } = await this.programRegistrations.buildIcsForRegistration(registrationId);
+    const { filename, body } =
+      await this.programRegistrations.buildIcsForRegistration(registrationId);
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(body);
@@ -588,8 +1420,12 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Record that a calendar invite was sent to the registrant' })
-  async markCalendarInviteSent(@Param('registrationId') registrationId: string) {
+  @ApiOperation({
+    summary: 'Record that a calendar invite was sent to the registrant',
+  })
+  async markCalendarInviteSent(
+    @Param('registrationId') registrationId: string,
+  ) {
     return this.programRegistrations.markCalendarInviteSent(registrationId);
   }
 
@@ -597,10 +1433,20 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Add an office-hours time slot (aligned with Zoom meeting duration)' })
+  @ApiOperation({
+    summary:
+      'Add an office-hours time slot (aligned with Zoom meeting duration)',
+  })
   async createOfficeHoursSlot(
     @Param('id') id: string,
-    @Body() body: { startsAt: string; endsAt: string; label?: string; maxAttendees?: number; sortOrder?: number },
+    @Body()
+    body: {
+      startsAt: string;
+      endsAt: string;
+      label?: string;
+      maxAttendees?: number;
+      sortOrder?: number;
+    },
   ) {
     if (!body?.startsAt || !body?.endsAt) {
       throw new BadRequestException('startsAt and endsAt (ISO) are required');
@@ -629,7 +1475,10 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   async listProgramFormLinks(@Param('id') id: string) {
-    const exists = await this.prisma.program.findUnique({ where: { id }, select: { id: true } });
+    const exists = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!exists) throw new NotFoundException('Program not found');
     return this.programRegistrations.listFormLinks(id);
   }
@@ -640,7 +1489,13 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   async addProgramFormLink(
     @Param('id') id: string,
-    @Body() body: { kind: 'INTAKE' | 'PRE_EVENT' | 'POST_EVENT' | 'CUSTOM'; label: string; jotformUrl: string; sortOrder?: number },
+    @Body()
+    body: {
+      kind: 'INTAKE' | 'PRE_EVENT' | 'POST_EVENT' | 'CUSTOM';
+      label: string;
+      jotformUrl: string;
+      sortOrder?: number;
+    },
   ) {
     if (!body?.label?.trim() || !body?.jotformUrl?.trim()) {
       throw new BadRequestException('label and jotformUrl are required');
@@ -664,29 +1519,81 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Program ID' })
   async updateAdminWebinar(
     @Param('id') id: string,
-    @Body() body: {
+    @Body()
+    body: {
       title?: string;
       description?: string;
       sponsorName?: string;
       startDate?: string;
       duration?: number;
       status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+      /** Correct listing + Zoom sync path when a webhook mis-classified or admin needs to move between Live vs Office Hours. */
+      zoomSessionType?: 'WEBINAR' | 'MEETING';
+      /** WEBINAR only. Dollars; omit to leave unchanged. Set to 0 to clear. */
+      honorariumAmount?: number;
+      hostDisplayName?: string;
+      hostBio?: string;
+      speakers?: string[];
     },
   ) {
-    const existing = await this.prisma.program.findUnique({ where: { id } });
+    const existing = await this.prisma.program.findUnique({
+      where: { id },
+      include: {
+        surveys: { where: { type: 'FEEDBACK' }, select: { id: true }, take: 1 },
+      },
+    });
     if (!existing) throw new NotFoundException('Webinar not found');
 
-    if (existing.zoomMeetingId && this.zoom.isConfigured()) {
-      if (existing.zoomSessionType === 'MEETING') {
+    let nextZoomSessionType = existing.zoomSessionType as 'WEBINAR' | 'MEETING';
+    if (body.zoomSessionType !== undefined) {
+      if (
+        body.zoomSessionType !== 'WEBINAR' &&
+        body.zoomSessionType !== 'MEETING'
+      ) {
+        throw new BadRequestException(
+          'zoomSessionType must be WEBINAR or MEETING.',
+        );
+      }
+      nextZoomSessionType = body.zoomSessionType;
+    }
+
+    if (body.honorariumAmount !== undefined) {
+      if (nextZoomSessionType !== 'WEBINAR') {
+        throw new BadRequestException(
+          'Honorarium can only be set on Zoom Webinar programs, not Office Hours.',
+        );
+      }
+      if (
+        typeof body.honorariumAmount !== 'number' ||
+        body.honorariumAmount < 0
+      ) {
+        throw new BadRequestException(
+          'honorariumAmount must be a non-negative number (USD).',
+        );
+      }
+    }
+
+    const shouldPatchZoomFields =
+      !!body.title?.trim() ||
+      body.description !== undefined ||
+      body.startDate !== undefined ||
+      body.duration !== undefined;
+
+    const shouldSyncZoom =
+      !!(existing.zoomMeetingId && this.zoom.isConfigured()) &&
+      shouldPatchZoomFields;
+
+    if (shouldSyncZoom && existing.zoomMeetingId) {
+      if (nextZoomSessionType === 'MEETING') {
         await this.zoom.updateMeeting(existing.zoomMeetingId, {
-          topic: body.title,
+          topic: body.title?.trim() || undefined,
           agenda: body.description,
           startTime: body.startDate,
           duration: body.duration,
         });
       } else {
         await this.zoom.updateWebinar(existing.zoomMeetingId, {
-          topic: body.title,
+          topic: body.title?.trim() || undefined,
           agenda: body.description,
           startTime: body.startDate,
           duration: body.duration,
@@ -696,13 +1603,52 @@ export class AdminController {
 
     const updateData: Record<string, unknown> = {};
     if (body.title) updateData.title = body.title.trim();
-    if (body.description !== undefined) updateData.description = body.description.trim();
+    if (body.description !== undefined)
+      updateData.description = body.description.trim();
     if (body.sponsorName) updateData.sponsorName = body.sponsorName.trim();
     if (body.startDate) updateData.startDate = new Date(body.startDate);
     if (body.duration !== undefined) updateData.duration = body.duration;
     if (body.status) updateData.status = body.status;
+    if (body.zoomSessionType !== undefined)
+      updateData.zoomSessionType = body.zoomSessionType;
+    if (nextZoomSessionType === 'MEETING') {
+      updateData.honorariumAmount = null;
+    } else if (body.honorariumAmount !== undefined) {
+      updateData.honorariumAmount =
+        body.honorariumAmount <= 0
+          ? null
+          : Math.round(body.honorariumAmount * 100);
+    }
+    if (body.hostDisplayName !== undefined)
+      updateData.hostDisplayName = body.hostDisplayName.trim() || null;
+    if (body.hostBio !== undefined)
+      updateData.hostBio = body.hostBio.trim() || null;
+    if (body.speakers !== undefined)
+      updateData.speakers = body.speakers.map((s) => s.trim()).filter(Boolean);
 
-    const updated = await this.prisma.program.update({ where: { id }, data: updateData });
+    const updated = await this.prisma.program.update({
+      where: { id },
+      data: updateData,
+    });
+
+    // Webhook-imported programs with no FEEDBACK survey: attach Jotforms when saved as a Live webinar (incl. type correction MEETING→WEBINAR).
+    const noFeedbackSurvey = existing.surveys.length === 0;
+    if (
+      existing.importedViaWebhook &&
+      updated.zoomSessionType === 'WEBINAR' &&
+      noFeedbackSurvey
+    ) {
+      const programTitle = body.title?.trim() || existing.title;
+      this.surveysService
+        .attachJotformFormsFromConfig(id, programTitle)
+        .catch((err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `Jotform form attachment on first save failed for program ${id}: ${msg}`,
+          );
+        });
+    }
+
     return updated;
   }
 

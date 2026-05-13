@@ -15,7 +15,7 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
-  const handleOAuth = (provider: 'google' | 'apple') => {
+  const handleOAuth = (provider: 'google') => {
     setError(null);
     setOauthLoading(provider);
     const url = buildOAuthAuthorizeUrl(provider, from);
@@ -70,10 +70,10 @@ export default function Login() {
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-6 py-8 text-center">
           <h1 className="text-xl font-semibold text-gray-900 md:text-2xl">
-            Working on your HCP content today?
+            Welcome back.
           </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Pick a channel and get started.
+            Your clinical library is waiting.
           </p>
         </div>
 
@@ -86,6 +86,7 @@ export default function Login() {
               </div>
             )}
             <Input
+              id="email"
               label="Email address"
               type="email"
               placeholder="johndoe@gmail.com"
@@ -94,6 +95,7 @@ export default function Login() {
               required
             />
             <Input
+              id="password"
               label="Password"
               type="password"
               placeholder="••••••••"
@@ -112,7 +114,7 @@ export default function Login() {
               </label>
               <Link
                 to="/forgot-password"
-                className="text-sm font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                className="font-medium text-gray-900 underline hover:text-gray-700 text-sm"
               >
                 Forgot Password?
               </Link>
@@ -121,7 +123,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
             >
               {submitting ? 'Signing in...' : 'Login'}
             </button>
@@ -136,34 +138,19 @@ export default function Login() {
                 <span className="bg-white px-2 text-gray-500">Or continue with</span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleOAuth('google')}
-                disabled={!!oauthLoading}
-                className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {oauthLoading === 'google' ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-                ) : (
-                  <GoogleIcon />
-                )}
-                Google
-              </button>
-              <button
-                type="button"
-                onClick={() => handleOAuth('apple')}
-                disabled={!!oauthLoading}
-                className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                {oauthLoading === 'apple' ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-                ) : (
-                  <AppleIcon />
-                )}
-                Apple
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleOAuth('google')}
+              disabled={!!oauthLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              {oauthLoading === 'google' ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+              ) : (
+                <GoogleIcon />
+              )}
+              Continue with Google
+            </button>
           </div>
 
           {/* Footer */}
@@ -171,7 +158,7 @@ export default function Login() {
             Don&apos;t have an account?{' '}
             <Link
               to="/join"
-              className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+              className="font-medium text-gray-900 underline hover:text-gray-700"
             >
               Sign Up
             </Link>
@@ -193,15 +180,8 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon() {
-  return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-    </svg>
-  );
-}
-
 function Input({
+  id,
   label,
   type = 'text',
   placeholder,
@@ -209,6 +189,7 @@ function Input({
   onChange,
   required,
 }: {
+  id?: string;
   label: string;
   type?: string;
   placeholder?: string;
@@ -218,8 +199,9 @@ function Input({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={id} className="text-sm font-medium text-gray-700">{label}</label>
       <input
+        id={id}
         type={type}
         placeholder={placeholder}
         value={value}

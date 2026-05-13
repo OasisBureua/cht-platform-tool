@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon, SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
-import { getShortClipId } from '../../utils/clipUrl';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { getShortClipId, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 
 type ResultType = 'Video' | 'Webinar' | 'Collection';
 
@@ -90,14 +90,16 @@ export default function Search() {
 
   const apiResults: SearchResult[] = useMemo(() => {
     if (!searchData?.items?.length) return [];
-    return searchData.items.map((clip) => ({
-      id: `api-${clip.id}`,
-      title: clip.title,
-      subtitle: clipDisplaySummary(clip) || clip.doctors?.join(', ') || 'Video',
-      type: 'Video' as const,
-      tag: Array.isArray(clip.tags) ? clip.tags[0] : undefined,
-      href: `/catalog/clip/${getShortClipId(clip.id)}`,
-    }));
+    return searchData.items
+      .filter((clip) => shouldSurfaceCatalogClip(clip))
+      .map((clip) => ({
+        id: `api-${clip.id}`,
+        title: clip.title,
+        subtitle: clipStripeSubtitle(clip) || 'Video',
+        type: 'Video' as const,
+        tag: Array.isArray(clip.tags) ? clip.tags[0] : undefined,
+        href: `/catalog/clip/${getShortClipId(clip.id)}`,
+      }));
   }, [searchData]);
 
   const filtered = useMemo(() => {
@@ -256,7 +258,7 @@ export default function Search() {
               </span>
             )}
             {debouncedQ.length >= 2 && apiError && (
-              <span className="text-amber-700">Catalog search unavailable - showing curated matches only.</span>
+              <span className="text-amber-700">Catalog search unavailable — showing curated matches only.</span>
             )}
           </div>
         </section>

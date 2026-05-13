@@ -1,5 +1,21 @@
-import { Controller, Post, Get, Delete, Body, Param, Query, Logger, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Body,
+  Param,
+  Query,
+  Logger,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiOkResponse,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
@@ -9,10 +25,14 @@ import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
 import { BillService } from './bill.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
-import { CreateConnectAccountResponseDto, AccountLinkResponseDto } from './dto/create-connect-account.dto';
+import {
+  CreateConnectAccountResponseDto,
+  AccountLinkResponseDto,
+} from './dto/create-connect-account.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { SubmitW9Dto } from './dto/submit-w9.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
+import { BillFundingAccountsResponseDto } from './dto/bill-funding-accounts.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -43,7 +63,9 @@ export class PaymentsController {
    */
   @Post(':userId/account-link')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
-  async createAccountLink(@Param('userId') userId: string): Promise<AccountLinkResponseDto> {
+  async createAccountLink(
+    @Param('userId') userId: string,
+  ): Promise<AccountLinkResponseDto> {
     this.logger.log(`Creating account link for user: ${userId}`);
     return this.paymentsService.createAccountLink(userId);
   }
@@ -56,6 +78,24 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, AdminOrDevGuard)
   async testConnection() {
     return this.paymentsService.testBillConnection();
+  }
+
+  /**
+   * GET /api/payments/bill-funding-accounts
+   * Lists Bill.com org bank funding accounts (GET /v3/funding-accounts/banks). Use an account `id` (often `bac*`) for BILL_FUNDING_ACCOUNT_ID.
+   */
+  @Get('bill-funding-accounts')
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List Bill.com funding bank accounts (recommended BILL_FUNDING_ACCOUNT_ID)',
+    description:
+      'Uses server env Bill.com credentials to call GET /v3/funding-accounts/banks. Returns `recommendedFundingAccountId` when Bill marks an account as default for payables. Does not return passwords, dev keys, or session IDs.',
+  })
+  @ApiOkResponse({ type: BillFundingAccountsResponseDto })
+  async listBillFundingAccounts(): Promise<BillFundingAccountsResponseDto> {
+    return this.billService.listBankFundingAccountsWithRecommendation();
   }
 
   /**
@@ -89,10 +129,19 @@ export class PaymentsController {
   @Delete('by-user-program')
   @UseGuards(JwtAuthGuard, AdminOrDevGuard)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Delete payments by userId and programId (admin/dev only)' })
+  @ApiOperation({
+    summary: 'Delete payments by userId and programId (admin/dev only)',
+  })
   @ApiQuery({ name: 'userId', required: true, description: 'User ID' })
-  @ApiQuery({ name: 'programId', required: false, description: 'Program ID (omit to delete all payments for user)' })
-  @ApiResponse({ status: 200, description: 'Returns count of deleted payments' })
+  @ApiQuery({
+    name: 'programId',
+    required: false,
+    description: 'Program ID (omit to delete all payments for user)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns count of deleted payments',
+  })
   async deleteByUserAndProgram(
     @Query('userId') userId: string,
     @Query('programId') programId?: string,
@@ -141,7 +190,9 @@ export class PaymentsController {
    */
   @Get(':userId/account-status')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
-  async getAccountStatus(@Param('userId') userId: string): Promise<AccountStatusDto> {
+  async getAccountStatus(
+    @Param('userId') userId: string,
+  ): Promise<AccountStatusDto> {
     this.logger.log(`Getting account status for user: ${userId}`);
     return this.paymentsService.getAccountStatus(userId);
   }

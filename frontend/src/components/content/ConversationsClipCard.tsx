@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { MediaHubClip } from '../../api/catalog';
 import { getMediaHubThumbnail } from '../../utils/clipUrl';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 
 type ConversationsClipCardProps = {
   item: MediaHubClip;
@@ -13,8 +13,7 @@ type ConversationsClipCardProps = {
  */
 export function ConversationsClipCard({ item, href }: ConversationsClipCardProps) {
   const desc =
-    clipDisplaySummary(item)?.trim() ||
-    item.doctors?.filter(Boolean).join(' · ') ||
+    clipStripeSubtitle(item)?.trim() ||
     (item.view_count != null ? `${item.view_count.toLocaleString()} views` : '');
   return (
     <Link

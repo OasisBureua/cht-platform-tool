@@ -44,8 +44,14 @@ export class GoTrueStrategy extends PassportStrategy(Strategy, 'jwt') {
     if (!authId) throw new UnauthorizedException('Invalid token');
 
     const meta = payload.user_metadata || {};
-    const firstName = meta.first_name || (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
-    const lastName = meta.last_name || (meta.full_name ? String(meta.full_name).split(' ').slice(1).join(' ') : undefined);
+    const firstName =
+      meta.first_name ||
+      (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
+    const lastName =
+      meta.last_name ||
+      (meta.full_name
+        ? String(meta.full_name).split(' ').slice(1).join(' ')
+        : undefined);
 
     const user = await this.authService.findOrCreateByAuthId(
       authId,

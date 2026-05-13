@@ -40,8 +40,8 @@ resource "aws_security_group" "rds" {
 }
 
 resource "random_password" "db_password" {
-  length  = 32
-  special = true
+  length           = 32
+  special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
@@ -96,13 +96,13 @@ resource "aws_db_instance" "main" {
   parameter_group_name   = aws_db_parameter_group.main.name
 
   backup_retention_period = var.backup_retention_period
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "mon:04:00-mon:05:00"
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "mon:04:00-mon:05:00"
 
-  multi_az               = var.multi_az
-  publicly_accessible    = false
-  deletion_protection    = (var.environment == "prod" || var.environment == "platform") ? true : false
-  skip_final_snapshot    = var.environment == "dev" ? true : false
+  multi_az                  = var.multi_az
+  publicly_accessible       = false
+  deletion_protection       = (var.environment == "prod" || var.environment == "platform") ? true : false
+  skip_final_snapshot       = var.environment == "dev" ? true : false
   final_snapshot_identifier = var.environment == "dev" ? null : "${local.prefix}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
 
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]

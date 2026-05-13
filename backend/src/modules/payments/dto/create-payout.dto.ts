@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsNumber, IsOptional, MaxLength } from 'class-validator';
 
 export class CreatePayoutDto {
   @IsString()
@@ -14,6 +14,12 @@ export class CreatePayoutDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  /** Same key on retry returns the same result (Stripe-style). Omit to let the server generate a one-off key (no cross-retry dedupe). */
+  @IsString()
+  @IsOptional()
+  @MaxLength(200)
+  idempotencyKey?: string;
 }
 
 export class PayoutResponseDto {

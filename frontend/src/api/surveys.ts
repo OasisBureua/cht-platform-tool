@@ -33,6 +33,11 @@ export interface Survey {
     id: string;
     title: string;
     sponsorName?: string;
+    /** Cents in DB / surveys API (same as Prisma). */
+    honorariumAmount?: number | null;
+    creditAmount?: number | null;
+    zoomSessionType?: string;
+    startDate?: string | null;
   };
 }
 
@@ -67,5 +72,22 @@ export const surveysApi = {
       answers: payload.answers,
     });
     return data;
+  },
+
+  /** Auth required. Reflects Jotform webhook-created rows as well as native submit. */
+  getMyResponse: async (
+    id: string,
+  ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> => {
+    const { data } = await apiClient.get(`/surveys/${id}/my-response`);
+    return data;
+  },
+
+  getJotformResume: async (surveyId: string): Promise<{ sessionId: string; expiresAt: string } | null> => {
+    const { data } = await apiClient.get(`/surveys/${surveyId}/jotform-resume`);
+    return data ?? null;
+  },
+
+  putJotformResume: async (surveyId: string, sessionId: string): Promise<void> => {
+    await apiClient.put(`/surveys/${surveyId}/jotform-resume`, { sessionId });
   },
 };

@@ -7,7 +7,13 @@ import { SurveysModule } from '../surveys/surveys.module';
 import { WebinarsModule } from '../webinars/webinars.module';
 
 @Module({
-  imports: [AuthModule, PrismaModule, ProgramsModule, SurveysModule, WebinarsModule],
+  imports: [
+    AuthModule,
+    PrismaModule,
+    ProgramsModule,
+    SurveysModule,
+    WebinarsModule,
+  ],
   controllers: [AdminController],
 })
 export class AdminModule {}

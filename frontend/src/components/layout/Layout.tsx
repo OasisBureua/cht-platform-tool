@@ -5,12 +5,15 @@ import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
 import { APP_NAV_ITEMS } from '../navigation/appNavItems';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 import ThemeToggle from '../ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 
 export default function Layout() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { resolvedTheme, toggleColorScheme } = useTheme();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
@@ -156,7 +159,7 @@ export default function Layout() {
           onClick={(e) => e.stopPropagation()}
         >
           <header className="nav-liquid-glass sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-2 px-4 sm:h-16 sm:px-6 lg:px-8">
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
                 className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-[#c2410c] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-orange-50/90 hover:text-[#9a3412] active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-[#fdba74] dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800 dark:hover:text-orange-300"
@@ -174,14 +177,14 @@ export default function Layout() {
               >
                 <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
               </Link>
-            </div>
-            <div className="min-w-0 flex-1 pr-2 md:pr-3">
-              <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
-                Welcome, {displayName}!
-              </h1>
-              <p className="mt-0.5 hidden text-pretty text-sm text-gray-600 dark:text-zinc-400 sm:block">
-                You have new opportunities to earn rewards today
-              </p>
+              <div className="min-w-0 flex-1">
+                <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
+                  Welcome, {displayName}!
+                </h1>
+                <p className="mt-0.5 hidden text-pretty text-sm text-gray-600 dark:text-zinc-400 sm:block">
+                  You have new opportunities to earn rewards today
+                </p>
+              </div>
             </div>
             <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <NavLink
@@ -199,20 +202,7 @@ export default function Layout() {
                 <Search className="h-5 w-5" strokeWidth={2} aria-hidden />
               </NavLink>
               <ThemeToggle className="shrink-0" />
-              <button
-                type="button"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[#c2410c] transition-[color,background-color,transform] duration-200 ease-out hover:bg-orange-50/80 hover:text-[#9a3412] active:scale-[0.96] sm:min-h-0 sm:min-w-0 sm:px-3 sm:py-2 dark:text-[#fdba74] dark:hover:bg-zinc-800/80 dark:hover:text-orange-300"
-                aria-label="Notifications"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                  />
-                </svg>
-              </button>
+              <NotificationBell />
               <div className="relative" ref={profileMenuRef}>
                 <button
                   type="button"
@@ -230,6 +220,14 @@ export default function Layout() {
                     role="menu"
                     className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-xl border border-gray-100/90 bg-white p-1.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_40px_-18px_rgba(0,0,0,0.2)] dark:border-zinc-700/80 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_16px_40px_-18px_rgba(0,0,0,0.55)]"
                   >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => toggleColorScheme()}
+                      className="flex min-h-[44px] w-full items-center rounded-lg px-3 text-left text-sm font-medium text-gray-700 transition-[background-color,color] duration-200 ease-out hover:bg-gray-50 hover:text-gray-900 md:hidden dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    >
+                      {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+                    </button>
                     <Link
                       to="/app/settings"
                       role="menuitem"

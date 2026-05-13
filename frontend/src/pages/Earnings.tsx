@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
+import { paymentsApi } from '../api/payments';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import { Banknote } from 'lucide-react';
@@ -31,6 +33,12 @@ export default function Earnings() {
     enabled: !!userId,
   });
 
+  const { data: paymentHistory = [], isLoading: loadingHistory } = useQuery({
+    queryKey: ['payments-history', userId],
+    queryFn: () => paymentsApi.getHistory(userId),
+    enabled: !!userId,
+  });
+
   const chartData = useMemo(() => {
     return (
       earnings?.weeklyEarnings.map((w) => ({
@@ -40,7 +48,7 @@ export default function Earnings() {
     );
   }, [earnings]);
 
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading || loadingHistory) return <LoadingSpinner />;
 
   const total = earnings?.totalEarnings ?? 0;
   const points = dollarsToPoints(total);
@@ -52,7 +60,17 @@ export default function Earnings() {
           <Banknote className="h-5 w-5 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
           <h1 className="text-balance text-2xl font-semibold text-gray-900 md:text-3xl">Your Earnings</h1>
         </div>
-        <p className="text-pretty text-sm text-gray-600">Track your income and payment history</p>
+        <p className="text-pretty text-sm text-gray-600">
+          Balances and activity. Actual payouts are sent via Bill.com. Open{' '}
+          <Link
+            to="/app/settings"
+            state={{ settingsTab: 'payment' as const }}
+            className="font-medium text-gray-900 underline hover:no-underline"
+          >
+            Payment Settings
+          </Link>{' '}
+          to connect your bank and tax info.
+        </p>
       </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -111,22 +129,39 @@ export default function Earnings() {
       </section>
 
       <section className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-balance text-gray-900">Payment History</h2>
-          <button
-            type="button"
-            className="min-h-[44px] min-w-[44px] rounded-lg px-3 text-sm font-medium text-gray-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-gray-900 active:scale-[0.96]"
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-balance text-gray-900">Payment history</h2>
+          <Link
+            to="/app/payments#payment-history"
+            className="min-h-[44px] shrink-0 rounded-lg px-3 text-sm font-medium text-gray-900 underline transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:no-underline active:scale-[0.96]"
           >
-            View all
-          </button>
+            Full payment history
+          </Link>
         </div>
 
-        <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
-          <p className="text-sm font-semibold text-gray-900">No Activity Yet</p>
-          <p className="mt-1 text-sm text-gray-600">
-            Recent payments and withdrawals will appear here.
-          </p>
-        </div>
+        {paymentHistory.length === 0 ? (
+          <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
+            <p className="text-sm font-semibold text-gray-900">No payments yet</p>
+            <p className="mt-1 text-sm text-gray-600">
+              Completed honoraria and bonuses appear here after admins process them via Bill.com.
+            </p>
+          </div>
+        ) : (
+          <ul className="mt-4 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+            {paymentHistory.slice(0, 8).map((row) => (
+              <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">{row.title}</p>
+                  <p className="text-xs text-gray-500">{format(new Date(row.date), 'MMM d, yyyy')}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-semibold text-gray-900">${row.amount.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">{row.status}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

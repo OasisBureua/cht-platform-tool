@@ -3,7 +3,7 @@ import { QueueService } from './queue.service';
 
 @Global() // Makes queue service available everywhere
 @Module({
-    providers: [QueueService],
-    exports: [QueueService],
+  providers: [QueueService],
+  exports: [QueueService],
 })
 export class QueueModule {}

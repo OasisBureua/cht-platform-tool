@@ -5,10 +5,12 @@ import {
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AuthUser } from '../../auth/auth.service';
 import { ZoomService } from './zoom.service';
 import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 
 export interface OfficeHoursMeetingSdkAuthDto {
   signature: string;
@@ -31,9 +33,12 @@ export interface WebinarItem {
   /** Present when sourced from our DB - distinguishes CME webinars vs Zoom Meeting office hours. */
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
-  calendlySchedulingUrl?: string;
+  hostBio?: string;
+  speakers?: string[];
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
+  /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
+  honorariumAmount?: number;
 }
 
 /**
@@ -54,6 +59,7 @@ export class WebinarsService {
   constructor(
     private zoom: ZoomService,
     private prisma: PrismaService,
+    private config: ConfigService,
     private zoomMeetingSdk: ZoomMeetingSdkService,
   ) {}
 
@@ -88,6 +94,9 @@ export class WebinarsService {
           ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
           : undefined);
 
+      const defaultIntake =
+        this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+        undefined;
       items.push({
         id: p.id,
         title: p.title,
@@ -99,14 +108,26 @@ export class WebinarsService {
         source: 'program',
         sessionKind: 'WEBINAR',
         hostDisplayName: p.hostDisplayName || undefined,
-        calendlySchedulingUrl: p.calendlySchedulingUrl || undefined,
-        jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
+        hostBio: p.hostBio || undefined,
+        speakers: p.speakers?.length ? p.speakers : undefined,
+        jotformIntakeFormUrl:
+          effectiveWebinarIntakeFormUrl(
+            p.zoomSessionType,
+            p.jotformIntakeFormUrl,
+            defaultIntake,
+          ) || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
+        honorariumAmount: p.honorariumAmount
+          ? p.honorariumAmount / 100
+          : undefined,
       });
     }
 
-    // 2. Add Zoom webinars not yet in the DB (transition fallback)
-    if (this.zoom.isConfigured()) {
+    // 2. Add Zoom webinars not yet in the DB (optional; off by default so LIVE uses DB + Jotform flow only)
+    if (
+      this.config.get<boolean>('webinars.listZoomFallback') &&
+      this.zoom.isConfigured()
+    ) {
       try {
         const zoomWebinars = await this.zoom.listWebinars();
         for (const w of zoomWebinars) {
@@ -170,8 +191,13 @@ export class WebinarsService {
         source: 'program',
         sessionKind: 'MEETING',
         hostDisplayName: p.hostDisplayName || undefined,
+        hostBio: p.hostBio || undefined,
+        speakers: p.speakers?.length ? p.speakers : undefined,
         jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
         registrationRequiresApproval: p.registrationRequiresApproval,
+        honorariumAmount: p.honorariumAmount
+          ? p.honorariumAmount / 100
+          : undefined,
       });
     }
     return items;
@@ -207,6 +233,9 @@ export class WebinarsService {
         ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
         : undefined);
 
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
     return {
       id: program.id,
       title: program.title,
@@ -218,9 +247,18 @@ export class WebinarsService {
       source: 'program',
       sessionKind: 'WEBINAR',
       hostDisplayName: program.hostDisplayName || undefined,
-      calendlySchedulingUrl: program.calendlySchedulingUrl || undefined,
-      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      hostBio: program.hostBio || undefined,
+      speakers: program.speakers?.length ? program.speakers : undefined,
+      jotformIntakeFormUrl:
+        effectiveWebinarIntakeFormUrl(
+          program.zoomSessionType,
+          program.jotformIntakeFormUrl,
+          defaultIntake,
+        ) || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
+      honorariumAmount: program.honorariumAmount
+        ? program.honorariumAmount / 100
+        : undefined,
     };
   }
 
@@ -249,8 +287,13 @@ export class WebinarsService {
       source: 'program',
       sessionKind: 'MEETING',
       hostDisplayName: program.hostDisplayName || undefined,
+      hostBio: program.hostBio || undefined,
+      speakers: program.speakers?.length ? program.speakers : undefined,
       jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
+      honorariumAmount: program.honorariumAmount
+        ? program.honorariumAmount / 100
+        : undefined,
     };
   }
 
@@ -258,7 +301,10 @@ export class WebinarsService {
    * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
    * Requires published office-hours program, Zoom meeting id, and enrollment.
    */
-  async getOfficeHoursMeetingSdkAuth(authUser: AuthUser, programId: string): Promise<OfficeHoursMeetingSdkAuthDto> {
+  async getOfficeHoursMeetingSdkAuth(
+    authUser: AuthUser,
+    programId: string,
+  ): Promise<OfficeHoursMeetingSdkAuthDto> {
     if (!this.zoomMeetingSdk.isConfigured()) {
       throw new ServiceUnavailableException(
         'In-browser Zoom is not configured. Set ZOOM_SDK_KEY and ZOOM_SDK_SECRET from a Zoom Meeting SDK app.',
@@ -271,7 +317,9 @@ export class WebinarsService {
       where: { userId_programId: { userId, programId } },
     });
     if (!enrollment) {
-      throw new ForbiddenException('Register for this session before joining in the app.');
+      throw new ForbiddenException(
+        'Register for this session before joining in the app.',
+      );
     }
 
     const program = await this.prisma.program.findFirst({
@@ -281,7 +329,11 @@ export class WebinarsService {
       throw new BadRequestException('This session has no Zoom meeting ID yet.');
     }
 
-    const userName = (authUser.name?.trim() || authUser.email || 'Participant').slice(0, 200);
+    const userName = (
+      authUser.name?.trim() ||
+      authUser.email ||
+      'Participant'
+    ).slice(0, 200);
     const userEmail = (authUser.email || '').trim();
 
     const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');

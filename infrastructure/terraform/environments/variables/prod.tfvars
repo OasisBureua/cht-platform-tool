@@ -8,27 +8,27 @@ backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backe
 worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.8"
 
 # Database - Production sizing
-rds_instance_class      = "db.t3.small"
-rds_allocated_storage   = 100
-rds_multi_az            = true
-rds_backup_retention    = 30
+rds_instance_class    = "db.t3.small"
+rds_allocated_storage = 100
+rds_multi_az          = true
+rds_backup_retention  = 30
 
 # Cache - Production sizing
-redis_node_type         = "cache.t3.small"
-redis_num_nodes         = 2
+redis_node_type = "cache.t3.small"
+redis_num_nodes = 2
 
 # Compute - Production sizing
-backend_task_cpu        = 512
-backend_task_memory     = 1024
-backend_desired_count   = 3
-backend_min_capacity    = 2
-backend_max_capacity    = 10
+backend_task_cpu      = 512
+backend_task_memory   = 1024
+backend_desired_count = 3
+backend_min_capacity  = 2
+backend_max_capacity  = 10
 
-worker_task_cpu         = 512
-worker_task_memory      = 1024
-worker_desired_count    = 2
-worker_min_capacity     = 1
-worker_max_capacity     = 20
+worker_task_cpu      = 512
+worker_task_memory   = 1024
+worker_desired_count = 2
+worker_min_capacity  = 1
+worker_max_capacity  = 20
 
 # SSL Certificates (add after requesting)
 # acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/..."

@@ -29,9 +29,9 @@ variable "kms_key_arn" {
 }
 
 variable "engine_version" {
-  description = "PostgreSQL engine version (e.g. 15.10, 16.4)"
+  description = "PostgreSQL engine version (e.g. 15.17, 16.4)"
   type        = string
-  default     = "15.10"
+  default     = "15.17"
 }
 
 variable "instance_class" {

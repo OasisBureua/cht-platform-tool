@@ -1,4 +1,10 @@
-import { IsString, IsIn, IsOptional, Matches, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsIn,
+  IsOptional,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 
 export class SubmitW9Dto {
   @IsString()

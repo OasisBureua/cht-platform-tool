@@ -9,7 +9,8 @@ import { AuthService } from './auth.service';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
 const SESSION_HEADER = 'x-session-token';
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * JWT Auth Guard with session and dev bypass.

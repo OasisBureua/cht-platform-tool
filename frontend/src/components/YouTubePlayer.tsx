@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { pushVideoEvent } from '../lib/analytics';
+import { extractYoutubeVideoIdFromUrl } from '../utils/clipUrl';
 
 declare global {
   interface Window {
@@ -51,11 +52,6 @@ function loadYouTubeAPI(): Promise<void> {
   });
 }
 
-function getVideoId(url: string): string | null {
-  const m = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/);
-  return m ? m[1] : null;
-}
-
 type YouTubePlayerProps = {
   youtubeUrl: string;
   muted?: boolean;
@@ -73,7 +69,7 @@ export function YouTubePlayer({ youtubeUrl, muted = true, autoplay = true, class
   const progressFiredRef = useRef<Set<number>>(new Set());
   const startFiredRef = useRef(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const videoId = getVideoId(youtubeUrl);
+  const videoId = extractYoutubeVideoIdFromUrl(youtubeUrl);
   const videoTitle = title || 'Untitled';
   const elementId = useId().replace(/:/g, '-');
 

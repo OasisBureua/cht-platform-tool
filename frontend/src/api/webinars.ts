@@ -1,15 +1,5 @@
 import apiClient from './client';
 
-/** Response from POST /office-hours/:id/meeting-sdk-auth (Zoom embedded join). */
-export interface MeetingSdkAuth {
-  signature: string;
-  sdkKey: string;
-  meetingNumber: string;
-  password: string;
-  userName: string;
-  userEmail: string;
-}
-
 export interface WebinarItem {
   id: string;
   title: string;
@@ -21,10 +11,22 @@ export interface WebinarItem {
   source: 'zoom' | 'program';
   sessionKind?: 'WEBINAR' | 'MEETING';
   hostDisplayName?: string;
-  calendlySchedulingUrl?: string;
+  hostBio?: string;
+  speakers?: string[];
   jotformIntakeFormUrl?: string;
   registrationRequiresApproval?: boolean;
+  /** Whole dollars from API (converted from DB cents on the server). */
+  honorariumAmount?: number;
 }
+
+/** Response from POST /office-hours/:id/meeting-sdk-auth for Zoom Meeting SDK embedded client. */
+export type MeetingSdkAuth = {
+  signature: string;
+  meetingNumber: string;
+  password?: string;
+  userName: string;
+  userEmail?: string;
+};
 
 export const webinarsApi = {
   list: async (): Promise<WebinarItem[]> => {

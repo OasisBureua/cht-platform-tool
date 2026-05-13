@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ImgHTMLAttributes } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Presentation,
   ClipboardList,
+  CalendarClock,
   PlayCircle,
   X,
   Banknote,
@@ -18,10 +19,11 @@ import { surveysApi } from '../api/surveys';
 import { dashboardApi } from '../api/dashboard';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } from '../api/catalog';
-import { getShortClipId, getMediaHubThumbnail } from '../utils/clipUrl';
-import { clipDisplaySummary } from '../utils/mediaHubClipText';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
+import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
-import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
+import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
+import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -35,10 +37,16 @@ const WEBINAR_PLACEHOLDER_IMAGES = [
 const ONBOARDING_STORAGE_KEY = 'chm-home-onboarding-seen-v1';
 const QUICK_START_ACTIONS = [
   {
-    title: 'LIVE sessions',
+    title: 'Live sessions',
     desc: 'Attend live education sessions and earn for participation.',
     icon: Presentation,
     to: '/app/live',
+  },
+  {
+    title: 'CHM Office Hours',
+    desc: 'Drop in for interactive Q&A with experts—book a slot and join.',
+    icon: CalendarClock,
+    to: '/app/chm-office-hours',
   },
   {
     title: 'Surveys',
@@ -50,7 +58,7 @@ const QUICK_START_ACTIONS = [
     title: 'Conversations',
     desc: 'Watch short clips and playlists from the catalog.',
     icon: PlayCircle,
-    to: '/app/catalog',
+    to: APP_CATALOG_CONVERSATIONS_HUB,
   },
 ];
 
@@ -90,12 +98,12 @@ function getNextUpcomingWebinar(webinars: WebinarItem[]): WebinarItem | null {
 }
 
 function clipMetaString(c: MediaHubClip, kind: 'recent' | 'views'): string {
-  const summary = clipDisplaySummary(c);
-  if (summary) return summary;
+  const stripe = clipStripeSubtitle(c);
+  if (stripe) return stripe;
   if (kind === 'views' && c.view_count != null) {
     return `${c.view_count.toLocaleString()} views`;
   }
-  return c.doctors?.[0] ?? '';
+  return '';
 }
 
 const CLIP_LIMIT = 14;
@@ -117,12 +125,26 @@ type SpotlightSlide = {
   secondaryHref: string;
   primaryCta: string;
   secondaryCta: string;
+  /** When set, thumbnail load failure hides this promotional frame (see `thumbTrackKey`). */
+  thumbTrackKey?: string;
 };
 
 export default function Dashboard() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [brokenCarouselThumbIds, setBrokenCarouselThumbIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+
+  const markCarouselThumbBroken = useCallback((key: string) => {
+    setBrokenCarouselThumbIds((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -165,7 +187,7 @@ export default function Dashboard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: officeHoursSessions = [] } = useQuery({
+  const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
     queryKey: ['office-hours'],
     queryFn: webinarsApi.listOfficeHours,
     staleTime: 5 * 60 * 1000,
@@ -212,10 +234,24 @@ export default function Dashboard() {
   });
 
   const nextUpcomingWebinar = useMemo(() => getNextUpcomingWebinar(webinars), [webinars]);
-  const nextOfficeHoursSession = useMemo(() => getNextUpcomingWebinar(officeHoursSessions), [officeHoursSessions]);
+  const nextOfficeHoursSession = useMemo(() => getNextUpcomingWebinar(officeHours), [officeHours]);
   const requiredSurveysPending = useMemo(() => surveys.filter((s) => s.required), [surveys]);
   const recentItems = recentData?.items ?? [];
   const topicItems = topicData?.items ?? [];
+  /** Catalog clips that have a usable thumb URL — omit placeholder-only rows on the dashboard. */
+  const recentCatalogClips = useMemo(() => recentItems.filter(shouldSurfaceCatalogClip), [recentItems]);
+  const topicCatalogClips = useMemo(() => topicItems.filter(shouldSurfaceCatalogClip), [topicItems]);
+
+  /** After runtime image failures, omit cards so blanks do not stay in strip / spotlight. */
+  const recentCatalogForHome = useMemo(
+    () => recentCatalogClips.filter((c) => !brokenCarouselThumbIds.has(`clip:${c.id}`)),
+    [recentCatalogClips, brokenCarouselThumbIds],
+  );
+  const topicCatalogForHome = useMemo(
+    () => topicCatalogClips.filter((c) => !brokenCarouselThumbIds.has(`clip:${c.id}`)),
+    [topicCatalogClips, brokenCarouselThumbIds],
+  );
+
   const playlistStrip = (playlists as CatalogItem[]).slice(0, 10);
 
   const isLoading =
@@ -225,17 +261,21 @@ export default function Dashboard() {
     const slides: SpotlightSlide[] = [];
     const podcastThumb = '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png';
 
+    /** Prefer a catalog clip whose thumbnail resolves; omit broken / placeholder clips. */
+    const featuredConversation = recentCatalogForHome[0];
+
     /** Always include a conversation slide so the carousel can advance past podcasts. */
-    if (recentItems.length > 0) {
-      const c = recentItems[0];
+    if (featuredConversation) {
+      const c = featuredConversation;
       slides.push({
         id: 'featured-conversation',
         eyebrow: 'Featured conversation',
         title: c.title,
         description: clipMetaString(c, 'recent') || 'Watch this newly released clinical conversation.',
         imageUrl: getMediaHubThumbnail(c),
+        thumbTrackKey: `clip:${c.id}`,
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
-        secondaryHref: '/app/catalog',
+        secondaryHref: APP_CATALOG_CLIPS_GRID,
         primaryCta: 'Play',
         secondaryCta: 'Browse catalog',
       });
@@ -247,8 +287,8 @@ export default function Dashboard() {
         description:
           'Browse short expert-led videos, disease-area playlists, and new catalog releases in one place.',
         imageUrl: WEBINAR_PLACEHOLDER_IMAGES[4],
-        primaryHref: '/app/catalog',
-        secondaryHref: '/app/catalog',
+        primaryHref: APP_CATALOG_CLIPS_GRID,
+        secondaryHref: APP_CATALOG_PLAYLISTS_BROWSE,
         primaryCta: 'Browse catalog',
         secondaryCta: 'Playlists',
       });
@@ -286,30 +326,40 @@ export default function Dashboard() {
     }
 
     return slides;
-  }, [recentItems, nextOfficeHoursSession]);
+  }, [recentCatalogForHome, nextOfficeHoursSession]);
+
+  /** Slides omitted when featured catalog image fails to load (fallback catalog slide). */
+  const spotlightSlidesRendered = useMemo(() => {
+    return spotlightSlides.filter((s) =>
+      !s.thumbTrackKey || !brokenCarouselThumbIds.has(s.thumbTrackKey),
+    );
+  }, [spotlightSlides, brokenCarouselThumbIds]);
 
   const [spotlightIndex, setSpotlightIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
 
   const goSpotlightPrev = useCallback(() => {
     setSpotlightIndex((i) => {
-      const n = spotlightSlides.length;
+      const n = spotlightSlidesRendered.length;
       if (n <= 0) return 0;
       return (i - 1 + n) % n;
     });
-  }, [spotlightSlides.length]);
+  }, [spotlightSlidesRendered.length]);
 
   const goSpotlightNext = useCallback(() => {
     setSpotlightIndex((i) => {
-      const n = spotlightSlides.length;
+      const n = spotlightSlidesRendered.length;
       if (n <= 0) return 0;
       return (i + 1) % n;
     });
-  }, [spotlightSlides.length]);
+  }, [spotlightSlidesRendered.length]);
 
-  const spotlightIdKey = useMemo(() => spotlightSlides.map((s) => s.id).join('|'), [spotlightSlides]);
+  const spotlightIdKey = useMemo(
+    () => spotlightSlidesRendered.map((s) => s.id).join('|'),
+    [spotlightSlidesRendered],
+  );
 
-  const featuredSlideCount = spotlightSlides.length;
+  const featuredSlideCount = spotlightSlidesRendered.length;
 
   useEffect(() => {
     setSpotlightIndex(0);
@@ -322,57 +372,21 @@ export default function Dashboard() {
   }, [featuredSlideCount]);
 
   useEffect(() => {
-    if (spotlightSlides.length <= 1) return undefined;
+    if (spotlightSlidesRendered.length <= 1) return undefined;
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return undefined;
     }
     const t = window.setInterval(goSpotlightNext, 8000);
     return () => window.clearInterval(t);
-  }, [spotlightSlides.length, goSpotlightNext]);
+  }, [spotlightSlidesRendered.length, goSpotlightNext]);
 
-  const releaseCarouselItems = useMemo(() => {
-    const items: { href: string; title: string; imageUrl: string; meta?: string }[] = [];
-
-    webinars
-      .slice(0, 4)
-      .forEach((w, i) =>
-        items.push({
-          href: w.id ? `/app/live/${w.id}` : '/app/live',
-          title: w.title,
-          imageUrl: w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length],
-          meta: w.startTime
-            ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d')}`
-            : 'LIVE session',
-        }),
-      );
-
-    const podcastThumb = '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png';
-    items.push(
-      {
-        href: '/app/podcasts',
-        title: 'Breast Friends · New episode',
-        imageUrl: podcastThumb,
-        meta: 'Podcast release',
-      },
-      {
-        href: '/app/podcasts',
-        title: 'More podcast series coming soon',
-        imageUrl: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
-        meta: 'Podcast update',
-      },
-    );
-
-    recentItems.slice(0, 4).forEach((c) =>
-      items.push({
-        href: `/app/clip/${getShortClipId(c.id)}`,
-        title: c.title,
-        imageUrl: getMediaHubThumbnail(c),
-        meta: 'Conversation release',
-      }),
-    );
-
-    return items.slice(0, 12);
-  }, [recentItems, webinars]);
+  const onSpotlightThumbError = useCallback<NonNullable<ImgHTMLAttributes<HTMLImageElement>['onError']>>(
+    (e) => {
+      const key = e.currentTarget.getAttribute('data-thumb-track');
+      if (key) markCarouselThumbBroken(key);
+    },
+    [markCarouselThumbBroken],
+  );
 
   return (
     <div className="-mt-4 space-y-8 sm:-mt-5 md:-mt-6 md:space-y-10 lg:-mt-8">
@@ -394,7 +408,7 @@ export default function Dashboard() {
                 <X className="h-4 w-4" aria-hidden />
               </button>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {QUICK_START_ACTIONS.map((item) => (
                 <Link
                   key={item.title}
@@ -610,7 +624,7 @@ export default function Dashboard() {
                         : `translateX(-${(spotlightIndex / featuredSlideCount) * 100}%)`,
                   }}
                 >
-                  {spotlightSlides.map((slide) => (
+                  {spotlightSlidesRendered.map((slide) => (
                     <div
                       key={slide.id}
                       className="relative shrink-0"
@@ -620,10 +634,12 @@ export default function Dashboard() {
                         <img
                           src={slide.imageUrl}
                           alt=""
+                          data-thumb-track={slide.thumbTrackKey ?? undefined}
                           className="absolute inset-0 h-full w-full object-cover object-center"
                           loading="lazy"
                           referrerPolicy="no-referrer"
                           draggable={false}
+                          onError={slide.thumbTrackKey ? onSpotlightThumbError : undefined}
                         />
                         <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
@@ -665,7 +681,7 @@ export default function Dashboard() {
                     role="tablist"
                     aria-label="Featured slides"
                   >
-                    {spotlightSlides.map((s, i) => (
+                    {spotlightSlidesRendered.map((s, i) => (
                       <button
                         key={s.id}
                         type="button"
@@ -686,44 +702,25 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {releaseCarouselItems.length > 0 ? (
-        <section className="relative -top-[10px] space-y-4">
-          <ConversationRow
-            title="New releases"
-            subtitle={`${releaseCarouselItems.length} items`}
-            seeAllHref="/app/live"
-            seeAllLabel="View all releases"
-          >
-            {releaseCarouselItems.map((item, i) => (
-              <StripCard
-                key={`${item.href}-${i}`}
-                to={item.href}
-                title={item.title}
-                imageUrl={item.imageUrl}
-                description={item.meta}
-              />
-            ))}
-          </ConversationRow>
-        </section>
-      ) : null}
-
       {useMediaHub ? (
         <div className="space-y-10">
           {isLoading ? (
-            <ConversationRow title="Loading catalog" seeAllHref="/app/catalog">
+            <ConversationRow title="Loading catalog" seeAllHref={APP_CATALOG_CLIPS_GRID}>
               <StripRowLoading />
             </ConversationRow>
           ) : (
             <>
-              {recentItems.length > 0 ? (
+              {recentCatalogForHome.length > 0 ? (
                 <ConversationRow
                   title="Recently added"
-                  subtitle={`${recentItems.length} videos`}
-                  seeAllHref="/app/catalog"
+                  subtitle={`${recentCatalogForHome.length} videos`}
+                  seeAllHref={APP_CATALOG_CLIPS_GRID}
                 >
-                  {recentItems.map((c) => (
+                  {recentCatalogForHome.map((c) => (
                     <StripCard
                       key={c.id}
+                      hideThumbnailOnError
+                      onThumbnailError={() => markCarouselThumbBroken(`clip:${c.id}`)}
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
@@ -733,35 +730,27 @@ export default function Dashboard() {
                 </ConversationRow>
               ) : null}
 
-              {APP_CATALOG_PLAYLIST_SECTIONS.map((section) => (
-                <ConversationRow
-                  key={section.label}
-                  title={section.label}
-                  subtitle={section.subtitle}
-                  seeAllHref="/app/catalog"
-                >
-                  {section.items.map((item) => (
-                    <StripCard
-                      key={item.id}
-                      to={item.href}
-                      title={item.title}
-                      imageUrl={item.imageUrl}
-                      description={item.speakers}
-                      videoLabel={item.tag}
-                    />
-                  ))}
-                </ConversationRow>
+              {BIOMARKER_ROWS.map((row) => (
+                <BiomarkerConversationRow
+                  key={row.focus}
+                  label={row.label}
+                  focus={row.focus}
+                  isInApp={true}
+                  hideBrokenCatalogThumbnails
+                />
               ))}
 
-              {topicTag && topicItems.length > 0 ? (
+              {topicTag && topicCatalogForHome.length > 0 ? (
                 <ConversationRow
                   title={topicLabel ? `Clips · ${topicLabel}` : 'Clips by tag'}
-                  subtitle={`${topicItems.length} videos`}
-                  seeAllHref={`/app/catalog?tag=${encodeURIComponent(topicTag)}`}
+                  subtitle={`${topicCatalogForHome.length} videos`}
+                  seeAllHref={`${APP_CATALOG_CLIPS_GRID}?tag=${encodeURIComponent(topicTag)}`}
                 >
-                  {topicItems.map((c) => (
+                  {topicCatalogForHome.map((c) => (
                     <StripCard
                       key={c.id}
+                      hideThumbnailOnError
+                      onThumbnailError={() => markCarouselThumbBroken(`clip:${c.id}`)}
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
@@ -775,12 +764,13 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Playlists"
                   subtitle={`${playlistStrip.length} playlists`}
-                  seeAllHref="/app/catalog?view=playlists"
+                  seeAllHref="/app/search"
                   seeAllLabel="See all playlists"
                 >
                   {playlistStrip.map((p) => (
                     <StripCard
                       key={p.id}
+                      hideThumbnailOnError
                       to={`/app/catalog/playlist/${p.id}`}
                       title={p.title}
                       imageUrl={p.thumbnailUrl || 'https://via.placeholder.com/400x260?text=Playlist'}
@@ -832,6 +822,38 @@ export default function Dashboard() {
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Medical education'
+                }
+              />
+            ))
+          )}
+        </ConversationRow>
+      </section>
+
+      <section className="space-y-4">
+        <ConversationRow
+          title="CHM Office Hours"
+          subtitle={officeHoursLoading ? 'Loading' : `${officeHours.length} listed`}
+          seeAllHref="/app/chm-office-hours"
+          seeAllLabel="Full schedule"
+        >
+          {officeHoursLoading ? (
+            <StripRowLoading />
+          ) : officeHours.length === 0 ? (
+            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-200/90 bg-zinc-50/80 px-4 py-8 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]">
+              <p className="text-sm font-medium text-zinc-800">No office hours scheduled yet</p>
+              <p className="mt-1 text-pretty text-sm text-zinc-600">When sessions are published, they will appear here.</p>
+            </div>
+          ) : (
+            officeHours.slice(0, 12).map((w, i) => (
+              <StripCard
+                key={w.id}
+                to={w.id ? `/app/chm-office-hours/${w.id}` : '/app/chm-office-hours'}
+                title={w.title}
+                imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
+                description={
+                  w.startTime
+                    ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
+                    : 'Interactive Q&A'
                 }
               />
             ))

@@ -11,7 +11,7 @@ const DISEASE_AREAS: DiseaseArea[] = [
   {
     slug: 'breast-cancer',
     title: 'Breast Cancer',
-    description: 'Expert-led education, conversations, and LIVE sessions focused on breast oncology.',
+    description: 'Expert-led education, conversations, and Live sessions focused on breast oncology.',
     image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
     active: true,
     searchTags: ['breast', 'HER2', 'TNBC', 'HR+', 'mammary', 'oncology', 'mastectomy'],
@@ -19,7 +19,7 @@ const DISEASE_AREAS: DiseaseArea[] = [
   {
     slug: 'lung-cancer',
     title: 'Lung Cancer',
-    description: 'Thoracic oncology content launching soon - clinical insights and treatment paradigms.',
+    description: 'Thoracic oncology content launching soon — clinical insights and treatment paradigms.',
     image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
     active: false,
     searchTags: ['lung', 'NSCLC', 'SCLC', 'thoracic', 'pulmonary'],
