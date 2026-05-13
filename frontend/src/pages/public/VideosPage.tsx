@@ -277,7 +277,7 @@ export default function VideosPage() {
         <ConversationRow
           title="Playlists"
           subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
-          seeAllHref={isInApp ? '/app/search' : '/catalog?view=playlists'}
+          seeAllHref={isInApp ? '/app/catalog?view=playlists' : '/catalog?view=playlists'}
           seeAllLabel="See all playlists"
         >
           {playlists.slice(0, 12).map((p) => (

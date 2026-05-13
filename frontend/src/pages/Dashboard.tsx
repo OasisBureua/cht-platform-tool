@@ -744,7 +744,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title={topicLabel ? `Clips · ${topicLabel}` : 'Clips by tag'}
                   subtitle={`${topicCatalogForHome.length} videos`}
-                  seeAllHref={`${APP_CATALOG_CLIPS_GRID}?tag=${encodeURIComponent(topicTag)}`}
+                  seeAllHref={`${APP_CATALOG_CLIPS_GRID}&tag=${encodeURIComponent(topicTag)}`}
                 >
                   {topicCatalogForHome.map((c) => (
                     <StripCard

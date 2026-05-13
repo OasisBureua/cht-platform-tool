@@ -1,4 +1,12 @@
 import { ProgramZoomSessionType } from '@prisma/client';
+import {
+  E,
+  emailWrap,
+  emailButton,
+  emailInfoCard,
+  emailSupportLine,
+  emailUrlLine,
+} from './email-layout';
 
 export type RegistrationApprovedTemplateInput = {
   firstName: string;
@@ -21,53 +29,46 @@ export type RegistrationApprovedTemplateInput = {
 };
 
 /**
- * Branded HTML + plain text for “registration approved” (Amazon SES Simple body).
- * Content follows CHM’s educational-session tone; dynamic fields are escaped in the builder.
+ * Branded HTML + plain text for "registration approved" (Amazon SES Simple body).
  */
 export function buildRegistrationApprovedEmail(
   p: RegistrationApprovedTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first = escape(p.firstName.trim() || 'there');
-  const title = escape(p.programTitle);
+  const first   = escape(p.firstName.trim() || 'there');
+  const title   = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const host = p.hostDisplayName?.trim()
-    ? escape(p.hostDisplayName.trim())
-    : null;
+  const host    = p.hostDisplayName?.trim() ? escape(p.hostDisplayName.trim()) : null;
 
-  const when = formatEventWhen(p.startDate, p.durationMinutes, escape);
-  const formatLine =
-    p.sessionKind === ProgramZoomSessionType.MEETING
-      ? 'CHM Office Hours (interactive Q&A; join from the platform)'
-      : 'Live session (virtual; attend from the platform)';
-
-  const honorariumLine = formatHonorariumLine(p.honorariumCents, escape);
-  const zoomPlain = p.zoomJoinUrl?.trim() || '';
-  const participationLine =
-    p.sessionKind === ProgramZoomSessionType.MEETING
-      ? 'Interactive Q&A in a small-group format when applicable.'
-      : 'Interactive Q&A with faculty and your peers, plus access to the session from your device.';
-
-  const bodyIntro = buildIntroParagraphs(p, escape);
+  const when          = formatEventWhen(p.startDate, p.durationMinutes, escape);
+  const formatLine    = p.sessionKind === ProgramZoomSessionType.MEETING
+    ? 'CHM Office Hours (interactive Q&A; join from the platform)'
+    : 'Live session (virtual; attend from the platform)';
+  const honorariumLine  = formatHonorariumLine(p.honorariumCents, escape);
+  const zoomPlain       = p.zoomJoinUrl?.trim() || '';
+  const participationLine = p.sessionKind === ProgramZoomSessionType.MEETING
+    ? 'Interactive Q&A in a small-group format when applicable.'
+    : 'Interactive Q&A with faculty and your peers, plus access to the session from your device.';
+  const bodyIntro       = buildIntroParagraphs(p, escape);
 
   const subject = `You're approved — ${p.programTitle}`;
 
+  // ── Calendar block (plain text) ──────────────────────────────────────────────
   const calendarBlock: string[] = [];
   if (p.calendarInviteIncluded && p.startDate) {
     calendarBlock.push('');
     if (p.googleCalendarUrl) {
       calendarBlock.push(
-        'Calendar: open the attached live-session.ics file (best for Outlook & Apple Calendar), or add to Google Calendar:',
+        'Calendar: open the attached live-session.ics file, or add to Google Calendar:',
         p.googleCalendarUrl,
       );
     } else {
-      calendarBlock.push(
-        'Calendar: open the attached live-session.ics file to add this session to your calendar.',
-      );
+      calendarBlock.push('Calendar: open the attached live-session.ics file to add this session to your calendar.');
     }
   }
 
+  // ── Plain text ───────────────────────────────────────────────────────────────
   const text = [
     `Thank you, ${p.firstName.trim() || 'there'},`,
     '',
@@ -90,9 +91,7 @@ export function buildRegistrationApprovedEmail(
     '',
     "You're confirmed for this session. Join details and the Zoom experience are available on the session page in the app when it's time to attend.",
     '',
-    'If you have any questions or need assistance before the event, contact us at ' +
-      p.supportEmail +
-      '.',
+    `If you have any questions or need assistance before the event, contact us at ${p.supportEmail}.`,
     '',
     'Best regards,',
     'The Community Health Media Team',
@@ -100,67 +99,53 @@ export function buildRegistrationApprovedEmail(
     .filter((line) => line != null)
     .join('\n');
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-</head>
-<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:16px;color:#1f2937;">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f4f5;padding:24px 12px;">
-  <tr>
-    <td align="center">
-      <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="padding:28px 28px 8px 28px;">
-            <p style="margin:0 0 16px 0;font-size:17px;line-height:1.5;">Thank you, <strong>${first}</strong>,</p>
-            <p style="margin:0 0 16px 0;line-height:1.6;">Your registration has been <strong>approved</strong> for the following live session:</p>
-            <p style="margin:0 0 8px 0;font-size:18px;font-weight:600;color:#111827;">${title}</p>
-            ${bodyIntro.htmlBlocks}
-            <h2 style="margin:24px 0 10px 0;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Event details</h2>
-            <table role="presentation" width="100%" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:0;">
-              <tr><td style="padding:16px 18px;line-height:1.65;">
-                <p style="margin:0 0 8px 0;"><strong>Format</strong> — ${escape(formatLine)}</p>
-                ${honorariumLine ? `<p style="margin:0 0 8px 0;"><strong>Compensation</strong> — ${honorariumLine.html}</p>` : ''}
-                <p style="margin:0 0 8px 0;"><strong>When</strong> — ${when.html}</p>
-                ${
-                  zoomPlain
-                    ? `<p style="margin:0 0 8px 0;"><strong>Zoom</strong> — <a href="${escape(zoomPlain)}" style="color:#2563eb;font-weight:600;word-break:break-all;">${escape(zoomPlain)}</a></p>`
-                    : ''
-                }
-                <p style="margin:0 0 8px 0;"><strong>Participation</strong> — ${escape(participationLine)}</p>
-                ${host ? `<p style="margin:0 0 8px 0;"><strong>Faculty / host</strong> — ${host}</p>` : ''}
-                <p style="margin:0;"><strong>Sponsored by</strong> — ${sponsor}</p>
-              </td></tr>
-            </table>
-            <p style="margin:22px 0 12px 0;line-height:1.6;">You’re confirmed for this session. Open the app for join links, timing, and any pre-event steps:</p>
-            <p style="margin:0 0 8px 0;">
-              <a href="${escape(p.appSessionUrl)}" style="display:inline-block;background-color:#111827;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:8px;">Open session in the app</a>
-            </p>
-            <p style="margin:16px 0 0 0;font-size:13px;color:#6b7280;word-break:break-all;">
-              <a href="${escape(p.appSessionUrl)}" style="color:#4b5563;">${escape(p.appSessionUrl)}</a>
-            </p>
-            ${
-              p.calendarInviteIncluded && p.startDate
-                ? `<p style="margin:20px 0 0 0;font-size:14px;line-height:1.65;color:#374151;"><strong>Calendar</strong> — An invitation file (<span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;">live-session.ics</span>) is attached to this email.${
-                    p.googleCalendarUrl
-                      ? ` You can also <a href="${escape(p.googleCalendarUrl)}" style="color:#2563eb;font-weight:600;">add to Google Calendar</a>.`
-                      : ''
-                  }</p>`
-                : ''
-            }
-            <p style="margin:24px 0 0 0;line-height:1.6;">We ask participants to come prepared to ask questions, share perspectives, and engage with the discussion where invited.</p>
-            <p style="margin:16px 0 0 0;line-height:1.6;">If you have any questions or need assistance before the event, contact us at <a href="mailto:${support}" style="color:#2563eb;">${support}</a>.</p>
-            <p style="margin:24px 0 0 0;line-height:1.5;">Best regards,<br /><strong>The Community Health Media Team</strong></p>
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-</body>
-</html>`;
+  // ── HTML ─────────────────────────────────────────────────────────────────────
+  const calendarHtml = p.calendarInviteIncluded && p.startDate
+    ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:${E.MUTED}">
+        <strong style="color:${E.BODY_TEXT}">Calendar invite</strong> — A <code style="font-size:12px">live-session.ics</code> file is attached to this email.${
+          p.googleCalendarUrl
+            ? ` You can also <a href="${escape(p.googleCalendarUrl)}" style="color:${E.LINK};font-weight:600">add to Google Calendar</a>.`
+            : ''
+        }
+      </p>`
+    : '';
 
+  const detailRows = [
+    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Format</td><td style="padding:5px 0;font-size:13px;color:${E.BODY_TEXT}">${escape(formatLine)}</td></tr>`,
+    honorariumLine ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Compensation</td><td style="padding:5px 0;font-size:13px;color:${E.BODY_TEXT}">${honorariumLine.html}</td></tr>` : '',
+    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Date &amp; Time</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${when.html}</td></tr>`,
+    host ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>` : '',
+    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Sponsored by</td><td style="padding:5px 0;color:${E.BODY_TEXT}">${sponsor}</td></tr>`,
+    zoomPlain ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Zoom</td><td style="padding:5px 0;word-break:break-all"><a href="${escape(zoomPlain)}" style="color:${E.LINK};font-weight:600">${escape(zoomPlain)}</a></td></tr>` : '',
+  ].filter(Boolean).join('');
+
+  const body = `
+    <p style="margin:0 0 6px;color:${E.BODY_TEXT};font-size:17px">Hi <strong>${first}</strong>,</p>
+    <p style="margin:0 0 20px;color:${E.MUTED};font-size:15px;line-height:1.6">
+      Your registration has been <strong style="color:${E.BODY_TEXT}">approved</strong> for the following session:
+    </p>
+
+    ${emailInfoCard(`
+      <p style="margin:0 0 14px;font-size:18px;font-weight:700;color:${E.HEADER_BG};line-height:1.3">${title}</p>
+      ${bodyIntro.htmlBlocks}
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;margin-top:10px">${detailRows}</table>
+    `)}
+
+    ${calendarHtml}
+
+    <p style="margin:24px 0 12px;color:${E.MUTED};font-size:14px;line-height:1.6">
+      You're confirmed. Open the session page for join links, timing, and any pre-event steps:
+    </p>
+    ${emailButton(escape(p.appSessionUrl), 'Open Session in App')}
+    ${emailUrlLine(escape(p.appSessionUrl))}
+
+    <p style="margin:24px 0 0;color:${E.MUTED};font-size:13px;line-height:1.6">
+      Come prepared to ask questions, share perspectives, and engage with the discussion where invited.
+    </p>
+    ${emailSupportLine(support)}
+  `;
+
+  const html = emailWrap({ sponsorName: sponsor, subtitle: 'Registration Approved', body });
   return { subject, text, html };
 }
 
@@ -169,29 +154,20 @@ function buildIntroParagraphs(
   escape: (s: string) => string,
 ): { textBlocks: string[]; htmlBlocks: string } {
   const desc = truncatePlain(sanitizeForPlainEmail(p.programDescription), 500);
-  if (!desc) {
-    return { textBlocks: [], htmlBlocks: '' };
-  }
-  const t = 'Session overview: ' + desc;
+  if (!desc) return { textBlocks: [], htmlBlocks: '' };
   return {
-    textBlocks: [t, ''],
-    htmlBlocks: `<p style="margin:12px 0 0 0;line-height:1.6;color:#374151;">${escape(desc)}</p>`,
+    textBlocks: ['Session overview: ' + desc, ''],
+    htmlBlocks: `<p style="margin:12px 0 0;line-height:1.6;color:${E.MUTED};font-size:13px">${escape(desc)}</p>`,
   };
 }
 
 function sanitizeForPlainEmail(s: string): string {
-  return s
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 function truncatePlain(s: string, max: number): string {
   const t = s.replace(/\s+/g, ' ').trim();
-  if (t.length <= max) {
-    return t;
-  }
-  return t.slice(0, max - 1).trimEnd() + '…';
+  return t.length <= max ? t : t.slice(0, max - 1).trimEnd() + '…';
 }
 
 function formatEventWhen(
@@ -206,17 +182,11 @@ function formatEventWhen(
     };
   }
   const long = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'America/New_York',
-    timeZoneName: 'short',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+    timeZone: 'America/New_York', timeZoneName: 'short',
   }).format(start);
-  const dur =
-    durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
+  const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
   const line = long + dur;
   return { plain: line, html: escape(line) };
 }
@@ -225,15 +195,9 @@ function formatHonorariumLine(
   honorariumCents: number | null,
   escape: (s: string) => string,
 ): { plain: string; html: string } | null {
-  if (honorariumCents == null || honorariumCents <= 0) {
-    return null;
-  }
+  if (honorariumCents == null || honorariumCents <= 0) return null;
   const dollars = honorariumCents / 100;
-  const formatted = dollars.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
+  const formatted = dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
   const p = `Listed honorarium for this program: ${formatted} (subject to eligibility, completion, and program policy).`;
   return { plain: p, html: escape(p) };
 }

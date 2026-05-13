@@ -24,10 +24,11 @@ logger = setup_logger(__name__)
 
 # ── Consumer definitions ───────────────────────────────────────────────────────
 CONSUMERS = [
-    ("Payment Consumer", "consumers/payment_consumer.py"),
+    ("Payment Consumer",        "consumers/payment_consumer.py"),
+    ("Scheduled Jobs Consumer", "consumers/scheduled_consumer.py"),
     # Add new consumers here as they are implemented:
-    # ("Email Consumer",  "consumers/email_consumer.py"),
-    # ("CME Consumer",    "consumers/cme_consumer.py"),
+    # ("Email Consumer", "consumers/email_consumer.py"),
+    # ("CME Consumer",   "consumers/cme_consumer.py"),
 ]
 
 # ── Restart policy ────────────────────────────────────────────────────────────

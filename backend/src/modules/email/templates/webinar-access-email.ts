@@ -1,3 +1,12 @@
+import {
+  E,
+  emailWrap,
+  emailButton,
+  emailInfoCard,
+  emailSupportLine,
+  emailUrlLine,
+} from './email-layout';
+
 export type WebinarAccessTemplateInput = {
   firstName: string;
   programTitle: string;
@@ -20,23 +29,21 @@ export function buildWebinarAccessEmail(
   p: WebinarAccessTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first = escape(p.firstName.trim() || 'there');
-  const title = escape(p.programTitle);
+  const first   = escape(p.firstName.trim() || 'there');
+  const title   = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const host = p.hostDisplayName?.trim()
-    ? escape(p.hostDisplayName.trim())
-    : null;
+  const host    = p.hostDisplayName?.trim() ? escape(p.hostDisplayName.trim()) : null;
   const zoomUrl = escape(p.zoomJoinUrl.trim());
 
-  const when = formatEventWhen(p.startDate, p.durationMinutes, escape);
-
+  const when     = formatEventWhen(p.startDate, p.durationMinutes, escape);
   const descPlain = p.programDescription
     ? sanitizePlainDescription(p.programDescription).slice(0, 400)
     : null;
 
   const subject = `Your Zoom link is ready — ${p.programTitle}`;
 
+  // ── Plain text ───────────────────────────────────────────────────────────────
   const text = [
     `Hi ${p.firstName.trim() || 'there'},`,
     '',
@@ -67,76 +74,58 @@ export function buildWebinarAccessEmail(
     '',
     'Best regards,',
     'The Community Health Media Team',
-    sponsor !== 'Community Health Media'
-      ? `\nSponsored by ${p.sponsorName}.`
-      : null,
+    sponsor !== 'Community Health Media' ? `\nSponsored by ${p.sponsorName}.` : null,
   ]
     .filter((line) => line != null)
     .join('\n');
 
-  const html = `<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-</head>
-<body style="margin:0;padding:0;background-color:#f4f4f5;font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:16px;color:#1f2937;">
-<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f4f5;padding:24px 12px;">
-  <tr>
-    <td align="center">
-      <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
-        <tr>
-          <td style="padding:28px 28px 24px 28px;">
-            <p style="margin:0 0 16px 0;font-size:17px;line-height:1.5;">Hi <strong>${first}</strong>,</p>
-            <p style="margin:0 0 16px 0;line-height:1.6;">
-              Your session is coming up. Here are your access details for <strong>${title}</strong>.
-            </p>
-            ${
-              descPlain
-                ? `<p style="margin:0 0 16px 0;line-height:1.6;color:#374151;font-size:14px;">${escape(descPlain)}</p>`
-                : ''
-            }
-            <h2 style="margin:20px 0 10px 0;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Session details</h2>
-            <table role="presentation" width="100%" style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;">
-              <tr><td style="padding:16px 18px;line-height:1.65;">
-                <p style="margin:0 0 8px 0;"><strong>When</strong> — ${when.html}</p>
-                ${host ? `<p style="margin:0 0 8px 0;"><strong>Faculty / host</strong> — ${host}</p>` : ''}
-                <p style="margin:0;"><strong>Sponsored by</strong> — ${sponsor}</p>
-              </td></tr>
-            </table>
-            <h2 style="margin:24px 0 10px 0;font-size:14px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280;">Your Zoom link</h2>
-            <p style="margin:0 0 12px 0;">
-              <a href="${zoomUrl}" style="display:inline-block;background-color:#2563eb;color:#ffffff;text-decoration:none;font-weight:600;padding:12px 20px;border-radius:8px;">Join on Zoom</a>
-            </p>
-            <p style="margin:0 0 20px 0;font-size:13px;color:#6b7280;word-break:break-all;">
-              <a href="${zoomUrl}" style="color:#4b5563;">${zoomUrl}</a>
-            </p>
-            <p style="margin:0 0 16px 0;line-height:1.6;font-size:14px;color:#374151;">
-              You can also join from the
-              <a href="${escape(p.appSessionUrl)}" style="color:#2563eb;">session page in the app</a>.
-            </p>
-            <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;margin:0 0 20px 0;">
-              <p style="margin:0 0 6px 0;font-size:13px;font-weight:700;color:#374151;">Tips for joining</p>
-              <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:#374151;">
-                <li>Download or update the Zoom app before the session.</li>
-                <li>Join 2&ndash;3 minutes early to test your audio.</li>
-                <li>Your microphone will be muted by default; unmute when prompted to ask questions.</li>
-              </ul>
-            </div>
-            <p style="margin:0 0 0 0;line-height:1.6;font-size:14px;color:#6b7280;">
-              Questions before the event? Reach us at <a href="mailto:${support}" style="color:#2563eb;">${support}</a>.
-            </p>
-            <p style="margin:24px 0 0 0;line-height:1.5;">We look forward to seeing you there.<br /><br />Best regards,<br /><strong>The Community Health Media Team</strong></p>
-            ${sponsor !== 'Community Health Media' ? `<p style="margin:16px 0 0 0;font-size:12px;color:#9ca3af;">Sponsored by ${sponsor}.</p>` : ''}
-          </td>
-        </tr>
-      </table>
-    </td>
-  </tr>
-</table>
-</body>
-</html>`;
+  // ── HTML ─────────────────────────────────────────────────────────────────────
+  const detailRows = [
+    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Date &amp; Time</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${when.html}</td></tr>`,
+    host ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>` : '',
+    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Sponsored by</td><td style="padding:5px 0;color:${E.BODY_TEXT}">${sponsor}</td></tr>`,
+  ].filter(Boolean).join('');
 
+  const descHtml = descPlain
+    ? `<p style="margin:14px 0 0;color:${E.MUTED};font-size:13px;line-height:1.6;border-top:1px solid ${E.BORDER};padding-top:14px">${escape(descPlain)}</p>`
+    : '';
+
+  const tipsHtml = `
+    <div style="background:#f9fafb;border:1px solid ${E.BORDER};border-radius:10px;padding:14px 18px;margin:20px 0 0">
+      <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:${E.BODY_TEXT}">Tips for joining</p>
+      <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:${E.MUTED}">
+        <li>Download or update the Zoom app before the session.</li>
+        <li>Join 2&ndash;3 minutes early to test your audio.</li>
+        <li>Your microphone will be muted by default; unmute when prompted to ask questions.</li>
+      </ul>
+    </div>`;
+
+  const body = `
+    <p style="margin:0 0 6px;color:${E.BODY_TEXT};font-size:17px">Hi <strong>${first}</strong>,</p>
+    <p style="margin:0 0 20px;color:${E.MUTED};font-size:15px;line-height:1.6">
+      Your session is coming up. Here are your access details for <strong style="color:${E.BODY_TEXT}">${title}</strong>.
+    </p>
+
+    ${emailInfoCard(`
+      <p style="margin:0 0 14px;font-size:18px;font-weight:700;color:${E.HEADER_BG};line-height:1.3">${title}</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">${detailRows}</table>
+      ${descHtml}
+      <div style="margin-top:16px">${emailButton(zoomUrl, 'Join on Zoom')}</div>
+      <p style="margin:10px 0 0;font-size:12px;color:${E.LABEL};word-break:break-all">
+        <a href="${zoomUrl}" style="color:${E.LABEL}">${zoomUrl}</a>
+      </p>
+    `)}
+
+    <p style="margin:20px 0 0;color:${E.MUTED};font-size:13px;line-height:1.6">
+      You can also join from the <a href="${escape(p.appSessionUrl)}" style="color:${E.LINK}">session page in the app</a>.
+    </p>
+
+    ${tipsHtml}
+
+    ${emailSupportLine(support)}
+  `;
+
+  const html = emailWrap({ sponsorName: sponsor, subtitle: 'Your Zoom Link', body });
   return { subject, text, html };
 }
 
@@ -152,24 +141,15 @@ function formatEventWhen(
     };
   }
   const long = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    timeZone: 'America/New_York',
-    timeZoneName: 'short',
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit',
+    timeZone: 'America/New_York', timeZoneName: 'short',
   }).format(start);
-  const dur =
-    durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
+  const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
   const line = long + dur;
   return { plain: line, html: escape(line) };
 }
 
 function sanitizePlainDescription(s: string): string {
-  return s
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }

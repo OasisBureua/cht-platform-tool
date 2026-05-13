@@ -1131,6 +1131,8 @@ export class ProgramRegistrationsService {
             description: true,
             startDate: true,
             sponsorName: true,
+            honorariumAmount: true,
+            zoomSessionType: true,
           },
         },
       },
@@ -1160,6 +1162,29 @@ export class ProgramRegistrationsService {
         postEventAttendanceReviewedByUserId: adminUserId,
       },
     });
+
+    if (status === 'VERIFIED' && reg.user?.email) {
+      this.sesEmail
+        .sendPostWebinarSurveyEmail({
+          to: reg.user.email,
+          firstName: reg.user.firstName ?? '',
+          program: {
+            id: reg.program.id,
+            title: reg.program.title,
+            sponsorName: reg.program.sponsorName,
+            honorariumAmount: reg.program.honorariumAmount,
+            zoomSessionType:
+              reg.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
+          },
+          // No Jotform URL — CTA falls back to the app session page
+          surveyUrl: null,
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `Failed to send post-webinar survey email for registration ${registrationId}: ${err.message}`,
+          ),
+        );
+    }
 
     if (status === 'DENIED' && reg.user?.email) {
       this.sesEmail
