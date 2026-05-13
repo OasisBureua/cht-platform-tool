@@ -34,7 +34,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   return (
     <div className="relative isolate">
       <div
-        className="overflow-hidden rounded-2xl bg-brand-600 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
+        className="overflow-hidden rounded-2xl bg-orange-600 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0].clientX;
         }}
@@ -70,7 +70,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
                 <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
                 <div className="relative z-10 flex h-full -translate-y-2.5 flex-col justify-end p-5 text-white sm:p-7 md:p-8">
-                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-300">{show.category}</p>
+                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-orange-200">{show.category}</p>
                   <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">
                     {show.title}
                   </h3>
@@ -87,7 +87,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
                     </Link>
                     <a
                       href="#podcast-catalog"
-                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
+                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-orange-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-orange-700 active:scale-[0.96]"
                     >
                       Full catalog
                     </a>
@@ -115,7 +115,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
               onClick={() => setIndex(i)}
               className={[
                 'h-2 rounded-full transition-[width,background-color] duration-300',
-                i === index ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                i === index ? 'w-8 bg-orange-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
               ].join(' ')}
             />
           ))}
@@ -154,7 +154,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
 
 function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode }) {
   return (
-    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-brand-600 shadow-[0_12px_36px_-20px_rgba(0,0,0,0.35)] sm:max-h-[300px] dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
+    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-orange-600 shadow-[0_12px_36px_-20px_rgba(0,0,0,0.35)] sm:max-h-[300px] dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
       <img
         src={show.image}
         alt=""
@@ -211,7 +211,7 @@ export default function Podcasts() {
       <header>
         <div>
           <div className="mb-2 flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
-            <Mic2 className="h-5 w-5 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
+            <Mic2 className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
             <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
               Podcasts
             </h1>
@@ -253,7 +253,7 @@ export default function Podcasts() {
           </h2>
           <a
             href="#podcast-catalog"
-            className="text-sm font-semibold text-brand-700 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+            className="text-sm font-semibold text-[#c2410c] underline-offset-4 transition-colors hover:text-[#ea580c] hover:underline dark:text-[#fb923c] dark:hover:text-[#fdba74]"
           >
             View all shows
           </a>
@@ -303,7 +303,7 @@ export default function Podcasts() {
             </p>
             <button
               type="button"
-              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
+              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
               disabled
               aria-disabled
             >

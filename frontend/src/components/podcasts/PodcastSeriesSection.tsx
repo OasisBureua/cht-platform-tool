@@ -20,7 +20,7 @@ function EpisodeRow({ ep }: { ep: PodcastEpisode }) {
     <li>
       <button
         type="button"
-        className="group flex w-full gap-3 rounded-2xl px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-50/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 active:scale-[0.995] dark:hover:bg-zinc-800/85 dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5"
+        className="group flex w-full gap-3 rounded-2xl px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-50/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 active:scale-[0.995] dark:hover:bg-zinc-800/85 dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5"
         aria-label={`Episode ${ep.num.replace(/\D/g, '')}: ${ep.title}`}
       >
         <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl bg-zinc-50 px-2.5 py-2 text-center shadow-[0_4px_18px_-12px_rgba(0,0,0,0.08)] dark:bg-zinc-800 sm:min-w-[3.5rem] sm:px-3">
@@ -45,7 +45,7 @@ function EpisodeRow({ ep }: { ep: PodcastEpisode }) {
           <time className="whitespace-nowrap text-xs text-zinc-600 tabular-nums dark:text-zinc-500" dateTime={ep.dateIso}>
             {ep.date}
           </time>
-          <span className="text-xs font-semibold text-brand-800 tabular-nums dark:text-brand-300">{ep.duration}</span>
+          <span className="text-xs font-semibold text-[#c2410c] tabular-nums dark:text-[#fdba74]">{ep.duration}</span>
         </div>
         <ChevronRight
           className="h-5 w-5 shrink-0 self-center text-zinc-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:text-zinc-600 dark:group-hover:text-zinc-300"
@@ -80,9 +80,9 @@ export function SeriesSection({
       aria-label={`${show.title} series`}
     >
       <div className="min-w-0">
-        <div className="relative overflow-hidden bg-gradient-to-r from-violet-100 via-brand-50 to-white px-5 py-5 dark:from-zinc-900 dark:via-zinc-900 dark:to-zinc-950 sm:px-7 sm:py-6 md:px-10 md:py-7">
-          <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-violet-200/35 blur-3xl dark:opacity-40" />
-          <div className="pointer-events-none absolute left-1/4 top-0 h-40 w-40 rounded-full bg-brand-200/30 blur-3xl dark:opacity-30" />
+        <div className="relative overflow-hidden bg-gradient-to-r from-orange-100/95 via-white to-amber-50 px-5 py-5 dark:from-zinc-900 dark:via-orange-950/20 dark:to-zinc-950 sm:px-7 sm:py-6 md:px-10 md:py-7">
+          <div className="pointer-events-none absolute -right-20 -top-16 h-56 w-56 rounded-full bg-orange-300/40 blur-3xl dark:opacity-40" />
+          <div className="pointer-events-none absolute left-1/4 top-0 h-40 w-40 rounded-full bg-amber-200/50 blur-3xl dark:opacity-30" />
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
             <img
               src={show.image}
@@ -92,8 +92,8 @@ export function SeriesSection({
               referrerPolicy="no-referrer"
             />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-800 dark:text-brand-300">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-brand-600 dark:text-brand-400" aria-hidden />
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#c2410c] dark:text-[#fdba74]">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-[#ea580c] dark:text-[#fb923c]" aria-hidden />
                 <span>{show.category}</span>
               </div>
               <h2 className="mt-1 text-balance text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl md:text-4xl">

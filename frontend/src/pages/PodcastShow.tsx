@@ -18,7 +18,7 @@ export default function PodcastShow() {
       <div>
         <Link
           to="/app/podcasts"
-          className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-brand-700 transition-colors hover:text-brand-800 dark:text-brand-400 dark:hover:text-brand-300"
+          className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-[#c2410c] transition-colors hover:text-[#ea580c] dark:text-[#fb923c] dark:hover:text-[#fdba74]"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           Back to podcasts
