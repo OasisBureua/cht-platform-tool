@@ -102,7 +102,7 @@ const CLIP_LIMIT = 14;
 
 /** Shared bento tile surface */
 const bentoMetric =
-  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(43,168,154,0.2)] active:scale-[0.995] dark:bg-zinc-900 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(43,168,154,0.12)]';
+  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(234,88,12,0.2)] active:scale-[0.995] dark:bg-zinc-900 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(234,88,12,0.12)]';
 
 const bentoPending =
   'group relative flex min-h-[148px] flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.1)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(245,158,11,0.18)] active:scale-[0.995] dark:from-amber-950/20 dark:via-zinc-900 dark:to-zinc-950 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_16px_48px_-28px_rgba(245,158,11,0.08)]';
@@ -381,7 +381,7 @@ export default function Dashboard() {
           <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.45)] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0,0,1)] sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-brand-600">New here?</p>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-[#c2410c] dark:text-[#fdba74]">New here?</p>
                 <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
                 <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
               </div>
@@ -403,7 +403,7 @@ export default function Dashboard() {
                   className="group rounded-xl bg-white p-4 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.28)] active:scale-[0.96]"
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <item.icon className="h-4 w-4 text-brand-600" aria-hidden />
+                    <item.icon className="h-4 w-4 text-[#ea580c] dark:text-[#fb923c]" aria-hidden />
                     <p className="text-sm font-bold text-zinc-900">{item.title}</p>
                   </div>
                   <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
@@ -414,7 +414,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={closeOnboarding}
-                className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-800 active:scale-[0.96]"
+                className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-orange-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
               >
                 Continue
               </button>
@@ -429,7 +429,7 @@ export default function Dashboard() {
       >
         <div className="px-4 pb-6 pt-5 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8">
           <div className="mb-5 px-0.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-400">Overview</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#c2410c] dark:text-[#fdba74]">Overview</p>
             <h2
               id="app-dashboard-overview-heading"
               className="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-2xl"
@@ -444,17 +444,17 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:grid-rows-2 md:gap-4">
           <Link
             to={nextUpcomingWebinar?.id ? `/app/live/${nextUpcomingWebinar.id}` : '/app/live'}
-            className="group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-violet-100/95 via-white to-emerald-50/90 p-4 text-left shadow-[0_20px_56px_-30px_rgba(91,33,182,0.22)] transition-[transform,box-shadow] duration-200 hover:shadow-[0_28px_64px_-30px_rgba(43,168,154,0.28)] active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px] dark:from-zinc-900 dark:via-violet-950/40 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]"
+            className="group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-orange-100/95 via-white to-amber-50/90 p-4 text-left shadow-[0_20px_56px_-30px_rgba(234,88,12,0.2)] transition-[transform,box-shadow] duration-200 hover:shadow-[0_28px_64px_-30px_rgba(234,88,12,0.28)] active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px] dark:from-zinc-900 dark:via-orange-950/30 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]"
           >
-            <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-violet-400/35 blur-3xl dark:bg-violet-500/15" />
-            <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-brand-400/25 blur-3xl dark:bg-brand-500/10" />
+            <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-orange-400/30 blur-3xl dark:bg-orange-500/12" />
+            <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-amber-300/35 blur-3xl dark:bg-orange-600/10" />
             <div className="relative z-10 flex items-start justify-between gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-violet-800 shadow-[0_2px_12px_-4px_rgba(91,33,182,0.2)] dark:bg-zinc-900/80 dark:text-brand-200">
+              <span className="inline-flex items-center gap-2 rounded-full bg-orange-100/95 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-orange-950 shadow-[0_2px_12px_-4px_rgba(234,88,12,0.28)] dark:bg-orange-950/75 dark:text-orange-50">
                 <Radio className="h-3.5 w-3.5" aria-hidden />
                 Next LIVE
               </span>
               <ChevronRight
-                className="h-5 w-5 shrink-0 text-violet-400 transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-violet-700 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                className="h-5 w-5 shrink-0 text-[#ea580c] transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-[#c2410c] dark:text-[#fb923c] dark:group-hover:text-[#fdba74]"
                 aria-hidden
               />
             </div>
@@ -474,7 +474,7 @@ export default function Dashboard() {
                       ? format(new Date(nextUpcomingWebinar.startTime), 'EEE, MMM d · h:mm a')
                       : 'Scheduled session'}
                   </p>
-                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700 dark:text-brand-400">
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#c2410c] dark:text-[#fdba74]">
                     Tap to open session
                   </p>
                 </>
@@ -491,7 +491,7 @@ export default function Dashboard() {
 
           <Link to="/app/earnings" className={`${bentoMetric} col-start-2 row-start-1 md:col-start-2 md:row-start-1`}>
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-[#c2410c] dark:text-[#fdba74]">
                 <Banknote className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
@@ -507,7 +507,7 @@ export default function Dashboard() {
 
           <Link to="/app/surveys" className={`${bentoMetric} col-start-2 row-start-2 md:col-start-3 md:row-start-1`}>
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-[#c2410c] dark:text-[#fdba74]">
                 <Activity className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
@@ -535,7 +535,7 @@ export default function Dashboard() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-amber-800 dark:text-amber-200">
                       <ClipboardCheck className="h-5 w-5" strokeWidth={2} aria-hidden />
                     </span>
                     <div className="min-w-0">
@@ -585,7 +585,7 @@ export default function Dashboard() {
           {featuredSlideCount > 0 ? (
             <>
               <div
-                className="overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
+                className="overflow-hidden rounded-2xl bg-orange-600 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
                 onTouchStart={(e) => {
                   touchStartX.current = e.touches[0].clientX;
                 }}
@@ -628,7 +628,7 @@ export default function Dashboard() {
                         <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
                         <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white sm:p-7 md:p-8">
-                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-300">
+                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#fdba74]">
                             {slide.eyebrow}
                           </p>
                           <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">
@@ -647,7 +647,7 @@ export default function Dashboard() {
                             </Link>
                             <Link
                               to={slide.secondaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(43,168,154,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
+                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-orange-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-orange-700 active:scale-[0.96]"
                             >
                               {slide.secondaryCta}
                             </Link>
@@ -675,7 +675,7 @@ export default function Dashboard() {
                         onClick={() => setSpotlightIndex(i)}
                         className={[
                           'h-2 rounded-full transition-[width,background-color] duration-300',
-                          i === spotlightIndex ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                          i === spotlightIndex ? 'w-8 bg-orange-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
                         ].join(' ')}
                       />
                     ))}

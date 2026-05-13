@@ -93,7 +93,7 @@ export default function WebinarDetail() {
       return (
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
           <p className="font-semibold text-gray-900">Session not found</p>
-          <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+          <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
             Back to LIVE
           </Link>
         </div>
@@ -116,7 +116,7 @@ export default function WebinarDetail() {
               href={zoomWebinar.joinUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+              className="mt-6 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
             >
               Join Session
             </a>
@@ -138,7 +138,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
           >
             Back to LIVE
           </Link>
@@ -155,7 +155,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
           >
             Back to LIVE
           </Link>
@@ -256,7 +256,7 @@ export default function WebinarDetail() {
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
                 to={`/app/live/${program.id}/register`}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 Register (forms & checkout)
               </Link>
@@ -268,7 +268,7 @@ export default function WebinarDetail() {
                   'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
                   ctaDisabled
                     ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                    : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
+                    : 'bg-brand-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]',
                 ].join(' ')}
               >
                 {ctaLabel}
@@ -339,7 +339,7 @@ export default function WebinarDetail() {
               {enrolled && firstVideo ? (
                 <button
                   onClick={() => navigate(`/app/watch/${firstVideo.id}`)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   Continue in Conversations
                   <ArrowRight className="h-4 w-4" />
@@ -506,7 +506,7 @@ export default function WebinarDetail() {
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
               to={`/app/live/${program.id}/register`}
-              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
+              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-brand-600 text-white"
             >
               Register
             </Link>
@@ -518,7 +518,7 @@ export default function WebinarDetail() {
                 'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
                 ctaDisabled
                   ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
+                  : 'bg-brand-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]',
               ].join(' ')}
             >
               {ctaLabel}

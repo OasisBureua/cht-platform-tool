@@ -194,7 +194,7 @@ export default function CompleteProfile() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-70"
+            className="w-full rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
           >
             {saving ? 'Saving...' : 'Continue to platform'}
           </button>

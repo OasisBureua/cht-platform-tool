@@ -52,7 +52,7 @@ export default function SurveyDetail() {
         <div className="mt-5">
           <Link
             to="/app/surveys"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
           >
             Back to surveys
           </Link>
@@ -104,7 +104,7 @@ export default function SurveyDetail() {
                 <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
                 <button
                   onClick={() => setStarted(true)}
-                  className="inline-flex w-fit items-center justify-center rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                  className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   Start survey <ArrowRight className="ml-2 h-4 w-4" />
                 </button>
@@ -155,7 +155,7 @@ export default function SurveyDetail() {
                           'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
                           submitMutation.isPending
                             ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                            : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
+                            : 'bg-brand-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]',
                         ].join(' ')}
                       >
                         {submitMutation.isPending ? 'Submitting…' : 'Mark as completed (UI)'}
@@ -183,7 +183,7 @@ export default function SurveyDetail() {
 
           </div>
 
-          <div className="rounded-3xl border border-gray-200 bg-gray-900 p-6">
+          <div className="rounded-3xl border border-gray-200 bg-brand-950 p-6">
             <p className="text-sm font-semibold text-white">Need to earn rewards?</p>
             <p className="mt-2 text-sm text-gray-300">
               Rewards and tracking are available in the app experience.

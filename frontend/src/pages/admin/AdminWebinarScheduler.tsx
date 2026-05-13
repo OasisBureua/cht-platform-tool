@@ -366,7 +366,7 @@ export default function AdminWebinarScheduler({
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+            className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
           >
             {createMutation.isPending && (
               <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />

@@ -24,7 +24,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
   return (
     <section
       className={[
-        'overflow-hidden bg-zinc-900 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]',
+        'overflow-hidden bg-brand-600 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]',
         isInApp ? 'rounded-none' : 'rounded-2xl',
       ].join(' ')}
       aria-label="Featured video"

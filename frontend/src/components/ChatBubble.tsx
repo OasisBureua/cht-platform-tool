@@ -40,7 +40,7 @@ export default function ChatBubble() {
 
       <button
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-4 right-4 z-[70] h-14 w-14 rounded-full bg-gray-900 text-white shadow-lg hover:bg-black flex items-center justify-center transition-transform active:scale-95"
+        className="fixed bottom-4 right-4 z-[70] flex h-14 w-14 items-center justify-center rounded-full bg-orange-600 text-white shadow-[0_6px_20px_-6px_rgba(234,88,12,0.55)] transition-[transform,background-color,box-shadow] hover:bg-orange-700 active:scale-95 dark:bg-orange-600 dark:hover:bg-orange-500"
         aria-label={open ? 'Close chat' : 'Open chat assistant'}
       >
         {open ? <X className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}

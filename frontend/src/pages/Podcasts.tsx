@@ -34,7 +34,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   return (
     <div className="relative isolate">
       <div
-        className="overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
+        className="overflow-hidden rounded-2xl bg-brand-600 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0].clientX;
         }}
@@ -87,7 +87,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
                     </Link>
                     <a
                       href="#podcast-catalog"
-                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(43,168,154,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
+                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
                     >
                       Full catalog
                     </a>
@@ -154,7 +154,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
 
 function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode }) {
   return (
-    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_12px_36px_-20px_rgba(0,0,0,0.35)] sm:max-h-[300px] dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
+    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-brand-600 shadow-[0_12px_36px_-20px_rgba(0,0,0,0.35)] sm:max-h-[300px] dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
       <img
         src={show.image}
         alt=""

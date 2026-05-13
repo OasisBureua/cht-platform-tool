@@ -54,7 +54,7 @@ export default function AdminPayments() {
         <div className="shrink-0">
           <a
             href="#pending-table"
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <DollarSign className="h-4 w-4" />
             {hasPending ? 'Pay now' : 'View payments'}
@@ -112,7 +112,7 @@ export default function AdminPayments() {
                 <button
                   type="button"
                   disabled
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white cursor-default"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white cursor-default"
                 >
                   <DollarSign className="h-4 w-4" />
                   Pay now
@@ -179,7 +179,7 @@ function PendingRow({
             className={[
               'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
               canPay && !isPaying
-                ? 'bg-gray-900 text-white hover:bg-black'
+                ? 'bg-brand-600 text-white hover:bg-brand-700'
                 : 'bg-gray-200 text-gray-500 cursor-not-allowed',
             ].join(' ')}
           >

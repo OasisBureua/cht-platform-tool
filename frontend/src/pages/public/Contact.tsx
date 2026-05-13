@@ -63,7 +63,7 @@ export default function Contact() {
                   <div className="pt-4">
                     <Link
                       to="/catalog"
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700"
                     >
                       Browse Catalogue <ArrowRight className="h-4 w-4" />
                     </Link>
@@ -135,7 +135,7 @@ export default function Contact() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="inline-flex items-center justify-center rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="inline-flex items-center justify-center rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {loading ? 'Sending…' : 'Send message'}
                     </button>

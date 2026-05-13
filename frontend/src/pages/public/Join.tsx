@@ -148,7 +148,7 @@ export default function Join() {
           </p>
           <Link
             to="/login"
-            className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-black active:scale-[0.96]"
+            className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
           >
             Go to Login
           </Link>
@@ -163,7 +163,7 @@ export default function Join() {
         {/* Mobile: form first (order-1). Desktop: story left, form right — equal 1fr columns */}
         <aside className="order-2 space-y-5 lg:sticky lg:top-24 lg:order-1">
           <header className="text-center lg:text-left">
-            <p className="text-sm font-semibold tracking-wide text-brand-700">Join</p>
+            <p className="text-sm font-semibold tracking-wide text-brand-800 dark:text-brand-400">Join</p>
             <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
               Join CHT
             </h1>
@@ -316,7 +316,7 @@ export default function Join() {
                       onChange={(e) => { setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10)); setNpiVerified(null); }}
                       required
                       maxLength={10}
-                      className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                      className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
                     />
                     <button
                       type="button"
@@ -334,7 +334,7 @@ export default function Join() {
                           setNpiVerifying(false);
                         }
                       }}
-                      className="shrink-0 rounded-xl bg-gray-900 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-black active:scale-[0.96] disabled:opacity-50"
+                      className="shrink-0 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
                     >
                       {npiVerifying ? 'Verifying…' : 'Verify'}
                     </button>
@@ -393,7 +393,7 @@ export default function Join() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-black active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
+                  className="w-full rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
                 >
                   {submitting ? 'Creating account...' : 'Create account'}
                 </button>
@@ -478,7 +478,7 @@ function Input({
         required={required}
         minLength={minLength}
         maxLength={maxLength}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
       />
     </div>
   );
@@ -504,7 +504,7 @@ function Select({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] transition-[border-color,box-shadow] duration-200 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>

@@ -18,7 +18,7 @@ type TabId = 'overview' | 'background' | 'engagement';
 
 function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=0d4f6c&color=fff&bold=true`;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
 }
 
 function displayHandle(entry: DolEntry): string {
@@ -96,7 +96,7 @@ export default function KolProfilePage() {
 
       <div className="w-full max-w-none">
         {/* Banner — full viewport width */}
-        <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 via-[#0d4f6c] to-slate-900 sm:h-48">
+        <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 via-brand-900 to-zinc-950 sm:h-48">
           {vm.bannerImageUrl ? (
             <img src={vm.bannerImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
           ) : null}
@@ -111,7 +111,7 @@ export default function KolProfilePage() {
               className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:bg-zinc-800 dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
             />
             <div className="pt-20 sm:pt-24">
-              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-[#0d4f6c] shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-brand-300">
+              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-brand-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-brand-200">
                 CHM Network
               </span>
             </div>
@@ -159,13 +159,13 @@ export default function KolProfilePage() {
                 {vm.phone ? (
                   <a
                     href={`tel:${vm.phone.replace(/\D/g, '')}`}
-                    className="text-sm font-medium text-[#0d4f6c] hover:underline dark:text-brand-400"
+                    className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
                   >
                     {vm.phone}
                   </a>
                 ) : null}
                 {vm.email ? (
-                  <a href={`mailto:${vm.email}`} className="text-sm font-medium text-[#0d4f6c] hover:underline dark:text-brand-400">
+                  <a href={`mailto:${vm.email}`} className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
                     {vm.email}
                   </a>
                 ) : null}
@@ -200,7 +200,7 @@ export default function KolProfilePage() {
                 className={[
                   'min-h-[44px] flex-1 border-b-[3px] py-3 text-sm font-semibold transition-colors',
                   tab === id
-                    ? 'border-[#0d4f6c] text-zinc-900 dark:border-brand-400 dark:text-white'
+                    ? 'border-brand-600 text-zinc-900 dark:border-brand-400 dark:text-white'
                     : 'border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900/80',
                 ].join(' ')}
               >
@@ -312,7 +312,7 @@ function SocialIcon({ href, label, children }: { href?: string; label: string; c
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition-[color,transform] hover:text-[#0d4f6c] active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+      className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition-[color,transform] hover:text-brand-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
     >
       {children}
     </a>

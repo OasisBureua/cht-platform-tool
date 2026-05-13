@@ -170,7 +170,7 @@ function UserRow({ user }: { user: AdminUser }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 px-5 py-4 flex items-center gap-4">
       {/* Avatar */}
-      <div className="h-12 w-12 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
+      <div className="h-12 w-12 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
         <span className="text-sm font-bold text-white">{initials}</span>
       </div>
 

@@ -34,7 +34,7 @@ export function StatCard({ title, value, icon, trend }: StatCardProps) {
             <p className="mt-2 text-sm text-gray-500">{trend.label}</p>
           )}
         </div>
-        <div className="p-3 bg-primary-50 rounded-full">
+        <div className="p-3 bg-brand-50 rounded-full">
           {icon}
         </div>
       </div>

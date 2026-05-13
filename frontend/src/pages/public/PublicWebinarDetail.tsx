@@ -54,7 +54,7 @@ export default function PublicWebinarDetail() {
           <p className="mt-2 text-sm text-gray-600">That link may be invalid or expired.</p>
           <Link
             to="/live"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
           >
             <ChevronLeft className="h-4 w-4" />
             Back to LIVE
@@ -124,7 +124,7 @@ export default function PublicWebinarDetail() {
                   <Link
                     to="/login"
                     state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}` : `/live/${id}` } }}
-                    className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                   >
                     <LogIn className="h-4 w-4" />
                     Sign in
@@ -145,7 +145,7 @@ export default function PublicWebinarDetail() {
                   href={webinar.joinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   Join Session
                 </a>

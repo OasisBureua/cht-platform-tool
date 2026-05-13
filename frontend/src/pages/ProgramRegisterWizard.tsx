@@ -126,7 +126,7 @@ export default function ProgramRegisterWizard() {
               key={`${s}-${i}`}
               className={[
                 'rounded-full px-3 py-1 font-semibold',
-                i === stepIndex ? 'bg-gray-900 text-white' : i < stepIndex ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600',
+                i === stepIndex ? 'bg-brand-600 text-white' : i < stepIndex ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600',
               ].join(' ')}
             >
               {i + 1}. {s === 'intake' ? 'Intake' : s === 'pre' ? 'Pre-event' : s === 'bill' ? 'Bill.com' : s === 'slot' ? 'Time slot' : 'Submit'}
@@ -178,7 +178,7 @@ export default function ProgramRegisterWizard() {
                 href="/app/payments"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 Open Bill.com setup
                 <ExternalLink className="h-4 w-4" />
@@ -199,7 +199,7 @@ export default function ProgramRegisterWizard() {
                       disabled={s.remaining <= 0}
                       className={[
                         'w-full rounded-xl border px-4 py-3 text-left text-sm transition-[color,background-color,border-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.995]',
-                        selectedSlotId === s.id ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white hover:bg-gray-50',
+                        selectedSlotId === s.id ? 'border-gray-900 bg-brand-600 text-white' : 'border-gray-200 bg-white hover:bg-gray-50',
                         s.remaining <= 0 ? 'opacity-50 cursor-not-allowed' : '',
                       ].join(' ')}
                     >
@@ -258,7 +258,7 @@ export default function ProgramRegisterWizard() {
               submitMut.isPending ||
               (current === 'slot' && slots.length > 0 && !selectedSlotId)
             }
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
           >
             {submitMut.isPending && isLastStep ? (
               <>
