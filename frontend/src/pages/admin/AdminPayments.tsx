@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { adminApi, type PendingPayment } from '../../api/admin';
+import { adminApi, type PendingPayment, type FailedPayment } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2 } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle } from 'lucide-react';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -20,6 +20,11 @@ export default function AdminPayments() {
     queryFn: () => adminApi.getPendingPayments(),
   });
 
+  const { data: failed = [] } = useQuery({
+    queryKey: ['admin', 'failed-payments'],
+    queryFn: () => adminApi.getFailedPayments(),
+  });
+
   const { data: eligibleNotSubmitted = [] } = useQuery({
     queryKey: ['admin', 'payment-eligible-not-submitted'],
     queryFn: () => adminApi.listPaymentEligibleNotYetRequested(),
@@ -32,10 +37,19 @@ export default function AdminPayments() {
     },
   });
 
+  const retryMutation = useMutation({
+    mutationFn: (paymentId: string) => adminApi.retryPayment(paymentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.deletePayment(paymentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
       setDeleteConfirmPaymentId(null);
     },
   });
@@ -45,6 +59,23 @@ export default function AdminPayments() {
     () => (pending || []).reduce((sum, p) => sum + p.amount, 0),
     [pending],
   );
+
+  // Group failed payments by program (sorted alphabetically; no-program group last)
+  const failedByProgram = useMemo(() => {
+    const groups = new Map<string, { title: string; programId: string | null; payments: typeof failed }>();
+    for (const p of failed) {
+      const key = p.program?.id ?? '__none__';
+      if (!groups.has(key)) {
+        groups.set(key, { title: p.program?.title ?? 'No program', programId: p.program?.id ?? null, payments: [] });
+      }
+      groups.get(key)!.payments.push(p);
+    }
+    return [...groups.values()].sort((a, b) => {
+      if (a.programId === null) return 1;
+      if (b.programId === null) return -1;
+      return a.title.localeCompare(b.title);
+    });
+  }, [failed]);
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -72,9 +103,10 @@ export default function AdminPayments() {
       </header>
 
       {/* Summary cards */}
-      <section className="grid gap-6 md:grid-cols-3">
+      <section className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
         <StatCard label="Pending count" value={String(pendingCount)} sub="Awaiting payout" />
         <StatCard label="Pending total" value={formatMoney(pendingTotal)} sub="To be paid" />
+        <StatCard label="Failed payments" value={String(failed.length)} sub="Need admin retry" variant={failed.length > 0 ? 'danger' : 'default'} />
         <StatCard label="Eligible, not submitted" value={String(eligibleNotSubmitted.length)} sub="Survey done, no payment request yet" />
       </section>
 
@@ -132,6 +164,63 @@ export default function AdminPayments() {
           </div>
         )}
       </section>
+
+      {/* Failed payments */}
+      {failed.length > 0 && (
+        <section className="rounded-3xl border border-red-200 bg-red-50 overflow-hidden">
+          <div className="flex items-start gap-3 px-6 pt-5 pb-3">
+            <XCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" aria-hidden />
+            <div>
+              <h2 className="text-base font-semibold text-red-900">Failed payments</h2>
+              <p className="mt-0.5 text-sm text-red-800">
+                These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to attempt payment again via Bill.com.
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-red-200 text-sm">
+              <thead className="bg-red-100/60">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Failed at</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Reason</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-red-800 uppercase whitespace-nowrap">Actions</th>
+                </tr>
+              </thead>
+              {failedByProgram.map((group) => (
+                  <tbody key={`group-${group.programId ?? 'none'}`} className="divide-y divide-red-100">
+                    <tr className="bg-red-100/40">
+                      <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-red-900 tracking-wide uppercase">
+                        {group.title}
+                        <span className="ml-2 font-normal text-red-700 normal-case">
+                          ({group.payments.length} failed)
+                        </span>
+                      </td>
+                    </tr>
+                    {group.payments.map((p) => (
+                      <FailedRow
+                        key={p.id}
+                        payment={p}
+                        onRetry={() => retryMutation.mutate(p.id)}
+                        onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
+                        isRetrying={retryMutation.isPending && retryMutation.variables === p.id}
+                        isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
+                      />
+                    ))}
+                  </tbody>
+              ))}
+            </table>
+          </div>
+          {retryMutation.isError && (
+            <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-red-800">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {getApiErrorMessage(retryMutation.error, 'Retry failed.')}
+            </div>
+          )}
+        </section>
+      )}
 
       {/* Eligible but not yet submitted for payment */}
       {eligibleNotSubmitted.length > 0 && (
@@ -248,13 +337,79 @@ export default function AdminPayments() {
   );
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+function StatCard({ label, value, sub, variant = 'default' }: { label: string; value: string; sub: string; variant?: 'default' | 'danger' }) {
+  const isDanger = variant === 'danger';
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-semibold text-gray-600">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>
-      <p className="mt-1 text-sm text-gray-600">{sub}</p>
+    <div className={['rounded-3xl border p-6', isDanger ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'].join(' ')}>
+      <p className={['text-xs font-semibold', isDanger ? 'text-red-700' : 'text-gray-600'].join(' ')}>{label}</p>
+      <p className={['mt-2 text-2xl font-semibold', isDanger ? 'text-red-900' : 'text-gray-900'].join(' ')}>{value}</p>
+      <p className={['mt-1 text-sm', isDanger ? 'text-red-700' : 'text-gray-600'].join(' ')}>{sub}</p>
     </div>
+  );
+}
+
+function FailedRow({
+  payment,
+  onRetry,
+  onRequestDelete,
+  isRetrying,
+  isDeleting,
+}: {
+  payment: FailedPayment;
+  onRetry: () => void;
+  onRequestDelete: () => void;
+  isRetrying: boolean;
+  isDeleting: boolean;
+}) {
+  const canRetry = !!payment.user.billVendorId;
+
+  return (
+    <tr className="bg-white/70 hover:bg-white">
+      <td className="px-4 py-3">
+        <p className="font-medium text-gray-900">{payment.user.firstName} {payment.user.lastName}</p>
+        <p className="text-xs text-gray-500">{payment.user.email}</p>
+      </td>
+      <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+        {payment.failedAt ? format(new Date(payment.failedAt), 'MMM d, yyyy') : '—'}
+      </td>
+      <td className="px-4 py-3 text-xs text-red-700 max-w-xs">
+        <span className="line-clamp-2" title={payment.failureReason ?? undefined}>
+          {payment.failureReason ?? '—'}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-right whitespace-nowrap">
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={!canRetry || isRetrying}
+            className={[
+              'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
+              canRetry && !isRetrying
+                ? 'bg-red-700 text-white hover:bg-red-800'
+                : 'bg-gray-200 text-gray-500 cursor-not-allowed',
+            ].join(' ')}
+          >
+            <RefreshCw className={['h-4 w-4', isRetrying ? 'animate-spin' : ''].join(' ')} aria-hidden />
+            {isRetrying ? 'Retrying…' : 'Retry'}
+          </button>
+          <button
+            type="button"
+            onClick={onRequestDelete}
+            disabled={isDeleting}
+            title="Delete payment record"
+            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+        {!canRetry && (
+          <p className="mt-1 text-xs text-amber-600">No Bill.com vendor</p>
+        )}
+      </td>
+    </tr>
   );
 }
 
