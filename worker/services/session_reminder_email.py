@@ -13,19 +13,19 @@ try:
 except ImportError:  # pragma: no cover
     from backports.zoneinfo import ZoneInfo  # type: ignore
 
-# ── Brand colours (CHM teal palette) ──────────────────────────────────────────
-CLR_HEADER_BG   = "#185c54"   # brand-800  — deep teal header
-CLR_HEADER_SUB  = "#6ee7b7"   # brand-300  — light teal subtitle
-CLR_ACCENT      = "#2BA89A"   # brand-500  — main teal
-CLR_ACCENT_DARK = "#248f83"   # brand-600  — button hover / border
-CLR_CARD_BG     = "#ecfdf8"   # brand-50   — session card background
-CLR_CARD_BORDER = "#2BA89A"   # brand-500  — card left border
+# ── Brand colours (CHM orange palette) ────────────────────────────────────────
+CLR_HEADER_BG   = "#7c2d12"   # brand-800  — deep orange header
+CLR_HEADER_SUB  = "#fdba74"   # brand-300  — light orange subtitle
+CLR_ACCENT      = "#ea580c"   # brand-500  — main orange
+CLR_ACCENT_DARK = "#c2410c"   # brand-600  — button hover / border
+CLR_CARD_BG     = "#fff7ed"   # brand-50   — session card background
+CLR_CARD_BORDER = "#ea580c"   # brand-500  — card left border
 CLR_BODY_TEXT   = "#111827"   # gray-900   — primary text
 CLR_MUTED       = "#4b5563"   # gray-600   — muted text
 CLR_LABEL       = "#6b7280"   # gray-500   — table label column
 CLR_FOOTER_BG   = "#f9fafb"   # gray-50    — footer strip
 CLR_BORDER      = "#e5e7eb"   # gray-200   — dividers
-CLR_LINK        = "#248f83"   # brand-600  — inline links
+CLR_LINK        = "#c2410c"   # brand-600  — inline links
 
 _ET = ZoneInfo("America/New_York")
 
@@ -174,7 +174,7 @@ The {sponsor_name} Team
                   <p style="margin:6px 0 0;color:{CLR_HEADER_SUB};font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">Session Reminder</p>
                 </td>
                 <td align="right" style="vertical-align:middle">
-                  <!-- teal clock icon circle -->
+                  <!-- orange clock icon circle -->
                   <div style="width:44px;height:44px;background:rgba(255,255,255,0.12);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:22px;line-height:44px;text-align:center">&#128337;</div>
                 </td>
               </tr>

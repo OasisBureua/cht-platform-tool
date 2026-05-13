@@ -1,29 +1,29 @@
 /**
- * Shared HTML email layout helpers — Community Health Media brand (teal palette).
+ * Shared HTML email layout helpers — Community Health Media brand (orange palette).
  *
  * All transactional emails use `emailWrap()` to produce a consistent shell:
- *   - Deep-teal header bar  (#185c54 brand-800)
+ *   - Deep-orange header bar  (#7c2d12 brand-800)
  *   - White card body
- *   - Teal CTA buttons      (#2BA89A brand-500)
- *   - Teal-accented info cards (#ecfdf8 bg / #2BA89A left border)
+ *   - Orange CTA buttons      (#ea580c brand-500)
+ *   - Orange-accented info cards (#fff7ed bg / #ea580c left border)
  *   - Gray footer strip
  *
- * Colors align with tailwind.config.js `brand.*` palette.
+ * Colors align with tailwind.config.js `brand.*` palette (orange).
  */
 
 // ── Brand palette ──────────────────────────────────────────────────────────────
 export const E = {
-  HEADER_BG:   '#185c54', // brand-800
-  HEADER_SUB:  '#6ee7b7', // brand-300
-  ACCENT:      '#2BA89A', // brand-500
-  ACCENT_DARK: '#248f83', // brand-600
-  CARD_BG:     '#ecfdf8', // brand-50
+  HEADER_BG:   '#7c2d12', // brand-800
+  HEADER_SUB:  '#fdba74', // brand-300
+  ACCENT:      '#ea580c', // brand-500
+  ACCENT_DARK: '#c2410c', // brand-600
+  CARD_BG:     '#fff7ed', // brand-50
   BODY_TEXT:   '#111827', // gray-900
   MUTED:       '#4b5563', // gray-600
   LABEL:       '#6b7280', // gray-500
   FOOTER_BG:   '#f9fafb', // gray-50
   BORDER:      '#e5e7eb', // gray-200
-  LINK:        '#248f83', // brand-600
+  LINK:        '#c2410c', // brand-600
   WARN_BG:     '#fef9c3', // yellow-100
   WARN_BORDER: '#fde047', // yellow-300
   WARN_TEXT:   '#713f12', // yellow-900
@@ -34,7 +34,7 @@ export const E = {
 
 // ── Full wrapper ───────────────────────────────────────────────────────────────
 /**
- * Wraps `body` HTML in the standard CHM email chrome: outer bg, card, teal
+ * Wraps `body` HTML in the standard CHM email chrome: outer bg, card, orange
  * header, and footer.
  *
  * @param sponsorName  Displayed in the header (e.g. "Community Health Media").
@@ -92,7 +92,7 @@ export function emailWrap(opts: {
 
 // ── Reusable blocks ────────────────────────────────────────────────────────────
 
-/** Teal CTA button. */
+/** Orange CTA button. */
 export function emailButton(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:${E.ACCENT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.01em;line-height:1">${label} &rarr;</a>`;
 }
@@ -102,7 +102,7 @@ export function emailButtonDark(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:${E.BODY_TEXT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.01em;line-height:1">${label} &rarr;</a>`;
 }
 
-/** Teal-accented info card (brand-50 bg + brand-500 left border). */
+/** Orange-accented info card (brand-50 bg + brand-500 left border). */
 export function emailInfoCard(innerHtml: string): string {
   return `<div style="background:${E.CARD_BG};border-left:4px solid ${E.ACCENT};border-radius:10px;padding:20px 24px;margin:20px 0 0">${innerHtml}</div>`;
 }
@@ -117,7 +117,7 @@ export function emailSuccessCard(innerHtml: string): string {
   return `<div style="background:${E.SUCCESS_BG};border:1px solid ${E.SUCCESS_BORDER};border-radius:10px;padding:14px 18px;margin:20px 0 0">${innerHtml}</div>`;
 }
 
-/** Inline teal link. */
+/** Inline orange link. */
 export function emailLink(href: string, label: string): string {
   return `<a href="${href}" style="color:${E.LINK};text-decoration:underline">${label}</a>`;
 }

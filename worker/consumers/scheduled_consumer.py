@@ -56,7 +56,12 @@ class ScheduledConsumer(SQSBaseConsumer):
                 region_name=os.getenv("AWS_REGION", "us-east-1"),
                 config=Config(retries={"max_attempts": 5, "mode": "adaptive"}),
             )
-            logger.info(f"Scheduled consumer queue: {queue_url}")
+            logger.info(f"Scheduled consumer initialised — queue: {queue_url}")
+        else:
+            logger.warning(
+                "Scheduled consumer: SQS_SCHEDULED_JOBS_QUEUE_URL is not set — "
+                "consumer will run in mock mode and EventBridge triggers will be ignored"
+            )
 
         super().__init__(
             queue_url=queue_url,
@@ -80,9 +85,14 @@ class ScheduledConsumer(SQSBaseConsumer):
     def _session_reminders(self) -> bool:
         """Scan APPROVED registrations for sessions starting in the reminder window
         and send each user one reminder email if it has not already been sent."""
+        logger.info("[session-reminders] trigger received — starting scan")
+
         ses_from = os.getenv("SES_FROM_EMAIL", "")
         if not ses_from:
-            logger.warning("SES_FROM_EMAIL not set — skipping session reminders")
+            logger.warning(
+                "[session-reminders] SES_FROM_EMAIL not set — skipping session reminders. "
+                "Set the env var in the ECS worker task definition and redeploy."
+            )
             return True  # Not a transient error; nothing to retry
 
         now = datetime.now(tz=timezone.utc)
