@@ -104,7 +104,7 @@ export default function AdminPrograms() {
           )}
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             <Calendar className="h-4 w-4" />
             {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
@@ -179,7 +179,7 @@ export default function AdminPrograms() {
           </p>
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <Calendar className="h-4 w-4" /> {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
           </Link>
@@ -682,7 +682,7 @@ function EditWebinarModal({
           <button
             onClick={handleSave}
             disabled={updateMutation.isPending}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50 inline-flex items-center gap-2"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 inline-flex items-center gap-2"
           >
             {updateMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

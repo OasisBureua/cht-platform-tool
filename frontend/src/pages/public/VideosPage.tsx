@@ -311,7 +311,7 @@ export default function VideosPage() {
       >
         {!isInApp && effectiveLibraryView === 'clips' ? (
           <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
-            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700" strokeWidth={2} aria-hidden />
+            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
               Explore our catalogue
             </h1>

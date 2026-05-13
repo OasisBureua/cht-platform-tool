@@ -193,7 +193,7 @@ export default function ProgramRegisterWizard() {
               key={`${s}-${i}`}
               className={[
                 'rounded-full px-3 py-1 font-semibold',
-                i === stepIndex ? 'bg-gray-900 text-white' : i < stepIndex ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600',
+                i === stepIndex ? 'bg-brand-600 text-white' : i < stepIndex ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600',
               ].join(' ')}
             >
               {i + 1}.{' '}
@@ -232,6 +232,39 @@ export default function ProgramRegisterWizard() {
                   allow="camera; microphone"
                 />
               </div>
+            </div>
+          )}
+
+          {current === 'pre' && program.jotformPreEventUrl && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-gray-900">Pre-event survey</p>
+              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                <iframe
+                  title="Pre-event survey"
+                  src={jotformAppendReturn(program.jotformPreEventUrl)}
+                  className="h-[480px] w-full"
+                  allow="camera; microphone; payment"
+                />
+              </div>
+            </div>
+          )}
+
+          {current === 'bill' && (
+            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
+              <p className="text-sm font-semibold text-gray-900">Vendor & payments (Bill.com)</p>
+              <p className="text-sm text-gray-600">
+                If this program requires payment setup, open Bill.com in a new tab, complete onboarding, then return here
+                and continue. This keeps Jotform and Bill.com in one guided flow without mixing iframes.
+              </p>
+              <a
+                href="/app/payments"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
+              >
+                Open Bill.com setup
+                <ExternalLink className="h-4 w-4" />
+              </a>
             </div>
           )}
 
@@ -291,7 +324,7 @@ export default function ProgramRegisterWizard() {
             disabled={
               submitMut.isPending || (current === 'slot' && slots.length > 0 && !selectedSlotId)
             }
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
           >
             {submitMut.isPending && isLastStep ? (
               <>

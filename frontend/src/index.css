@@ -67,7 +67,8 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply min-w-0 overflow-x-clip bg-gray-50 text-base font-normal text-gray-900 antialiased font-sans;
+    /* ~60% neutral base — warm off-white aligns with orange-forward brand rhythm */
+    @apply min-w-0 overflow-x-clip bg-stone-50 text-base font-normal text-gray-900 antialiased font-sans;
   }
   .dark body {
     @apply bg-zinc-950 text-zinc-100;
@@ -109,7 +110,7 @@
 @layer utilities {
   /** Public site header: frosted / “liquid glass” bar (content scrolls underneath) */
   .nav-liquid-glass {
-    @apply border-b border-black/[0.04] bg-white/55 shadow-[0_8px_40px_-12px_rgba(24,92,84,0.12),inset_0_1px_0_0_rgba(255,255,255,0.65)];
+    @apply border-b border-black/[0.04] bg-white/55 shadow-[0_8px_40px_-12px_rgba(234,88,12,0.1),inset_0_1px_0_0_rgba(255,255,255,0.65)];
     -webkit-backdrop-filter: blur(20px) saturate(1.35);
     backdrop-filter: blur(20px) saturate(1.35);
   }
@@ -319,31 +320,31 @@
     color: rgb(174 174 183) !important;
   }
 
-  /* Keep brand text readable on dark surfaces. */
+  /* Keep brand (orange) text readable on dark surfaces. */
   .dark .text-brand-800,
   .dark .text-brand-700,
   .dark .text-brand-600 {
-    color: rgb(94 234 212) !important;
+    color: rgb(251 146 60) !important;
   }
   .dark .text-brand-500 {
-    color: rgb(45 212 191) !important;
+    color: rgb(253 186 116) !important;
   }
   .dark .text-brand-400 {
-    color: rgb(110 231 183) !important;
+    color: rgb(253 224 171) !important;
   }
 
-  /* Preserve white text contrast by darkening brand backgrounds in dark mode. */
+  /* Slightly tame orange fills on dark for contrast. */
   .dark .bg-brand-500 {
-    background-color: rgb(29 117 107) !important;
+    background-color: rgb(234 88 12) !important;
   }
   .dark .bg-brand-600 {
-    background-color: rgb(24 92 84) !important;
+    background-color: rgb(194 65 12) !important;
   }
   .dark .hover\:bg-brand-600:hover {
-    background-color: rgb(29 117 107) !important;
+    background-color: rgb(194 65 12) !important;
   }
   .dark .hover\:bg-brand-700:hover {
-    background-color: rgb(24 92 84) !important;
+    background-color: rgb(154 52 18) !important;
   }
 
   .dark .border-gray-50,
@@ -381,11 +382,11 @@
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-[color,background-color] duration-200 ease-out;
+    @apply px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-[color,background-color] duration-200 ease-out;
   }
   
   .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300 transition-[color,background-color] duration-200 ease-out;
+    @apply px-4 py-2 rounded-lg border border-brand-300 bg-white text-brand-800 transition-[color,background-color,border-color] duration-200 ease-out hover:bg-brand-50 hover:border-brand-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-brand-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-800;
   }
   
   .card {

@@ -13,7 +13,7 @@ export default function Sidebar() {
   return (
     <aside className="hidden md:flex md:w-64 md:flex-col border-r border-gray-200 bg-white">
       <div className="px-5 py-4 border-b border-gray-200">
-        <div className="text-2xl font-bold text-primary-600">CHT Platform</div>
+        <div className="text-2xl font-bold text-brand-600">CHT Platform</div>
         <div className="text-xs text-gray-600">HCP Content Platform</div>
       </div>
 

@@ -74,8 +74,8 @@ export default function Webinars() {
     <div className="space-y-8">
       <header className="space-y-1">
         <div className="flex items-center gap-2.5 text-gray-900">
-          <Radio className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
-          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Live</h1>
+          <Radio className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
+          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
         </div>
         <p className="text-pretty text-sm text-gray-600">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves

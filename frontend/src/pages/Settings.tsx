@@ -824,7 +824,7 @@ function PaymentSettingsSection({
           <button
             type="submit"
             disabled={connectMutation.isPending || profileIncomplete}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96] disabled:opacity-50"
+            className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96] disabled:opacity-50"
           >
             {connectMutation.isPending ? 'Saving...' : 'Add bank account'}
           </button>

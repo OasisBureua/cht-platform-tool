@@ -85,7 +85,7 @@ export default function Layout() {
           <Link
             to="/app/home"
             onClick={() => setMobileDrawerOpen(false)}
-            className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-brand-600 transition-[opacity,transform] duration-200 hover:text-brand-700 active:scale-[0.98]"
+            className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-[#ea580c] transition-[opacity,transform] duration-200 hover:text-[#c2410c] active:scale-[0.98] dark:text-[#fb923c] dark:hover:text-orange-300"
             aria-label="Community Health Media, app home"
           >
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
@@ -101,13 +101,25 @@ export default function Layout() {
                     [
                       'flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
                       isActive
-                        ? 'bg-brand-50 text-brand-900 shadow-[0_4px_18px_-10px_rgba(43,168,154,0.4)] dark:bg-brand-950/45 dark:text-brand-100'
-                        : 'text-zinc-800 hover:bg-zinc-100/90 dark:text-zinc-200 dark:hover:bg-zinc-800/85',
+                        ? 'bg-orange-100 text-orange-950 shadow-[0_4px_18px_-10px_rgba(234,88,12,0.35)] ring-2 ring-orange-500/20 dark:bg-[#c2410c]/85 dark:text-white dark:ring-orange-400/35 dark:shadow-[0_4px_20px_-10px_rgba(234,88,12,0.4)]'
+                        : 'text-zinc-900 hover:bg-orange-50/90 hover:text-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800/85 dark:hover:text-white',
                     ].join(' ')
                   }
                 >
-                  <Icon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-                  <span className="truncate">{label}</span>
+                  {({ isActive }) => (
+                    <>
+                      <Icon
+                        className={
+                          isActive
+                            ? 'h-5 w-5 shrink-0'
+                            : 'h-5 w-5 shrink-0 text-[#c2410c] dark:text-[#ea580c]'
+                        }
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span className="truncate">{label}</span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
@@ -115,7 +127,7 @@ export default function Layout() {
           <div className="mt-auto border-t border-zinc-200 px-4 py-3 text-[11px] leading-snug text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <Link
               to="/app/settings"
-              className="font-semibold text-brand-700 hover:underline dark:text-brand-400"
+              className="font-semibold text-[#c2410c] underline-offset-2 hover:underline dark:text-[#fb923c]"
               onClick={() => setMobileDrawerOpen(false)}
             >
               Settings
@@ -150,7 +162,7 @@ export default function Layout() {
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-gray-800 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-white hover:text-gray-900 active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-zinc-100 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-[#c2410c] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-orange-50/90 hover:text-[#9a3412] active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-[#fdba74] dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800 dark:hover:text-orange-300"
                 aria-expanded={mobileDrawerOpen}
                 aria-controls="app-slide-drawer-nav"
                 aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -158,6 +170,13 @@ export default function Layout() {
               >
                 <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
               </button>
+              <Link
+                to="/app/home"
+                className="hidden shrink-0 text-[#ea580c] transition-[color,opacity,transform] duration-200 ease-out hover:text-[#c2410c] active:scale-[0.96] dark:text-[#fb923c] dark:hover:text-orange-300 md:inline-flex"
+                aria-label="Community Health Media, app home"
+              >
+                <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
+              </Link>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
                   Welcome, {displayName}!
@@ -175,8 +194,8 @@ export default function Layout() {
                 title="Search"
                 className={({ isActive }) =>
                   [
-                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-white/60 hover:text-gray-900 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-zinc-400 dark:hover:bg-zinc-800/80 dark:hover:text-zinc-100',
-                    isActive ? 'bg-brand-50 text-brand-800 dark:bg-brand-950/45 dark:text-brand-200' : '',
+                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-[#c2410c] transition-[color,background-color,transform] duration-200 ease-out hover:bg-orange-50/80 hover:text-[#9a3412] active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-[#fdba74] dark:hover:bg-zinc-800/80 dark:hover:text-orange-300',
+                    isActive ? 'bg-orange-100 text-[#9a3412] ring-2 ring-orange-500/25 dark:bg-[#c2410c]/25 dark:text-orange-100 dark:ring-orange-400/30' : '',
                   ].join(' ')
                 }
               >
