@@ -37,13 +37,8 @@ export function ContentLibraryNavTabs({ isInApp }: ContentLibraryNavTabsProps) {
   const catalogPath = isInApp ? '/app/catalog' : '/catalog';
   const liveTo = isInApp ? '/app/live' : '/live';
 
-  const hrefWithView = (view: 'clips' | 'playlists') => {
-    const p = new URLSearchParams(search);
-    p.set('view', view);
-    if (view === 'clips') p.delete('playlistFocus');
-    const qs = p.toString();
-    return qs ? `${catalogPath}?${qs}` : `${catalogPath}?view=${view}`;
-  };
+  const clipsHref = `${catalogPath}?view=clips`;
+  const playlistsHref = `${catalogPath}?view=playlists`;
 
   const onCatalogHub =
     pathname.startsWith('/catalog') ||
@@ -57,7 +52,7 @@ export function ContentLibraryNavTabs({ isInApp }: ContentLibraryNavTabsProps) {
 
   return (
     <section className="flex flex-wrap gap-4" aria-label="Content library sections">
-      <Link to={hrefWithView('clips')} className={tabClass(catalogTabActive)}>
+      <Link to={clipsHref} className={tabClass(catalogTabActive)}>
         <ListVideo className="h-8 w-8" />
         <span className="text-sm font-medium">Catalog</span>
       </Link>
@@ -66,7 +61,7 @@ export function ContentLibraryNavTabs({ isInApp }: ContentLibraryNavTabsProps) {
         <span className="text-sm font-medium">Conversations</span>
       </Link>
       <Link
-        to={hrefWithView('playlists')}
+        to={playlistsHref}
         className={tabClass(playlistsTabActive)}
         aria-current={playlistsTabActive ? 'page' : undefined}
       >

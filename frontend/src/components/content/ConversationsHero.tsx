@@ -18,7 +18,9 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
   const thumb = getMediaHubThumbnail(clip);
   const summary = clipDisplaySummary(clip);
   const body = (summary && summary.trim()) || (clip.description && clip.description.trim()) || '';
-  const tag = Array.isArray(clip.tags) && clip.tags[0] ? String(clip.tags[0]) : 'Featured';
+  const tag = Array.isArray(clip.tags)
+    ? String(clip.tags.find((t) => t && !String(t).startsWith('brand:')) ?? 'Featured')
+    : 'Featured';
   const speakerLine = clip.doctors?.filter(Boolean).join(' · ');
 
   return (

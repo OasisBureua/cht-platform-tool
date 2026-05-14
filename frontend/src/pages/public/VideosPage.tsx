@@ -39,7 +39,7 @@ function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   for (const [, values] of Object.entries(tags)) {
     if (!Array.isArray(values)) continue;
     for (const v of values) {
-      if (v && !seen.has(v)) {
+      if (v && !seen.has(v) && !String(v).startsWith('brand:')) {
         seen.add(v);
         out.push({ value: v, label: v });
       }
@@ -70,6 +70,13 @@ export default function VideosPage() {
   const [doctorFilter, setDoctorFilter] = useState('');
   const [sortBy, setSortBy] = useState('');
   const [sortOpen, setSortOpen] = useState(false);
+
+  // Ref so the filter-sync effect can read the current location without being
+  // retriggered by navigation (which caused the playlists ↔ catalog ping-pong).
+  const locationRef = useRef(location);
+  useEffect(() => {
+    locationRef.current = location;
+  });
 
   const effectiveLibraryView: 'clips' | 'playlists' = useMemo(() => {
     if (isInApp) return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
@@ -102,8 +109,12 @@ export default function VideosPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Keep query string in sync with filters (search text uses live `query` so deep links with ?q= aren’t wiped before debounce).
+  // Keep query string in sync with filter state only. Reads location via ref so
+  // that tab navigation (which changes location.search) does NOT retrigger this
+  // effect — preventing the playlists ↔ catalog ping-pong caused by stale filter
+  // state being seen after a navigation but before the URL→state effect resets it.
   useEffect(() => {
+    const loc = locationRef.current;
     const params = new URLSearchParams();
     const q = query.trim();
     if (q) params.set('q', q);
@@ -111,17 +122,13 @@ export default function VideosPage() {
     if (doctorFilter) params.set('doctor', doctorFilter);
     if (sortBy) params.set('sort', sortBy);
 
-    const curParams = new URLSearchParams((location.search || '').replace(/^\?/, ''));
-    const hasFilters = !!(q || tagFilter || doctorFilter || sortBy);
+    const curParams = new URLSearchParams((loc.search || '').replace(/^\?/, ''));
 
     if (!isInApp) {
-      let view: 'clips' | 'playlists';
-      if (hasFilters) view = 'clips';
-      else {
-        const pv = curParams.get('view');
-        if (pv === 'clips' || pv === 'playlists') view = pv === 'playlists' ? 'playlists' : 'clips';
-        else view = 'playlists';
-      }
+      // Always preserve the view already in the URL. Tab clicks own the view;
+      // this effect only owns the filter params.
+      const pv = curParams.get('view');
+      const view: 'clips' | 'playlists' = pv === 'playlists' ? 'playlists' : 'clips';
       params.set('view', view);
       if (view === 'playlists') {
         const pf = parsePlaylistFocus('?' + curParams.toString());
@@ -134,19 +141,11 @@ export default function VideosPage() {
     }
 
     const next = params.toString();
-    const cur = (location.search || '').replace(/^\?/, '');
+    const cur = (loc.search || '').replace(/^\?/, '');
     if (next === cur) return;
-    navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
-  }, [
-    query,
-    tagFilter,
-    doctorFilter,
-    sortBy,
-    isInApp,
-    location.pathname,
-    location.search,
-    navigate,
-  ]);
+    navigate({ pathname: loc.pathname, search: next ? `?${next}` : '' }, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, tagFilter, doctorFilter, sortBy, isInApp, navigate]);
 
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
@@ -396,34 +395,18 @@ export default function VideosPage() {
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
-          isInApp ? (
-            <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
-              <ConversationsHeroSkeleton />
-            </section>
-          ) : (
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && isInApp && (
+          <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
             <ConversationsHeroSkeleton />
-          )
-        )}
-
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          isInApp ? (
-            <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
-              <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-            </section>
-          ) : (
-            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-          )
-        )}
-
-        {!isInApp && effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && (
-          <section className="mx-auto max-w-7xl space-y-10 px-3 sm:px-6 pb-2 sm:pb-6">
-            {playlistsCarouselStrip}
-            {BIOMARKER_ROWS.map((row) => (
-              <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={false} />
-            ))}
           </section>
         )}
+
+        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && isInApp && (
+          <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
+            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+          </section>
+        )}
+
 
         {effectiveLibraryView === 'playlists' ? (
             <section className={[isInApp ? 'px-4 sm:px-6 lg:px-8' : '', 'space-y-4'].filter(Boolean).join(' ')}>
