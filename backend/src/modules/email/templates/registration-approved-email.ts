@@ -83,7 +83,6 @@ export function buildRegistrationApprovedEmail(
     zoomPlain ? `Zoom: ${zoomPlain}` : null,
     `Participation: ${participationLine}`,
     host ? `Faculty / host: ${p.hostDisplayName}` : null,
-    `Sponsored by: ${p.sponsorName}`,
     '',
     `Open your session in the Community Health Media app:`,
     p.appSessionUrl,
@@ -115,7 +114,6 @@ export function buildRegistrationApprovedEmail(
     honorariumLine ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Compensation</td><td style="padding:5px 0;font-size:13px;color:${E.BODY_TEXT}">${honorariumLine.html}</td></tr>` : '',
     `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Date &amp; Time</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${when.html}</td></tr>`,
     host ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>` : '',
-    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Sponsored by</td><td style="padding:5px 0;color:${E.BODY_TEXT}">${sponsor}</td></tr>`,
     zoomPlain ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Zoom</td><td style="padding:5px 0;word-break:break-all"><a href="${escape(zoomPlain)}" style="color:${E.LINK};font-weight:600">${escape(zoomPlain)}</a></td></tr>` : '',
   ].filter(Boolean).join('');
 

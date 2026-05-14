@@ -254,7 +254,7 @@ export default function WatchVideo() {
           <p className="text-sm font-semibold text-gray-900">{video.title}</p>
           <p className="text-sm text-gray-600">{video.description || program.title}</p>
           <p className="text-sm text-gray-700 tabular-nums">
-            {program.sponsorName} • {video.platform} • {duration ? `${Math.round(duration / 60)} min` : 'Video'}
+            {video.platform} • {duration ? `${Math.round(duration / 60)} min` : 'Video'}
           </p>
 
           {/* Progress bar */}

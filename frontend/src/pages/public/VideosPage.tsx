@@ -267,6 +267,10 @@ export default function VideosPage() {
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
   const filterOrSortActive = !!(debouncedQuery.trim() || tagFilter || doctorFilter || sortBy);
 
+  // True when the user has explicitly navigated to the full clips grid page
+  // (/app/catalog?view=clips). Distinct from the default /app/catalog strip home.
+  const showClipsGrid = isInApp && new URLSearchParams(location.search).get('view') === 'clips';
+
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
 
@@ -303,23 +307,23 @@ export default function VideosPage() {
     <div className="min-h-screen min-w-0 bg-transparent">
       <div
         className={[
-          isInApp
+          isInApp && !showClipsGrid
             ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
             : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        {!isInApp && effectiveLibraryView === 'clips' ? (
-          <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
+        {effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid) ? (
+          <div className="flex items-center gap-2.5 pt-2 text-zinc-900 sm:pt-4">
             <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
-            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
               Explore our catalogue
             </h1>
           </div>
         ) : null}
 
-        {!isInApp && effectiveLibraryView === 'clips' ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
+        {(!isInApp || showClipsGrid) ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInApp && (
+        {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (
           <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
             <div className="relative min-w-[200px] flex-1">
               <Search
@@ -395,13 +399,13 @@ export default function VideosPage() {
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && isInApp && (
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && isInApp && !showClipsGrid && (
           <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
             <ConversationsHeroSkeleton />
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && isInApp && (
+        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && isInApp && !showClipsGrid && (
           <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
             <ConversationsHero clip={featuredClip} isInApp={isInApp} />
           </section>
@@ -473,7 +477,42 @@ export default function VideosPage() {
               </>
             )}
           </section>
+        ) : isInApp && showClipsGrid ? (
+          // /app/catalog?view=clips — full searchable grid, same layout as public /catalog?view=clips
+          <section className="space-y-4">
+            <h2 className="sr-only">Video library</h2>
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {!useMediaHub ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">Video catalog is not connected.</p>
+                </div>
+              ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+                <div className="col-span-full flex items-center justify-center py-16">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                </div>
+              ) : useMediaHub && displayItems.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                </div>
+              ) : (
+                displayItems.map((item) => (
+                  <ConversationsClipCard
+                    key={item.id}
+                    item={item}
+                    href={`/app/clip/${getShortClipId(item.id)}`}
+                  />
+                ))
+              )}
+            </div>
+            {useMediaHub && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+              </div>
+            )}
+          </section>
         ) : isInApp ? (
+          // /app/catalog (default) — strip rows with hero + biomarker sections
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
@@ -578,12 +617,8 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
-              ) : useMediaHub && gridItems.length === 0 && displayItems.length > 0 ? (
-                <p className="col-span-full text-pretty text-center text-sm text-zinc-500">
-                  That is the only clip for this search.
-                </p>
               ) : (
-                gridItems.map((item) => {
+                displayItems.map((item) => {
                   const detailUrl = isInApp
                     ? `/app/clip/${getShortClipId(item.id)}`
                     : `/catalog/clip/${getShortClipId(item.id)}`;

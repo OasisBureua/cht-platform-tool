@@ -404,13 +404,8 @@ export default function WebinarDetail() {
               </div>
             ) : null}
 
-            {/* Reward / sponsor chips */}
+            {/* Reward chips */}
             <div className="flex flex-wrap items-center gap-2">
-              {program.sponsorName ? (
-                <span className="text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
-                  {program.sponsorName}
-                </span>
-              ) : null}
               {program.creditAmount > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
                   <Award className="h-3.5 w-3.5" />

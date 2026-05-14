@@ -68,7 +68,6 @@ export function buildPreWebinarReminderEmail(
     '───────────────',
     `When: ${when.plain}`,
     host ? `Faculty / host: ${p.hostDisplayName}` : null,
-    `Sponsored by: ${p.sponsorName}`,
     '',
     descPlain ? `About: ${descPlain}` : null,
     descPlain ? '' : null,
@@ -89,7 +88,6 @@ export function buildPreWebinarReminderEmail(
     '',
     'Best regards,',
     'The Community Health Media Team',
-    sponsor !== 'Community Health Media' ? `\nSponsored by ${p.sponsorName}.` : null,
   ]
     .filter((line) => line != null)
     .join('\n');
@@ -98,7 +96,6 @@ export function buildPreWebinarReminderEmail(
   const detailRows = [
     `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Date &amp; Time</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${when.html}</td></tr>`,
     host ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>` : '',
-    `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Sponsored by</td><td style="padding:5px 0;color:${E.BODY_TEXT}">${sponsor}</td></tr>`,
   ].filter(Boolean).join('');
 
   const descHtml = descPlain

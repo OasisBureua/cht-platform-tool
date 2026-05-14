@@ -61,7 +61,6 @@ export function buildPostWebinarSurveyEmail(
     '',
     'Best regards,',
     'The Community Health Media Team',
-    sponsor !== 'Community Health Media' ? `\nSponsored by ${p.sponsorName}.` : null,
   ]
     .filter((line) => line != null)
     .join('\n');

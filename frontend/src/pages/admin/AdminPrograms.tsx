@@ -158,8 +158,12 @@ export default function AdminPrograms() {
           key={editingId}
           webinar={items.find((w) => w.id === editingId)!}
           onClose={() => setEditingId(null)}
-          onSaved={() => {
+          onSaved={(updatedId?: string) => {
+            // Invalidate admin list and all user-facing caches so speaker/panelist
+            // name changes are immediately reflected in the program hub and session pages.
             queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+            queryClient.invalidateQueries({ queryKey: ['webinars'] });
+            if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
             setEditingId(null);
           }}
         />
@@ -391,7 +395,7 @@ function EditWebinarModal({
 }: {
   webinar: AdminWebinar;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (updatedId?: string) => void;
 }) {
   const [sessionKind, setSessionKind] = useState<ZoomSessionType>(
     webinar.zoomSessionType ?? 'WEBINAR',
@@ -416,7 +420,7 @@ function EditWebinarModal({
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),
-    onSuccess: onSaved,
+    onSuccess: () => onSaved(webinar.id),
     onError: (err: unknown) => {
       const ax = err as { response?: { data?: { message?: string | string[] } } };
       const m = ax.response?.data?.message;

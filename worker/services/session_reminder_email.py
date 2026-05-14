@@ -170,7 +170,7 @@ The {sponsor_name} Team
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
               <tr>
                 <td>
-                  <p style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em">{sponsor_name}</p>
+                  <p style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.02em">Community Health Media</p>
                   <p style="margin:6px 0 0;color:{CLR_HEADER_SUB};font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase">Session Reminder</p>
                 </td>
                 <td align="right" style="vertical-align:middle">
@@ -242,7 +242,7 @@ The {sponsor_name} Team
         <tr>
           <td style="background:{CLR_FOOTER_BG};border-top:1px solid {CLR_BORDER};padding:18px 40px">
             <p style="margin:0;color:#9ca3af;font-size:12px;text-align:center;line-height:1.5">
-              &copy; {sponsor_name} &nbsp;&middot;&nbsp;
+              &copy; Community Health Media &nbsp;&middot;&nbsp;
               You are receiving this because you registered for this session.<br>
               Times shown in Eastern Time (ET).
             </p>

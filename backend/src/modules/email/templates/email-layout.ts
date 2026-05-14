@@ -65,7 +65,7 @@ export function emailWrap(opts: {
       <!-- Header -->
       <tr>
         <td style="background:${E.HEADER_BG};padding:28px 36px 24px">
-          <p style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.02em">${sponsorName}</p>
+          <p style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.02em">Community Health Media</p>
           <p style="margin:5px 0 0;color:${E.HEADER_SUB};font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">${subtitle}</p>
         </td>
       </tr>
@@ -77,7 +77,7 @@ export function emailWrap(opts: {
       <tr>
         <td style="background:${E.FOOTER_BG};border-top:1px solid ${E.BORDER};padding:16px 36px">
           <p style="margin:0;color:#9ca3af;font-size:11px;text-align:center;line-height:1.6">
-            &copy; ${sponsorName} &nbsp;&middot;&nbsp; You are receiving this because you have an account on the platform.
+            &copy; Community Health Media &nbsp;&middot;&nbsp; You are receiving this because you have an account on the platform.
             ${footerNote ? `<br>${footerNote}` : ''}
           </p>
         </td>

@@ -176,7 +176,7 @@ export default function ExploreOpportunities() {
         type: 'survey',
         id: `survey-${s.id}`,
         title: s.title || s.program?.title || 'Survey',
-        description: s.description || s.program?.sponsorName || '',
+        description: s.description || '',
         imageUrl: '',
         href: `/app/surveys/${s.id}`,
       });
