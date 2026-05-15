@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpDown, BadgeCheck, Building2, GraduationCap } from 'lucide-react';
-import { dolNetwork, type DolEntry, type DolRegion } from '../../data/dol-network';
+import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
 
 type FlatKol = DolEntry & {
   regionId: string;
@@ -25,6 +25,11 @@ function flattenNetwork(regions: DolRegion[]): FlatKol[] {
       regionSubtitle: r.subtitle,
     })),
   );
+}
+
+function avatarSrc(k: FlatKol): string {
+  if (k.photoUrl) return k.photoUrl;
+  return avatarUrl(k.name);
 }
 
 type SortMode = 'region' | 'name-asc' | 'name-desc' | 'new-first';
@@ -63,7 +68,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
     return () => document.removeEventListener('click', onDoc);
   }, []);
 
-  const flat = useMemo(() => flattenNetwork(dolNetwork), []);
+  const directory = useKolDirectory();
+  const flat = useMemo(() => flattenNetwork(directory.regions), [directory.regions]);
 
   const institutions = useMemo(() => {
     const set = new Set<string>();
@@ -115,7 +121,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
       if (!map.has(k.regionId)) map.set(k.regionId, []);
       map.get(k.regionId)!.push(k);
     });
-    const order = dolNetwork.map((r) => r.id).filter((id) => map.has(id));
+    const order = directory.regions.map((r) => r.id).filter((id) => map.has(id));
     return order.map((id) => ({
       id,
       meta: map.get(id)![0],
@@ -179,7 +185,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-[#0d4f6c] focus:outline-none focus:ring-2 focus:ring-[#0d4f6c]/25"
               >
                 <option value="">All regions</option>
-                {dolNetwork.map((r) => (
+                {directory.regions.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.title}
                   </option>
@@ -267,7 +273,15 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
         </div>
 
         <main id="kol-results" tabIndex={-1}>
-          {sorted.length === 0 ? (
+          {directory.loadState === 'loading' ? (
+            <p className="text-center rounded-2xl border border-gray-200 bg-white py-14 px-6 text-gray-500">
+              Loading KOL directory…
+            </p>
+          ) : directory.loadState === 'error' ? (
+            <p className="text-center rounded-2xl border border-red-200 bg-red-50 py-14 px-6 text-red-700">
+              Couldn't load the KOL directory. Refresh to try again.
+            </p>
+          ) : sorted.length === 0 ? (
             <p className="text-center rounded-2xl border border-gray-200 bg-white py-14 px-6 text-gray-600">
               No profiles match your filters. Try clearing search or switching region.
             </p>
@@ -333,7 +347,7 @@ function KolCard({ k }: { k: FlatKol }) {
         <div className="flex items-center gap-2.5">
           <div className="relative h-[4.75rem] w-[4.75rem] shrink-0 sm:h-[5.25rem] sm:w-[5.25rem]">
             <img
-              src={avatarUrl(k.name)}
+              src={avatarSrc(k)}
               alt=""
               className="h-full w-full rounded-[15px] border border-gray-100 object-cover shadow-inner"
               loading="lazy"

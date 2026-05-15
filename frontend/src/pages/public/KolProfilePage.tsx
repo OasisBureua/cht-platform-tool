@@ -12,7 +12,12 @@ import {
   Stethoscope,
   Twitter,
 } from 'lucide-react';
-import { findKolWithRegion, type DolEntry, type DolRegion } from '../../data/dol-network';
+import {
+  findKolInDirectory,
+  useKolDirectory,
+  type DolEntry,
+  type DolRegion,
+} from '../../hooks/useKolDirectory';
 
 type TabId = 'overview' | 'background' | 'engagement';
 
@@ -60,13 +65,21 @@ export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
   const [tab, setTab] = useState<TabId>('overview');
 
-  const found = kolId ? findKolWithRegion(kolId) : null;
+  const directory = useKolDirectory();
+  const found = kolId ? findKolInDirectory(directory, kolId) : null;
 
   const vm = useMemo(() => {
     if (!found) return null;
     return buildViewModel(found.region, found.entry);
   }, [found]);
 
+  if (directory.loadState === 'loading') {
+    return (
+      <div className="min-h-screen w-full bg-zinc-50 px-6 py-20 text-center text-zinc-500 dark:bg-black dark:text-zinc-400">
+        Loading profile…
+      </div>
+    );
+  }
   if (!kolId || !found || !vm) {
     return <Navigate to="/kol-network" replace />;
   }
@@ -106,7 +119,7 @@ export default function KolProfilePage() {
           {/* Avatar overlap */}
           <div className="relative -mt-16 flex justify-between sm:-mt-[4.25rem]">
             <img
-              src={avatarUrl(entry.name)}
+              src={entry.photoUrl || avatarUrl(entry.name)}
               alt=""
               className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:bg-zinc-800 dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
             />

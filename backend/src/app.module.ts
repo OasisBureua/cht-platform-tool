@@ -16,6 +16,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { ProgramsModule } from './modules/programs/programs.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { KolNetworkModule } from './modules/kol-network/kol-network.module';
 import { WebinarsModule } from './modules/webinars/webinars.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { AdminModule } from './modules/admin/admin.module';
@@ -66,6 +67,7 @@ import { validationSchema } from './config/validation';
     PaymentsModule,
     ProgramsModule,
     CatalogModule,
+    KolNetworkModule,
     WebinarsModule,
     SurveysModule,
     AdminModule,
