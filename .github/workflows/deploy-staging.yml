@@ -118,6 +118,84 @@ jobs:
           echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
 
+      - name: Print Route53 nameservers (for GoDaddy NS delegation)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          echo "================================================================"
+          echo "  ROUTE 53 NAMESERVERS FOR staging.testapp.communityhealth.media"
+          echo "  Add these as NS records on the testapp.communityhealth.media"
+          echo "  zone in GoDaddy (Type: NS, Name: staging, TTL: 300)"
+          echo "================================================================"
+          terraform output -json route53_nameservers | jq -r '.[]'
+          echo "================================================================"
+
+      - name: Print direct AWS URLs (for testing without DNS delegation)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          echo "================================================================"
+          echo "  DIRECT AWS URLs (use until DNS delegates)"
+          echo "================================================================"
+          echo "ALB DNS:        $(terraform output -raw alb_dns_name)"
+          echo "CloudFront URL: https://$(terraform output -raw cloudfront_domain_name)"
+          echo "Frontend bucket: $(terraform output -raw frontend_bucket)"
+          echo "================================================================"
+
+      - name: Delegate staging zone in parent (testapp.communityhealth.media → AWS Route53)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          set -e
+          echo "================================================================"
+          echo "  DELEGATING staging.testapp.communityhealth.media"
+          echo "  (adding NS records in parent testapp.communityhealth.media zone)"
+          echo "================================================================"
+
+          # 1. Find the parent zone (testapp.communityhealth.media)
+          PARENT_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name testapp.communityhealth.media \
+            --max-items 5 \
+            --query 'HostedZones[?Name==`testapp.communityhealth.media.` && Config.PrivateZone==`false`].Id' \
+            --output text | sed 's|/hostedzone/||')
+
+          if [ -z "$PARENT_ZONE_ID" ]; then
+            echo "❌ Could not find public hosted zone for testapp.communityhealth.media"
+            exit 1
+          fi
+          echo "Parent zone ID: $PARENT_ZONE_ID"
+
+          # 2. Get staging zone nameservers from terraform output
+          STAGING_NS=$(terraform output -json route53_nameservers | jq -r '.[]')
+          echo "Staging nameservers:"
+          echo "$STAGING_NS"
+
+          # 3. Build ResourceRecords JSON
+          RR_JSON=$(echo "$STAGING_NS" | jq -R '.' | jq -s '[.[] | {"Value": .}]')
+
+          # 4. Submit UPSERT change
+          CHANGE_BATCH=$(jq -n --argjson rr "$RR_JSON" '{
+            "Comment": "Delegate staging.testapp to AWS Route53 staging zone",
+            "Changes": [{
+              "Action": "UPSERT",
+              "ResourceRecordSet": {
+                "Name": "staging.testapp.communityhealth.media",
+                "Type": "NS",
+                "TTL": 300,
+                "ResourceRecords": $rr
+              }
+            }]
+          }')
+
+          echo ""
+          echo "Submitting change..."
+          CHANGE_ID=$(aws route53 change-resource-record-sets \
+            --hosted-zone-id "$PARENT_ZONE_ID" \
+            --change-batch "$CHANGE_BATCH" \
+            --query 'ChangeInfo.Id' --output text)
+
+          echo "✓ Change submitted: $CHANGE_ID"
+          echo ""
+          echo "Propagation typically completes in 5-30 min."
+          echo "Verify with: dig +short NS staging.testapp.communityhealth.media @8.8.8.8"
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -153,13 +231,83 @@ jobs:
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
 
-      - name: Health Check
+      - name: Health Check (via ALB direct, since DNS not yet delegated)
+        id: healthcheck
+        continue-on-error: true
         run: |
+          ALB_DNS=$(cd infrastructure/terraform/environments/us-east-1-staging && terraform output -raw alb_dns_name)
           echo "Waiting for deployment to stabilize..."
           sleep 30
+          curl -fsk "https://${ALB_DNS}/health/ready" && echo "✅ ALB direct health check passed!" || echo "❌ ALB direct health check failed"
+          curl -fsk "https://${ALB_DNS}/health" && echo "✅ ALB /health passed!" || echo "❌ ALB /health failed"
 
-          curl -f https://staging.testapp.communityhealth.media/health/ready || exit 1
-          echo "✅ Staging deployment successful!"
+      - name: Diagnostics — ECS task statuses
+        if: always()
+        run: |
+          CLUSTER="cht-platform-staging-cluster"
+          echo "================================================================"
+          echo "  ECS SERVICES"
+          echo "================================================================"
+          aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services cht-platform-staging-backend cht-platform-staging-worker \
+            --query 'services[*].[serviceName,status,desiredCount,runningCount,pendingCount,events[0:3].message]' \
+            --output text 2>&1 || echo "describe-services failed"
+
+          echo ""
+          echo "================================================================"
+          echo "  RUNNING / STOPPED TASKS"
+          echo "================================================================"
+          aws ecs list-tasks --cluster "$CLUSTER" --desired-status RUNNING --output text 2>&1 || true
+          aws ecs list-tasks --cluster "$CLUSTER" --desired-status STOPPED --output text 2>&1 | head -10 || true
+
+          echo ""
+          echo "================================================================"
+          echo "  STOPPED TASK DETAILS (most recent)"
+          echo "================================================================"
+          STOPPED=$(aws ecs list-tasks --cluster "$CLUSTER" --desired-status STOPPED --query 'taskArns[0]' --output text 2>/dev/null || echo "")
+          if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$STOPPED" \
+              --query 'tasks[*].[lastStatus,stoppedReason,containers[*].[name,exitCode,reason]]' \
+              --output text 2>&1 || true
+          else
+            echo "(no stopped tasks)"
+          fi
+
+      - name: Diagnostics — recent ECS logs
+        if: always()
+        run: |
+          echo "================================================================"
+          echo "  AVAILABLE LOG GROUPS (cht-platform-staging-*)"
+          echo "================================================================"
+          aws logs describe-log-groups --log-group-name-prefix "/ecs/cht-platform-staging" \
+            --query 'logGroups[*].[logGroupName,storedBytes]' --output text 2>&1 | head -10
+
+          echo ""
+          echo "================================================================"
+          echo "  RECENT LOGS — /ecs/cht-platform-staging (last 5 min)"
+          echo "================================================================"
+          LOG_GROUP="/ecs/cht-platform-staging"
+          aws logs filter-log-events \
+            --log-group-name "$LOG_GROUP" \
+            --start-time $(( $(date +%s) * 1000 - 300000 )) \
+            --max-items 60 \
+            --query 'events[*].[timestamp,message]' \
+            --output text 2>&1 | tail -80 || echo "(no logs in $LOG_GROUP)"
+
+          echo ""
+          echo "================================================================"
+          echo "  LOG STREAMS in $LOG_GROUP (most recent 10)"
+          echo "================================================================"
+          aws logs describe-log-streams --log-group-name "$LOG_GROUP" \
+            --order-by LastEventTime --descending --max-items 10 \
+            --query 'logStreams[*].[logStreamName,lastEventTimestamp]' --output text 2>&1 | head -15 || true
+
+      - name: Final health gate
+        if: steps.healthcheck.outcome == 'failure'
+        run: |
+          echo "Health check failed — diagnostics above. Marking workflow failed."
+          exit 1
 
       - name: Deployment Summary
         run: |

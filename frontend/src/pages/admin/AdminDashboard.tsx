@@ -29,10 +29,10 @@ export default function AdminDashboard() {
         </h1>
       </div>
 
-      <div className="rounded-2xl border border-teal-200/80 bg-gradient-to-br from-teal-50/90 to-white p-5 shadow-sm dark:border-teal-900/50 dark:from-teal-950/40 dark:to-zinc-950">
+      <div className="rounded-2xl border border-brand-200/80 bg-gradient-to-br from-brand-50/90 to-white p-5 shadow-sm dark:border-brand-900/50 dark:from-brand-950/40 dark:to-zinc-950">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-100">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-100">
               <CalendarClock className="h-5 w-5" aria-hidden />
             </div>
             <div>
@@ -45,13 +45,13 @@ export default function AdminDashboard() {
           <div className="flex flex-wrap gap-2 sm:shrink-0">
             <Link
               to="/admin/office-hours"
-              className="inline-flex items-center justify-center rounded-lg border border-teal-300 bg-white px-4 py-2 text-sm font-semibold text-teal-900 transition-colors hover:bg-teal-50 dark:border-teal-800 dark:bg-zinc-900 dark:text-teal-100 dark:hover:bg-teal-950/50"
+              className="inline-flex items-center justify-center rounded-lg border border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition-colors hover:bg-brand-50 dark:border-brand-800 dark:bg-zinc-900 dark:text-brand-100 dark:hover:bg-brand-950/50"
             >
               View sessions
             </Link>
             <Link
               to="/admin/office-hours-scheduler"
-              className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700"
+              className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
               Schedule office hours
             </Link>

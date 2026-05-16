@@ -49,7 +49,7 @@ export function PlaylistGrid({ playlists, isInApp, descriptionForItem }: Playlis
               <div className="flex justify-end mt-auto pt-4 border-t border-gray-100 shrink-0">
                 <Link
                   to={playlistUrl}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   <ListVideo className="h-4 w-4 shrink-0" />
                   View playlist

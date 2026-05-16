@@ -315,7 +315,7 @@ export default function Home() {
         <div
           className="w-full min-h-[min(42vh,380px)] bg-cover bg-center bg-gray-800 sm:min-h-[min(48vh,420px)] md:min-h-[min(52vh,460px)]"
           style={{
-            backgroundImage: "url('/images/hero-bg.png')",
+            backgroundImage: "url('/images/home-hero-brand-auditorium.png')",
           }}
         >
           <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/55" />
@@ -335,13 +335,13 @@ export default function Home() {
                 <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <Link
                     to="/join"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.5)_inset,0_8px_24px_-8px_rgba(0,0,0,0.2)] transition-[color,background-color,transform,box-shadow] hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.96]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.28)_inset,0_8px_28px_-8px_rgba(234,88,12,0.45)] transition-[color,background-color,transform,box-shadow] hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200 active:scale-[0.96]"
                   >
                     Get Started
                   </Link>
                   <Link
                     to="/about"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-full border border-white/20 bg-gray-900/90 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset,0_8px_24px_-8px_rgba(0,0,0,0.35)] transition-[color,background-color,transform,box-shadow] hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.96]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-full border-2 border-white/55 bg-white/[0.06] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_-10px_rgba(0,0,0,0.35)] backdrop-blur-[2px] transition-[color,background-color,transform,box-shadow] hover:border-white/80 hover:bg-white/[0.12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/75 active:scale-[0.96]"
                   >
                     Learn More
                   </Link>
@@ -499,7 +499,7 @@ export default function Home() {
             </p>
             <Link
               to="/about"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 active:scale-[0.96] dark:bg-brand-600 dark:hover:bg-brand-500"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_8px_26px_-10px_rgba(234,88,12,0.4)] transition-[color,background-color,transform,box-shadow] hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-300 active:scale-[0.96]"
             >
               Learn More
             </Link>
@@ -662,7 +662,7 @@ export default function Home() {
           >
             <Link
               to="/join"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-gray-900 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-black active:scale-[0.96]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-orange-600 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-orange-700 active:scale-[0.96]"
             >
               Get Started
             </Link>
@@ -688,7 +688,7 @@ export default function Home() {
           </h2>
           <Link
             to="/join"
-            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-full bg-gray-900 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-black active:scale-[0.96]"
+            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-full bg-orange-600 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-orange-700 active:scale-[0.96]"
             style={{ animationDelay: `${HOME_STAGGER_MS.closingCta}ms` }}
           >
             Join Us
@@ -840,7 +840,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
               onClick={() => scrollTo(idx)}
               className={[
                 'h-2 rounded-full transition-[width,background-color] duration-300',
-                idx === activeIdx ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                idx === activeIdx ? 'w-8 bg-orange-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
               ].join(' ')}
               aria-label={`Go to disease area ${idx + 1}`}
             />

@@ -124,6 +124,44 @@ resource "aws_sqs_queue" "cme" {
   }
 }
 
+# Scheduled jobs queue — EventBridge cron rules drop trigger payloads here;
+# the ECS worker's ScheduledConsumer polls and runs the job in-process.
+resource "aws_sqs_queue" "scheduled_jobs_dlq" {
+  name                      = "${local.prefix}-scheduled-jobs-dlq"
+  message_retention_seconds = 1209600 # 14 days
+  receive_wait_time_seconds = 0
+
+  kms_master_key_id                 = var.kms_key_id
+  kms_data_key_reuse_period_seconds = 300
+
+  tags = {
+    Name        = "${local.prefix}-scheduled-jobs-dlq"
+    Environment = var.environment
+    Purpose     = "Scheduled jobs dead letter queue"
+  }
+}
+
+resource "aws_sqs_queue" "scheduled_jobs" {
+  name                       = "${local.prefix}-scheduled-jobs-queue"
+  message_retention_seconds  = 345600 # 4 days
+  receive_wait_time_seconds  = 20
+  visibility_timeout_seconds = 900 # 15 min — reminder scan can take time for large cohorts
+
+  kms_master_key_id                 = var.kms_key_id
+  kms_data_key_reuse_period_seconds = 300
+
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.scheduled_jobs_dlq.arn
+    maxReceiveCount     = 3
+  })
+
+  tags = {
+    Name        = "${local.prefix}-scheduled-jobs-queue"
+    Environment = var.environment
+    Purpose     = "EventBridge-triggered scheduled jobs - session reminders"
+  }
+}
+
 # CloudWatch Alarms for DLQs
 resource "aws_cloudwatch_metric_alarm" "email_dlq" {
   alarm_name          = "${local.prefix}-email-dlq-messages"
@@ -193,6 +231,30 @@ resource "aws_cloudwatch_metric_alarm" "cme_dlq" {
 
   tags = {
     Name        = "${local.prefix}-cme-dlq-alarm"
+    Environment = var.environment
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "scheduled_jobs_dlq" {
+  alarm_name          = "${local.prefix}-scheduled-jobs-dlq-messages"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 300
+  statistic           = "Average"
+  threshold           = 0
+  alarm_description   = "Alert when messages appear in scheduled-jobs DLQ"
+  treat_missing_data  = "notBreaching"
+
+  alarm_actions = var.sns_topic_arn != "" ? [var.sns_topic_arn] : []
+
+  dimensions = {
+    QueueName = aws_sqs_queue.scheduled_jobs_dlq.name
+  }
+
+  tags = {
+    Name        = "${local.prefix}-scheduled-jobs-dlq-alarm"
     Environment = var.environment
   }
 }

@@ -18,13 +18,15 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
   const thumb = getMediaHubThumbnail(clip);
   const summary = clipDisplaySummary(clip);
   const body = (summary && summary.trim()) || (clip.description && clip.description.trim()) || '';
-  const tag = Array.isArray(clip.tags) && clip.tags[0] ? String(clip.tags[0]) : 'Featured';
+  const tag = Array.isArray(clip.tags)
+    ? String(clip.tags.find((t) => t && !String(t).startsWith('brand:')) ?? 'Featured')
+    : 'Featured';
   const speakerLine = clip.doctors?.filter(Boolean).join(' · ');
 
   return (
     <section
       className={[
-        'overflow-hidden bg-zinc-900 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]',
+        'overflow-hidden bg-brand-600 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]',
         isInApp ? 'rounded-none' : 'rounded-2xl',
       ].join(' ')}
       aria-label="Featured video"

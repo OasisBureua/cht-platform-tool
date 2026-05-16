@@ -168,8 +168,8 @@ export default function WebinarDetail() {
       return (
         <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
           <p className="font-semibold text-gray-900">Session not found</p>
-          <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
-            Back to Live
+          <Link to="/app/live" className="mt-5 inline-flex rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700">
+            Back to LIVE
           </Link>
         </div>
       );
@@ -199,7 +199,7 @@ export default function WebinarDetail() {
                 href={zoomWebinar.joinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                className="inline-flex w-fit rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
               >
                 Join session
               </a>
@@ -225,7 +225,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
           >
             Back to Live
           </Link>
@@ -242,7 +242,7 @@ export default function WebinarDetail() {
         <div className="mt-5">
           <Link
             to="/app/live"
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
           >
             Back to Live
           </Link>
@@ -404,13 +404,8 @@ export default function WebinarDetail() {
               </div>
             ) : null}
 
-            {/* Reward / sponsor chips */}
+            {/* Reward chips */}
             <div className="flex flex-wrap items-center gap-2">
-              {program.sponsorName ? (
-                <span className="text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
-                  {program.sponsorName}
-                </span>
-              ) : null}
               {program.creditAmount > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-1">
                   <Award className="h-3.5 w-3.5" />
@@ -447,7 +442,7 @@ export default function WebinarDetail() {
             ) : needsRegistrationWizard && !enrolled ? (
               <Link
                 to={`/app/live/${program.id}/register`}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
               >
                 Register
               </Link>
@@ -459,7 +454,7 @@ export default function WebinarDetail() {
                   'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
                   ctaDisabled
                     ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                    : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
+                    : 'bg-orange-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]',
                 ].join(' ')}
               >
                 {ctaLabel}
@@ -515,7 +510,7 @@ export default function WebinarDetail() {
                 href={program.zoomJoinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
               >
                 <Video className="h-4 w-4" />
                 Join session
@@ -570,7 +565,7 @@ export default function WebinarDetail() {
           </p>
           <Link
             to="/app/payments"
-            className="inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700"
           >
             Open Payments
           </Link>
@@ -659,7 +654,7 @@ export default function WebinarDetail() {
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
               to={`/app/live/${program.id}/register`}
-              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
+              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-orange-600 text-white"
             >
               Register
             </Link>
@@ -671,7 +666,7 @@ export default function WebinarDetail() {
                 'ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold',
                 ctaDisabled
                   ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                  : 'bg-gray-900 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]',
+                  : 'bg-orange-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]',
               ].join(' ')}
             >
               {ctaLabel}

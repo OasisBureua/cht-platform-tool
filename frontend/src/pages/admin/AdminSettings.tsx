@@ -83,7 +83,7 @@ export default function AdminSettings() {
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
+              <div className="h-14 w-14 rounded-full bg-brand-600 flex items-center justify-center shrink-0">
                 <span className="text-lg font-bold text-white">{initials}</span>
               </div>
               <div>
@@ -136,7 +136,7 @@ export default function AdminSettings() {
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50 transition-colors"
+                    className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50 transition-colors"
                   >
                     {saving ? 'Saving…' : 'Save Changes'}
                   </button>

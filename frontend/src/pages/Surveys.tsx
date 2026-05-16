@@ -26,9 +26,9 @@ function formatHonorarium(cents?: number | null) {
 }
 
 function typeBadge(type: SurveyType) {
-  if (type === 'FEEDBACK') return { label: 'Post-event', className: 'bg-violet-100 text-violet-900' };
-  if (type === 'PRE_TEST') return { label: 'Pre-test', className: 'bg-sky-100 text-sky-900' };
-  if (type === 'POST_TEST') return { label: 'Post-test', className: 'bg-teal-100 text-teal-900' };
+  if (type === 'FEEDBACK') return { label: 'Post-event', className: 'bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100' };
+  if (type === 'PRE_TEST') return { label: 'Pre-test', className: 'bg-amber-100 text-amber-950 dark:bg-amber-950/50 dark:text-amber-100' };
+  if (type === 'POST_TEST') return { label: 'Post-test', className: 'bg-orange-50 text-orange-900 dark:bg-orange-950/40 dark:text-orange-200' };
   return { label: type, className: 'bg-gray-100 text-gray-800' };
 }
 
@@ -53,7 +53,7 @@ export default function Surveys() {
   return (
     <div className="-mt-[15px] space-y-2.5 sm:space-y-4">
       <div className="flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
-        <ClipboardCheck className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+        <ClipboardCheck className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
         <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">Your Surveys</h1>
       </div>
       <p className="text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
@@ -69,7 +69,7 @@ export default function Surveys() {
         <div className="-mt-[10px] rounded-2xl border border-gray-200/90 bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.04),0_10px_30px_-16px_rgba(0,0,0,0.1)] dark:border-zinc-800/90 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-16px_rgba(0,0,0,0.45)] md:p-5">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Survey eligible for payment</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#c2410c] dark:text-[#fdba74]">Survey eligible for payment</p>
               <h2 className="mt-1 text-balance text-lg font-bold text-zinc-900 dark:text-zinc-100 md:text-xl">
                 Surveys open after each live session
               </h2>
@@ -79,7 +79,7 @@ export default function Surveys() {
             </div>
             <Link
               to="/app/live"
-              className="inline-flex h-11 min-w-[176px] shrink-0 items-center justify-center gap-2 rounded-md bg-zinc-900 px-5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+              className="inline-flex h-11 min-w-[176px] shrink-0 items-center justify-center gap-2 rounded-md bg-orange-600 px-5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
             >
               Go to live sessions
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -91,7 +91,7 @@ export default function Surveys() {
           <StatChip label="Active surveys" value={activeCount} />
           <StatChip label="Completed" value={completedCount} />
           <StatChip label="Expiring" value={expiringCount} />
-          <div className="ml-0 inline-flex min-h-[44px] items-center rounded-full bg-brand-50 px-5 py-2 text-sm font-semibold text-brand-800 tabular-nums dark:bg-brand-950/40 dark:text-brand-200 sm:ml-2">
+          <div className="ml-0 inline-flex min-h-[44px] items-center rounded-full bg-orange-50 px-5 py-2 text-sm font-semibold text-[#c2410c] tabular-nums dark:bg-orange-950/45 dark:text-[#fdba74] sm:ml-2">
             {availableToEarn > 0
               ? `$${availableToEarn.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} available to earn`
               : 'Honorarium set per webinar'}
@@ -181,7 +181,7 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
         </div>
 
         <div className="flex w-full justify-center">
-          <span className="inline-flex min-h-[40px] min-w-[132px] items-center justify-center gap-1.5 rounded-md bg-brand-600 px-4 text-xs font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:bg-brand-700 group-active:scale-[0.96]">
+          <span className="inline-flex min-h-[40px] min-w-[132px] items-center justify-center gap-1.5 rounded-md bg-orange-600 px-4 text-xs font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:bg-orange-700 group-active:scale-[0.96]">
             <ClipboardList className="h-3.5 w-3.5" aria-hidden />
             {survey.type === 'FEEDBACK' ? 'Complete post-event' : 'Take Survey'}
           </span>

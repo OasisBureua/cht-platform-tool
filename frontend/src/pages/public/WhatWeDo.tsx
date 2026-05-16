@@ -84,7 +84,7 @@ export default function WhatWeDo() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
                   to="/catalog"
-                  className="rounded-full bg-gray-900 px-7 py-3 text-base font-semibold text-white hover:bg-black inline-flex items-center justify-center gap-2"
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-600 px-7 py-3 text-base font-semibold text-white hover:bg-orange-700"
                 >
                   Explore Catalogue <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -265,7 +265,7 @@ export default function WhatWeDo() {
             <div className="lg:col-span-5 flex flex-col gap-3">
               <Link
                 to="/join"
-                className="rounded-full bg-gray-900 px-7 py-3 text-base font-semibold text-white hover:bg-black inline-flex items-center justify-center gap-2"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-600 px-7 py-3 text-base font-semibold text-white hover:bg-orange-700"
               >
                 Get Started <ArrowRight className="h-4 w-4" />
               </Link>

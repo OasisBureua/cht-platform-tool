@@ -176,7 +176,7 @@ export default function ExploreOpportunities() {
         type: 'survey',
         id: `survey-${s.id}`,
         title: s.title || s.program?.title || 'Survey',
-        description: s.description || s.program?.sponsorName || '',
+        description: s.description || '',
         imageUrl: '',
         href: `/app/surveys/${s.id}`,
       });
@@ -209,7 +209,7 @@ export default function ExploreOpportunities() {
   return (
     <div className="space-y-6 min-w-0">
       <div className="flex items-center gap-2.5 text-gray-900">
-        <Compass className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+        <Compass className="h-5 w-5 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
         <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Explore Opportunities</h1>
       </div>
 
@@ -318,7 +318,7 @@ export default function ExploreOpportunities() {
                 </div>
                 <Link
                   to={item.href}
-                  className="mt-4 inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                  className="mt-4 inline-flex w-fit rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'View Session' : 'Conversations'}
                 </Link>

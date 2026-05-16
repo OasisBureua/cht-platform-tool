@@ -39,7 +39,7 @@ function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
   for (const [, values] of Object.entries(tags)) {
     if (!Array.isArray(values)) continue;
     for (const v of values) {
-      if (v && !seen.has(v)) {
+      if (v && !seen.has(v) && !String(v).startsWith('brand:')) {
         seen.add(v);
         out.push({ value: v, label: v });
       }
@@ -70,6 +70,13 @@ export default function VideosPage() {
   const [doctorFilter, setDoctorFilter] = useState('');
   const [sortBy, setSortBy] = useState('');
   const [sortOpen, setSortOpen] = useState(false);
+
+  // Ref so the filter-sync effect can read the current location without being
+  // retriggered by navigation (which caused the playlists ↔ catalog ping-pong).
+  const locationRef = useRef(location);
+  useEffect(() => {
+    locationRef.current = location;
+  });
 
   const effectiveLibraryView: 'clips' | 'playlists' = useMemo(() => {
     if (isInApp) return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
@@ -102,8 +109,12 @@ export default function VideosPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Keep query string in sync with filters (search text uses live `query` so deep links with ?q= aren’t wiped before debounce).
+  // Keep query string in sync with filter state only. Reads location via ref so
+  // that tab navigation (which changes location.search) does NOT retrigger this
+  // effect — preventing the playlists ↔ catalog ping-pong caused by stale filter
+  // state being seen after a navigation but before the URL→state effect resets it.
   useEffect(() => {
+    const loc = locationRef.current;
     const params = new URLSearchParams();
     const q = query.trim();
     if (q) params.set('q', q);
@@ -111,17 +122,13 @@ export default function VideosPage() {
     if (doctorFilter) params.set('doctor', doctorFilter);
     if (sortBy) params.set('sort', sortBy);
 
-    const curParams = new URLSearchParams((location.search || '').replace(/^\?/, ''));
-    const hasFilters = !!(q || tagFilter || doctorFilter || sortBy);
+    const curParams = new URLSearchParams((loc.search || '').replace(/^\?/, ''));
 
     if (!isInApp) {
-      let view: 'clips' | 'playlists';
-      if (hasFilters) view = 'clips';
-      else {
-        const pv = curParams.get('view');
-        if (pv === 'clips' || pv === 'playlists') view = pv === 'playlists' ? 'playlists' : 'clips';
-        else view = 'playlists';
-      }
+      // Always preserve the view already in the URL. Tab clicks own the view;
+      // this effect only owns the filter params.
+      const pv = curParams.get('view');
+      const view: 'clips' | 'playlists' = pv === 'playlists' ? 'playlists' : 'clips';
       params.set('view', view);
       if (view === 'playlists') {
         const pf = parsePlaylistFocus('?' + curParams.toString());
@@ -134,19 +141,11 @@ export default function VideosPage() {
     }
 
     const next = params.toString();
-    const cur = (location.search || '').replace(/^\?/, '');
+    const cur = (loc.search || '').replace(/^\?/, '');
     if (next === cur) return;
-    navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
-  }, [
-    query,
-    tagFilter,
-    doctorFilter,
-    sortBy,
-    isInApp,
-    location.pathname,
-    location.search,
-    navigate,
-  ]);
+    navigate({ pathname: loc.pathname, search: next ? `?${next}` : '' }, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, tagFilter, doctorFilter, sortBy, isInApp, navigate]);
 
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
@@ -268,6 +267,10 @@ export default function VideosPage() {
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
   const filterOrSortActive = !!(debouncedQuery.trim() || tagFilter || doctorFilter || sortBy);
 
+  // True when the user has explicitly navigated to the full clips grid page
+  // (/app/catalog?view=clips). Distinct from the default /app/catalog strip home.
+  const showClipsGrid = isInApp && new URLSearchParams(location.search).get('view') === 'clips';
+
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
 
@@ -277,7 +280,7 @@ export default function VideosPage() {
         <ConversationRow
           title="Playlists"
           subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
-          seeAllHref={isInApp ? '/app/search' : '/catalog?view=playlists'}
+          seeAllHref={isInApp ? '/app/catalog?view=playlists' : '/catalog?view=playlists'}
           seeAllLabel="See all playlists"
         >
           {playlists.slice(0, 12).map((p) => (
@@ -304,23 +307,23 @@ export default function VideosPage() {
     <div className="min-h-screen min-w-0 bg-transparent">
       <div
         className={[
-          isInApp
+          isInApp && !showClipsGrid
             ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
             : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        {!isInApp && effectiveLibraryView === 'clips' ? (
-          <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
-            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700" strokeWidth={2} aria-hidden />
-            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+        {effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid) ? (
+          <div className="flex items-center gap-2.5 pt-2 text-zinc-900 sm:pt-4">
+            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
               Explore our catalogue
             </h1>
           </div>
         ) : null}
 
-        {!isInApp && effectiveLibraryView === 'clips' ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
+        {(!isInApp || showClipsGrid) ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInApp && (
+        {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (
           <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
             <div className="relative min-w-[200px] flex-1">
               <Search
@@ -396,34 +399,18 @@ export default function VideosPage() {
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
-          isInApp ? (
-            <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
-              <ConversationsHeroSkeleton />
-            </section>
-          ) : (
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && isInApp && !showClipsGrid && (
+          <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
             <ConversationsHeroSkeleton />
-          )
-        )}
-
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          isInApp ? (
-            <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
-              <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-            </section>
-          ) : (
-            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-          )
-        )}
-
-        {!isInApp && effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && (
-          <section className="mx-auto max-w-7xl space-y-10 px-3 sm:px-6 pb-2 sm:pb-6">
-            {playlistsCarouselStrip}
-            {BIOMARKER_ROWS.map((row) => (
-              <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={false} />
-            ))}
           </section>
         )}
+
+        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && isInApp && !showClipsGrid && (
+          <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
+            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+          </section>
+        )}
+
 
         {effectiveLibraryView === 'playlists' ? (
             <section className={[isInApp ? 'px-4 sm:px-6 lg:px-8' : '', 'space-y-4'].filter(Boolean).join(' ')}>
@@ -490,7 +477,42 @@ export default function VideosPage() {
               </>
             )}
           </section>
+        ) : isInApp && showClipsGrid ? (
+          // /app/catalog?view=clips — full searchable grid, same layout as public /catalog?view=clips
+          <section className="space-y-4">
+            <h2 className="sr-only">Video library</h2>
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {!useMediaHub ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">Video catalog is not connected.</p>
+                </div>
+              ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+                <div className="col-span-full flex items-center justify-center py-16">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                </div>
+              ) : useMediaHub && displayItems.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                </div>
+              ) : (
+                displayItems.map((item) => (
+                  <ConversationsClipCard
+                    key={item.id}
+                    item={item}
+                    href={`/app/clip/${getShortClipId(item.id)}`}
+                  />
+                ))
+              )}
+            </div>
+            {useMediaHub && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+              </div>
+            )}
+          </section>
         ) : isInApp ? (
+          // /app/catalog (default) — strip rows with hero + biomarker sections
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
@@ -595,12 +617,8 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
-              ) : useMediaHub && gridItems.length === 0 && displayItems.length > 0 ? (
-                <p className="col-span-full text-pretty text-center text-sm text-zinc-500">
-                  That is the only clip for this search.
-                </p>
               ) : (
-                gridItems.map((item) => {
+                displayItems.map((item) => {
                   const detailUrl = isInApp
                     ? `/app/clip/${getShortClipId(item.id)}`
                     : `/catalog/clip/${getShortClipId(item.id)}`;

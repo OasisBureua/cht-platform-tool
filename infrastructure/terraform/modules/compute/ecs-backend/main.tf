@@ -76,6 +76,14 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name  = "REDIS_TLS_REJECT_UNAUTHORIZED"
             value = "false"
+          },
+          {
+            # ElastiCache transit_encryption_enabled=true requires TLS.
+            # Backend's configuration.ts treats unset REDIS_TLS as `false` (not undefined),
+            # which defeats the auto-detect-from-hostname fallback in redis.service.ts.
+            # Setting explicitly here so TLS is always used for ElastiCache connections.
+            name  = "REDIS_TLS"
+            value = "true"
           }
         ],
         concat(
@@ -257,13 +265,22 @@ resource "aws_ecs_service" "backend" {
     container_port   = 3000
   }
 
-  deployment_maximum_percent         = 100
-  deployment_minimum_healthy_percent = 50
+  # In staging we want a clean view of what's happening during a deploy:
+  # spin a NEW task up alongside the old one (max 200%) and only kill the
+  # old one once the new one is steady. Disable rollback so failed deploys
+  # stop in place — surfaces the real cause in ECS events + CloudWatch
+  # instead of silently reverting to the previous task definition.
+  # Prod stays conservative (100% max, 50% min, auto-rollback) until we
+  # explicitly graduate this config after staging validates.
+  deployment_maximum_percent         = local.is_prod ? 100 : 200
+  deployment_minimum_healthy_percent = local.is_prod ? 50 : 100
 
   deployment_circuit_breaker {
     enable   = true
-    rollback = true
+    rollback = local.is_prod ? true : false
   }
+
+  force_new_deployment = true
 
   enable_execute_command = true
 

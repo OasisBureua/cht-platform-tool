@@ -183,4 +183,93 @@ export class MediaHubService {
   ): Promise<MediaHubClipsResponse> {
     return this.getClips({ q, ...params });
   }
+
+  /**
+   * GET /kols - Public KOL directory with region/institution facets.
+   * Powers the /kol-network public page on CHT.
+   */
+  async getKols(params?: {
+    region?: string;
+    institution?: string;
+    q?: string;
+    new_only?: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<MediaHubKolList> {
+    const cleanParams: Record<string, string | number | undefined> = {};
+    if (params?.region) cleanParams.region = params.region;
+    if (params?.institution) cleanParams.institution = params.institution;
+    if (params?.q) cleanParams.q = params.q;
+    if (params?.new_only) cleanParams.new_only = 'true';
+    if (params?.limit != null) cleanParams.limit = params.limit;
+    if (params?.offset != null) cleanParams.offset = params.offset;
+    return this.get<MediaHubKolList>('/kols', cleanParams);
+  }
+
+  /**
+   * GET /kols/{slug} - Single KOL profile.
+   */
+  async getKol(slug: string): Promise<MediaHubKol> {
+    return this.get<MediaHubKol>(`/kols/${encodeURIComponent(slug)}`);
+  }
+
+  /**
+   * GET /kols/{slug}/publications - Recent OpenAlex-derived publications.
+   * Returns an empty list when the KOL has no linked HCP / no OpenAlex match.
+   */
+  async getKolPublications(
+    slug: string,
+    params?: { limit?: number; offset?: number },
+  ): Promise<MediaHubKolPublicationList> {
+    const cleanParams: Record<string, string | number | undefined> = {};
+    if (params?.limit != null) cleanParams.limit = params.limit;
+    if (params?.offset != null) cleanParams.offset = params.offset;
+    return this.get<MediaHubKolPublicationList>(
+      `/kols/${encodeURIComponent(slug)}/publications`,
+      cleanParams,
+    );
+  }
+}
+
+export interface MediaHubKol {
+  id: string;
+  slug: string;
+  name: string;
+  title: string | null;
+  specialty: string | null;
+  institution: string | null;
+  bio: string | null;
+  photo_url: string | null;
+  region: string | null;
+  region_label: string | null;
+  shoot_count: number;
+  first_appeared_at: string | null;
+  is_new: boolean;
+}
+
+export interface MediaHubKolRegionFacet {
+  slug: string;
+  label: string;
+  kol_count: number;
+}
+
+export interface MediaHubKolList {
+  items: MediaHubKol[];
+  total: number;
+  regions: MediaHubKolRegionFacet[];
+  institutions: string[];
+}
+
+export interface MediaHubKolPublication {
+  title: string;
+  url: string | null;
+  journal: string | null;
+  published_at: string;
+  is_first_author: boolean;
+  is_last_author: boolean;
+}
+
+export interface MediaHubKolPublicationList {
+  items: MediaHubKolPublication[];
+  total: number;
 }

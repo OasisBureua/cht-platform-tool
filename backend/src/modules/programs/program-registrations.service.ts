@@ -803,11 +803,18 @@ export class ProgramRegistrationsService {
       void (async () => {
         const u = await this.prisma.user.findUnique({
           where: { id: reg.userId },
-          select: { email: true, firstName: true },
+          select: { email: true, firstName: true, lastName: true },
         });
         if (!u?.email) {
           return;
         }
+        // Use the speaker's unique panelist join URL if their name matches one
+        // of the stored panelist links; fall back to the shared attendee URL.
+        const panelistJoinUrl = resolvePanelistJoinUrl(
+          reg.program.zoomPanelistLinks,
+          u.firstName ?? '',
+          u.lastName ?? '',
+        );
         await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
           to: u.email,
           firstName: u.firstName || 'there',
@@ -820,7 +827,7 @@ export class ProgramRegistrationsService {
             honorariumAmount: reg.program.honorariumAmount,
             hostDisplayName: reg.program.hostDisplayName,
             sponsorName: reg.program.sponsorName,
-            zoomJoinUrl: reg.program.zoomJoinUrl,
+            zoomJoinUrl: panelistJoinUrl ?? reg.program.zoomJoinUrl,
           },
           sessionKind: reg.program.zoomSessionType,
         });
@@ -1131,6 +1138,8 @@ export class ProgramRegistrationsService {
             description: true,
             startDate: true,
             sponsorName: true,
+            honorariumAmount: true,
+            zoomSessionType: true,
           },
         },
       },
@@ -1160,6 +1169,29 @@ export class ProgramRegistrationsService {
         postEventAttendanceReviewedByUserId: adminUserId,
       },
     });
+
+    if (status === 'VERIFIED' && reg.user?.email) {
+      this.sesEmail
+        .sendPostWebinarSurveyEmail({
+          to: reg.user.email,
+          firstName: reg.user.firstName ?? '',
+          program: {
+            id: reg.program.id,
+            title: reg.program.title,
+            sponsorName: reg.program.sponsorName,
+            honorariumAmount: reg.program.honorariumAmount,
+            zoomSessionType:
+              reg.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
+          },
+          // No Jotform URL — CTA falls back to the app session page
+          surveyUrl: null,
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `Failed to send post-webinar survey email for registration ${registrationId}: ${err.message}`,
+          ),
+        );
+    }
 
     if (status === 'DENIED' && reg.user?.email) {
       this.sesEmail
@@ -1384,4 +1416,24 @@ export class ProgramRegistrationsService {
     await this.prisma.programFormLink.delete({ where: { id } });
     return { deleted: true };
   }
+}
+
+/**
+ * Resolve the unique Zoom panelist join URL for a specific user by matching
+ * their full name against the stored panelist list. Falls back to null so the
+ * caller can use the shared attendee join URL instead.
+ */
+function resolvePanelistJoinUrl(
+  panelistLinks: unknown,
+  firstName: string,
+  lastName: string,
+): string | null {
+  if (!Array.isArray(panelistLinks) || !panelistLinks.length) return null;
+  const fullName = `${firstName} ${lastName}`.toLowerCase().trim();
+  if (!fullName) return null;
+  const match = (panelistLinks as Array<{ name: string; joinUrl?: string }>).find((p) => {
+    const pName = (p.name ?? '').toLowerCase().trim();
+    return pName === fullName || pName.includes(fullName) || fullName.includes(pName);
+  });
+  return match?.joinUrl ?? null;
 }

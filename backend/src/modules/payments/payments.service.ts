@@ -454,6 +454,54 @@ export class PaymentsService {
     return payments;
   }
 
+  async getFailedPayments() {
+    const payments = await this.prisma.payment.findMany({
+      where: { status: 'FAILED' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            billVendorId: true,
+          },
+        },
+        program: { select: { id: true, title: true } },
+      },
+      orderBy: { failedAt: 'desc' },
+    });
+    return payments;
+  }
+
+  /**
+   * Reset a FAILED payment back to PENDING and immediately attempt payment via Bill.com (admin only).
+   * Clears the previous failure metadata before delegating to the standard payNow flow.
+   */
+  async retryPayment(paymentId: string): Promise<PayoutResponseDto> {
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment ${paymentId} not found`);
+    }
+
+    if (payment.status !== 'FAILED') {
+      throw new BadRequestException(
+        `Payment cannot be retried (status: ${payment.status}). Only FAILED payments can be retried.`,
+      );
+    }
+
+    await this.prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'PENDING', failedAt: null, failureReason: null },
+    });
+
+    this.logger.log(`Retrying failed payment: ${paymentId}`);
+    return this.payNow(paymentId);
+  }
+
   /**
    * Pay a specific PENDING payment via Bill.com (admin only). "Pay now" button flow.
    * Checks W9 before paying; sends email notification if HCP must complete setup.
