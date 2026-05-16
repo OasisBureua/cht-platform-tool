@@ -110,7 +110,7 @@ export default function PublicWatch() {
               <span className="text-sm text-gray-600">Duration: {data.videoDuration}</span>
             </div>
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-2 rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+              <button className="inline-flex items-center gap-2 rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
                 <Play className="h-4 w-4" /> Play
               </button>
               <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50">
@@ -161,7 +161,7 @@ export default function PublicWatch() {
                   </ul>
                   <Link
                     to="/catalog"
-                    className="mt-4 inline-flex rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+                    className="mt-4 inline-flex rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
                   >
                     View All Videos
                   </Link>

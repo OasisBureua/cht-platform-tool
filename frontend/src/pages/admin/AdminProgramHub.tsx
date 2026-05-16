@@ -369,7 +369,7 @@ export default function AdminProgramHub() {
             settingsMutation.mutate();
           }}
           disabled={settingsMutation.isPending}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {settingsMutation.isPending ? 'Saving…' : 'Save settings'}
         </button>
@@ -416,7 +416,7 @@ export default function AdminProgramHub() {
               type="button"
               onClick={() => slotMut.mutate()}
               disabled={!slotStart || !slotEnd || slotMut.isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
               {slotMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Add slot
@@ -476,7 +476,7 @@ export default function AdminProgramHub() {
             type="button"
             onClick={() => addLinkMut.mutate()}
             disabled={!formLabel.trim() || !formUrl.trim() || addLinkMut.isPending}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
             Add
           </button>

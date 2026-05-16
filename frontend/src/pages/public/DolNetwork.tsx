@@ -42,7 +42,7 @@ function institutionHint(k: FlatKol): string {
 
 function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=0d4f6c&color=fff&bold=true`;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
 }
 
 function matchesQuery(k: FlatKol, q: string): boolean {
@@ -146,7 +146,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
         }
       >
         <header className="mb-8 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#0d4f6c]">CHT Platform</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
             Oncology & breast cancer specialists — filter by region, institution, or text; sort by name, region, or
@@ -170,7 +170,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Name, institution, keywords…"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-[#0d4f6c] focus:outline-none focus:ring-2 focus:ring-[#0d4f6c]/25"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
                 autoComplete="off"
               />
             </div>
@@ -182,7 +182,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                 id="kol-region"
                 value={regionId}
                 onChange={(e) => setRegionId(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-[#0d4f6c] focus:outline-none focus:ring-2 focus:ring-[#0d4f6c]/25"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
               >
                 <option value="">All regions</option>
                 {directory.regions.map((r) => (
@@ -200,7 +200,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                 id="kol-inst"
                 value={institution}
                 onChange={(e) => setInstitution(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-[#0d4f6c] focus:outline-none focus:ring-2 focus:ring-[#0d4f6c]/25"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
               >
                 <option value="">All institutions</option>
                 {institutions.map((inst) => (
@@ -219,8 +219,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                     e.stopPropagation();
                     setSortOpen((o) => !o);
                   }}
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-[#e8f2f6] hover:border-[#0d4f6c]/40 transition-colors ${
-                    sortOpen ? 'bg-[#e8f2f6] border-[#0d4f6c]' : ''
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white hover:bg-brand-50 hover:border-brand-500/35 transition-colors ${
+                    sortOpen ? 'bg-brand-50 border-brand-600' : ''
                   }`}
                   aria-expanded={sortOpen}
                   aria-haspopup="listbox"
@@ -243,8 +243,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                             setSortMode(mode);
                             setSortOpen(false);
                           }}
-                          className={`w-full px-3 py-2.5 text-left text-sm hover:bg-[#e8f2f6] ${
-                            sortMode === mode ? 'font-semibold text-[#0d4f6c]' : 'text-gray-900'
+                          className={`w-full px-3 py-2.5 text-left text-sm hover:bg-brand-50 ${
+                            sortMode === mode ? 'font-semibold text-brand-800' : 'text-gray-900'
                           }`}
                         >
                           {sortLabels[mode]}
@@ -262,7 +262,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                 type="checkbox"
                 checked={newOnly}
                 onChange={(e) => setNewOnly(e.target.checked)}
-                className="rounded border-gray-300 text-[#0d4f6c] focus:ring-[#0d4f6c]"
+                className="rounded border-gray-300 text-brand-700 focus:ring-brand-600"
               />
               New profiles only
             </label>
@@ -366,7 +366,7 @@ function KolCard({ k }: { k: FlatKol }) {
                   {k.name}
                 </h3>
                 {showBadge ? (
-                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-sky-600 text-white" aria-label="Listed in CHM network" />
+                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-brand-600 text-white" aria-label="Listed in CHM network" />
                 ) : null}
               </div>
               <p className="text-[10px] leading-snug text-gray-500 line-clamp-2" title={k.role}>
@@ -407,7 +407,7 @@ function KolCard({ k }: { k: FlatKol }) {
         <div className="mt-auto flex flex-col gap-1.5 pt-3 sm:flex-row sm:gap-2">
           <Link
             to={profileHref}
-            className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-full bg-gray-900 px-2 text-center text-[10px] font-semibold text-white transition hover:bg-gray-800 sm:text-[11px]"
+            className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-full bg-brand-600 px-2 text-center text-[10px] font-semibold text-white transition hover:bg-brand-700 sm:text-[11px]"
           >
             Explore profile
           </Link>

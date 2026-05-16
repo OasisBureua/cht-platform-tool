@@ -140,3 +140,15 @@ variable "ses_from_email" {
   type        = string
   default     = "noreply@chtplatform.com"
 }
+
+variable "sqs_scheduled_jobs_queue_url" {
+  description = "SQS scheduled-jobs queue URL (EventBridge triggers)"
+  type        = string
+  default     = ""
+}
+
+variable "frontend_app_url" {
+  description = "Public URL of the frontend app (used in reminder email links)"
+  type        = string
+  default     = ""
+}

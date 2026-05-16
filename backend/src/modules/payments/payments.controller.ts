@@ -161,6 +161,28 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/failed
+   * List failed payments for admin retry flow (admin only)
+   */
+  @Get('failed')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async getFailedPayments() {
+    return this.paymentsService.getFailedPayments();
+  }
+
+  /**
+   * POST /api/payments/:paymentId/retry
+   * Retry a FAILED payment by resetting it to PENDING and re-attempting via Bill.com (admin only)
+   */
+  @Post(':paymentId/retry')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async retryPayment(@Param('paymentId') paymentId: string) {
+    return this.paymentsService.retryPayment(paymentId);
+  }
+
+  /**
    * DELETE /api/payments/:paymentId
    * Delete a payment by ID (admin/dev only). For removing test entries.
    */

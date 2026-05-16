@@ -19,6 +19,7 @@ export default function ChmWordmarkOption2(props: SVGProps<SVGSVGElement>) {
         x="10"
         y="18.5"
         fill="currentColor"
+        className="text-[#ea580c] dark:text-[#fb923c]"
         style={{
           fontFamily: "'Chillax', system-ui, sans-serif",
           fontSize: '20px',

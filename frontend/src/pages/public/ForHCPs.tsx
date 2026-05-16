@@ -263,7 +263,7 @@ function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
         <div className="mt-4 flex justify-end pt-2 border-t border-gray-100">
           <Link
             to={card.playlistUrl}
-            className="rounded-full bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+            className="rounded-full bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             Play all
           </Link>
@@ -319,7 +319,7 @@ function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: b
         <div className="mt-4 flex justify-end">
           <Link
             to={`/webinars/${w.id}`}
-            className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 transition-colors"
+            className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             Learn More
           </Link>

@@ -77,7 +77,7 @@ export default function DolRegionDetail() {
                   </h3>
                   <Link
                     to={`/kol-network/profile/${entry.id}`}
-                    className="shrink-0 text-sm font-semibold text-[#0d4f6c] hover:text-[#0a3d54]"
+                    className="shrink-0 text-sm font-semibold text-brand-700 hover:text-brand-900"
                   >
                     View profile →
                   </Link>

@@ -1631,6 +1631,19 @@ export class AdminController {
       data: updateData,
     });
 
+    // When the session time changes, clear reminder24hSentAt so every
+    // APPROVED registrant gets a fresh reminder at the new time.
+    if (body.startDate !== undefined) {
+      const nextMs = new Date(body.startDate).getTime();
+      const prevMs = existing.startDate?.getTime();
+      if (!Number.isNaN(nextMs) && prevMs !== nextMs) {
+        await this.prisma.programRegistration.updateMany({
+          where: { programId: id },
+          data: { reminder24hSentAt: null },
+        });
+      }
+    }
+
     // Webhook-imported programs with no FEEDBACK survey: attach Jotforms when saved as a Live webinar (incl. type correction MEETING→WEBINAR).
     const noFeedbackSurvey = existing.surveys.length === 0;
     if (

@@ -16,7 +16,7 @@ export default function Portfolios() {
             </p>
             <Link
               to="/catalog"
-              className="inline-flex rounded-full bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition-colors"
+              className="inline-flex rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
             >
               View Content Library
             </Link>

@@ -179,10 +179,18 @@ class SQSBaseConsumer(ABC):
         logger.info(f"Starting {self.queue_name} consumer...")
 
         if not self.sqs or not self.queue_url:
-            logger.info(f"{self.queue_name}: Mock mode — no SQS configured")
+            logger.warning(
+                f"{self.queue_name}: Mock mode — SQS_SCHEDULED_JOBS_QUEUE_URL is not set. "
+                f"EventBridge triggers will NOT be processed. Set the env var and redeploy."
+            )
             while not self._shutdown:
                 time.sleep(10)
             return
+
+        # Log every HEARTBEAT_LOG_INTERVAL empty polls so we can confirm the loop
+        # is alive in CloudWatch even when no messages arrive.
+        _HEARTBEAT_LOG_INTERVAL = int(os.getenv("POLL_HEARTBEAT_INTERVAL", "30"))
+        poll_count = 0
 
         consecutive_errors = 0
         max_consecutive_errors = 10
@@ -203,10 +211,20 @@ class SQSBaseConsumer(ABC):
                 consecutive_errors = 0  # Reset only on a successful AWS API call
                 self._touch_heartbeat()  # ECS health check: worker is alive
 
-                for message in messages:
-                    if self._shutdown:
-                        break
-                    self._handle_message(message)
+                if messages:
+                    poll_count = 0  # Reset heartbeat counter when there is work to do
+                    for message in messages:
+                        if self._shutdown:
+                            break
+                        self._handle_message(message)
+                else:
+                    poll_count += 1
+                    if poll_count >= _HEARTBEAT_LOG_INTERVAL:
+                        logger.info(
+                            f"[{self.queue_name}] poll heartbeat — queue idle, "
+                            f"consumer alive (every {_HEARTBEAT_LOG_INTERVAL} empty polls)"
+                        )
+                        poll_count = 0
 
             except Exception as e:
                 consecutive_errors += 1

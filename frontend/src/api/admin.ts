@@ -156,6 +156,11 @@ export interface PendingPayment {
   program: { id: string; title: string } | null;
 }
 
+export interface FailedPayment extends PendingPayment {
+  failedAt: string | null;
+  failureReason: string | null;
+}
+
 export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
@@ -517,8 +522,25 @@ export const adminApi = {
     }
   },
 
+  getFailedPayments: async () => {
+    try {
+      const { data } = await apiClient.get<FailedPayment[]>('/payments/failed');
+      return data;
+    } catch (err) {
+      if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
+        return [];
+      }
+      throw err;
+    }
+  },
+
   payNow: async (paymentId: string) => {
     const { data } = await apiClient.post(`/payments/${paymentId}/pay-now`);
+    return data;
+  },
+
+  retryPayment: async (paymentId: string) => {
+    const { data } = await apiClient.post(`/payments/${paymentId}/retry`);
     return data;
   },
 
