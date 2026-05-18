@@ -102,13 +102,29 @@ export class MediaHubService {
 
   /**
    * GET /clips - Video catalog with filters
+   *
+   * Defaults to platform=youtube (kills LinkedIn/X duplicates from the
+   * 2026-05-16 video-presentation audit). To include all platforms,
+   * pass `platform: ''` explicitly. To include a specific platform set
+   * other than YouTube, pass `platform: 'youtube,podcast'` (comma-separated).
+   *
+   * Supports MediaHub /api/public/clips's Phase 2 params:
+   * - sort_by=recorded_at (orders by Shoot.shoot_date with posted_at fallback)
+   * - dedup_by=shoot (one canonical clip per shoot_id)
+   * - per_shoot_cap=N (after dedup, cap per shoot for variety)
    */
   async getClips(params?: {
     q?: string;
     tag?: string;
     doctor?: string;
+    /**
+     * Comma-separated platforms (e.g. 'youtube,podcast'). Defaults to
+     * 'youtube' if undefined. Pass empty string to include all platforms.
+     */
     platform?: string;
-    sort_by?: 'views' | 'likes' | 'recent' | 'posted';
+    sort_by?: 'views' | 'likes' | 'recent' | 'posted' | 'recorded_at';
+    dedup_by?: 'shoot';
+    per_shoot_cap?: number;
     limit?: number;
     offset?: number;
   }): Promise<MediaHubClipsResponse> {
@@ -116,8 +132,16 @@ export class MediaHubService {
     if (params?.q) searchParams.q = params.q;
     if (params?.tag) searchParams.tag = params.tag;
     if (params?.doctor) searchParams.doctor = params.doctor;
-    if (params?.platform) searchParams.platform = params.platform;
+
+    // Platform default: 'youtube' (audit fix: LinkedIn text-only posts leak into
+    // video carousels). Empty string explicitly opts out.
+    const platform = params?.platform === undefined ? 'youtube' : params.platform;
+    if (platform) searchParams.platform = platform;
+
     if (params?.sort_by) searchParams.sort_by = params.sort_by;
+    if (params?.dedup_by) searchParams.dedup_by = params.dedup_by;
+    if (params?.per_shoot_cap != null)
+      searchParams.per_shoot_cap = params.per_shoot_cap;
     if (params?.limit != null) searchParams.limit = params.limit;
     if (params?.offset != null) searchParams.offset = params.offset;
 
@@ -130,6 +154,40 @@ export class MediaHubService {
       return { items: result, total: result.length };
     }
     return result;
+  }
+
+  /**
+   * GET /playlists — curator-set YouTube playlist tag/lane overlay.
+   *
+   * Returns rows from MediaHub's `playlist_tags` table. The full YouTube
+   * playlist metadata (title, description, video_count) is NOT returned
+   * here — fetch that separately via the YouTube Data API. This endpoint
+   * exists so CHT can ask "which playlists are tagged biomarker:HER2+"
+   * without scraping playlist titles (fixes the broken
+   * `_generated-catalog-playlists.json` fuzzy-title-match approach).
+   */
+  async getPlaylistTags(params?: {
+    tag?: string;
+    lane?:
+      | 'biomarker'
+      | 'drug'
+      | 'trial'
+      | 'doctor_pair'
+      | 'mixed'
+      | 'archive';
+    limit?: number;
+    offset?: number;
+  }): Promise<MediaHubPlaylistTagList> {
+    const searchParams: Record<string, string | number> = {};
+    if (params?.tag) searchParams.tag = params.tag;
+    if (params?.lane) searchParams.lane = params.lane;
+    if (params?.limit != null) searchParams.limit = params.limit;
+    if (params?.offset != null) searchParams.offset = params.offset;
+
+    return this.get<MediaHubPlaylistTagList>(
+      '/playlists',
+      Object.keys(searchParams).length > 0 ? searchParams : undefined,
+    );
   }
 
   /**
@@ -271,5 +329,21 @@ export interface MediaHubKolPublication {
 
 export interface MediaHubKolPublicationList {
   items: MediaHubKolPublication[];
+  total: number;
+}
+
+/**
+ * Curator-set tag overlay for a single YouTube playlist. Returned by
+ * GET /api/public/playlists. The full playlist metadata (title, videos,
+ * description) is NOT included — fetch that separately from YouTube.
+ */
+export interface MediaHubPlaylistTag {
+  youtube_playlist_id: string;
+  tags: string[];
+  lane: string | null;
+}
+
+export interface MediaHubPlaylistTagList {
+  items: MediaHubPlaylistTag[];
   total: number;
 }

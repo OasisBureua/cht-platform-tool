@@ -4,7 +4,26 @@ export interface DiseaseArea {
   description: string;
   image: string;
   active: boolean;
+  /**
+   * Legacy free-text tokens used by older client-side regex filtering.
+   * Kept for backward compatibility with code that may still consume them.
+   * Prefer `clipTags` (namespaced MediaHub tags) for any new code path —
+   * the backend can filter exactly on those.
+   */
   searchTags: string[];
+  /**
+   * Namespaced MediaHub tag strings (e.g. `biomarker:HER2+`) passed
+   * verbatim to GET /api/catalog/clips?tag=...
+   *
+   * Contract:
+   *   - AND across different namespaces
+   *   - OR within the same namespace
+   *
+   * Mirrors the carousel contract in `carousels.config.ts`
+   * (see `anon-breast-conversations`). Source of truth for the
+   * disease-detail Conversations row.
+   */
+  clipTags?: string[];
 }
 
 const DISEASE_AREAS: DiseaseArea[] = [
@@ -15,6 +34,14 @@ const DISEASE_AREAS: DiseaseArea[] = [
     image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
     active: true,
     searchTags: ['breast', 'HER2', 'TNBC', 'HR+', 'mammary', 'oncology', 'mastectomy'],
+    clipTags: [
+      'biomarker:HER2+',
+      'biomarker:HER2-low',
+      'biomarker:HER2-ultralow',
+      'biomarker:HR+',
+      'biomarker:TNBC',
+      'biomarker:High-Risk / CNS',
+    ],
   },
   {
     slug: 'lung-cancer',

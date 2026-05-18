@@ -23,7 +23,7 @@ import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '
 import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
-import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../components/content/BiomarkerConversationRow';
+import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -730,11 +730,10 @@ export default function Dashboard() {
                 </ConversationRow>
               ) : null}
 
-              {BIOMARKER_ROWS.map((row) => (
+              {BIOMARKER_CAROUSEL_IDS.map((carouselId) => (
                 <BiomarkerConversationRow
-                  key={row.focus}
-                  label={row.label}
-                  focus={row.focus}
+                  key={carouselId}
+                  carouselId={carouselId}
                   isInApp={true}
                   hideBrokenCatalogThumbnails
                 />

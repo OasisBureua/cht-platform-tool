@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2, Compass } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
@@ -60,14 +60,33 @@ function matchesQuery(item: UnifiedItem, q: string): boolean {
 export default function ExploreOpportunities() {
   const { user } = useAuth();
   const userId = user?.userId;
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlQ = searchParams.get('q') ?? '';
+  const [query, setQuery] = useState(urlQ);
+  const [debouncedQuery, setDebouncedQuery] = useState(urlQ.trim());
   const [tab, setTab] = useState<Tab>('best');
 
+  // Debounce typed input → debouncedQuery (drives API + filter).
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
     return () => clearTimeout(t);
   }, [query]);
+
+  // Sync URL → input when user navigates here with ?q= (deep links, browser back/fwd).
+  useEffect(() => {
+    setQuery(urlQ);
+  }, [urlQ]);
+
+  // Sync input → URL so the q param stays shareable / bookmarkable.
+  useEffect(() => {
+    const next = debouncedQuery;
+    const current = searchParams.get('q') ?? '';
+    if (next === current) return;
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set('q', next);
+    else params.delete('q');
+    setSearchParams(params, { replace: true });
+  }, [debouncedQuery, searchParams, setSearchParams]);
 
   const { data: tags = {} } = useQuery({
     queryKey: ['catalog', 'tags'],
@@ -96,16 +115,18 @@ export default function ExploreOpportunities() {
     return m;
   }, [liveStatuses]);
 
+  // When a query is present (>=2 chars), use the dedicated /catalog/search endpoint —
+  // same one public /search uses — for parity. Otherwise fall back to the default
+  // "recent clips" list via /catalog/clips.
   const { data: clipsData, isLoading: clipsLoading, isError: clipsError } = useQuery({
-    queryKey: ['catalog', 'clips', debouncedQuery],
-    queryFn: () =>
-      useMediaHub
-        ? catalogApi.getClips({
-            q: debouncedQuery || undefined,
-            limit: 24,
-            offset: 0,
-          })
-        : Promise.resolve({ items: [], total: 0 }),
+    queryKey: ['catalog', 'clips-or-search', debouncedQuery],
+    queryFn: () => {
+      if (!useMediaHub) return Promise.resolve({ items: [], total: 0 });
+      if (debouncedQuery.length >= 2) {
+        return catalogApi.search(debouncedQuery, { limit: 40 });
+      }
+      return catalogApi.getClips({ limit: 24, offset: 0 });
+    },
     enabled: useMediaHub,
     staleTime: 2 * 60 * 1000,
     retry: false,
@@ -187,14 +208,21 @@ export default function ExploreOpportunities() {
 
   const filtered = useMemo(() => {
     const q = debouncedQuery;
-    let list = items.filter((item) => matchesQuery(item, q));
+    // When the API already filtered clips by q, don't double-filter clip items by title/desc
+    // (the search endpoint matches on transcript/tags too, which matchesQuery can't see).
+    // Webinars + surveys still need the client-side text filter — those aren't searched server-side.
+    const apiFilteredClips = q.length >= 2 && useMediaHub;
+    let list = items.filter((item) => {
+      if (apiFilteredClips && item.type === 'clip') return true;
+      return matchesQuery(item, q);
+    });
 
     if (tab === 'webinars') list = list.filter((i) => i.type === 'webinar');
     else if (tab === 'videos') list = list.filter((i) => i.type === 'clip' || i.type === 'playlist');
     else if (tab === 'surveys') list = list.filter((i) => i.type === 'survey');
 
     return list;
-  }, [items, debouncedQuery, tab]);
+  }, [items, debouncedQuery, tab, useMediaHub]);
 
   const isLoading = webinarsLoading || surveysLoading || (useMediaHub ? clipsLoading : playlistsLoading);
   const showClipsError = useMediaHub && clipsError;
