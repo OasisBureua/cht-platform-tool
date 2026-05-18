@@ -184,6 +184,11 @@ export interface FailedPayment extends PendingPayment {
   failureReason: string | null;
 }
 
+/** Recent successful payouts on admin Payments page */
+export interface PaidPayment extends PendingPayment {
+  paidAt: string | null;
+}
+
 export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
@@ -569,6 +574,20 @@ export const adminApi = {
   getFailedPayments: async () => {
     try {
       const { data } = await apiClient.get<FailedPayment[]>('/payments/failed');
+      return data;
+    } catch (err) {
+      if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
+        return [];
+      }
+      throw err;
+    }
+  },
+
+  getPaidPayments: async (params?: { limit?: number }) => {
+    try {
+      const { data } = await apiClient.get<PaidPayment[]>('/payments/paid', {
+        params: params?.limit != null ? { limit: params.limit } : undefined,
+      });
       return data;
     } catch (err) {
       if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {

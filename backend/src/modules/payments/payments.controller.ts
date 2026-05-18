@@ -172,6 +172,25 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/paid
+   * Recent successfully paid payouts (admin payments page).
+   */
+  @Get('paid')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List recent PAID payments (admin)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max rows (1–500, default 200)',
+  })
+  async getPaidPayments(@Query('limit') limit?: string) {
+    const n = limit != null && limit !== '' ? parseInt(limit, 10) : undefined;
+    return this.paymentsService.getPaidPaymentsForAdmin(n);
+  }
+
+  /**
    * POST /api/payments/:paymentId/retry
    * Retry a FAILED payment by resetting it to PENDING and re-attempting via Bill.com (admin only)
    */

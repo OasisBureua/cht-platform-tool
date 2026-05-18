@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { adminApi, type PendingPayment, type FailedPayment } from '../../api/admin';
+import { adminApi, type PendingPayment, type FailedPayment, type PaidPayment } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
@@ -31,10 +31,16 @@ export default function AdminPayments() {
     queryFn: () => adminApi.listPaymentEligibleNotYetRequested(),
   });
 
+  const { data: paid = [], isPending: paidPending } = useQuery({
+    queryKey: ['admin', 'paid-payments'],
+    queryFn: () => adminApi.getPaidPayments({ limit: 200 }),
+  });
+
   const payNowMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.payNow(paymentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
     },
   });
 
@@ -43,6 +49,7 @@ export default function AdminPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
     },
   });
 
@@ -51,6 +58,7 @@ export default function AdminPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
       setDeleteConfirmPaymentId(null);
     },
   });
@@ -105,9 +113,15 @@ export default function AdminPayments() {
       </header>
 
       {/* Summary cards */}
-      <section className="grid gap-6 sm:grid-cols-2 md:grid-cols-4">
+      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Pending count" value={String(pendingCount)} sub="Awaiting payout" />
         <StatCard label="Pending total" value={formatMoney(pendingTotal)} sub="To be paid" />
+        <StatCard
+          label="Paid (recent)"
+          value={paidPending ? '…' : String(paid.length)}
+          sub="Latest 200 completed"
+          variant="success"
+        />
         <StatCard label="Failed payments" value={String(failed.length)} sub="Need admin retry" variant={failed.length > 0 ? 'danger' : 'default'} />
         <StatCard label="Eligible, not submitted" value={String(eligibleNotSubmitted.length)} sub="Survey done, no payment request yet" />
       </section>
@@ -165,6 +179,49 @@ export default function AdminPayments() {
             )}
           </div>
         )}
+      </section>
+
+      {/* Successful payouts (recent) */}
+      <section className="rounded-3xl border border-green-200 bg-green-50/40 overflow-hidden">
+        <div className="flex items-start gap-3 px-6 pt-5 pb-3 border-b border-green-100 bg-green-50/80">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-700 mt-0.5" aria-hidden />
+          <div>
+            <h2 className="text-base font-semibold text-green-950">Successful payments</h2>
+            <p className="mt-0.5 text-sm text-green-900">
+              Recent payouts completed through <BillComMark size="xs" className="translate-y-px" /> (newest first, up to 200).
+            </p>
+          </div>
+        </div>
+        <div className="overflow-x-auto bg-white">
+          <table className="min-w-full divide-y divide-green-100 text-sm">
+            <thead className="bg-green-50/60">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">User</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Paid on</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {paidPending ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                    Loading paid payments…
+                  </td>
+                </tr>
+              ) : paid.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                    No completed payouts yet. Successful payments appear here after <strong>Pay now</strong> finishes.
+                  </td>
+                </tr>
+              ) : (
+                paid.map((p) => <PaidRow key={p.id} payment={p} />)
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {/* Failed payments */}
@@ -340,13 +397,35 @@ export default function AdminPayments() {
   );
 }
 
-function StatCard({ label, value, sub, variant = 'default' }: { label: string; value: string; sub: string; variant?: 'default' | 'danger' }) {
-  const isDanger = variant === 'danger';
+function StatCard({
+  label,
+  value,
+  sub,
+  variant = 'default',
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  variant?: 'default' | 'danger' | 'success';
+}) {
+  const shell =
+    variant === 'danger'
+      ? 'border-red-200 bg-red-50'
+      : variant === 'success'
+        ? 'border-green-200 bg-green-50/80'
+        : 'border-gray-200 bg-white';
+  const labelCls =
+    variant === 'danger' ? 'text-red-700' : variant === 'success' ? 'text-green-800' : 'text-gray-600';
+  const valueCls =
+    variant === 'danger' ? 'text-red-900' : variant === 'success' ? 'text-green-950' : 'text-gray-900';
+  const subCls =
+    variant === 'danger' ? 'text-red-700' : variant === 'success' ? 'text-green-800' : 'text-gray-600';
+
   return (
-    <div className={['rounded-3xl border p-6', isDanger ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'].join(' ')}>
-      <p className={['text-xs font-semibold', isDanger ? 'text-red-700' : 'text-gray-600'].join(' ')}>{label}</p>
-      <p className={['mt-2 text-2xl font-semibold', isDanger ? 'text-red-900' : 'text-gray-900'].join(' ')}>{value}</p>
-      <p className={['mt-1 text-sm', isDanger ? 'text-red-700' : 'text-gray-600'].join(' ')}>{sub}</p>
+    <div className={['rounded-3xl border p-6', shell].join(' ')}>
+      <p className={['text-xs font-semibold', labelCls].join(' ')}>{label}</p>
+      <p className={['mt-2 text-2xl font-semibold', valueCls].join(' ')}>{value}</p>
+      <p className={['mt-1 text-sm', subCls].join(' ')}>{sub}</p>
     </div>
   );
 }
@@ -414,6 +493,28 @@ function FailedRow({
           </p>
         )}
       </td>
+    </tr>
+  );
+}
+
+function PaidRow({ payment }: { payment: PaidPayment }) {
+  const paidLabel =
+    payment.paidAt != null && payment.paidAt !== ''
+      ? format(new Date(payment.paidAt), 'MMM d, yyyy · h:mm a')
+      : '—';
+
+  return (
+    <tr className="hover:bg-gray-50/80">
+      <td className="px-4 py-3">
+        <p className="font-medium text-gray-900">
+          {payment.user.firstName} {payment.user.lastName}
+        </p>
+        <p className="text-sm text-gray-500">{payment.user.email}</p>
+      </td>
+      <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
+      <td className="px-4 py-3 text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '—'}</td>
+      <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{paidLabel}</td>
     </tr>
   );
 }

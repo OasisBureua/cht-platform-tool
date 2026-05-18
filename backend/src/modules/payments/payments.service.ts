@@ -475,6 +475,30 @@ export class PaymentsService {
   }
 
   /**
+   * Recent successful payouts (admin payments page). Newest first; capped for performance.
+   */
+  async getPaidPaymentsForAdmin(limit = 200) {
+    const take = Math.min(Math.max(Number(limit) || 200, 1), 500);
+    return this.prisma.payment.findMany({
+      where: { status: 'PAID' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            billVendorId: true,
+          },
+        },
+        program: { select: { id: true, title: true } },
+      },
+      orderBy: [{ paidAt: 'desc' }, { updatedAt: 'desc' }],
+      take,
+    });
+  }
+
+  /**
    * Reset a FAILED payment back to PENDING and immediately attempt payment via Bill.com (admin only).
    * Clears the previous failure metadata before delegating to the standard payNow flow.
    */
