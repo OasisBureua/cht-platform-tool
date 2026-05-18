@@ -117,6 +117,10 @@ model Program {
   // Sponsorship
   sponsorName       String
   sponsorLogo       String?
+  /// Optional banner image URL for the live session detail / registration (admin-provided CDN or public URL).
+  sessionHeroImageUrl String?
+  /// Session-specific disclaimer shown to learners on registration and detail pages (HTML stripped client-side).
+  sessionDisclaimer   String? @db.Text
   
   // Scheduling
   startDate         DateTime?

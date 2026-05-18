@@ -527,6 +527,49 @@ export class ZoomService implements OnModuleInit {
     }));
   }
 
+  /**
+   * Update display names for panelists created with zsoccerguy+user{n}@gmail.com emails (see admin webinar create).
+   * Docs: PATCH /v2/webinars/{webinarId}/panelists/{panelistId}
+   */
+  async syncWebinarSpeakerDisplayNames(
+    webinarId: string,
+    speakerNames: string[],
+  ): Promise<void> {
+    if (!this.isConfigured() || !speakerNames.length) return;
+
+    const panelists = await this.getWebinarPanelists(webinarId);
+    const token = await this.getAccessToken();
+
+    for (let i = 0; i < speakerNames.length; i++) {
+      const desiredName = speakerNames[i]?.trim();
+      if (!desiredName) continue;
+
+      const expectedEmail = `zsoccerguy+user${i + 1}@gmail.com`.toLowerCase();
+      const match = panelists.find(
+        (p) => p.email.toLowerCase() === expectedEmail,
+      );
+      if (!match?.id || match.name === desiredName) continue;
+
+      try {
+        await firstValueFrom(
+          this.http.patch(
+            `https://api.zoom.us/v2/webinars/${webinarId}/panelists/${match.id}`,
+            { name: desiredName },
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        );
+        this.logger.log(
+          `Zoom: updated panelist name for ${expectedEmail} → "${desiredName}" on webinar ${webinarId}`,
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Zoom: failed to update panelist name for ${expectedEmail} on webinar ${webinarId}: ${msg}`,
+        );
+      }
+    }
+  }
+
   async deleteWebinar(webinarId: string): Promise<void> {
     if (!this.isConfigured()) return;
 

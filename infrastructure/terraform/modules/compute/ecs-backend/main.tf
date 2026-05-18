@@ -82,7 +82,13 @@ resource "aws_ecs_task_definition" "backend" {
           var.frontend_url != "" ? [{ name = "FRONTEND_URL", value = var.frontend_url }] : [],
           var.sqs_email_queue_url != "" ? [{ name = "SQS_EMAIL_QUEUE_URL", value = var.sqs_email_queue_url }] : [],
           var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : [],
-          var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : []
+          var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : [],
+          var.session_assets_s3_bucket != "" && var.session_assets_public_url_base != ""
+            ? [
+                { name = "SESSION_ASSETS_S3_BUCKET", value = var.session_assets_s3_bucket },
+                { name = "SESSION_ASSETS_PUBLIC_URL_BASE", value = var.session_assets_public_url_base },
+              ]
+            : []
         )
       )
 

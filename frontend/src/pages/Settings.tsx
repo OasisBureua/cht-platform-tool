@@ -16,7 +16,7 @@ import {
   settingsLocationPreset,
 } from '../data/profession-options';
 import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
-
+import { BillComMark } from '../components/branding/BillComMark';
 function getInitials(name: string, email?: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
@@ -548,12 +548,12 @@ function PaymentSettingsSection({
     mutationFn: () => paymentsApi.syncAccountStatus(userId),
     onMutate: () => setSyncMessage({}),
     onSuccess: () => {
-      setSyncMessage({ ok: 'Status refreshed from Bill.com.' });
+      setSyncMessage({ ok: 'Vendor status refreshed.' });
       window.setTimeout(() => setSyncMessage({}), 4000);
       onSuccess();
     },
     onError: (err: unknown) => {
-      setSyncMessage({ err: getApiErrorMessage(err, 'Could not sync with Bill.com.') });
+      setSyncMessage({ err: getApiErrorMessage(err, 'Could not refresh vendor status.') });
     },
   });
 
@@ -592,7 +592,9 @@ function PaymentSettingsSection({
       <div id="payment-settings" className={cardShell}>
         <div className="flex items-center gap-2 mb-4">
           <CreditCard className="h-5 w-5 text-gray-700" />
-          <h2 className="text-lg font-bold text-gray-900">Bill.com — payouts</h2>
+          <h2 className="text-lg font-bold text-gray-900 inline-flex flex-wrap items-center gap-2">
+            <BillComMark size="md" /> payouts
+          </h2>
         </div>
         <div className="py-8 flex justify-center">
           <LoadingSpinner />
@@ -616,11 +618,18 @@ function PaymentSettingsSection({
     <div id="payment-settings" className={cardShell}>
       <div className="flex items-center gap-2 mb-4">
         <CreditCard className="h-5 w-5 text-gray-700 shrink-0" />
-        <h2 className="text-lg font-bold text-gray-900 truncate">Bill.com — payouts</h2>
+        <h2 className="text-lg font-bold text-gray-900 inline-flex flex-wrap items-center gap-2 min-w-0">
+          <BillComMark size="md" /> payouts
+        </h2>
       </div>
       <p className="text-sm text-gray-600 mb-6">
-        Bill.com is how you get paid. Add bank details in your Bill.com vendor profile (ACH or check). Complete the
-        embedded W-9 before admins can pay you in Bill.com.
+        <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 align-middle">
+          <BillComMark size="md" className="translate-y-px shrink-0" />
+          <span>
+            is how you get paid. Add bank details in your vendor profile (ACH or check). Complete the embedded W-9 before
+            admins can issue payouts.
+          </span>
+        </span>
       </p>
 
       {profileIncomplete ? (
@@ -639,8 +648,12 @@ function PaymentSettingsSection({
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
               <div>
-                <p className="font-medium text-green-900">Bill.com vendor connected</p>
-                <p className="text-sm text-green-700">Admins send payouts from Bill.com (ACH or check)</p>
+                <p className="font-medium text-green-900 inline-flex flex-wrap items-center gap-2">
+                  <BillComMark size="sm" /> vendor connected
+                </p>
+                <p className="text-sm text-green-700 flex flex-wrap items-center gap-x-1 gap-y-1">
+                  Admins send payouts from <BillComMark size="xs" className="translate-y-px" /> (ACH or check)
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
@@ -658,7 +671,7 @@ function PaymentSettingsSection({
                 onClick={() => syncMutation.mutate()}
                 className="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
               >
-                {syncMutation.isPending ? 'Syncing…' : 'Refresh from Bill.com'}
+                {syncMutation.isPending ? 'Syncing…' : 'Refresh vendor status'}
               </button>
             </div>
           </div>
@@ -682,8 +695,8 @@ function PaymentSettingsSection({
                 <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-amber-900">W-9 required</p>
-                  <p className="text-sm text-amber-800 mt-1">
-                    Complete the W-9 in Bill.com so admins can issue payouts.
+                  <p className="text-sm text-amber-800 mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
+                    Complete the W-9 in <BillComMark size="xs" className="translate-y-px" /> so admins can issue payouts.
                   </p>
                   <button
                     type="button"

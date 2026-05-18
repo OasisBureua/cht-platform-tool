@@ -36,6 +36,9 @@ export const validationSchema = Joi.object({
   AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
 
+  SESSION_ASSETS_S3_BUCKET: Joi.string().allow('').optional(),
+  SESSION_ASSETS_PUBLIC_URL_BASE: Joi.string().allow('').optional(),
+
   // Amazon SES (registration-approved, etc.)
   EMAIL_FROM: Joi.string().email().allow('').optional(),
   EMAIL_ENABLED: Joi.string()

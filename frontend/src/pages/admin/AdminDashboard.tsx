@@ -36,9 +36,9 @@ export default function AdminDashboard() {
               <CalendarClock className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">CHM Office Hours</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">Live webinars & Office Hours</h2>
               <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">
-                Manage interactive Zoom Meetings, time slots (Program hub), and the office-hours approval queue alongside Live webinars.
+                Manage live Zoom Webinars, Office Hours, Program hub time slots, and registration approvals in one place.
               </p>
             </div>
           </div>
@@ -47,13 +47,13 @@ export default function AdminDashboard() {
               to="/admin/office-hours"
               className="inline-flex items-center justify-center rounded-lg border border-brand-300 bg-white px-4 py-2 text-sm font-semibold text-brand-900 transition-colors hover:bg-brand-50 dark:border-brand-800 dark:bg-zinc-900 dark:text-brand-100 dark:hover:bg-brand-950/50"
             >
-              View sessions
+              View Office Hours
             </Link>
             <Link
-              to="/admin/office-hours-scheduler"
+              to="/admin/webinar-scheduler"
               className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
-              Schedule office hours
+              Schedule webinar
             </Link>
           </div>
         </div>

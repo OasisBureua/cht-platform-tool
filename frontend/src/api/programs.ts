@@ -41,6 +41,11 @@ export interface Program {
   registrationRequiresApproval?: boolean;
   hostDisplayName?: string;
   hostBio?: string;
+  speakers?: string[];
+  /** Session-specific compliance / sponsor disclaimer for learners */
+  sessionDisclaimer?: string;
+  /** HTTPS URL for banner image on session pages */
+  sessionHeroImageUrl?: string;
 }
 
 export interface OfficeHoursSlotOption {

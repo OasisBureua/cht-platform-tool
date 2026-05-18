@@ -87,41 +87,52 @@ resource "aws_iam_role_policy" "backend_task" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage",
-          "sqs:GetQueueUrl"
-        ]
-        Resource = var.sqs_queue_arns
-      },
-      # SSE-KMS SQS queues require KMS permissions on SendMessage (encrypt data key for the message body).
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt",
-          "kms:GenerateDataKey*"
-        ]
-        Resource = var.kms_key_arns
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "ses:SendEmail",
-          "ses:SendRawEmail"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "s3:PutObject",
-          "s3:GetObject"
-        ]
-        Resource = "${var.certificates_bucket_arn}/*"
-      }
-    ]
+    Statement = concat(
+      [
+        {
+          Effect = "Allow"
+          Action = [
+            "sqs:SendMessage",
+            "sqs:GetQueueUrl"
+          ]
+          Resource = var.sqs_queue_arns
+        },
+        # SSE-KMS SQS queues require KMS permissions on SendMessage (encrypt data key for the message body).
+        {
+          Effect = "Allow"
+          Action = [
+            "kms:Decrypt",
+            "kms:GenerateDataKey*"
+          ]
+          Resource = var.kms_key_arns
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "ses:SendEmail",
+            "ses:SendRawEmail"
+          ]
+          Resource = "*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:PutObject",
+            "s3:GetObject"
+          ]
+          Resource = "${var.certificates_bucket_arn}/*"
+        },
+      ],
+      var.session_assets_bucket_arn != "" ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:PutObject"
+          ]
+          Resource = "${var.session_assets_bucket_arn}/session-heroes/*"
+        }
+      ] : []
+    )
   })
 }
 

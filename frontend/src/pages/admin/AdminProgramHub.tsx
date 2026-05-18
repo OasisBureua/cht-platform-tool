@@ -303,9 +303,9 @@ export default function AdminProgramHub() {
         <div className="grid gap-4 md:grid-cols-2">
           {zoomType === 'MEETING' ? (
             <div className="md:col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <strong>CHM Office Hours</strong> do not use a Jotform intake form. Learners register and pick a time slot
+              <strong>Office Hours</strong> (Zoom Meetings) do not use a Jotform intake form. Learners register and pick a time slot
               when you offer slots; use <strong>Require admin approval</strong> below to review each request before they are
-              enrolled. Saving settings clears any stored intake URL for this office-hours program.
+              enrolled. Saving settings clears any stored intake URL for this session type.
             </div>
           ) : (
             <label className="block text-sm md:col-span-2">

@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { paymentsApi } from '../../api/payments';
 import { getApiErrorMessage } from '../../api/client';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { BillComMark } from '../branding/BillComMark';
 
 /** ABA routing number checksum: 3(d1+d4+d7) + 7(d2+d5+d8) + (d3+d6+d9) ≡ 0 mod 10 */
 function isValidRoutingNumber(digits: string): boolean {
@@ -138,14 +139,34 @@ export function BillVendorSetupForm(props: {
           can save payment details.
         </p>
       ) : null}
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed flex flex-wrap items-center gap-x-1 gap-y-1">
+        <strong className="text-slate-900 shrink-0">Security:</strong>
+        <span>
+          Payment credentials are transmitted securely and processed by{' '}
+          <BillComMark size="xs" className="translate-y-px mx-0.5" />
+          . CHM does not retain complete bank account or card numbers on its own servers; protect your login and only use
+          trusted devices when entering financial or tax information.
+        </span>
+      </div>
       <div>
         <h2 className="text-base font-semibold text-gray-900">
           {isUpdate ? 'Update payment details' : 'Set up your payment account'}
         </h2>
-        <p className="mt-0.5 text-sm text-gray-600">
-          {isUpdate
-            ? 'Re-enter your payee name, mailing address, and bank account. This replaces what is stored in your Bill.com vendor profile (W-9 sync from Bill.com is unchanged).'
-            : 'Enter your US bank details for your Bill.com vendor profile (ACH payouts from Bill.com).'}
+        <p className="mt-0.5 text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+          {isUpdate ? (
+            <>
+              Re-enter your payee name, mailing address, and bank account. This replaces what is stored in your{' '}
+              <BillComMark size="xs" className="translate-y-px" /> vendor profile (W-9 sync from{' '}
+              <BillComMark size="xs" className="translate-y-px" /> is unchanged).
+            </>
+          ) : (
+            <>
+              Enter your US bank details for your{' '}
+              <BillComMark size="xs" className="translate-y-px" /> vendor profile (ACH payouts from{' '}
+              <BillComMark size="xs" className="translate-y-px" />
+              ).
+            </>
+          )}
         </p>
       </div>
 
@@ -165,7 +186,10 @@ export function BillVendorSetupForm(props: {
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bill.com — bank account (ACH)</legend>
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex flex-wrap items-center gap-2">
+          <BillComMark size="xs" />
+          <span>Bank account (ACH)</span>
+        </legend>
         {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
 
         {/* Routing number with live hint */}

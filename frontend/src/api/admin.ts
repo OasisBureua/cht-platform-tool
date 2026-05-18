@@ -49,6 +49,10 @@ export interface AdminWebinar {
   speakers?: string[];
   /** True when this program was auto-created by a Zoom webhook (webinar.created). */
   importedViaWebhook?: boolean;
+  /** Shown to learners on registration and session detail */
+  sessionDisclaimer?: string;
+  /** Banner image URL for session pages */
+  sessionHeroImageUrl?: string;
 }
 
 export interface CreateWebinarPayload {
@@ -85,6 +89,10 @@ export interface CreateWebinarPayload {
    * CHM Staff is always added as a panelist automatically.
    */
   speakers?: string[];
+  /** Optional text disclaimer for learners (registration + detail). */
+  sessionDisclaimer?: string;
+  /** Optional HTTPS image URL for session branding. */
+  sessionHeroImageUrl?: string;
 }
 
 export interface UpdateWebinarPayload {
@@ -101,6 +109,8 @@ export interface UpdateWebinarPayload {
   hostDisplayName?: string;
   hostBio?: string;
   speakers?: string[];
+  sessionDisclaimer?: string | null;
+  sessionHeroImageUrl?: string | null;
 }
 
 export interface CreateProgramPayload {
@@ -134,7 +144,20 @@ export interface AdminUser {
   lastName: string;
   role: 'HCP' | 'KOL' | 'ADMIN';
   status: string;
+  /** US state or region when captured on profile */
+  state?: string | null;
   createdAt: string;
+}
+
+export interface AdminUserPaidPayment {
+  id: string;
+  amount: number;
+  type: string;
+  status: string;
+  description: string | null;
+  paidAt: string | null;
+  programId: string | null;
+  program: { title: string } | null;
 }
 
 export interface PendingPayment {
@@ -231,6 +254,7 @@ export const adminApi = {
     jotformTemplateFormId: string;
     webinarJotformTemplatesConfigured: boolean;
     zoomConfigured: boolean;
+    sessionHeroUploadEnabled: boolean;
   }> => {
     const { data } = await apiClient.get('/admin/config');
     return data as {
@@ -240,7 +264,20 @@ export const adminApi = {
       jotformTemplateFormId: string;
       webinarJotformTemplatesConfigured: boolean;
       zoomConfigured: boolean;
+      sessionHeroUploadEnabled: boolean;
     };
+  },
+
+  presignSessionHeroUpload: async (body: {
+    contentType: string;
+    contentLength: number;
+    fileName?: string;
+  }): Promise<{ uploadUrl: string; publicUrl: string; key: string }> => {
+    const { data } = await apiClient.post<{ uploadUrl: string; publicUrl: string; key: string }>(
+      '/admin/uploads/session-hero/presign',
+      body,
+    );
+    return data;
   },
 
   // ─── Webinar CRUD (Zoom-backed) ──────────────────────────────────────────
@@ -496,6 +533,13 @@ export const adminApi = {
 
   getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {
     const { data } = await apiClient.get<AdminUser[]>('/admin/users', { params });
+    return data;
+  },
+
+  getUserPaidPayments: async (userId: string): Promise<AdminUserPaidPayment[]> => {
+    const { data } = await apiClient.get<AdminUserPaidPayment[]>(
+      `/admin/users/${encodeURIComponent(userId)}/payments`,
+    );
     return data;
   },
 

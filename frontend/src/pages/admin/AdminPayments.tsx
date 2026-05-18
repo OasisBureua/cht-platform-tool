@@ -6,6 +6,7 @@ import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { BillComMark } from '../../components/branding/BillComMark';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -87,8 +88,9 @@ export default function AdminPayments() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payments</h1>
-          <p className="text-sm text-gray-600">
-            Pending payouts from program completions and survey bonuses. Click <strong>Pay now</strong> on each row to send via Bill.com (ACH or check).
+          <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+            Pending payouts from program completions and survey bonuses. Click <strong>Pay now</strong> on each row to send
+            through <BillComMark size="sm" className="translate-y-px" /> (ACH or check).
           </p>
         </div>
         <div className="shrink-0">
@@ -172,8 +174,9 @@ export default function AdminPayments() {
             <XCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-red-900">Failed payments</h2>
-              <p className="mt-0.5 text-sm text-red-800">
-                These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to attempt payment again via Bill.com.
+              <p className="mt-0.5 text-sm text-red-800 flex flex-wrap items-center gap-x-1 gap-y-1">
+                These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to try
+                again through <BillComMark size="xs" className="translate-y-px" />.
               </p>
             </div>
           </div>
@@ -406,7 +409,9 @@ function FailedRow({
           </button>
         </div>
         {!canRetry && (
-          <p className="mt-1 text-xs text-amber-600">No Bill.com vendor</p>
+          <p className="mt-1 text-xs text-amber-600 flex flex-wrap items-center gap-1">
+            No <BillComMark size="xs" /> vendor
+          </p>
         )}
       </td>
     </tr>
@@ -467,7 +472,9 @@ function PendingRow({
           </button>
         </div>
         {!canPay && (
-          <p className="mt-1 text-xs text-amber-600">No Bill.com vendor</p>
+          <p className="mt-1 text-xs text-amber-600 flex flex-wrap items-center gap-1">
+            No <BillComMark size="xs" /> vendor
+          </p>
         )}
       </td>
     </tr>

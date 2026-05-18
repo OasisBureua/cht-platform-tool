@@ -64,6 +64,14 @@ export class ProgramResponseDto {
   @IsOptional()
   sponsorLogo?: string;
 
+  @IsString()
+  @IsOptional()
+  sessionHeroImageUrl?: string;
+
+  @IsString()
+  @IsOptional()
+  sessionDisclaimer?: string;
+
   @IsNumber()
   @IsOptional()
   honorariumAmount?: number;

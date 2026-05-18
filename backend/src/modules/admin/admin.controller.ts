@@ -42,6 +42,8 @@ import { ProgramRegistrationsService } from '../programs/program-registrations.s
 import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
+import { SessionHeroPresignService } from './session-hero-presign.service';
+import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
@@ -77,6 +79,7 @@ export class AdminController {
     private prisma: PrismaService,
     private config: ConfigService,
     private zoom: ZoomService,
+    private sessionHeroPresign: SessionHeroPresignService,
   ) {}
 
   // ─── Bootstrap (no auth - first-admin setup) ─────────────────────────────
@@ -172,7 +175,24 @@ export class AdminController {
         (postEvent || postEventShared)
       ),
       zoomConfigured: this.zoom.isConfigured(),
+      sessionHeroUploadEnabled: this.sessionHeroPresign.isEnabled(),
     };
+  }
+
+  @Post('uploads/session-hero/presign')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Presign S3 PUT for session banner image (admin uploads; URL saved on program)',
+  })
+  @ApiBody({ type: PresignSessionHeroDto })
+  async presignSessionHeroUpload(@Body() dto: PresignSessionHeroDto) {
+    return this.sessionHeroPresign.createPresignedPut({
+      contentType: dto.contentType,
+      contentLength: dto.contentLength,
+      fileName: dto.fileName,
+    });
   }
 
   @Get('stats')
@@ -483,12 +503,42 @@ export class AdminController {
         lastName: true,
         role: true,
         status: true,
+        state: true,
         createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
       take,
     });
     return users;
+  }
+
+  @Get('users/:userId/payments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List successful (paid) payments for a user' })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  async getUserPaidPayments(@Param('userId') userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    return this.prisma.payment.findMany({
+      where: { userId, status: PaymentStatus.PAID },
+      orderBy: { paidAt: 'desc' },
+      select: {
+        id: true,
+        amount: true,
+        type: true,
+        status: true,
+        description: true,
+        paidAt: true,
+        programId: true,
+        program: { select: { title: true } },
+      },
+    });
   }
 
   @Patch('users/:userId/role')
@@ -643,6 +693,8 @@ export class AdminController {
         hostBio: p.hostBio ?? undefined,
         speakers: p.speakers ?? [],
         importedViaWebhook: p.importedViaWebhook,
+        sessionDisclaimer: p.sessionDisclaimer?.trim() || undefined,
+        sessionHeroImageUrl: p.sessionHeroImageUrl?.trim() || undefined,
       };
     });
 
@@ -698,6 +750,16 @@ export class AdminController {
           description:
             'Optional (WEBINAR). Speaker/KOL display names. Each gets a unique panelist link (zsoccerguy+user1@gmail.com, +user2, …). CHM Staff panelist is always added automatically.',
         },
+        sessionDisclaimer: {
+          type: 'string',
+          description:
+            'Optional. Disclaimer text shown to learners on registration and session detail pages.',
+        },
+        sessionHeroImageUrl: {
+          type: 'string',
+          description:
+            'Optional. HTTPS URL for a banner image on session detail / registration (admin-hosted CDN or public bucket).',
+        },
       },
     },
   })
@@ -724,6 +786,10 @@ export class AdminController {
       hostBio?: string;
       /** WEBINAR only. Speaker/KOL names. Generates unique panelist join links per speaker plus a fixed CHM Staff panelist. */
       speakers?: string[];
+      /** Optional. Disclaimer copy for learners (registration + detail page). */
+      sessionDisclaimer?: string;
+      /** Optional. Banner image URL for learners (HTTPS). */
+      sessionHeroImageUrl?: string;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -868,6 +934,12 @@ export class AdminController {
         : {}),
       ...(sessionType === 'WEBINAR' && manualIntakeUrl
         ? { jotformIntakeFormUrl: manualIntakeUrl }
+        : {}),
+      ...(body.sessionDisclaimer?.trim()
+        ? { sessionDisclaimer: body.sessionDisclaimer.trim() }
+        : {}),
+      ...(body.sessionHeroImageUrl?.trim()
+        ? { sessionHeroImageUrl: body.sessionHeroImageUrl.trim() }
         : {}),
     });
 
@@ -1534,6 +1606,8 @@ export class AdminController {
       hostDisplayName?: string;
       hostBio?: string;
       speakers?: string[];
+      sessionDisclaimer?: string | null;
+      sessionHeroImageUrl?: string | null;
     },
   ) {
     const existing = await this.prisma.program.findUnique({
@@ -1543,6 +1617,18 @@ export class AdminController {
       },
     });
     if (!existing) throw new NotFoundException('Webinar not found');
+
+    const normalizedExistingSpeakers = (existing.speakers ?? [])
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const normalizedNextSpeakers =
+      body.speakers !== undefined
+        ? body.speakers.map((s) => s.trim()).filter(Boolean)
+        : normalizedExistingSpeakers;
+    const speakersChanged =
+      body.speakers !== undefined &&
+      JSON.stringify(normalizedNextSpeakers) !==
+        JSON.stringify(normalizedExistingSpeakers);
 
     let nextZoomSessionType = existing.zoomSessionType as 'WEBINAR' | 'MEETING';
     if (body.zoomSessionType !== undefined) {
@@ -1560,7 +1646,7 @@ export class AdminController {
     if (body.honorariumAmount !== undefined) {
       if (nextZoomSessionType !== 'WEBINAR') {
         throw new BadRequestException(
-          'Honorarium can only be set on Zoom Webinar programs, not Office Hours.',
+          'Honorarium can only be set on Zoom Webinar programs, not on Zoom Meeting sessions.',
         );
       }
       if (
@@ -1625,6 +1711,41 @@ export class AdminController {
       updateData.hostBio = body.hostBio.trim() || null;
     if (body.speakers !== undefined)
       updateData.speakers = body.speakers.map((s) => s.trim()).filter(Boolean);
+    if (body.sessionDisclaimer !== undefined)
+      updateData.sessionDisclaimer =
+        body.sessionDisclaimer === null || body.sessionDisclaimer === ''
+          ? null
+          : body.sessionDisclaimer.trim() || null;
+    if (body.sessionHeroImageUrl !== undefined)
+      updateData.sessionHeroImageUrl =
+        body.sessionHeroImageUrl === null || body.sessionHeroImageUrl === ''
+          ? null
+          : body.sessionHeroImageUrl.trim() || null;
+
+    if (
+      speakersChanged &&
+      nextZoomSessionType === 'WEBINAR' &&
+      existing.zoomMeetingId &&
+      this.zoom.isConfigured()
+    ) {
+      try {
+        await this.zoom.syncWebinarSpeakerDisplayNames(
+          existing.zoomMeetingId,
+          normalizedNextSpeakers,
+        );
+        const fresh = await this.zoom.getWebinarPanelists(
+          existing.zoomMeetingId,
+        );
+        updateData.zoomPanelistLinks = fresh
+          .filter((p) => p.joinUrl)
+          .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Zoom panelist name sync failed for program ${id}: ${msg}`,
+        );
+      }
+    }
 
     const updated = await this.prisma.program.update({
       where: { id },

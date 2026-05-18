@@ -181,9 +181,9 @@ export default function AdminWebinarApprovals() {
         count={rejectModalIds?.length ?? 0}
       />
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Live & office hours approvals</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Webinar & Office Hours approvals</h1>
         <p className="mt-1 text-sm text-gray-600">
-          Pending registration requests for published webinars and CHM Office Hours. Learners can join via Zoom after
+          Pending registration requests for published Zoom Webinars and Office Hours (Zoom Meetings). Learners can join via Zoom after
           approval. If you <strong>reject</strong> someone, they can register again; their request returns to pending when
           they resubmit.
         </p>

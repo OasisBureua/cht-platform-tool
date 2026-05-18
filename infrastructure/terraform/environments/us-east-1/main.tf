@@ -140,6 +140,21 @@ module "s3_certificates" {
   allowed_origins = ["https://${var.domain_name}"]
 }
 
+module "s3_session_assets" {
+  source = "../../modules/storage/s3-session-assets"
+
+  project     = var.project
+  environment = var.environment
+  aws_region  = "us-east-1"
+  cors_allowed_origins = distinct([
+    "https://${var.domain_name}",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+  ])
+}
+
 # ============================================
 # Messaging - SNS Alerts
 # ============================================
@@ -237,6 +252,7 @@ module "iam" {
     module.sqs.scheduled_jobs_queue_arn
   ]
   certificates_bucket_arn = module.s3_certificates.bucket_arn
+  session_assets_bucket_arn = module.s3_session_assets.bucket_arn
 }
 
 # ============================================
@@ -298,6 +314,8 @@ module "ecs_backend" {
   sqs_email_queue_url   = module.sqs.email_queue_url
   sqs_payment_queue_url = module.sqs.payment_queue_url
   sqs_cme_queue_url     = module.sqs.cme_queue_url
+  session_assets_s3_bucket         = module.s3_session_assets.bucket_id
+  session_assets_public_url_base   = module.s3_session_assets.public_url_base
 }
 
 # ============================================

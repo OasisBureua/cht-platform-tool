@@ -82,6 +82,8 @@ export class ProgramsService {
     hostBio?: string;
     speakers?: string[];
     zoomPanelistLinks?: Array<{ name: string; email: string; joinUrl: string }>;
+    sessionDisclaimer?: string | null;
+    sessionHeroImageUrl?: string | null;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -117,6 +119,8 @@ export class ProgramsService {
         ...(dto.zoomPanelistLinks?.length
           ? { zoomPanelistLinks: dto.zoomPanelistLinks }
           : {}),
+        sessionDisclaimer: dto.sessionDisclaimer?.trim() || null,
+        sessionHeroImageUrl: dto.sessionHeroImageUrl?.trim() || null,
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);
@@ -261,6 +265,8 @@ export class ProgramsService {
       hostDisplayName: program.hostDisplayName || undefined,
       hostBio: program.hostBio || undefined,
       speakers: program.speakers ?? [],
+      sessionDisclaimer: program.sessionDisclaimer?.trim() || undefined,
+      sessionHeroImageUrl: program.sessionHeroImageUrl?.trim() || undefined,
       ...(opts?.includeZoomHostLink && program.zoomStartUrl?.trim()
         ? { zoomStartUrl: program.zoomStartUrl.trim() }
         : {}),

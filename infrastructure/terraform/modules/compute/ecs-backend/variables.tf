@@ -154,3 +154,15 @@ variable "enable_scheduled_scaling" {
   type        = bool
   default     = false
 }
+
+variable "session_assets_s3_bucket" {
+  description = "S3 bucket for session hero uploads (presigned PUT); empty disables env injection"
+  type        = string
+  default     = ""
+}
+
+variable "session_assets_public_url_base" {
+  description = "HTTPS base URL for public GET on session hero objects (virtual-hosted style, no trailing slash)"
+  type        = string
+  default     = ""
+}

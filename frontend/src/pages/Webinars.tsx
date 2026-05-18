@@ -7,6 +7,7 @@ import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
+import { BillComMark } from '../components/branding/BillComMark';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -77,10 +78,11 @@ export default function Webinars() {
           <Radio className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
           <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
         </div>
-        <p className="text-pretty text-sm text-gray-600">
+        <p className="text-pretty text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves
           you, use <span className="font-medium text-gray-800">Join session</span> to open Zoom in your browser or the
-          Zoom app. Honorarium payouts use Bill.com.
+          Zoom app. Honorarium payouts use{' '}
+          <BillComMark size="sm" className="translate-y-px" />.
         </p>
       </header>
 

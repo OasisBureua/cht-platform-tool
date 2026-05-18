@@ -3,11 +3,12 @@ import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'reac
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Loader2 } from 'lucide-react';
+import { ChevronLeft, Loader2, ExternalLink } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
+import { BillComMark } from '../components/branding/BillComMark';
 
 type StepKey = 'intake' | 'slot' | 'submit';
 
@@ -177,9 +178,19 @@ export default function ProgramRegisterWizard() {
         Back to session
       </Link>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 md:p-8 shadow-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        {program.sessionHeroImageUrl?.trim() ? (
+          <div className="border-b border-gray-100 bg-gray-50">
+            <img
+              src={program.sessionHeroImageUrl.trim()}
+              alt=""
+              className="w-full max-h-52 object-cover"
+            />
+          </div>
+        ) : null}
+        <div className="p-6 md:p-8 space-y-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {program.zoomSessionType === 'MEETING' ? 'CHM Office Hours' : 'Live'} registration
+          {program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'} registration
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
         <p className="mt-2 text-sm text-gray-600">
@@ -187,7 +198,13 @@ export default function ProgramRegisterWizard() {
           review when required. Post-event feedback lives under <strong>Surveys</strong>.
         </p>
 
-        <ol className="mt-6 flex flex-wrap gap-2 text-xs">
+        {program.sessionDisclaimer?.trim() ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">
+            {program.sessionDisclaimer.trim()}
+          </div>
+        ) : null}
+
+        <ol className="flex flex-wrap gap-2 text-xs">
           {steps.map((s, i) => (
             <li
               key={`${s}-${i}`}
@@ -251,10 +268,14 @@ export default function ProgramRegisterWizard() {
 
           {current === 'bill' && (
             <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-sm font-semibold text-gray-900">Vendor & payments (Bill.com)</p>
-              <p className="text-sm text-gray-600">
-                If this program requires payment setup, open Bill.com in a new tab, complete onboarding, then return here
-                and continue. This keeps Jotform and Bill.com in one guided flow without mixing iframes.
+              <p className="text-sm font-semibold text-gray-900 inline-flex flex-wrap items-center gap-2">
+                Vendor & payouts <BillComMark size="sm" />
+              </p>
+              <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+                If this program requires payment setup, open{' '}
+                <BillComMark size="xs" className="translate-y-px" /> in a new tab, complete onboarding, then return here
+                and continue. This keeps Jotform and{' '}
+                <BillComMark size="xs" className="translate-y-px" /> in one guided flow without mixing iframes.
               </p>
               <a
                 href="/app/payments"
@@ -262,7 +283,7 @@ export default function ProgramRegisterWizard() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
               >
-                Open Bill.com setup
+                Open payout setup
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
@@ -337,6 +358,7 @@ export default function ProgramRegisterWizard() {
               'Continue'
             )}
           </button>
+        </div>
         </div>
       </div>
     </div>

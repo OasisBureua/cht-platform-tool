@@ -44,7 +44,7 @@ const QUICK_START_ACTIONS = [
   },
   {
     title: 'CHM Office Hours',
-    desc: 'Drop in for interactive Q&A with experts—book a slot and join.',
+    desc: 'Drop in for live Q&A with experts—book a slot and join.',
     icon: CalendarClock,
     to: '/app/chm-office-hours',
   },
@@ -853,7 +853,7 @@ export default function Dashboard() {
                 description={
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
-                    : 'Interactive Q&A'
+                    : 'Office Hours'
                 }
               />
             ))

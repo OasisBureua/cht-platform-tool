@@ -346,7 +346,17 @@ export default function WebinarDetail() {
       ) : null}
 
       {/* Header / Overview */}
-      <section className="bg-white border border-gray-200 rounded-xl p-6">
+      <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        {program.sessionHeroImageUrl?.trim() ? (
+          <div className="border-b border-gray-100 bg-gray-50">
+            <img
+              src={program.sessionHeroImageUrl.trim()}
+              alt=""
+              className="w-full max-h-64 object-cover"
+            />
+          </div>
+        ) : null}
+        <div className="p-6">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div className="space-y-4 min-w-0">
 
@@ -373,6 +383,12 @@ export default function WebinarDetail() {
             {/* Description */}
             {program.description ? (
               <p className="text-base text-gray-700 leading-relaxed">{program.description}</p>
+            ) : null}
+
+            {program.sessionDisclaimer?.trim() ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">
+                {program.sessionDisclaimer.trim()}
+              </div>
             ) : null}
 
             {/* Speaker / Host */}
@@ -473,6 +489,7 @@ export default function WebinarDetail() {
               <p className="mt-2 text-xs text-gray-600">Complete required steps to earn rewards.</p>
             ) : null}
           </div>
+        </div>
         </div>
       </section>
 

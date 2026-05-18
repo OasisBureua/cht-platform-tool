@@ -27,3 +27,9 @@ variable "certificates_bucket_arn" {
   description = "S3 certificates bucket ARN"
   type        = string
 }
+
+variable "session_assets_bucket_arn" {
+  description = "Optional S3 bucket ARN for session hero uploads (prefix session-heroes/*)"
+  type        = string
+  default     = ""
+}
