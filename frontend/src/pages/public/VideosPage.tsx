@@ -12,7 +12,7 @@ import { PlaylistVideosFlattenGrid } from '../../components/content/PlaylistVide
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
-import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../../components/content/BiomarkerConversationRow';
+import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../../components/content/BiomarkerConversationRow';
 import {
   filterPlaylistsByFocus,
   parsePlaylistFocus,
@@ -25,27 +25,90 @@ import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVide
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
 
+/**
+ * Sort options surfaced in the catalog "Sort by" dropdown.
+ * - `recorded_at`: orders by shoot date (Shoot.shoot_date with posted_at fallback).
+ *   Distinct from `posted` — this is when the content was *recorded*, not when it
+ *   was published to social media. Default UX choice for "what's new in the catalog".
+ * - `posted`: orders by social-media post date (`posted_at`). Renamed in the UI from
+ *   the older "Most recent" / "Recently posted" pair (which were byte-identical at
+ *   the backend — see 2026-05-16 audit). The duplicate "Most recent" option has been
+ *   removed; legacy `?sort=recent` URLs are redirected to `posted` below.
+ * - `views`/`likes`: engagement-driven sorts.
+ */
 const SORT_OPTIONS = [
-  { value: '', label: 'Sort by' },
-  { value: 'recent', label: 'Most recent' },
+  { value: 'recorded_at', label: 'Recently recorded' },
   { value: 'posted', label: 'Recently posted' },
-  { value: 'views', label: 'Most views' },
-  { value: 'likes', label: 'Most likes' },
+  { value: 'views', label: 'Most watched' },
+  { value: 'likes', label: 'Most liked' },
 ];
 
-function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
-  const out: { value: string; label: string }[] = [];
-  const seen = new Set<string>();
-  for (const [, values] of Object.entries(tags)) {
-    if (!Array.isArray(values)) continue;
-    for (const v of values) {
-      if (v && !seen.has(v) && !String(v).startsWith('brand:')) {
-        seen.add(v);
-        out.push({ value: v, label: v });
-      }
+/** Valid values for ?sort= / sort_by (MediaHub catalog API). */
+const SORT_PARAM_VALUES = new Set(['views', 'likes', 'posted', 'recorded_at']);
+
+/** Default sort the user lands on when no `?sort=` query param is present. */
+const DEFAULT_SORT = 'recorded_at';
+
+/**
+ * Tag-namespace ordering + display labels for the grouped tag dropdown.
+ * Backend `/api/catalog/tags` returns `Record<namespace, string[]>`; we render one
+ * `<optgroup>` per namespace in this order. `doctor` is intentionally omitted —
+ * the "All doctors" dropdown sitting next to this control already covers it.
+ */
+const TAG_NAMESPACE_ORDER: { key: string; label: string }[] = [
+  { key: 'biomarker', label: 'Biomarkers' },
+  { key: 'stage', label: 'Stages' },
+  { key: 'drug', label: 'Drugs' },
+  { key: 'trial', label: 'Trials' },
+  { key: 'topic', label: 'Topics' },
+  { key: 'brand', label: 'Brands' },
+];
+
+/**
+ * Client-side alias map: collapse equivalent tag values to a single canonical form
+ * so the dropdown doesn't show both "TNBC" and "Triple Negative" as separate entries.
+ * Canonical form picks the compact clinician-friendly code ("TNBC", "eBC", "mBC").
+ */
+const TAG_ALIASES: Record<string, string> = {
+  'Triple Negative': 'TNBC',
+  'triple negative': 'TNBC',
+  'early breast cancer': 'eBC',
+  'Early Breast Cancer': 'eBC',
+  'metastatic breast cancer': 'mBC',
+  'Metastatic Breast Cancer': 'mBC',
+};
+
+function stripNamespacePrefix(value: string): string {
+  const idx = value.indexOf(':');
+  if (idx === -1) return value;
+  return value.slice(idx + 1);
+}
+
+function canonicalizeTag(value: string): string {
+  return TAG_ALIASES[value] ?? value;
+}
+
+function groupTagsByNamespace(
+  tags: MediaHubTags,
+): { label: string; options: { value: string; label: string }[] }[] {
+  const groups: { label: string; options: { value: string; label: string }[] }[] = [];
+  for (const { key, label } of TAG_NAMESPACE_ORDER) {
+    const raw = tags[key];
+    if (!Array.isArray(raw) || raw.length === 0) continue;
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [];
+    for (const v of raw) {
+      if (!v) continue;
+      const stripped = stripNamespacePrefix(String(v));
+      const canonical = canonicalizeTag(stripped);
+      if (seen.has(canonical)) continue;
+      seen.add(canonical);
+      opts.push({ value: canonical, label: canonical });
     }
+    opts.sort((a, b) => a.label.localeCompare(b.label));
+    if (opts.length > 0) groups.push({ label, options: opts });
   }
-  return out.sort((a, b) => a.label.localeCompare(b.label));
+  return groups;
 }
 
 function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: string }[] {
@@ -56,9 +119,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const CLIPS_PAGE_SIZE = 24;
 
 type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
-
-/** Valid values for ?sort= / sort_by (MediaHub catalog API). */
-const SORT_PARAM_VALUES = new Set(['views', 'likes', 'recent', 'posted']);
+type SortByParam = 'views' | 'likes' | 'posted' | 'recorded_at';
 
 export default function VideosPage() {
   const location = useLocation();
@@ -68,7 +129,7 @@ export default function VideosPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [doctorFilter, setDoctorFilter] = useState('');
-  const [sortBy, setSortBy] = useState('');
+  const [sortBy, setSortBy] = useState<string>(DEFAULT_SORT);
   const [sortOpen, setSortOpen] = useState(false);
 
   // Ref so the filter-sync effect can read the current location without being
@@ -91,8 +152,11 @@ export default function VideosPage() {
     setDebouncedQuery(qRaw.trim());
     setTagFilter(params.get('tag') ?? '');
     setDoctorFilter(params.get('doctor') ?? '');
-    const sort = params.get('sort') ?? params.get('sort_by') ?? '';
-    setSortBy(SORT_PARAM_VALUES.has(sort) ? sort : '');
+    const sortRaw = params.get('sort') ?? params.get('sort_by') ?? '';
+    // Back-compat: legacy `?sort=recent` was byte-identical to `?sort=posted` at
+    // the backend (2026-05-16 audit). Redirect old links to `posted`.
+    const sortNormalized = sortRaw === 'recent' ? 'posted' : sortRaw;
+    setSortBy(SORT_PARAM_VALUES.has(sortNormalized) ? sortNormalized : DEFAULT_SORT);
   }, [location.search, isInApp]);
 
   useLayoutEffect(() => {
@@ -120,7 +184,8 @@ export default function VideosPage() {
     if (q) params.set('q', q);
     if (tagFilter) params.set('tag', tagFilter);
     if (doctorFilter) params.set('doctor', doctorFilter);
-    if (sortBy) params.set('sort', sortBy);
+    // Only emit `?sort=` when it differs from the default — keeps URLs clean.
+    if (sortBy && sortBy !== DEFAULT_SORT) params.set('sort', sortBy);
 
     const curParams = new URLSearchParams((loc.search || '').replace(/^\?/, ''));
 
@@ -159,7 +224,7 @@ export default function VideosPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const tagOptions = useMemo(() => flattenTags(tags), [tags]);
+  const tagGroups = useMemo(() => groupTagsByNamespace(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
   /** Clips/filters load once tags + doctors requests finish — do not block on empty tag list (MediaHub can return {}). */
   const useMediaHub = tagsReady && doctorsReady;
@@ -207,7 +272,7 @@ export default function VideosPage() {
         q: debouncedQuery || undefined,
         tag: tagFilter || undefined,
         doctor: doctorFilter || undefined,
-        sort_by: sortBy ? (sortBy as 'views' | 'likes' | 'recent' | 'posted') : undefined,
+        sort_by: sortBy ? (sortBy as SortByParam) : undefined,
         limit: CLIPS_PAGE_SIZE,
         offset: pageParam,
       }),
@@ -265,7 +330,9 @@ export default function VideosPage() {
   const isInitialClipsLoad =
     useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && clipsPageCount === 0;
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
-  const filterOrSortActive = !!(debouncedQuery.trim() || tagFilter || doctorFilter || sortBy);
+  const filterOrSortActive = !!(
+    debouncedQuery.trim() || tagFilter || doctorFilter || (sortBy && sortBy !== DEFAULT_SORT)
+  );
 
   // True when the user has explicitly navigated to the full clips grid page
   // (/app/catalog?view=clips). Distinct from the default /app/catalog strip home.
@@ -344,10 +411,14 @@ export default function VideosPage() {
               className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
             >
               <option value="">All tags</option>
-              {tagOptions.slice(0, 100).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+              {tagGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={`${group.label}:${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
 
@@ -377,7 +448,7 @@ export default function VideosPage() {
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
                   <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
-                    {SORT_OPTIONS.filter((o) => o.value !== '').map((opt) => (
+                    {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -551,8 +622,8 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
-                {BIOMARKER_ROWS.map((row) => (
-                  <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
+                {BIOMARKER_CAROUSEL_IDS.map((id) => (
+                  <BiomarkerConversationRow key={id} carouselId={id} isInApp={true} />
                 ))}
               </>
             ) : (
@@ -575,8 +646,8 @@ export default function VideosPage() {
                   </ConversationRow>
                 ) : null}
                 {playlistsCarouselStrip}
-                {BIOMARKER_ROWS.map((row) => (
-                  <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
+                {BIOMARKER_CAROUSEL_IDS.map((id) => (
+                  <BiomarkerConversationRow key={id} carouselId={id} isInApp={true} />
                 ))}
               </>
             )}

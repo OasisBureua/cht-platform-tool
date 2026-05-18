@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { Link, useParams, Navigate, useLocation } from 'react-router-dom';
-import { dolNetwork, getRegionBySlug } from '../../data/dol-network';
+import { getRegionFromDirectory, useKolDirectory } from '../../hooks/useKolDirectory';
 import { ChevronLeft } from 'lucide-react';
 
 export default function DolRegionDetail() {
   const { regionSlug } = useParams<{ regionSlug: string }>();
   const location = useLocation();
-  const region = regionSlug ? getRegionBySlug(regionSlug) : null;
+  const directory = useKolDirectory();
+  const region = regionSlug ? getRegionFromDirectory(directory, regionSlug) : null;
 
   useEffect(() => {
     const id = location.hash.replace(/^#/, '');
@@ -17,6 +18,11 @@ export default function DolRegionDetail() {
     return () => cancelAnimationFrame(t);
   }, [location.hash, region?.id]);
 
+  if (directory.loadState === 'loading') {
+    return (
+      <div className="bg-white px-6 py-20 text-center text-gray-500">Loading region…</div>
+    );
+  }
   if (!region) {
     return <Navigate to="/kol-network" replace />;
   }
@@ -98,7 +104,7 @@ export default function DolRegionDetail() {
             Other regions
           </h3>
           <div className="flex flex-wrap gap-2">
-            {dolNetwork
+            {directory.regions
               .filter((r) => r.id !== region.id)
               .map((r) => (
                 <Link
