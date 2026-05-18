@@ -2,6 +2,39 @@ locals {
   prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
 }
 
+# SPA viewer-request handler: rewrite deep-link URIs to /index.html so React
+# Router can take over. Scoped to the S3 default behavior via function_association
+# (NOT the /api/* or /health* behaviors). Replaces the old distribution-wide
+# `custom_error_response { error_code = 404 }` which caused new API endpoints to
+# return cached HTML for 5 minutes after every fresh ECS task rollover.
+#
+# Logic:
+#   - Path has a file extension (.js, .css, .png, etc.) → pass through to S3 as-is
+#   - Path looks like an asset under /assets/ → pass through
+#   - Anything else → rewrite request.uri to /index.html
+#
+# This runs only on the S3 behavior. /api/* requests are routed to the ALB
+# before this function would ever execute.
+resource "aws_cloudfront_function" "spa_rewrite" {
+  name    = "${local.prefix}-spa-rewrite"
+  runtime = "cloudfront-js-1.0"
+  comment = "SPA deep-link → /index.html rewrite (S3 behavior only)"
+  publish = true
+  code    = <<-EOT
+    function handler(event) {
+      var request = event.request;
+      var uri = request.uri;
+      // Pass through files that look like static assets (have a real extension).
+      if (uri.indexOf('/assets/') === 0) return request;
+      var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
+      if (lastSegment.indexOf('.') !== -1) return request;
+      // SPA route — let React Router handle it.
+      request.uri = '/index.html';
+      return request;
+    }
+  EOT
+}
+
 # Security headers policy - X-Frame-Options, HSTS, etc.
 resource "aws_cloudfront_response_headers_policy" "security_headers" {
   name    = "${local.prefix}-security-headers"
@@ -78,6 +111,13 @@ resource "aws_cloudfront_distribution" "frontend" {
       }
     }
 
+    # SPA deep-link rewrite — runs ONLY on the S3 behavior. /api/* and /health*
+    # behaviors below don't get this function, so the ALB owns its own 404s.
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.spa_rewrite.arn
+    }
+
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
@@ -132,22 +172,16 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # Custom error responses for SPA
-  custom_error_response {
-    error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 300
-  }
-
-  custom_error_response {
-    error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
-    error_caching_min_ttl = 300
-  }
-
-  # Don't cache 502 - when backend recovers, get fresh response
+  # SPA deep-link rewrite is now handled by `aws_cloudfront_function.spa_rewrite`
+  # attached to the S3 default behavior (above). That function transforms the
+  # request URI to `/index.html` BEFORE CloudFront looks up the S3 key, so S3
+  # never 404s for an SPA route. The old distribution-wide `custom_error_response`
+  # for 404/403 was a heavy hammer: it rewrote /api/* 404s from the ALB to
+  # `/index.html` and cached the bad response for 5 minutes — every new API
+  # endpoint hit a phantom 404 window after first deploy.
+  #
+  # 502 caching is still suppressed so the SPA doesn't serve a stale outage page
+  # once the backend recovers.
   custom_error_response {
     error_code            = 502
     error_caching_min_ttl = 0
