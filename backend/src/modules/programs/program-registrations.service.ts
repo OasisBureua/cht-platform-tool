@@ -495,6 +495,150 @@ export class ProgramRegistrationsService {
   }
 
   /**
+   * Register the current user for multiple live webinars at once (approval requests when required).
+   * Office Hours (MEETING) and sessions that need a time slot are skipped — use per-session registration.
+   */
+  async submitBatchRegistrations(
+    userId: string,
+    programIds: string[],
+  ): Promise<{
+    submitted: Array<{
+      programId: string;
+      title: string;
+      status: string;
+      enrolled: boolean;
+    }>;
+    skipped: Array<{ programId: string; title: string; reason: string }>;
+    failed: Array<{ programId: string; title: string; message: string }>;
+  }> {
+    const uniqueIds = [
+      ...new Set(programIds.map((id) => id.trim()).filter(Boolean)),
+    ];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException('Select at least one webinar.');
+    }
+    if (uniqueIds.length > 25) {
+      throw new BadRequestException(
+        'You can register for at most 25 webinars at a time.',
+      );
+    }
+
+    const submitted: Array<{
+      programId: string;
+      title: string;
+      status: string;
+      enrolled: boolean;
+    }> = [];
+    const skipped: Array<{
+      programId: string;
+      title: string;
+      reason: string;
+    }> = [];
+    const failed: Array<{
+      programId: string;
+      title: string;
+      message: string;
+    }> = [];
+
+    for (const programId of uniqueIds) {
+      const program = await this.prisma.program.findUnique({
+        where: { id: programId },
+        select: {
+          title: true,
+          status: true,
+          zoomSessionType: true,
+        },
+      });
+
+      const title = program?.title?.trim() || 'Session';
+
+      if (!program) {
+        failed.push({
+          programId,
+          title,
+          message: 'Session not found',
+        });
+        continue;
+      }
+
+      if (program.status !== ProgramStatus.PUBLISHED) {
+        skipped.push({
+          programId,
+          title,
+          reason: 'Session is not open for registration',
+        });
+        continue;
+      }
+
+      if (program.zoomSessionType !== ProgramZoomSessionType.WEBINAR) {
+        skipped.push({
+          programId,
+          title,
+          reason:
+            'Office Hours must be registered individually (time slot required)',
+        });
+        continue;
+      }
+
+      const slotCount = await this.prisma.officeHoursSlot.count({
+        where: { programId },
+      });
+      if (slotCount > 0) {
+        skipped.push({
+          programId,
+          title,
+          reason: 'This session requires choosing a time slot — open it to register',
+        });
+        continue;
+      }
+
+      try {
+        const result = await this.submitRegistration(userId, programId, {});
+        submitted.push({
+          programId,
+          title,
+          status: result.status,
+          enrolled: result.enrolled,
+        });
+      } catch (err: unknown) {
+        const rawMessage: string | string[] =
+          err instanceof BadRequestException
+            ? ((err.getResponse() as { message?: string | string[] })?.message ??
+              err.message)
+            : err instanceof Error
+              ? err.message
+              : 'Registration failed';
+
+        const normalized =
+          typeof rawMessage === 'string'
+            ? rawMessage
+            : Array.isArray(rawMessage)
+              ? rawMessage.join('; ')
+              : 'Registration failed';
+
+        if (
+          normalized.toLowerCase().includes('already enrolled') ||
+          normalized.toLowerCase().includes('time slot')
+        ) {
+          skipped.push({ programId, title, reason: normalized });
+        } else {
+          failed.push({ programId, title, message: normalized });
+        }
+      }
+    }
+
+    if (submitted.length === 0 && skipped.length === 0 && failed.length === 0) {
+      throw new BadRequestException('No webinars could be processed.');
+    }
+
+    this.logger.log(
+      `Batch registration user=${userId}: submitted=${submitted.length} skipped=${skipped.length} failed=${failed.length}`,
+    );
+
+    return { submitted, skipped, failed };
+  }
+
+  /**
    * Jotform webhook: published webinar intake submitted — persist submission id and optionally enroll.
    */
   async recordWebinarIntakeFromJotformWebhook(

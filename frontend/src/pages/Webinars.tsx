@@ -73,10 +73,20 @@ export default function Webinars() {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-1">
-        <div className="flex items-center gap-2.5 text-gray-900">
-          <Radio className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
-          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-gray-900">
+            <Radio className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
+            <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
+          </div>
+          {userId ? (
+            <Link
+              to="/app/live/register-multiple"
+              className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100"
+            >
+              Register for multiple
+            </Link>
+          ) : null}
         </div>
         <p className="text-pretty text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves

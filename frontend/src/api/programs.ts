@@ -247,6 +247,22 @@ export const programsApi = {
     return data;
   },
 
+  submitBatchRegistrations: async (
+    programIds: string[],
+  ): Promise<{
+    submitted: Array<{
+      programId: string;
+      title: string;
+      status: string;
+      enrolled: boolean;
+    }>;
+    skipped: Array<{ programId: string; title: string; reason: string }>;
+    failed: Array<{ programId: string; title: string; message: string }>;
+  }> => {
+    const { data } = await apiClient.post('/programs/registrations/batch', { programIds });
+    return data;
+  },
+
   getJotformResume: async (
     programId: string,
   ): Promise<{ sessionId: string; expiresAt: string } | null> => {

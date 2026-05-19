@@ -49,6 +49,7 @@ const WebinarDetail         = lazy(() => import('./pages/WebinarDetail'));
 const OfficeHours           = lazy(() => import('./pages/OfficeHours'));
 const OfficeHoursDetail     = lazy(() => import('./pages/OfficeHoursDetail'));
 const ProgramRegisterWizard = lazy(() => import('./pages/ProgramRegisterWizard'));
+const LiveMultiRegister     = lazy(() => import('./pages/LiveMultiRegister'));
 const Surveys               = lazy(() => import('./pages/Surveys'));
 const SurveyDetail          = lazy(() => import('./pages/SurveyDetail'));
 const WatchVideo            = lazy(() => import('./pages/WatchVideo'));
@@ -164,6 +165,7 @@ function App() {
               <Route path="search" element={<ExploreOpportunities />} />
 
               <Route path="live" element={<Webinars />} />
+              <Route path="live/register-multiple" element={<LiveMultiRegister />} />
               <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
               <Route path="live/:id" element={<WebinarDetail />} />
               <Route path="webinars" element={<Navigate to="/app/live" replace />} />
