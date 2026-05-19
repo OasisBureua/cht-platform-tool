@@ -211,7 +211,6 @@ export default function VideosPage() {
     navigate({ pathname: loc.pathname, search: next ? `?${next}` : '' }, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, tagFilter, doctorFilter, sortBy, isInApp, navigate]);
-
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
@@ -381,7 +380,7 @@ export default function VideosPage() {
       >
         {effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid) ? (
           <div className="flex items-center gap-2.5 pt-2 text-zinc-900 sm:pt-4">
-            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
+            <MonitorPlay className="h-5 w-5 shrink-0 text-accent-700 dark:text-accent-400" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
               Explore our catalogue
             </h1>
@@ -513,7 +512,7 @@ export default function VideosPage() {
                 {!isInApp ? (
                   <Link
                     to="/catalog?view=clips"
-                    className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                    className="shrink-0 text-sm font-semibold text-accent-600 transition-colors hover:text-accent-800 hover:underline dark:text-accent-400 dark:hover:text-accent-300"
                   >
                     Browse conversations
                   </Link>

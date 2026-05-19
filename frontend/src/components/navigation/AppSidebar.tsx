@@ -8,7 +8,7 @@ export default function AppSidebar() {
       <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-zinc-200/25 dark:border-zinc-800/60">
         <Link
           to="/app/home"
-          className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-2xl text-[#ea580c] transition-[color,opacity,transform] duration-200 ease-out hover:text-[#c2410c] hover:opacity-95 active:scale-[0.96] dark:text-[#fb923c] dark:hover:text-orange-300"
+          className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-2xl text-accent-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-accent-700 hover:opacity-95 active:scale-[0.96] dark:text-accent-400 dark:hover:text-accent-300"
           aria-label="Community Health Media, app home"
         >
           <ChmWordmarkOption2 className="h-9 w-[4.75rem]" />
@@ -28,8 +28,8 @@ export default function AppSidebar() {
               [
                 'flex h-[clamp(56px,8.5vh,76px)] w-[88px] shrink-0 flex-col items-center justify-center gap-[10px] rounded-2xl px-1.5 py-2 text-center transition-[color,background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96]',
                 isActive
-                  ? 'bg-orange-100 text-orange-950 shadow-[inset_0_0_0_1px_rgba(234,88,12,0.22),0_8px_24px_-12px_rgba(234,88,12,0.38)] ring-2 ring-orange-500/25 dark:bg-[#c2410c]/90 dark:text-white dark:ring-orange-400/40 dark:shadow-[0_8px_28px_-12px_rgba(234,88,12,0.45)]'
-                  : 'text-zinc-900 hover:bg-orange-50/90 hover:text-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900/90 dark:hover:text-white',
+                  ? 'bg-accent-100 text-accent-950 shadow-[inset_0_0_0_1px_rgba(49,105,149,0.18),0_8px_24px_-12px_rgba(49,105,149,0.22)] ring-2 ring-accent-500/25 ring-offset-0 dark:bg-accent-600 dark:text-white dark:ring-accent-400/35 dark:shadow-[0_8px_28px_-12px_rgba(37,99,235,0.35)]'
+                  : 'text-zinc-900 hover:bg-accent-50/90 hover:text-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900/90 dark:hover:text-white',
               ].join(' ')
             }
           >
@@ -38,8 +38,8 @@ export default function AppSidebar() {
                 <Icon
                   className={
                     isActive
-                      ? 'h-5 w-5 shrink-0'
-                      : 'h-5 w-5 shrink-0 text-[#c2410c] dark:text-[#ea580c]'
+                      ? 'h-5 w-5 shrink-0 text-accent-950 dark:text-white'
+                      : 'h-5 w-5 shrink-0 text-accent-600 dark:text-accent-400'
                   }
                   strokeWidth={2}
                   aria-hidden

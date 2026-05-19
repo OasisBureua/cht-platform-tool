@@ -51,7 +51,7 @@ export default function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen flex min-w-0 flex-col bg-white text-gray-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-gray-900 dark:bg-zinc-950 dark:text-zinc-100">
       <header className="sticky top-0 z-50 nav-liquid-glass">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
           {/* Center: quick entry to content library (filters live on /catalog) */}
@@ -59,7 +59,7 @@ export default function PublicLayout() {
             <div className="flex justify-start min-w-0">
               <Link
                 to="/home"
-                className="flex items-center shrink-0 text-[#ea580c] transition-[color,opacity] hover:text-[#c2410c] hover:opacity-95 dark:text-[#fb923c] dark:hover:text-orange-300"
+                className="flex items-center shrink-0 text-accent-600 transition-[color,opacity] hover:text-accent-700 hover:opacity-95 dark:text-accent-400 dark:hover:text-accent-300"
                 aria-label="Community Health Media, home"
               >
                 <ChmWordmarkOption2 className="h-7 w-[4.5rem] sm:h-8 sm:w-[5rem]" />
@@ -68,7 +68,7 @@ export default function PublicLayout() {
 
             <div className="flex justify-center min-w-0 px-1">
               <form onSubmit={submitBrowse} className="w-full max-w-xl lg:max-w-2xl">
-                <div className="flex w-full overflow-hidden rounded-full border border-white/50 bg-white/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] backdrop-blur-md transition-[box-shadow,border-color] focus-within:border-brand-400/60 focus-within:ring-2 focus-within:ring-brand-500/25">
+                <div className="flex w-full overflow-hidden rounded-full border border-white/50 bg-white/45 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.7)] backdrop-blur-md transition-[box-shadow,border-color] focus-within:border-accent-400/60 focus-within:ring-2 focus-within:ring-accent-500/25">
                   <input
                     type="search"
                     name="q"
@@ -80,7 +80,7 @@ export default function PublicLayout() {
                   />
                   <button
                     type="submit"
-                    className="shrink-0 border-l border-white/40 bg-white/35 px-4 py-2 text-[#c2410c] transition-[color,background-color] hover:bg-orange-50/90 hover:text-[#9a3412] dark:text-[#fdba74] dark:hover:bg-brand-950/35 dark:hover:text-orange-100"
+                    className="shrink-0 border-l border-white/40 bg-white/35 px-4 py-2 text-accent-700 transition-[color,background-color] hover:bg-accent-50/90 hover:text-accent-800 dark:text-accent-300 dark:hover:bg-accent-950/35 dark:hover:text-accent-100"
                     aria-label="Go to library"
                   >
                     <Search className="h-5 w-5" />
@@ -92,13 +92,13 @@ export default function PublicLayout() {
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
               <Link
                 to="/catalog"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-[#c2410c] transition-colors hover:bg-orange-50/80 hover:text-[#9a3412] sm:hidden dark:text-[#fdba74] dark:hover:bg-white/10"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-accent-700 transition-colors hover:bg-accent-50/80 hover:text-accent-800 sm:hidden dark:text-accent-300 dark:hover:bg-white/10"
                 aria-label="Browse library"
               >
                 <Search className="h-5 w-5" />
               </Link>
               <ThemeToggle className="shrink-0" />
-              <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-zinc-200/70 bg-transparent p-1 shadow-[0_2px_14px_-6px_rgba(234,88,12,0.22)] backdrop-blur-md dark:border-zinc-600/55 dark:bg-transparent">
+              <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-zinc-200/70 bg-transparent p-1 shadow-[0_2px_14px_-6px_rgba(49,105,149,0.16)] backdrop-blur-md dark:border-zinc-600/55 dark:bg-transparent">
                 <Link
                   to="/login"
                   className="rounded-full px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-900 transition-[opacity,background-color,color] hover:bg-zinc-100/90 dark:text-zinc-100 dark:hover:bg-zinc-800/75"
@@ -115,7 +115,7 @@ export default function PublicLayout() {
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-[#c2410c] transition-[color,background-color,transform] duration-200 ease-out hover:bg-orange-50/80 hover:text-[#9a3412] active:scale-[0.96] dark:text-[#fdba74] dark:hover:bg-white/5"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-accent-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-accent-50/80 hover:text-accent-800 active:scale-[0.96] dark:text-accent-300 dark:hover:bg-white/5"
                 aria-label="Open menu"
                 aria-expanded={drawerOpen}
               >
@@ -172,7 +172,7 @@ export default function PublicLayout() {
                   [
                     'public-drawer-link flex min-h-[48px] items-center rounded-2xl px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
                     isActive
-                      ? 'bg-brand-50/95 text-brand-950 shadow-[inset_0_0_0_1px_rgba(234,88,12,0.22)] dark:bg-brand-950/40 dark:text-orange-50'
+                      ? 'bg-accent-100/95 text-accent-950 shadow-[inset_0_0_0_1px_rgba(49,105,149,0.2)] dark:bg-accent-950/50 dark:text-accent-50'
                       : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
                   ].join(' ')
                 }
@@ -189,7 +189,7 @@ export default function PublicLayout() {
             <Link
               to="/login"
               onClick={() => setDrawerOpen(false)}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl border-2 border-brand-600 bg-white text-center text-base font-semibold text-brand-800 shadow-[0_8px_24px_-12px_rgba(234,88,12,0.18)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-50 active:scale-[0.96] dark:border-brand-400 dark:bg-zinc-950 dark:text-orange-50 dark:hover:bg-brand-950/35"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl border-2 border-accent-600 bg-white text-center text-base font-semibold text-accent-800 shadow-[0_8px_24px_-12px_rgba(49,105,149,0.2)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-accent-50 active:scale-[0.96] dark:border-accent-400 dark:bg-zinc-950 dark:text-accent-50 dark:hover:bg-accent-950/35"
             >
               Login
             </Link>
