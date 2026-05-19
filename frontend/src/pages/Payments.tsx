@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
@@ -9,8 +9,7 @@ import { CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { W9Modal } from '../components/W9Modal';
 import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
-
-
+import { BillComMark } from '../components/branding/BillComMark';
 function formatMoney(value: number) {
   return `$${value.toFixed(2)}`;
 }
@@ -81,9 +80,10 @@ export default function Payments() {
     <div className="space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payment Settings</h1>
-        <p className="text-sm text-gray-600">
-          Honoraria and survey bonuses are paid via Bill.com. Set up your bank details via Bill.com (ACH or check); admins
-          send payouts via Bill.com.
+        <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+          Honoraria and survey bonuses are paid through{' '}
+          <BillComMark size="sm" className="translate-y-px" /> using ACH or check. Complete your vendor profile here so
+          admins can initiate payouts.
         </p>
         <p className="text-sm text-gray-600">
           <Link to="/app/earnings" className="font-medium text-gray-900 underline hover:no-underline">
@@ -127,7 +127,9 @@ export default function Payments() {
           <div className="rounded-3xl border border-green-200 bg-green-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-              <p className="text-sm font-medium text-green-800">Bill.com vendor on file. You can receive payouts.</p>
+              <p className="text-sm font-medium text-green-800 inline-flex flex-wrap items-center gap-2">
+                <BillComMark size="sm" /> vendor on file. You can receive payouts.
+              </p>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
@@ -260,6 +262,7 @@ export default function Payments() {
     </div>
   );
 }
+
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (

@@ -49,8 +49,19 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/clips
-   * MediaHub: Video catalog with filters (q, tag, doctor, platform, sort_by, limit, offset).
-   * On 401 (Invalid API key), returns empty so frontend can fall back to YouTube playlists.
+   *
+   * Proxies MediaHub /api/public/clips. Supports the full query
+   * surface including Phase 2 additions (sort_by=recorded_at,
+   * dedup_by=shoot, per_shoot_cap=N) from the 2026-05-17 video-
+   * presentation design doc.
+   *
+   * Platform default: 'youtube' (set in MediaHubService). To include
+   * LinkedIn/X/etc, pass platform='' or platform='linkedin,x'.
+   * Eliminates the audit's LinkedIn-text-post-leak into video
+   * carousels.
+   *
+   * On 401 from MediaHub: returns empty so the frontend can render
+   * an empty state.
    */
   @Get('clips')
   async getClips(
@@ -58,7 +69,10 @@ export class CatalogController {
     @Query('tag') tag?: string,
     @Query('doctor') doctor?: string,
     @Query('platform') platform?: string,
-    @Query('sort_by') sortBy?: 'views' | 'likes' | 'recent' | 'posted',
+    @Query('sort_by')
+    sortBy?: 'views' | 'likes' | 'recent' | 'posted' | 'recorded_at',
+    @Query('dedup_by') dedupBy?: 'shoot',
+    @Query('per_shoot_cap') perShootCap?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
@@ -73,6 +87,8 @@ export class CatalogController {
         doctor,
         platform,
         sort_by: sortBy,
+        dedup_by: dedupBy,
+        per_shoot_cap: perShootCap ? parseInt(perShootCap, 10) : undefined,
         limit: limit ? parseInt(limit, 10) : undefined,
         offset: offset ? parseInt(offset, 10) : undefined,
       });
@@ -216,5 +232,55 @@ export class CatalogController {
   @Get('playlists/:id')
   async getPlaylist(@Param('id') id: string) {
     return this.catalogService.getPlaylistVideos(id);
+  }
+
+  /**
+   * GET /api/catalog/playlists-tags
+   *
+   * Proxies MediaHub /api/public/playlists. Returns the curator-set
+   * tag/lane overlay for YouTube playlists. Frontend joins this client-
+   * side with the YouTube-sourced playlist metadata from `/playlists`.
+   *
+   * Replaces the brittle `_generated-catalog-playlists.json` fuzzy-
+   * title-match approach (see 2026-05-16 video-presentation audit).
+   *
+   * On 401 from MediaHub: returns empty so frontend can degrade
+   * gracefully (renders as if no playlist has a curator tag yet).
+   */
+  @Get('playlists-tags')
+  async getPlaylistsTags(
+    @Query('tag') tag?: string,
+    @Query('lane')
+    lane?:
+      | 'biomarker'
+      | 'drug'
+      | 'trial'
+      | 'doctor_pair'
+      | 'mixed'
+      | 'archive',
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    if (!this.mediahub.isConfigured()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getPlaylistTags({
+        tag,
+        lane,
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401) {
+        this.logger.warn(
+          '[Catalog] MediaHub 401 on /playlists-tags - returning empty.',
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
   }
 }

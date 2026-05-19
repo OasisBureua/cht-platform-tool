@@ -12,7 +12,7 @@ import { PlaylistVideosFlattenGrid } from '../../components/content/PlaylistVide
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
-import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../../components/content/BiomarkerConversationRow';
+import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../../components/content/BiomarkerConversationRow';
 import {
   filterPlaylistsByFocus,
   parsePlaylistFocus,
@@ -25,27 +25,90 @@ import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVide
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
 
+/**
+ * Sort options surfaced in the catalog "Sort by" dropdown.
+ * - `recorded_at`: orders by shoot date (Shoot.shoot_date with posted_at fallback).
+ *   Distinct from `posted` — this is when the content was *recorded*, not when it
+ *   was published to social media. Default UX choice for "what's new in the catalog".
+ * - `posted`: orders by social-media post date (`posted_at`). Renamed in the UI from
+ *   the older "Most recent" / "Recently posted" pair (which were byte-identical at
+ *   the backend — see 2026-05-16 audit). The duplicate "Most recent" option has been
+ *   removed; legacy `?sort=recent` URLs are redirected to `posted` below.
+ * - `views`/`likes`: engagement-driven sorts.
+ */
 const SORT_OPTIONS = [
-  { value: '', label: 'Sort by' },
-  { value: 'recent', label: 'Most recent' },
+  { value: 'recorded_at', label: 'Recently recorded' },
   { value: 'posted', label: 'Recently posted' },
-  { value: 'views', label: 'Most views' },
-  { value: 'likes', label: 'Most likes' },
+  { value: 'views', label: 'Most watched' },
+  { value: 'likes', label: 'Most liked' },
 ];
 
-function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
-  const out: { value: string; label: string }[] = [];
-  const seen = new Set<string>();
-  for (const [, values] of Object.entries(tags)) {
-    if (!Array.isArray(values)) continue;
-    for (const v of values) {
-      if (v && !seen.has(v)) {
-        seen.add(v);
-        out.push({ value: v, label: v });
-      }
+/** Valid values for ?sort= / sort_by (MediaHub catalog API). */
+const SORT_PARAM_VALUES = new Set(['views', 'likes', 'posted', 'recorded_at']);
+
+/** Default sort the user lands on when no `?sort=` query param is present. */
+const DEFAULT_SORT = 'recorded_at';
+
+/**
+ * Tag-namespace ordering + display labels for the grouped tag dropdown.
+ * Backend `/api/catalog/tags` returns `Record<namespace, string[]>`; we render one
+ * `<optgroup>` per namespace in this order. `doctor` is intentionally omitted —
+ * the "All doctors" dropdown sitting next to this control already covers it.
+ */
+const TAG_NAMESPACE_ORDER: { key: string; label: string }[] = [
+  { key: 'biomarker', label: 'Biomarkers' },
+  { key: 'stage', label: 'Stages' },
+  { key: 'drug', label: 'Drugs' },
+  { key: 'trial', label: 'Trials' },
+  { key: 'topic', label: 'Topics' },
+  { key: 'brand', label: 'Brands' },
+];
+
+/**
+ * Client-side alias map: collapse equivalent tag values to a single canonical form
+ * so the dropdown doesn't show both "TNBC" and "Triple Negative" as separate entries.
+ * Canonical form picks the compact clinician-friendly code ("TNBC", "eBC", "mBC").
+ */
+const TAG_ALIASES: Record<string, string> = {
+  'Triple Negative': 'TNBC',
+  'triple negative': 'TNBC',
+  'early breast cancer': 'eBC',
+  'Early Breast Cancer': 'eBC',
+  'metastatic breast cancer': 'mBC',
+  'Metastatic Breast Cancer': 'mBC',
+};
+
+function stripNamespacePrefix(value: string): string {
+  const idx = value.indexOf(':');
+  if (idx === -1) return value;
+  return value.slice(idx + 1);
+}
+
+function canonicalizeTag(value: string): string {
+  return TAG_ALIASES[value] ?? value;
+}
+
+function groupTagsByNamespace(
+  tags: MediaHubTags,
+): { label: string; options: { value: string; label: string }[] }[] {
+  const groups: { label: string; options: { value: string; label: string }[] }[] = [];
+  for (const { key, label } of TAG_NAMESPACE_ORDER) {
+    const raw = tags[key];
+    if (!Array.isArray(raw) || raw.length === 0) continue;
+    const seen = new Set<string>();
+    const opts: { value: string; label: string }[] = [];
+    for (const v of raw) {
+      if (!v) continue;
+      const stripped = stripNamespacePrefix(String(v));
+      const canonical = canonicalizeTag(stripped);
+      if (seen.has(canonical)) continue;
+      seen.add(canonical);
+      opts.push({ value: canonical, label: canonical });
     }
+    opts.sort((a, b) => a.label.localeCompare(b.label));
+    if (opts.length > 0) groups.push({ label, options: opts });
   }
-  return out.sort((a, b) => a.label.localeCompare(b.label));
+  return groups;
 }
 
 function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: string }[] {
@@ -56,9 +119,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 const CLIPS_PAGE_SIZE = 24;
 
 type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
-
-/** Valid values for ?sort= / sort_by (MediaHub catalog API). */
-const SORT_PARAM_VALUES = new Set(['views', 'likes', 'recent', 'posted']);
+type SortByParam = 'views' | 'likes' | 'posted' | 'recorded_at';
 
 export default function VideosPage() {
   const location = useLocation();
@@ -68,8 +129,15 @@ export default function VideosPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
   const [doctorFilter, setDoctorFilter] = useState('');
-  const [sortBy, setSortBy] = useState('');
+  const [sortBy, setSortBy] = useState<string>(DEFAULT_SORT);
   const [sortOpen, setSortOpen] = useState(false);
+
+  // Ref so the filter-sync effect can read the current location without being
+  // retriggered by navigation (which caused the playlists ↔ catalog ping-pong).
+  const locationRef = useRef(location);
+  useEffect(() => {
+    locationRef.current = location;
+  });
 
   const effectiveLibraryView: 'clips' | 'playlists' = useMemo(() => {
     if (isInApp) return new URLSearchParams(location.search).get('view') === 'playlists' ? 'playlists' : 'clips';
@@ -84,8 +152,11 @@ export default function VideosPage() {
     setDebouncedQuery(qRaw.trim());
     setTagFilter(params.get('tag') ?? '');
     setDoctorFilter(params.get('doctor') ?? '');
-    const sort = params.get('sort') ?? params.get('sort_by') ?? '';
-    setSortBy(SORT_PARAM_VALUES.has(sort) ? sort : '');
+    const sortRaw = params.get('sort') ?? params.get('sort_by') ?? '';
+    // Back-compat: legacy `?sort=recent` was byte-identical to `?sort=posted` at
+    // the backend (2026-05-16 audit). Redirect old links to `posted`.
+    const sortNormalized = sortRaw === 'recent' ? 'posted' : sortRaw;
+    setSortBy(SORT_PARAM_VALUES.has(sortNormalized) ? sortNormalized : DEFAULT_SORT);
   }, [location.search, isInApp]);
 
   useLayoutEffect(() => {
@@ -102,26 +173,27 @@ export default function VideosPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  // Keep query string in sync with filters (search text uses live `query` so deep links with ?q= aren’t wiped before debounce).
+  // Keep query string in sync with filter state only. Reads location via ref so
+  // that tab navigation (which changes location.search) does NOT retrigger this
+  // effect — preventing the playlists ↔ catalog ping-pong caused by stale filter
+  // state being seen after a navigation but before the URL→state effect resets it.
   useEffect(() => {
+    const loc = locationRef.current;
     const params = new URLSearchParams();
     const q = query.trim();
     if (q) params.set('q', q);
     if (tagFilter) params.set('tag', tagFilter);
     if (doctorFilter) params.set('doctor', doctorFilter);
-    if (sortBy) params.set('sort', sortBy);
+    // Only emit `?sort=` when it differs from the default — keeps URLs clean.
+    if (sortBy && sortBy !== DEFAULT_SORT) params.set('sort', sortBy);
 
-    const curParams = new URLSearchParams((location.search || '').replace(/^\?/, ''));
-    const hasFilters = !!(q || tagFilter || doctorFilter || sortBy);
+    const curParams = new URLSearchParams((loc.search || '').replace(/^\?/, ''));
 
     if (!isInApp) {
-      let view: 'clips' | 'playlists';
-      if (hasFilters) view = 'clips';
-      else {
-        const pv = curParams.get('view');
-        if (pv === 'clips' || pv === 'playlists') view = pv === 'playlists' ? 'playlists' : 'clips';
-        else view = 'playlists';
-      }
+      // Always preserve the view already in the URL. Tab clicks own the view;
+      // this effect only owns the filter params.
+      const pv = curParams.get('view');
+      const view: 'clips' | 'playlists' = pv === 'playlists' ? 'playlists' : 'clips';
       params.set('view', view);
       if (view === 'playlists') {
         const pf = parsePlaylistFocus('?' + curParams.toString());
@@ -134,20 +206,11 @@ export default function VideosPage() {
     }
 
     const next = params.toString();
-    const cur = (location.search || '').replace(/^\?/, '');
+    const cur = (loc.search || '').replace(/^\?/, '');
     if (next === cur) return;
-    navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
-  }, [
-    query,
-    tagFilter,
-    doctorFilter,
-    sortBy,
-    isInApp,
-    location.pathname,
-    location.search,
-    navigate,
-  ]);
-
+    navigate({ pathname: loc.pathname, search: next ? `?${next}` : '' }, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, tagFilter, doctorFilter, sortBy, isInApp, navigate]);
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
@@ -160,7 +223,7 @@ export default function VideosPage() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const tagOptions = useMemo(() => flattenTags(tags), [tags]);
+  const tagGroups = useMemo(() => groupTagsByNamespace(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
   /** Clips/filters load once tags + doctors requests finish — do not block on empty tag list (MediaHub can return {}). */
   const useMediaHub = tagsReady && doctorsReady;
@@ -208,7 +271,7 @@ export default function VideosPage() {
         q: debouncedQuery || undefined,
         tag: tagFilter || undefined,
         doctor: doctorFilter || undefined,
-        sort_by: sortBy ? (sortBy as 'views' | 'likes' | 'recent' | 'posted') : undefined,
+        sort_by: sortBy ? (sortBy as SortByParam) : undefined,
         limit: CLIPS_PAGE_SIZE,
         offset: pageParam,
       }),
@@ -266,7 +329,13 @@ export default function VideosPage() {
   const isInitialClipsLoad =
     useMediaHub && effectiveLibraryView === 'clips' && clipsLoading && clipsPageCount === 0;
   const newestItems = useMemo(() => gridItems.slice(0, 14), [gridItems]);
-  const filterOrSortActive = !!(debouncedQuery.trim() || tagFilter || doctorFilter || sortBy);
+  const filterOrSortActive = !!(
+    debouncedQuery.trim() || tagFilter || doctorFilter || (sortBy && sortBy !== DEFAULT_SORT)
+  );
+
+  // True when the user has explicitly navigated to the full clips grid page
+  // (/app/catalog?view=clips). Distinct from the default /app/catalog strip home.
+  const showClipsGrid = isInApp && new URLSearchParams(location.search).get('view') === 'clips';
 
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
@@ -277,7 +346,7 @@ export default function VideosPage() {
         <ConversationRow
           title="Playlists"
           subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
-          seeAllHref={isInApp ? '/app/search' : '/catalog?view=playlists'}
+          seeAllHref={isInApp ? '/app/catalog?view=playlists' : '/catalog?view=playlists'}
           seeAllLabel="See all playlists"
         >
           {playlists.slice(0, 12).map((p) => (
@@ -304,23 +373,23 @@ export default function VideosPage() {
     <div className="min-h-screen min-w-0 bg-transparent">
       <div
         className={[
-          isInApp
+          isInApp && !showClipsGrid
             ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
             : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        {!isInApp && effectiveLibraryView === 'clips' ? (
-          <div className="flex items-center gap-2.5 pt-6 text-zinc-900 sm:pt-8">
-            <MonitorPlay className="h-5 w-5 shrink-0 text-brand-700" strokeWidth={2} aria-hidden />
-            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
+        {effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid) ? (
+          <div className="flex items-center gap-2.5 pt-2 text-zinc-900 sm:pt-4">
+            <MonitorPlay className="h-5 w-5 shrink-0 text-accent-700 dark:text-accent-400" strokeWidth={2} aria-hidden />
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
               Explore our catalogue
             </h1>
           </div>
         ) : null}
 
-        {!isInApp && effectiveLibraryView === 'clips' ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
+        {(!isInApp || showClipsGrid) ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInApp && (
+        {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (
           <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
             <div className="relative min-w-[200px] flex-1">
               <Search
@@ -341,10 +410,14 @@ export default function VideosPage() {
               className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
             >
               <option value="">All tags</option>
-              {tagOptions.slice(0, 100).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
+              {tagGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={`${group.label}:${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
 
@@ -374,7 +447,7 @@ export default function VideosPage() {
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
                   <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
-                    {SORT_OPTIONS.filter((o) => o.value !== '').map((opt) => (
+                    {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
@@ -396,34 +469,18 @@ export default function VideosPage() {
           </section>
         )}
 
-        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && (
-          isInApp ? (
-            <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
-              <ConversationsHeroSkeleton />
-            </section>
-          ) : (
+        {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && isInApp && !showClipsGrid && (
+          <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
             <ConversationsHeroSkeleton />
-          )
-        )}
-
-        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && (
-          isInApp ? (
-            <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
-              <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-            </section>
-          ) : (
-            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
-          )
-        )}
-
-        {!isInApp && effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && (
-          <section className="mx-auto max-w-7xl space-y-10 px-3 sm:px-6 pb-2 sm:pb-6">
-            {playlistsCarouselStrip}
-            {BIOMARKER_ROWS.map((row) => (
-              <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={false} />
-            ))}
           </section>
         )}
+
+        {effectiveLibraryView === 'clips' && useMediaHub && !isInitialClipsLoad && featuredClip && isInApp && !showClipsGrid && (
+          <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
+            <ConversationsHero clip={featuredClip} isInApp={isInApp} />
+          </section>
+        )}
+
 
         {effectiveLibraryView === 'playlists' ? (
             <section className={[isInApp ? 'px-4 sm:px-6 lg:px-8' : '', 'space-y-4'].filter(Boolean).join(' ')}>
@@ -455,7 +512,7 @@ export default function VideosPage() {
                 {!isInApp ? (
                   <Link
                     to="/catalog?view=clips"
-                    className="shrink-0 text-sm font-semibold text-brand-600 transition-colors hover:text-brand-800 hover:underline dark:text-brand-400 dark:hover:text-brand-300"
+                    className="shrink-0 text-sm font-semibold text-accent-600 transition-colors hover:text-accent-800 hover:underline dark:text-accent-400 dark:hover:text-accent-300"
                   >
                     Browse conversations
                   </Link>
@@ -490,7 +547,42 @@ export default function VideosPage() {
               </>
             )}
           </section>
+        ) : isInApp && showClipsGrid ? (
+          // /app/catalog?view=clips — full searchable grid, same layout as public /catalog?view=clips
+          <section className="space-y-4">
+            <h2 className="sr-only">Video library</h2>
+            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {!useMediaHub ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">Video catalog is not connected.</p>
+                </div>
+              ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+                <div className="col-span-full flex items-center justify-center py-16">
+                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                </div>
+              ) : useMediaHub && displayItems.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
+                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                </div>
+              ) : (
+                displayItems.map((item) => (
+                  <ConversationsClipCard
+                    key={item.id}
+                    item={item}
+                    href={`/app/clip/${getShortClipId(item.id)}`}
+                  />
+                ))
+              )}
+            </div>
+            {useMediaHub && (
+              <div ref={loadMoreRef} className="flex justify-center py-8">
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+              </div>
+            )}
+          </section>
         ) : isInApp ? (
+          // /app/catalog (default) — strip rows with hero + biomarker sections
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
@@ -529,8 +621,8 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
-                {BIOMARKER_ROWS.map((row) => (
-                  <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
+                {BIOMARKER_CAROUSEL_IDS.map((id) => (
+                  <BiomarkerConversationRow key={id} carouselId={id} isInApp={true} />
                 ))}
               </>
             ) : (
@@ -553,8 +645,8 @@ export default function VideosPage() {
                   </ConversationRow>
                 ) : null}
                 {playlistsCarouselStrip}
-                {BIOMARKER_ROWS.map((row) => (
-                  <BiomarkerConversationRow key={row.focus} label={row.label} focus={row.focus} isInApp={true} />
+                {BIOMARKER_CAROUSEL_IDS.map((id) => (
+                  <BiomarkerConversationRow key={id} carouselId={id} isInApp={true} />
                 ))}
               </>
             )}
@@ -595,12 +687,8 @@ export default function VideosPage() {
                   <p className="mb-2 text-pretty text-gray-600">No results match.</p>
                   <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
                 </div>
-              ) : useMediaHub && gridItems.length === 0 && displayItems.length > 0 ? (
-                <p className="col-span-full text-pretty text-center text-sm text-zinc-500">
-                  That is the only clip for this search.
-                </p>
               ) : (
-                gridItems.map((item) => {
+                displayItems.map((item) => {
                   const detailUrl = isInApp
                     ? `/app/clip/${getShortClipId(item.id)}`
                     : `/catalog/clip/${getShortClipId(item.id)}`;

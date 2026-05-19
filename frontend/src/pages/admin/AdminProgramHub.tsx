@@ -303,9 +303,9 @@ export default function AdminProgramHub() {
         <div className="grid gap-4 md:grid-cols-2">
           {zoomType === 'MEETING' ? (
             <div className="md:col-span-2 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <strong>CHM Office Hours</strong> do not use a Jotform intake form. Learners register and pick a time slot
+              <strong>Office Hours</strong> (Zoom Meetings) do not use a Jotform intake form. Learners register and pick a time slot
               when you offer slots; use <strong>Require admin approval</strong> below to review each request before they are
-              enrolled. Saving settings clears any stored intake URL for this office-hours program.
+              enrolled. Saving settings clears any stored intake URL for this session type.
             </div>
           ) : (
             <label className="block text-sm md:col-span-2">
@@ -369,7 +369,7 @@ export default function AdminProgramHub() {
             settingsMutation.mutate();
           }}
           disabled={settingsMutation.isPending}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >
           {settingsMutation.isPending ? 'Saving…' : 'Save settings'}
         </button>
@@ -416,7 +416,7 @@ export default function AdminProgramHub() {
               type="button"
               onClick={() => slotMut.mutate()}
               disabled={!slotStart || !slotEnd || slotMut.isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
               {slotMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
               Add slot
@@ -476,7 +476,7 @@ export default function AdminProgramHub() {
             type="button"
             onClick={() => addLinkMut.mutate()}
             disabled={!formLabel.trim() || !formUrl.trim() || addLinkMut.isPending}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
             Add
           </button>

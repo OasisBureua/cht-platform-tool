@@ -36,7 +36,10 @@ export type PodcastShow = {
   id: string;
   title: string;
   tagline: string;
+  /** Cover / episode artwork (square); used in carousels and cards */
   image: string;
+  /** Optional horizontal lockup for series headers (object-contain); falls back to `image` */
+  logo?: string;
   /** Row like Apple’s category line */
   category: string;
   /** e.g. “Updated weekly”, “New season” */
@@ -52,7 +55,8 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     title: 'Breast Friends',
     tagline:
       'Direct, expert-led conversations about breast cancer, built for patients and clinicians. We pair first-line data with what it feels like in the exam room and at home.',
-    image: '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png',
+    image: '/images/podcasts/breast-friends/cover.png',
+    logo: '/images/podcasts/breast-friends/logo-with-names-full-color.png',
     category: 'Clinical · Oncology',
     updateNote: 'Updated monthly',
     playLatest: { kind: 'external', href: 'https://linkin.bio/breastfriendspodcast/' },

@@ -5,7 +5,7 @@ import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { format, isValid } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
-import { clipAiSummaryText, clipCatalogDescriptionText } from '../../utils/mediaHubClipText';
+import { clipAiSummaryText } from '../../utils/mediaHubClipText';
 import { isLinkedinCatalogClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 
 /** Normalize clip from API (handles snake_case and camelCase) */
@@ -125,10 +125,7 @@ export default function ClipDetail() {
 
   const meta = normalizeClip(clip as unknown as Record<string, unknown>);
   const aiSummary = clipAiSummaryText(clip);
-  const catalogDescription = clipCatalogDescriptionText(clip);
   const shootIdDisplay = transcriptShootId;
-  /** Catalog copy is only shown when there is no usable AI summary */
-  const showCatalogDescription = aiSummary === '' && catalogDescription !== '';
 
   return (
     <div className="min-h-screen bg-white min-w-0">
@@ -186,10 +183,10 @@ export default function ClipDetail() {
           </div>
         </div>
 
-        {/* Tags */}
-        {clip.tags?.length > 0 && (
+        {/* Tags — brand: prefixed tags are internal and not shown to users */}
+        {clip.tags?.filter((t) => !String(t).startsWith('brand:')).length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {clip.tags.map((tag) => (
+            {clip.tags.filter((t) => !String(t).startsWith('brand:')).map((tag) => (
               <span
                 key={tag}
                 className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
@@ -209,13 +206,6 @@ export default function ClipDetail() {
             <p className="text-sm text-gray-400 italic">Not available yet for this recording.</p>
           )}
         </div>
-
-        {showCatalogDescription ? (
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Catalog description</h2>
-            <p className="text-gray-600 whitespace-pre-wrap">{catalogDescription}</p>
-          </div>
-        ) : null}
 
         {/* Share */}
         <ShareButtons title={clip.title} url={shareUrl} />

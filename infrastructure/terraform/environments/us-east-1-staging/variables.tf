@@ -283,3 +283,15 @@ variable "sqs_cme_queue_url" {
   type        = string
   default     = ""
 }
+
+variable "worker_ses_from_email" {
+  description = "SES verified From address used by the worker (e.g. noreply@yourdomain.com)"
+  type        = string
+  default     = "noreply@chtplatform.com"
+}
+
+variable "session_reminders_schedule_expression" {
+  description = "EventBridge schedule for the session-reminder scan (default: every 3 hours)"
+  type        = string
+  default     = "cron(0 0/3 * * ? *)"
+}

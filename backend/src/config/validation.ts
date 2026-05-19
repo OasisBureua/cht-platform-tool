@@ -3,7 +3,7 @@ import * as Joi from 'joi';
 export const validationSchema = Joi.object({
   // Application
   NODE_ENV: Joi.string()
-    .valid('development', 'production', 'test')
+    .valid('development', 'production', 'test', 'staging')
     .default('development'),
   PORT: Joi.number().default(3000),
   FRONTEND_URL: Joi.string().default('http://localhost:5173'),
@@ -35,6 +35,9 @@ export const validationSchema = Joi.object({
   AWS_REGION: Joi.string().default('us-east-1'),
   AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),
   AWS_SECRET_ACCESS_KEY: Joi.string().allow('').optional(),
+
+  SESSION_ASSETS_S3_BUCKET: Joi.string().allow('').optional(),
+  SESSION_ASSETS_PUBLIC_URL_BASE: Joi.string().allow('').optional(),
 
   // Amazon SES (registration-approved, etc.)
   EMAIL_FROM: Joi.string().email().allow('').optional(),

@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Search, Zap, Presentation, PlayCircle, ClipboardList, Loader2, Compass } from 'lucide-react';
 import { webinarsApi } from '../api/webinars';
@@ -60,14 +60,33 @@ function matchesQuery(item: UnifiedItem, q: string): boolean {
 export default function ExploreOpportunities() {
   const { user } = useAuth();
   const userId = user?.userId;
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlQ = searchParams.get('q') ?? '';
+  const [query, setQuery] = useState(urlQ);
+  const [debouncedQuery, setDebouncedQuery] = useState(urlQ.trim());
   const [tab, setTab] = useState<Tab>('best');
 
+  // Debounce typed input → debouncedQuery (drives API + filter).
   useEffect(() => {
     const t = setTimeout(() => setDebouncedQuery(query.trim()), 300);
     return () => clearTimeout(t);
   }, [query]);
+
+  // Sync URL → input when user navigates here with ?q= (deep links, browser back/fwd).
+  useEffect(() => {
+    setQuery(urlQ);
+  }, [urlQ]);
+
+  // Sync input → URL so the q param stays shareable / bookmarkable.
+  useEffect(() => {
+    const next = debouncedQuery;
+    const current = searchParams.get('q') ?? '';
+    if (next === current) return;
+    const params = new URLSearchParams(searchParams);
+    if (next) params.set('q', next);
+    else params.delete('q');
+    setSearchParams(params, { replace: true });
+  }, [debouncedQuery, searchParams, setSearchParams]);
 
   const { data: tags = {} } = useQuery({
     queryKey: ['catalog', 'tags'],
@@ -96,16 +115,18 @@ export default function ExploreOpportunities() {
     return m;
   }, [liveStatuses]);
 
+  // When a query is present (>=2 chars), use the dedicated /catalog/search endpoint —
+  // same one public /search uses — for parity. Otherwise fall back to the default
+  // "recent clips" list via /catalog/clips.
   const { data: clipsData, isLoading: clipsLoading, isError: clipsError } = useQuery({
-    queryKey: ['catalog', 'clips', debouncedQuery],
-    queryFn: () =>
-      useMediaHub
-        ? catalogApi.getClips({
-            q: debouncedQuery || undefined,
-            limit: 24,
-            offset: 0,
-          })
-        : Promise.resolve({ items: [], total: 0 }),
+    queryKey: ['catalog', 'clips-or-search', debouncedQuery],
+    queryFn: () => {
+      if (!useMediaHub) return Promise.resolve({ items: [], total: 0 });
+      if (debouncedQuery.length >= 2) {
+        return catalogApi.search(debouncedQuery, { limit: 40 });
+      }
+      return catalogApi.getClips({ limit: 24, offset: 0 });
+    },
     enabled: useMediaHub,
     staleTime: 2 * 60 * 1000,
     retry: false,
@@ -176,7 +197,7 @@ export default function ExploreOpportunities() {
         type: 'survey',
         id: `survey-${s.id}`,
         title: s.title || s.program?.title || 'Survey',
-        description: s.description || s.program?.sponsorName || '',
+        description: s.description || '',
         imageUrl: '',
         href: `/app/surveys/${s.id}`,
       });
@@ -187,14 +208,21 @@ export default function ExploreOpportunities() {
 
   const filtered = useMemo(() => {
     const q = debouncedQuery;
-    let list = items.filter((item) => matchesQuery(item, q));
+    // When the API already filtered clips by q, don't double-filter clip items by title/desc
+    // (the search endpoint matches on transcript/tags too, which matchesQuery can't see).
+    // Webinars + surveys still need the client-side text filter — those aren't searched server-side.
+    const apiFilteredClips = q.length >= 2 && useMediaHub;
+    let list = items.filter((item) => {
+      if (apiFilteredClips && item.type === 'clip') return true;
+      return matchesQuery(item, q);
+    });
 
     if (tab === 'webinars') list = list.filter((i) => i.type === 'webinar');
     else if (tab === 'videos') list = list.filter((i) => i.type === 'clip' || i.type === 'playlist');
     else if (tab === 'surveys') list = list.filter((i) => i.type === 'survey');
 
     return list;
-  }, [items, debouncedQuery, tab]);
+  }, [items, debouncedQuery, tab, useMediaHub]);
 
   const isLoading = webinarsLoading || surveysLoading || (useMediaHub ? clipsLoading : playlistsLoading);
   const showClipsError = useMediaHub && clipsError;
@@ -209,7 +237,7 @@ export default function ExploreOpportunities() {
   return (
     <div className="space-y-6 min-w-0">
       <div className="flex items-center gap-2.5 text-gray-900">
-        <Compass className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+        <Compass className="h-5 w-5 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
         <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Explore Opportunities</h1>
       </div>
 
@@ -318,7 +346,7 @@ export default function ExploreOpportunities() {
                 </div>
                 <Link
                   to={item.href}
-                  className="mt-4 inline-flex w-fit rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+                  className="mt-4 inline-flex w-fit rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'View Session' : 'Conversations'}
                 </Link>

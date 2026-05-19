@@ -20,7 +20,7 @@ export type AppNavItem = {
 export const APP_CATALOG_CONVERSATIONS_HUB = '/app/catalog';
 
 /** “See all in library” / full browse — routed to Explore (search) for now; avoid `/app/catalog/browse`. */
-export const APP_CATALOG_CLIPS_GRID = '/app/search';
+export const APP_CATALOG_CLIPS_GRID = '/app/catalog?view=clips';
 
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
 export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';

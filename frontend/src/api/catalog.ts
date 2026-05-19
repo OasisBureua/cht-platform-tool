@@ -38,6 +38,30 @@ export interface MediaHubClip {
 /** Tags grouped by category (doctor, biomarker, drug, trial, stage, topic, brand) */
 export type MediaHubTags = Record<string, string[]>;
 
+/**
+ * Params for GET /api/catalog/clips.
+ *
+ * Mirrors MediaHub's /api/public/clips contract (Phase 2, 2026-05-17):
+ *   - `tag` is comma-separated namespaced tags. AND across namespaces,
+ *     OR within the same namespace.
+ *   - `sort_by='recorded_at'` orders by Shoot.shoot_date with posted_at fallback.
+ *   - `dedup_by='shoot'` collapses multi-platform versions of the same shoot.
+ *   - `per_shoot_cap=N` caps each shoot to N entries after dedup.
+ *   - `platform` defaults to 'youtube' server-side (kills LinkedIn duplicates).
+ *     Pass undefined to leave the default in place.
+ */
+export interface GetClipsParams {
+  q?: string;
+  tag?: string;
+  doctor?: string;
+  platform?: string;
+  sort_by?: 'views' | 'likes' | 'recent' | 'posted' | 'recorded_at';
+  dedup_by?: 'shoot';
+  per_shoot_cap?: number;
+  limit?: number;
+  offset?: number;
+}
+
 export const catalogApi = {
   getItems: async (): Promise<CatalogItem[]> => {
     const { data } = await apiClient.get<CatalogItem[]>('/catalog');
@@ -49,15 +73,7 @@ export const catalogApi = {
     return data || {};
   },
 
-  getClips: async (params?: {
-    q?: string;
-    tag?: string;
-    doctor?: string;
-    platform?: string;
-    sort_by?: 'views' | 'likes' | 'recent' | 'posted';
-    limit?: number;
-    offset?: number;
-  }): Promise<{ items: MediaHubClip[]; total: number }> => {
+  getClips: async (params?: GetClipsParams): Promise<{ items: MediaHubClip[]; total: number }> => {
     const { data } = await apiClient.get<{ items?: MediaHubClip[]; total?: number }>('/catalog/clips', { params });
     return { items: data?.items || [], total: data?.total ?? 0 };
   },

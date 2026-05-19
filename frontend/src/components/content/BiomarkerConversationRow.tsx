@@ -1,124 +1,142 @@
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { catalogApi } from '../../api/catalog';
+import { catalogApi, type MediaHubClip } from '../../api/catalog';
+import { shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import {
-  filterPlaylistsByFocus,
-  type PlaylistFocus,
-  VIEW_PLAYLIST_LABEL,
-} from '../../utils/playlistFocusFilters';
-import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
+  type CarouselConfig,
+  HCP_CAROUSELS,
+} from '../../data/carousels.config';
 import { ConversationRow, StripCard, StripRowLoading } from '../home/ConversationRow';
-
-const ROW_VIDEO_CAP = 40;
-
-export const BIOMARKER_ROWS: { label: string; focus: PlaylistFocus }[] = [
-  { label: 'HER2+ Conversations',       focus: 'her2'      },
-  { label: 'HER2-Low / Ultra-Low',      focus: 'her2-low'  },
-  { label: 'HR+ · CDK4/6 · Endocrine',  focus: 'hr'        },
-  { label: 'TNBC & Triple Negative',    focus: 'tnbc'       },
-  { label: 'High Risk Breast Cancer',   focus: 'high-risk'  },
-];
+import { VIEW_PLAYLIST_LABEL } from '../../utils/playlistFocusFilters';
 
 /**
- * A single themed playlist row.
+ * A single themed clip row driven by `carousels.config.ts`.
  *
- * Reads the shared `['catalog', 'playlists']` React Query cache (no extra network
- * request when the parent has already fetched it), narrows to the relevant focus
- * group via `filterPlaylistsByFocus`, then hydrates individual videos through
- * `useFlattenedPlaylistVideos`.
+ * Each row's behavior is declared in the config — tag filter, sort
+ * dimension, dedup, per-shoot cap, page size, platform. This component
+ * just executes the contract.
  *
- * - While loading → skeleton strip
- * - Videos available → one `StripCard` per video, linking to the playlist page
- * - No videos but playlists present → one `StripCard` per playlist (fallback)
- * - Nothing at all → renders nothing
+ * Replaces the older `filterPlaylistsByFocus` + flatten-playlist-videos
+ * approach (audit fixes #1, #2, #3, #5, #7 in
+ * .claude/audits/2026-05-16-cht-video-audit.md). The brittle
+ * `_generated-catalog-playlists.json` fuzzy-title-match is gone — every
+ * card is now an on-topic clip pulled from MediaHub by tag.
+ *
+ * Behavior states:
+ * - loading → skeleton strip
+ * - clips returned → one `StripCard` per clip, linking to clip detail
+ * - empty → renders nothing (no zero-state for top-level dashboard rows)
  */
 export function BiomarkerConversationRow({
-  label,
-  focus,
+  carouselId,
   isInApp,
   hideBrokenCatalogThumbnails = false,
 }: {
-  label: string;
-  focus: PlaylistFocus;
+  /** Identifier matching a row in `carousels.config.ts`. */
+  carouselId: string;
   isInApp: boolean;
   /** When true (e.g. app dashboard home), omit tiles whose poster fails to load. */
   hideBrokenCatalogThumbnails?: boolean;
 }) {
-  const { data: playlists = [] } = useQuery({
-    queryKey: ['catalog', 'playlists'],
-    queryFn: catalogApi.getPlaylists,
-    staleTime: 10 * 60 * 1000,
+  const config: CarouselConfig | undefined = HCP_CAROUSELS.find(
+    (c) => c.id === carouselId,
+  );
+
+  if (!config) {
+    // Misconfigured carouselId — render nothing rather than blow up. Bug
+    // surfaces in dev via the carousels.config.test.ts unit tests.
+    return null;
+  }
+
+  const { data, isLoading } = useQuery({
+    queryKey: [
+      'catalog',
+      'clips',
+      'carousel',
+      config.id,
+      config.tag,
+      config.sort_by,
+      config.dedup_by,
+      config.per_shoot_cap,
+      config.limit,
+      config.platform,
+    ],
+    queryFn: () =>
+      catalogApi.getClips({
+        tag: config.tag,
+        sort_by: config.sort_by,
+        dedup_by: config.dedup_by,
+        per_shoot_cap: config.per_shoot_cap,
+        limit: config.limit,
+        platform: config.platform,
+      }),
+    staleTime: 5 * 60 * 1000,
   });
 
-  const filteredPlaylists = useMemo(
-    () => filterPlaylistsByFocus(playlists, focus),
-    [playlists, focus],
+  const clips: MediaHubClip[] = (data?.items ?? []).filter(
+    shouldSurfaceCatalogClip,
   );
 
-  const playlistIds = useMemo(
-    () => filteredPlaylists.map((p) => p.id),
-    [filteredPlaylists],
-  );
+  const seeAllHref = isInApp ? '/app/catalog?view=clips' : '/catalog?view=clips';
 
-  const { entries, isLoading } = useFlattenedPlaylistVideos(playlistIds, playlistIds.length > 0);
-
-  const seeAllHref = isInApp
-    ? `/app/catalog?view=playlists&playlistFocus=${encodeURIComponent(focus)}`
-    : `/catalog?view=playlists&playlistFocus=${encodeURIComponent(focus)}`;
-
-  const subtitle = entries.length > 0
-    ? `${entries.length} video${entries.length !== 1 ? 's' : ''}`
-    : filteredPlaylists.length > 0
-      ? `${filteredPlaylists.length} playlist${filteredPlaylists.length !== 1 ? 's' : ''}`
-      : undefined;
-
-  if (isLoading && playlistIds.length > 0) {
+  if (isLoading) {
     return (
-      <ConversationRow title={label} seeAllHref={seeAllHref} seeAllLabel={VIEW_PLAYLIST_LABEL}>
+      <ConversationRow
+        title={config.label}
+        seeAllHref={seeAllHref}
+        seeAllLabel={VIEW_PLAYLIST_LABEL}
+      >
         <StripRowLoading />
       </ConversationRow>
     );
   }
 
-  if (entries.length === 0 && filteredPlaylists.length === 0) return null;
+  if (clips.length === 0) return null;
 
-  if (entries.length === 0) {
-    return (
-      <ConversationRow title={label} subtitle={subtitle} seeAllHref={seeAllHref} seeAllLabel={VIEW_PLAYLIST_LABEL}>
-        {filteredPlaylists.map((p) => (
-          <StripCard
-            key={p.id}
-            hideThumbnailOnError={hideBrokenCatalogThumbnails}
-            to={isInApp ? `/app/catalog/playlist/${p.id}` : `/catalog/playlist/${p.id}`}
-            title={p.title}
-            imageUrl={p.thumbnailUrl || `https://img.youtube.com/vi/${p.id}/hqdefault.jpg`}
-            description={
-              p.videoCount != null && p.videoCount > 0
-                ? `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`
-                : p.videoNames?.slice(0, 3).join(' • ') || 'Playlist'
-            }
-          />
-        ))}
-      </ConversationRow>
-    );
-  }
+  const subtitle = `${clips.length} video${clips.length !== 1 ? 's' : ''}`;
 
   return (
-    <ConversationRow title={label} subtitle={subtitle} seeAllHref={seeAllHref} seeAllLabel={VIEW_PLAYLIST_LABEL}>
-      {entries.slice(0, ROW_VIDEO_CAP).map((e) => (
+    <ConversationRow
+      title={config.label}
+      subtitle={subtitle}
+      seeAllHref={seeAllHref}
+      seeAllLabel={VIEW_PLAYLIST_LABEL}
+    >
+      {clips.map((c) => (
         <StripCard
-          key={`${e.playlistId}-${e.video.id}`}
+          key={c.id}
           hideThumbnailOnError={hideBrokenCatalogThumbnails}
           to={
-            isInApp
-              ? `/app/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`
-              : `/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`
+            isInApp ? `/app/catalog/clip/${c.id}` : `/catalog/clip/${c.id}`
           }
-          title={e.video.title}
-          imageUrl={e.video.thumbnailUrl || `https://img.youtube.com/vi/${e.video.id}/hqdefault.jpg`}
-          description={e.playlistTitle}
+          title={c.title}
+          imageUrl={
+            c.thumbnail_url ||
+            // ID is `official:youtube:<videoId>`; extract the YouTube ID for the fallback poster.
+            (c.id.startsWith('official:youtube:')
+              ? `https://img.youtube.com/vi/${c.id.split(':').slice(2).join(':')}/hqdefault.jpg`
+              : '')
+          }
+          description={
+            c.doctors && c.doctors.length > 0
+              ? c.doctors.slice(0, 2).join(' · ')
+              : c.shoot_name || ''
+          }
         />
       ))}
     </ConversationRow>
   );
 }
+
+/**
+ * Convenience re-export: the biomarker-row config rows from
+ * `carousels.config.ts`. Lets call-sites map over a stable list without
+ * re-importing the config module everywhere.
+ *
+ * The previous `BIOMARKER_ROWS` constant exported `{label, focus}` pairs.
+ * It's been replaced by `BIOMARKER_CAROUSEL_IDS` — call sites now pass
+ * a `carouselId` (string) which the row component resolves through the
+ * config.
+ */
+export const BIOMARKER_CAROUSEL_IDS: string[] = HCP_CAROUSELS.filter((c) =>
+  c.id.startsWith('hcp-home-') && c.id !== 'hcp-home-recently-added',
+).map((c) => c.id);

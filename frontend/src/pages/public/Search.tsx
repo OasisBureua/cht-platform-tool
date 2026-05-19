@@ -186,7 +186,7 @@ export default function Search() {
 
             <button
               type="submit"
-              className="rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-black"
+              className="rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Search
             </button>
@@ -214,7 +214,7 @@ export default function Search() {
                       className={[
                         'rounded-full px-4 py-2 text-sm font-semibold border',
                         type === t
-                          ? 'bg-gray-900 text-white border-gray-900'
+                          ? 'bg-brand-600 text-white border-gray-900'
                           : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50',
                       ].join(' ')}
                     >
@@ -239,7 +239,7 @@ export default function Search() {
                 <button
                   type="button"
                   onClick={() => setShowFilters(false)}
-                  className="rounded-full bg-gray-900 px-5 py-2 text-sm font-semibold text-white hover:bg-black"
+                  className="rounded-full bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   Apply
                 </button>
@@ -302,7 +302,7 @@ export default function Search() {
                         setQuery('');
                         setSearchParams({}, { replace: true });
                       }}
-                      className="rounded-full bg-gray-900 px-7 py-3 text-sm font-semibold text-white hover:bg-black"
+                      className="rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700"
                     >
                       Reset
                     </button>

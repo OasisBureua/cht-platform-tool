@@ -31,6 +31,10 @@ export type DolEntry = {
   isNew?: boolean;
   /** ISO date when the entry was added; used to auto-expire the "New" badge after 7 days */
   addedAt?: string;
+  /** From MediaHub kol-headshots/<slug>.png — undefined falls back to ui-avatars */
+  photoUrl?: string;
+  /** From MediaHub kol_group_member count (videos this KOL appears in) */
+  shootCount?: number;
   intel?: KolIntel;
 };
 
@@ -41,30 +45,8 @@ export type DolRegion = {
   entries: DolEntry[];
 };
 
-const SLUG_ALIASES: Record<string, string> = {
-  yale: 'ny-northeast', // Yale merged into New York & Northeast
-};
-
-export function getRegionBySlug(slug: string): DolRegion | null {
-  const resolvedSlug = SLUG_ALIASES[slug] ?? slug;
-  return dolNetwork.find((r) => r.id === resolvedSlug) ?? null;
-}
-
-export function findKolWithRegion(kolId: string): { region: DolRegion; entry: DolEntry } | null {
-  for (const region of dolNetwork) {
-    const entry = region.entries.find((e) => e.id === kolId);
-    if (entry) return { region, entry };
-  }
-  return null;
-}
-
-export const dolNetwork: DolRegion[] = [
-  {
-    id: 'ny-northeast',
-    title: 'New York & Northeast',
-    subtitle: 'Memorial Sloan Kettering (MSK) & Yale',
-    entries: [
-      {
+export const kolStaticEnrichment: DolEntry[] = [
+{
         id: 'traina',
         name: 'Dr. Tiffany Traina',
         role: 'Vice Chair of Oncology Care; Section Head, Triple-Negative Breast Cancer (TNBC).',
@@ -135,13 +117,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A legendary trialist whose research led to the approval of virtually every major HER2-targeted therapy in the last 15 years.',
         education: 'Johns Hopkins (MD/PhD); Johns Hopkins Hospital (Residency); Dana-Farber (Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'east-coast',
-    title: 'East Coast Academic Centers',
-    entries: [
-      {
+{
         id: 'brufsky',
         name: 'Dr. Adam Brufsky',
         role: 'Co-Director, Comprehensive Breast Cancer Center; Associate Chief, Division of Hematology/Oncology - UPMC, Pittsburgh, PA.',
@@ -155,13 +131,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A hematology/oncology specialist treating adult patients, with clinical and academic responsibilities at the Rena Rowan Breast Center and Perelman Center for Advanced Medicine.',
         education: 'Geisinger Commonwealth School of Medicine; Residency & Fellowship: University of Pennsylvania Health System.',
       },
-    ],
-  },
-  {
-    id: 'new-england',
-    title: 'New England - Dana-Farber / Harvard',
-    entries: [
-      {
+{
         id: 'tarantino',
         name: 'Dr. Paolo Tarantino',
         role: 'Physician-Researcher, Division of Breast Oncology - Dana-Farber Cancer Institute, Boston, MA.',
@@ -175,13 +145,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'Focuses on immunotherapy and biomarker discovery to predict response in aggressive breast cancer subtypes.',
         education: 'University of Santiago (MD); Vall d\'Hebron (Residency); Dana-Farber (Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'midwest-chicago',
-    title: 'Midwest - Northwestern, Rush & Chicago Area',
-    entries: [
-      {
+{
         id: 'gradishar',
         name: 'Dr. Bill Gradishar',
         role: 'Chief of Hematology/Oncology; Director, Maggie Daley Center for Women\'s Cancer Care; Chair, NCCN Breast Cancer Guidelines Panel - Northwestern Medicine, Chicago, IL.',
@@ -202,13 +166,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A physician-scientist and nationally recognized breast cancer expert leading precision oncology and early-phase clinical trials in Chicago.',
         education: 'University of Alabama at Birmingham (MD, PhD); University of Washington (Residency); Fred Hutchinson Cancer Center (Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'midwest-indiana',
-    title: 'Indiana, Ohio & Upper Midwest',
-    entries: [
-      {
+{
         id: 'ballinger',
         name: 'Dr. Tarah Ballinger',
         role: 'Associate Professor of Clinical Medicine; Vera Bradley Foundation Scholar - Indiana University, Indianapolis, IN.',
@@ -231,13 +189,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A leading expert in Invasive Lobular Carcinoma (ILC) and the integration of ctDNA for personalized treatment monitoring.',
         education: 'Case Western Reserve University (MD); Cleveland Clinic (Residency & Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'kansas',
-    title: 'Kansas & Great Plains',
-    entries: [
-      {
+{
         id: 'odea',
         name: 'Dr. Anne O\'Dea',
         role: 'Medical Director, Breast Cancer Survivorship Program - University of Kansas, Kansas City, KS.',
@@ -251,13 +203,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A key community KOL bringing advanced precision medicine and genomic trials to patients across the Dakotas.',
         education: 'University of Iowa (MD); OHSU (Residency); University of Iowa (Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'missouri',
-    title: 'Missouri & St. Louis Area',
-    entries: [
-      {
+{
         id: 'bagegni',
         name: 'Dr. Nusayba Bagegni',
         role: 'Associate Professor of Medicine; Associate Medical Director of Clinical Research, Division of Oncology; Breast Cancer Clinical Trials Portfolio Leader - Washington University School of Medicine / Siteman Cancer Center, Barnes-Jewish Hospital, St. Louis, MO.',
@@ -266,13 +212,7 @@ export const dolNetwork: DolRegion[] = [
         isNew: true,
         addedAt: '2025-03-01',
       },
-    ],
-  },
-  {
-    id: 'tennessee',
-    title: 'South & Southeast - Tennessee',
-    entries: [
-      {
+{
         id: 'hamilton',
         name: 'Dr. Erika Hamilton',
         role: 'Medical Oncologist; Director, Breast & Gynecologic Cancer Research - Sarah Cannon Research Institute, Nashville, TN.',
@@ -286,13 +226,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A board-certified medical oncologist and hematologist specializing in breast cancer who conducts clinical research and drug development trials, lecturing nationally and internationally.',
         education: 'MD, PhD: Tulane University School of Medicine; Residency: Stanford Hospital & Clinics; Fellowship: Hematology/Oncology, Stanford Hospital & Clinics.',
       },
-    ],
-  },
-  {
-    id: 'texas',
-    title: 'Texas - MD Anderson & Houston Area',
-    entries: [
-      {
+{
         id: 'mouabbi',
         name: 'Dr. Jason Mouabbi',
         role: 'Assistant Professor, Breast Medical Oncology - MD Anderson Cancer Center, Houston, TX.',
@@ -334,39 +268,21 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A board-certified oncologist with extensive clinical experience since 2005. She focuses on breast cancer care and actively participates in clinical trials, emphasizing shared decision-making and detailed patient education.',
         education: 'Yale University (BS); Georgetown University School of Medicine (MD); Fellowship: Oncology/Hematology, Baylor College of Medicine.',
       },
-    ],
-  },
-  {
-    id: 'colorado',
-    title: 'Mountain West - Colorado',
-    entries: [
-      {
+{
         id: 'mardones',
         name: 'Dr. Mabel Mardones',
         role: 'Breast Medical Oncologist Partner; Executive Committee Member for Breast Cancer Research; Co-chair of Pathways for Breast Cancer - Rocky Mountain Cancer Centers (US Oncology Network), Denver & Lone Tree, CO.',
         bio: 'A board-certified medical oncologist and hematologist with advanced sub-specialty expertise in all breast cancer subtypes, including HR-positive, HER2-positive, metastatic, inflammatory, and TNBC. Fluent Spanish speaker with a passionate focus on young women and precision/evidence-based medicine.',
         education: 'Southwestern Adventist University (BS); Loma Linda University School of Medicine (MD); University of Utah Hospital (Residency); Baylor University Medical Center (Fellowship, Hematology & Medical Oncology).',
       },
-    ],
-  },
-  {
-    id: 'florida',
-    title: 'Florida - Central Florida',
-    entries: [
-      {
+{
         id: 'dietrich',
         name: 'Dr. Martin Dietrich',
         role: 'Medical Oncologist; Assistant Professor of Internal Medicine, University of Central Florida College of Medicine - Cancer Care Centers of Brevard / US Oncology Network, Rockledge, FL.',
         bio: 'A board-certified internist and medical oncologist with dual doctorates in cancer biology and molecular genetics. A principal investigator of precision medicine-based trials focusing on lung cancer, breast cancer, liquid biopsies, and novel anti-cancer agents. Fellow of the American College of Physicians (FACP).',
         education: 'Ruprecht Karl University (MD); German Cancer Research Center, Heidelberg (PhD, Cancer Biology); University of Texas Southwestern (PhD, Molecular Genetics; Residency & T32 NCI Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'california',
-    title: 'West Coast - California (Los Angeles & Bay Area)',
-    entries: [
-      {
+{
         id: 'bardia',
         name: 'Dr. Aditya Bardia',
         role: 'Professor of Medicine; Director, Breast Oncology Program - UCLA Health, Los Angeles, CA.',
@@ -401,13 +317,7 @@ export const dolNetwork: DolRegion[] = [
         bio: 'A global authority on TNBC and clinical trial safety.',
         education: 'Tufts University (BS); University of Pennsylvania (MD); UCSF (Residency & Fellowship).',
       },
-    ],
-  },
-  {
-    id: 'pacific-northwest',
-    title: 'Pacific Northwest - Oregon & Washington',
-    entries: [
-      {
+{
         id: 'conlin',
         name: 'Dr. Alison Conlin',
         role: 'Director, Providence Breast Cancer Program - Providence Cancer Institute, Portland, OR.',
@@ -420,7 +330,5 @@ export const dolNetwork: DolRegion[] = [
         role: 'Medical Oncologist, True Family Women\'s Cancer Center - Swedish Cancer Institute, Seattle, WA.',
         bio: 'Focuses on translational research in women\'s health and early-phase clinical trials for breast and gynecologic cancers.',
         education: 'Xi\'an Medical (MD); Ohio State (Residency); Fred Hutch/UW (Fellowship).',
-      },
-    ],
-  },
+      }
 ];

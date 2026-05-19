@@ -15,6 +15,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
 
 export default function AdminPrograms() {
   const location = useLocation();
@@ -82,8 +83,8 @@ export default function AdminPrograms() {
           </h1>
           <p className="text-sm text-gray-600">
             {isOfficeHours
-              ? 'Live sessions for Q&A — host admits participants. Manage CHM Office Hours here.'
-              : 'Schedule and manage Live sessions.'}
+              ? 'Zoom Meeting sessions for live Q&A—often scheduled beside webinars. Host admits participants from the waiting room.'
+              : 'Schedule and manage live Zoom Webinars and learner-facing registration.'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -104,7 +105,7 @@ export default function AdminPrograms() {
           )}
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
-            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             <Calendar className="h-4 w-4" />
             {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
@@ -158,8 +159,12 @@ export default function AdminPrograms() {
           key={editingId}
           webinar={items.find((w) => w.id === editingId)!}
           onClose={() => setEditingId(null)}
-          onSaved={() => {
+          onSaved={(updatedId?: string) => {
+            // Invalidate admin list and all user-facing caches so speaker/panelist
+            // name changes are immediately reflected in the program hub and session pages.
             queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+            queryClient.invalidateQueries({ queryKey: ['webinars'] });
+            if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
             setEditingId(null);
           }}
         />
@@ -174,12 +179,12 @@ export default function AdminPrograms() {
           </p>
           <p className="text-sm text-gray-500 mt-1">
             {isOfficeHours
-              ? 'Create a new CHM Office Hours session for interactive Q&A.'
+              ? 'Create a new Zoom Meeting session for live Q&A alongside your webinars.'
               : 'Schedule your first Live session.'}
           </p>
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <Calendar className="h-4 w-4" /> {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
           </Link>
@@ -391,7 +396,7 @@ function EditWebinarModal({
 }: {
   webinar: AdminWebinar;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (updatedId?: string) => void;
 }) {
   const [sessionKind, setSessionKind] = useState<ZoomSessionType>(
     webinar.zoomSessionType ?? 'WEBINAR',
@@ -412,11 +417,13 @@ function EditWebinarModal({
   const [hostDisplayName, setHostDisplayName] = useState(webinar.hostDisplayName ?? '');
   const [hostBio, setHostBio] = useState(webinar.hostBio ?? '');
   const [speakers, setSpeakers] = useState<string[]>(webinar.speakers ?? []);
+  const [sessionHeroImageUrl, setSessionHeroImageUrl] = useState(webinar.sessionHeroImageUrl ?? '');
+  const [sessionDisclaimer, setSessionDisclaimer] = useState(webinar.sessionDisclaimer ?? '');
   const [error, setError] = useState<string | null>(null);
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),
-    onSuccess: onSaved,
+    onSuccess: () => onSaved(webinar.id),
     onError: (err: unknown) => {
       const ax = err as { response?: { data?: { message?: string | string[] } } };
       const m = ax.response?.data?.message;
@@ -468,6 +475,8 @@ function EditWebinarModal({
       hostDisplayName: hostDisplayName.trim() || undefined,
       hostBio: hostBio.trim() || undefined,
       speakers: speakers.map((s) => s.trim()).filter(Boolean),
+      sessionHeroImageUrl: sessionHeroImageUrl.trim() || null,
+      sessionDisclaimer: sessionDisclaimer.trim() || null,
     };
     updateMutation.mutate(payload);
   };
@@ -539,7 +548,7 @@ function EditWebinarModal({
               className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             >
               <option value="WEBINAR">Live webinar (Zoom Webinar)</option>
-              <option value="MEETING">CHM Office Hours (Zoom Meeting)</option>
+              <option value="MEETING">Office Hours (Zoom Meeting)</option>
             </select>
             <p className="mt-1 text-xs text-gray-500">
               Must match how this session exists in Zoom; the wrong choice can fail when syncing title or schedule.
@@ -565,6 +574,26 @@ function EditWebinarModal({
                 onChange={(e) => setDuration(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <SessionHeroImageField
+              value={sessionHeroImageUrl}
+              onChange={setSessionHeroImageUrl}
+            />
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Learner disclaimer <span className="font-normal text-gray-400">— optional</span>
+              </label>
+              <textarea
+                rows={3}
+                value={sessionDisclaimer}
+                onChange={(e) => setSessionDisclaimer(e.target.value)}
+                placeholder="Compliance or sponsor wording shown to learners"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-500">Leave blank and save to clear. Updates appear on registration and the session page.</p>
             </div>
           </div>
 
@@ -682,7 +711,7 @@ function EditWebinarModal({
           <button
             onClick={handleSave}
             disabled={updateMutation.isPending}
-            className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-50 inline-flex items-center gap-2"
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 inline-flex items-center gap-2"
           >
             {updateMutation.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -54,7 +54,7 @@ export default function PublicOfficeHoursDetail() {
           <p className="mt-2 text-sm text-gray-600">That link may be invalid or expired.</p>
           <Link
             to="/chm-office-hours"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white"
+            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
           >
             <ChevronLeft className="h-4 w-4" />
             Back to CHM Office Hours
@@ -137,7 +137,7 @@ export default function PublicOfficeHoursDetail() {
                     state={{
                       from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}` : `/chm-office-hours/${id}` },
                     }}
-                    className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                    className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                   >
                     <LogIn className="h-4 w-4" />
                     Sign in
@@ -160,7 +160,7 @@ export default function PublicOfficeHoursDetail() {
                   href={session.joinUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                 >
                   <Video className="h-4 w-4" />
                   Join Session

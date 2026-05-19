@@ -99,7 +99,7 @@ export default function AdminLayout() {
                     [
                       'flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
                       isActive
-                        ? 'bg-gray-900 text-white shadow-[0_4px_18px_-10px_rgba(0,0,0,0.35)] dark:bg-zinc-100 dark:text-zinc-900'
+                        ? 'bg-brand-600 text-white shadow-[0_4px_18px_-10px_rgba(0,0,0,0.35)] dark:bg-zinc-100 dark:text-zinc-900'
                         : 'text-gray-800 hover:bg-gray-100/90 dark:text-zinc-200 dark:hover:bg-zinc-800/85',
                     ].join(' ')
                   }

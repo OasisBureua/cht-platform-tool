@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { BillComMark } from '../components/branding/BillComMark';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
@@ -57,11 +58,12 @@ export default function Earnings() {
     <div className="space-y-8">
       <header className="space-y-2">
         <div className="flex items-center gap-2.5 text-gray-900">
-          <Banknote className="h-5 w-5 text-brand-700" strokeWidth={2} aria-hidden />
+          <Banknote className="h-5 w-5 text-accent-600 dark:text-accent-400" strokeWidth={2} aria-hidden />
           <h1 className="text-balance text-2xl font-semibold text-gray-900 md:text-3xl">Your Earnings</h1>
         </div>
-        <p className="text-pretty text-sm text-gray-600">
-          Balances and activity. Actual payouts are sent via Bill.com. Open{' '}
+        <p className="text-pretty text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+          Balances and activity. Actual payouts are sent through{' '}
+          <BillComMark size="sm" className="translate-y-px" />. Open{' '}
           <Link
             to="/app/settings"
             state={{ settingsTab: 'payment' as const }}
@@ -142,8 +144,9 @@ export default function Earnings() {
         {paymentHistory.length === 0 ? (
           <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
             <p className="text-sm font-semibold text-gray-900">No payments yet</p>
-            <p className="mt-1 text-sm text-gray-600">
-              Completed honoraria and bonuses appear here after admins process them via Bill.com.
+            <p className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+              Completed honoraria and bonuses appear here after admins process them through{' '}
+              <BillComMark size="xs" className="translate-y-px" />.
             </p>
           </div>
         ) : (

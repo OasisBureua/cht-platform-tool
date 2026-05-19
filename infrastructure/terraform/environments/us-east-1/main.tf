@@ -140,6 +140,21 @@ module "s3_certificates" {
   allowed_origins = ["https://${var.domain_name}"]
 }
 
+module "s3_session_assets" {
+  source = "../../modules/storage/s3-session-assets"
+
+  project     = var.project
+  environment = var.environment
+  aws_region  = "us-east-1"
+  cors_allowed_origins = distinct([
+    "https://${var.domain_name}",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+  ])
+}
+
 # ============================================
 # Messaging - SNS Alerts
 # ============================================
@@ -233,9 +248,11 @@ module "iam" {
   sqs_queue_arns = [
     module.sqs.email_queue_arn,
     module.sqs.payment_queue_arn,
-    module.sqs.cme_queue_arn
+    module.sqs.cme_queue_arn,
+    module.sqs.scheduled_jobs_queue_arn
   ]
   certificates_bucket_arn = module.s3_certificates.bucket_arn
+  session_assets_bucket_arn = module.s3_session_assets.bucket_arn
 }
 
 # ============================================
@@ -297,6 +314,8 @@ module "ecs_backend" {
   sqs_email_queue_url   = module.sqs.email_queue_url
   sqs_payment_queue_url = module.sqs.payment_queue_url
   sqs_cme_queue_url     = module.sqs.cme_queue_url
+  session_assets_s3_bucket         = module.s3_session_assets.bucket_id
+  session_assets_public_url_base   = module.s3_session_assets.public_url_base
 }
 
 # ============================================
@@ -325,9 +344,25 @@ module "ecs_worker" {
   min_capacity          = var.worker_min_capacity
   max_capacity          = var.worker_max_capacity
   security_group_ids    = [aws_security_group.worker.id]
-  sqs_email_queue_url   = module.sqs.email_queue_url
-  sqs_payment_queue_url = module.sqs.payment_queue_url
-  sqs_cme_queue_url     = module.sqs.cme_queue_url
+  sqs_email_queue_url          = module.sqs.email_queue_url
+  sqs_payment_queue_url        = module.sqs.payment_queue_url
+  sqs_cme_queue_url            = module.sqs.cme_queue_url
+  sqs_scheduled_jobs_queue_url = module.sqs.scheduled_jobs_queue_url
+  ses_from_email               = var.worker_ses_from_email
+  frontend_app_url             = "https://${var.domain_name}"
+}
+
+# ============================================
+# Messaging - EventBridge scheduled jobs
+# ============================================
+module "scheduled_eventbridge" {
+  source = "../../modules/messaging/eventbridge-scheduled-jobs"
+
+  project                  = var.project
+  environment              = var.environment
+  scheduled_jobs_queue_arn = module.sqs.scheduled_jobs_queue_arn
+  scheduled_jobs_queue_url = module.sqs.scheduled_jobs_queue_url
+  session_reminders_schedule = var.session_reminders_schedule_expression
 }
 
 # ============================================

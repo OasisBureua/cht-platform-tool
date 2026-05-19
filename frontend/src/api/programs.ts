@@ -41,6 +41,11 @@ export interface Program {
   registrationRequiresApproval?: boolean;
   hostDisplayName?: string;
   hostBio?: string;
+  speakers?: string[];
+  /** Session-specific compliance / sponsor disclaimer for learners */
+  sessionDisclaimer?: string;
+  /** HTTPS URL for banner image on session pages */
+  sessionHeroImageUrl?: string;
 }
 
 export interface OfficeHoursSlotOption {
@@ -239,6 +244,22 @@ export const programsApi = {
     body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
   ): Promise<{ id: string; status: string; enrolled: boolean }> => {
     const { data } = await apiClient.post(`/programs/${encodeURIComponent(programId)}/registration`, body);
+    return data;
+  },
+
+  submitBatchRegistrations: async (
+    programIds: string[],
+  ): Promise<{
+    submitted: Array<{
+      programId: string;
+      title: string;
+      status: string;
+      enrolled: boolean;
+    }>;
+    skipped: Array<{ programId: string; title: string; reason: string }>;
+    failed: Array<{ programId: string; title: string; message: string }>;
+  }> => {
+    const { data } = await apiClient.post('/programs/registrations/batch', { programIds });
     return data;
   },
 

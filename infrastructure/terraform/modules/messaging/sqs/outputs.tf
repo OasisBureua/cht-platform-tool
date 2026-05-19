@@ -42,3 +42,13 @@ output "cme_dlq_arn" {
   description = "CME DLQ ARN"
   value       = aws_sqs_queue.cme_dlq.arn
 }
+
+output "scheduled_jobs_queue_arn" {
+  description = "Scheduled jobs queue ARN"
+  value       = aws_sqs_queue.scheduled_jobs.arn
+}
+
+output "scheduled_jobs_queue_url" {
+  description = "Scheduled jobs queue URL"
+  value       = aws_sqs_queue.scheduled_jobs.url
+}

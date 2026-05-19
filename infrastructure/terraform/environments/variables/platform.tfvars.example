@@ -79,3 +79,10 @@ youtube_playlist_ids = ""
 
 # Optional: SNS for alerts
 # alarm_notification_emails = ["ops@example.com"]
+
+# Worker / session reminders
+# SES-verified From address for reminder and report emails
+# worker_ses_from_email = "noreply@yourdomain.com"
+#
+# EventBridge cron for the 24h reminder scan (default: every 3 hours)
+# session_reminders_schedule_expression = "rate(3 hours)"

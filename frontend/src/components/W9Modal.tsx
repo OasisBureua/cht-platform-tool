@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { validateTaxId } from '../utils/w9Validation';
 import { getApiErrorMessage } from '../api/client';
+import { BillComMark } from './branding/BillComMark';
 
 export function W9Modal({
   isOpen,
@@ -66,9 +67,17 @@ export function W9Modal({
               <X className="h-5 w-5" />
             </button>
           </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Complete this form so we can process your payouts. Your information is sent securely to Bill.com.
+          <p className="text-sm text-gray-600 mb-4 inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            Complete this form so we can process your payouts. Your information is sent securely to{' '}
+            <BillComMark size="sm" className="translate-y-px" />.
           </p>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed mb-4">
+            <strong className="text-slate-900">Security:</strong> Community Health Media does not store full payment card
+            data. Tax and banking details are handled by{' '}
+            <BillComMark size="xs" className="inline translate-y-px mx-0.5" /> using industry-standard safeguards. Only
+            provide information through official CHM screens or your vendor portal—never share passwords or full account
+            numbers by email.
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -154,7 +163,7 @@ export function W9Modal({
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60 flex items-center justify-center gap-2"
+                className="flex-1 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60 flex items-center justify-center gap-2"
               >
                 {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                 {submitting ? 'Submitting…' : 'Submit W-9'}

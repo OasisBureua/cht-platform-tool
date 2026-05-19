@@ -66,6 +66,12 @@ export default () => ({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 
+  /** Public session banner images (S3 presigned PUT from admin; learners load `sessionHeroImageUrl`). */
+  sessionAssets: {
+    s3Bucket: process.env.SESSION_ASSETS_S3_BUCKET?.trim() || '',
+    publicUrlBase: process.env.SESSION_ASSETS_PUBLIC_URL_BASE?.trim() || '',
+  },
+
   // Transactional email (Amazon SES) — e.g. registration approved for Live / Office Hours
   email: {
     from: (process.env.EMAIL_FROM || 'info@communityhealth.media').trim(),

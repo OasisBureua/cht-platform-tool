@@ -14,7 +14,7 @@ const nav = [
   { to: '/admin', label: 'Home', icon: Home, end: true },
   { to: '/admin/hcp-explorer', label: 'Search', icon: Search, end: false },
   { to: '/admin/programs', label: 'Live', icon: Radio, end: false },
-  { to: '/admin/office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
+  { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/admin/payments', label: 'Payments', icon: DollarSign, end: false },
   { to: '/admin/users', label: 'Users', icon: Users, end: false },

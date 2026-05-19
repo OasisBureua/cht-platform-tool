@@ -60,7 +60,7 @@ export default function AdminSurveys() {
         <h1 className="text-2xl font-semibold text-gray-900">Surveys</h1>
         <Link
           to="/admin/create-survey"
-          className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >
           <Plus className="h-4 w-4" />
           Create Survey
@@ -75,7 +75,7 @@ export default function AdminSurveys() {
           </p>
           <Link
             to="/admin/create-survey"
-            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
           >
             <Plus className="h-4 w-4" />
             Create Survey

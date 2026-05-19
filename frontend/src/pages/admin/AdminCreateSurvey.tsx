@@ -227,7 +227,7 @@ export default function AdminCreateSurvey() {
           <button
             type="submit"
             disabled={createMutation.isPending || !programId || !title.trim()}
-            className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {createMutation.isPending ? 'Creating...' : 'Create Survey'}
           </button>

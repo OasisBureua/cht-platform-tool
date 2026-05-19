@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { programsApi, type ProgramRegistrationState } from '../../api/programs';
+import { BillComMark } from '../branding/BillComMark';
 
 function formatMoneyFromCents(cents: number) {
   return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -178,12 +179,13 @@ export function PostEventFeedbackLearnerActions(props: {
 
       {showPayoutBlock ? (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
-            Review the payout details we will use for your honorarium. Add your Bill.com profile and W-9 under{' '}
+          <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+            Review the payout details we will use for your honorarium. Add your{' '}
+            <BillComMark size="sm" className="translate-y-px" /> profile and W-9 under{' '}
             <Link to="/app/payments" className="font-semibold underline">
               Payments
             </Link>{' '}
-            if needed.             When you continue, we queue an honorarium for processing; a <strong>pending</strong> payment appears
+            if needed. When you continue, we queue an honorarium for processing; a <strong>pending</strong> payment appears
             for an administrator to approve and pay shortly after the job runs.
           </p>
           {previewError ? (
@@ -227,8 +229,9 @@ export function PostEventFeedbackLearnerActions(props: {
                 </li>
               ) : null}
               {!preview.hasBillVendor ? (
-                <li className="text-amber-900">
-                  Add your Bill.com payout profile under{' '}
+                <li className="text-amber-900 flex flex-wrap items-center gap-x-1 gap-y-1">
+                  Add your{' '}
+                  <BillComMark size="xs" className="translate-y-px" /> payout profile under{' '}
                   <Link to="/app/payments" className="font-semibold underline">
                     Payments
                   </Link>{' '}

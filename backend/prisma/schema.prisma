@@ -117,6 +117,10 @@ model Program {
   // Sponsorship
   sponsorName       String
   sponsorLogo       String?
+  /// Optional banner image URL for the live session detail / registration (admin-provided CDN or public URL).
+  sessionHeroImageUrl String?
+  /// Session-specific disclaimer shown to learners on registration and detail pages (HTML stripped client-side).
+  sessionDisclaimer   String? @db.Text
   
   // Scheduling
   startDate         DateTime?
@@ -232,6 +236,8 @@ model ProgramRegistration {
   /// Jotform submission id for post-event survey (first submission wins; webhook sets).
   postEventJotformSubmissionId        String?
   honorariumRequestedAt                DateTime?
+  /// Set after the ~24h pre-session reminder email is sent. Reset to null when session time changes so a new reminder fires.
+  reminder24hSentAt                    DateTime?
   createdAt                 DateTime                  @default(now())
   updatedAt                 DateTime                  @updatedAt
 

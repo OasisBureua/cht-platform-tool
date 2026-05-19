@@ -66,8 +66,9 @@ resource "aws_db_parameter_group" "main" {
   }
 
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
+    apply_method = "pending-reboot"
   }
 
   tags = {
@@ -103,7 +104,7 @@ resource "aws_db_instance" "main" {
   publicly_accessible       = false
   deletion_protection       = (var.environment == "prod" || var.environment == "platform") ? true : false
   skip_final_snapshot       = var.environment == "dev" ? true : false
-  final_snapshot_identifier = var.environment == "dev" ? null : "${local.prefix}-final-snapshot-${formatdate("YYYY-MM-DD-hhmm", timestamp())}"
+  final_snapshot_identifier = var.environment == "dev" ? null : "${local.prefix}-final-snapshot"
 
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
   performance_insights_enabled    = true
@@ -118,7 +119,9 @@ resource "aws_db_instance" "main" {
   }
 
   lifecycle {
-    # RDS does not allow changing subnet group or parameter group on existing instances
-    ignore_changes = [db_subnet_group_name, parameter_group_name]
+    # RDS does not allow changing subnet group or parameter group on existing instances.
+    # final_snapshot_identifier is ignored to prevent perpetual drift from the
+    # previously timestamp()-based value that changes on every plan.
+    ignore_changes = [db_subnet_group_name, parameter_group_name, final_snapshot_identifier]
   }
 }

@@ -289,7 +289,8 @@ export class SesEmailService {
       honorariumAmount: number | null;
       zoomSessionType: ProgramZoomSessionType;
     };
-    surveyUrl: string;
+    /** Direct Jotform URL. Pass null to fall back to the app session page CTA. */
+    surveyUrl?: string | null;
   }): Promise<void> {
     if (!this.enabled) {
       this.logger.debug('EMAIL disabled: skip post-webinar-survey email');

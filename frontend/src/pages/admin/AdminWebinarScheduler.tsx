@@ -5,6 +5,8 @@ import { Video, Calendar } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import { wallClockToUtcIso } from '../../utils/wallClockToUtcIso';
+import { BillComMark } from '../../components/branding/BillComMark';
+import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
 
 
 const TIMEZONES = [
@@ -55,6 +57,8 @@ export default function AdminWebinarScheduler({
   const [time, setTime] = useState('');
   const [timezone, setTimezone] = useState('America/New_York');
   const [duration, setDuration] = useState('60');
+  const [sessionHeroImageUrl, setSessionHeroImageUrl] = useState('');
+  const [sessionDisclaimer, setSessionDisclaimer] = useState('');
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
@@ -180,6 +184,8 @@ export default function AdminWebinarScheduler({
       ...(postEventMerged ? { postEventJotformFormIdOrUrl: postEventMerged } : {}),
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
       ...(cleanSpeakers.length > 0 ? { speakers: cleanSpeakers } : {}),
+      ...(sessionHeroImageUrl.trim() ? { sessionHeroImageUrl: sessionHeroImageUrl.trim() } : {}),
+      ...(sessionDisclaimer.trim() ? { sessionDisclaimer: sessionDisclaimer.trim() } : {}),
     };
 
     createMutation.mutate(payload);
@@ -189,12 +195,19 @@ export default function AdminWebinarScheduler({
     <div className="mx-auto w-full max-w-[min(100%,100rem)] space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
-          {isWebinar ? 'Webinar scheduler' : 'Office hours scheduler'}
+          {isWebinar ? 'Webinar scheduler' : 'Office Hours scheduler'}
         </h1>
         <p className="text-sm text-gray-600 mt-1">
-          {isWebinar
-            ? 'Creates a Zoom Webinar and publishes it. The server clones a unique invitation Jotform and post-event Jotform from your template form IDs in environment variables, then wires webhooks. Learners complete invitation before approval; post-event reminders appear after the session. Honorarium uses Bill.com.'
-            : 'Creates an office hours session as a Zoom Meeting (type MEETING: interactive Q&A, waiting room). Registrations require admin approval before learners can join. No automatic Jotform clone for this session type.'}
+          {isWebinar ? (
+            <>
+              Creates a Zoom Webinar and publishes it. The server clones a unique invitation Jotform and post-event Jotform
+              from your template form IDs in environment variables, then wires webhooks. Learners complete invitation before
+              approval; post-event reminders appear after the session. Honorarium payouts use{' '}
+              <BillComMark size="sm" className="translate-y-px" />.
+            </>
+          ) : (
+            'Creates Office Hours as a Zoom Meeting (type MEETING: conversational Q&A, waiting room). Registrations require admin approval before learners can join. Pair with Program hub time slots when you split the hour.'
+          )}
         </p>
       </div>
 
@@ -246,8 +259,8 @@ export default function AdminWebinarScheduler({
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            Choose <strong>Session type</strong> below. Webinars use Zoom Webinars; office hours use Zoom Meetings with
-            waiting room (host admits attendees).
+            Choose <strong>Session type</strong> below. Live webinars use Zoom Webinars; Office Hours use Zoom Meetings with
+            a waiting room (host admits attendees).
           </p>
         </div>
       )}
@@ -256,8 +269,8 @@ export default function AdminWebinarScheduler({
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            This page schedules <strong>office hours</strong> (Zoom Meeting, session type <code className="text-xs">MEETING</code>).
-            Host admits attendees from the waiting room.
+            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>)—often used
+            alongside webinar-style programming. Host admits attendees from the waiting room.
           </p>
         </div>
       )}
@@ -285,15 +298,15 @@ export default function AdminWebinarScheduler({
                 }}
                 className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               >
-                <option value="WEBINAR">Webinar (Zoom Webinar, CME-style; intake Jotform required)</option>
-                <option value="MEETING">Office hours (Zoom Meeting, Q&A, waiting room)</option>
+                <option value="WEBINAR">Live webinar (Zoom Webinar; intake Jotform required)</option>
+                <option value="MEETING">Office Hours (Zoom Meeting; Q&A, waiting room)</option>
               </select>
             </div>
           ) : (
             <p className="text-sm text-gray-700">
               Session type:{' '}
               <span className="font-semibold">
-                {isWebinar ? 'Webinar (WEBINAR)' : 'Office hours (MEETING)'}
+                {isWebinar ? 'Webinar (WEBINAR)' : 'Office Hours (MEETING)'}
               </span>
             </p>
           )}
@@ -308,7 +321,7 @@ export default function AdminWebinarScheduler({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={isWebinar ? 'e.g., Advanced Cardiology Update' : 'e.g., Breast oncology office hours'}
+                placeholder={isWebinar ? 'e.g., Advanced Cardiology Update' : 'e.g., Tumor board Q&A'}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
@@ -337,6 +350,29 @@ export default function AdminWebinarScheduler({
             />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SessionHeroImageField
+              spacious
+              value={sessionHeroImageUrl}
+              onChange={setSessionHeroImageUrl}
+            />
+            <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">
+                Learner disclaimer <span className="font-normal text-gray-500">— optional</span>
+              </label>
+              <textarea
+                rows={3}
+                value={sessionDisclaimer}
+                onChange={(e) => setSessionDisclaimer(e.target.value)}
+                placeholder="Sponsor attestation, CE limits, or privacy wording shown above registration."
+                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Plain text. Shown on the registration wizard and session detail page; update anytime from the webinar editor.
+              </p>
+            </div>
+          </div>
+
           {/* Host */}
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -363,8 +399,8 @@ export default function AdminWebinarScheduler({
             </div>
             <p className="mt-1 text-xs text-gray-500">
               {isWebinar
-                ? 'Person moderating/running the session. Shown as "Host:" on the webinar card.'
-                : 'Person hosting the office hours. Shown as "Get time with…" on the session card.'}
+                ? 'Person moderating/running the session. Shown as "Host:" on the live session card.'
+                : 'Person hosting Office Hours. Shown as "Get time with…" on the session card.'}
             </p>
           </div>
 
@@ -480,9 +516,9 @@ export default function AdminWebinarScheduler({
                 placeholder="e.g. 500"
                 className="w-full max-w-xs rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
-              <p className="mt-1 text-xs text-gray-600">
-                Learners can request this amount after post-event steps; admins pay via Bill.com. Not available for
-                Office hours sessions.
+              <p className="mt-1 text-xs text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+                Learners can request this amount after post-event steps; admins pay via{' '}
+                <BillComMark size="xs" className="translate-y-px" />. Not available for Office Hours (Zoom Meetings).
               </p>
             </div>
           ) : null}
@@ -594,7 +630,7 @@ export default function AdminWebinarScheduler({
           <button
             type="submit"
             disabled={createMutation.isPending}
-            className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50 transition-colors inline-flex items-center gap-2"
+            className="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 transition-colors inline-flex items-center gap-2"
           >
             {createMutation.isPending && (
               <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />

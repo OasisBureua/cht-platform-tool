@@ -23,7 +23,7 @@ import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '
 import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
-import { BiomarkerConversationRow, BIOMARKER_ROWS } from '../components/content/BiomarkerConversationRow';
+import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -44,7 +44,7 @@ const QUICK_START_ACTIONS = [
   },
   {
     title: 'CHM Office Hours',
-    desc: 'Drop in for interactive Q&A with experts—book a slot and join.',
+    desc: 'Drop in for live Q&A with experts—book a slot and join.',
     icon: CalendarClock,
     to: '/app/chm-office-hours',
   },
@@ -110,7 +110,7 @@ const CLIP_LIMIT = 14;
 
 /** Shared bento tile surface */
 const bentoMetric =
-  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(43,168,154,0.2)] active:scale-[0.995] dark:bg-zinc-900 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(43,168,154,0.12)]';
+  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(49,105,149,0.14)] active:scale-[0.995] dark:bg-zinc-900 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(49,105,149,0.1)]';
 
 const bentoPending =
   'group relative flex min-h-[148px] flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.1)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(245,158,11,0.18)] active:scale-[0.995] dark:from-amber-950/20 dark:via-zinc-900 dark:to-zinc-950 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_16px_48px_-28px_rgba(245,158,11,0.08)]';
@@ -234,6 +234,7 @@ export default function Dashboard() {
   });
 
   const nextUpcomingWebinar = useMemo(() => getNextUpcomingWebinar(webinars), [webinars]);
+  const nextLiveCoverUrl = nextUpcomingWebinar?.imageUrl?.trim() || undefined;
   const nextOfficeHoursSession = useMemo(() => getNextUpcomingWebinar(officeHours), [officeHours]);
   const requiredSurveysPending = useMemo(() => surveys.filter((s) => s.required), [surveys]);
   const recentItems = recentData?.items ?? [];
@@ -259,7 +260,7 @@ export default function Dashboard() {
 
   const spotlightSlides = useMemo((): SpotlightSlide[] => {
     const slides: SpotlightSlide[] = [];
-    const podcastThumb = '/images/iStock-1869998948-a6d5f1f2-fc95-4c9b-a1b6-b579bd7b6758.png';
+    const podcastThumb = '/images/podcasts/breast-friends/cover.png';
 
     /** Prefer a catalog clip whose thumbnail resolves; omit broken / placeholder clips. */
     const featuredConversation = recentCatalogForHome[0];
@@ -395,7 +396,7 @@ export default function Dashboard() {
           <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.45)] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0,0,1)] sm:p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-brand-600">New here?</p>
+                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-accent-700 dark:text-accent-300">New here?</p>
                 <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
                 <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
               </div>
@@ -417,7 +418,7 @@ export default function Dashboard() {
                   className="group rounded-xl bg-white p-4 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.28)] active:scale-[0.96]"
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <item.icon className="h-4 w-4 text-brand-600" aria-hidden />
+                    <item.icon className="h-4 w-4 text-accent-600 dark:text-accent-400" aria-hidden />
                     <p className="text-sm font-bold text-zinc-900">{item.title}</p>
                   </div>
                   <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
@@ -428,7 +429,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={closeOnboarding}
-                className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-800 active:scale-[0.96]"
+                className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-orange-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
               >
                 Continue
               </button>
@@ -443,14 +444,16 @@ export default function Dashboard() {
       >
         <div className="px-4 pb-6 pt-5 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8">
           <div className="mb-5 px-0.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-400">Overview</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-700 dark:text-accent-300">
+              Overview
+            </p>
             <h2
               id="app-dashboard-overview-heading"
-              className="mt-1 text-xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-2xl"
+              className="mt-1 text-xl font-bold tracking-tight text-chm-precision md:text-2xl dark:text-zinc-100"
             >
               Your dashboard
             </h2>
-            <p className="mt-1.5 max-w-xl text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1.5 max-w-xl text-pretty text-sm leading-relaxed text-chm-discovery dark:text-zinc-400">
               Next live session, earnings, activity, and surveys you still need to complete.
             </p>
           </div>
@@ -458,17 +461,41 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:grid-rows-2 md:gap-4">
           <Link
             to={nextUpcomingWebinar?.id ? `/app/live/${nextUpcomingWebinar.id}` : '/app/live'}
-            className="group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-violet-100/95 via-white to-emerald-50/90 p-4 text-left shadow-[0_20px_56px_-30px_rgba(91,33,182,0.22)] transition-[transform,box-shadow] duration-200 hover:shadow-[0_28px_64px_-30px_rgba(43,168,154,0.28)] active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px] dark:from-zinc-900 dark:via-violet-950/40 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]"
+            className={[
+              'group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px]',
+              nextLiveCoverUrl
+                ? 'shadow-[0_22px_56px_-28px_rgba(0,0,0,0.4)] hover:shadow-[0_28px_64px_-28px_rgba(0,0,0,0.48)] dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.75)]'
+                : 'bg-gradient-to-br from-accent-100/90 via-white to-amber-50/80 shadow-[0_20px_56px_-30px_rgba(49,105,149,0.12)] hover:shadow-[0_28px_64px_-30px_rgba(49,105,149,0.18)] dark:from-zinc-900 dark:via-accent-950/20 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]',
+            ].join(' ')}
           >
-            <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-violet-400/35 blur-3xl dark:bg-violet-500/15" />
-            <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-brand-400/25 blur-3xl dark:bg-brand-500/10" />
+            {nextLiveCoverUrl ? (
+              <>
+                <img
+                  src={nextLiveCoverUrl}
+                  alt={nextUpcomingWebinar?.title ? `Cover for ${nextUpcomingWebinar.title}` : ''}
+                  className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/38 to-black/22" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-[58%] max-w-[320px] bg-gradient-to-r from-black/52 to-transparent" />
+              </>
+            ) : (
+              <>
+                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-accent-300/25 blur-3xl dark:bg-accent-500/15" />
+                <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-amber-300/35 blur-3xl dark:bg-orange-600/10" />
+              </>
+            )}
             <div className="relative z-10 flex items-start justify-between gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.15em] text-violet-800 shadow-[0_2px_12px_-4px_rgba(91,33,182,0.2)] dark:bg-zinc-900/80 dark:text-brand-200">
-                <Radio className="h-3.5 w-3.5" aria-hidden />
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-chm-knowledge shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_16px_-4px_rgba(61,164,192,0.15)] backdrop-blur-md dark:border-white/20 dark:bg-white/15 dark:text-chm-knowledge dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_20px_-6px_rgba(0,0,0,0.4)]">
+                <Radio className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Next LIVE
               </span>
               <ChevronRight
-                className="h-5 w-5 shrink-0 text-violet-400 transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-violet-700 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                className={[
+                  'h-5 w-5 shrink-0 transition-[color,transform] duration-200 group-hover:translate-x-0.5',
+                  nextLiveCoverUrl
+                    ? 'text-white/90 group-hover:text-white'
+                    : 'text-chm-expertise group-hover:text-chm-knowledge dark:text-accent-400 dark:group-hover:text-accent-300',
+                ].join(' ')}
                 aria-hidden
               />
             </div>
@@ -480,22 +507,37 @@ export default function Dashboard() {
                 </>
               ) : nextUpcomingWebinar ? (
                 <>
-                  <p className="line-clamp-3 text-xl font-bold leading-snug tracking-tight text-zinc-900 dark:text-white">
+                  <p
+                    className={[
+                      'line-clamp-3 text-xl font-bold leading-snug tracking-tight',
+                      nextLiveCoverUrl ? 'text-white' : 'text-chm-precision dark:text-white',
+                    ].join(' ')}
+                  >
                     {nextUpcomingWebinar.title}
                   </p>
-                  <p className="mt-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  <p
+                    className={[
+                      'mt-3 text-sm font-medium',
+                      nextLiveCoverUrl ? 'text-white/88' : 'text-zinc-700 dark:text-zinc-300',
+                    ].join(' ')}
+                  >
                     {nextUpcomingWebinar.startTime
                       ? format(new Date(nextUpcomingWebinar.startTime), 'EEE, MMM d · h:mm a')
                       : 'Scheduled session'}
                   </p>
-                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-brand-700 dark:text-brand-400">
+                  <p
+                    className={[
+                      'mt-4 text-xs font-semibold uppercase tracking-[0.12em]',
+                      nextLiveCoverUrl ? 'text-chm-sharing' : 'text-accent-700 dark:text-accent-300',
+                    ].join(' ')}
+                  >
                     Tap to open session
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="text-xl font-bold text-zinc-900 dark:text-white">Nothing on the calendar</p>
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="text-xl font-bold text-chm-precision dark:text-white">Nothing on the calendar</p>
+                  <p className="mt-2 text-sm text-chm-discovery dark:text-zinc-400">
                     Browse the full schedule for new drops.
                   </p>
                 </>
@@ -505,14 +547,14 @@ export default function Dashboard() {
 
           <Link to="/app/earnings" className={`${bentoMetric} col-start-2 row-start-1 md:col-start-2 md:row-start-1`}>
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950/50 dark:text-brand-300">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-chm-expertise dark:text-chm-knowledge">
                 <Banknote className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Earnings</p>
-              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Earnings</p>
+              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-chm-precision dark:text-zinc-100">
                 {!userId ? '--' : earningsSummaryLoading ? '…' : `$${(earningsSummary?.totalEarnings ?? 0).toFixed(2)}`}
               </p>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Total balance</p>
@@ -521,14 +563,14 @@ export default function Dashboard() {
 
           <Link to="/app/surveys" className={`${bentoMetric} col-start-2 row-start-2 md:col-start-3 md:row-start-1`}>
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-chm-expertise dark:text-chm-knowledge">
                 <Activity className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
               <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Activity</p>
-              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-zinc-100">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Activity</p>
+              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-chm-precision dark:text-zinc-100">
                 {!userId ? '--' : activityStatsLoading ? '…' : (activityStats?.activitiesCompleted ?? 0).toLocaleString()}
               </p>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -549,12 +591,12 @@ export default function Dashboard() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-chm-connection dark:text-chm-sharing">
                       <ClipboardCheck className="h-5 w-5" strokeWidth={2} aria-hidden />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500 dark:text-zinc-400">Pending actions</p>
-                      <p className="mt-0.5 text-lg font-bold text-zinc-900 dark:text-zinc-100">Required surveys</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Pending actions</p>
+                      <p className="mt-0.5 text-lg font-bold text-chm-precision dark:text-zinc-100">Required surveys</p>
                     </div>
                   </div>
                   <ChevronRight
@@ -562,7 +604,7 @@ export default function Dashboard() {
                     aria-hidden
                   />
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400 sm:mt-3">
+                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-chm-discovery dark:text-zinc-400 sm:mt-3">
                   {surveysLoading
                     ? 'Loading survey queue…'
                     : requiredSurveysPending.length === 0
@@ -572,12 +614,12 @@ export default function Dashboard() {
                         : 'Open Surveys to finish eligibility tasks.'}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-white/90 px-5 py-4 shadow-[0_8px_28px_-20px_rgba(245,158,11,0.2)] dark:bg-zinc-900/80">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-800 dark:text-amber-300">Due</p>
-                <p className="mt-1 text-3xl font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+              <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-chm-connection/12 px-5 py-4 shadow-[0_8px_28px_-20px_rgba(231,118,79,0.25)] dark:bg-chm-connection/20">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-connection dark:text-chm-sharing">Due</p>
+                <p className="mt-1 text-3xl font-bold tabular-nums text-chm-precision dark:text-zinc-100">
                   {surveysLoading ? '…' : requiredSurveysPending.length.toLocaleString()}
                 </p>
-                <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wide text-chm-discovery dark:text-zinc-400">
                   required
                 </p>
               </div>
@@ -599,7 +641,7 @@ export default function Dashboard() {
           {featuredSlideCount > 0 ? (
             <>
               <div
-                className="overflow-hidden rounded-2xl bg-zinc-900 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
+                className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:bg-zinc-950 dark:ring-zinc-800"
                 onTouchStart={(e) => {
                   touchStartX.current = e.touches[0].clientX;
                 }}
@@ -624,18 +666,32 @@ export default function Dashboard() {
                         : `translateX(-${(spotlightIndex / featuredSlideCount) * 100}%)`,
                   }}
                 >
-                  {spotlightSlidesRendered.map((slide) => (
+                  {spotlightSlidesRendered.map((slide) => {
+                    const isPodcastSpotlight = slide.id === 'podcast-episodes';
+                    return (
                     <div
                       key={slide.id}
                       className="relative shrink-0"
                       style={{ width: `${100 / featuredSlideCount}%` }}
                     >
-                      <div className="relative h-[min(52vh,400px)] min-h-[280px] w-full sm:min-h-[320px]">
+                      <div
+                        className={[
+                          'relative w-full',
+                          isPodcastSpotlight
+                            ? 'h-[min(62.4vh,480px)] min-h-[336px] bg-white sm:min-h-[384px] dark:bg-zinc-950'
+                            : 'h-[min(52vh,400px)] min-h-[280px] sm:min-h-[320px]',
+                        ].join(' ')}
+                      >
                         <img
                           src={slide.imageUrl}
                           alt=""
                           data-thumb-track={slide.thumbTrackKey ?? undefined}
-                          className="absolute inset-0 h-full w-full object-cover object-center"
+                          className={[
+                            'absolute inset-0 h-full w-full',
+                            isPodcastSpotlight
+                              ? 'box-border object-contain object-center p-2 sm:p-3'
+                              : 'object-cover object-center',
+                          ].join(' ')}
                           loading="lazy"
                           referrerPolicy="no-referrer"
                           draggable={false}
@@ -644,7 +700,7 @@ export default function Dashboard() {
                         <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
                         <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white sm:p-7 md:p-8">
-                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-brand-300">
+                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-chm-sharing drop-shadow-sm">
                             {slide.eyebrow}
                           </p>
                           <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">
@@ -656,14 +712,14 @@ export default function Dashboard() {
                           <div className="flex flex-wrap items-center gap-3">
                             <Link
                               to={slide.primaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
+                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-chm-precision shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
                             >
                               <PlayCircle className="h-4 w-4" aria-hidden />
                               {slide.primaryCta}
                             </Link>
                             <Link
                               to={slide.secondaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(43,168,154,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
+                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-chm-knowledge px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(61,164,192,0.45)] transition-[background-color,transform] duration-200 hover:bg-chm-expertise active:scale-[0.96] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chm-expertise"
                             >
                               {slide.secondaryCta}
                             </Link>
@@ -671,7 +727,8 @@ export default function Dashboard() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -691,7 +748,7 @@ export default function Dashboard() {
                         onClick={() => setSpotlightIndex(i)}
                         className={[
                           'h-2 rounded-full transition-[width,background-color] duration-300',
-                          i === spotlightIndex ? 'w-8 bg-brand-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                          i === spotlightIndex ? 'w-8 bg-chm-knowledge' : 'w-2 bg-chm-discovery/60 dark:bg-zinc-600',
                         ].join(' ')}
                       />
                     ))}
@@ -730,11 +787,10 @@ export default function Dashboard() {
                 </ConversationRow>
               ) : null}
 
-              {BIOMARKER_ROWS.map((row) => (
+              {BIOMARKER_CAROUSEL_IDS.map((carouselId) => (
                 <BiomarkerConversationRow
-                  key={row.focus}
-                  label={row.label}
-                  focus={row.focus}
+                  key={carouselId}
+                  carouselId={carouselId}
                   isInApp={true}
                   hideBrokenCatalogThumbnails
                 />
@@ -744,7 +800,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title={topicLabel ? `Clips · ${topicLabel}` : 'Clips by tag'}
                   subtitle={`${topicCatalogForHome.length} videos`}
-                  seeAllHref={`${APP_CATALOG_CLIPS_GRID}?tag=${encodeURIComponent(topicTag)}`}
+                  seeAllHref={`${APP_CATALOG_CLIPS_GRID}&tag=${encodeURIComponent(topicTag)}`}
                 >
                   {topicCatalogForHome.map((c) => (
                     <StripCard
@@ -853,7 +909,7 @@ export default function Dashboard() {
                 description={
                   w.startTime
                     ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
-                    : 'Interactive Q&A'
+                    : 'Office Hours'
                 }
               />
             ))

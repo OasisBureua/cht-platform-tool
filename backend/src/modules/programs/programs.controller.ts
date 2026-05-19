@@ -28,6 +28,7 @@ import {
   UpdateVideoProgressDto,
   VideoProgressResponseDto,
 } from './dto/update-video-progress.dto';
+import { BatchSubmitRegistrationsDto } from './dto/batch-registration.dto';
 
 @Controller('programs')
 export class ProgramsController {
@@ -79,6 +80,21 @@ export class ProgramsController {
   async getMyLiveSessionStatus(@CurrentUser() user: AuthUser) {
     return this.registrationsService.getMyLiveSessionStatusForLists(
       user.userId,
+    );
+  }
+
+  /**
+   * POST /api/programs/registrations/batch — register for multiple live webinars (approval when required).
+   */
+  @Post('registrations/batch')
+  @UseGuards(JwtAuthGuard)
+  async submitBatchRegistrations(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: BatchSubmitRegistrationsDto,
+  ) {
+    return this.registrationsService.submitBatchRegistrations(
+      user.userId,
+      dto.programIds,
     );
   }
 
