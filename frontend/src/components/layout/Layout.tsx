@@ -63,12 +63,12 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-gray-50 text-gray-900 md:flex-row dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-chm-surface text-gray-900 md:flex-row dark:bg-zinc-950 dark:text-zinc-100">
       <AppSidebar />
       <AppBottomNav />
 
       <div
-        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-gray-50 dark:bg-zinc-950 max-md:bg-[#18181b] md:overflow-visible"
+        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-chm-surface dark:bg-zinc-950 max-md:bg-[#18181b] md:overflow-visible"
         onClick={(e) => {
           if (!mobileDrawerOpen) return;
           const front = mobileFrontRef.current;
@@ -85,7 +85,7 @@ export default function Layout() {
           <Link
             to="/app/home"
             onClick={() => setMobileDrawerOpen(false)}
-            className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-[#ea580c] transition-[opacity,transform] duration-200 hover:text-[#c2410c] active:scale-[0.98] dark:text-[#fb923c] dark:hover:text-orange-300"
+            className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-accent-600 transition-[opacity,transform] duration-200 hover:text-accent-700 active:scale-[0.98] dark:text-accent-400 dark:hover:text-accent-300"
             aria-label="Community Health Media, app home"
           >
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
@@ -101,8 +101,8 @@ export default function Layout() {
                     [
                       'flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
                       isActive
-                        ? 'bg-orange-100 text-orange-950 shadow-[0_4px_18px_-10px_rgba(234,88,12,0.35)] ring-2 ring-orange-500/20 dark:bg-[#c2410c]/85 dark:text-white dark:ring-orange-400/35 dark:shadow-[0_4px_20px_-10px_rgba(234,88,12,0.4)]'
-                        : 'text-zinc-900 hover:bg-orange-50/90 hover:text-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800/85 dark:hover:text-white',
+                        ? 'bg-accent-100 text-accent-950 shadow-[0_4px_18px_-10px_rgba(49,105,149,0.25)] ring-2 ring-accent-500/25 dark:bg-accent-600 dark:text-white dark:ring-accent-400/35 dark:shadow-[0_4px_20px_-10px_rgba(37,99,235,0.35)]'
+                        : 'text-zinc-900 hover:bg-accent-50/90 hover:text-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800/85 dark:hover:text-white',
                     ].join(' ')
                   }
                 >
@@ -111,8 +111,8 @@ export default function Layout() {
                       <Icon
                         className={
                           isActive
-                            ? 'h-5 w-5 shrink-0'
-                            : 'h-5 w-5 shrink-0 text-[#c2410c] dark:text-[#ea580c]'
+                            ? 'h-5 w-5 shrink-0 text-accent-950 dark:text-white'
+                            : 'h-5 w-5 shrink-0 text-accent-600 dark:text-accent-400'
                         }
                         strokeWidth={2}
                         aria-hidden
@@ -127,7 +127,7 @@ export default function Layout() {
           <div className="mt-auto border-t border-zinc-200 px-4 py-3 text-[11px] leading-snug text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             <Link
               to="/app/settings"
-              className="font-semibold text-[#c2410c] underline-offset-2 hover:underline dark:text-[#fb923c]"
+              className="font-semibold text-accent-700 underline-offset-2 hover:underline dark:text-accent-400"
               onClick={() => setMobileDrawerOpen(false)}
             >
               Settings
@@ -162,7 +162,7 @@ export default function Layout() {
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-[#c2410c] shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-orange-50/90 hover:text-[#9a3412] active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-[#fdba74] dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800 dark:hover:text-orange-300"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-accent-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-accent-50/90 hover:text-accent-800 active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-accent-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800 dark:hover:text-accent-200"
                 aria-expanded={mobileDrawerOpen}
                 aria-controls="app-slide-drawer-nav"
                 aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -170,6 +170,13 @@ export default function Layout() {
               >
                 <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
               </button>
+              <Link
+                to="/app/home"
+                className="hidden shrink-0 text-accent-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-accent-700 active:scale-[0.96] dark:text-accent-400 dark:hover:text-accent-300 md:inline-flex"
+                aria-label="Community Health Media, app home"
+              >
+                <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
+              </Link>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
                   Welcome, {displayName}!
@@ -187,8 +194,8 @@ export default function Layout() {
                 title="Search"
                 className={({ isActive }) =>
                   [
-                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-[#c2410c] transition-[color,background-color,transform] duration-200 ease-out hover:bg-orange-50/80 hover:text-[#9a3412] active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-[#fdba74] dark:hover:bg-zinc-800/80 dark:hover:text-orange-300',
-                    isActive ? 'bg-orange-100 text-[#9a3412] ring-2 ring-orange-500/25 dark:bg-[#c2410c]/25 dark:text-orange-100 dark:ring-orange-400/30' : '',
+                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-accent-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-accent-50/80 hover:text-accent-800 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-accent-300 dark:hover:bg-zinc-800/80 dark:hover:text-accent-200',
+                    isActive ? 'bg-accent-100 text-accent-900 ring-2 ring-accent-500/25 dark:bg-accent-600/25 dark:text-white dark:ring-accent-400/30' : '',
                   ].join(' ')
                 }
               >

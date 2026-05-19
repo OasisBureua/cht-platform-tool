@@ -840,7 +840,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
               onClick={() => scrollTo(idx)}
               className={[
                 'h-2 rounded-full transition-[width,background-color] duration-300',
-                idx === activeIdx ? 'w-8 bg-orange-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                idx === activeIdx ? 'w-8 bg-accent-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
               ].join(' ')}
               aria-label={`Go to disease area ${idx + 1}`}
             />

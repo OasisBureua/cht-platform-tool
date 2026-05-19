@@ -26,10 +26,27 @@ export default {
       },
       colors: {
         /**
-         * CHM palette (Brand Guidelines-oriented):
-         * - `brand`: primary orange (~60–30 presence — surfaces, fills, carousel emphasis)
-         * - `accent`: “Knowledge Blue” (~10 — links, outlines, subtle focus chrome)
-         * Neutrals (stone/zinc/grays in components) remain the majority “60” base.
+         * Official CHM brand palette (marketing / guidelines).
+         * Use `chm-*` for semantic brand spots; keep `accent` / `brand` for gradual migration.
+         */
+        chm: {
+          /** Base White — app canvas (avoid key `base` / `canvas`: Tailwind `@apply` + JIT quirks) */
+          surface: '#f2f4f8',
+          /** Knowledge Blue — trust, secondary CTAs, learning moments */
+          knowledge: '#3da4c0',
+          /** Expertise Blue — depth, hover on knowledge, clinical emphasis */
+          expertise: '#3a839b',
+          /** Sharing Yellow — highlights, alternate emphasis */
+          sharing: '#ff9e40',
+          /** Precision Black — primary type on light, strong UI text */
+          precision: '#485165',
+          /** Connection Orange — warm CTAs, community, “listen” energy */
+          connection: '#e7764f',
+          /** Discovery Gray — secondary labels, supporting text */
+          discovery: '#79869a',
+        },
+        /**
+         * Legacy warm orange scale (maps toward Connection Orange where used for action).
          */
         brand: {
           50: '#fff7ed',
@@ -51,15 +68,16 @@ export default {
           300: '#8ac0de',
           400: '#5b9fcd',
           500: '#3f82b5',
-          600: '#316995',
+          /** Align mid “chrome” blue toward Expertise Blue (#3a839b) for nav / links */
+          600: '#3a839b',
           700: '#2a5780',
           800: '#264a6b',
           900: '#1f3f5e',
           950: '#152b40',
         },
         /**
-         * Legacy `primary-*` classes — aliases CHM orange so older utilities never read “blue/teal-forward”.
-         * Prefer `brand-*` in new code; keep `accent-*` for Knowledge Blue (~10%).
+         * Legacy `primary-*` — still maps to CHM orange for backwards compatibility.
+         * Prefer `brand-*` for orange fills; prefer `accent-*` for blue UI chrome.
          */
         primary: {
           50: '#fff7ed',
@@ -77,4 +95,22 @@ export default {
     },
   },
   plugins: [],
+  /** CHM palette utilities used in components (JIT + nested colors: explicit avoids missing rules in dev). */
+  safelist: [
+    'bg-chm-surface',
+    'text-chm-precision',
+    'text-chm-discovery',
+    'text-chm-sharing',
+    'bg-chm-knowledge',
+    'bg-chm-connection',
+    'text-chm-expertise',
+    'group-hover:text-chm-knowledge',
+    'bg-chm-connection/95',
+    'bg-chm-connection/12',
+    'bg-chm-connection/20',
+    'text-chm-connection',
+    'hover:bg-chm-expertise',
+    'focus-visible:outline-chm-expertise',
+    'bg-chm-discovery/60',
+  ],
 }

@@ -42,6 +42,14 @@
   --color-text-muted: #6b7280;
   --color-border: #e5e7eb;
   --color-surface: #f9fafb;
+  /** CHM brand (see tailwind `chm-*`) */
+  --chm-base-white: #f2f4f8;
+  --chm-knowledge-blue: #3da4c0;
+  --chm-sharing-yellow: #ff9e40;
+  --chm-expertise-blue: #3a839b;
+  --chm-precision-black: #485165;
+  --chm-connection-orange: #e7764f;
+  --chm-discovery-gray: #79869a;
 }
 
 @keyframes shimmer {
@@ -67,8 +75,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    /* ~60% neutral base — warm off-white aligns with orange-forward brand rhythm */
-    @apply min-w-0 overflow-x-clip bg-stone-50 text-base font-normal text-gray-900 antialiased font-sans;
+    /* Plain CSS avoids Tailwind `@apply` not seeing `chm-*` utilities during dev CSS pipeline */
+    @apply min-w-0 overflow-x-clip text-base font-normal antialiased font-sans;
+    background-color: var(--chm-base-white);
+    color: var(--chm-precision-black);
   }
   .dark body {
     @apply bg-zinc-950 text-zinc-100;

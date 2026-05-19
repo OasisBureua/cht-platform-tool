@@ -34,7 +34,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   return (
     <div className="relative isolate">
       <div
-        className="overflow-hidden rounded-2xl bg-orange-600 shadow-[0_20px_50px_-28px_rgba(0,0,0,0.35)]"
+        className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:bg-zinc-950 dark:ring-zinc-800"
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0].clientX;
         }}
@@ -115,7 +115,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
               onClick={() => setIndex(i)}
               className={[
                 'h-2 rounded-full transition-[width,background-color] duration-300',
-                i === index ? 'w-8 bg-orange-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                i === index ? 'w-8 bg-accent-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
               ].join(' ')}
             />
           ))}
@@ -134,7 +134,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
           href={`#${show.id}`}
           className="group shrink-0 w-[5.5rem] text-center"
         >
-          <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-zinc-100 shadow-[0_8px_28px_-18px_rgba(0,0,0,0.18),0_2px_10px_-4px_rgba(0,0,0,0.08)] transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.2),0_4px_14px_-4px_rgba(0,0,0,0.1)] dark:bg-zinc-800 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
+          <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-white shadow-[0_8px_28px_-18px_rgba(0,0,0,0.12),0_2px_10px_-4px_rgba(0,0,0,0.06)] ring-1 ring-zinc-200/80 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.14),0_4px_14px_-4px_rgba(0,0,0,0.08)] dark:bg-white dark:ring-zinc-700 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
             <img
               src={show.image}
               alt=""
@@ -154,7 +154,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
 
 function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode }) {
   return (
-    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-orange-600 shadow-[0_12px_36px_-20px_rgba(0,0,0,0.35)] sm:max-h-[300px] dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
+    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_36px_-20px_rgba(0,0,0,0.15)] ring-1 ring-zinc-200/90 sm:max-h-[300px] dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
       <img
         src={show.image}
         alt=""
@@ -211,7 +211,7 @@ export default function Podcasts() {
       <header>
         <div>
           <div className="mb-2 flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
-            <Mic2 className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
+            <Mic2 className="h-5 w-5 text-accent-600 dark:text-accent-400" strokeWidth={2} aria-hidden />
             <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
               Podcasts
             </h1>
@@ -253,7 +253,7 @@ export default function Podcasts() {
           </h2>
           <a
             href="#podcast-catalog"
-            className="text-sm font-semibold text-[#c2410c] underline-offset-4 transition-colors hover:text-[#ea580c] hover:underline dark:text-[#fb923c] dark:hover:text-[#fdba74]"
+            className="text-sm font-semibold text-accent-700 underline-offset-4 transition-colors hover:text-accent-600 hover:underline dark:text-accent-400 dark:hover:text-accent-300"
           >
             View all shows
           </a>
@@ -303,7 +303,7 @@ export default function Podcasts() {
             </p>
             <button
               type="button"
-              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
+              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
               disabled
               aria-disabled
             >

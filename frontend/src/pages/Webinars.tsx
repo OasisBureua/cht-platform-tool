@@ -76,7 +76,7 @@ export default function Webinars() {
       <header className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-2.5 text-gray-900">
-            <Radio className="h-5 w-5 text-[#ea580c] dark:text-[#fb923c]" strokeWidth={2} aria-hidden />
+            <Radio className="h-5 w-5 text-accent-600 dark:text-accent-400" strokeWidth={2} aria-hidden />
             <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
           </div>
           {userId ? (
