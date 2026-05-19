@@ -16,7 +16,7 @@ export function getPublicLibraryViewFromSearch(search: string): 'clips' | 'playl
 
 /**
  * Fingerprint for catalog browse destinations so we can detect when React Router will no-op navigation
- * (e.g. /app/catalog vs /app/catalog?view=clips — same clips UI) and scroll instead.
+ * and scroll instead. In-app: strip home (`/app/catalog`) ≠ full library (`?view=clips`).
  */
 export function catalogConversationBrowseFinger(pathname: string, searchRaw: string): string | null {
   if (pathname !== '/catalog' && pathname !== '/app/catalog') {
@@ -32,14 +32,18 @@ export function catalogConversationBrowseFinger(pathname: string, searchRaw: str
   const sort = (p.get('sort') ?? p.get('sort_by') ?? '').trim();
   const hasFilters = !!(q || tag || doctor || sort);
 
-  let tab: 'clips' | 'playlists';
+  let tab: 'clips' | 'playlists' | 'strips' | 'clips-grid';
   if (isApp) {
-    tab = p.get('view') === 'playlists' ? 'playlists' : 'clips';
+    const view = p.get('view');
+    if (view === 'playlists') tab = 'playlists';
+    else if (view === 'clips') tab = 'clips-grid';
+    else tab = 'strips';
   } else if (hasFilters) {
     tab = 'clips';
   } else {
     const pv = p.get('view');
-    if (pv === 'clips' || pv === 'playlists') tab = pv === 'playlists' ? 'playlists' : 'clips';
+    if (pv === 'clips') tab = 'clips';
+    else if (pv === 'playlists') tab = 'playlists';
     else tab = 'playlists';
   }
 

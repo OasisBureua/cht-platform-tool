@@ -22,7 +22,11 @@ import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } fr
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
-import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
+import {
+  APP_CATALOG_CLIPS_GRID,
+  APP_CATALOG_CONVERSATIONS_HUB,
+  APP_CATALOG_PLAYLISTS_BROWSE,
+} from '../components/navigation/appNavItems';
 import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -820,7 +824,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Playlists"
                   subtitle={`${playlistStrip.length} playlists`}
-                  seeAllHref="/app/search"
+                  seeAllHref={APP_CATALOG_PLAYLISTS_BROWSE}
                   seeAllLabel="See all playlists"
                 >
                   {playlistStrip.map((p) => (
