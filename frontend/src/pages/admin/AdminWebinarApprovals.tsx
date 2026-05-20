@@ -9,6 +9,20 @@ import { HCP_PROFESSIONS } from '../../data/profession-options';
 
 type AdminApprovalsTab = 'registrations' | 'attendance';
 
+const APPROVAL_UNDO_WINDOW_MS = 60 * 60 * 1000;
+
+function undoRemainingMs(undoExpiresAt: string | null | undefined): number {
+  if (!undoExpiresAt) return 0;
+  return Math.max(0, new Date(undoExpiresAt).getTime() - Date.now());
+}
+
+function formatUndoCountdown(ms: number): string {
+  const totalSeconds = Math.ceil(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
 function displayOrNA(value: string | null | undefined): string {
   const t = value?.trim();
   return t ? t : 'N/A';
@@ -40,6 +54,23 @@ export default function AdminWebinarApprovals() {
   });
 
   const {
+    data: recentlyApproved = [],
+    isLoading: recentlyApprovedLoading,
+  } = useQuery({
+    queryKey: ['admin', 'webinar-registrations', 'recently-approved'],
+    queryFn: () => adminApi.listRecentlyApprovedWebinarRegistrations(),
+    enabled: tab === 'registrations',
+    refetchInterval: 30_000,
+  });
+
+  const [undoTick, setUndoTick] = useState(0);
+  useEffect(() => {
+    if (tab !== 'registrations' || recentlyApproved.length === 0) return;
+    const id = window.setInterval(() => setUndoTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [tab, recentlyApproved.length]);
+
+  const {
     data: attendanceRows = [],
     isLoading: attendanceLoading,
     isError: attendanceError,
@@ -69,6 +100,21 @@ export default function AdminWebinarApprovals() {
   const filteredAttendanceRows = useMemo(
     () => (programFilter === 'all' ? attendanceRows : attendanceRows.filter((r) => r.program.id === programFilter)),
     [attendanceRows, programFilter],
+  );
+
+  const filteredRecentlyApproved = useMemo(
+    () =>
+      programFilter === 'all'
+        ? recentlyApproved
+        : recentlyApproved.filter((r) => r.program.id === programFilter),
+    [recentlyApproved, programFilter],
+  );
+
+  const visibleRecentlyApproved = useMemo(
+    () =>
+      filteredRecentlyApproved.filter((r) => undoRemainingMs(r.undoExpiresAt) > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- undoTick drives countdown refresh
+    [filteredRecentlyApproved, undoTick],
   );
 
   const rowIds = useMemo(() => filteredRows.map((r) => r.id), [filteredRows]);
@@ -109,6 +155,7 @@ export default function AdminWebinarApprovals() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'recently-approved'] });
     queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending-attendance'] });
     queryClient.invalidateQueries({ queryKey: ['admin', 'program'] });
   };
@@ -151,6 +198,13 @@ export default function AdminWebinarApprovals() {
     },
   });
 
+  const undoMut = useMutation({
+    mutationFn: (id: string) => adminApi.undoRegistrationApproval(id),
+    onSuccess: () => {
+      invalidate();
+    },
+  });
+
   const bulkMut = useMutation({
     mutationFn: async ({ ids, status }: { ids: string[]; status: 'APPROVED' }) => {
       await Promise.all(ids.map((id) => adminApi.updateProgramRegistration(id, { status })));
@@ -166,7 +220,7 @@ export default function AdminWebinarApprovals() {
   });
 
   const busy =
-    approveMut.isPending || rejectMut.isPending || bulkMut.isPending || attendanceMut.isPending;
+    approveMut.isPending || rejectMut.isPending || bulkMut.isPending || attendanceMut.isPending || undoMut.isPending;
   const selectedList = filteredRows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
 
   return (
@@ -262,6 +316,63 @@ export default function AdminWebinarApprovals() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
           Failed to load attendance verification queue.
         </div>
+      ) : null}
+
+      {tab === 'registrations' && !isLoading && !isError && visibleRecentlyApproved.length > 0 ? (
+        <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50/60">
+          <div className="border-b border-amber-200 px-4 py-3">
+            <h2 className="text-sm font-semibold text-amber-950">Recently approved</h2>
+            <p className="mt-0.5 text-xs text-amber-900">
+              Undo an approval within {APPROVAL_UNDO_WINDOW_MS / (60 * 1000)} minutes to return the request to pending
+              (enrollment is removed).
+            </p>
+          </div>
+          <table className="min-w-full text-sm bg-white/80">
+            <thead>
+              <tr className="border-b border-amber-100 text-left text-gray-600">
+                <th className="py-3 px-4">Program</th>
+                <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4">Approved</th>
+                <th className="py-3 px-4">Undo window</th>
+                <th className="py-3 px-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-amber-50">
+              {visibleRecentlyApproved.map((r) => {
+                const remaining = undoRemainingMs(r.undoExpiresAt);
+                return (
+                  <tr key={r.id}>
+                    <td className="py-3 px-4 font-medium text-gray-900">{r.program.title}</td>
+                    <td className="py-3 px-4">
+                      {r.user.firstName} {r.user.lastName}
+                      <div className="text-xs text-gray-500">{r.user.email}</div>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
+                      {r.reviewedAt ? format(parseISO(r.reviewedAt), 'MMM d, yyyy h:mm a') : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-amber-900 font-mono text-xs whitespace-nowrap">
+                      {formatUndoCountdown(remaining)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        type="button"
+                        disabled={busy || remaining <= 0}
+                        onClick={() => undoMut.mutate(r.id)}
+                        className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50 disabled:opacity-40"
+                      >
+                        Undo approval
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {tab === 'registrations' && undoMut.isError ? (
+        <p className="text-sm text-red-600">Could not undo approval. The window may have expired.</p>
       ) : null}
 
       {tab === 'registrations' && !isLoading && !isError && filteredRows.length > 0 ? (

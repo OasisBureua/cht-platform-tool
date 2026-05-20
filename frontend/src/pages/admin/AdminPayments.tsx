@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { adminApi, type PendingPayment, type FailedPayment, type PaidPayment } from '../../api/admin';
+import { adminApi, type PendingPayment, type FailedPayment, type PaidPayment, type AdminUser } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus } from 'lucide-react';
 import { BillComMark } from '../../components/branding/BillComMark';
 
 function formatMoney(cents: number) {
@@ -125,6 +125,8 @@ export default function AdminPayments() {
         <StatCard label="Failed payments" value={String(failed.length)} sub="Need admin retry" variant={failed.length > 0 ? 'danger' : 'default'} />
         <StatCard label="Eligible, not submitted" value={String(eligibleNotSubmitted.length)} sub="Survey done, no payment request yet" />
       </section>
+
+      <ManualPaymentForm />
 
       {/* Pending table */}
       <section id="pending-table" className="rounded-3xl border border-gray-200 bg-white overflow-hidden">
@@ -394,6 +396,199 @@ export default function AdminPayments() {
         </div>
       )}
     </div>
+  );
+}
+
+function ManualPaymentForm() {
+  const queryClient = useQueryClient();
+  const [userQuery, setUserQuery] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [programId, setProgramId] = useState('');
+  const [amountDollars, setAmountDollars] = useState('');
+  const [description, setDescription] = useState('');
+  const [paymentType, setPaymentType] = useState<
+    'HONORARIUM' | 'CME_COMPLETION' | 'SURVEY_BONUS' | 'REFERRAL'
+  >('HONORARIUM');
+  const [formError, setFormError] = useState<string | null>(null);
+
+  const { data: users = [], isFetching: usersLoading } = useQuery({
+    queryKey: ['admin', 'users', 'manual-payment', userQuery],
+    queryFn: () => adminApi.getUsers({ q: userQuery.trim(), limit: 20 }),
+    enabled: userQuery.trim().length >= 2,
+  });
+
+  const { data: programs = [] } = useQuery({
+    queryKey: ['admin', 'programs'],
+    queryFn: () => adminApi.getPrograms(),
+  });
+
+  const selectedUser = useMemo(
+    () => users.find((u) => u.id === selectedUserId),
+    [users, selectedUserId],
+  );
+
+  const createMut = useMutation({
+    mutationFn: () => {
+      const parsed = parseFloat(amountDollars);
+      if (!selectedUserId) throw new Error('Select a user.');
+      if (!Number.isFinite(parsed) || parsed <= 0) throw new Error('Enter a valid amount.');
+      const cents = Math.round(parsed * 100);
+      if (cents < 1) throw new Error('Amount must be at least $0.01.');
+      return adminApi.createManualPayment({
+        userId: selectedUserId,
+        programId: programId || undefined,
+        amount: cents,
+        description: description.trim() || undefined,
+        type: paymentType,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      setUserQuery('');
+      setSelectedUserId('');
+      setProgramId('');
+      setAmountDollars('');
+      setDescription('');
+      setPaymentType('HONORARIUM');
+      setFormError(null);
+    },
+    onError: (err) => {
+      setFormError(getApiErrorMessage(err, 'Could not create payment.'));
+    },
+  });
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    createMut.mutate();
+  };
+
+  return (
+    <section className="rounded-3xl border border-gray-200 bg-white p-6 space-y-4">
+      <div className="flex items-start gap-3">
+        <Plus className="h-5 w-5 shrink-0 text-gray-700 mt-0.5" aria-hidden />
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Add manual payment</h2>
+          <p className="mt-0.5 text-sm text-gray-600">
+            Queue a pending payout for a specific user and program. It appears in the table below for{' '}
+            <strong>Pay now</strong> when you are ready.
+          </p>
+        </div>
+      </div>
+
+      <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-2">
+        <div className="space-y-2 lg:col-span-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">User</label>
+          <input
+            type="search"
+            value={userQuery}
+            onChange={(e) => {
+              setUserQuery(e.target.value);
+              setSelectedUserId('');
+            }}
+            placeholder="Search by name or email (min 2 characters)"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+          {usersLoading ? <p className="text-xs text-gray-500">Searching…</p> : null}
+          {userQuery.trim().length >= 2 && users.length > 0 ? (
+            <ul className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+              {users.map((u: AdminUser) => (
+                <li key={u.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedUserId(u.id);
+                      setUserQuery(`${u.firstName} ${u.lastName} (${u.email})`);
+                    }}
+                    className={[
+                      'w-full px-3 py-2 text-left text-sm hover:bg-gray-50',
+                      selectedUserId === u.id ? 'bg-brand-50 font-semibold' : '',
+                    ].join(' ')}
+                  >
+                    {u.firstName} {u.lastName}
+                    <span className="block text-xs text-gray-500">{u.email}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {selectedUser ? (
+            <p className="text-xs text-green-800">Selected: {selectedUser.email}</p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Program</label>
+          <select
+            value={programId}
+            onChange={(e) => setProgramId(e.target.value)}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          >
+            <option value="">No program (optional)</option>
+            {programs.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Amount (USD)</label>
+          <input
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={amountDollars}
+            onChange={(e) => setAmountDollars(e.target.value)}
+            placeholder="250.00"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Type</label>
+          <select
+            value={paymentType}
+            onChange={(e) =>
+              setPaymentType(
+                e.target.value as 'HONORARIUM' | 'CME_COMPLETION' | 'SURVEY_BONUS' | 'REFERRAL',
+              )
+            }
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          >
+            <option value="HONORARIUM">Honorarium</option>
+            <option value="CME_COMPLETION">CME completion</option>
+            <option value="SURVEY_BONUS">Survey bonus</option>
+            <option value="REFERRAL">Referral</option>
+          </select>
+        </div>
+
+        <div className="space-y-2 lg:col-span-2">
+          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Description (optional)</label>
+          <input
+            type="text"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="e.g. Manual honorarium adjustment"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            maxLength={500}
+          />
+        </div>
+
+        <div className="lg:col-span-2 flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={createMut.isPending || !selectedUserId}
+            className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+          >
+            {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add to pending queue
+          </button>
+          {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
+        </div>
+      </form>
+    </section>
   );
 }
 

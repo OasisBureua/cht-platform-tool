@@ -519,7 +519,7 @@ export default function VideosPage() {
                             : 'Videos from playlists in this category'}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">Curated YouTube playlists</p>
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">Browse playlists by category</p>
                   )}
                 </div>
                 {!isInApp ? (

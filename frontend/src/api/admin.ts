@@ -427,6 +427,38 @@ export const adminApi = {
     return data;
   },
 
+  listRecentlyApprovedWebinarRegistrations: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/recently-approved');
+    return data as Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+      reviewedAt: string | null;
+      undoExpiresAt: string | null;
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
+      program: {
+        id: string;
+        title: string;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+      };
+    }>;
+  },
+
+  undoRegistrationApproval: async (registrationId: string) => {
+    const { data } = await apiClient.post(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/undo-approval`,
+    );
+    return data;
+  },
+
   listPendingWebinarRegistrations: async () => {
     const { data } = await apiClient.get('/admin/webinar-registrations/pending');
     return data as Array<{
@@ -610,6 +642,17 @@ export const adminApi = {
   deletePayment: async (paymentId: string) => {
     const { data } = await apiClient.delete(`/payments/${paymentId}`);
     return data;
+  },
+
+  createManualPayment: async (body: {
+    userId: string;
+    programId?: string;
+    amount: number;
+    description?: string;
+    type?: 'HONORARIUM' | 'CME_COMPLETION' | 'SURVEY_BONUS' | 'REFERRAL';
+  }) => {
+    const { data } = await apiClient.post('/payments/manual', body);
+    return data as PendingPayment;
   },
 
   getWebhookImports: async (): Promise<WebhookImportedProgram[]> => {

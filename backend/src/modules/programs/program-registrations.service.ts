@@ -29,6 +29,9 @@ export class ProgramRegistrationsService {
   /** Office hours meetings use fixed 10-minute registration windows; count scales with session duration (6 per hour). */
   private static readonly OFFICE_HOURS_SEGMENT_MINUTES = 10;
 
+  /** Admins may revert an approval within this window (see adminUndoRegistrationApproval). */
+  static readonly APPROVAL_UNDO_WINDOW_MS = 60 * 60 * 1000;
+
   constructor(
     private prisma: PrismaService,
     private hubspot: HubSpotService,
@@ -861,6 +864,79 @@ export class ProgramRegistrationsService {
     });
   }
 
+  /** Recently approved registrations still within the undo window (newest first). */
+  async listRecentlyApprovedRegistrationsForAdminUndo() {
+    const since = new Date(
+      Date.now() - ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS,
+    );
+    return this.prisma.programRegistration.findMany({
+      where: {
+        status: ProgramRegistrationStatus.APPROVED,
+        reviewedAt: { gte: since },
+        program: {
+          zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+          status: 'PUBLISHED',
+          registrationRequiresApproval: true,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            institution: true,
+            city: true,
+          },
+        },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            jotformIntakeFormUrl: true,
+            zoomSessionType: true,
+            zoomJoinUrl: true,
+            startDate: true,
+            duration: true,
+          },
+        },
+      },
+      orderBy: { reviewedAt: 'desc' },
+    });
+  }
+
+  async adminUndoRegistrationApproval(
+    adminUserId: string,
+    registrationId: string,
+  ) {
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { id: registrationId },
+    });
+    if (!reg) throw new NotFoundException('Registration not found');
+    if (reg.status !== ProgramRegistrationStatus.APPROVED) {
+      throw new BadRequestException(
+        'Only approved registrations can be undone.',
+      );
+    }
+    if (!reg.reviewedAt) {
+      throw new BadRequestException('Registration has no approval timestamp.');
+    }
+    const elapsedMs = Date.now() - reg.reviewedAt.getTime();
+    if (elapsedMs > ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS) {
+      throw new BadRequestException(
+        'Undo window expired. Approvals can only be undone within 1 hour.',
+      );
+    }
+    return this.adminSetRegistrationStatus(
+      adminUserId,
+      registrationId,
+      ProgramRegistrationStatus.PENDING,
+      'Approval undone by admin',
+    );
+  }
+
   async adminSetRegistrationStatus(
     adminUserId: string,
     registrationId: string,
@@ -910,6 +986,19 @@ export class ProgramRegistrationsService {
                 postEventAttendanceReviewedByUserId: null,
               }
             : {}),
+          ...(status === ProgramRegistrationStatus.PENDING &&
+          previousStatus === ProgramRegistrationStatus.APPROVED
+            ? {
+                postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
+                postEventSurveyAcknowledgedAt: null,
+                postEventJotformSubmissionId: null,
+                honorariumRequestedAt: null,
+                postEventAttendanceReviewedAt: null,
+                postEventAttendanceReviewedByUserId: null,
+                reviewedAt: null,
+                reviewedByUserId: null,
+              }
+            : {}),
         },
       });
 
@@ -930,6 +1019,15 @@ export class ProgramRegistrationsService {
       }
 
       if (status === ProgramRegistrationStatus.REJECTED) {
+        await tx.programEnrollment.deleteMany({
+          where: { userId: reg.userId, programId: reg.programId },
+        });
+      }
+
+      if (
+        status === ProgramRegistrationStatus.PENDING &&
+        previousStatus === ProgramRegistrationStatus.APPROVED
+      ) {
         await tx.programEnrollment.deleteMany({
           where: { userId: reg.userId, programId: reg.programId },
         });

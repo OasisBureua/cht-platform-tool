@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
+import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
@@ -386,9 +387,7 @@ export default function WebinarDetail() {
             ) : null}
 
             {program.sessionDisclaimer?.trim() ? (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">
-                {program.sessionDisclaimer.trim()}
-              </div>
+              <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
             ) : null}
 
             {/* Speaker / Host */}

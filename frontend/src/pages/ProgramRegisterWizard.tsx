@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 import { BillComMark } from '../components/branding/BillComMark';
+import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 
 type StepKey = 'intake' | 'slot' | 'submit';
 
@@ -199,9 +200,7 @@ export default function ProgramRegisterWizard() {
         </p>
 
         {program.sessionDisclaimer?.trim() ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">
-            {program.sessionDisclaimer.trim()}
-          </div>
+          <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
         ) : null}
 
         <ol className="flex flex-wrap gap-2 text-xs">

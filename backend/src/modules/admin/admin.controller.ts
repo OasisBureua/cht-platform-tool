@@ -1234,6 +1234,49 @@ export class AdminController {
     });
   }
 
+  @Get('webinar-registrations/recently-approved')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Recently approved registrations still within the 1-hour undo window',
+  })
+  async listRecentlyApprovedWebinarRegistrations() {
+    const rows =
+      await this.programRegistrations.listRecentlyApprovedRegistrationsForAdminUndo();
+    const undoWindowMs = ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS;
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      reviewedAt: r.reviewedAt?.toISOString() ?? null,
+      undoExpiresAt: r.reviewedAt
+        ? new Date(r.reviewedAt.getTime() + undoWindowMs).toISOString()
+        : null,
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
+  @Post('registrations/:registrationId/undo-approval')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Revert an approval back to pending (within 1 hour of approval)',
+  })
+  async adminUndoRegistrationApproval(
+    @Param('registrationId') registrationId: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.programRegistrations.adminUndoRegistrationApproval(
+      admin.userId,
+      registrationId,
+    );
+  }
+
   @Get('webinar-registrations/payment-eligible')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
