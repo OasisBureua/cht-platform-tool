@@ -44,6 +44,9 @@ cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4
 # Domain
 domain_name = "staging.testapp.communityhealth.media"
 
+# Public auth URL (not a secret)
+supabase_url = "https://mediahub.communityhealth.media"
+
 # MediaHub Public API — shared across envs
 mediahub_base_url = "https://mediahub.communityhealth.media/api/public"
 

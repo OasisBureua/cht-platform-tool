@@ -14,7 +14,7 @@ env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
   TERRAFORM_VERSION: 1.9.8
-  # GitHub Actions: Node 20 runtimes deprecated — use Node 24 for action runners.
+  # Fallback for any remaining actions not yet on Node 24 native runtime.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: 'npm'
@@ -56,7 +56,7 @@ jobs:
         run: npm test
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
@@ -120,13 +120,35 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/us-east-1-staging
         run: terraform init
+
+      - name: Verify GitHub Environment secrets (staging)
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
+          MEDIAHUB_API_KEY: ${{ secrets.MEDIAHUB_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_PLAYLIST_IDS: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
+          ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+          ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          ZOOM_WEBHOOK_SECRET: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          ZOOM_SDK_KEY: ${{ secrets.ZOOM_SDK_KEY }}
+          ZOOM_SDK_SECRET: ${{ secrets.ZOOM_SDK_SECRET }}
+          JOTFORM_API_KEY: ${{ secrets.JOTFORM_API_KEY }}
+          BILL_DEV_KEY: ${{ secrets.BILL_DEV_KEY }}
+          BILL_USERNAME: ${{ secrets.BILL_USERNAME }}
+          BILL_PASSWORD: ${{ secrets.BILL_PASSWORD }}
+          BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
+          BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+        run: ./scripts/verify-github-env-secrets.sh staging
 
       - name: Terraform Apply
         working-directory: infrastructure/terraform/environments/us-east-1-staging
@@ -139,7 +161,6 @@ jobs:
         env:
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
           TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
-          TF_VAR_supabase_url: ${{ secrets.SUPABASE_URL }}
           TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
           TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
           TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
@@ -149,6 +170,8 @@ jobs:
           TF_VAR_zoom_client_id: ${{ secrets.ZOOM_CLIENT_ID }}
           TF_VAR_zoom_client_secret: ${{ secrets.ZOOM_CLIENT_SECRET }}
           TF_VAR_zoom_webhook_secret: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          TF_VAR_zoom_sdk_key: ${{ secrets.ZOOM_SDK_KEY }}
+          TF_VAR_zoom_sdk_secret: ${{ secrets.ZOOM_SDK_SECRET }}
           TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
           TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
           TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
@@ -156,6 +179,8 @@ jobs:
           TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
           TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
           TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
+          TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
+          TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
 
@@ -245,7 +270,7 @@ jobs:
           echo "Verify with: dig +short NS staging.testapp.communityhealth.media @8.8.8.8"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: 'npm'

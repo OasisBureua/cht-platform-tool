@@ -293,5 +293,6 @@ This bypasses the auto-trigger but still runs the same deploy workflow.
 | See backend logs | `aws logs tail /ecs/cht-platform-staging-cluster --follow` |
 | Connect to staging DB | `aws ecs execute-command` into a backend task |
 | Smoke test | `./smoke.sh https://staging.testapp.communityhealth.media` |
+| Check GitHub staging secrets | `./scripts/verify-github-staging-secrets.sh` |
 | Rollback | `git reset --hard <good-sha> && git push --force-with-lease origin staging` |
 | Cost dashboard | AWS Console → Billing → filter by `Environment = staging` tag |

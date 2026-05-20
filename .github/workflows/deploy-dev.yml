@@ -66,7 +66,7 @@ jobs:
             ${{ env.ECR_REGISTRY }}/cht-platform-worker:dev-latest
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
