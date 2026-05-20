@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
+import { resolveApiBaseUrl } from '../config/app-urls';
 
 export interface AuthUser {
   userId: string;
@@ -127,7 +128,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     return <DisabledAuthProvider>{children}</DisabledAuthProvider>;
   }
 
-  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const apiUrl = resolveApiBaseUrl();
   const [sessionToken, setSessionToken] = useState<string | null>(() => {
     try {
       return typeof localStorage?.getItem === 'function' ? localStorage.getItem(SESSION_TOKEN_KEY) : null;

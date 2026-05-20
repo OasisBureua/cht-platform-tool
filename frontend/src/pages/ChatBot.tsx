@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { resolveApiBaseUrl } from '../config/app-urls';
 
 const CHATBOT_WIDGET_URL = 'https://chmbot.communityhealth.media/widget';
 
@@ -17,7 +18,7 @@ export default function ChatBot() {
       setResolvedToken(null);
       return;
     }
-    const apiUrl = import.meta.env.VITE_API_URL || '/api';
+    const apiUrl = resolveApiBaseUrl();
     getAuthHeaders().then((headers) => {
       if (!headers['Authorization'] && !headers['X-Dev-User-Id']) return;
       fetch(`${apiUrl.replace(/\/$/, '')}/auth/chatbot-token`, {

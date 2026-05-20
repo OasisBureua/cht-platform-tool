@@ -20,9 +20,54 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend - Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Backend - Run tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Frontend - Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend - Run tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform validate (staging)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          terraform init -backend=false
+          terraform validate
+
   deploy:
     name: Deploy to Staging
     runs-on: ubuntu-latest
+    needs: test
     environment: staging
 
     steps:
@@ -241,6 +286,22 @@ jobs:
           sleep 30
           curl -fsk "https://${ALB_DNS}/health/ready" && echo "✅ ALB direct health check passed!" || echo "❌ ALB direct health check failed"
           curl -fsk "https://${ALB_DNS}/health" && echo "✅ ALB /health passed!" || echo "❌ ALB /health failed"
+
+      - name: Smoke test public staging URL
+        run: |
+          echo "Checking staging domain (frontend + API on same origin)..."
+          curl -fsS "https://staging.testapp.communityhealth.media/health/ready"
+          curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "https://staging.testapp.communityhealth.media/"
+          INDEX_JS=$(curl -fsS "https://staging.testapp.communityhealth.media/" | grep -oE '/assets/index-[^"]+\.js' | head -1)
+          curl -fsS "https://staging.testapp.communityhealth.media${INDEX_JS}" | grep -q 'staging.testapp.communityhealth.media/api'
+          OAUTH_JS=$(curl -fsS "https://staging.testapp.communityhealth.media/" | grep -oE '/assets/supabase-oauth-[^"]+\.js' | head -1)
+          OAUTH_BODY=$(curl -fsS "https://staging.testapp.communityhealth.media${OAUTH_JS}")
+          echo "$OAUTH_BODY" | grep -q 'staging.testapp.communityhealth.media'
+          if echo "$OAUTH_BODY" | grep -q 'includes("testapp.communityhealth.media")?"https://testapp.communityhealth.media"'; then
+            echo "❌ OAuth bundle still maps staging host to platform URL"
+            exit 1
+          fi
+          echo "✅ Staging smoke checks passed"
 
       - name: Diagnostics — ECS task statuses
         if: always()
