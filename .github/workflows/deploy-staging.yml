@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - staging
+      - feature
     paths-ignore:
       - '**.md'
       - 'docs/**'
