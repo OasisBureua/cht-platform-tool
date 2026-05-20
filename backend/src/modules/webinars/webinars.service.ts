@@ -123,17 +123,16 @@ export class WebinarsService {
       });
     }
 
-    // 2. Add Zoom webinars not yet in the DB (optional; off by default so LIVE uses DB + Jotform flow only)
-    if (
-      this.config.get<boolean>('webinars.listZoomFallback') &&
-      this.zoom.isConfigured()
-    ) {
+    // 2. Merge upcoming Zoom webinars not yet linked to a DB program (when Zoom is configured).
+    if (this.zoom.isConfigured()) {
       try {
         const zoomWebinars = await this.zoom.listWebinars();
+        const nowMs = Date.now();
         for (const w of zoomWebinars) {
-          if (coveredZoomIds.has(String(w.id))) continue; // already covered by DB
+          if (coveredZoomIds.has(String(w.id))) continue;
           const startTime = w.startTime ? new Date(w.startTime).getTime() : 0;
-          if (startTime > 0 && startTime < thirtyDaysAgo.getTime()) continue; // skip if older than 30 days
+          if (startTime > 0 && startTime < nowMs) continue;
+          if (startTime > 0 && startTime < thirtyDaysAgo.getTime()) continue;
           items.push({
             id: `zoom-${w.id}`,
             title: w.topic,
@@ -142,13 +141,20 @@ export class WebinarsService {
             duration: w.duration,
             joinUrl: w.joinUrl,
             source: 'zoom',
+            sessionKind: 'WEBINAR',
           });
         }
       } catch (err) {
-        // Non-fatal - DB programs still shown if Zoom API is unavailable
-        this.logger.warn(`Zoom listWebinars fallback failed: ${String(err)}`);
+        this.logger.warn(`Zoom listWebinars merge failed: ${String(err)}`);
       }
     }
+
+    items.sort((a, b) => {
+      const ta = a.startTime ? new Date(a.startTime).getTime() : 0;
+      const tb = b.startTime ? new Date(b.startTime).getTime() : 0;
+      if (ta !== tb) return ta - tb;
+      return a.title.localeCompare(b.title);
+    });
 
     return items;
   }

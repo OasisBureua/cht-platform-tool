@@ -190,8 +190,8 @@ export default () => ({
   },
 
   /**
-   * When false (default), LIVE listing only shows DB-published webinars (Jotform + approval flow).
-   * Set WEBINARS_LIST_ZOOM_FALLBACK=true to also list raw Zoom webinars not yet imported into the DB.
+   * Legacy env flag — LIVE listing now always merges upcoming Zoom webinars when Zoom is configured.
+   * Kept for backwards compatibility; no longer gates listing behavior.
    */
   webinars: {
     listZoomFallback: process.env.WEBINARS_LIST_ZOOM_FALLBACK === 'true',

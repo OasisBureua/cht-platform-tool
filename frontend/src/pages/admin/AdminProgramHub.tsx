@@ -1029,6 +1029,15 @@ export default function AdminProgramHub() {
 
 type PanelistLink = { name: string; email: string; joinUrl: string };
 
+function panelistTokenSuffix(joinUrl: string): string | null {
+  try {
+    const tk = new URL(joinUrl).searchParams.get('tk');
+    return tk ? `…${tk.slice(-12)}` : null;
+  } catch {
+    return null;
+  }
+}
+
 function CopyButton({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -1170,14 +1179,25 @@ function ZoomLinksSection({
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-1">
               Panelist / speaker links — share individually
             </p>
-            {links.map((p) => (
+            <p className="text-xs text-gray-500">
+              Each link targets the same webinar but includes a unique token (<code className="text-[10px]">tk=</code>) so
+              speakers join with their own panelist role.
+            </p>
+            {links.map((p) => {
+              const tokenSuffix = panelistTokenSuffix(p.joinUrl);
+              return (
               <div
-                key={p.email}
+                key={`${p.email}-${p.joinUrl}`}
                 className="flex items-center justify-between gap-4 rounded-lg border border-indigo-100 bg-indigo-50 px-4 py-3"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-indigo-900 truncate">{p.name}</p>
                   <p className="mt-0.5 text-xs text-indigo-600 truncate">{p.email}</p>
+                  {tokenSuffix ? (
+                    <p className="mt-0.5 text-[10px] font-mono text-indigo-500 truncate" title="Unique panelist token (tk=)">
+                      token {tokenSuffix}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <CopyButton url={p.joinUrl} />
@@ -1191,7 +1211,8 @@ function ZoomLinksSection({
                   </a>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </>
         ) : isWebinar && hasMeetingId ? (
           <p className="text-xs text-gray-400 italic">

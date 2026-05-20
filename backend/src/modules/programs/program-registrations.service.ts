@@ -31,7 +31,7 @@ export class ProgramRegistrationsService {
   private static readonly OFFICE_HOURS_SEGMENT_MINUTES = 10;
 
   /** Admins may revert an approval within this window (see adminUndoRegistrationApproval). */
-  static readonly APPROVAL_UNDO_WINDOW_MS = 60 * 60 * 1000;
+  static readonly APPROVAL_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
   constructor(
     private prisma: PrismaService,
@@ -931,7 +931,7 @@ export class ProgramRegistrationsService {
     const elapsedMs = Date.now() - reg.reviewedAt.getTime();
     if (elapsedMs > ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS) {
       throw new BadRequestException(
-        'Undo window expired. Approvals can only be undone within 1 hour.',
+        'Undo window expired. Approvals can only be undone within 15 minutes.',
       );
     }
     return this.adminSetRegistrationStatus(

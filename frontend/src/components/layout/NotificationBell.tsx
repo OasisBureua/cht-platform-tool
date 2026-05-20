@@ -117,7 +117,7 @@ export function NotificationBell() {
                 {webhookImports.map((prog) => (
                   <li key={prog.id}>
                     <Link
-                      to={`/admin/programs/${prog.id}`}
+                      to={`/admin/programs/${prog.id}/hub`}
                       onClick={() => setOpen(false)}
                       className="block px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-950/30"
                     >

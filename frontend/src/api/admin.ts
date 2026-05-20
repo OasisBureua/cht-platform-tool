@@ -49,6 +49,8 @@ export interface AdminWebinar {
   speakers?: string[];
   /** True when this program was auto-created by a Zoom webhook (webinar.created). */
   importedViaWebhook?: boolean;
+  /** Zoom session exists on the account but is not linked to a platform program yet. */
+  unlinkedFromZoom?: boolean;
   /** Shown to learners on registration and session detail */
   sessionDisclaimer?: string;
   /** Banner image URL for session pages */
@@ -316,6 +318,18 @@ export const adminApi = {
 
   deleteWebinar: async (id: string): Promise<void> => {
     await apiClient.delete(`/admin/webinars/${id}`);
+  },
+
+  importFromZoom: async (body: {
+    zoomId: string;
+    zoomSessionType?: ZoomSessionType;
+    sponsorName?: string;
+  }): Promise<AdminWebinar & { jotformFormsWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { jotformFormsWarning?: string }>(
+      '/admin/webinars/import-from-zoom',
+      body,
+    );
+    return data;
   },
 
   getProgram: async (id: string): Promise<Record<string, unknown>> => {

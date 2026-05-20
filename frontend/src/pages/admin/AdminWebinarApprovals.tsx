@@ -9,7 +9,7 @@ import { HCP_PROFESSIONS } from '../../data/profession-options';
 
 type AdminApprovalsTab = 'registrations' | 'attendance';
 
-const APPROVAL_UNDO_WINDOW_MS = 60 * 60 * 1000;
+const APPROVAL_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
 function undoRemainingMs(undoExpiresAt: string | null | undefined): number {
   if (!undoExpiresAt) return 0;

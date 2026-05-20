@@ -194,6 +194,11 @@ function WebinarRow({
           <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
             {w.title}
           </p>
+          {w.source === 'zoom' ? (
+            <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 border border-blue-100">
+              Zoom
+            </span>
+          ) : null}
           {listBadge ? (
             <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
               {listBadge}

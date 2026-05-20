@@ -379,6 +379,12 @@ export class AdminController {
       links = panelists
         .filter((pan) => pan.joinUrl)
         .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+      const uniqueUrls = new Set(links.map((l) => l.joinUrl));
+      if (links.length > 0 && uniqueUrls.size < links.length) {
+        this.logger.warn(
+          `Refreshed panelist links for program ${id} contain duplicate join URLs — re-create panelists in Zoom if speakers cannot join independently`,
+        );
+      }
       if (links.length) updateData.zoomPanelistLinks = links;
     }
 
@@ -651,10 +657,22 @@ export class AdminController {
     let zoomMeetings: Awaited<
       ReturnType<ZoomService['listScheduledMeetings']>
     > = [];
+    const wantWebinars = !zoomSessionType || zoomSessionType === 'WEBINAR';
+    const wantMeetings = !zoomSessionType || zoomSessionType === 'MEETING';
     if (this.zoom.isConfigured()) {
-      zoomWebinars = await this.zoom.listWebinars();
-      zoomMeetings = await this.zoom.listScheduledMeetings();
+      if (wantWebinars) {
+        zoomWebinars = await this.zoom.listWebinars();
+      }
+      if (wantMeetings) {
+        zoomMeetings = await this.zoom.listScheduledMeetings();
+      }
     }
+
+    const linkedZoomIds = new Set(
+      programs
+        .map((p) => p.zoomMeetingId?.trim())
+        .filter((id): id is string => !!id),
+    );
 
     const webinarById = new Map(zoomWebinars.map((w) => [w.id, w]));
     const meetingById = new Map(zoomMeetings.map((m) => [m.id, m]));
@@ -699,7 +717,68 @@ export class AdminController {
       };
     });
 
-    return result;
+    const nowMs = Date.now();
+    const unlinkedFromZoom = [
+      ...(wantWebinars
+        ? zoomWebinars
+            .filter((w) => {
+              if (linkedZoomIds.has(w.id)) return false;
+              if (!w.startTime) return true;
+              const startMs = new Date(w.startTime).getTime();
+              // Upcoming only (1h grace for sessions that just started).
+              return startMs >= nowMs - 60 * 60 * 1000;
+            })
+            .map((w) => ({
+              id: `zoom-unlinked-${w.id}`,
+              title: w.topic,
+              description: w.agenda ?? '',
+              status: 'DRAFT' as const,
+              startDate: w.startTime ?? null,
+              duration: w.duration ?? null,
+              zoomSessionType: 'WEBINAR' as const,
+              zoomMeetingId: w.id,
+              zoomJoinUrl: w.joinUrl ?? null,
+              zoomStartUrl: w.startUrl ?? null,
+              sponsorName: 'TBD',
+              creditAmount: 0,
+              honorariumAmount: undefined,
+              createdAt: new Date().toISOString(),
+              unlinkedFromZoom: true,
+            }))
+        : []),
+      ...(wantMeetings
+        ? zoomMeetings
+            .filter((m) => {
+              if (linkedZoomIds.has(m.id)) return false;
+              if (!m.startTime) return true;
+              const startMs = new Date(m.startTime).getTime();
+              return startMs >= nowMs - 60 * 60 * 1000;
+            })
+            .map((m) => ({
+              id: `zoom-unlinked-${m.id}`,
+              title: m.topic,
+              description: m.agenda ?? '',
+              status: 'DRAFT' as const,
+              startDate: m.startTime ?? null,
+              duration: m.duration ?? null,
+              zoomSessionType: 'MEETING' as const,
+              zoomMeetingId: m.id,
+              zoomJoinUrl: m.joinUrl ?? null,
+              zoomStartUrl: m.startUrl ?? null,
+              sponsorName: 'TBD',
+              creditAmount: 0,
+              honorariumAmount: undefined,
+              createdAt: new Date().toISOString(),
+              unlinkedFromZoom: true,
+            }))
+        : []),
+    ].sort((a, b) => {
+      const ta = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const tb = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return tb - ta;
+    });
+
+    return [...result, ...unlinkedFromZoom];
   }
 
   @Post('webinars')
@@ -1088,9 +1167,10 @@ export class AdminController {
       select: { id: true, title: true },
     });
     if (existing) {
-      throw new ConflictException(
-        `This Zoom ${sessionType} is already linked to program “${existing.title}” (${existing.id}). Open Admin → Program hub to manage it.`,
-      );
+      throw new ConflictException({
+        message: `This Zoom ${sessionType} is already linked to program “${existing.title}”. Open Program hub to manage it.`,
+        existingProgramId: existing.id,
+      });
     }
 
     const zoomData =
@@ -1241,7 +1321,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Recently approved registrations still within the 1-hour undo window',
+      'Recently approved registrations still within the 15-minute undo window',
   })
   async listRecentlyApprovedWebinarRegistrations() {
     const rows =
@@ -1266,7 +1346,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Revert an approval back to pending (within 1 hour of approval)',
+      'Revert an approval back to pending (within 15 minutes of approval)',
   })
   async adminUndoRegistrationApproval(
     @Param('registrationId') registrationId: string,
