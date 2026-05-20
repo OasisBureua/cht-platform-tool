@@ -119,7 +119,7 @@ jobs:
           npm ci
           npm run build
         env:
-          VITE_API_URL: https://api.communityhealth.media/api
+          VITE_API_URL: https://testapp.communityhealth.media/api
           VITE_APP_URL: https://testapp.communityhealth.media
           VITE_AUTH0_DOMAIN: ${{ secrets.AUTH0_DOMAIN }}
           VITE_AUTH0_CLIENT_ID: ${{ secrets.AUTH0_CLIENT_ID }}
@@ -147,7 +147,7 @@ jobs:
           echo "Waiting for deployment to stabilize..."
           sleep 30
           
-          curl -f https://api.communityhealth.media/health/ready || exit 1
+          curl -f https://testapp.communityhealth.media/health/ready || exit 1
           echo "✅ Development deployment successful!"
 
       - name: Deployment Summary
@@ -155,5 +155,5 @@ jobs:
           echo "🎉 Deployment Complete!"
           echo ""
           echo "Frontend: https://testapp.communityhealth.media"
-          echo "Backend: https://api.communityhealth.media"
+          echo "Backend: https://testapp.communityhealth.media/api"
           echo "Image Tag: ${{ steps.meta.outputs.image_tag }}"
