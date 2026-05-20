@@ -364,10 +364,11 @@ export class AdminController {
         : await this.zoom.getMeetingById(p.zoomMeetingId).catch(() => null);
 
     const updateData: Record<string, unknown> = {};
-    if (sessionDetail?.startUrl && !p.zoomStartUrl) {
+    if (sessionDetail?.startUrl) {
       updateData.zoomStartUrl = sessionDetail.startUrl;
     }
-    if (sessionDetail?.joinUrl && !p.zoomJoinUrl) {
+    if (sessionDetail?.joinUrl) {
+      // Attendee / silent-participant link — always refresh from Zoom when available.
       updateData.zoomJoinUrl = sessionDetail.joinUrl;
     }
 

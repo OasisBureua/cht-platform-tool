@@ -1146,7 +1146,9 @@ function ZoomLinksSection({
           <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-800">Attendee join link</p>
-              <p className="mt-0.5 text-xs text-gray-500">Public link shown to enrolled learners.</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Zoom silent-participant / listener URL — same link learners see as <strong>Join session</strong> in the app.
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <CopyButton url={joinUrl} />

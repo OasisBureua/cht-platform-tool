@@ -18,6 +18,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
+import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
@@ -1054,13 +1055,7 @@ export class ProgramRegistrationsService {
         if (!u?.email) {
           return;
         }
-        // Use the speaker's unique panelist join URL if their name matches one
-        // of the stored panelist links; fall back to the shared attendee URL.
-        const panelistJoinUrl = resolvePanelistJoinUrl(
-          reg.program.zoomPanelistLinks,
-          u.firstName ?? '',
-          u.lastName ?? '',
-        );
+        const joinUrlForLearner = learnerWebinarJoinUrl(reg.program.zoomJoinUrl);
         await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
           to: u.email,
           firstName: u.firstName || 'there',
@@ -1073,7 +1068,7 @@ export class ProgramRegistrationsService {
             honorariumAmount: reg.program.honorariumAmount,
             hostDisplayName: reg.program.hostDisplayName,
             sponsorName: reg.program.sponsorName,
-            zoomJoinUrl: panelistJoinUrl ?? reg.program.zoomJoinUrl,
+            zoomJoinUrl: joinUrlForLearner,
           },
           sessionKind: reg.program.zoomSessionType,
         });
@@ -1662,24 +1657,4 @@ export class ProgramRegistrationsService {
     await this.prisma.programFormLink.delete({ where: { id } });
     return { deleted: true };
   }
-}
-
-/**
- * Resolve the unique Zoom panelist join URL for a specific user by matching
- * their full name against the stored panelist list. Falls back to null so the
- * caller can use the shared attendee join URL instead.
- */
-function resolvePanelistJoinUrl(
-  panelistLinks: unknown,
-  firstName: string,
-  lastName: string,
-): string | null {
-  if (!Array.isArray(panelistLinks) || !panelistLinks.length) return null;
-  const fullName = `${firstName} ${lastName}`.toLowerCase().trim();
-  if (!fullName) return null;
-  const match = (panelistLinks as Array<{ name: string; joinUrl?: string }>).find((p) => {
-    const pName = (p.name ?? '').toLowerCase().trim();
-    return pName === fullName || pName.includes(fullName) || fullName.includes(pName);
-  });
-  return match?.joinUrl ?? null;
 }

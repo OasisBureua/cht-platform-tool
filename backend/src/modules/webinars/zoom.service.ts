@@ -356,7 +356,7 @@ export class ZoomService implements OnModuleInit {
     );
 
     this.logger.log(
-      `Zoom: webinar created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`,
+      `Zoom: webinar created — id=${data.id} topic="${data.topic}" join_url=${data.join_url} (attendee / silent participant link)`,
     );
     return {
       id: String(data.id),

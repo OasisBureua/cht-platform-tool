@@ -307,10 +307,6 @@ export default function KolProfilePage() {
               </div>
             ) : null}
           </div>
-
-          <p className="mt-10 text-center text-[11px] text-zinc-400">
-            Data: CHM KOL roster · optional MediaHub enrichment. Not a federal repository placeholder.
-          </p>
         </div>
       </div>
     </div>

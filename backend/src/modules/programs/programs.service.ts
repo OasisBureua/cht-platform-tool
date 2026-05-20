@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
@@ -254,7 +255,7 @@ export class ProgramsService {
         order: v.order,
       })),
       zoomSessionType: program.zoomSessionType,
-      zoomJoinUrl: program.zoomJoinUrl || undefined,
+      zoomJoinUrl: learnerWebinarJoinUrl(program.zoomJoinUrl) || undefined,
       startDate: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
       zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),
