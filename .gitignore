@@ -35,6 +35,8 @@ frontend/.vite/
 *.tfplan
 # Platform tfvars contains API keys - use platform.tfvars.example as template
 infrastructure/terraform/environments/variables/platform.tfvars
+# Local override files with real secrets (never commit)
+infrastructure/terraform/environments/variables/*.local.tfvars
 
 # Testing
 coverage/
