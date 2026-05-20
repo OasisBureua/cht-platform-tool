@@ -85,7 +85,7 @@ resource "aws_ecs_task_definition" "worker" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "pgrep -f start_workers || exit 1"]
+        command     = ["CMD-SHELL", "python /app/healthcheck.py || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3

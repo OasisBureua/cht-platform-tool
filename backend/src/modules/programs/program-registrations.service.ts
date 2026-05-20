@@ -504,6 +504,7 @@ export class ProgramRegistrationsService {
   async submitBatchRegistrations(
     userId: string,
     programIds: string[],
+    intakeByProgramId?: Record<string, string>,
   ): Promise<{
     submitted: Array<{
       programId: string;
@@ -596,7 +597,10 @@ export class ProgramRegistrationsService {
       }
 
       try {
-        const result = await this.submitRegistration(userId, programId, {});
+        const intakeSid = intakeByProgramId?.[programId]?.trim();
+        const result = await this.submitRegistration(userId, programId, {
+          ...(intakeSid ? { intakeJotformSubmissionId: intakeSid } : {}),
+        });
         submitted.push({
           programId,
           title,
