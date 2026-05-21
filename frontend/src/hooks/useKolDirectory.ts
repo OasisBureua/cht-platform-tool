@@ -6,6 +6,8 @@ import {
   type DolRegion,
   type KolIntel,
 } from '../data/dol-network';
+import { US_STATES, usStateLabel } from '../data/us-states';
+import { deriveKolUsState } from '../utils/kol-state';
 
 /**
  * Hydrate API roster with static intel (NPI, AI brief, social URLs, etc.).
@@ -25,24 +27,36 @@ function mergeApiWithStatic(apiKol: PublicKol): DolEntry {
     photoUrl: apiKol.photo_url ?? undefined,
     shootCount: apiKol.shoot_count,
     intel: stat?.intel,
+    stateCode: deriveKolUsState(apiKol, stat) ?? undefined,
   };
 }
 
-function groupByRegion(items: PublicKol[]): DolRegion[] {
-  const buckets = new Map<string, { label: string; entries: DolEntry[] }>();
+/** Group KOLs by US state (50 states + DC); unknown state last. */
+function groupByUsState(items: PublicKol[]): DolRegion[] {
+  const buckets = new Map<string, DolEntry[]>();
   for (const item of items) {
-    const region = item.region ?? 'unknown';
-    const label = item.region_label ?? 'Other';
-    if (!buckets.has(region)) buckets.set(region, { label, entries: [] });
-    buckets.get(region)!.entries.push(mergeApiWithStatic(item));
+    const entry = mergeApiWithStatic(item);
+    const code = entry.stateCode ?? 'UNKNOWN';
+    if (!buckets.has(code)) buckets.set(code, []);
+    buckets.get(code)!.push(entry);
   }
-  return [...buckets.entries()]
-    .map(([id, { label, entries }]) => ({
-      id,
-      title: label,
-      entries,
-    }))
-    .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+
+  const orderedCodes = [
+    ...US_STATES.map((s) => s.value),
+    ...(buckets.has('UNKNOWN') ? ['UNKNOWN'] : []),
+  ];
+
+  return orderedCodes
+    .filter((code) => buckets.has(code))
+    .map((code) => ({
+      id: code,
+      title: code === 'UNKNOWN' ? 'State unknown' : usStateLabel(code),
+      entries: buckets.get(code)!.sort((a, b) => {
+        const an = a.name.replace(/^Dr\.\s*/i, '').toLowerCase();
+        const bn = b.name.replace(/^Dr\.\s*/i, '').toLowerCase();
+        return an.localeCompare(bn, undefined, { sensitivity: 'base' });
+      }),
+    }));
 }
 
 export type KolDirectory = {
@@ -62,7 +76,7 @@ export function useKolDirectory(): KolDirectory {
   if (isError || !data) return { regions: [], total: 0, loadState: 'error' };
 
   return {
-    regions: groupByRegion(data.items),
+    regions: groupByUsState(data.items),
     total: data.total,
     loadState: 'ready',
   };
@@ -80,16 +94,13 @@ export function findKolInDirectory(
   return null;
 }
 
-const SLUG_ALIASES: Record<string, string> = {
-  yale: 'ny-northeast',
-};
-
+/** Resolve a state section by 2-letter code (e.g. NY). */
 export function getRegionFromDirectory(
   directory: KolDirectory,
-  slug: string,
+  stateCode: string,
 ): DolRegion | null {
-  const resolved = SLUG_ALIASES[slug] ?? slug;
-  return directory.regions.find((r) => r.id === resolved) ?? null;
+  const code = stateCode.toUpperCase();
+  return directory.regions.find((r) => r.id === code) ?? null;
 }
 
 // Re-export types so callers don't need to import from two places

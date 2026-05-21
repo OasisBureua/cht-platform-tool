@@ -48,6 +48,7 @@ import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
+import { SendRegistrationInvitesDto } from '../programs/dto/send-registration-invites.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
@@ -1315,13 +1316,31 @@ export class AdminController {
     });
   }
 
+  @Post('registration-invites')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Email learners a link to register for multiple webinars (multi-register landing page)',
+  })
+  async sendRegistrationInvites(
+    @Body() body: SendRegistrationInvitesDto,
+  ) {
+    return this.programRegistrations.sendRegistrationInvites({
+      programIds: body.programIds,
+      userIds: body.userIds,
+      role: body.role,
+    });
+  }
+
   @Get('webinar-registrations/recently-approved')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Recently approved registrations still within the 15-minute undo window',
+      'Recently approved registrations (visible until session end + 1 hour; undo within 15 minutes)',
   })
   async listRecentlyApprovedWebinarRegistrations() {
     const rows =

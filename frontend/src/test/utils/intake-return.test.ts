@@ -4,6 +4,7 @@ import {
   buildProgramRegisterHref,
   readIntakeSubmissionIdFromSearch,
   readMultiRegisterIntakeProgramId,
+  readMultiRegisterProgramIds,
 } from '../../utils/intake-return';
 
 describe('intake-return helpers', () => {
@@ -45,9 +46,20 @@ describe('intake-return helpers', () => {
   describe('multi-register href helpers', () => {
     it('builds multi-register base and intake deep links', () => {
       expect(buildMultiRegisterHref()).toBe('/app/live/register-multiple');
-      expect(buildMultiRegisterHref('prog-a')).toBe(
+      expect(buildMultiRegisterHref({ intakeProgramId: 'prog-a' })).toBe(
         '/app/live/register-multiple?intakeProgramId=prog-a',
       );
+      expect(
+        buildMultiRegisterHref({ programIds: ['prog-a', 'prog-b'] }),
+      ).toBe('/app/live/register-multiple?programs=prog-a%2Cprog-b');
+    });
+
+    it('reads programs from search params', () => {
+      expect(readMultiRegisterProgramIds('?programs=a,b,c')).toEqual([
+        'a',
+        'b',
+        'c',
+      ]);
     });
 
     it('reads intakeProgramId from search params', () => {

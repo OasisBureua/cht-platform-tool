@@ -16,6 +16,7 @@ import { format, parseISO } from 'date-fns';
 import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
+import SendRegistrationInvitesModal from '../../components/admin/SendRegistrationInvitesModal';
 
 export default function AdminPrograms() {
   const location = useLocation();
@@ -28,6 +29,7 @@ export default function AdminPrograms() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sendInvitesOpen, setSendInvitesOpen] = useState(false);
 
   const { data: webinars, isLoading, error } = useQuery({
     queryKey: ['admin', 'webinars', zoomFilter],
@@ -106,6 +108,16 @@ export default function AdminPrograms() {
               Office Hours
             </Link>
           )}
+          {!isOfficeHours ? (
+            <button
+              type="button"
+              onClick={() => setSendInvitesOpen(true)}
+              disabled={items.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
+              Send registration invites
+            </button>
+          ) : null}
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
@@ -115,6 +127,16 @@ export default function AdminPrograms() {
           </Link>
         </div>
       </div>
+
+      {!isOfficeHours ? (
+        <SendRegistrationInvitesModal
+          webinars={items}
+          open={sendInvitesOpen}
+          onClose={() => {
+            setSendInvitesOpen(false);
+          }}
+        />
+      ) : null}
 
       {!isOfficeHours && upcomingZoomOnly.length > 0 ? (
         <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">

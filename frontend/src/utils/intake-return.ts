@@ -44,10 +44,30 @@ export type MultiRegisterPersistedState = {
   intakeIndex: number;
 };
 
-export function buildMultiRegisterHref(intakeProgramId?: string): string {
+export function buildMultiRegisterHref(opts?: {
+  intakeProgramId?: string;
+  programIds?: string[];
+}): string {
   const base = '/app/live/register-multiple';
-  if (!intakeProgramId?.trim()) return base;
-  return `${base}?intakeProgramId=${encodeURIComponent(intakeProgramId.trim())}`;
+  const q = new URLSearchParams();
+  if (opts?.intakeProgramId?.trim()) {
+    q.set('intakeProgramId', opts.intakeProgramId.trim());
+  }
+  if (opts?.programIds?.length) {
+    q.set('programs', opts.programIds.join(','));
+  }
+  const qs = q.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+/** Read comma-separated program ids from multi-register URL. */
+export function readMultiRegisterProgramIds(search: string): string[] {
+  const raw = new URLSearchParams(search).get('programs')?.trim();
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
 }
 
 export function readMultiRegisterIntakeProgramId(search: string): string | undefined {

@@ -28,6 +28,8 @@ export type DolEntry = {
   role: string;
   bio: string;
   education: string;
+  /** US state code (e.g. NY) when known */
+  stateCode?: string;
   isNew?: boolean;
   /** ISO date when the entry was added; used to auto-expire the "New" badge after 7 days */
   addedAt?: string;

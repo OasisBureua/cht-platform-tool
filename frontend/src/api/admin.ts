@@ -462,8 +462,24 @@ export const adminApi = {
         id: string;
         title: string;
         zoomSessionType?: 'WEBINAR' | 'MEETING';
+        startDate?: string | null;
+        duration?: number | null;
       };
     }>;
+  },
+
+  sendRegistrationInvites: async (payload: {
+    programIds: string[];
+    userIds?: string[];
+    role?: 'HCP' | 'KOL';
+  }) => {
+    const { data } = await apiClient.post('/admin/registration-invites', payload);
+    return data as {
+      registerUrl: string;
+      programs: { id: string; title: string }[];
+      emailed: number;
+      skipped: { userId: string; email: string; reason: string }[];
+    };
   },
 
   undoRegistrationApproval: async (registrationId: string) => {

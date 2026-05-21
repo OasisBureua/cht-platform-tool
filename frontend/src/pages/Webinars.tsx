@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight, Radio } from 'lucide-react';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
+import { MULTI_WEBINAR_REGISTER_PUBLIC } from '../config/features';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
@@ -79,7 +80,7 @@ export default function Webinars() {
             <Radio className="h-5 w-5 text-accent-600 dark:text-accent-400" strokeWidth={2} aria-hidden />
             <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
           </div>
-          {userId ? (
+          {userId && MULTI_WEBINAR_REGISTER_PUBLIC ? (
             <Link
               to="/app/live/register-multiple"
               className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100"

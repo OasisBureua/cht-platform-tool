@@ -33,6 +33,45 @@ export class ProgramRegistrationsService {
   /** Admins may revert an approval within this window (see adminUndoRegistrationApproval). */
   static readonly APPROVAL_UNDO_WINDOW_MS = 15 * 60 * 1000;
 
+  /** Recently approved rows stay visible until session end + this buffer. */
+  static readonly RECENTLY_APPROVED_AFTER_SESSION_MS = 60 * 60 * 1000;
+
+  /** Session end (start + duration minutes), or null when start is unknown. */
+  static sessionEndsAt(
+    startDate: Date | null | undefined,
+    durationMinutes: number | null | undefined,
+  ): Date | null {
+    if (!startDate) return null;
+    const mins = durationMinutes ?? 60;
+    return new Date(startDate.getTime() + mins * 60 * 1000);
+  }
+
+  /** True while the registration should appear in the admin "Recently approved" section. */
+  static isRecentlyApprovedVisible(
+    reviewedAt: Date | null | undefined,
+    startDate: Date | null | undefined,
+    durationMinutes: number | null | undefined,
+    nowMs: number = Date.now(),
+  ): boolean {
+    const sessionEnd = ProgramRegistrationsService.sessionEndsAt(
+      startDate,
+      durationMinutes,
+    );
+    if (sessionEnd) {
+      return (
+        sessionEnd.getTime() +
+          ProgramRegistrationsService.RECENTLY_APPROVED_AFTER_SESSION_MS >
+        nowMs
+      );
+    }
+    if (!reviewedAt) return false;
+    return (
+      reviewedAt.getTime() +
+        ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS >
+      nowMs
+    );
+  }
+
   constructor(
     private prisma: PrismaService,
     private hubspot: HubSpotService,
@@ -869,15 +908,15 @@ export class ProgramRegistrationsService {
     });
   }
 
-  /** Recently approved registrations still within the undo window (newest first). */
+  /**
+   * Recently approved registrations for the admin queue (newest first).
+   * Visible until session end + 1 hour (or 15 minutes after approval when no start time).
+   */
   async listRecentlyApprovedRegistrationsForAdminUndo() {
-    const since = new Date(
-      Date.now() - ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS,
-    );
-    return this.prisma.programRegistration.findMany({
+    const rows = await this.prisma.programRegistration.findMany({
       where: {
         status: ProgramRegistrationStatus.APPROVED,
-        reviewedAt: { gte: since },
+        reviewedAt: { not: null },
         program: {
           zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
           status: 'PUBLISHED',
@@ -910,6 +949,108 @@ export class ProgramRegistrationsService {
       },
       orderBy: { reviewedAt: 'desc' },
     });
+    return rows.filter((r) =>
+      ProgramRegistrationsService.isRecentlyApprovedVisible(
+        r.reviewedAt,
+        r.program.startDate,
+        r.program.duration,
+      ),
+    );
+  }
+
+  /**
+   * Email learners a link to the multi-webinar registration landing page (pre-selected sessions).
+   */
+  async sendRegistrationInvites(opts: {
+    programIds: string[];
+    userIds?: string[];
+    role?: 'HCP' | 'KOL';
+  }): Promise<{
+    registerUrl: string;
+    programs: { id: string; title: string }[];
+    emailed: number;
+    skipped: { userId: string; email: string; reason: string }[];
+  }> {
+    const uniqueProgramIds = [...new Set(opts.programIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueProgramIds.length === 0) {
+      throw new BadRequestException('Select at least one webinar.');
+    }
+
+    const programs = await this.prisma.program.findMany({
+      where: {
+        id: { in: uniqueProgramIds },
+        status: ProgramStatus.PUBLISHED,
+        zoomSessionType: ProgramZoomSessionType.WEBINAR,
+      },
+      select: { id: true, title: true, startDate: true },
+      orderBy: { startDate: 'asc' },
+    });
+    if (programs.length === 0) {
+      throw new BadRequestException(
+        'No published webinars found for the selected programs.',
+      );
+    }
+
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const registerUrl = `${base}/app/live/register-multiple?programs=${programs.map((p) => p.id).join(',')}`;
+
+    let userIds = opts.userIds?.length
+      ? [...new Set(opts.userIds)]
+      : undefined;
+    if (!userIds?.length && opts.role) {
+      const users = await this.prisma.user.findMany({
+        where: { role: opts.role, status: 'ACTIVE' },
+        select: { id: true },
+      });
+      userIds = users.map((u) => u.id);
+    }
+    if (!userIds?.length) {
+      throw new BadRequestException(
+        'Select at least one recipient or choose a role (HCP / KOL).',
+      );
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, status: 'ACTIVE' },
+      select: { id: true, email: true, firstName: true },
+    });
+
+    const skipped: { userId: string; email: string; reason: string }[] = [];
+    let emailed = 0;
+    for (const user of users) {
+      if (!user.email?.trim()) {
+        skipped.push({
+          userId: user.id,
+          email: '',
+          reason: 'No email on file',
+        });
+        continue;
+      }
+      try {
+        await this.sesEmail.sendRegistrationInviteEmail({
+          to: user.email,
+          firstName: user.firstName ?? '',
+          programTitles: programs.map((p) => p.title),
+          registerUrl,
+        });
+        emailed += 1;
+      } catch (err) {
+        skipped.push({
+          userId: user.id,
+          email: user.email,
+          reason: (err as Error).message,
+        });
+      }
+    }
+
+    return {
+      registerUrl,
+      programs: programs.map((p) => ({ id: p.id, title: p.title })),
+      emailed,
+      skipped,
+    };
   }
 
   async adminUndoRegistrationApproval(

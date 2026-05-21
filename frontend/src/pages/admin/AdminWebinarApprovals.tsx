@@ -10,6 +10,17 @@ import { HCP_PROFESSIONS } from '../../data/profession-options';
 type AdminApprovalsTab = 'registrations' | 'attendance';
 
 const APPROVAL_UNDO_WINDOW_MS = 15 * 60 * 1000;
+const SESSION_VISIBLE_BUFFER_MS = 60 * 60 * 1000;
+
+function sessionVisibleUntilMs(program: {
+  startDate?: string | null;
+  duration?: number | null;
+}): number {
+  if (!program.startDate) return 0;
+  const start = new Date(program.startDate).getTime();
+  const durationMs = (program.duration ?? 60) * 60 * 1000;
+  return start + durationMs + SESSION_VISIBLE_BUFFER_MS;
+}
 
 function undoRemainingMs(undoExpiresAt: string | null | undefined): number {
   if (!undoExpiresAt) return 0;
@@ -65,10 +76,10 @@ export default function AdminWebinarApprovals() {
 
   const [undoTick, setUndoTick] = useState(0);
   useEffect(() => {
-    if (tab !== 'registrations' || recentlyApproved.length === 0) return;
+    if (tab !== 'registrations') return;
     const id = window.setInterval(() => setUndoTick((t) => t + 1), 1000);
     return () => window.clearInterval(id);
-  }, [tab, recentlyApproved.length]);
+  }, [tab]);
 
   const {
     data: attendanceRows = [],
@@ -83,14 +94,10 @@ export default function AdminWebinarApprovals() {
   const programOptions = useMemo(() => {
     const seen = new Map<string, string>();
     for (const r of rows) seen.set(r.program.id, r.program.title);
-    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rows]);
-
-  const attendanceProgramOptions = useMemo(() => {
-    const seen = new Map<string, string>();
+    for (const r of recentlyApproved) seen.set(r.program.id, r.program.title);
     for (const r of attendanceRows) seen.set(r.program.id, r.program.title);
     return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [attendanceRows]);
+  }, [rows, recentlyApproved, attendanceRows]);
 
   const filteredRows = useMemo(
     () => (programFilter === 'all' ? rows : rows.filter((r) => r.program.id === programFilter)),
@@ -112,7 +119,11 @@ export default function AdminWebinarApprovals() {
 
   const visibleRecentlyApproved = useMemo(
     () =>
-      filteredRecentlyApproved.filter((r) => undoRemainingMs(r.undoExpiresAt) > 0),
+      filteredRecentlyApproved.filter((r) => {
+        const until = sessionVisibleUntilMs(r.program);
+        if (until > 0) return until > Date.now();
+        return undoRemainingMs(r.undoExpiresAt) > 0;
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- undoTick drives countdown refresh
     [filteredRecentlyApproved, undoTick],
   );
@@ -278,7 +289,7 @@ export default function AdminWebinarApprovals() {
             className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-900"
           >
             <option value="all">All programs</option>
-            {(tab === 'registrations' ? programOptions : attendanceProgramOptions).map(([id, title]) => (
+            {programOptions.map(([id, title]) => (
               <option key={id} value={id}>{title}</option>
             ))}
           </select>
@@ -316,63 +327,6 @@ export default function AdminWebinarApprovals() {
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
           Failed to load attendance verification queue.
         </div>
-      ) : null}
-
-      {tab === 'registrations' && !isLoading && !isError && visibleRecentlyApproved.length > 0 ? (
-        <div className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50/60">
-          <div className="border-b border-amber-200 px-4 py-3">
-            <h2 className="text-sm font-semibold text-amber-950">Recently approved</h2>
-            <p className="mt-0.5 text-xs text-amber-900">
-              Undo an approval within {APPROVAL_UNDO_WINDOW_MS / (60 * 1000)} minutes to return the request to pending
-              (enrollment is removed).
-            </p>
-          </div>
-          <table className="min-w-full text-sm bg-white/80">
-            <thead>
-              <tr className="border-b border-amber-100 text-left text-gray-600">
-                <th className="py-3 px-4">Program</th>
-                <th className="py-3 px-4">User</th>
-                <th className="py-3 px-4">Approved</th>
-                <th className="py-3 px-4">Undo window</th>
-                <th className="py-3 px-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-amber-50">
-              {visibleRecentlyApproved.map((r) => {
-                const remaining = undoRemainingMs(r.undoExpiresAt);
-                return (
-                  <tr key={r.id}>
-                    <td className="py-3 px-4 font-medium text-gray-900">{r.program.title}</td>
-                    <td className="py-3 px-4">
-                      {r.user.firstName} {r.user.lastName}
-                      <div className="text-xs text-gray-500">{r.user.email}</div>
-                    </td>
-                    <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
-                      {r.reviewedAt ? format(parseISO(r.reviewedAt), 'MMM d, yyyy h:mm a') : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-amber-900 font-mono text-xs whitespace-nowrap">
-                      {formatUndoCountdown(remaining)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <button
-                        type="button"
-                        disabled={busy || remaining <= 0}
-                        onClick={() => undoMut.mutate(r.id)}
-                        className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50 disabled:opacity-40"
-                      >
-                        Undo approval
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
-
-      {tab === 'registrations' && undoMut.isError ? (
-        <p className="text-sm text-red-600">Could not undo approval. The window may have expired.</p>
       ) : null}
 
       {tab === 'registrations' && !isLoading && !isError && filteredRows.length > 0 ? (
@@ -482,6 +436,73 @@ export default function AdminWebinarApprovals() {
             </p>
           )}
         </div>
+      ) : null}
+
+      {tab === 'registrations' && !recentlyApprovedLoading && visibleRecentlyApproved.length > 0 ? (
+        <section className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50/60">
+          <div className="border-b border-amber-200 px-4 py-3">
+            <h2 className="text-sm font-semibold text-amber-950">Recently approved</h2>
+            <p className="mt-0.5 text-xs text-amber-900">
+              Shown until each session ends plus one hour. Undo is available for{' '}
+              {APPROVAL_UNDO_WINDOW_MS / (60 * 1000)} minutes after approval.
+            </p>
+          </div>
+          <table className="min-w-full text-sm bg-white/80">
+            <thead>
+              <tr className="border-b border-amber-100 text-left text-gray-600">
+                <th className="py-3 px-4">Program</th>
+                <th className="py-3 px-4">Type</th>
+                <th className="py-3 px-4">User</th>
+                <th className="py-3 px-4">HCP</th>
+                <th className="py-3 px-4">Approved</th>
+                <th className="py-3 px-4">Undo window</th>
+                <th className="py-3 px-4">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-amber-50">
+              {visibleRecentlyApproved.map((r) => {
+                const remaining = undoRemainingMs(r.undoExpiresAt);
+                return (
+                  <tr key={r.id}>
+                    <td className="py-3 px-4 font-medium text-gray-900">{r.program.title}</td>
+                    <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
+                      {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
+                    </td>
+                    <td className="py-3 px-4">
+                      {r.user.firstName} {r.user.lastName}
+                      <div className="text-xs text-gray-500">{r.user.email}</div>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${hcpBadgeClass(r.user.specialty)}`}>
+                        {hcpLabel(r.user.specialty)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
+                      {r.reviewedAt ? format(parseISO(r.reviewedAt), 'MMM d, yyyy h:mm a') : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-amber-900 font-mono text-xs whitespace-nowrap">
+                      {remaining > 0 ? formatUndoCountdown(remaining) : 'Expired'}
+                    </td>
+                    <td className="py-3 px-4">
+                      <button
+                        type="button"
+                        disabled={busy || remaining <= 0}
+                        onClick={() => undoMut.mutate(r.id)}
+                        className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50 disabled:opacity-40"
+                      >
+                        Undo approval
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      {tab === 'registrations' && undoMut.isError ? (
+        <p className="text-sm text-red-600">Could not undo approval. The window may have expired.</p>
       ) : null}
 
       {tab === 'registrations' && !isLoading && !isError ? (

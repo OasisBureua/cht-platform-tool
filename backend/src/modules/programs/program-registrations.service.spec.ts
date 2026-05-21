@@ -108,27 +108,60 @@ describe('ProgramRegistrationsService', () => {
   });
 
   describe('listRecentlyApprovedRegistrationsForAdminUndo', () => {
-    it('queries approvals since the undo window start', async () => {
-      const now = Date.now();
-      jest.spyOn(Date, 'now').mockReturnValue(now);
-      prisma.programRegistration.findMany.mockResolvedValue([]);
+    it('queries approved registrations and filters by session visibility', async () => {
+      const futureStart = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      prisma.programRegistration.findMany.mockResolvedValue([
+        {
+          id: 'reg-visible',
+          reviewedAt: new Date(),
+          program: { startDate: futureStart, duration: 60 },
+        },
+        {
+          id: 'reg-expired',
+          reviewedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+          program: {
+            startDate: new Date(Date.now() - 48 * 60 * 60 * 1000),
+            duration: 60,
+          },
+        },
+      ]);
 
-      await service.listRecentlyApprovedRegistrationsForAdminUndo();
+      const rows = await service.listRecentlyApprovedRegistrationsForAdminUndo();
 
       expect(prisma.programRegistration.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             status: ProgramRegistrationStatus.APPROVED,
-            reviewedAt: {
-              gte: new Date(
-                now - ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS,
-              ),
-            },
+            reviewedAt: { not: null },
           }),
         }),
       );
+      expect(rows.map((r) => r.id)).toEqual(['reg-visible']);
+    });
+  });
 
-      jest.spyOn(Date, 'now').mockRestore();
+  describe('isRecentlyApprovedVisible', () => {
+    it('stays visible until session end plus one hour', () => {
+      const start = new Date('2026-06-01T18:00:00Z');
+      const during = new Date('2026-06-01T19:30:00Z').getTime();
+      expect(
+        ProgramRegistrationsService.isRecentlyApprovedVisible(
+          new Date('2026-06-01T10:00:00Z'),
+          start,
+          60,
+          during,
+        ),
+      ).toBe(true);
+
+      const after = new Date('2026-06-01T20:05:00Z').getTime();
+      expect(
+        ProgramRegistrationsService.isRecentlyApprovedVisible(
+          new Date('2026-06-01T10:00:00Z'),
+          start,
+          60,
+          after,
+        ),
+      ).toBe(false);
     });
   });
 });

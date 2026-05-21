@@ -20,7 +20,7 @@ export default function DolRegionDetail() {
 
   if (directory.loadState === 'loading') {
     return (
-      <div className="bg-white px-6 py-20 text-center text-gray-500">Loading region…</div>
+      <div className="bg-white px-6 py-20 text-center text-gray-500">Loading state…</div>
     );
   }
   if (!region) {
@@ -37,7 +37,7 @@ export default function DolRegionDetail() {
             className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4"
           >
             <ChevronLeft className="h-4 w-4" />
-            All regions
+            All states
           </Link>
           <div className="max-w-3xl space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
@@ -101,7 +101,7 @@ export default function DolRegionDetail() {
       <section className="border-t border-gray-200 py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-            Other regions
+            Other states
           </h3>
           <div className="flex flex-wrap gap-2">
             {directory.regions

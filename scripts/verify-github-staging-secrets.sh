@@ -159,7 +159,7 @@ else
   echo "  Settings → Environments → $GH_ENV → Environment secrets"
   echo "  Or: gh secret set SECRET_NAME --env $GH_ENV"
   echo ""
-  echo "Copy values from platform/dev environment secrets where appropriate."
+  echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh staging"
   echo "AWS app secrets (runtime): ./scripts/bootstrap-staging-secrets-from-platform.sh"
   exit 1
 fi

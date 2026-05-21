@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, isPast } from 'date-fns';
 import { ChevronLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -9,12 +9,14 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getApiErrorMessage } from '../api/client';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
+import { MULTI_WEBINAR_REGISTER_PUBLIC } from '../config/features';
 import {
   buildMultiRegisterHref,
   clearMultiRegisterState,
   loadMultiRegisterState,
   readIntakeSubmissionIdFromSearch,
   readMultiRegisterIntakeProgramId,
+  readMultiRegisterProgramIds,
   saveMultiRegisterState,
   type MultiRegisterPersistedState,
 } from '../utils/intake-return';
@@ -130,8 +132,10 @@ export default function LiveMultiRegister() {
     const stored = loadMultiRegisterState();
     const submissionId = readIntakeSubmissionIdFromSearch(location.search);
     const intakeProgramId = readMultiRegisterIntakeProgramId(location.search);
+    const preselectedPrograms = readMultiRegisterProgramIds(location.search);
 
     let nextSelected = new Set(stored?.selectedIds ?? []);
+    for (const id of preselectedPrograms) nextSelected.add(id);
     let nextIntake = { ...(stored?.intakeByProgramId ?? {}) };
     let nextPhase: WizardPhase = stored?.phase ?? 'select';
     let nextIntakeIndex = stored?.intakeIndex ?? 0;
@@ -156,7 +160,7 @@ export default function LiveMultiRegister() {
     setMaxIntakeIndexCompleted(nextMaxCompleted);
     setHydrated(true);
 
-    if (submissionId || intakeProgramId) {
+    if (submissionId || intakeProgramId || preselectedPrograms.length > 0) {
       const next = new URLSearchParams(searchParams);
       next.delete('submission_id');
       next.delete('submissionId');
@@ -165,6 +169,7 @@ export default function LiveMultiRegister() {
       next.delete('sid');
       next.delete('submission');
       next.delete('intakeProgramId');
+      next.delete('programs');
       setSearchParams(next, { replace: true });
     }
   }, [hydrated, isLoading, location.search, searchParams, setSearchParams, webinarById]);
@@ -275,7 +280,10 @@ export default function LiveMultiRegister() {
 
   const intakeReturnUrl = useMemo(() => {
     if (!currentIntakeProgram?.id || typeof window === 'undefined') return '';
-    const href = buildMultiRegisterHref(currentIntakeProgram.id);
+    const href = buildMultiRegisterHref({
+      intakeProgramId: currentIntakeProgram.id,
+      programIds: [...selected],
+    });
     return `${window.location.origin}${href}`;
   }, [currentIntakeProgram?.id]);
 
@@ -293,6 +301,12 @@ export default function LiveMultiRegister() {
     ? intakeByProgramId[currentIntakeProgram.id]?.trim()
     : undefined;
 
+  const hasInviteContext =
+    readMultiRegisterProgramIds(location.search).length > 0 ||
+    !!readMultiRegisterIntakeProgramId(location.search) ||
+    (loadMultiRegisterState()?.selectedIds.length ?? 0) > 0;
+  const allowAccess = MULTI_WEBINAR_REGISTER_PUBLIC || hasInviteContext;
+
   if (!user?.userId) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
@@ -302,6 +316,10 @@ export default function LiveMultiRegister() {
         </Link>
       </div>
     );
+  }
+
+  if (!allowAccess) {
+    return <Navigate to="/app/live" replace />;
   }
 
   if (isLoading || !hydrated) return <LoadingSpinner />;
