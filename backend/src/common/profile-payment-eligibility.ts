@@ -43,3 +43,4 @@ export function assertProfileCompleteForPayments(
     'Add your 10-digit NPI under Settings before you can set up payments or request an honorarium. (NPI is not required for non-clinical / Industry roles.)',
   );
 }
+
