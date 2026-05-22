@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ProgramRegistrationStatus } from '@prisma/client';
 import { ProgramRegistrationsService } from './program-registrations.service';
