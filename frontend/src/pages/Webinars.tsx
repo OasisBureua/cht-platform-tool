@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight, Radio } from 'lucide-react';
 import { format, isPast, formatDistanceToNow } from 'date-fns';
@@ -96,6 +97,11 @@ export default function Webinars() {
         <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="font-semibold text-gray-900">No Live sessions scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
+        </div>
+      ) : upcoming.length === 0 && past.length === 0 ? (
+        <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="font-semibold text-gray-900">No upcoming Live sessions</p>
+          <p className="mt-1 text-sm text-gray-600">Check back soon for new sessions.</p>
         </div>
       ) : (
         <div className="space-y-8">
