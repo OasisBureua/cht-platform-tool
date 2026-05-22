@@ -12,7 +12,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
-  TERRAFORM_VERSION: 1.9.8
+  TERRAFORM_VERSION: 1.10.5
   APP_URL: https://testapp.communityhealth.media
   API_URL: https://testapp.communityhealth.media/api
   TF_ENV_DIR: infrastructure/terraform/environments/us-east-1

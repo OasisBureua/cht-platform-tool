@@ -13,7 +13,7 @@ on:
 env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
-  TERRAFORM_VERSION: 1.9.8
+  TERRAFORM_VERSION: 1.10.5
   # Fallback for any remaining actions not yet on Node 24 native runtime.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
