@@ -317,6 +317,19 @@ export default function WebinarDetail() {
     myRegistration?.postEventAttendanceStatus !== 'PENDING_VERIFICATION' &&
     myRegistration?.postEventAttendanceStatus !== 'DENIED';
 
+  const sessionCoverUrl =
+    program.sessionHeroImageUrl?.trim() || program.thumbnailUrl?.trim() || '';
+
+  const registerCtaClass =
+    'inline-flex w-full max-w-full shrink-0 justify-center rounded-lg px-[26px] py-2.5 text-sm font-semibold min-w-[172px] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] sm:w-fit';
+
+  const pendingRegistrationMessage =
+    myRegistration?.status === 'PENDING'
+      ? myRegistration.intakeJotformSubmissionId
+        ? 'Your registration survey was received. Waiting for an administrator to approve you before you can join the webinar in the app.'
+        : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'
+      : null;
+
   return (
     <div className="space-y-8 pb-24 md:pb-0">
       {!postEventNavLock ? (
@@ -346,20 +359,11 @@ export default function WebinarDetail() {
         </div>
       ) : null}
 
-      {/* Header / Overview */}
-      <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        {program.sessionHeroImageUrl?.trim() ? (
-          <div className="border-b border-gray-100 bg-gray-50">
-            <img
-              src={program.sessionHeroImageUrl.trim()}
-              alt=""
-              className="w-full max-h-64 object-cover"
-            />
-          </div>
-        ) : null}
-        <div className="p-6">
-        <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-          <div className="space-y-4 min-w-0">
+      {/* Header / Overview — Variation B: register left, full-height cover rail right */}
+      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="p-4 sm:p-6">
+          <div className="flex min-h-[17.5rem] flex-row items-stretch gap-3 min-[480px]:gap-4 sm:min-h-[20rem] sm:gap-6 md:gap-10">
+            <div className="flex min-w-0 flex-1 flex-col gap-3 sm:gap-4">
 
             {/* Status chips */}
             <div className="flex flex-wrap items-center gap-2">
@@ -377,7 +381,7 @@ export default function WebinarDetail() {
             </div>
 
             {/* Title */}
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-balance text-xl font-bold leading-tight text-gray-900 min-[480px]:text-2xl md:text-3xl">
               {program.title}
             </h1>
 
@@ -406,7 +410,7 @@ export default function WebinarDetail() {
 
             {/* Date / time */}
             {program.startDate ? (
-              <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+              <div className="flex flex-col gap-1 text-xs text-gray-600 min-[480px]:flex-row min-[480px]:flex-wrap min-[480px]:items-center min-[480px]:gap-4 sm:text-sm">
                 <span className="inline-flex items-center gap-1.5">
                   <Calendar className="h-4 w-4 shrink-0 text-gray-400" />
                   {formatEventDate(program.startDate)}
@@ -434,61 +438,82 @@ export default function WebinarDetail() {
                 </span>
               ) : null}
             </div>
-          </div>
 
-          {/* CTA (desktop) */}
-          <div className="hidden md:block md:pt-1 space-y-2">
-            {myRegistration?.status === 'PENDING' ? (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  {myRegistration.intakeJotformSubmissionId
-                    ? 'Your registration survey was received. Waiting for an administrator to approve you before you can join the webinar in the app.'
-                    : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'}
-                </p>
-              </div>
-            ) : needsRegistrationWizard && !enrolled && !userId ? (
-              <Link
-                to="/login"
-                state={{ from: { pathname: `/app/live/${program.id}` } }}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
-              >
-                Sign in to register
-              </Link>
-            ) : needsRegistrationWizard && !enrolled ? (
-              <Link
-                to={`/app/live/${program.id}/register`}
-                className="inline-flex w-full md:w-auto justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
-              >
-                Register
-              </Link>
-            ) : (
-              <button
-                onClick={() => enrollMutation.mutate({ programId: program.id })}
-                disabled={ctaDisabled}
-                className={[
-                  'w-full md:w-auto rounded-lg px-4 py-2 text-sm font-semibold',
-                  ctaDisabled
-                    ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                    : 'bg-orange-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]',
-                ].join(' ')}
-              >
-                {ctaLabel}
-              </button>
-            )}
+            {myRegistration?.status !== 'PENDING' ? (
+              needsRegistrationWizard && !enrolled && !userId ? (
+                <Link
+                  to="/login"
+                  state={{ from: { pathname: `/app/live/${program.id}` } }}
+                  className={`${registerCtaClass} bg-gray-900 text-white hover:bg-black`}
+                >
+                  Sign in to register
+                </Link>
+              ) : needsRegistrationWizard && !enrolled ? (
+                <Link
+                  to={`/app/live/${program.id}/register`}
+                  className={`${registerCtaClass} bg-orange-600 text-white hover:bg-orange-700`}
+                >
+                  Register
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => enrollMutation.mutate({ programId: program.id })}
+                  disabled={ctaDisabled}
+                  className={[
+                    registerCtaClass,
+                    ctaDisabled
+                      ? 'cursor-not-allowed bg-gray-200 text-gray-600'
+                      : 'bg-orange-600 text-white hover:bg-orange-700',
+                  ].join(' ')}
+                >
+                  {ctaLabel}
+                </button>
+              )
+            ) : null}
 
             {!enrolled && myRegistration?.status !== 'PENDING' && needsRegistrationWizard ? (
-              <p className="mt-2 text-xs text-gray-600">
+              <p className="text-pretty text-[11px] leading-relaxed text-gray-600 sm:text-xs">
                 Complete registration here. Post-event surveys appear on the Surveys tab after the live session.
               </p>
             ) : null}
             {!enrolled && myRegistration?.status !== 'PENDING' && !needsRegistrationWizard ? (
-              <p className="mt-2 text-xs text-gray-600">Register to unlock video playback and earn rewards.</p>
+              <p className="text-pretty text-[11px] text-gray-600 sm:text-xs">
+                Register to unlock video playback and earn rewards.
+              </p>
             ) : null}
             {enrolled ? (
-              <p className="mt-2 text-xs text-gray-600">Complete required steps to earn rewards.</p>
+              <p className="text-pretty text-[11px] text-gray-600 sm:text-xs">
+                Complete required steps to earn rewards.
+              </p>
             ) : null}
+
+            {pendingRegistrationMessage ? (
+              <div className="mt-auto w-full max-w-xl pt-1">
+                <p className="text-pretty rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 sm:text-sm">
+                  {pendingRegistrationMessage}
+                </p>
+              </div>
+            ) : null}
+            </div>
+
+            {/* Session cover — right rail, stretches with card height */}
+            <div className="flex w-[6.5rem] shrink-0 self-stretch min-[400px]:w-[7.25rem] min-[480px]:w-[8.5rem] sm:w-36 md:w-[11.5rem]">
+              <div className="relative min-h-[8rem] w-full flex-1 overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-sky-100/90 via-zinc-50 to-teal-100/70 shadow-sm">
+                {sessionCoverUrl ? (
+                  <img
+                    src={sessionCoverUrl}
+                    alt={program.title ? `Cover for ${program.title}` : 'Session cover'}
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center px-1.5 text-center text-[10px] font-medium leading-snug text-gray-500 min-[480px]:px-2 min-[480px]:text-[11px] sm:text-xs">
+                    Session cover
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-        </div>
         </div>
       </section>
 
@@ -671,7 +696,7 @@ export default function WebinarDetail() {
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
               to={`/app/live/${program.id}/register`}
-              className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-orange-600 text-white"
+              className="ml-auto shrink-0 rounded-lg bg-orange-600 px-[26px] py-2 text-sm font-semibold text-white min-w-[172px] text-center"
             >
               Register
             </Link>
