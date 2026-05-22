@@ -1,131 +1,151 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Verify GitHub Environment secrets via gh CLI (local pre-deploy check).
+# Usage: ./scripts/verify-github-secrets.sh [staging|production|development]
+set -euo pipefail
 
-echo "🔍 Verifying GitHub Environment Setup"
+GH_ENV="${1:-staging}"
+
+echo "🔍 Verifying GitHub Environment: $GH_ENV"
 echo "======================================"
 echo ""
 
-# Check if gh CLI is installed
-if ! command -v gh &> /dev/null; then
-    echo "⚠️  GitHub CLI not installed"
-    echo "   Install: brew install gh"
-    echo "   Then run: gh auth login"
-    exit 1
+if ! command -v gh &>/dev/null; then
+  echo "❌ GitHub CLI not installed (brew install gh && gh auth login)"
+  exit 1
 fi
 
-# Check if authenticated
-if ! gh auth status &> /dev/null; then
-    echo "❌ Not authenticated with GitHub"
-    echo "   Run: gh auth login"
-    exit 1
+if ! gh auth status &>/dev/null; then
+  echo "❌ Not authenticated with GitHub (gh auth login)"
+  exit 1
 fi
 
 echo "✅ GitHub CLI authenticated"
 echo ""
 
-# List secrets in development environment
-echo "📋 Development Environment Secrets:"
-echo ""
+if ! gh api "repos/{owner}/{repo}/environments/$GH_ENV" &>/dev/null; then
+  echo "❌ GitHub environment '$GH_ENV' not found"
+  echo "   Create: Settings → Environments → New environment → $GH_ENV"
+  exit 1
+fi
+
+ENV_SECRETS=$(gh secret list --env "$GH_ENV" 2>/dev/null || true)
+
+has_secret() {
+  echo "$ENV_SECRETS" | grep -qE "^${1}[[:space:]]"
+}
 
 REQUIRED_SECRETS=(
-    "AWS_ROLE_ARN"
-    "AUTH0_DOMAIN"
-    "AUTH0_CLIENT_ID"
-    "AUTH0_AUDIENCE"
+  "AWS_ROLE_ARN"
+  "ACM_CERTIFICATE_ARN"
+  "CLOUDFRONT_CERTIFICATE_ARN"
+  "SUPABASE_ANON_KEY"
+  "GOTRUE_JWT_SECRET"
+  "MEDIAHUB_API_KEY"
+  "YOUTUBE_API_KEY"
+  "YOUTUBE_PLAYLIST_IDS"
+  "ZOOM_ACCOUNT_ID"
+  "ZOOM_CLIENT_ID"
+  "ZOOM_CLIENT_SECRET"
+  "ZOOM_WEBHOOK_SECRET"
+  "ZOOM_SDK_KEY"
+  "ZOOM_SDK_SECRET"
+  "JOTFORM_API_KEY"
+  "BILL_DEV_KEY"
+  "BILL_USERNAME"
+  "BILL_PASSWORD"
+  "BILL_ORG_ID"
+  "BILL_FUNDING_ACCOUNT_ID"
+  "HUBSPOT_ACCESS_TOKEN"
 )
 
 OPTIONAL_SECRETS=(
-    "ACM_CERTIFICATE_ARN"
-    "CLOUDFRONT_CERTIFICATE_ARN"
-    "BILL_DEV_KEY"
-    "BILL_SESSION_ID"
-    "BILL_FUNDING_ACCOUNT_ID"
+  "BILL_WEBHOOK_SECRET"
+  "BILL_MFA_REMEMBER_ME_ID"
+  "BILL_MFA_DEVICE_NAME"
+  "ADMIN_BOOTSTRAP_SECRET"
 )
 
-echo "Required for deployment:"
-for secret in "${REQUIRED_SECRETS[@]}"; do
-    if gh secret list --env development | grep -q "$secret"; then
-        echo "  ✅ $secret"
-    else
-        echo "  ❌ $secret (MISSING - deployment will fail!)"
-    fi
-done
-
+echo "📋 $GH_ENV environment secrets:"
 echo ""
-echo "Optional (can add later):"
-for secret in "${OPTIONAL_SECRETS[@]}"; do
-    if gh secret list --env development | grep -q "$secret"; then
-        echo "  ✅ $secret"
-    else
-        echo "  ⏳ $secret (not set)"
-    fi
-done
-
-echo ""
-echo "================================================"
-echo ""
-
-# Check if all required secrets are set
+echo "Required:"
 MISSING=0
 for secret in "${REQUIRED_SECRETS[@]}"; do
-    if ! gh secret list --env development | grep -q "$secret"; then
-        MISSING=1
-    fi
+  if has_secret "$secret"; then
+    echo "  ✅ $secret"
+  else
+    echo "  ❌ $secret (MISSING)"
+    MISSING=1
+  fi
 done
 
-# Check certificate status
-echo "📜 SSL Certificate Status:"
-if [ -f "infrastructure/terraform/environments/variables/.cert-arns-dev" ]; then
-    source infrastructure/terraform/environments/variables/.cert-arns-dev
-    
-    if [ -n "$us_east_1_cert_arn" ]; then
-        CERT_STATUS=$(aws acm describe-certificate \
-            --certificate-arn "$us_east_1_cert_arn" \
-            --region us-east-1 \
-            --query 'Certificate.Status' \
-            --output text 2>/dev/null || echo "ERROR")
-        
-        if [ "$CERT_STATUS" == "ISSUED" ]; then
-            echo "  ✅ Certificate ISSUED and ready!"
-            
-            # Check if cert ARN is in GitHub secrets
-            if gh secret list --env development | grep -q "ACM_CERTIFICATE_ARN"; then
-                echo "  ✅ Certificate ARN added to GitHub"
-            else
-                echo "  ⚠️  Certificate ARN NOT in GitHub secrets"
-                echo "     Add with: gh secret set ACM_CERTIFICATE_ARN --env development --body \"$us_east_1_cert_arn\""
-                echo "     Add with: gh secret set CLOUDFRONT_CERTIFICATE_ARN --env development --body \"$us_east_1_cert_arn\""
-                MISSING=1
-            fi
-        else
-            echo "  ⏳ Certificate status: $CERT_STATUS"
-            echo "     Wait for ISSUED status before deploying"
-        fi
-    else
-        echo "  ❌ Certificate ARN not found"
-    fi
-else
-    echo "  ⏳ Certificate not requested yet"
-fi
+echo ""
+echo "Optional:"
+for secret in "${OPTIONAL_SECRETS[@]}"; do
+  if has_secret "$secret"; then
+    echo "  ✅ $secret"
+  else
+    echo "  ⏳ $secret (not set)"
+  fi
+done
 
 echo ""
 echo "================================================"
 echo ""
 
-if [ $MISSING -eq 0 ] && [ "$CERT_STATUS" == "ISSUED" ]; then
-    echo "🎉 ALL CHECKS PASSED - Ready to deploy!"
-    echo ""
-    echo "Next steps:"
-    echo "1. Manual deployment: ./scripts/deploy-primary.sh dev"
-    echo "2. Or enable GitHub Actions: mv .github/workflows-future/*.yml .github/workflows/"
-else
-    echo "⚠️  Not ready to deploy yet"
-    echo ""
-    if [ $MISSING -eq 1 ]; then
-        echo "Missing required secrets - add them to GitHub"
+if [ "$GH_ENV" = "staging" ] || [ "$GH_ENV" = "production" ]; then
+  CERT_ARN=""
+  CERT_FILE="infrastructure/terraform/environments/variables/.cert-arns-testapp"
+  if [ -f "$CERT_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$CERT_FILE"
+    CERT_ARN="${certificate_arn:-${us_east_1_cert_arn:-}}"
+  fi
+
+  echo "📜 SSL certificate status:"
+  if [ -n "$CERT_ARN" ]; then
+    CERT_STATUS=$(aws acm describe-certificate \
+      --certificate-arn "$CERT_ARN" \
+      --region us-east-1 \
+      --query 'Certificate.Status' \
+      --output text 2>/dev/null || echo "ERROR")
+
+    if [ "$CERT_STATUS" = "ISSUED" ]; then
+      echo "  ✅ Certificate ISSUED"
+      for cert_secret in ACM_CERTIFICATE_ARN CLOUDFRONT_CERTIFICATE_ARN; do
+        if has_secret "$cert_secret"; then
+          echo "  ✅ $cert_secret set in GitHub"
+        else
+          echo "  ⚠️  $cert_secret not in GitHub"
+          echo "     gh secret set $cert_secret --env $GH_ENV --body \"$CERT_ARN\""
+          MISSING=1
+        fi
+      done
+    else
+      echo "  ⏳ Certificate status: $CERT_STATUS"
     fi
-    if [ "$CERT_STATUS" != "ISSUED" ]; then
-        echo "SSL certificate not ready - wait for validation"
+  else
+    echo "  ⏳ No local cert ARN ($CERT_FILE)"
+    echo "     Request with: ./scripts/request-certificate-testapp.sh"
+    if ! has_secret "ACM_CERTIFICATE_ARN" || ! has_secret "CLOUDFRONT_CERTIFICATE_ARN"; then
+      MISSING=1
     fi
+  fi
+  echo ""
+  echo "================================================"
+  echo ""
 fi
 
+if [ "$MISSING" -eq 0 ]; then
+  echo "🎉 All required secrets present for $GH_ENV"
+  exit 0
+fi
+
+echo "⚠️  Not ready to deploy to $GH_ENV"
 echo ""
+echo "Fix:"
+echo "  Settings → Environments → $GH_ENV → Environment secrets"
+echo "  Or: ./scripts/sync-github-secrets-from-tfvars.sh $GH_ENV"
+if [ "$GH_ENV" = "staging" ]; then
+  echo "  AWS runtime secrets: ./scripts/bootstrap-staging-secrets-from-platform.sh"
+fi
+exit 1

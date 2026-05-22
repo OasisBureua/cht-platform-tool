@@ -187,9 +187,5 @@ else
   echo "Done: $SET_COUNT secret(s) set, $SKIP_COUNT skipped."
   echo ""
   echo "Verify:"
-  case "$GH_ENV" in
-    staging) echo "  ./scripts/verify-github-staging-secrets.sh" ;;
-    development) echo "  ./scripts/verify-github-secrets.sh" ;;
-    *) echo "  gh secret list --env $GH_ENV" ;;
-  esac
+  echo "  ./scripts/verify-github-secrets.sh $GH_ENV"
 fi

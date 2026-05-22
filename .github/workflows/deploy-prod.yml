@@ -154,7 +154,7 @@ jobs:
           BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
           BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
           HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
-        run: ./scripts/verify-github-env-secrets.sh production
+        run: ./scripts/verify-github-env-secrets.sh platform
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_ENV_DIR }}

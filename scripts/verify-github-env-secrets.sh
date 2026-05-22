@@ -39,10 +39,11 @@ if [ "$missing" -ne 0 ]; then
   echo ""
   echo "Terraform will write empty strings to Secrets Manager when these are missing."
   if [ "$ENV_LABEL" = "staging" ]; then
-    echo "Check GitHub: ./scripts/verify-github-staging-secrets.sh"
+    echo "Check GitHub: ./scripts/verify-github-secrets.sh staging"
     echo "AWS Secrets Manager: ./scripts/bootstrap-staging-secrets-from-platform.sh"
   else
     echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh production"
+    echo "Check GitHub: ./scripts/verify-github-secrets.sh production"
   fi
   exit 1
 fi
