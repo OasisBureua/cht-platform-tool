@@ -41,7 +41,7 @@ export default function DolRegionDetail() {
           </Link>
           <div className="max-w-3xl space-y-2">
             <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
-              Digital Opinion Leader (DOL) Network
+              Key Opinion Leader (KOL) Network
             </h1>
             <p className="text-sm md:text-base text-gray-600 leading-relaxed">
               Oncology & Breast Cancer Specialists

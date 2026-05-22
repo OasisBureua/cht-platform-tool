@@ -7,7 +7,7 @@ import {
   type KolIntel,
 } from '../data/dol-network';
 import { US_STATES, usStateLabel } from '../data/us-states';
-import { deriveKolUsState } from '../utils/kol-state';
+import { deriveKolUsState, kolInstitutionLabel } from '../utils/kol-state';
 
 /**
  * Hydrate API roster with static intel (NPI, AI brief, social URLs, etc.).
@@ -16,10 +16,11 @@ import { deriveKolUsState } from '../utils/kol-state';
  */
 function mergeApiWithStatic(apiKol: PublicKol): DolEntry {
   const stat = kolStaticEnrichment.find((e) => e.id === apiKol.slug);
-  return {
+  const role = stat?.role ?? apiKol.title ?? '';
+  const merged: DolEntry = {
     id: apiKol.slug,
     name: apiKol.name,
-    role: stat?.role ?? apiKol.title ?? '',
+    role,
     bio: apiKol.bio || stat?.bio || '',
     education: stat?.education ?? '',
     isNew: apiKol.is_new || stat?.isNew,
@@ -27,8 +28,11 @@ function mergeApiWithStatic(apiKol: PublicKol): DolEntry {
     photoUrl: apiKol.photo_url ?? undefined,
     shootCount: apiKol.shoot_count,
     intel: stat?.intel,
-    stateCode: deriveKolUsState(apiKol, stat) ?? undefined,
+    institution: kolInstitutionLabel(apiKol, { role, education: stat?.education, intel: stat?.intel }),
+    stateCode: undefined,
   };
+  merged.stateCode = deriveKolUsState(apiKol, merged) ?? undefined;
+  return merged;
 }
 
 /** Group KOLs by US state (50 states + DC); unknown state last. */

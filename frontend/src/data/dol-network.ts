@@ -30,6 +30,8 @@ export type DolEntry = {
   education: string;
   /** US state code (e.g. NY) when known */
   stateCode?: string;
+  /** Primary institution for directory cards */
+  institution?: string;
   isNew?: boolean;
   /** ISO date when the entry was added; used to auto-expire the "New" badge after 7 days */
   addedAt?: string;

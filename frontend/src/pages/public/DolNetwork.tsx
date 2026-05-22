@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpDown, BadgeCheck, Building2, GraduationCap } from 'lucide-react';
+import { ArrowUpDown, BadgeCheck, Building2, GraduationCap, MapPin } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
 
 type FlatKol = DolEntry & {
@@ -33,9 +33,13 @@ function avatarSrc(k: FlatKol): string {
 type SortMode = 'state' | 'name-asc' | 'name-desc' | 'new-first';
 
 function institutionHint(k: FlatKol): string {
+  const inst = k.institution?.trim();
+  if (inst && inst !== '—') {
+    return inst.length > 48 ? `${inst.slice(0, 47)}…` : inst;
+  }
   const edu = k.education || '';
   const cut = edu.split(/[;(]/)[0]?.trim() || '';
-  return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || k.stateTitle;
+  return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || '—';
 }
 
 function avatarUrl(name: string): string {
@@ -145,7 +149,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
       >
         <header className="mb-8 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">CHT Platform</p>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Key Opinion Leader (KOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
             Oncology & breast cancer specialists — filter by state, institution, or text; sort by name, state, or
             newest.
@@ -382,9 +386,9 @@ function KolCard({ k }: { k: FlatKol }) {
         <div className="rounded-xl bg-gray-100/90 p-2.5">
           <div className="grid grid-cols-2 gap-2 gap-y-2.5">
             <div className="min-w-0">
-              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Region</p>
+              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">State</p>
               <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight text-gray-900 line-clamp-2">
-                <Building2 className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
+                <MapPin className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
                 <span className="min-w-0">{k.stateTitle}</span>
               </p>
             </div>
