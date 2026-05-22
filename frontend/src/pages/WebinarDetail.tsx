@@ -21,6 +21,7 @@ import {
   User,
 } from 'lucide-react';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
+import { getSessionCoverUrl } from '../utils/session-cover-url';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -317,8 +318,7 @@ export default function WebinarDetail() {
     myRegistration?.postEventAttendanceStatus !== 'PENDING_VERIFICATION' &&
     myRegistration?.postEventAttendanceStatus !== 'DENIED';
 
-  const sessionCoverUrl =
-    program.sessionHeroImageUrl?.trim() || program.thumbnailUrl?.trim() || '';
+  const sessionCoverUrl = getSessionCoverUrl(program) ?? '';
 
   const registerCtaClass =
     'inline-flex w-full max-w-full shrink-0 justify-center rounded-lg px-[26px] py-2.5 text-sm font-semibold min-w-[172px] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] sm:w-fit';

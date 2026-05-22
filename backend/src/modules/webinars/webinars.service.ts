@@ -11,6 +11,7 @@ import { ZoomService } from './zoom.service';
 import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import { programCoverImageUrl } from '../../utils/session-hero-url';
 
 export interface OfficeHoursMeetingSdkAuthDto {
   signature: string;
@@ -63,6 +64,29 @@ export class WebinarsService {
     private zoomMeetingSdk: ZoomMeetingSdkService,
   ) {}
 
+  private sessionAssetsPublicBase(): string {
+    return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
+  }
+
+  private programImageUrl(
+    program: {
+      sessionHeroImageUrl?: string | null;
+      thumbnailUrl?: string | null;
+      videos?: Array<{ platform: string; videoId: string }>;
+    },
+  ): string | undefined {
+    const firstVideo = program.videos?.[0];
+    const youtubeFallback =
+      firstVideo?.platform === 'YOUTUBE'
+        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
+        : undefined;
+    return programCoverImageUrl(
+      program,
+      this.sessionAssetsPublicBase(),
+      youtubeFallback,
+    );
+  }
+
   async listWebinars(): Promise<WebinarItem[]> {
     const items: WebinarItem[] = [];
 
@@ -87,13 +111,7 @@ export class WebinarsService {
     for (const p of programs) {
       if (p.zoomMeetingId) coveredZoomIds.add(String(p.zoomMeetingId));
 
-      const firstVideo = p.videos[0];
-      const imageUrl =
-        p.thumbnailUrl ||
-        (firstVideo?.platform === 'YOUTUBE'
-          ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-          : undefined);
-
+      const imageUrl = this.programImageUrl(p);
       const defaultIntake =
         this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
         undefined;
@@ -179,12 +197,7 @@ export class WebinarsService {
 
     const items: WebinarItem[] = [];
     for (const p of programs) {
-      const firstVideo = p.videos[0];
-      const imageUrl =
-        p.thumbnailUrl ||
-        (firstVideo?.platform === 'YOUTUBE'
-          ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-          : undefined);
+      const imageUrl = this.programImageUrl(p);
 
       items.push({
         id: p.id,
@@ -232,12 +245,7 @@ export class WebinarsService {
     });
     if (!program) return null;
 
-    const firstVideo = program.videos[0];
-    const imageUrl =
-      program.thumbnailUrl ||
-      (firstVideo?.platform === 'YOUTUBE'
-        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-        : undefined);
+    const imageUrl = this.programImageUrl(program);
 
     const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
@@ -275,12 +283,7 @@ export class WebinarsService {
     });
     if (!program) return null;
 
-    const firstVideo = program.videos[0];
-    const imageUrl =
-      program.thumbnailUrl ||
-      (firstVideo?.platform === 'YOUTUBE'
-        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-        : undefined);
+    const imageUrl = this.programImageUrl(program);
 
     return {
       id: program.id,

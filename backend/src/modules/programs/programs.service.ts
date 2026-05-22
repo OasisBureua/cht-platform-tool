@@ -17,6 +17,7 @@ import {
   UpdateVideoProgressDto,
   VideoProgressResponseDto,
 } from './dto/update-video-progress.dto';
+import { resolveSessionHeroImageUrl } from '../../utils/session-hero-url';
 
 @Injectable()
 export class ProgramsService {
@@ -28,6 +29,10 @@ export class ProgramsService {
     private hubspot: HubSpotService,
     private config: ConfigService,
   ) {}
+
+  private sessionAssetsPublicBase(): string {
+    return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
+  }
 
   /**
    * Get all programs for admin (any status)
@@ -160,11 +165,15 @@ export class ProgramsService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const publicUrlBase = this.sessionAssetsPublicBase();
     return programs.map((p) => ({
       id: p.id,
       title: p.title,
       description: p.description,
       thumbnailUrl: p.thumbnailUrl || undefined,
+      sessionHeroImageUrl:
+        resolveSessionHeroImageUrl(p.sessionHeroImageUrl, publicUrlBase) ||
+        undefined,
       creditAmount: p.creditAmount,
       accreditationBody: p.accreditationBody || undefined,
       status: p.status,
@@ -267,7 +276,11 @@ export class ProgramsService {
       hostBio: program.hostBio || undefined,
       speakers: program.speakers ?? [],
       sessionDisclaimer: program.sessionDisclaimer?.trim() || undefined,
-      sessionHeroImageUrl: program.sessionHeroImageUrl?.trim() || undefined,
+      sessionHeroImageUrl:
+        resolveSessionHeroImageUrl(
+          program.sessionHeroImageUrl,
+          this.sessionAssetsPublicBase(),
+        ) || undefined,
       ...(opts?.includeZoomHostLink && program.zoomStartUrl?.trim()
         ? { zoomStartUrl: program.zoomStartUrl.trim() }
         : {}),
