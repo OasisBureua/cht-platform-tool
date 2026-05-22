@@ -1,6 +1,6 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpDown, BadgeCheck, Building2, GraduationCap, MapPin } from 'lucide-react';
+import { ArrowUpDown, BadgeCheck, GraduationCap, MapPin } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
 
 type FlatKol = DolEntry & {
