@@ -9,7 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getApiErrorMessage } from '../api/client';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
-import { MULTI_WEBINAR_REGISTER_PUBLIC } from '../config/features';
+
 import {
   buildMultiRegisterHref,
   clearMultiRegisterState,
@@ -305,7 +305,7 @@ export default function LiveMultiRegister() {
     readMultiRegisterProgramIds(location.search).length > 0 ||
     !!readMultiRegisterIntakeProgramId(location.search) ||
     (loadMultiRegisterState()?.selectedIds.length ?? 0) > 0;
-  const allowAccess = MULTI_WEBINAR_REGISTER_PUBLIC || hasInviteContext;
+  const allowAccess = hasInviteContext;
 
   if (!user?.userId) {
     return (
