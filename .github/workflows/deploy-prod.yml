@@ -3,11 +3,17 @@ name: Deploy to Platform
 on:
   push:
     branches:
-      - main
+      - 'release/**'
+    tags:
+      - 'v*'
     paths-ignore:
       - '**.md'
       - 'docs/**'
   workflow_dispatch:
+
+concurrency:
+  group: deploy-platform
+  cancel-in-progress: false
 
 env:
   AWS_REGION: us-east-1
@@ -77,7 +83,8 @@ jobs:
     name: Deploy to Platform
     runs-on: ubuntu-latest
     needs: test
-    environment: production
+    # GitHub Environment "platform" — restrict deployment branches to release/** in repo settings.
+    environment: platform
 
     steps:
       - name: Checkout code
@@ -96,8 +103,12 @@ jobs:
       - name: Generate image tag
         id: meta
         run: |
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          IMAGE_TAG="platform-${SHORT_SHA}-$(date +%s)"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            IMAGE_TAG="${GITHUB_REF_NAME}"
+          else
+            SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+            IMAGE_TAG="platform-${SHORT_SHA}-$(date +%s)"
+          fi
           echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
           echo "Building with tag: ${IMAGE_TAG}"
 
@@ -135,7 +146,7 @@ jobs:
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform init
 
-      - name: Verify GitHub Environment secrets (production)
+      - name: Verify GitHub Environment secrets (platform)
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
@@ -233,15 +244,15 @@ jobs:
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
 
-      - name: Health Check
+      - name: Health Check (public endpoint)
         id: healthcheck
         continue-on-error: true
         run: |
-          echo "Waiting for deployment to stabilize..."
-          sleep 30
-          curl -fsS "${{ env.APP_URL }}/health/ready"
+          echo "Waiting 60s for deployment to stabilize..."
+          sleep 60
+          curl -fsS "${{ env.APP_URL }}/health/ready" && echo "✅ /health/ready passed!" || echo "❌ /health/ready failed"
+          curl -fsS "${{ env.APP_URL }}/health" && echo "✅ /health passed!" || echo "❌ /health failed"
           curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "${{ env.APP_URL }}/"
-          echo "✅ Platform health check passed"
 
       - name: Diagnostics — ECS task statuses
         if: always()
@@ -255,15 +266,53 @@ jobs:
             --query 'services[*].[serviceName,status,desiredCount,runningCount,pendingCount,events[0:3].message]' \
             --output text 2>&1 || echo "describe-services failed"
 
+          echo ""
+          echo "================================================================"
+          echo "  RUNNING / STOPPED TASKS"
+          echo "================================================================"
+          aws ecs list-tasks --cluster "${{ env.ECS_CLUSTER }}" --desired-status RUNNING --output text 2>&1 || true
+          aws ecs list-tasks --cluster "${{ env.ECS_CLUSTER }}" --desired-status STOPPED --output text 2>&1 | head -10 || true
+
+          echo ""
+          echo "================================================================"
+          echo "  STOPPED TASK DETAILS (most recent)"
+          echo "================================================================"
+          STOPPED=$(aws ecs list-tasks --cluster "${{ env.ECS_CLUSTER }}" --desired-status STOPPED --query 'taskArns[0]' --output text 2>/dev/null || echo "")
+          if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
+            aws ecs describe-tasks --cluster "${{ env.ECS_CLUSTER }}" --tasks "$STOPPED" \
+              --query 'tasks[*].[lastStatus,stoppedReason,containers[*].[name,exitCode,reason]]' \
+              --output text 2>&1 || true
+          else
+            echo "(no stopped tasks)"
+          fi
+
       - name: Diagnostics — recent ECS logs
         if: always()
         run: |
+          echo "================================================================"
+          echo "  AVAILABLE LOG GROUPS (/ecs/cht-platform*)"
+          echo "================================================================"
+          aws logs describe-log-groups --log-group-name-prefix "/ecs/cht-platform" \
+            --query 'logGroups[*].[logGroupName,storedBytes]' --output text 2>&1 | head -10
+
+          echo ""
+          echo "================================================================"
+          echo "  RECENT LOGS — ${{ env.ECS_LOG_GROUP }} (last 5 min)"
+          echo "================================================================"
           aws logs filter-log-events \
             --log-group-name "${{ env.ECS_LOG_GROUP }}" \
             --start-time $(( $(date +%s) * 1000 - 300000 )) \
             --max-items 60 \
             --query 'events[*].[timestamp,message]' \
             --output text 2>&1 | tail -80 || echo "(no logs in ${{ env.ECS_LOG_GROUP }})"
+
+          echo ""
+          echo "================================================================"
+          echo "  LOG STREAMS in ${{ env.ECS_LOG_GROUP }} (most recent 10)"
+          echo "================================================================"
+          aws logs describe-log-streams --log-group-name "${{ env.ECS_LOG_GROUP }}" \
+            --order-by LastEventTime --descending --max-items 10 \
+            --query 'logStreams[*].[logStreamName,lastEventTimestamp]' --output text 2>&1 | head -15 || true
 
       - name: Final health gate
         if: steps.healthcheck.outcome == 'failure'
@@ -275,9 +324,10 @@ jobs:
         run: |
           echo "🎉 Platform Deployment Complete!"
           echo ""
-          echo "Frontend: ${{ env.APP_URL }}"
-          echo "API:      ${{ env.API_URL }}"
-          echo "Image Tag: ${{ steps.meta.outputs.image_tag }}"
+          echo "Trigger:    ${{ github.ref_name }} (${{ github.ref_type }})"
+          echo "Frontend:   ${{ env.APP_URL }}"
+          echo "API:        ${{ env.API_URL }}"
+          echo "Image Tag:  ${{ steps.meta.outputs.image_tag }}"
           echo ""
           echo "Manual deploy equivalent:"
           echo "  ./scripts/deploy-primary.sh platform"
