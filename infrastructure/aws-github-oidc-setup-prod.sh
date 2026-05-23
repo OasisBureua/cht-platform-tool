@@ -68,11 +68,20 @@ ROLE_ARN=$(aws iam create-role \
 
 echo "✅ Role created: $ROLE_ARN"
 
-# Attach policies (production has more limited permissions)
-echo "📎 Attaching policies..."
+# Attach scoped deploy policy (replace AdministratorAccess)
+echo "📎 Attaching scoped deploy policy..."
+POLICY_NAME="GitHubActions-CHT-Platform-Deploy"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+POLICY_ARN=$(aws iam create-policy \
+  --policy-name "$POLICY_NAME" \
+  --policy-document "file://${SCRIPT_DIR}/iam/github-actions-deploy-policy.json" \
+  --query 'Policy.Arn' \
+  --output text 2>/dev/null || \
+  aws iam get-policy --policy-arn "arn:aws:iam::${AWS_ACCOUNT_ID}:policy/${POLICY_NAME}" --query 'Policy.Arn' --output text)
+
 aws iam attach-role-policy \
   --role-name GitHubActions-CHT-Platform-Prod \
-  --policy-arn arn:aws:iam::aws:policy/AdministratorAccess
+  --policy-arn "$POLICY_ARN"
 
 echo ""
 echo "✅ Production OIDC setup complete!"

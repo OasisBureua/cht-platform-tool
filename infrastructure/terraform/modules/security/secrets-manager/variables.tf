@@ -47,17 +47,6 @@ variable "db_connection_string" {
   sensitive   = true
 }
 
-# Redis
-variable "redis_endpoint" {
-  description = "Redis endpoint"
-  type        = string
-}
-
-variable "redis_port" {
-  description = "Redis port"
-  type        = number
-}
-
 # Application secrets
 variable "supabase_url" {
   description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"

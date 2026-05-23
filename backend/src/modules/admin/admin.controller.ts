@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -43,11 +44,13 @@ import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
+import { AdminAuditInterceptor } from './admin-audit.interceptor';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
+import { SendRegistrationInvitesDto } from '../programs/dto/send-registration-invites.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
@@ -69,6 +72,7 @@ function lastProgramRegistrationSubmittedAtIso(r: {
 
 @ApiTags('Admin')
 @Controller('admin')
+@UseInterceptors(AdminAuditInterceptor)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
@@ -364,10 +368,11 @@ export class AdminController {
         : await this.zoom.getMeetingById(p.zoomMeetingId).catch(() => null);
 
     const updateData: Record<string, unknown> = {};
-    if (sessionDetail?.startUrl && !p.zoomStartUrl) {
+    if (sessionDetail?.startUrl) {
       updateData.zoomStartUrl = sessionDetail.startUrl;
     }
-    if (sessionDetail?.joinUrl && !p.zoomJoinUrl) {
+    if (sessionDetail?.joinUrl) {
+      // Attendee / silent-participant link — always refresh from Zoom when available.
       updateData.zoomJoinUrl = sessionDetail.joinUrl;
     }
 
@@ -378,6 +383,12 @@ export class AdminController {
       links = panelists
         .filter((pan) => pan.joinUrl)
         .map(({ name, email, joinUrl }) => ({ name, email, joinUrl }));
+      const uniqueUrls = new Set(links.map((l) => l.joinUrl));
+      if (links.length > 0 && uniqueUrls.size < links.length) {
+        this.logger.warn(
+          `Refreshed panelist links for program ${id} contain duplicate join URLs — re-create panelists in Zoom if speakers cannot join independently`,
+        );
+      }
       if (links.length) updateData.zoomPanelistLinks = links;
     }
 
@@ -650,10 +661,22 @@ export class AdminController {
     let zoomMeetings: Awaited<
       ReturnType<ZoomService['listScheduledMeetings']>
     > = [];
+    const wantWebinars = !zoomSessionType || zoomSessionType === 'WEBINAR';
+    const wantMeetings = !zoomSessionType || zoomSessionType === 'MEETING';
     if (this.zoom.isConfigured()) {
-      zoomWebinars = await this.zoom.listWebinars();
-      zoomMeetings = await this.zoom.listScheduledMeetings();
+      if (wantWebinars) {
+        zoomWebinars = await this.zoom.listWebinars();
+      }
+      if (wantMeetings) {
+        zoomMeetings = await this.zoom.listScheduledMeetings();
+      }
     }
+
+    const linkedZoomIds = new Set(
+      programs
+        .map((p) => p.zoomMeetingId?.trim())
+        .filter((id): id is string => !!id),
+    );
 
     const webinarById = new Map(zoomWebinars.map((w) => [w.id, w]));
     const meetingById = new Map(zoomMeetings.map((m) => [m.id, m]));
@@ -698,7 +721,68 @@ export class AdminController {
       };
     });
 
-    return result;
+    const nowMs = Date.now();
+    const unlinkedFromZoom = [
+      ...(wantWebinars
+        ? zoomWebinars
+            .filter((w) => {
+              if (linkedZoomIds.has(w.id)) return false;
+              if (!w.startTime) return true;
+              const startMs = new Date(w.startTime).getTime();
+              // Upcoming only (1h grace for sessions that just started).
+              return startMs >= nowMs - 60 * 60 * 1000;
+            })
+            .map((w) => ({
+              id: `zoom-unlinked-${w.id}`,
+              title: w.topic,
+              description: w.agenda ?? '',
+              status: 'DRAFT' as const,
+              startDate: w.startTime ?? null,
+              duration: w.duration ?? null,
+              zoomSessionType: 'WEBINAR' as const,
+              zoomMeetingId: w.id,
+              zoomJoinUrl: w.joinUrl ?? null,
+              zoomStartUrl: w.startUrl ?? null,
+              sponsorName: 'TBD',
+              creditAmount: 0,
+              honorariumAmount: undefined,
+              createdAt: new Date().toISOString(),
+              unlinkedFromZoom: true,
+            }))
+        : []),
+      ...(wantMeetings
+        ? zoomMeetings
+            .filter((m) => {
+              if (linkedZoomIds.has(m.id)) return false;
+              if (!m.startTime) return true;
+              const startMs = new Date(m.startTime).getTime();
+              return startMs >= nowMs - 60 * 60 * 1000;
+            })
+            .map((m) => ({
+              id: `zoom-unlinked-${m.id}`,
+              title: m.topic,
+              description: m.agenda ?? '',
+              status: 'DRAFT' as const,
+              startDate: m.startTime ?? null,
+              duration: m.duration ?? null,
+              zoomSessionType: 'MEETING' as const,
+              zoomMeetingId: m.id,
+              zoomJoinUrl: m.joinUrl ?? null,
+              zoomStartUrl: m.startUrl ?? null,
+              sponsorName: 'TBD',
+              creditAmount: 0,
+              honorariumAmount: undefined,
+              createdAt: new Date().toISOString(),
+              unlinkedFromZoom: true,
+            }))
+        : []),
+    ].sort((a, b) => {
+      const ta = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const tb = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return tb - ta;
+    });
+
+    return [...result, ...unlinkedFromZoom];
   }
 
   @Post('webinars')
@@ -1087,9 +1171,10 @@ export class AdminController {
       select: { id: true, title: true },
     });
     if (existing) {
-      throw new ConflictException(
-        `This Zoom ${sessionType} is already linked to program “${existing.title}” (${existing.id}). Open Admin → Program hub to manage it.`,
-      );
+      throw new ConflictException({
+        message: `This Zoom ${sessionType} is already linked to program “${existing.title}”. Open Program hub to manage it.`,
+        existingProgramId: existing.id,
+      });
     }
 
     const zoomData =
@@ -1232,6 +1317,67 @@ export class AdminController {
         program: r.program,
       };
     });
+  }
+
+  @Post('registration-invites')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Email learners a link to register for multiple webinars (multi-register landing page)',
+  })
+  async sendRegistrationInvites(
+    @Body() body: SendRegistrationInvitesDto,
+  ) {
+    return this.programRegistrations.sendRegistrationInvites({
+      programIds: body.programIds,
+      userIds: body.userIds,
+      role: body.role,
+    });
+  }
+
+  @Get('webinar-registrations/recently-approved')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Recently approved registrations (visible until session end + 1 hour; undo within 15 minutes)',
+  })
+  async listRecentlyApprovedWebinarRegistrations() {
+    const rows =
+      await this.programRegistrations.listRecentlyApprovedRegistrationsForAdminUndo();
+    const undoWindowMs = ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS;
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      reviewedAt: r.reviewedAt?.toISOString() ?? null,
+      undoExpiresAt: r.reviewedAt
+        ? new Date(r.reviewedAt.getTime() + undoWindowMs).toISOString()
+        : null,
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
+  @Post('registrations/:registrationId/undo-approval')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Revert an approval back to pending (within 15 minutes of approval)',
+  })
+  async adminUndoRegistrationApproval(
+    @Param('registrationId') registrationId: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.programRegistrations.adminUndoRegistrationApproval(
+      admin.userId,
+      registrationId,
+    );
   }
 
   @Get('webinar-registrations/payment-eligible')

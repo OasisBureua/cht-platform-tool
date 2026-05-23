@@ -179,6 +179,7 @@ export default function VideosPage() {
   // state being seen after a navigation but before the URL→state effect resets it.
   useEffect(() => {
     const loc = locationRef.current;
+    const liveParams = new URLSearchParams(location.search.replace(/^\?/, ''));
     const params = new URLSearchParams();
     const q = query.trim();
     if (q) params.set('q', q);
@@ -199,18 +200,27 @@ export default function VideosPage() {
         const pf = parsePlaylistFocus('?' + curParams.toString());
         if (pf) params.set('playlistFocus', pf);
       }
-    } else if (isInApp && curParams.get('view') === 'playlists') {
-      params.set('view', 'playlists');
-      const pfApp = parsePlaylistFocus('?' + curParams.toString());
-      if (pfApp) params.set('playlistFocus', pfApp);
+    } else if (isInApp) {
+      // Use live URL for view= so typing search never drops ?view=clips (locationRef can lag).
+      const pv = liveParams.get('view') ?? curParams.get('view');
+      const filterActive =
+        !!q || !!tagFilter || !!doctorFilter || (sortBy && sortBy !== DEFAULT_SORT);
+      if (pv === 'playlists') {
+        params.set('view', 'playlists');
+        const pfSource = liveParams.toString() || curParams.toString();
+        const pfApp = parsePlaylistFocus('?' + pfSource);
+        if (pfApp) params.set('playlistFocus', pfApp);
+      } else if (pv === 'clips' || filterActive) {
+        params.set('view', 'clips');
+      }
     }
 
     const next = params.toString();
-    const cur = (loc.search || '').replace(/^\?/, '');
+    const cur = location.search.replace(/^\?/, '');
     if (next === cur) return;
-    navigate({ pathname: loc.pathname, search: next ? `?${next}` : '' }, { replace: true });
+    navigate({ pathname: location.pathname, search: next ? `?${next}` : '' }, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, tagFilter, doctorFilter, sortBy, isInApp, navigate]);
+  }, [query, tagFilter, doctorFilter, sortBy, isInApp, navigate, location.search]);
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
@@ -291,6 +301,10 @@ export default function VideosPage() {
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
+  // In-app full library grid only at ?view=clips (“See all in library”). Default /app/catalog = strip home.
+  const showClipsGrid =
+    isInApp && new URLSearchParams(location.search).get('view') === 'clips';
+
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
@@ -304,12 +318,13 @@ export default function VideosPage() {
   useEffect(() => {
     const el = loadMoreRef.current;
     if (!el) return;
-    const clipsPagerActive = effectiveLibraryView === 'clips' && !isInApp;
+    const clipsPagerActive =
+      effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid);
     if (!clipsPagerActive) return;
     const observer = new IntersectionObserver(handleObserver, { rootMargin: '200px', threshold: 0.1 });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [effectiveLibraryView, handleObserver, isInApp]);
+  }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid]);
 
   const mediaHubItems = useMemo(
     () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(shouldSurfaceCatalogClip),
@@ -332,10 +347,6 @@ export default function VideosPage() {
   const filterOrSortActive = !!(
     debouncedQuery.trim() || tagFilter || doctorFilter || (sortBy && sortBy !== DEFAULT_SORT)
   );
-
-  // True when the user has explicitly navigated to the full clips grid page
-  // (/app/catalog?view=clips). Distinct from the default /app/catalog strip home.
-  const showClipsGrid = isInApp && new URLSearchParams(location.search).get('view') === 'clips';
 
   const playlistDescription = (p: (typeof playlists)[0]) =>
     p.videoNames?.slice(0, 3).join(' • ') || `${p.videoCount} video${p.videoCount !== 1 ? 's' : ''}`;
@@ -378,7 +389,7 @@ export default function VideosPage() {
             : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
         ].join(' ')}
       >
-        {effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid) ? (
+        {effectiveLibraryView === 'clips' && !isInApp ? (
           <div className="flex items-center gap-2.5 pt-2 text-zinc-900 sm:pt-4">
             <MonitorPlay className="h-5 w-5 shrink-0 text-accent-700 dark:text-accent-400" strokeWidth={2} aria-hidden />
             <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
@@ -387,7 +398,9 @@ export default function VideosPage() {
           </div>
         ) : null}
 
-        {(!isInApp || showClipsGrid) ? <ContentLibraryNavTabs isInApp={isInApp} /> : null}
+        {effectiveLibraryView === 'clips' && !isInApp ? (
+          <ContentLibraryNavTabs isInApp={isInApp} />
+        ) : null}
 
         {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (
           <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
@@ -506,7 +519,7 @@ export default function VideosPage() {
                             : 'Videos from playlists in this category'}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">Curated YouTube playlists</p>
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">Browse playlists by category</p>
                   )}
                 </div>
                 {!isInApp ? (

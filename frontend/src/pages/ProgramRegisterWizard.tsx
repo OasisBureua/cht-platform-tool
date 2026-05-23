@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 import { BillComMark } from '../components/branding/BillComMark';
+import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
+import { getSessionCoverUrl } from '../utils/session-cover-url';
 
 type StepKey = 'intake' | 'slot' | 'submit';
 
@@ -168,6 +170,8 @@ export default function ProgramRegisterWizard() {
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   };
 
+  const sessionCoverUrl = getSessionCoverUrl(program);
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-8">
       <Link
@@ -179,11 +183,11 @@ export default function ProgramRegisterWizard() {
       </Link>
 
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        {program.sessionHeroImageUrl?.trim() ? (
+        {sessionCoverUrl ? (
           <div className="border-b border-gray-100 bg-gray-50">
             <img
-              src={program.sessionHeroImageUrl.trim()}
-              alt=""
+              src={sessionCoverUrl}
+              alt={program.title ? `Cover for ${program.title}` : 'Session cover'}
               className="w-full max-h-52 object-cover"
             />
           </div>
@@ -199,9 +203,7 @@ export default function ProgramRegisterWizard() {
         </p>
 
         {program.sessionDisclaimer?.trim() ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 whitespace-pre-wrap">
-            {program.sessionDisclaimer.trim()}
-          </div>
+          <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
         ) : null}
 
         <ol className="flex flex-wrap gap-2 text-xs">

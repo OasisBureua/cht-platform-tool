@@ -49,6 +49,8 @@ export interface AdminWebinar {
   speakers?: string[];
   /** True when this program was auto-created by a Zoom webhook (webinar.created). */
   importedViaWebhook?: boolean;
+  /** Zoom session exists on the account but is not linked to a platform program yet. */
+  unlinkedFromZoom?: boolean;
   /** Shown to learners on registration and session detail */
   sessionDisclaimer?: string;
   /** Banner image URL for session pages */
@@ -318,6 +320,18 @@ export const adminApi = {
     await apiClient.delete(`/admin/webinars/${id}`);
   },
 
+  importFromZoom: async (body: {
+    zoomId: string;
+    zoomSessionType?: ZoomSessionType;
+    sponsorName?: string;
+  }): Promise<AdminWebinar & { jotformFormsWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { jotformFormsWarning?: string }>(
+      '/admin/webinars/import-from-zoom',
+      body,
+    );
+    return data;
+  },
+
   getProgram: async (id: string): Promise<Record<string, unknown>> => {
     const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(id)}`);
     return data;
@@ -423,6 +437,54 @@ export const adminApi = {
     const { data } = await apiClient.patch(
       `/admin/registrations/${encodeURIComponent(registrationId)}/post-event-attendance`,
       { status },
+    );
+    return data;
+  },
+
+  listRecentlyApprovedWebinarRegistrations: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/recently-approved');
+    return data as Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+      reviewedAt: string | null;
+      undoExpiresAt: string | null;
+      user: {
+        id: string;
+        email: string;
+        firstName: string;
+        lastName: string;
+        specialty?: string | null;
+        institution?: string | null;
+        city?: string | null;
+      };
+      program: {
+        id: string;
+        title: string;
+        zoomSessionType?: 'WEBINAR' | 'MEETING';
+        startDate?: string | null;
+        duration?: number | null;
+      };
+    }>;
+  },
+
+  sendRegistrationInvites: async (payload: {
+    programIds: string[];
+    userIds?: string[];
+    role?: 'HCP' | 'KOL';
+  }) => {
+    const { data } = await apiClient.post('/admin/registration-invites', payload);
+    return data as {
+      registerUrl: string;
+      programs: { id: string; title: string }[];
+      emailed: number;
+      skipped: { userId: string; email: string; reason: string }[];
+    };
+  },
+
+  undoRegistrationApproval: async (registrationId: string) => {
+    const { data } = await apiClient.post(
+      `/admin/registrations/${encodeURIComponent(registrationId)}/undo-approval`,
     );
     return data;
   },
@@ -610,6 +672,17 @@ export const adminApi = {
   deletePayment: async (paymentId: string) => {
     const { data } = await apiClient.delete(`/payments/${paymentId}`);
     return data;
+  },
+
+  createManualPayment: async (body: {
+    userId: string;
+    programId?: string;
+    amount: number;
+    description?: string;
+    type?: 'HONORARIUM' | 'CME_COMPLETION' | 'SURVEY_BONUS' | 'REFERRAL';
+  }) => {
+    const { data } = await apiClient.post('/payments/manual', body);
+    return data as PendingPayment;
   },
 
   getWebhookImports: async (): Promise<WebhookImportedProgram[]> => {

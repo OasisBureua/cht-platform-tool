@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import multer from 'multer';
+import cookieParser from 'cookie-parser';
 import * as express from 'express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -9,6 +10,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  app.use(cookieParser());
 
   // Zoom webhook MUST run first to capture raw body before any other parser consumes the stream.
   app.use(
@@ -44,6 +46,7 @@ async function bootstrap() {
   // CORS: allow frontend origins. FRONTEND_URL from env (e.g. ECS) is added when set.
   const corsOrigins = [
     'https://testapp.communityhealth.media',
+    'https://staging.testapp.communityhealth.media',
     'https://communityhealth.media',
     'https://www.communityhealth.media',
     'http://localhost:5173',

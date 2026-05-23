@@ -79,11 +79,6 @@ variable "database_secret_arn" {
   type        = string
 }
 
-variable "redis_secret_arn" {
-  description = "Redis secret ARN"
-  type        = string
-}
-
 variable "app_secrets_arn" {
   description = "Application secrets ARN"
   type        = string

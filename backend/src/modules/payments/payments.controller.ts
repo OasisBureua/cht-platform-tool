@@ -25,6 +25,7 @@ import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
 import { BillService } from './bill.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
+import { CreateManualPaymentDto } from './dto/create-manual-payment.dto';
 import {
   CreateConnectAccountResponseDto,
   AccountLinkResponseDto,
@@ -256,6 +257,19 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, CheckUserGuard)
   async getHistory(@Param('userId') userId: string) {
     return this.paymentsService.getHistory(userId);
+  }
+
+  /**
+   * POST /api/payments/manual
+   * Queue a manual PENDING payment for admin pay-now flow (no immediate Bill.com call).
+   */
+  @Post('manual')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Create manual pending payment (admin)' })
+  async createManualPayment(@Body() dto: CreateManualPaymentDto) {
+    return this.paymentsService.createManualPendingPayment(dto);
   }
 
   /**

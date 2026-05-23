@@ -1,12 +1,11 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpDown, BadgeCheck, Building2, GraduationCap } from 'lucide-react';
+import { ArrowUpDown, BadgeCheck, GraduationCap, MapPin } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
 
 type FlatKol = DolEntry & {
-  regionId: string;
-  regionTitle: string;
-  regionSubtitle?: string;
+  stateId: string;
+  stateTitle: string;
 };
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -20,9 +19,8 @@ function flattenNetwork(regions: DolRegion[]): FlatKol[] {
   return regions.flatMap((r) =>
     r.entries.map((e) => ({
       ...e,
-      regionId: r.id,
-      regionTitle: r.title,
-      regionSubtitle: r.subtitle,
+      stateId: r.id,
+      stateTitle: r.title,
     })),
   );
 }
@@ -32,12 +30,16 @@ function avatarSrc(k: FlatKol): string {
   return avatarUrl(k.name);
 }
 
-type SortMode = 'region' | 'name-asc' | 'name-desc' | 'new-first';
+type SortMode = 'state' | 'name-asc' | 'name-desc' | 'new-first';
 
 function institutionHint(k: FlatKol): string {
+  const inst = k.institution?.trim();
+  if (inst && inst !== '—') {
+    return inst.length > 48 ? `${inst.slice(0, 47)}…` : inst;
+  }
   const edu = k.education || '';
   const cut = edu.split(/[;(]/)[0]?.trim() || '';
-  return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || k.regionTitle;
+  return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || '—';
 }
 
 function avatarUrl(name: string): string {
@@ -47,16 +49,16 @@ function avatarUrl(name: string): string {
 
 function matchesQuery(k: FlatKol, q: string): boolean {
   if (!q.trim()) return true;
-  const hay = `${k.name} ${k.role} ${k.bio} ${k.education} ${k.regionTitle}`.toLowerCase();
+  const hay = `${k.name} ${k.role} ${k.bio} ${k.education} ${k.stateTitle}`.toLowerCase();
   return hay.includes(q.trim().toLowerCase());
 }
 
 export default function DolNetwork({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState('');
-  const [regionId, setRegionId] = useState('');
+  const [stateId, setStateId] = useState('');
   const [institution, setInstitution] = useState('');
   const [newOnly, setNewOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<SortMode>('region');
+  const [sortMode, setSortMode] = useState<SortMode>('state');
   const [sortOpen, setSortOpen] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
 
@@ -83,12 +85,12 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
   const filtered = useMemo(() => {
     return flat.filter((k) => {
       if (!matchesQuery(k, search)) return false;
-      if (regionId && k.regionId !== regionId) return false;
+      if (stateId && k.stateId !== stateId) return false;
       if (institution && institutionHint(k) !== institution) return false;
       if (newOnly && !isRecentlyNew(k)) return false;
       return true;
     });
-  }, [flat, search, regionId, institution, newOnly]);
+  }, [flat, search, stateId, institution, newOnly]);
 
   const sorted = useMemo(() => {
     const out = [...filtered];
@@ -106,20 +108,20 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
       });
     } else {
       out.sort((a, b) => {
-        const rg = a.regionTitle.localeCompare(b.regionTitle, undefined, { sensitivity: 'base' });
-        if (rg !== 0) return rg;
+        const st = a.stateTitle.localeCompare(b.stateTitle, undefined, { sensitivity: 'base' });
+        if (st !== 0) return st;
         return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
       });
     }
     return out;
   }, [filtered, sortMode]);
 
-  const byRegion = useMemo(() => {
-    if (sortMode !== 'region') return null;
+  const byState = useMemo(() => {
+    if (sortMode !== 'state') return null;
     const map = new Map<string, FlatKol[]>();
     sorted.forEach((k) => {
-      if (!map.has(k.regionId)) map.set(k.regionId, []);
-      map.get(k.regionId)!.push(k);
+      if (!map.has(k.stateId)) map.set(k.stateId, []);
+      map.get(k.stateId)!.push(k);
     });
     const order = directory.regions.map((r) => r.id).filter((id) => map.has(id));
     return order.map((id) => ({
@@ -127,10 +129,10 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
       meta: map.get(id)![0],
       items: map.get(id)!,
     }));
-  }, [sorted, sortMode]);
+  }, [sorted, sortMode, directory.regions]);
 
   const sortLabels: Record<SortMode, string> = {
-    region: 'Region, then name (A–Z)',
+    state: 'State, then name (A–Z)',
     'name-asc': 'Name (A–Z)',
     'name-desc': 'Name (Z–A)',
     'new-first': 'New listings first',
@@ -147,9 +149,9 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
       >
         <header className="mb-8 space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">CHT Platform</p>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Digital Opinion Leader (DOL) Network</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Key Opinion Leader (KOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
-            Oncology & breast cancer specialists — filter by region, institution, or text; sort by name, region, or
+            Oncology & breast cancer specialists — filter by state, institution, or text; sort by name, state, or
             newest.
           </p>
         </header>
@@ -175,16 +177,16 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
               />
             </div>
             <div className="w-full sm:w-48 lg:w-52 shrink-0 space-y-1">
-              <label htmlFor="kol-region" className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                Region
+              <label htmlFor="kol-state" className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                State
               </label>
               <select
-                id="kol-region"
-                value={regionId}
-                onChange={(e) => setRegionId(e.target.value)}
+                id="kol-state"
+                value={stateId}
+                onChange={(e) => setStateId(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
               >
-                <option value="">All regions</option>
+                <option value="">All states</option>
                 {directory.regions.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.title}
@@ -283,17 +285,19 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
             </p>
           ) : sorted.length === 0 ? (
             <p className="text-center rounded-2xl border border-gray-200 bg-white py-14 px-6 text-gray-600">
-              No profiles match your filters. Try clearing search or switching region.
+              No profiles match your filters. Try clearing search or switching state.
             </p>
-          ) : sortMode === 'region' && byRegion ? (
+          ) : sortMode === 'state' && byState ? (
             <div className="space-y-12">
-              {byRegion.map(({ id, meta, items }) => (
-                <section key={id} aria-labelledby={`reg-${id}`} className="space-y-5">
+              {byState.map(({ id, meta, items }) => (
+                <section key={id} aria-labelledby={`state-${id}`} className="space-y-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-200 pb-3">
-                    <h2 id={`reg-${id}`} className="text-xl font-semibold text-gray-900">
-                      {meta.regionTitle}
+                    <h2 id={`state-${id}`} className="text-xl font-semibold text-gray-900">
+                      {meta.stateTitle}
                     </h2>
-                    {meta.regionSubtitle && <span className="text-sm text-gray-500">{meta.regionSubtitle}</span>}
+                    <span className="text-sm text-gray-500">
+                      {items.length} KOL{items.length === 1 ? '' : 's'}
+                    </span>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
                     {items.map((k) => (
@@ -306,7 +310,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
               {sorted.map((k) => (
-                <KolCard key={`${k.regionId}-${k.id}`} k={k} />
+                <KolCard key={`${k.stateId}-${k.id}`} k={k} />
               ))}
             </div>
           )}
@@ -382,10 +386,10 @@ function KolCard({ k }: { k: FlatKol }) {
         <div className="rounded-xl bg-gray-100/90 p-2.5">
           <div className="grid grid-cols-2 gap-2 gap-y-2.5">
             <div className="min-w-0">
-              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Region</p>
+              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">State</p>
               <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight text-gray-900 line-clamp-2">
-                <Building2 className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
-                <span className="min-w-0">{k.regionTitle}</span>
+                <MapPin className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
+                <span className="min-w-0">{k.stateTitle}</span>
               </p>
             </div>
             <div className="min-w-0">

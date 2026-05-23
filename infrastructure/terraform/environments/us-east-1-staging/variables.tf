@@ -45,17 +45,6 @@ variable "rds_backup_retention" {
   type        = number
 }
 
-# Cache
-variable "redis_node_type" {
-  description = "ElastiCache node type"
-  type        = string
-}
-
-variable "redis_num_nodes" {
-  description = "Number of cache nodes"
-  type        = number
-}
-
 # Compute - Backend
 variable "backend_task_cpu" {
   description = "Backend task CPU"
@@ -130,14 +119,16 @@ variable "alarm_notification_emails" {
 
 # Application secrets
 variable "supabase_url" {
-  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
+  description = "Supabase/GoTrue base URL for auth (set via staging.tfvars or TF_VAR_supabase_url)"
   type        = string
+  default     = "https://mediahub.communityhealth.media"
 }
 
 variable "supabase_anon_key" {
-  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via platform.tfvars or TF_VAR)"
+  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via TF_VAR or local tfvars)"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "gotrue_jwt_secret" {
@@ -164,11 +155,13 @@ variable "youtube_api_key" {
   description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "youtube_playlist_ids" {
-  description = "Comma-separated YouTube playlist IDs for catalog (set via platform.tfvars or TF_VAR_youtube_playlist_ids)"
+  description = "Comma-separated YouTube playlist IDs for catalog"
   type        = string
+  default     = ""
 }
 
 # Zoom (Server-to-Server OAuth for webinars)
@@ -200,11 +193,39 @@ variable "zoom_webhook_secret" {
   default     = ""
 }
 
+variable "zoom_sdk_key" {
+  description = "Zoom Meeting SDK Client ID / SDK Key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "zoom_sdk_secret" {
+  description = "Zoom Meeting SDK Client Secret"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 # Jotform (surveys - enterprise at communityhealthmedia.jotform.com)
 variable "jotform_api_key" {
   description = "Jotform API key for surveys (from Jotform enterprise account)"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "jotform_webinar_default_intake_url" {
+  description = "Optional public Jotform URL for webinar registration default intake"
+  type        = string
+  sensitive   = false
+  default     = ""
+}
+
+variable "jotform_webinar_post_event_shared_form_id" {
+  description = "Optional Jotform form ID for shared post-event survey"
+  type        = string
+  sensitive   = false
   default     = ""
 }
 
@@ -246,6 +267,20 @@ variable "bill_funding_account_id" {
 
 variable "bill_webhook_secret" {
   description = "Bill.com webhook signing secret for validating payment events"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_mfa_remember_me_id" {
+  description = "Bill.com MFA remember-me ID"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "bill_mfa_device_name" {
+  description = "Bill.com MFA device name"
   type        = string
   sensitive   = true
   default     = ""

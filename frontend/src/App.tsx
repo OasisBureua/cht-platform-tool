@@ -227,6 +227,7 @@ function App() {
             >
               <Route index element={<AdminDashboard />} />
               <Route path="programs" element={<AdminPrograms />} />
+              <Route path="programs/:programId" element={<AdminProgramHubRedirect />} />
               <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
               <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
               <Route path="office-hours" element={<AdminPrograms />} />
@@ -234,10 +235,12 @@ function App() {
               <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
               <Route path="create-survey" element={<AdminCreateSurvey />} />
               <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
+              <Route path="webinars/schedule" element={<Navigate to="/admin/webinar-scheduler" replace />} />
               <Route
                 path="office-hours-scheduler"
                 element={<AdminWebinarScheduler defaultZoomSessionType="MEETING" lockSessionType />}
               />
+              <Route path="office-hours/schedule" element={<Navigate to="/admin/office-hours-scheduler" replace />} />
               <Route path="payments" element={<AdminPayments />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
@@ -256,6 +259,12 @@ export default App;
 function SurveyRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/app/surveys/${id}` : '/app/surveys'} replace />;
+}
+
+function AdminProgramHubRedirect() {
+  const { programId } = useParams<{ programId: string }>();
+  if (!programId) return <Navigate to="/admin/programs" replace />;
+  return <Navigate to={`/admin/programs/${programId}/hub`} replace />;
 }
 
 function WatchVideoRedirect() {

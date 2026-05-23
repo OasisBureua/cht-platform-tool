@@ -6,6 +6,7 @@ RUN apt-get update \
        gcc \
        libpq-dev \
        curl \
+       procps \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

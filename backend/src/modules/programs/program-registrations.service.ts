@@ -18,6 +18,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
+import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
@@ -28,6 +29,48 @@ export class ProgramRegistrationsService {
 
   /** Office hours meetings use fixed 10-minute registration windows; count scales with session duration (6 per hour). */
   private static readonly OFFICE_HOURS_SEGMENT_MINUTES = 10;
+
+  /** Admins may revert an approval within this window (see adminUndoRegistrationApproval). */
+  static readonly APPROVAL_UNDO_WINDOW_MS = 15 * 60 * 1000;
+
+  /** Recently approved rows stay visible until session end + this buffer. */
+  static readonly RECENTLY_APPROVED_AFTER_SESSION_MS = 60 * 60 * 1000;
+
+  /** Session end (start + duration minutes), or null when start is unknown. */
+  static sessionEndsAt(
+    startDate: Date | null | undefined,
+    durationMinutes: number | null | undefined,
+  ): Date | null {
+    if (!startDate) return null;
+    const mins = durationMinutes ?? 60;
+    return new Date(startDate.getTime() + mins * 60 * 1000);
+  }
+
+  /** True while the registration should appear in the admin "Recently approved" section. */
+  static isRecentlyApprovedVisible(
+    reviewedAt: Date | null | undefined,
+    startDate: Date | null | undefined,
+    durationMinutes: number | null | undefined,
+    nowMs: number = Date.now(),
+  ): boolean {
+    const sessionEnd = ProgramRegistrationsService.sessionEndsAt(
+      startDate,
+      durationMinutes,
+    );
+    if (sessionEnd) {
+      return (
+        sessionEnd.getTime() +
+          ProgramRegistrationsService.RECENTLY_APPROVED_AFTER_SESSION_MS >
+        nowMs
+      );
+    }
+    if (!reviewedAt) return false;
+    return (
+      reviewedAt.getTime() +
+        ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS >
+      nowMs
+    );
+  }
 
   constructor(
     private prisma: PrismaService,
@@ -501,6 +544,7 @@ export class ProgramRegistrationsService {
   async submitBatchRegistrations(
     userId: string,
     programIds: string[],
+    intakeByProgramId?: Record<string, string>,
   ): Promise<{
     submitted: Array<{
       programId: string;
@@ -593,7 +637,10 @@ export class ProgramRegistrationsService {
       }
 
       try {
-        const result = await this.submitRegistration(userId, programId, {});
+        const intakeSid = intakeByProgramId?.[programId]?.trim();
+        const result = await this.submitRegistration(userId, programId, {
+          ...(intakeSid ? { intakeJotformSubmissionId: intakeSid } : {}),
+        });
         submitted.push({
           programId,
           title,
@@ -861,6 +908,181 @@ export class ProgramRegistrationsService {
     });
   }
 
+  /**
+   * Recently approved registrations for the admin queue (newest first).
+   * Visible until session end + 1 hour (or 15 minutes after approval when no start time).
+   */
+  async listRecentlyApprovedRegistrationsForAdminUndo() {
+    const rows = await this.prisma.programRegistration.findMany({
+      where: {
+        status: ProgramRegistrationStatus.APPROVED,
+        reviewedAt: { not: null },
+        program: {
+          zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+          status: 'PUBLISHED',
+          registrationRequiresApproval: true,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            institution: true,
+            city: true,
+          },
+        },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            jotformIntakeFormUrl: true,
+            zoomSessionType: true,
+            zoomJoinUrl: true,
+            startDate: true,
+            duration: true,
+          },
+        },
+      },
+      orderBy: { reviewedAt: 'desc' },
+    });
+    return rows.filter((r) =>
+      ProgramRegistrationsService.isRecentlyApprovedVisible(
+        r.reviewedAt,
+        r.program.startDate,
+        r.program.duration,
+      ),
+    );
+  }
+
+  /**
+   * Email learners a link to the multi-webinar registration landing page (pre-selected sessions).
+   */
+  async sendRegistrationInvites(opts: {
+    programIds: string[];
+    userIds?: string[];
+    role?: 'HCP' | 'KOL';
+  }): Promise<{
+    registerUrl: string;
+    programs: { id: string; title: string }[];
+    emailed: number;
+    skipped: { userId: string; email: string; reason: string }[];
+  }> {
+    const uniqueProgramIds = [...new Set(opts.programIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueProgramIds.length === 0) {
+      throw new BadRequestException('Select at least one webinar.');
+    }
+
+    const programs = await this.prisma.program.findMany({
+      where: {
+        id: { in: uniqueProgramIds },
+        status: ProgramStatus.PUBLISHED,
+        zoomSessionType: ProgramZoomSessionType.WEBINAR,
+      },
+      select: { id: true, title: true, startDate: true },
+      orderBy: { startDate: 'asc' },
+    });
+    if (programs.length === 0) {
+      throw new BadRequestException(
+        'No published webinars found for the selected programs.',
+      );
+    }
+
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const registerUrl = `${base}/app/live/register-multiple?programs=${programs.map((p) => p.id).join(',')}`;
+
+    let userIds = opts.userIds?.length
+      ? [...new Set(opts.userIds)]
+      : undefined;
+    if (!userIds?.length && opts.role) {
+      const users = await this.prisma.user.findMany({
+        where: { role: opts.role, status: 'ACTIVE' },
+        select: { id: true },
+      });
+      userIds = users.map((u) => u.id);
+    }
+    if (!userIds?.length) {
+      throw new BadRequestException(
+        'Select at least one recipient or choose a role (HCP / KOL).',
+      );
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds }, status: 'ACTIVE' },
+      select: { id: true, email: true, firstName: true },
+    });
+
+    const skipped: { userId: string; email: string; reason: string }[] = [];
+    let emailed = 0;
+    for (const user of users) {
+      if (!user.email?.trim()) {
+        skipped.push({
+          userId: user.id,
+          email: '',
+          reason: 'No email on file',
+        });
+        continue;
+      }
+      try {
+        await this.sesEmail.sendRegistrationInviteEmail({
+          to: user.email,
+          firstName: user.firstName ?? '',
+          programTitles: programs.map((p) => p.title),
+          registerUrl,
+        });
+        emailed += 1;
+      } catch (err) {
+        skipped.push({
+          userId: user.id,
+          email: user.email,
+          reason: (err as Error).message,
+        });
+      }
+    }
+
+    return {
+      registerUrl,
+      programs: programs.map((p) => ({ id: p.id, title: p.title })),
+      emailed,
+      skipped,
+    };
+  }
+
+  async adminUndoRegistrationApproval(
+    adminUserId: string,
+    registrationId: string,
+  ) {
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { id: registrationId },
+    });
+    if (!reg) throw new NotFoundException('Registration not found');
+    if (reg.status !== ProgramRegistrationStatus.APPROVED) {
+      throw new BadRequestException(
+        'Only approved registrations can be undone.',
+      );
+    }
+    if (!reg.reviewedAt) {
+      throw new BadRequestException('Registration has no approval timestamp.');
+    }
+    const elapsedMs = Date.now() - reg.reviewedAt.getTime();
+    if (elapsedMs > ProgramRegistrationsService.APPROVAL_UNDO_WINDOW_MS) {
+      throw new BadRequestException(
+        'Undo window expired. Approvals can only be undone within 15 minutes.',
+      );
+    }
+    return this.adminSetRegistrationStatus(
+      adminUserId,
+      registrationId,
+      ProgramRegistrationStatus.PENDING,
+      'Approval undone by admin',
+    );
+  }
+
   async adminSetRegistrationStatus(
     adminUserId: string,
     registrationId: string,
@@ -910,6 +1132,19 @@ export class ProgramRegistrationsService {
                 postEventAttendanceReviewedByUserId: null,
               }
             : {}),
+          ...(status === ProgramRegistrationStatus.PENDING &&
+          previousStatus === ProgramRegistrationStatus.APPROVED
+            ? {
+                postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
+                postEventSurveyAcknowledgedAt: null,
+                postEventJotformSubmissionId: null,
+                honorariumRequestedAt: null,
+                postEventAttendanceReviewedAt: null,
+                postEventAttendanceReviewedByUserId: null,
+                reviewedAt: null,
+                reviewedByUserId: null,
+              }
+            : {}),
         },
       });
 
@@ -935,6 +1170,15 @@ export class ProgramRegistrationsService {
         });
       }
 
+      if (
+        status === ProgramRegistrationStatus.PENDING &&
+        previousStatus === ProgramRegistrationStatus.APPROVED
+      ) {
+        await tx.programEnrollment.deleteMany({
+          where: { userId: reg.userId, programId: reg.programId },
+        });
+      }
+
       return row;
     });
 
@@ -952,13 +1196,7 @@ export class ProgramRegistrationsService {
         if (!u?.email) {
           return;
         }
-        // Use the speaker's unique panelist join URL if their name matches one
-        // of the stored panelist links; fall back to the shared attendee URL.
-        const panelistJoinUrl = resolvePanelistJoinUrl(
-          reg.program.zoomPanelistLinks,
-          u.firstName ?? '',
-          u.lastName ?? '',
-        );
+        const joinUrlForLearner = learnerWebinarJoinUrl(reg.program.zoomJoinUrl);
         await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
           to: u.email,
           firstName: u.firstName || 'there',
@@ -971,7 +1209,7 @@ export class ProgramRegistrationsService {
             honorariumAmount: reg.program.honorariumAmount,
             hostDisplayName: reg.program.hostDisplayName,
             sponsorName: reg.program.sponsorName,
-            zoomJoinUrl: panelistJoinUrl ?? reg.program.zoomJoinUrl,
+            zoomJoinUrl: joinUrlForLearner,
           },
           sessionKind: reg.program.zoomSessionType,
         });
@@ -1560,24 +1798,4 @@ export class ProgramRegistrationsService {
     await this.prisma.programFormLink.delete({ where: { id } });
     return { deleted: true };
   }
-}
-
-/**
- * Resolve the unique Zoom panelist join URL for a specific user by matching
- * their full name against the stored panelist list. Falls back to null so the
- * caller can use the shared attendee join URL instead.
- */
-function resolvePanelistJoinUrl(
-  panelistLinks: unknown,
-  firstName: string,
-  lastName: string,
-): string | null {
-  if (!Array.isArray(panelistLinks) || !panelistLinks.length) return null;
-  const fullName = `${firstName} ${lastName}`.toLowerCase().trim();
-  if (!fullName) return null;
-  const match = (panelistLinks as Array<{ name: string; joinUrl?: string }>).find((p) => {
-    const pName = (p.name ?? '').toLowerCase().trim();
-    return pName === fullName || pName.includes(fullName) || fullName.includes(pName);
-  });
-  return match?.joinUrl ?? null;
 }

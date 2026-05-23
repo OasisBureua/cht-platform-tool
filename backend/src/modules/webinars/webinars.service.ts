@@ -11,6 +11,7 @@ import { ZoomService } from './zoom.service';
 import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import { programCoverImageUrl } from '../../utils/session-hero-url';
 
 export interface OfficeHoursMeetingSdkAuthDto {
   signature: string;
@@ -63,6 +64,29 @@ export class WebinarsService {
     private zoomMeetingSdk: ZoomMeetingSdkService,
   ) {}
 
+  private sessionAssetsPublicBase(): string {
+    return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
+  }
+
+  private programImageUrl(
+    program: {
+      sessionHeroImageUrl?: string | null;
+      thumbnailUrl?: string | null;
+      videos?: Array<{ platform: string; videoId: string }>;
+    },
+  ): string | undefined {
+    const firstVideo = program.videos?.[0];
+    const youtubeFallback =
+      firstVideo?.platform === 'YOUTUBE'
+        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
+        : undefined;
+    return programCoverImageUrl(
+      program,
+      this.sessionAssetsPublicBase(),
+      youtubeFallback,
+    );
+  }
+
   async listWebinars(): Promise<WebinarItem[]> {
     const items: WebinarItem[] = [];
 
@@ -87,13 +111,7 @@ export class WebinarsService {
     for (const p of programs) {
       if (p.zoomMeetingId) coveredZoomIds.add(String(p.zoomMeetingId));
 
-      const firstVideo = p.videos[0];
-      const imageUrl =
-        p.thumbnailUrl ||
-        (firstVideo?.platform === 'YOUTUBE'
-          ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-          : undefined);
-
+      const imageUrl = this.programImageUrl(p);
       const defaultIntake =
         this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
         undefined;
@@ -123,17 +141,16 @@ export class WebinarsService {
       });
     }
 
-    // 2. Add Zoom webinars not yet in the DB (optional; off by default so LIVE uses DB + Jotform flow only)
-    if (
-      this.config.get<boolean>('webinars.listZoomFallback') &&
-      this.zoom.isConfigured()
-    ) {
+    // 2. Merge upcoming Zoom webinars not yet linked to a DB program (when Zoom is configured).
+    if (this.zoom.isConfigured()) {
       try {
         const zoomWebinars = await this.zoom.listWebinars();
+        const nowMs = Date.now();
         for (const w of zoomWebinars) {
-          if (coveredZoomIds.has(String(w.id))) continue; // already covered by DB
+          if (coveredZoomIds.has(String(w.id))) continue;
           const startTime = w.startTime ? new Date(w.startTime).getTime() : 0;
-          if (startTime > 0 && startTime < thirtyDaysAgo.getTime()) continue; // skip if older than 30 days
+          if (startTime > 0 && startTime < nowMs) continue;
+          if (startTime > 0 && startTime < thirtyDaysAgo.getTime()) continue;
           items.push({
             id: `zoom-${w.id}`,
             title: w.topic,
@@ -142,13 +159,20 @@ export class WebinarsService {
             duration: w.duration,
             joinUrl: w.joinUrl,
             source: 'zoom',
+            sessionKind: 'WEBINAR',
           });
         }
       } catch (err) {
-        // Non-fatal - DB programs still shown if Zoom API is unavailable
-        this.logger.warn(`Zoom listWebinars fallback failed: ${String(err)}`);
+        this.logger.warn(`Zoom listWebinars merge failed: ${String(err)}`);
       }
     }
+
+    items.sort((a, b) => {
+      const ta = a.startTime ? new Date(a.startTime).getTime() : 0;
+      const tb = b.startTime ? new Date(b.startTime).getTime() : 0;
+      if (ta !== tb) return ta - tb;
+      return a.title.localeCompare(b.title);
+    });
 
     return items;
   }
@@ -173,12 +197,7 @@ export class WebinarsService {
 
     const items: WebinarItem[] = [];
     for (const p of programs) {
-      const firstVideo = p.videos[0];
-      const imageUrl =
-        p.thumbnailUrl ||
-        (firstVideo?.platform === 'YOUTUBE'
-          ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-          : undefined);
+      const imageUrl = this.programImageUrl(p);
 
       items.push({
         id: p.id,
@@ -226,12 +245,7 @@ export class WebinarsService {
     });
     if (!program) return null;
 
-    const firstVideo = program.videos[0];
-    const imageUrl =
-      program.thumbnailUrl ||
-      (firstVideo?.platform === 'YOUTUBE'
-        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-        : undefined);
+    const imageUrl = this.programImageUrl(program);
 
     const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
@@ -269,12 +283,7 @@ export class WebinarsService {
     });
     if (!program) return null;
 
-    const firstVideo = program.videos[0];
-    const imageUrl =
-      program.thumbnailUrl ||
-      (firstVideo?.platform === 'YOUTUBE'
-        ? `https://img.youtube.com/vi/${firstVideo.videoId}/hqdefault.jpg`
-        : undefined);
+    const imageUrl = this.programImageUrl(program);
 
     return {
       id: program.id,

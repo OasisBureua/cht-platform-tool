@@ -27,7 +27,6 @@ export class AuthService {
 
   /**
    * Find or create user by Auth0 sub (authId).
-   * Uses DB only (Redis bypassed to avoid connection/timeout issues during login).
    * For existing users, we never overwrite firstName/lastName from OAuth metadata;
    * those values are managed via Settings PATCH and must persist across login/logout.
    */
@@ -100,10 +99,10 @@ export class AuthService {
 
   /**
    * Invalidate cached auth user when role/email/name is updated.
-   * No-op when using DB-only (no Redis cache).
+   * No-op — auth lookups are Postgres-only.
    */
   async invalidateAuthCache(_userId: string): Promise<void> {
-    // Auth user lookup is DB-only; no cache to invalidate
+    // No cache to invalidate
   }
 
   /**
@@ -126,7 +125,7 @@ export class AuthService {
   }
 
   /**
-   * Create a session. Uses DB only (Redis bypassed to avoid connection/timeout issues).
+   * Create a session in Postgres.
    * @param accessToken - Optional GoTrue JWT for chatbot (stored when Supabase login)
    */
   async createSession(
@@ -154,6 +153,12 @@ export class AuthService {
     return token;
   }
 
+  async revokeSession(sessionToken: string): Promise<void> {
+    const token = sessionToken.trim();
+    if (!token) return;
+    await this.prisma.session.deleteMany({ where: { token } });
+  }
+
   /**
    * Get chatbot token (GoTrue JWT) for the given session. Returns null if not stored.
    */
@@ -167,7 +172,7 @@ export class AuthService {
   }
 
   /**
-   * Get session. Uses DB only (Redis bypassed to avoid connection/timeout issues).
+   * Get session from Postgres by token.
    */
   async getSession(token: string): Promise<AuthUser | null> {
     if (!token?.trim()) {

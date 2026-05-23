@@ -18,7 +18,6 @@ Design notes
 """
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
@@ -40,36 +39,6 @@ logger = setup_logger(__name__)
 # when the cron last ran.  Both bounds are env-overridable.
 _REMINDER_WINDOW_LOW_H = float(os.getenv("REMINDER_WINDOW_LOW_H", "18"))   # 18h from now
 _REMINDER_WINDOW_HIGH_H = float(os.getenv("REMINDER_WINDOW_HIGH_H", "30")) # 30h from now
-
-
-def _resolve_panelist_join_url(
-    panelist_links_raw: object,
-    first_name: str,
-    last_name: str,
-) -> Optional[str]:
-    """Return the unique Zoom panelist join URL for this user if their full name
-    matches one of the stored panelist entries. Falls back to None so the caller
-    can use the shared attendee join URL."""
-    if not panelist_links_raw:
-        return None
-    try:
-        links = (
-            json.loads(panelist_links_raw)
-            if isinstance(panelist_links_raw, str)
-            else panelist_links_raw
-        )
-    except (ValueError, TypeError):
-        return None
-    if not isinstance(links, list):
-        return None
-    full_name = f"{first_name or ''} {last_name or ''}".lower().strip()
-    if not full_name:
-        return None
-    for entry in links:
-        p_name = (entry.get("name") or "").lower().strip()
-        if p_name and (p_name == full_name or p_name in full_name or full_name in p_name):
-            return entry.get("joinUrl") or None
-    return None
 
 
 class ScheduledConsumer(SQSBaseConsumer):
@@ -228,13 +197,8 @@ class ScheduledConsumer(SQSBaseConsumer):
         else:
             app_session_url = f"{base_url}/app/chm-office-hours/{program_id}"
 
-        # Use the speaker's unique panelist join URL when their name matches a
-        # stored panelist entry; otherwise fall back to the shared attendee URL.
-        zoom_url = _resolve_panelist_join_url(
-            row.get("zoom_panelist_links"),
-            row.get("first_name") or "",
-            row.get("last_name") or "",
-        ) or row.get("zoom_join_url")
+        # Registered learners always get the shared Zoom attendee (silent participant) link.
+        zoom_url = row.get("zoom_join_url")
 
         subject, plain, html = build_session_reminder_email(
             first_name=row["first_name"] or "there",

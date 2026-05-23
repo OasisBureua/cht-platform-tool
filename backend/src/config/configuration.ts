@@ -27,7 +27,7 @@ export default () => ({
     anonKey: process.env.SUPABASE_ANON_KEY,
   },
 
-  // Session TTL in seconds (default 30 min). Sessions cached in Redis.
+  // Session TTL in seconds (default 30 min). Sessions stored in Postgres.
   sessionTtlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '1800', 10),
 
   // Bill.com
@@ -85,19 +85,6 @@ export default () => ({
   // SQS (payment queue only for now)
   sqs: {
     paymentQueueUrl: process.env.SQS_PAYMENT_QUEUE_URL,
-  },
-
-  // Redis
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: (() => {
-      const p = parseInt(process.env.REDIS_PORT || '6379', 10);
-      return Number.isNaN(p) ? 6379 : p;
-    })(),
-    tls: process.env.REDIS_TLS === 'true' || process.env.REDIS_TLS === '1',
-    tlsRejectUnauthorized:
-      process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== 'false' &&
-      process.env.REDIS_TLS_REJECT_UNAUTHORIZED !== '0',
   },
 
   // Surveys (optional survey bonus payment in cents, 0 = disabled)
@@ -190,8 +177,8 @@ export default () => ({
   },
 
   /**
-   * When false (default), LIVE listing only shows DB-published webinars (Jotform + approval flow).
-   * Set WEBINARS_LIST_ZOOM_FALLBACK=true to also list raw Zoom webinars not yet imported into the DB.
+   * Legacy env flag — LIVE listing now always merges upcoming Zoom webinars when Zoom is configured.
+   * Kept for backwards compatibility; no longer gates listing behavior.
    */
   webinars: {
     listZoomFallback: process.env.WEBINARS_LIST_ZOOM_FALLBACK === 'true',

@@ -172,16 +172,9 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # SPA deep-link rewrite is now handled by `aws_cloudfront_function.spa_rewrite`
-  # attached to the S3 default behavior (above). That function transforms the
-  # request URI to `/index.html` BEFORE CloudFront looks up the S3 key, so S3
-  # never 404s for an SPA route. The old distribution-wide `custom_error_response`
-  # for 404/403 was a heavy hammer: it rewrote /api/* 404s from the ALB to
-  # `/index.html` and cached the bad response for 5 minutes — every new API
-  # endpoint hit a phantom 404 window after first deploy.
-  #
-  # 502 caching is still suppressed so the SPA doesn't serve a stale outage page
-  # once the backend recovers.
+  # SPA deep-link rewrite is handled by aws_cloudfront_function.spa_rewrite on the
+  # S3 default behavior. Do NOT add distribution-wide 404/403 → /index.html here;
+  # that rewrote /api/* 404s from the ALB and cached HTML for 5 minutes.
   custom_error_response {
     error_code            = 502
     error_caching_min_ttl = 0

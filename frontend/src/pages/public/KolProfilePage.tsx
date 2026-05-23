@@ -3,13 +3,10 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Briefcase,
-  Building2,
   Calendar,
   ExternalLink,
   Linkedin,
-  MapPin,
   Sparkles,
-  Stethoscope,
   Twitter,
 } from 'lucide-react';
 import {
@@ -41,12 +38,20 @@ function inferredSpecialty(entry: DolEntry): string {
 
 function buildViewModel(region: DolRegion, entry: DolEntry) {
   const i = entry.intel;
+  const stateName = region.title;
+  const institution =
+    entry.institution?.trim() && entry.institution !== '—'
+      ? entry.institution
+      : i?.affiliation?.split('·')[0]?.trim() ?? '—';
+
   return {
     displayName: entry.name,
     handle: displayHandle(entry),
     specialty: inferredSpecialty(entry),
-    location: i?.location ?? 'United States',
-    affiliation: i?.affiliation ?? entry.role.split('—')[0]?.trim() ?? region.title,
+    stateName,
+    institution,
+    location: i?.location ?? stateName,
+    affiliation: institution !== '—' ? institution : (i?.affiliation ?? entry.role.split('—')[0]?.trim() ?? ''),
     npi: i?.npi,
     rosterOnly: i?.rosterOnly ?? false,
     phone: i?.phone,
@@ -146,25 +151,25 @@ export default function KolProfilePage() {
               </div>
             </div>
 
-            <p className="text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.bio}</p>
-
-            <div className="flex flex-wrap gap-x-4 gap-y-2 text-[14px] text-zinc-600 dark:text-zinc-400">
-              <span className="inline-flex items-center gap-1.5">
-                <Stethoscope className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
-                {vm.specialty}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
-                {vm.location}
-              </span>
-              <span className="inline-flex items-center gap-1.5 min-w-0">
-                <Building2 className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
-                <span className="truncate">{vm.affiliation}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 text-zinc-500">
-                <Calendar className="h-4 w-4 shrink-0" aria-hidden />
-                {region.title}
-              </span>
+            <div className="grid gap-3 sm:grid-cols-2 text-[14px]">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Specialty</p>
+                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.specialty}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">State</p>
+                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.stateName}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Institution</p>
+                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.institution}</p>
+              </div>
+              {entry.bio ? (
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Summary</p>
+                  <p className="mt-1 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.bio}</p>
+                </div>
+              ) : null}
             </div>
 
             {(vm.phone || vm.email || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
@@ -307,10 +312,6 @@ export default function KolProfilePage() {
               </div>
             ) : null}
           </div>
-
-          <p className="mt-10 text-center text-[11px] text-zinc-400">
-            Data: CHM KOL roster · optional MediaHub enrichment. Not a federal repository placeholder.
-          </p>
         </div>
       </div>
     </div>

@@ -64,11 +64,12 @@ model User {
   @@index([email])
   @@index([authId])
   @@index([billVendorId])
+  @@index([totalEarnings])
   @@map("User")
 }
 
 // ============================================================================
-// SESSION MODEL (DB fallback when Redis unavailable)
+// SESSION MODEL
 // ============================================================================
 model Session {
   id          String   @id @default(cuid())
@@ -81,7 +82,7 @@ model Session {
   expiresAt   DateTime
   accessToken String?  // GoTrue JWT for chatbot (unlimited queries)
 
-  @@index([token])
+  @@index([userId])
   @@index([expiresAt])
   @@map("Session")
 }
@@ -179,6 +180,7 @@ model Program {
 
   @@index([status])
   @@index([startDate])
+  @@index([status, startDate])
   @@map("Program")
 }
 
@@ -401,6 +403,7 @@ model ProgramEnrollment {
   @@index([userId])
   @@index([programId])
   @@index([completed])
+  @@index([userId, completed])
   @@map("ProgramEnrollment")
 }
 
@@ -507,6 +510,8 @@ model Payment {
   @@index([programId])
   @@index([status])
   @@index([type])
+  @@index([userId, createdAt])
+  @@index([userId, status, paidAt])
   @@map("Payment")
 }
 
@@ -600,4 +605,25 @@ model AnalyticsEvent {
   @@index([eventName])
   @@index([timestamp])
   @@map("AnalyticsEvent")
+}
+
+// ============================================================================
+// ADMIN AUDIT LOG (SOC 2 — admin mutation trail)
+// ============================================================================
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorEmail String?
+  action     String
+  resource   String?
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([resource, resourceId])
+  @@map("AdminAuditLog")
 }

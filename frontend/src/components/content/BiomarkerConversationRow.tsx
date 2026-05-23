@@ -6,7 +6,10 @@ import {
   HCP_CAROUSELS,
 } from '../../data/carousels.config';
 import { ConversationRow, StripCard, StripRowLoading } from '../home/ConversationRow';
-import { VIEW_PLAYLIST_LABEL } from '../../utils/playlistFocusFilters';
+import {
+  VIEW_PLAYLIST_LABEL,
+  buildCatalogSectionPlaylistsHref,
+} from '../../utils/playlistFocusFilters';
 
 /**
  * A single themed clip row driven by `carousels.config.ts`.
@@ -76,7 +79,7 @@ export function BiomarkerConversationRow({
     shouldSurfaceCatalogClip,
   );
 
-  const seeAllHref = isInApp ? '/app/catalog?view=clips' : '/catalog?view=clips';
+  const seeAllHref = buildCatalogSectionPlaylistsHref(isInApp, config.label);
 
   if (isLoading) {
     return (

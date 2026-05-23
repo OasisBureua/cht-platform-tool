@@ -7,7 +7,6 @@ import {
   HealthIndicatorResult,
 } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma.health';
-import { RedisHealthIndicator } from './redis.health';
 
 @SkipThrottle()
 @Controller()
@@ -15,7 +14,6 @@ export class HealthController {
   constructor(
     private health: HealthCheckService,
     private prismaHealth: PrismaHealthIndicator,
-    private redisHealth: RedisHealthIndicator,
   ) {}
 
   /**
@@ -31,8 +29,7 @@ export class HealthController {
   /**
    * Readiness check - Service ready to accept traffic
    * GET /health/ready
-   * Checks DB and Redis with 5s timeout each (parallel). On timeout, returns 200
-   * with degraded status (never 500).
+   * Checks DB with 5s timeout. On timeout, returns 200 with degraded status (never 500).
    */
   @Get('health/ready')
   @HealthCheck()
@@ -59,14 +56,11 @@ export class HealthController {
         };
       }
     };
-    const [dbResult, redisResult] = await Promise.all([
-      checkWithTimeout(this.prismaHealth.isHealthy('database'), 'database'),
-      checkWithTimeout(this.redisHealth.isHealthy('redis'), 'redis'),
-    ]);
-    return this.health.check([
-      () => Promise.resolve(dbResult),
-      () => Promise.resolve(redisResult),
-    ]);
+    const dbResult = await checkWithTimeout(
+      this.prismaHealth.isHealthy('database'),
+      'database',
+    );
+    return this.health.check([() => Promise.resolve(dbResult)]);
   }
 
   /**
@@ -90,14 +84,12 @@ export class HealthController {
   async detail() {
     try {
       const dbCheck = await this.prismaHealth.isHealthy('database');
-      const redisCheck = await this.redisHealth.isHealthy('redis');
 
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
         components: {
           database: dbCheck.database,
-          redis: redisCheck.redis,
         },
         application: {
           version: process.env.APP_VERSION || '1.0.0',

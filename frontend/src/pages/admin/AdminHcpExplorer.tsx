@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Download, Loader2, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { adminApi, type AdminUser } from '../../api/admin';
+import { US_STATES, normalizeUsStateCode, usStateLabel } from '../../data/us-states';
 
 function getInitials(firstName: string, lastName: string, email: string): string {
   if (firstName && lastName) return (firstName[0] + lastName[0]).toUpperCase();
@@ -49,23 +50,25 @@ export default function AdminHcpExplorer() {
     if (roleFilter !== 'KOL') return null;
     const map = new Map<string, AdminUser[]>();
     for (const u of users) {
-      const label = u.state?.trim() || 'Unknown';
-      if (!map.has(label)) map.set(label, []);
-      map.get(label)!.push(u);
+      const code = normalizeUsStateCode(u.state) ?? 'UNKNOWN';
+      if (!map.has(code)) map.set(code, []);
+      map.get(code)!.push(u);
     }
-    const keys = [...map.keys()].sort((a, b) => {
-      if (a === 'Unknown') return 1;
-      if (b === 'Unknown') return -1;
-      return a.localeCompare(b);
-    });
-    return keys.map((state) => ({
-      state,
-      users: map.get(state)!.sort((a, b) => {
-        const an = `${a.firstName} ${a.lastName}`.trim().toLowerCase();
-        const bn = `${b.firstName} ${b.lastName}`.trim().toLowerCase();
-        return an.localeCompare(bn);
-      }),
-    }));
+    const order = [
+      ...US_STATES.map((s) => s.value),
+      ...(map.has('UNKNOWN') ? ['UNKNOWN'] : []),
+    ];
+    return order
+      .filter((code) => map.has(code))
+      .map((code) => ({
+        state: code,
+        stateLabel: code === 'UNKNOWN' ? 'State unknown' : usStateLabel(code),
+        users: map.get(code)!.sort((a, b) => {
+          const an = `${a.firstName} ${a.lastName}`.trim().toLowerCase();
+          const bn = `${b.firstName} ${b.lastName}`.trim().toLowerCase();
+          return an.localeCompare(bn);
+        }),
+      }));
   }, [users, roleFilter]);
 
   const handleExport = () => {
@@ -172,10 +175,10 @@ export default function AdminHcpExplorer() {
       ) : (
         <div className="space-y-3">
           {roleFilter === 'KOL' && kolGrouped
-            ? kolGrouped.map(({ state, users: group }) => (
+            ? kolGrouped.map(({ state, stateLabel, users: group }) => (
                 <div key={state} className="space-y-2">
                   <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500 px-1">
-                    {state === 'Unknown' ? 'State unknown' : `State: ${state}`}
+                    {stateLabel}
                   </h3>
                   <div className="space-y-3">
                     {group.map((user) => (

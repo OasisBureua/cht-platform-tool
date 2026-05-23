@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - staging
+      - 'feature/**'
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -13,23 +14,72 @@ env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
   TERRAFORM_VERSION: 1.10.5
+  # Fallback for any remaining actions not yet on Node 24 native runtime.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 permissions:
   id-token: write   # Required for OIDC
   contents: read
 
 jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend - Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Backend - Run tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Frontend - Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend - Run tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform validate (staging)
+        working-directory: infrastructure/terraform/environments/us-east-1-staging
+        run: |
+          terraform init -backend=false
+          terraform validate
+          # Note: GuardDuty + AWS Config are account-level singletons — only platform
+          # (us-east-1 + deploy-prod.yml) manages them. Staging must not declare those modules.
+
   deploy:
     name: Deploy to Staging
     runs-on: ubuntu-latest
+    needs: test
     environment: staging
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -50,7 +100,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push backend image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: true
@@ -61,7 +111,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push worker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./worker
           push: true
@@ -72,13 +122,35 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform Init
         working-directory: infrastructure/terraform/environments/us-east-1-staging
         run: terraform init
+
+      - name: Verify GitHub Environment secrets (staging)
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
+          MEDIAHUB_API_KEY: ${{ secrets.MEDIAHUB_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_PLAYLIST_IDS: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
+          ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+          ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          ZOOM_WEBHOOK_SECRET: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          ZOOM_SDK_KEY: ${{ secrets.ZOOM_SDK_KEY }}
+          ZOOM_SDK_SECRET: ${{ secrets.ZOOM_SDK_SECRET }}
+          JOTFORM_API_KEY: ${{ secrets.JOTFORM_API_KEY }}
+          BILL_DEV_KEY: ${{ secrets.BILL_DEV_KEY }}
+          BILL_USERNAME: ${{ secrets.BILL_USERNAME }}
+          BILL_PASSWORD: ${{ secrets.BILL_PASSWORD }}
+          BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
+          BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+        run: ./scripts/verify-github-env-secrets.sh staging
 
       - name: Terraform Apply
         working-directory: infrastructure/terraform/environments/us-east-1-staging
@@ -91,7 +163,6 @@ jobs:
         env:
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
           TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
-          TF_VAR_supabase_url: ${{ secrets.SUPABASE_URL }}
           TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
           TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
           TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
@@ -101,6 +172,8 @@ jobs:
           TF_VAR_zoom_client_id: ${{ secrets.ZOOM_CLIENT_ID }}
           TF_VAR_zoom_client_secret: ${{ secrets.ZOOM_CLIENT_SECRET }}
           TF_VAR_zoom_webhook_secret: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          TF_VAR_zoom_sdk_key: ${{ secrets.ZOOM_SDK_KEY }}
+          TF_VAR_zoom_sdk_secret: ${{ secrets.ZOOM_SDK_SECRET }}
           TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
           TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
           TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
@@ -108,6 +181,8 @@ jobs:
           TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
           TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
           TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
+          TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
+          TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
 
@@ -197,9 +272,9 @@ jobs:
           echo "Verify with: dig +short NS staging.testapp.communityhealth.media @8.8.8.8"
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -240,6 +315,8 @@ jobs:
           sleep 30
           curl -fsk "https://${ALB_DNS}/health/ready" && echo "✅ ALB direct health check passed!" || echo "❌ ALB direct health check failed"
           curl -fsk "https://${ALB_DNS}/health" && echo "✅ ALB /health passed!" || echo "❌ ALB /health failed"
+          curl -fsS "https://staging.testapp.communityhealth.media/health/ready" && echo "✅ Public staging health check passed!" || echo "❌ Public staging health check failed"
+          curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "https://staging.testapp.communityhealth.media/"
 
       - name: Diagnostics — ECS task statuses
         if: always()
@@ -316,3 +393,8 @@ jobs:
           echo "Frontend: https://staging.testapp.communityhealth.media"
           echo "API:      https://staging.testapp.communityhealth.media/api"
           echo "Image Tag: ${{ steps.meta.outputs.image_tag }}"
+          echo ""
+          echo "Terraform: staging.tfvars (us-east-1-staging)"
+          echo "Manual deploy equivalent:"
+          echo "  ./scripts/deploy-primary.sh staging  # infra only — use us-east-1-staging + staging.tfvars manually"
+          echo "  ./scripts/deploy-frontend.sh staging"

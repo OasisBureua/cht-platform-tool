@@ -1,11 +1,15 @@
 # Documentation
 
-Project documentation and guides.
+Operational docs for the CHT Platform. Start here:
 
-## testapp.communityhealth.media (DNS on GoDaddy)
+| Doc | Purpose |
+|-----|---------|
+| [engineering/getting-started.md](./engineering/getting-started.md) | Local development setup |
+| [engineering/architecture.md](./engineering/architecture.md) | System design and data flows |
+| [engineering/deployment.md](./engineering/deployment.md) | Staging and production deploys |
+| [engineering/integrations.md](./engineering/integrations.md) | Auth, Zoom, JotForm, Bill.com, MediaHub |
+| [compliance/](./compliance/) | SOC 2 runbooks (incident response, disaster recovery) |
 
-To deploy the app at `testapp.communityhealth.media` with DNS on GoDaddy: **[TESTAPP-DEPLOYMENT-GODADDY.md](./TESTAPP-DEPLOYMENT-GODADDY.md)** - request ACM certificate first, add CNAME in GoDaddy for validation, then deploy Terraform and add NS records.
+CI workflow details: [.github/CI_CD.md](../.github/CI_CD.md)
 
-## Email (Amazon SES)
-
-Transactional emails are sent via Amazon SES. Verify your sending domain in SES first. The worker uses the ECS task IAM role for SES access. Set `SES_FROM_EMAIL` in worker `.env` (e.g. `noreply@communityhealth.media`).
+Infrastructure modules and Terraform layout: [infrastructure/README.md](../infrastructure/README.md)

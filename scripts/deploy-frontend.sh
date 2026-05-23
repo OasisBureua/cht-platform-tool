@@ -5,41 +5,64 @@ echo "🎨 CHT Platform - Deploy Frontend"
 echo "================================="
 echo ""
 
-# Check environment
 if [ -z "$1" ]; then
-    echo "Usage: ./deploy-frontend.sh [platform|dev|prod]"
+    echo "Usage: ./deploy-frontend.sh [platform|staging|dev|prod]"
     exit 1
 fi
 
 ENV=$1
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 echo "📦 Environment: $ENV"
 echo ""
 
-# API base URL: platform uses single domain testapp.communityhealth.media
-if [ "$ENV" == "platform" ]; then
+case "$ENV" in
+  platform)
     API_URL="https://testapp.communityhealth.media/api"
-else
-    API_URL="https://api.communityhealth.media/api"
-fi
+    APP_URL="https://testapp.communityhealth.media"
+    TF_DIR="infrastructure/terraform/environments/us-east-1"
+    SECRET_ID="cht-platform-app-secrets"
+    ;;
+  staging)
+    API_URL="https://staging.testapp.communityhealth.media/api"
+    APP_URL="https://staging.testapp.communityhealth.media"
+    TF_DIR="infrastructure/terraform/environments/us-east-1-staging"
+    SECRET_ID="cht-platform-staging-app-secrets"
+    ;;
+  dev)
+    API_URL="https://testapp.communityhealth.media/api"
+    APP_URL="https://testapp.communityhealth.media"
+    TF_DIR="infrastructure/terraform/environments/us-east-1"
+    SECRET_ID="cht-platform-dev-app-secrets"
+    ;;
+  prod)
+    API_URL="https://testapp.communityhealth.media/api"
+    APP_URL="https://testapp.communityhealth.media"
+    TF_DIR="infrastructure/terraform/environments/us-east-1"
+    SECRET_ID="cht-platform-prod-app-secrets"
+    ;;
+  *)
+    echo "❌ Unknown environment: $ENV (use platform, staging, dev, or prod)"
+    exit 1
+    ;;
+esac
 
-# Get bucket name from terraform
-cd infrastructure/terraform/environments/us-east-1
+cd "$TF_DIR"
 BUCKET=$(terraform output -raw frontend_bucket)
 DIST_ID=$(terraform output -raw cloudfront_distribution_id)
-cd ../../../..
+cd "$REPO_ROOT"
 
 echo "🪣 S3 Bucket: $BUCKET"
 echo "☁️  CloudFront: $DIST_ID"
 echo "📡 API URL: $API_URL"
+echo "🌐 App URL: $APP_URL"
 echo ""
 
-# Build frontend
 echo "🔨 Building frontend..."
-cd frontend
+cd "$REPO_ROOT/frontend"
 
-# Pull Supabase vars from Secrets Manager (cht-platform-{env}-app-secrets)
-SECRET_ID=$([ "$ENV" == "platform" ] && echo "cht-platform-app-secrets" || echo "cht-platform-${ENV}-app-secrets")
 echo "📥 Fetching Supabase config from Secrets Manager ($SECRET_ID)..."
 SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_ID" --query SecretString --output text 2>/dev/null || true)
 if [ -n "$SECRET_JSON" ]; then
@@ -51,9 +74,6 @@ if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
   exit 1
 fi
 
-# Production build: always use .env.production (Vite loads it for npm run build)
-# VITE_APP_URL: OAuth redirect base - must match GoTrue Redirect URLs allowlist (Sebastien)
-APP_URL="https://testapp.communityhealth.media"
 build_env_file() {
   echo "VITE_API_URL=$API_URL"
   echo "VITE_SUPABASE_URL=$SUPABASE_URL"
@@ -76,13 +96,10 @@ aws cloudfront create-invalidation \
   --distribution-id $DIST_ID \
   --paths "/*"
 
-cd ..
+cd "$REPO_ROOT"
 
 echo ""
 echo "✅ Frontend deployed successfully!"
 echo ""
-if [ "$ENV" == "platform" ]; then
-    echo "🌐 Test: open https://testapp.communityhealth.media"
-else
-    echo "🌐 Test: open https://testapp.communityhealth.media"
-fi
+echo "🌐 App URL:  $APP_URL"
+echo "📡 API URL:  $API_URL"

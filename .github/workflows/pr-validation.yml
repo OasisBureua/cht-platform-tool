@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  security-events: write
 
 jobs:
   validate:
@@ -16,16 +17,24 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '18'
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
 
       - name: Backend - Install dependencies
         working-directory: ./backend
         run: npm ci
+
+      - name: Backend - Security audit
+        working-directory: ./backend
+        run: npm audit --audit-level=high
 
       - name: Backend - Lint
         working-directory: ./backend
@@ -39,6 +48,10 @@ jobs:
         working-directory: ./frontend
         run: npm ci
 
+      - name: Frontend - Security audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=high
+
       - name: Frontend - Lint
         working-directory: ./frontend
         run: npm run lint || echo "⚠️  Linting not configured"
@@ -47,8 +60,26 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
+      - name: Scan backend (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./backend
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true
+
+      - name: Scan worker (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ./worker
+          severity: CRITICAL,HIGH
+          exit-code: 1
+          ignore-unfixed: true
+
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.10.5
 

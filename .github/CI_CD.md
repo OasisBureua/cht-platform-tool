@@ -1,44 +1,44 @@
+# CI/CD
 
-## CI/CD with GitHub Actions
+## Workflows
 
-### Automatic Deployments
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `pr-validation.yml` | Pull requests | Lint, test, Terraform validate |
+| `deploy-staging.yml` | Push to `staging`, `feature/**` | Deploy to staging |
+| `deploy-prod.yml` | Push to `release/**`, `v*` tags, manual | Deploy to platform (prod) |
+| `rollback.yml` | Manual | Roll back ECS services |
 
-- **Push to `main`** → Automatically deploys to Dev (us-east-1)
-- **Create tag `v*`** → Deploys to Production (requires approval)
-- **Pull Request** → Runs validation and tests
+Docs-only changes under `docs/**` do not trigger deploy workflows.
 
-### Workflows
+## Staging
 
-1. **PR Validation** (`.github/workflows/pr-validation.yml`)
-   - Linting
-   - Unit tests
-   - Terraform validation
+- **Environment:** `staging` (GitHub Environment secrets)
+- **Domain:** `staging.testapp.communityhealth.media`
+- **Terraform:** `infrastructure/terraform/environments/us-east-1-staging`
 
-2. **Dev Deployment** (`.github/workflows/deploy-dev.yml`)
-   - Build Docker images
-   - Deploy infrastructure
-   - Run migrations
-   - Deploy frontend
-   - Health checks
+## Platform (production)
 
-3. **Prod Deployment** (`.github/workflows/deploy-prod.yml`)
-   - Requires manual approval
-   - Multi-region deployment
-   - Versioned releases
+- **Environment:** `platform` (GitHub Environment secrets)
+- **Domain:** `testapp.communityhealth.media`
+- **Terraform:** `infrastructure/terraform/environments/us-east-1`
+- **Image tags:** git tag name on `v*` pushes; otherwise `platform-{sha}-{timestamp}`
 
-### Manual Deployment
+Configure the `platform` environment with deployment branch rules for `release/**` and copy secrets from the legacy `production` environment if migrating.
 
-You can still use scripts for manual deployments:
+## Local verification
+
 ```bash
-./scripts/deploy-primary.sh dev
-./scripts/deploy-frontend.sh dev
+./verify.sh                    # mirrors PR validation checks
+./scripts/verify-github-env-secrets.sh STAGING
+./scripts/verify-github-env-secrets.sh PRODUCTION
+./smoke.sh https://staging.testapp.communityhealth.media
 ```
 
-### Rollback
+## Manual deploy
 
-To rollback to a previous version:
 ```bash
-# Deploy a previous tag
-git tag -l  # List available tags
-# In GitHub: Actions → Deploy to Production → Run workflow → Select tag
+./scripts/deploy-primary.sh platform
 ```
+
+See [docs/engineering/deployment.md](../docs/engineering/deployment.md) for the full release flow.

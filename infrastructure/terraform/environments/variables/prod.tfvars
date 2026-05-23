@@ -13,10 +13,6 @@ rds_allocated_storage = 100
 rds_multi_az          = true
 rds_backup_retention  = 30
 
-# Cache - Production sizing
-redis_node_type = "cache.t3.small"
-redis_num_nodes = 2
-
 # Compute - Production sizing
 backend_task_cpu      = 512
 backend_task_memory   = 1024

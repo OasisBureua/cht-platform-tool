@@ -95,6 +95,7 @@ export class ProgramsController {
     return this.registrationsService.submitBatchRegistrations(
       user.userId,
       dto.programIds,
+      dto.intakeByProgramId,
     );
   }
 

@@ -20,6 +20,7 @@ import {
   AccountLinkResponseDto,
 } from './dto/create-connect-account.dto';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
+import { CreateManualPaymentDto } from './dto/create-manual-payment.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 import { validateTaxId, sanitizeCompanyName } from './w9-validation';
@@ -452,6 +453,59 @@ export class PaymentsService {
       orderBy: { createdAt: 'desc' },
     });
     return payments;
+  }
+
+  /**
+   * Create a PENDING payment for admin review (no immediate Bill.com payout).
+   * Use for manual honorarium or bonus entries per user/program.
+   */
+  async createManualPendingPayment(dto: CreateManualPaymentDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: dto.userId.trim() },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const programId = dto.programId?.trim() || null;
+    if (programId) {
+      const program = await this.prisma.program.findUnique({
+        where: { id: programId },
+        select: { id: true },
+      });
+      if (!program) {
+        throw new NotFoundException('Program not found');
+      }
+    }
+
+    const type = dto.type ?? 'HONORARIUM';
+    const description =
+      dto.description?.trim() ||
+      (programId ? 'Manual program payment (admin)' : 'Manual payment (admin)');
+
+    return this.prisma.payment.create({
+      data: {
+        userId: user.id,
+        programId,
+        amount: dto.amount,
+        type,
+        status: 'PENDING',
+        description: description.slice(0, 500),
+        idempotencyKey: `manual_pending:${randomUUID()}`.slice(0, 200),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            billVendorId: true,
+          },
+        },
+        program: { select: { id: true, title: true } },
+      },
+    });
   }
 
   async getFailedPayments() {

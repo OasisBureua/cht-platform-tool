@@ -16,6 +16,7 @@ import { buildMissedWebinarEmail } from './templates/missed-webinar-email';
 import { buildPostWebinarSurveyEmail } from './templates/post-webinar-survey-email';
 import { buildWebinarAccessEmail } from './templates/webinar-access-email';
 import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
+import { buildRegistrationInviteEmail } from './templates/registration-invite-email';
 
 /**
  * Transactional email via [Amazon SES](https://docs.aws.amazon.com/ses/) (SESv2 `SendEmail` with Simple content).
@@ -447,6 +448,29 @@ export class SesEmailService {
         `Failed to send pre-webinar-reminder email to ${to} for program ${program.id}: ${(err as Error).message}`,
       );
     }
+  }
+
+  /** Invite learners to the multi-webinar registration landing page. */
+  async sendRegistrationInviteEmail(opts: {
+    to: string;
+    firstName: string;
+    programTitles: string[];
+    registerUrl: string;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip registration-invite email');
+      return;
+    }
+    const { to, firstName, programTitles, registerUrl } = opts;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildRegistrationInviteEmail(
+      { firstName, programTitles, registerUrl, supportEmail },
+      escapeHtml,
+    );
+    await this.sendSimpleEmail(to, subject, text, html);
+    this.logger.log(
+      `Sent registration-invite email to ${to} (${programTitles.length} program(s))`,
+    );
   }
 
   private async sendSimpleEmail(

@@ -6,11 +6,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
+import {
+  getSessionTokenFromRequest,
+} from './session-cookie';
+import { isProductionEnv } from '../utils/is-production-env';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
-const SESSION_HEADER = 'x-session-token';
-const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * JWT Auth Guard with session and dev bypass.
@@ -35,13 +36,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const sessionToken =
-      request.headers[SESSION_HEADER] ||
-      (request.headers.authorization?.startsWith?.('Bearer ')
-        ? request.headers.authorization.slice(7).trim()
-        : null);
+    const sessionToken = getSessionTokenFromRequest(request);
 
-    if (sessionToken && UUID_REGEX.test(sessionToken)) {
+    if (sessionToken) {
       const user = await this.authService.getSession(sessionToken);
       if (user) {
         request.user = user;
@@ -52,10 +49,19 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (this.isJwtAuthConfigured()) {
       return super.canActivate(context) as Promise<boolean>;
     }
+
+    if (isProductionEnv()) {
+      throw new UnauthorizedException('Authentication is not configured for production');
+    }
+
     return this.devBypass(context);
   }
 
   private async devBypass(context: ExecutionContext): Promise<boolean> {
+    if (isProductionEnv()) {
+      throw new UnauthorizedException('Dev auth bypass is disabled in production');
+    }
+
     const request = context.switchToHttp().getRequest();
     const devUserId = request.headers[DEV_USER_HEADER];
 

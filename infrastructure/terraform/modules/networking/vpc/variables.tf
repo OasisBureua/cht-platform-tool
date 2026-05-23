@@ -36,3 +36,9 @@ variable "cloudwatch_kms_key_arn" {
   type        = string
   default     = null
 }
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention for VPC flow logs"
+  type        = number
+  default     = 7
+}

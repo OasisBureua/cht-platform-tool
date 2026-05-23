@@ -16,6 +16,7 @@ import { format, parseISO } from 'date-fns';
 import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
+import SendRegistrationInvitesModal from '../../components/admin/SendRegistrationInvitesModal';
 
 export default function AdminPrograms() {
   const location = useLocation();
@@ -28,6 +29,7 @@ export default function AdminPrograms() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sendInvitesOpen, setSendInvitesOpen] = useState(false);
 
   const { data: webinars, isLoading, error } = useQuery({
     queryKey: ['admin', 'webinars', zoomFilter],
@@ -60,6 +62,9 @@ export default function AdminPrograms() {
   }
 
   const items = webinars ?? [];
+  const upcomingZoomOnly = items.filter(
+    (w) => w.unlinkedFromZoom && w.startDate && new Date(w.startDate).getTime() >= Date.now() - 60 * 60 * 1000,
+  );
 
   return (
     <div className="space-y-6">
@@ -103,6 +108,16 @@ export default function AdminPrograms() {
               Office Hours
             </Link>
           )}
+          {!isOfficeHours ? (
+            <button
+              type="button"
+              onClick={() => setSendInvitesOpen(true)}
+              disabled={items.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
+              Send registration invites
+            </button>
+          ) : null}
           <Link
             to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
@@ -112,6 +127,28 @@ export default function AdminPrograms() {
           </Link>
         </div>
       </div>
+
+      {!isOfficeHours ? (
+        <SendRegistrationInvitesModal
+          webinars={items}
+          open={sendInvitesOpen}
+          onClose={() => {
+            setSendInvitesOpen(false);
+          }}
+        />
+      ) : null}
+
+      {!isOfficeHours && upcomingZoomOnly.length > 0 ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+          <p className="font-semibold">
+            {upcomingZoomOnly.length} upcoming webinar{upcomingZoomOnly.length === 1 ? '' : 's'} on Zoom
+            {upcomingZoomOnly.length === 1 ? ' is' : ' are'} not linked to the platform yet.
+          </p>
+          <p className="mt-1 text-blue-800">
+            Amber rows below are pulled from your Zoom account. Create a program from the scheduler to publish them on LIVE.
+          </p>
+        </div>
+      ) : null}
 
       {/* Delete confirmation overlay */}
       {deleteConfirmId && (
@@ -232,6 +269,9 @@ function WebinarRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [importError, setImportError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -271,6 +311,94 @@ function WebinarRow({
       ? `${webinar.duration} min`
       : `${Math.floor(webinar.duration / 60)}h${webinar.duration % 60 ? ` ${webinar.duration % 60}m` : ''}`
     : null;
+
+  const importMutation = useMutation({
+    mutationFn: () =>
+      adminApi.importFromZoom({
+        zoomId: webinar.zoomMeetingId!,
+        zoomSessionType: webinar.zoomSessionType ?? 'WEBINAR',
+      }),
+    onSuccess: (data) => {
+      setImportError(null);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+      navigate(`/admin/programs/${data.id}/hub`, {
+        state: data.jotformFormsWarning ? { warning: data.jotformFormsWarning } : undefined,
+      });
+    },
+    onError: (err: unknown) => {
+      const ax = err as {
+        response?: {
+          status?: number;
+          data?: { existingProgramId?: string; message?: string | { message?: string; existingProgramId?: string } };
+        };
+      };
+      const body = ax.response?.data;
+      const nested = typeof body?.message === 'object' ? body.message : undefined;
+      const existingId = body?.existingProgramId ?? nested?.existingProgramId;
+      if (ax.response?.status === 409 && existingId) {
+        navigate(`/admin/programs/${existingId}/hub`);
+        return;
+      }
+      const msg =
+        typeof body?.message === 'string'
+          ? body.message
+          : nested?.message ?? (err instanceof Error ? err.message : 'Could not create program from Zoom.');
+      setImportError(msg);
+    },
+  });
+
+  if (webinar.unlinkedFromZoom) {
+    return (
+      <tr className="bg-amber-50/60 hover:bg-amber-50">
+        <td className="px-4 py-3">
+          <p className="font-medium text-gray-900 line-clamp-1">{webinar.title}</p>
+          {durationStr && <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>}
+          <p className="text-xs font-medium text-amber-800 mt-1">
+            In Zoom only — schedule or publish in the platform to show on LIVE
+          </p>
+        </td>
+        <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">{dateStr}</td>
+        <td className="px-4 py-3 text-gray-600 hidden md:table-cell">—</td>
+        <td className="px-4 py-3">
+          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+            Zoom only
+          </span>
+        </td>
+        <td className="px-4 py-3 hidden lg:table-cell">
+          {webinar.zoomMeetingId ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600">
+              <Video className="h-3 w-3" />#{webinar.zoomMeetingId}
+            </span>
+          ) : null}
+        </td>
+        <td className="px-4 py-3 text-right">
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setImportError(null);
+                importMutation.mutate();
+              }}
+              disabled={!webinar.zoomMeetingId || importMutation.isPending}
+              className="text-xs font-semibold text-brand-600 hover:underline disabled:opacity-50 inline-flex items-center gap-1"
+            >
+              {importMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  Creating…
+                </>
+              ) : (
+                'Create program'
+              )}
+            </button>
+            {importError ? (
+              <p className="text-[10px] text-red-600 max-w-[12rem] text-right">{importError}</p>
+            ) : null}
+          </div>
+        </td>
+      </tr>
+    );
+  }
 
   return (
     <tr className="hover:bg-gray-50">

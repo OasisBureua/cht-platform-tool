@@ -22,7 +22,11 @@ import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } fr
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 import { clipStripeSubtitle } from '../utils/mediaHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
-import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB, APP_CATALOG_PLAYLISTS_BROWSE } from '../components/navigation/appNavItems';
+import {
+  APP_CATALOG_CLIPS_GRID,
+  APP_CATALOG_CONVERSATIONS_HUB,
+  APP_CATALOG_PLAYLISTS_BROWSE,
+} from '../components/navigation/appNavItems';
 import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../components/content/BiomarkerConversationRow';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -392,48 +396,46 @@ export default function Dashboard() {
   return (
     <div className="-mt-4 space-y-8 sm:-mt-5 md:-mt-6 md:space-y-10 lg:-mt-8">
       {isOnboardingOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/45 p-4 backdrop-blur-[1px]">
-          <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-[0_24px_80px_-32px_rgba(0,0,0,0.45)] transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.2,0,0,1)] sm:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-accent-700 dark:text-accent-300">New here?</p>
-                <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
-                <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
-              </div>
-              <button
-                type="button"
+        <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] sm:p-6">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-accent-700 dark:text-accent-300">New here?</p>
+              <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
+              <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
+            </div>
+            <button
+              type="button"
+              onClick={closeOnboarding}
+              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg text-zinc-500 transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-100 hover:text-zinc-900 active:scale-[0.96]"
+              aria-label="Close onboarding"
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {QUICK_START_ACTIONS.map((item) => (
+              <Link
+                key={item.title}
+                to={item.to}
                 onClick={closeOnboarding}
-                className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg text-zinc-500 transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-100 hover:text-zinc-900 active:scale-[0.96]"
-                aria-label="Close onboarding"
+                className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white hover:shadow-[0_10px_40px_-22px_rgba(0,0,0,0.15)] active:scale-[0.96]"
               >
-                <X className="h-4 w-4" aria-hidden />
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {QUICK_START_ACTIONS.map((item) => (
-                <Link
-                  key={item.title}
-                  to={item.to}
-                  onClick={closeOnboarding}
-                  className="group rounded-xl bg-white p-4 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_16px_48px_-24px_rgba(0,0,0,0.28)] active:scale-[0.96]"
-                >
-                  <div className="mb-2 flex items-center gap-2">
-                    <item.icon className="h-4 w-4 text-accent-600 dark:text-accent-400" aria-hidden />
-                    <p className="text-sm font-bold text-zinc-900">{item.title}</p>
-                  </div>
-                  <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
-                </Link>
-              ))}
-            </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={closeOnboarding}
-                className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-orange-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
-              >
-                Continue
-              </button>
-            </div>
+                <div className="mb-2 flex items-center gap-2">
+                  <item.icon className="h-4 w-4 text-accent-600 dark:text-accent-400" aria-hidden />
+                  <p className="text-sm font-bold text-zinc-900">{item.title}</p>
+                </div>
+                <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
+              </Link>
+            ))}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button
+              type="button"
+              onClick={closeOnboarding}
+              className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-orange-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
+            >
+              Continue
+            </button>
           </div>
         </div>
       ) : null}
@@ -820,7 +822,7 @@ export default function Dashboard() {
                 <ConversationRow
                   title="Playlists"
                   subtitle={`${playlistStrip.length} playlists`}
-                  seeAllHref="/app/search"
+                  seeAllHref={APP_CATALOG_PLAYLISTS_BROWSE}
                   seeAllLabel="See all playlists"
                 >
                   {playlistStrip.map((p) => (

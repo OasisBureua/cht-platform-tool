@@ -1,42 +1,47 @@
+import { LegalPageShell, LegalSection } from '../../components/legal/LegalPageShell';
+
 export default function Privacy() {
   return (
-    <div className="bg-white min-h-screen space-y-6">
-      <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-gray-900">
-          Privacy Policy
-        </h1>
-        <p className="text-sm text-gray-600 max-w-2xl">
-          This is a placeholder privacy policy page. Replace with your formal policy text before launch.
-        </p>
-      </header>
-
-      <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-4">
-        <Section
-          title="Information we collect"
-          body="Basic account details (when you join), usage analytics, and activity participation data (webinars/surveys)."
-        />
-        <Section
-          title="How we use information"
-          body="To operate the platform, improve content relevance, and provide access to webinars, surveys, and tracking features."
-        />
-        <Section
-          title="Sharing"
-          body="We do not sell personal information. Any sharing is limited to platform operation and approved partnerships."
-        />
-        <Section
-          title="Contact"
-          body="For privacy questions, contact support via the Contact Us page."
-        />
-      </div>
-    </div>
-  );
-}
-
-function Section({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-sm font-semibold text-gray-900">{title}</p>
-      <p className="text-sm text-gray-600">{body}</p>
-    </div>
+    <LegalPageShell
+      title="Privacy Policy"
+      intro="Effective date: May 22, 2026. Community Health Media (&quot;CHM,&quot; &quot;we,&quot; &quot;us&quot;) operates the CHT Platform. This policy describes how we collect, use, and protect personal information when you use our websites and services."
+    >
+      <LegalSection
+        title="Information we collect"
+        body="Account information (name, email, professional credentials such as NPI when provided), registration and participation data for programs and webinars, survey responses, payment and honorarium processing records, device and usage data (IP address, browser type, pages viewed), and communications you send to us."
+      />
+      <LegalSection
+        title="How we use information"
+        body="To create and manage your account, deliver educational content and CME activities, process registrations and payments, send operational and program-related communications, improve platform security and performance, comply with legal obligations, and generate aggregated analytics that do not identify individuals."
+      />
+      <LegalSection
+        title="Legal bases and consent"
+        body="We process personal information to perform our contract with you (providing platform access), for legitimate interests (security, fraud prevention, product improvement), and where required, with your consent (for example, optional marketing communications)."
+      />
+      <LegalSection
+        title="Sharing and subprocessors"
+        body="We do not sell personal information. We share data with service providers that help us operate the platform (hosting, authentication, email, video conferencing, payments, and form providers) under contracts that require appropriate safeguards. We may disclose information when required by law or to protect rights, safety, and security."
+      />
+      <LegalSection
+        title="Retention and security"
+        body="We retain personal information for as long as needed to provide services, meet legal and accreditation requirements, and resolve disputes. We use administrative, technical, and organizational measures including encryption in transit, access controls, and audit logging for administrative actions."
+      />
+      <LegalSection
+        title="Your choices and rights"
+        body="Depending on your location, you may request access, correction, deletion, or a copy of your personal information, or object to certain processing. Contact us using the details below. You may opt out of non-essential emails using unsubscribe links where provided."
+      />
+      <LegalSection
+        title="Children"
+        body="The platform is intended for healthcare professionals and is not directed to children under 16. We do not knowingly collect personal information from children."
+      />
+      <LegalSection
+        title="Changes"
+        body="We may update this policy from time to time. Material changes will be posted on this page with an updated effective date."
+      />
+      <LegalSection
+        title="Contact"
+        body="For privacy questions or requests, contact Community Health Media via the Contact Us page or email your program administrator."
+      />
+    </LegalPageShell>
   );
 }

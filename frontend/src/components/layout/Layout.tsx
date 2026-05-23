@@ -170,13 +170,6 @@ export default function Layout() {
               >
                 <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
               </button>
-              <Link
-                to="/app/home"
-                className="hidden shrink-0 text-accent-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-accent-700 active:scale-[0.96] dark:text-accent-400 dark:hover:text-accent-300 md:inline-flex"
-                aria-label="Community Health Media, app home"
-              >
-                <ChmWordmarkOption2 className="h-6 w-[2.75rem]" />
-              </Link>
               <div className="min-w-0 flex-1">
                 <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
                   Welcome, {displayName}!

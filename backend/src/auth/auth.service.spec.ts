@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
 import { UserRole } from '@prisma/client';
 
 describe('AuthService', () => {
@@ -38,6 +39,12 @@ describe('AuthService', () => {
             get: jest.fn((key: string) =>
               key === 'sessionTtlSeconds' ? 1800 : undefined,
             ),
+          },
+        },
+        {
+          provide: OutboundSyncService,
+          useValue: {
+            syncUser: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],

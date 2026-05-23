@@ -79,14 +79,7 @@ export default function Webinars() {
             <Radio className="h-5 w-5 text-accent-600 dark:text-accent-400" strokeWidth={2} aria-hidden />
             <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
           </div>
-          {userId ? (
-            <Link
-              to="/app/live/register-multiple"
-              className="shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-800 hover:bg-brand-100"
-            >
-              Register for multiple
-            </Link>
-          ) : null}
+          
         </div>
         <p className="text-pretty text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves
@@ -104,6 +97,11 @@ export default function Webinars() {
         <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
           <p className="font-semibold text-gray-900">No Live sessions scheduled</p>
           <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
+        </div>
+      ) : upcoming.length === 0 && past.length === 0 ? (
+        <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="font-semibold text-gray-900">No upcoming Live sessions</p>
+          <p className="mt-1 text-sm text-gray-600">Check back soon for new sessions.</p>
         </div>
       ) : (
         <div className="space-y-8">
@@ -194,6 +192,11 @@ function WebinarRow({
           <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
             {w.title}
           </p>
+          {w.source === 'zoom' ? (
+            <span className="shrink-0 rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-700 border border-blue-100">
+              Zoom
+            </span>
+          ) : null}
           {listBadge ? (
             <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
               {listBadge}

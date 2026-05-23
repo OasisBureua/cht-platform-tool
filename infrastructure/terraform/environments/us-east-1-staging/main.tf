@@ -33,7 +33,8 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  resource_prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  resource_prefix    = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  log_retention_days = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
 }
 
 # ============================================
@@ -61,6 +62,7 @@ module "vpc" {
   enable_nat_gateway     = true
   enable_flow_logs       = true
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
+  log_retention_days     = local.log_retention_days
 }
 
 # ============================================
@@ -101,23 +103,6 @@ module "rds" {
   allocated_storage       = var.rds_allocated_storage
   multi_az                = var.rds_multi_az
   backup_retention_period = var.rds_backup_retention
-}
-
-# ============================================
-# Cache - ElastiCache Redis
-# ============================================
-module "elasticache" {
-  source = "../../modules/cache/elasticache"
-
-  project                 = var.project
-  environment             = var.environment
-  vpc_id                  = module.vpc.vpc_id
-  private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.ecs_backend.security_group_id]
-  kms_key_arn             = module.kms.elasticache_kms_key_arn
-  cloudwatch_kms_key_arn  = module.kms.cloudwatch_kms_key_arn
-  node_type               = var.redis_node_type
-  num_cache_nodes         = var.redis_num_nodes
 }
 
 # ============================================
@@ -196,9 +181,6 @@ module "secrets" {
   db_name              = module.rds.db_name
   db_connection_string = module.rds.db_connection_string
 
-  redis_endpoint = module.elasticache.redis_endpoint
-  redis_port     = module.elasticache.redis_port
-
   supabase_url            = var.supabase_url
   supabase_anon_key       = var.supabase_anon_key
   gotrue_jwt_secret       = var.gotrue_jwt_secret
@@ -210,13 +192,19 @@ module "secrets" {
   zoom_client_id          = var.zoom_client_id
   zoom_client_secret      = var.zoom_client_secret
   zoom_webhook_secret     = var.zoom_webhook_secret
+  zoom_sdk_key            = var.zoom_sdk_key
+  zoom_sdk_secret         = var.zoom_sdk_secret
   jotform_api_key         = var.jotform_api_key
+  jotform_webinar_default_intake_url        = var.jotform_webinar_default_intake_url
+  jotform_webinar_post_event_shared_form_id = var.jotform_webinar_post_event_shared_form_id
   bill_dev_key            = var.bill_dev_key
   bill_username           = var.bill_username
   bill_password           = var.bill_password
   bill_org_id             = var.bill_org_id
   bill_funding_account_id = var.bill_funding_account_id
   bill_webhook_secret     = var.bill_webhook_secret
+  bill_mfa_remember_me_id = var.bill_mfa_remember_me_id
+  bill_mfa_device_name    = var.bill_mfa_device_name
   admin_bootstrap_secret  = var.admin_bootstrap_secret
   hubspot_access_token    = var.hubspot_access_token
 }
@@ -231,7 +219,6 @@ module "iam" {
   environment = var.environment
   secrets_arns = [
     module.secrets.database_secret_arn,
-    module.secrets.redis_secret_arn,
     module.secrets.app_secrets_arn
   ]
   kms_key_arns = [
@@ -271,7 +258,7 @@ module "ecs_cluster" {
   project                   = var.project
   environment               = var.environment
   enable_container_insights = true
-  log_retention_days        = (var.environment == "prod" || var.environment == "platform") ? 7 : 3
+  log_retention_days        = local.log_retention_days
   cloudwatch_kms_key_arn    = module.kms.cloudwatch_kms_key_arn
 }
 
@@ -296,7 +283,6 @@ module "ecs_backend" {
   log_group_name        = module.ecs_cluster.log_group_name
   container_image       = var.backend_image
   database_secret_arn   = module.secrets.database_secret_arn
-  redis_secret_arn      = module.secrets.redis_secret_arn
   app_secrets_arn       = module.secrets.app_secrets_arn
   task_cpu              = var.backend_task_cpu
   task_memory           = var.backend_task_memory
@@ -423,3 +409,21 @@ module "cloudwatch" {
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = module.sns_alerts.topic_arn
 }
+
+# ============================================
+# Monitoring - CloudTrail (audit logging)
+# ============================================
+module "cloudtrail" {
+  source = "../../modules/monitoring/cloudtrail"
+
+  project                = var.project
+  environment            = var.environment
+  aws_account_id         = data.aws_caller_identity.current.account_id
+  s3_kms_key_arn         = module.kms.s3_kms_key_arn
+  cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
+  log_retention_days     = local.log_retention_days
+}
+
+# GuardDuty + AWS Config are account-level (one per AWS account/region).
+# Managed in us-east-1 (platform) only — see deploy-prod.yml / deploy-primary.sh platform.
+# Do not add module "guardduty" or module "aws_config" here; staging shares the same AWS account.

@@ -1,7 +1,9 @@
 import axios from 'axios';
+import { resolveApiBaseUrl } from '../config/app-urls';
 
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: resolveApiBaseUrl(),
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

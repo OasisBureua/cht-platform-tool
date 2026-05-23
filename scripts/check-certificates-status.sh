@@ -13,8 +13,7 @@ fi
 
 if [ ! -f "$CERT_FILE" ]; then
     echo "❌ No certificates found for $ENV"
-    echo "   Run: ./scripts/request-certificate-testapp.sh (for testapp)"
-    echo "   Or:  ./scripts/request-certificates.sh $ENV (for dev/prod)"
+    echo "   Run: ./scripts/request-certificate-testapp.sh"
     exit 1
 fi
 

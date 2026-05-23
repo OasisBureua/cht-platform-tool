@@ -20,24 +20,6 @@ resource "aws_kms_alias" "rds" {
   target_key_id = aws_kms_key.rds.id
 }
 
-# KMS Key for Elasticache Redis Encryption
-resource "aws_kms_key" "elasticache" {
-  description             = "${local.prefix} Elasticache encryption key"
-  deletion_window_in_days = var.deletion_window_in_days
-  enable_key_rotation     = true
-
-  tags = {
-    Name        = "${local.prefix}-elasticache-key"
-    Environment = var.environment
-    Service     = "elasticache"
-  }
-}
-
-resource "aws_kms_alias" "elasticache" {
-  name          = "alias/${local.prefix}-elasticache"
-  target_key_id = aws_kms_key.elasticache.key_id
-}
-
 resource "aws_kms_key" "s3" {
   description             = "${local.prefix} S3 encryption key"
   deletion_window_in_days = var.deletion_window_in_days

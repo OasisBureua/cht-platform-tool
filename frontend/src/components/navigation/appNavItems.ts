@@ -16,10 +16,10 @@ export type AppNavItem = {
   end?: boolean;
 };
 
-/** Logo + sidebar Conversations: catalogue home (featured + strips); playlists use ?view=playlists. */
+/** Sidebar Conversations → catalog home (featured strips + biomarker rows). */
 export const APP_CATALOG_CONVERSATIONS_HUB = '/app/catalog';
 
-/** “See all in library” / full browse — routed to Explore (search) for now; avoid `/app/catalog/browse`. */
+/** Full clips library (search, filters, grid) — “See all in library”. Playlists: `?view=playlists`. */
 export const APP_CATALOG_CLIPS_GRID = '/app/catalog?view=clips';
 
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
