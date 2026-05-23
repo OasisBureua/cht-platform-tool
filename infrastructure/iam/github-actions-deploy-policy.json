@@ -57,6 +57,17 @@
       ]
     },
     {
+      "Sid": "TerraformStateLock",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:233636046512:table/cht-platform-terraform-locks"
+    },
+    {
       "Sid": "FrontendDeploy",
       "Effect": "Allow",
       "Action": [
