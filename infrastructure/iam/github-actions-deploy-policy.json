@@ -130,7 +130,6 @@
         "guardduty:*",
         "ec2:*",
         "ecs:*",
-        "elasticache:*",
         "elasticloadbalancing:*",
         "events:*",
         "kms:*",
