@@ -2,6 +2,25 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "DenyDangerousIAM",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:CreateAccessKey",
+        "iam:DeleteAccessKey",
+        "iam:UpdateAccessKey",
+        "iam:CreateLoginProfile",
+        "iam:UpdateLoginProfile",
+        "iam:DeleteLoginProfile",
+        "iam:AttachUserPolicy",
+        "iam:DetachUserPolicy",
+        "iam:PutUserPolicy",
+        "iam:DeleteUserPolicy"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "ECRAuth",
       "Effect": "Allow",
       "Action": ["ecr:GetAuthorizationToken"],
@@ -24,36 +43,12 @@
       "Resource": "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*"
     },
     {
-      "Sid": "ECSDeploy",
+      "Sid": "PlatformS3",
       "Effect": "Allow",
-      "Action": [
-        "ecs:DescribeServices",
-        "ecs:DescribeTaskDefinition",
-        "ecs:RegisterTaskDefinition",
-        "ecs:UpdateService",
-        "ecs:DescribeClusters",
-        "ecs:ListTasks",
-        "ecs:DescribeTasks"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "ECSPassRole",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::233636046512:role/cht-platform-*"
-    },
-    {
-      "Sid": "TerraformState",
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:ListBucket"
-      ],
+      "Action": "s3:*",
       "Resource": [
-        "arn:aws:s3:::cht-platform-terraform-state",
-        "arn:aws:s3:::cht-platform-terraform-state/*"
+        "arn:aws:s3:::cht-platform-*",
+        "arn:aws:s3:::cht-platform-*/*"
       ]
     },
     {
@@ -68,33 +63,70 @@
       "Resource": "arn:aws:dynamodb:us-east-1:233636046512:table/cht-platform-terraform-locks"
     },
     {
-      "Sid": "FrontendDeploy",
+      "Sid": "PlatformIAMRoles",
       "Effect": "Allow",
       "Action": [
-        "s3:ListBucket",
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject"
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:UpdateRole",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:ListPolicyVersions",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:TagPolicy",
+        "iam:UntagPolicy",
+        "iam:PassRole"
       ],
       "Resource": [
-        "arn:aws:s3:::cht-platform-frontend",
-        "arn:aws:s3:::cht-platform-frontend/*",
-        "arn:aws:s3:::cht-platform-staging-frontend",
-        "arn:aws:s3:::cht-platform-staging-frontend/*"
+        "arn:aws:iam::233636046512:role/cht-platform-*",
+        "arn:aws:iam::233636046512:policy/cht-platform-*",
+        "arn:aws:iam::233636046512:policy/GitHubActions-CHT-Platform-Deploy"
       ]
     },
     {
-      "Sid": "CloudFrontInvalidate",
+      "Sid": "TerraformInfrastructure",
       "Effect": "Allow",
       "Action": [
-        "cloudfront:CreateInvalidation",
-        "cloudfront:GetInvalidation",
-        "cloudfront:ListInvalidations"
+        "acm:Describe*",
+        "acm:Get*",
+        "acm:List*",
+        "application-autoscaling:*",
+        "cloudfront:*",
+        "cloudtrail:*",
+        "cloudwatch:*",
+        "ec2:*",
+        "ecs:*",
+        "elasticache:*",
+        "elasticloadbalancing:*",
+        "events:*",
+        "kms:*",
+        "logs:*",
+        "rds:*",
+        "route53:*",
+        "secretsmanager:*",
+        "sns:*",
+        "sqs:*",
+        "wafv2:*",
+        "sts:GetCallerIdentity",
+        "tag:GetResources"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "LogsRead",
+      "Sid": "DeployLogsRead",
       "Effect": "Allow",
       "Action": [
         "logs:DescribeLogGroups",
@@ -103,49 +135,6 @@
         "logs:FilterLogEvents"
       ],
       "Resource": "arn:aws:logs:us-east-1:233636046512:log-group:/ecs/cht-platform*"
-    },
-    {
-      "Sid": "TerraformRead",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:Describe*",
-        "elasticloadbalancing:Describe*",
-        "rds:Describe*",
-        "elasticache:Describe*",
-        "sqs:GetQueueAttributes",
-        "sqs:ListQueues",
-        "kms:DescribeKey",
-        "kms:ListAliases",
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:PutSecretValue",
-        "secretsmanager:UpdateSecret",
-        "route53:ListHostedZones",
-        "route53:GetHostedZone",
-        "route53:ChangeResourceRecordSets",
-        "route53:ListResourceRecordSets",
-        "wafv2:GetWebACL",
-        "wafv2:ListWebACLs",
-        "sns:Publish",
-        "events:DescribeRule",
-        "events:PutRule",
-        "events:PutTargets",
-        "events:RemoveTargets",
-        "events:DeleteRule",
-        "events:ListTargetsByRule",
-        "application-autoscaling:Describe*",
-        "application-autoscaling:RegisterScalableTarget",
-        "application-autoscaling:PutScalingPolicy",
-        "application-autoscaling:DeleteScalingPolicy",
-        "application-autoscaling:DeregisterScalableTarget",
-        "iam:GetRole",
-        "iam:GetPolicy",
-        "iam:GetPolicyVersion",
-        "iam:ListRolePolicies",
-        "iam:ListAttachedRolePolicies",
-        "sts:GetCallerIdentity"
-      ],
-      "Resource": "*"
     }
   ]
 }

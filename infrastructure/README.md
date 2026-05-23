@@ -258,7 +258,7 @@ cp -r environments/dev environments/prod
 
 ### GitHub Actions IAM
 - Workflows use **OIDC** (`AWS_ROLE_ARN`), not long-lived access keys.
-- Scoped deploy permissions live in `iam/github-actions-deploy-policy.json`.
+- Scoped deploy permissions live in `iam/github-actions-deploy-policy.json` (ECR, platform S3 buckets, Terraform infra services, `cht-platform-*` IAM roles; denies IAM user/access-key creation).
 - To apply on an existing role, re-run `aws-github-oidc-setup.sh` or attach the policy manually and detach `AdministratorAccess`.
 
 ### Secrets hygiene
