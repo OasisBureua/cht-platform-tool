@@ -18,7 +18,7 @@ export class DashboardService {
   ) {}
 
   /**
-   * Get user's earnings breakdown (DB only, no Redis)
+   * Get user's earnings breakdown
    */
   async getEarnings(userId: string): Promise<EarningsResponseDto> {
     this.logger.log(`Fetching earnings from database for user: ${userId}`);
@@ -64,7 +64,7 @@ export class DashboardService {
   }
 
   /**
-   * Get user's activity statistics (DB only, no Redis)
+   * Get user's activity statistics
    */
   async getStats(userId: string): Promise<StatsResponseDto> {
     this.logger.log(`Fetching stats from database for user: ${userId}`);

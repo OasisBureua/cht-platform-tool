@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TerminusModule } from '@nestjs/terminus';
 import { HealthController } from './health.controller';
 import { PrismaHealthIndicator } from './prisma.health';
-import { RedisHealthIndicator } from './redis.health';
 
 describe('HealthController', () => {
   let controller: HealthController;
@@ -18,12 +17,6 @@ describe('HealthController', () => {
             isHealthy: jest
               .fn()
               .mockResolvedValue({ database: { status: 'up' } }),
-          },
-        },
-        {
-          provide: RedisHealthIndicator,
-          useValue: {
-            isHealthy: jest.fn().mockResolvedValue({ redis: { status: 'up' } }),
           },
         },
       ],

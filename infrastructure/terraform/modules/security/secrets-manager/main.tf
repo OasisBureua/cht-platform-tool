@@ -1,12 +1,6 @@
 # =============================================================================
 # Secrets Manager - Master Credentials
 # =============================================================================
-# All master credentials flow through Secrets Manager:
-# - Database: RDS username, password, endpoint, connection string (from module.rds)
-# - Redis: ElastiCache host, port (from module.elasticache)
-# - App: Bill.com, Supabase, YouTube, Zoom API keys (from tfvars / TF_VAR_*)
-# ECS tasks pull these via valueFrom in container_definitions.
-# =============================================================================
 
 locals {
   prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
@@ -34,28 +28,6 @@ resource "aws_secretsmanager_secret_version" "database" {
     port     = var.db_port
     dbname   = var.db_name
     url      = var.db_connection_string
-  })
-}
-
-# Redis connection (master from ElastiCache)
-resource "aws_secretsmanager_secret" "redis" {
-  name                    = "${local.prefix}-redis-connection"
-  description             = "Redis connection details for ${var.project} ${var.environment}"
-  kms_key_id              = var.kms_key_id
-  recovery_window_in_days = 30
-
-  tags = {
-    Name        = "${local.prefix}-redis-connection"
-    Environment = var.environment
-  }
-}
-
-resource "aws_secretsmanager_secret_version" "redis" {
-  secret_id = aws_secretsmanager_secret.redis.id
-  secret_string = jsonencode({
-    host = var.redis_endpoint
-    # Store port as string so ECS env injection and backend parsing are unambiguous
-    port = tostring(var.redis_port)
   })
 }
 

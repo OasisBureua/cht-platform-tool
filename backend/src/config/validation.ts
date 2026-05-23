@@ -48,11 +48,6 @@ export const validationSchema = Joi.object({
   // SQS (payment queue - optional for local dev)
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
 
-  // Redis
-  REDIS_HOST: Joi.string().default('localhost'),
-  REDIS_PORT: Joi.number().default(6379),
-  REDIS_TLS: Joi.string().valid('true', 'false', '1', '0').optional(),
-
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
 

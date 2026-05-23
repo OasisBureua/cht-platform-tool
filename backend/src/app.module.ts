@@ -9,7 +9,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
-import { RedisModule } from './redis/redis.module';
 import { QueueModule } from './queue/queue.module';
 import { AuthModule } from './auth/auth.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
@@ -60,7 +59,6 @@ import { validationSchema } from './config/validation';
     ]),
     PrismaModule,
     HealthModule,
-    RedisModule,
     QueueModule,
     AuthModule,
     DashboardModule,

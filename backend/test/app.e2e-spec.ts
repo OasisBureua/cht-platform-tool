@@ -4,7 +4,6 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
 import { PrismaService } from './../src/prisma/prisma.service';
-import { RedisService } from './../src/redis/redis.service';
 
 const mockPrismaService = {
   $connect: jest.fn().mockResolvedValue(undefined),
@@ -12,15 +11,6 @@ const mockPrismaService = {
   $queryRaw: jest.fn().mockResolvedValue([{ 1: 1 }]),
   onModuleInit: jest.fn().mockResolvedValue(undefined),
   onModuleDestroy: jest.fn().mockResolvedValue(undefined),
-};
-
-const mockRedisService = {
-  set: jest.fn().mockResolvedValue(undefined),
-  get: jest.fn().mockResolvedValue('mock-value'),
-  del: jest.fn().mockResolvedValue(undefined),
-  onModuleDestroy: jest.fn().mockResolvedValue(undefined),
-  keys: { session: (id: string) => `session:${id}` },
-  ttl: { session: 10800 },
 };
 
 describe('App (e2e)', () => {
@@ -32,8 +22,6 @@ describe('App (e2e)', () => {
     })
       .overrideProvider(PrismaService)
       .useValue(mockPrismaService)
-      .overrideProvider(RedisService)
-      .useValue(mockRedisService)
       .compile();
 
     app = moduleFixture.createNestApplication();

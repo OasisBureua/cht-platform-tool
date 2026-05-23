@@ -51,17 +51,6 @@ variable "rds_backup_retention" {
   type        = number
 }
 
-# Cache
-variable "redis_node_type" {
-  description = "ElastiCache node type"
-  type        = string
-}
-
-variable "redis_num_nodes" {
-  description = "Number of cache nodes"
-  type        = number
-}
-
 # Compute - Backend
 variable "backend_task_cpu" {
   description = "Backend task CPU"

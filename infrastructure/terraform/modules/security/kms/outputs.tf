@@ -8,16 +8,6 @@ output "rds_kms_key_arn" {
   value       = aws_kms_key.rds.arn
 }
 
-output "elasticache_kms_key_id" {
-  description = "Elasticache KMS key ID"
-  value       = aws_kms_key.elasticache.id
-}
-
-output "elasticache_kms_key_arn" {
-  description = "Elasticache KMS key ARN"
-  value       = aws_kms_key.elasticache.arn
-}
-
 output "s3_kms_key_id" {
   description = "S3 KMS key ID"
   value       = aws_kms_key.s3.id

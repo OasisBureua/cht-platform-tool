@@ -16,10 +16,6 @@ rds_allocated_storage   = 20
 rds_multi_az            = false
 rds_backup_retention    = 7
 
-# Cache (600 users, non-simultaneous)
-redis_node_type         = "cache.t3.small"
-redis_num_nodes         = 1
-
 # Compute (scaled up for higher load)
 backend_task_cpu        = 512
 backend_task_memory     = 1024

@@ -54,21 +54,6 @@ resource "aws_cloudwatch_dashboard" "main" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/ElastiCache", "CPUUtilization", { stat = "Average" }],
-            [".", "NetworkBytesIn", { stat = "Sum" }],
-            [".", "NetworkBytesOut", { stat = "Sum" }],
-            [".", "CurrConnections", { stat = "Average" }]
-          ]
-          period = 300
-          stat   = "Average"
-          region = var.aws_region
-          title  = "ElastiCache Metrics"
-        }
-      },
-      {
-        type = "metric"
-        properties = {
-          metrics = [
             ["AWS/SQS", "ApproximateNumberOfMessagesVisible", { stat = "Average" }],
             [".", "ApproximateAgeOfOldestMessage", { stat = "Maximum" }],
             [".", "NumberOfMessagesSent", { stat = "Sum" }],

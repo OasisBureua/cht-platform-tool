@@ -57,7 +57,7 @@ echo "3️⃣  Infrastructure Structure"
 REQUIRED_MODULES=(
   "networking/vpc" "networking/alb" "networking/cloudfront" "networking/route53"
   "compute/ecs-cluster" "compute/ecs-backend" "compute/ecs-worker"
-  "database/rds" "cache/elasticache" "storage/s3-frontend" "storage/s3-certificates"
+  "database/rds" "storage/s3-frontend" "storage/s3-certificates"
   "security/kms" "security/iam" "security/secrets-manager" "messaging/sqs" "monitoring/cloudwatch"
 )
 for module in "${REQUIRED_MODULES[@]}"; do

@@ -107,24 +107,6 @@ module "rds" {
 }
 
 # ============================================
-# Cache - ElastiCache Redis
-# ============================================
-module "elasticache" {
-  source = "../../modules/cache/elasticache"
-
-  project                 = var.project
-  environment             = var.environment
-  vpc_id                  = module.vpc.vpc_id
-  private_subnet_ids      = module.vpc.private_subnet_ids
-  allowed_security_groups = [module.ecs_backend.security_group_id]
-  kms_key_arn             = module.kms.elasticache_kms_key_arn
-  cloudwatch_kms_key_arn  = module.kms.cloudwatch_kms_key_arn
-  node_type               = var.redis_node_type
-  num_cache_nodes         = var.redis_num_nodes
-  log_retention_days      = local.log_retention_days
-}
-
-# ============================================
 # Storage - S3 Buckets
 # ============================================
 module "s3_frontend" {
@@ -200,9 +182,6 @@ module "secrets" {
   db_name              = module.rds.db_name
   db_connection_string = module.rds.db_connection_string
 
-  redis_endpoint = module.elasticache.redis_endpoint
-  redis_port     = module.elasticache.redis_port
-
   supabase_url                              = var.supabase_url
   supabase_anon_key                         = var.supabase_anon_key
   gotrue_jwt_secret                         = var.gotrue_jwt_secret
@@ -241,7 +220,6 @@ module "iam" {
   environment = var.environment
   secrets_arns = [
     module.secrets.database_secret_arn,
-    module.secrets.redis_secret_arn,
     module.secrets.app_secrets_arn
   ]
   kms_key_arns = [
@@ -306,7 +284,6 @@ module "ecs_backend" {
   log_group_name        = module.ecs_cluster.log_group_name
   container_image       = var.backend_image
   database_secret_arn   = module.secrets.database_secret_arn
-  redis_secret_arn      = module.secrets.redis_secret_arn
   app_secrets_arn       = module.secrets.app_secrets_arn
   task_cpu              = var.backend_task_cpu
   task_memory           = var.backend_task_memory
