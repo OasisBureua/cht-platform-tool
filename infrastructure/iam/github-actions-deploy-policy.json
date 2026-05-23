@@ -107,6 +107,8 @@
         "cloudfront:*",
         "cloudtrail:*",
         "cloudwatch:*",
+        "config:*",
+        "guardduty:*",
         "ec2:*",
         "ecs:*",
         "elasticache:*",

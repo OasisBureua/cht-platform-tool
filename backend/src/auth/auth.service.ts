@@ -154,6 +154,12 @@ export class AuthService {
     return token;
   }
 
+  async revokeSession(sessionToken: string): Promise<void> {
+    const token = sessionToken.trim();
+    if (!token) return;
+    await this.prisma.session.deleteMany({ where: { token } });
+  }
+
   /**
    * Get chatbot token (GoTrue JWT) for the given session. Returns null if not stored.
    */

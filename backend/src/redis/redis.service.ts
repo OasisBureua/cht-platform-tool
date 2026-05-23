@@ -32,8 +32,8 @@ export class RedisService implements OnModuleDestroy {
         port: redisPort,
         tls: useTls
           ? {
+              servername: redisHost,
               rejectUnauthorized,
-              checkServerIdentity: () => undefined,
             }
           : undefined,
         connectTimeout: 20000,

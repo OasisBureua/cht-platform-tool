@@ -119,9 +119,11 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-const SESSION_TOKEN_KEY = 'cht-session-token';
 const DEV_USER_KEY = 'cht-dev-user-id';
-const ACCESS_TOKEN_KEY = 'cht-access-token';
+
+function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetch(url, { credentials: 'include', ...init });
+}
 
 function BackendAuthProvider({ children }: { children: ReactNode }) {
   if (import.meta.env.VITE_DISABLE_AUTH === 'true') {
@@ -129,13 +131,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   }
 
   const apiUrl = resolveApiBaseUrl();
-  const [sessionToken, setSessionToken] = useState<string | null>(() => {
-    try {
-      return typeof localStorage?.getItem === 'function' ? localStorage.getItem(SESSION_TOKEN_KEY) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [authMode, setAuthMode] = useState<'cookie' | 'dev' | null>(null);
   const [devUserId, setDevUserId] = useState<string>(() => {
     try {
       return typeof localStorage?.getItem === 'function' ? localStorage.getItem(DEV_USER_KEY) || '' : '';
@@ -143,28 +139,18 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       return '';
     }
   });
-  const [accessToken, setAccessToken] = useState<string | null>(() => {
-    try {
-      return typeof localStorage?.getItem === 'function' ? localStorage.getItem(ACCESS_TOKEN_KEY) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const userId = sessionToken ? 'session' : devUserId;
-
   useEffect(() => {
     try {
-      if (typeof localStorage?.setItem === 'function' && typeof localStorage?.removeItem === 'function') {
-        if (sessionToken) localStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
-        else localStorage.removeItem(SESSION_TOKEN_KEY);
-      }
+      localStorage?.removeItem?.('cht-session-token');
+      localStorage?.removeItem?.('cht-access-token');
     } catch {
-      /* ignore */
+      /* ignore legacy tokens */
     }
-  }, [sessionToken]);
+  }, []);
 
   useEffect(() => {
     try {
@@ -178,100 +164,75 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   }, [devUserId]);
 
   useEffect(() => {
-    try {
-      if (typeof localStorage?.setItem === 'function' && typeof localStorage?.removeItem === 'function') {
-        if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-        else localStorage.removeItem(ACCESS_TOKEN_KEY);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [accessToken]);
-
-  useEffect(() => {
-    if (!userId || userId === 'session') {
-      if (userId === 'session') {
-        setIsLoading(true);
-        fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-          cache: 'no-store',
-          headers: {
-            Authorization: `Bearer ${sessionToken}`,
-            'X-Session-Token': sessionToken,
-          },
-        })
-          .then((res) => (res.ok ? res.json() : null))
-          .then((data) => {
-            if (data?.userId) {
-              setProfile({
-                userId: data.userId,
-                email: data.email,
-                name: data.name,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                role: data.role,
-                profileComplete: data.profileComplete ?? true,
-              });
-            } else {
-              setSessionToken(null);
-              setProfile(null);
-            }
-          })
-          .catch(() => {
-            setSessionToken(null);
-            setProfile(null);
-          })
-          .finally(() => setIsLoading(false));
-      } else {
-        setProfile(null);
-        setIsLoading(false);
-      }
-      return;
-    }
     let cancelled = false;
     setIsLoading(true);
-    fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-      headers: { 'X-Dev-User-Id': devUserId },
-    })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (!cancelled && data?.userId) {
-          setProfile({
-            userId: data.userId,
-            email: data.email,
-            name: data.name,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            role: data.role,
-            profileComplete: data.profileComplete ?? true,
-          });
-        } else if (!cancelled) {
-          setDevUserId('');
-          setProfile(null);
+
+    const loadProfile = async () => {
+      const meUrl = `${apiUrl.replace(/\/$/, '')}/auth/me`;
+
+      if (authMode !== 'dev') {
+        try {
+          const res = await authFetch(meUrl, { cache: 'no-store' });
+          const data = res.ok ? await res.json().catch(() => null) : null;
+          if (!cancelled && data?.userId) {
+            setAuthMode('cookie');
+            setProfile({
+              userId: data.userId,
+              email: data.email,
+              name: data.name,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              role: data.role,
+              profileComplete: data.profileComplete ?? true,
+            });
+            return;
+          }
+        } catch {
+          /* fall through */
         }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDevUserId('');
-          setProfile(null);
+      }
+
+      if (devUserId) {
+        try {
+          const res = await fetch(meUrl, { headers: { 'X-Dev-User-Id': devUserId } });
+          const data = res.ok ? await res.json().catch(() => null) : null;
+          if (!cancelled && data?.userId) {
+            setAuthMode('dev');
+            setProfile({
+              userId: data.userId,
+              email: data.email,
+              name: data.name,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              role: data.role,
+              profileComplete: data.profileComplete ?? true,
+            });
+            return;
+          }
+        } catch {
+          /* ignore */
         }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
+      }
+
+      if (!cancelled) {
+        setAuthMode(null);
+        setProfile(null);
+      }
+    };
+
+    void loadProfile().finally(() => {
+      if (!cancelled) setIsLoading(false);
+    });
+
     return () => {
       cancelled = true;
     };
-  }, [userId, sessionToken, devUserId, apiUrl]);
+  }, [authMode, devUserId, apiUrl]);
 
   const refreshProfile = useCallback(async () => {
-    if (userId === 'session' && sessionToken) {
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${sessionToken}`,
-          'X-Session-Token': sessionToken,
-        },
-      });
+    const meUrl = `${apiUrl.replace(/\/$/, '')}/auth/me`;
+    if (authMode === 'cookie') {
+      const res = await authFetch(meUrl, { cache: 'no-store' });
       const data = await res.json().catch(() => null);
       if (data?.userId) {
         setProfile({
@@ -284,10 +245,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           profileComplete: data.profileComplete ?? true,
         });
       }
-    } else if (devUserId) {
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/me`, {
-        headers: { 'X-Dev-User-Id': devUserId },
-      });
+    } else if (authMode === 'dev' && devUserId) {
+      const res = await fetch(meUrl, { headers: { 'X-Dev-User-Id': devUserId } });
       const data = await res.json().catch(() => null);
       if (data?.userId) {
         setProfile({
@@ -301,10 +260,10 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         });
       }
     }
-  }, [userId, sessionToken, devUserId, apiUrl]);
+  }, [authMode, devUserId, apiUrl]);
 
   const user: AuthUser | null =
-    userId && userId !== 'session'
+    authMode === 'dev' && devUserId
       ? profile || { userId: devUserId, email: '', name: 'User' }
       : profile;
 
@@ -314,7 +273,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       const timeout = setTimeout(() => controller.abort(), 30000);
       let res: Response;
       try {
-        res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/login`, {
+        res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: (email || '').trim(), password: password || '' }),
@@ -336,7 +295,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.session_token) {
-        setSessionToken(data.session_token);
+        setAuthMode('cookie');
         setDevUserId('');
         setAccessToken(data.access_token ?? null);
         setProfile({
@@ -348,11 +307,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           role: data.role,
           profileComplete: data.profileComplete ?? true,
         });
-        // Keep isLoading true until /api/auth/me validates - prevents app from rendering
-        // and making API calls before authHeaderGetter is updated (which caused 401 → redirect)
-        setIsLoading(true);
       } else if (data.userId) {
-        setSessionToken(null);
+        setAuthMode('dev');
         setAccessToken(null);
         setDevUserId(data.userId);
         setProfile({
@@ -370,11 +326,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const loginOAuth = useCallback(
-    async (accessToken: string) => {
-      const token = (accessToken || '').trim();
+    async (accessTokenValue: string) => {
+      const token = (accessTokenValue || '').trim();
       if (!token) return { error: { message: 'Access token is required.' } };
 
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/login-oauth`, {
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/login-oauth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ access_token: token }),
@@ -386,7 +342,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.session_token) {
-        setSessionToken(data.session_token);
+        setAuthMode('cookie');
         setDevUserId('');
         setAccessToken(data.access_token ?? null);
         setProfile({
@@ -398,7 +354,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           role: data.role,
           profileComplete: data.profileComplete ?? true,
         });
-        setIsLoading(true);
         return { profileComplete: data.profileComplete ?? true, role: data.role as string | undefined };
       }
       return { error: { message: 'Login failed.' } };
@@ -468,15 +423,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    setSessionToken(null);
+    void authFetch(`${apiUrl.replace(/\/$/, '')}/auth/logout`, { method: 'POST' }).catch(() => {});
+    setAuthMode(null);
     setDevUserId('');
     setAccessToken(null);
     setProfile(null);
     try {
       if (typeof localStorage?.removeItem === 'function') {
-        localStorage.removeItem(SESSION_TOKEN_KEY);
         localStorage.removeItem(DEV_USER_KEY);
-        localStorage.removeItem(ACCESS_TOKEN_KEY);
       }
       if (typeof sessionStorage?.removeItem === 'function') {
         sessionStorage.removeItem('cht-profile-reminder-seen');
@@ -484,17 +438,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [apiUrl]);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    if (sessionToken) {
-      return { Authorization: `Bearer ${sessionToken}` };
-    }
-    if (devUserId) {
+    if (authMode === 'dev' && devUserId) {
       return { 'X-Dev-User-Id': devUserId };
     }
     return {};
-  }, [sessionToken, devUserId]);
+  }, [authMode, devUserId]);
 
   const value: AuthContextValue = {
     user,

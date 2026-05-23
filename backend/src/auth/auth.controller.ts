@@ -6,13 +6,19 @@ import {
   UseGuards,
   Logger,
   Req,
+  Res,
 } from '@nestjs/common';
-import type { Request } from 'express';
+import type { Request, Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
+import {
+  clearSessionCookie,
+  getSessionTokenFromRequest,
+  setSessionCookie,
+} from './session-cookie';
 
 /** Supabase/GoTrue external call timeout (ms). Prevents login hanging on slow/unreachable auth. */
 const SUPABASE_FETCH_TIMEOUT_MS = 15000;
@@ -53,6 +59,12 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
   ) {}
+
+  private attachSessionCookie(res: ExpressResponse, sessionToken: string): void {
+    const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
+    const nodeEnv = this.configService.get<string>('nodeEnv');
+    setSessionCookie(res, sessionToken, ttl, nodeEnv);
+  }
 
   /**
    * POST /api/auth/signup
@@ -186,6 +198,7 @@ export class AuthController {
   @Post('login-oauth')
   async loginOAuth(
     @Body('access_token') accessToken: string,
+    @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
     const token = accessToken?.trim();
     if (!token) {
@@ -265,6 +278,7 @@ export class AuthController {
     this.logger.log(
       `[Auth] OAuth login success: userId=${user.userId} email=${user.email}`,
     );
+    this.attachSessionCookie(res, sessionToken);
     return {
       session_token: sessionToken,
       access_token: token,
@@ -287,6 +301,7 @@ export class AuthController {
   async login(
     @Body('email') email: string,
     @Body('password') password: string,
+    @Res({ passthrough: true }) expressRes: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
@@ -384,6 +399,7 @@ export class AuthController {
       this.logger.log(
         `[Auth] Supabase login success: userId=${user.userId} email=${user.email} total=${Date.now() - loginStart}ms`,
       );
+      this.attachSessionCookie(expressRes, sessionToken);
       return {
         session_token: sessionToken,
         access_token: data.access_token,
@@ -414,6 +430,7 @@ export class AuthController {
     this.logger.log(
       `[Auth] Dev login success: userId=${user.userId} email=${user.email}`,
     );
+    this.attachSessionCookie(expressRes, sessionToken);
     return {
       session_token: sessionToken,
       userId: user.userId,
@@ -483,6 +500,16 @@ export class AuthController {
     return {};
   }
 
+  @Post('logout')
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (sessionToken) {
+      await this.authService.revokeSession(sessionToken);
+    }
+    clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
+    return { ok: true };
+  }
+
   /**
    * GET /api/auth/chatbot-token
    * Returns GoTrue JWT for chatbot (unlimited queries). Requires session auth.
@@ -490,14 +517,9 @@ export class AuthController {
   @Get('chatbot-token')
   @UseGuards(JwtAuthGuard)
   async getChatbotToken(@CurrentUser() user: AuthUser, @Req() req: Request) {
-    const raw =
-      req.headers['x-session-token'] ??
-      (req.headers.authorization?.startsWith?.('Bearer ')
-        ? req.headers.authorization.slice(7).trim()
-        : null);
-    const sessionToken = Array.isArray(raw) ? raw[0] : raw;
-    if (!sessionToken || typeof sessionToken !== 'string')
-      return { token: null };
+    void user;
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { token: null };
     const token = await this.authService.getChatbotToken(sessionToken);
     return { token };
   }

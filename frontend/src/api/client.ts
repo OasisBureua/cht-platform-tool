@@ -3,6 +3,7 @@ import { resolveApiBaseUrl } from '../config/app-urls';
 
 const apiClient = axios.create({
   baseURL: resolveApiBaseUrl(),
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },

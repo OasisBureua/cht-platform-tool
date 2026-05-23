@@ -20,8 +20,8 @@ export default function ChatBot() {
     }
     const apiUrl = resolveApiBaseUrl();
     getAuthHeaders().then((headers) => {
-      if (!headers['Authorization'] && !headers['X-Dev-User-Id']) return;
       fetch(`${apiUrl.replace(/\/$/, '')}/auth/chatbot-token`, {
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json', ...headers },
       })
         .then((r) => r.json())

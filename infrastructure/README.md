@@ -269,6 +269,7 @@ cp -r environments/dev environments/prod
 
 ### Audit logging
 - **AWS CloudTrail** (Terraform module `monitoring/cloudtrail`) records management events to S3 and CloudWatch.
+- **GuardDuty** + **AWS Config** (Terraform modules `monitoring/guardduty`, `monitoring/aws-config`) for threat detection and compliance rules.
 - **Admin API mutations** are logged to the `AdminAuditLog` database table.
 - CloudWatch log retention is **365 days** for platform/staging/production environments.
 
