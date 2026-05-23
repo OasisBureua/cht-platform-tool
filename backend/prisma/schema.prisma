@@ -601,3 +601,24 @@ model AnalyticsEvent {
   @@index([timestamp])
   @@map("AnalyticsEvent")
 }
+
+// ============================================================================
+// ADMIN AUDIT LOG (SOC 2 — admin mutation trail)
+// ============================================================================
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorEmail String?
+  action     String
+  resource   String?
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([resource, resourceId])
+  @@map("AdminAuditLog")
+}

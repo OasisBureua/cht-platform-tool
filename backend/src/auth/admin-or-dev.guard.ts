@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import { isProductionEnv } from '../utils/is-production-env';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
 
@@ -22,7 +23,7 @@ export class AdminOrDevGuard implements CanActivate {
       return true;
     }
 
-    if (request.headers[DEV_USER_HEADER]) {
+    if (!isProductionEnv() && request.headers[DEV_USER_HEADER]) {
       return true;
     }
 

@@ -6,6 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
+import { isProductionEnv } from '../utils/is-production-env';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
 const SESSION_HEADER = 'x-session-token';
@@ -52,10 +53,19 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (this.isJwtAuthConfigured()) {
       return super.canActivate(context) as Promise<boolean>;
     }
+
+    if (isProductionEnv()) {
+      throw new UnauthorizedException('Authentication is not configured for production');
+    }
+
     return this.devBypass(context);
   }
 
   private async devBypass(context: ExecutionContext): Promise<boolean> {
+    if (isProductionEnv()) {
+      throw new UnauthorizedException('Dev auth bypass is disabled in production');
+    }
+
     const request = context.switchToHttp().getRequest();
     const devUserId = request.headers[DEV_USER_HEADER];
 

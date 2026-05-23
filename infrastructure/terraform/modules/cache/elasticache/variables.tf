@@ -56,3 +56,9 @@ variable "snapshot_retention_limit" {
   type        = number
   default     = 5
 }
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention for Redis logs"
+  type        = number
+  default     = 7
+}

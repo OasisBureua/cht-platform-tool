@@ -33,7 +33,8 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  resource_prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  resource_prefix    = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  log_retention_days = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
 }
 
 # ============================================
@@ -61,6 +62,7 @@ module "vpc" {
   enable_nat_gateway     = true
   enable_flow_logs       = true
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
+  log_retention_days     = local.log_retention_days
 }
 
 # ============================================
@@ -118,6 +120,7 @@ module "elasticache" {
   cloudwatch_kms_key_arn  = module.kms.cloudwatch_kms_key_arn
   node_type               = var.redis_node_type
   num_cache_nodes         = var.redis_num_nodes
+  log_retention_days      = local.log_retention_days
 }
 
 # ============================================
@@ -277,7 +280,7 @@ module "ecs_cluster" {
   project                   = var.project
   environment               = var.environment
   enable_container_insights = true
-  log_retention_days        = (var.environment == "prod" || var.environment == "platform") ? 7 : 3
+  log_retention_days        = local.log_retention_days
   cloudwatch_kms_key_arn    = module.kms.cloudwatch_kms_key_arn
 }
 
@@ -428,4 +431,18 @@ module "cloudwatch" {
   alb_arn_suffix = split("/", module.alb.alb_arn)[3]
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = module.sns_alerts.topic_arn
+}
+
+# ============================================
+# Monitoring - CloudTrail (audit logging)
+# ============================================
+module "cloudtrail" {
+  source = "../../modules/monitoring/cloudtrail"
+
+  project                = var.project
+  environment            = var.environment
+  aws_account_id         = data.aws_caller_identity.current.account_id
+  s3_kms_key_arn         = module.kms.s3_kms_key_arn
+  cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
+  log_retention_days     = local.log_retention_days
 }

@@ -254,6 +254,24 @@ cp -r environments/dev environments/prod
 - Verify ElastiCache security group
 - Check REDIS_HOST/PORT in secrets
 
+## Security & SOC 2 (Phase 1)
+
+### GitHub Actions IAM
+- Workflows use **OIDC** (`AWS_ROLE_ARN`), not long-lived access keys.
+- Scoped deploy permissions live in `iam/github-actions-deploy-policy.json`.
+- To apply on an existing role, re-run `aws-github-oidc-setup.sh` or attach the policy manually and detach `AdministratorAccess`.
+
+### Secrets hygiene
+- Never commit `.env`, `platform.tfvars`, or credential files (they are gitignored).
+- Store deploy secrets in **GitHub Environments** (`production`, `staging`), not repository-level secrets where possible.
+- Rotate third-party API keys (Zoom, Bill.com, Jotform, Supabase) on a schedule and after personnel changes.
+- Use `scripts/verify-github-env-secrets.sh` before deploys.
+
+### Audit logging
+- **AWS CloudTrail** (Terraform module `monitoring/cloudtrail`) records management events to S3 and CloudWatch.
+- **Admin API mutations** are logged to the `AdminAuditLog` database table.
+- CloudWatch log retention is **365 days** for platform/staging/production environments.
+
 ## Support
 
 For issues, see `/docs` directory or contact the DevOps team.

@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -43,6 +44,7 @@ import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
+import { AdminAuditInterceptor } from './admin-audit.interceptor';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
@@ -70,6 +72,7 @@ function lastProgramRegistrationSubmittedAtIso(r: {
 
 @ApiTags('Admin')
 @Controller('admin')
+@UseInterceptors(AdminAuditInterceptor)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
