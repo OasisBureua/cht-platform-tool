@@ -77,6 +77,7 @@
         "iam:CreateRole",
         "iam:DeleteRole",
         "iam:UpdateRole",
+        "iam:ListInstanceProfilesForRole",
         "iam:GetPolicy",
         "iam:GetPolicyVersion",
         "iam:CreatePolicy",

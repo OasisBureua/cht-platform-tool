@@ -20,10 +20,6 @@ rds_allocated_storage = 20
 rds_multi_az          = false
 rds_backup_retention  = 1
 
-# Cache — minimal sizing
-redis_node_type = "cache.t3.micro"
-redis_num_nodes = 1
-
 # Compute — small (1 task each, scale to 2 max)
 backend_task_cpu      = 256
 backend_task_memory   = 512
