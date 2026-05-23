@@ -7,7 +7,7 @@ psycopg2-binary==2.9.12
 sqlalchemy==2.0.23
 
 # HTTP (for Bill.com API)
-requests>=2.31.0
+requests>=2.34.2
 
 # Environment
 python-dotenv==1.2.2
