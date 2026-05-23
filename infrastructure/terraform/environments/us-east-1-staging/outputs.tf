@@ -47,11 +47,6 @@ output "rds_endpoint" {
   sensitive   = true
 }
 
-output "redis_endpoint" {
-  description = "Redis endpoint"
-  value       = module.elasticache.redis_endpoint
-}
-
 # Alerts
 output "sns_alerts_topic_arn" {
   description = "SNS topic ARN for alarm notifications"
