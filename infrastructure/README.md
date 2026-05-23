@@ -30,10 +30,9 @@ Complete AWS infrastructure for the CHT Platform using Terraform.
         │  └────────────────────────┘ │
         └──────────┬──────────┬───────┘
                    │          │
-        ┌──────────▼─────┐ ┌─▼──────────────┐
-        │  RDS Postgres  │ │ ElastiCache    │
-        │  (Encrypted)   │ │ Redis (KMS)    │
-        └────────────────┘ └────────────────┘
+        ┌──────────────────▼──────────────────┐
+        │         RDS Postgres (Encrypted)     │
+        └─────────────────────────────────────┘
                    
         ┌────────────────────────────────────┐
         │         SQS Queues (KMS)           │
@@ -68,9 +67,6 @@ Complete AWS infrastructure for the CHT Platform using Terraform.
 
 ### Database
 - **RDS PostgreSQL**: Encrypted database with automated backups
-
-### Cache
-- **ElastiCache Redis**: Encrypted Redis cluster
 
 ### Storage
 - **S3 Frontend**: Static website hosting
@@ -275,4 +271,4 @@ cp -r environments/dev environments/prod
 
 ## Support
 
-For issues, see `/docs` directory or contact the DevOps team.
+For issues, see [docs/](../docs/) or contact the DevOps team.

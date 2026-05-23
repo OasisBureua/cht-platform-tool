@@ -61,7 +61,6 @@ cht-platform/
 ### Infrastructure (AWS)
 - **ECS Fargate** — backend + worker containers
 - **RDS (PostgreSQL)** — primary database
-- **ElastiCache (Redis)** — caching / queue metadata
 - **SQS + DLQ** — async job processing with retry / dead-letter
 - **S3 + CloudFront** — frontend static hosting + CDN
 - **ALB** — backend load balancer
@@ -79,7 +78,7 @@ cht-platform/
 - AWS CLI (for deployment only)
 - Terraform (for infrastructure only)
 
-### 1. Start database and Redis
+### 1. Start database
 
 ```bash
 docker-compose up -d
@@ -174,25 +173,21 @@ JotForm webhooks hit `/api/jotform/webhook`. The service maps the submission to 
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full diagram and service interaction details.
+See [docs/engineering/architecture.md](docs/engineering/architecture.md) for the full diagram and service interaction details.
 
 ---
 
 ## Deployment
 
-See [docs/deployment.md](docs/deployment.md) for step-by-step deployment instructions.
+See [docs/engineering/deployment.md](docs/engineering/deployment.md) for step-by-step deployment instructions.
 
-The short version:
+**Staging** deploys automatically on push to `staging` or `feature/**` branches.
 
-```bash
-# Deploy to staging
-./scripts/deploy-primary.sh staging
+**Production** deploys on push to `release/**` branches or `v*` tags (GitHub Environment: `platform`). It does not deploy on push to `main`.
 
-# Deploy to prod
-./scripts/deploy-primary.sh prod
-```
+Manual Terraform apply: `./scripts/deploy-primary.sh platform`
 
-GitHub Actions handle CI on every PR (`pr-validation.yml`) and CD on merge to `main`/`staging`. Workflow-oriented details live in [.github/CI_CD.md](.github/CI_CD.md).
+Workflow details: [.github/CI_CD.md](.github/CI_CD.md) and [docs/engineering/deployment.md](docs/engineering/deployment.md).
 
 ---
 
@@ -221,11 +216,10 @@ Both scripts are optional — GitHub Actions remain the source of truth.
 
 | File | Description |
 |---|---|
-| [docs/getting-started.md](docs/getting-started.md) | Detailed local dev setup + env variables |
-| [docs/architecture.md](docs/architecture.md) | System architecture |
-| [docs/deployment.md](docs/deployment.md) | Deployment guide |
-| [.github/CI_CD.md](.github/CI_CD.md) | GitHub Actions workflows (dev/prod, PR validation) |
-| [docs/ZOOM-WEBINAR-PARTICIPANT-TRACKING.md](docs/ZOOM-WEBINAR-PARTICIPANT-TRACKING.md) | Zoom webhook + attendance tracking |
-| [docs/JOTFORM-SETUP.md](docs/JOTFORM-SETUP.md) | JotForm webhook configuration |
-| [docs/payment-apis.md](docs/payment-apis.md) | Bill.com payment API reference |
-| [docs/POST-MVP-ROADMAP.md](docs/POST-MVP-ROADMAP.md) | Planned features and roadmap |
+| [docs/README.md](docs/README.md) | Documentation index |
+| [docs/engineering/getting-started.md](docs/engineering/getting-started.md) | Local dev setup + env variables |
+| [docs/engineering/architecture.md](docs/engineering/architecture.md) | System architecture |
+| [docs/engineering/deployment.md](docs/engineering/deployment.md) | Staging and production deploys |
+| [docs/engineering/integrations.md](docs/engineering/integrations.md) | Auth, Zoom, JotForm, Bill.com, MediaHub |
+| [docs/compliance/](./docs/compliance/) | Incident response and disaster recovery runbooks |
+| [.github/CI_CD.md](.github/CI_CD.md) | GitHub Actions workflows |
