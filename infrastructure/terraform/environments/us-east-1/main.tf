@@ -426,7 +426,7 @@ module "cloudtrail" {
 }
 
 # ============================================
-# Monitoring - GuardDuty
+# Monitoring - GuardDuty (account-level — platform environment only)
 # ============================================
 module "guardduty" {
   source = "../../modules/monitoring/guardduty"
@@ -437,7 +437,7 @@ module "guardduty" {
 }
 
 # ============================================
-# Monitoring - AWS Config
+# Monitoring - AWS Config (account-level — platform environment only)
 # ============================================
 module "aws_config" {
   source = "../../modules/monitoring/aws-config"

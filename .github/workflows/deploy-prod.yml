@@ -71,6 +71,7 @@ jobs:
         run: |
           terraform init -backend=false
           terraform validate
+          # GuardDuty + AWS Config are account-level singletons — managed here (platform) only.
 
   deploy:
     name: Deploy to Platform

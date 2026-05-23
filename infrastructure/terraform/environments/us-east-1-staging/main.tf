@@ -424,25 +424,6 @@ module "cloudtrail" {
   log_retention_days     = local.log_retention_days
 }
 
-# ============================================
-# Monitoring - GuardDuty
-# ============================================
-module "guardduty" {
-  source = "../../modules/monitoring/guardduty"
-
-  project       = var.project
-  environment   = var.environment
-  sns_topic_arn = module.sns_alerts.topic_arn
-}
-
-# ============================================
-# Monitoring - AWS Config
-# ============================================
-module "aws_config" {
-  source = "../../modules/monitoring/aws-config"
-
-  project        = var.project
-  environment    = var.environment
-  aws_account_id = data.aws_caller_identity.current.account_id
-  s3_kms_key_arn = module.kms.s3_kms_key_arn
-}
+# GuardDuty + AWS Config are account-level (one per AWS account/region).
+# Managed in us-east-1 (platform) only — see deploy-prod.yml / deploy-primary.sh platform.
+# Do not add module "guardduty" or module "aws_config" here; staging shares the same AWS account.
