@@ -631,7 +631,8 @@ export class ProgramRegistrationsService {
         skipped.push({
           programId,
           title,
-          reason: 'This session requires choosing a time slot — open it to register',
+          reason:
+            'This session requires choosing a time slot — open it to register',
         });
         continue;
       }
@@ -650,8 +651,8 @@ export class ProgramRegistrationsService {
       } catch (err: unknown) {
         const rawMessage: string | string[] =
           err instanceof BadRequestException
-            ? ((err.getResponse() as { message?: string | string[] })?.message ??
-              err.message)
+            ? ((err.getResponse() as { message?: string | string[] })
+                ?.message ?? err.message)
             : err instanceof Error
               ? err.message
               : 'Registration failed';
@@ -971,7 +972,9 @@ export class ProgramRegistrationsService {
     emailed: number;
     skipped: { userId: string; email: string; reason: string }[];
   }> {
-    const uniqueProgramIds = [...new Set(opts.programIds.map((id) => id.trim()).filter(Boolean))];
+    const uniqueProgramIds = [
+      ...new Set(opts.programIds.map((id) => id.trim()).filter(Boolean)),
+    ];
     if (uniqueProgramIds.length === 0) {
       throw new BadRequestException('Select at least one webinar.');
     }
@@ -996,9 +999,7 @@ export class ProgramRegistrationsService {
     ).replace(/\/$/, '');
     const registerUrl = `${base}/app/live/register-multiple?programs=${programs.map((p) => p.id).join(',')}`;
 
-    let userIds = opts.userIds?.length
-      ? [...new Set(opts.userIds)]
-      : undefined;
+    let userIds = opts.userIds?.length ? [...new Set(opts.userIds)] : undefined;
     if (!userIds?.length && opts.role) {
       const users = await this.prisma.user.findMany({
         where: { role: opts.role, status: 'ACTIVE' },
@@ -1135,7 +1136,8 @@ export class ProgramRegistrationsService {
           ...(status === ProgramRegistrationStatus.PENDING &&
           previousStatus === ProgramRegistrationStatus.APPROVED
             ? {
-                postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
+                postEventAttendanceStatus:
+                  PostEventAttendanceStatus.NOT_REQUIRED,
                 postEventSurveyAcknowledgedAt: null,
                 postEventJotformSubmissionId: null,
                 honorariumRequestedAt: null,
@@ -1196,7 +1198,9 @@ export class ProgramRegistrationsService {
         if (!u?.email) {
           return;
         }
-        const joinUrlForLearner = learnerWebinarJoinUrl(reg.program.zoomJoinUrl);
+        const joinUrlForLearner = learnerWebinarJoinUrl(
+          reg.program.zoomJoinUrl,
+        );
         await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
           to: u.email,
           firstName: u.firstName || 'there',

@@ -14,12 +14,12 @@ describe('effectiveWebinarIntakeFormUrl', () => {
   });
 
   it('falls back to env default for webinars without per-program URL', () => {
-    expect(
-      effectiveWebinarIntakeFormUrl('WEBINAR', null, defaultUrl),
-    ).toBe(defaultUrl);
-    expect(
-      effectiveWebinarIntakeFormUrl('WEBINAR', '  ', defaultUrl),
-    ).toBe(defaultUrl);
+    expect(effectiveWebinarIntakeFormUrl('WEBINAR', null, defaultUrl)).toBe(
+      defaultUrl,
+    );
+    expect(effectiveWebinarIntakeFormUrl('WEBINAR', '  ', defaultUrl)).toBe(
+      defaultUrl,
+    );
   });
 
   it('does not use env default for office hours meetings', () => {
@@ -37,7 +37,11 @@ describe('effectiveWebinarIntakeFormUrl', () => {
 
   it('returns per-program URL for unknown session types', () => {
     expect(
-      effectiveWebinarIntakeFormUrl('OTHER', ' https://x.jotform.com/y ', defaultUrl),
+      effectiveWebinarIntakeFormUrl(
+        'OTHER',
+        ' https://x.jotform.com/y ',
+        defaultUrl,
+      ),
     ).toBe('https://x.jotform.com/y');
   });
 });

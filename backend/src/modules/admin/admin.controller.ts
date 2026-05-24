@@ -188,7 +188,8 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({
-    summary: 'Presign S3 PUT for session banner image (admin uploads; URL saved on program)',
+    summary:
+      'Presign S3 PUT for session banner image (admin uploads; URL saved on program)',
   })
   @ApiBody({ type: PresignSessionHeroDto })
   async presignSessionHeroUpload(@Body() dto: PresignSessionHeroDto) {
@@ -1327,9 +1328,7 @@ export class AdminController {
     summary:
       'Email learners a link to register for multiple webinars (multi-register landing page)',
   })
-  async sendRegistrationInvites(
-    @Body() body: SendRegistrationInvitesDto,
-  ) {
+  async sendRegistrationInvites(@Body() body: SendRegistrationInvitesDto) {
     return this.programRegistrations.sendRegistrationInvites({
       programIds: body.programIds,
       userIds: body.userIds,

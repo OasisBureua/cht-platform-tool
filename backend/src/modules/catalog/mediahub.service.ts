@@ -135,7 +135,8 @@ export class MediaHubService {
 
     // Platform default: 'youtube' (audit fix: LinkedIn text-only posts leak into
     // video carousels). Empty string explicitly opts out.
-    const platform = params?.platform === undefined ? 'youtube' : params.platform;
+    const platform =
+      params?.platform === undefined ? 'youtube' : params.platform;
     if (platform) searchParams.platform = platform;
 
     if (params?.sort_by) searchParams.sort_by = params.sort_by;
@@ -168,13 +169,7 @@ export class MediaHubService {
    */
   async getPlaylistTags(params?: {
     tag?: string;
-    lane?:
-      | 'biomarker'
-      | 'drug'
-      | 'trial'
-      | 'doctor_pair'
-      | 'mixed'
-      | 'archive';
+    lane?: 'biomarker' | 'drug' | 'trial' | 'doctor_pair' | 'mixed' | 'archive';
     limit?: number;
     offset?: number;
   }): Promise<MediaHubPlaylistTagList> {

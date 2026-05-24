@@ -82,7 +82,9 @@ describe('ProgramRegistrationsService', () => {
       });
       await expect(
         service.adminUndoRegistrationApproval('admin-1', 'reg-1'),
-      ).rejects.toThrow('Undo window expired. Approvals can only be undone within 15 minutes.');
+      ).rejects.toThrow(
+        'Undo window expired. Approvals can only be undone within 15 minutes.',
+      );
     });
 
     it('delegates to adminSetRegistrationStatus within the undo window', async () => {
@@ -126,7 +128,8 @@ describe('ProgramRegistrationsService', () => {
         },
       ]);
 
-      const rows = await service.listRecentlyApprovedRegistrationsForAdminUndo();
+      const rows =
+        await service.listRecentlyApprovedRegistrationsForAdminUndo();
 
       expect(prisma.programRegistration.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

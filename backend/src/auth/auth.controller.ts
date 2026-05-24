@@ -60,7 +60,10 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  private attachSessionCookie(res: ExpressResponse, sessionToken: string): void {
+  private attachSessionCookie(
+    res: ExpressResponse,
+    sessionToken: string,
+  ): void {
     const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
     const nodeEnv = this.configService.get<string>('nodeEnv');
     setSessionCookie(res, sessionToken, ttl, nodeEnv);
@@ -501,7 +504,10 @@ export class AuthController {
   }
 
   @Post('logout')
-  async logout(@Req() req: Request, @Res({ passthrough: true }) res: ExpressResponse) {
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
     const sessionToken = getSessionTokenFromRequest(req);
     if (sessionToken) {
       await this.authService.revokeSession(sessionToken);

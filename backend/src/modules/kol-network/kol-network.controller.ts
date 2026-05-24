@@ -1,4 +1,11 @@
-import { Controller, Get, Logger, NotFoundException, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Logger,
+  NotFoundException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import {
   MediaHubService,
   MediaHubKol,
@@ -35,7 +42,9 @@ export class KolNetworkController {
     @Query('offset') offset?: string,
   ): Promise<MediaHubKolList> {
     if (!this.mediahub.isConfigured()) {
-      this.logger.warn('MediaHub not configured — /kol-network returning empty');
+      this.logger.warn(
+        'MediaHub not configured — /kol-network returning empty',
+      );
       return { items: [], total: 0, regions: [], institutions: [] };
     }
     try {
@@ -48,7 +57,8 @@ export class KolNetworkController {
         offset: offset ? Number(offset) : undefined,
       });
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       this.logger.warn(
         `MediaHub /kols failed (status=${status ?? 'unknown'}) — returning empty list`,
       );
@@ -70,11 +80,14 @@ export class KolNetworkController {
     try {
       return await this.mediahub.getKol(slug);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 404) {
         throw new NotFoundException(`KOL "${slug}" not found`);
       }
-      this.logger.warn(`MediaHub /kols/${slug} failed (status=${status ?? 'unknown'})`);
+      this.logger.warn(
+        `MediaHub /kols/${slug} failed (status=${status ?? 'unknown'})`,
+      );
       throw new NotFoundException(`KOL "${slug}" not found`);
     }
   }
@@ -100,7 +113,8 @@ export class KolNetworkController {
         offset: offset ? Number(offset) : undefined,
       });
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       this.logger.warn(
         `MediaHub /kols/${slug}/publications failed (status=${status ?? 'unknown'})`,
       );

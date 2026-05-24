@@ -25,37 +25,39 @@ export function buildRegistrationRejectedEmail(
   p: RegistrationRejectedTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first   = escape(p.firstName.trim() || 'there');
-  const title   = escape(p.programTitle);
+  const first = escape(p.firstName.trim() || 'there');
+  const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = 'Community Health Media';
-  const note    = p.adminNote?.trim() ? escape(p.adminNote.trim()) : null;
+  const note = p.adminNote?.trim() ? escape(p.adminNote.trim()) : null;
 
-  const typeLabel = p.sessionKind === ProgramZoomSessionType.MEETING
-    ? 'CHM Office Hours'
-    : 'live webinar';
+  const typeLabel =
+    p.sessionKind === ProgramZoomSessionType.MEETING
+      ? 'CHM Office Hours'
+      : 'live webinar';
 
-  const { mainTextPlain, mainHtml } = p.reason === 'INCOMPLETE_INTAKE'
-    ? {
-        mainTextPlain: [
-          'Your registration for this event could not be approved because the required registration or intake step was not completed, or required survey responses are missing or incomplete.',
-          'Please return to the app, start registration again, and complete all required questions and any linked registration or survey forms. After you resubmit, your request can be reviewed again.',
-          'Submitting a complete registration does not guarantee approval; availability and program requirements still apply.',
-        ],
-        mainHtml: `
+  const { mainTextPlain, mainHtml } =
+    p.reason === 'INCOMPLETE_INTAKE'
+      ? {
+          mainTextPlain: [
+            'Your registration for this event could not be approved because the required registration or intake step was not completed, or required survey responses are missing or incomplete.',
+            'Please return to the app, start registration again, and complete all required questions and any linked registration or survey forms. After you resubmit, your request can be reviewed again.',
+            'Submitting a complete registration does not guarantee approval; availability and program requirements still apply.',
+          ],
+          mainHtml: `
           <p style="margin:0 0 12px;line-height:1.6;color:${E.BODY_TEXT}">Your registration could <strong>not</strong> be approved because the <strong>required registration or intake step was not completed</strong>, or required survey responses are missing or incomplete.</p>
           <p style="margin:0 0 12px;line-height:1.6;color:${E.BODY_TEXT}"><strong>Return to the app</strong>, start registration again, and complete all required questions and any linked forms. After you resubmit, your request can be reviewed again.</p>
           <p style="margin:0;line-height:1.6;font-size:13px;color:${E.MUTED}">Submitting a complete registration does not guarantee approval; availability and program requirements still apply.</p>`,
-      }
-    : {
-        mainTextPlain: [
-          'We are not able to approve your registration for this event at this time. This may be due to program capacity, eligibility, or internal review.',
-          'If the program allows another registration, you may try again from the app; a new request will appear as pending for review.',
-        ],
-        mainHtml: `
+        }
+      : {
+          mainTextPlain: [
+            'We are not able to approve your registration for this event at this time. This may be due to program capacity, eligibility, or internal review.',
+            'If the program allows another registration, you may try again from the app; a new request will appear as pending for review.',
+          ],
+          mainHtml: `
           <p style="margin:0 0 12px;line-height:1.6;color:${E.BODY_TEXT}">We are <strong>not able to approve</strong> your registration for this event <strong>at this time</strong>. This may be due to program capacity, eligibility, or internal review.</p>
           <p style="margin:0;line-height:1.6;color:${E.BODY_TEXT}">If the program allows another registration, you may <strong>try again from the app</strong>; a new request will appear as pending for review.</p>`,
-      };
+        };
 
   const subject = `Update on your registration — ${p.programTitle}`;
 
@@ -110,6 +112,10 @@ export function buildRegistrationRejectedEmail(
     ${emailSupportLine(support)}
   `;
 
-  const html = emailWrap({ sponsorName: sponsor, subtitle: 'Registration Update', body });
+  const html = emailWrap({
+    sponsorName: sponsor,
+    subtitle: 'Registration Update',
+    body,
+  });
   return { subject, text, html };
 }

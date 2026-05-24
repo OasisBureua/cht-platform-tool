@@ -32,7 +32,9 @@ describe('AdminController importZoomSession', () => {
     };
     programsService = { createProgram: jest.fn() };
     surveysService = {
-      createWebinarJotformPairFromTemplates: jest.fn().mockResolvedValue(undefined),
+      createWebinarJotformPairFromTemplates: jest
+        .fn()
+        .mockResolvedValue(undefined),
     };
 
     controller = new AdminController(
@@ -54,9 +56,9 @@ describe('AdminController importZoomSession', () => {
   });
 
   it('requires a zoomId', async () => {
-    await expect(controller.importZoomSession({ zoomId: '  ' })).rejects.toThrow(
-      'zoomId is required',
-    );
+    await expect(
+      controller.importZoomSession({ zoomId: '  ' }),
+    ).rejects.toThrow('zoomId is required');
   });
 
   it('returns conflict with existingProgramId when Zoom session is already linked', async () => {
@@ -126,10 +128,9 @@ describe('AdminController importZoomSession', () => {
         registrationRequiresApproval: true,
       }),
     );
-    expect(surveysService.createWebinarJotformPairFromTemplates).toHaveBeenCalledWith(
-      'prog-import-1',
-      'Zoom Webinar Title',
-    );
+    expect(
+      surveysService.createWebinarJotformPairFromTemplates,
+    ).toHaveBeenCalledWith('prog-import-1', 'Zoom Webinar Title');
     expect(result).toEqual(
       expect.objectContaining({
         id: 'prog-import-1',
@@ -163,6 +164,8 @@ describe('AdminController importZoomSession', () => {
 
     expect(zoom.getMeetingById).toHaveBeenCalledWith('555');
     expect(zoom.getWebinarById).not.toHaveBeenCalled();
-    expect(surveysService.createWebinarJotformPairFromTemplates).not.toHaveBeenCalled();
+    expect(
+      surveysService.createWebinarJotformPairFromTemplates,
+    ).not.toHaveBeenCalled();
   });
 });
