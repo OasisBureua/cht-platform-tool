@@ -14,6 +14,8 @@ jobs:
   validate:
     name: Validate PR
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
     
     steps:
       - name: Checkout code
@@ -31,6 +33,12 @@ jobs:
       - name: Backend - Install dependencies
         working-directory: ./backend
         run: npm ci
+
+      - name: Backend - Generate Prisma client
+        working-directory: ./backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
 
       - name: Backend - Security audit
         working-directory: ./backend
