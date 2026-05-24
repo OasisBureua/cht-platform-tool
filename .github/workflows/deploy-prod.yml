@@ -22,7 +22,8 @@ env:
   APP_URL: https://testapp.communityhealth.media
   API_URL: https://testapp.communityhealth.media/api
   TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
-  TF_VAR_FILE: ../variables/platform.tfvars
+  # Non-secret infra defaults; secrets override via TF_VAR_* from the platform environment.
+  TF_VAR_FILE: ../variables/platform.tfvars.example
   ECS_CLUSTER: cht-platform-cluster
   ECS_BACKEND_SERVICE: cht-platform-backend
   ECS_WORKER_SERVICE: cht-platform-worker

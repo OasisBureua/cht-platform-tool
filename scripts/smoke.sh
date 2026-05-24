@@ -7,8 +7,9 @@
 #
 # Usage:
 #   ./smoke.sh                                        # defaults to testapp
+#   ./smoke.sh testapp.communityhealth.media          # https:// added automatically
 #   ./smoke.sh https://testapp.communityhealth.media
-#   ./smoke.sh https://communityhealth.media          # when prod lands there
+#   ./smoke.sh https://staging.testapp.communityhealth.media
 #
 # Exit codes:
 #   0 = all checks passed
@@ -18,6 +19,11 @@
 set -u
 
 BASE="${1:-https://testapp.communityhealth.media}"
+# Allow `./smoke.sh testapp.communityhealth.media` — curl treats bare hosts as http:// → 301.
+BASE="${BASE%/}"
+if [[ "$BASE" != http://* && "$BASE" != https://* ]]; then
+  BASE="https://${BASE}"
+fi
 fail=0
 
 # ── 0. Base URL reachable? ──────────────────────────────────────
@@ -28,9 +34,9 @@ fi
 
 # ── 1. Health endpoints respond 200 ─────────────────────────────
 HEALTH_ENDPOINTS=(
-  "/api/health"
-  "/api/health/ready"
-  "/api/health/live"
+  "/health"
+  "/health/ready"
+  "/health/live"
 )
 for ep in "${HEALTH_ENDPOINTS[@]}"; do
   code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE$ep")
