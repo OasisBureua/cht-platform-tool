@@ -3,8 +3,9 @@
 # Capacity: 600 users (non-simultaneous) - db.t3.small sufficient
 #
 # Local: copy to platform.tfvars and fill in secrets (platform.tfvars is gitignored).
-# CI (deploy-prod.yml): uses this file for non-secret defaults; GitHub Environment
-# secrets are injected as TF_VAR_* and override empty secret values below.
+# CI (deploy-prod.yml): uses this file for non-secret defaults only.
+# Do NOT add secret variables here — -var-file beats TF_VAR_* in Terraform, so empty
+# assignments would overwrite GitHub Environment secrets during deploy.
 # Docker images are overridden at apply time via -var=backend_image/worker_image.
 
 project     = "cht-platform"
@@ -34,9 +35,7 @@ worker_desired_count = 2
 worker_min_capacity  = 2
 worker_max_capacity  = 2
 
-# SSL Certificates (testapp - issued; CI overrides via TF_VAR_acm_certificate_arn / TF_VAR_cloudfront_certificate_arn)
-acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
-cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
+# SSL Certificates — set in platform.tfvars locally or TF_VAR_* in CI (do not add empty values here)
 
 # Domain (testapp.communityhealth.media)
 domain_name = "testapp.communityhealth.media"
@@ -45,41 +44,14 @@ domain_name = "testapp.communityhealth.media"
 supabase_url      = "https://mediahub.communityhealth.media"
 mediahub_base_url = "https://mediahub.communityhealth.media/api/public"
 
-# Application secrets — set in platform.tfvars locally or TF_VAR_* in CI (never commit real values)
-supabase_anon_key    = ""
-gotrue_jwt_secret    = ""
-mediahub_api_key     = ""
-youtube_api_key      = ""
-youtube_playlist_ids = ""
-
-# Bill.com (payment processing - HCP payouts via ACH/check)
-# bill_dev_key             = ""
-# bill_username            = ""
-# bill_password            = ""
-# bill_org_id              = ""
-# bill_funding_account_id  = ""
-# bill_mfa_remember_me_id  = ""
-# bill_mfa_device_name     = "AndrewsPhone"
-# bill_webhook_secret      = ""
-
-# Zoom (Server-to-Server OAuth for webinars). Scopes: webinar:read:admin, webinar:read
-# zoom_account_id     = ""
-# zoom_client_id      = ""
-# zoom_client_secret  = ""
-# zoom_webhook_secret = ""
-# zoom_sdk_key        = ""
-# zoom_sdk_secret     = ""
-
-# jotform_api_key = ""
+# Secrets (supabase_anon_key, gotrue_jwt_secret, mediahub_api_key, youtube_*, bill_*, zoom_*, etc.)
+# → platform.tfvars locally, or GitHub Environment "platform" secrets as TF_VAR_* in CI.
 
 # Shared post-event survey (single form for all webinars)
 jotform_webinar_post_event_shared_form_id = "260698533879881"
 
 # Default webinar registration Jotform when a Program has no intake URL in Admin
 jotform_webinar_default_intake_url = "https://communityhealthmedia.jotform.com/261116295463861"
-
-# admin_bootstrap_secret = ""
-# hubspot_access_token   = ""
 
 # Worker / session reminders
 worker_ses_from_email                 = "info@communityhealth.media"
