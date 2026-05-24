@@ -42,8 +42,8 @@ if [ "$missing" -ne 0 ]; then
     echo "Check GitHub: ./scripts/verify-github-secrets.sh staging"
     echo "AWS Secrets Manager: ./scripts/bootstrap-staging-secrets-from-platform.sh"
   else
-    echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh production"
-    echo "Check GitHub: ./scripts/verify-github-secrets.sh production"
+    echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh platform"
+    echo "Check GitHub: ./scripts/verify-github-secrets.sh platform"
   fi
   exit 1
 fi
