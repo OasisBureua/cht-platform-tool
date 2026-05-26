@@ -1,4 +1,4 @@
-/** In-app podcast catalog (static until a feed/API exists). */
+/** In-app podcast catalog — static show metadata; episodes may load from YouTube. */
 
 /** CHM umbrella show — shared “Listen on” destinations under each series. */
 export const CHM_PODCAST_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
@@ -18,6 +18,12 @@ export const CHM_PODCAST_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: st
   { label: 'Goodpods', href: 'https://goodpods.com/profile/chm-111066' },
 ] as const;
 
+export const BREAST_FRIENDS_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
+  { label: 'YouTube', href: 'https://www.youtube.com/@breastfriendspodcast' },
+  { label: 'Link in bio', href: 'https://linkin.bio/breastfriendspodcast/' },
+  ...CHM_PODCAST_PLATFORM_LINKS,
+] as const;
+
 export type PodcastPlayLatest =
   | { kind: 'external'; href: string }
   | { kind: 'app'; to: string };
@@ -30,6 +36,11 @@ export type PodcastEpisode = {
   dateIso: string;
   duration: string;
   description?: string;
+  /** YouTube video id when synced from a channel */
+  videoId?: string;
+  youtubeUrl?: string;
+  thumbnailUrl?: string;
+  viewCount?: number;
 };
 
 export type PodcastShow = {
@@ -44,7 +55,12 @@ export type PodcastShow = {
   category: string;
   /** e.g. “Updated weekly”, “New season” */
   updateNote: string;
+  /** Static fallback episodes when the episodes API is unavailable */
   episodes: PodcastEpisode[];
+  /** When true, episodes load from GET /api/podcasts/:id/episodes */
+  remoteEpisodes?: boolean;
+  /** Override default CHM “Listen on” links */
+  platformLinks?: ReadonlyArray<{ label: string; href: string }>;
   /** Primary CTA for “Play latest” (defaults to CHM marketing site when omitted). */
   playLatest?: PodcastPlayLatest;
 };
@@ -58,39 +74,10 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     image: '/images/podcasts/breast-friends/cover.png',
     logo: '/images/podcasts/breast-friends/logo-with-names-full-color.png',
     category: 'Clinical · Oncology',
-    updateNote: 'Updated monthly',
-    playLatest: { kind: 'external', href: 'https://linkin.bio/breastfriendspodcast/' },
-    episodes: [
-      {
-        num: 'Ep 1',
-        title: 'Welcome to Breast Friends: Why This Podcast Exists',
-        guests: 'Community Health Media',
-        date: 'Oct 22, 2025',
-        dateIso: '2025-10-22',
-        duration: '18 min',
-        description:
-          'The first episode lays out the goal: expert oncology talk that anyone in breast cancer can actually use, without the jargon wall.',
-      },
-      {
-        num: 'Ep 2',
-        title: 'Navigating Your First Diagnosis',
-        guests: 'Community Health Media',
-        date: 'Nov 4, 2025',
-        dateIso: '2025-11-04',
-        duration: '38 min',
-        description:
-          'Questions to bring to your team, how to read a pathology report, and what HER2+ means for your case.',
-      },
-      {
-        num: 'Ep 3',
-        title: 'Treatment Options Demystified',
-        guests: 'Community Health Media',
-        date: 'Nov 18, 2025',
-        dateIso: '2025-11-18',
-        duration: '42 min',
-        description: 'Surgery, radiation, and systemic therapy in plain language, with no sales pitch.',
-      },
-    ],
+    updateNote: 'New episodes monthly',
+    remoteEpisodes: true,
+    platformLinks: BREAST_FRIENDS_PLATFORM_LINKS,
+    episodes: [],
   },
 ];
 

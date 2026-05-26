@@ -34,6 +34,7 @@ interface YouTubePlaylistItemsResponse {
   items: Array<{
     snippet: {
       title: string;
+      publishedAt?: string;
       thumbnails?: {
         high?: { url: string };
         medium?: { url: string };
@@ -49,6 +50,27 @@ export interface PlaylistVideo {
   title: string;
   thumbnailUrl: string;
   youtubeUrl: string;
+}
+
+export type YouTubeChannelVideoSort = 'latest' | 'popular' | 'oldest';
+
+export interface YouTubeChannelVideo {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  youtubeUrl: string;
+  publishedAt: string;
+  viewCount: number;
+  duration: string;
+  channelTitle: string;
+}
+
+export interface YouTubeChannelVideosResult {
+  handle: string;
+  channelTitle: string;
+  channelThumbnailUrl: string;
+  videos: YouTubeChannelVideo[];
 }
 
 @Injectable()
@@ -337,6 +359,251 @@ export class CatalogService implements OnModuleInit {
       this.logger.warn(`YouTube playlists failed: ${msg}`);
       return [];
     }
+  }
+
+  /**
+   * Get all uploads from a YouTube channel (@handle) for podcast pages.
+   * Sort: latest (publish date desc), popular (views desc), oldest (publish date asc).
+   */
+  async getYouTubeChannelVideos(
+    rawHandle: string,
+    sort: YouTubeChannelVideoSort = 'latest',
+  ): Promise<YouTubeChannelVideosResult | null> {
+    const apiKey = this.config.get<string>('youtube.apiKey');
+    if (!apiKey) return null;
+
+    const handle = rawHandle.replace(/^@+/, '').trim();
+    if (!handle) return null;
+
+    try {
+      const channel = await this.getChannelByHandle(apiKey, handle);
+      const uploadsPlaylistId =
+        channel.contentDetails?.relatedPlaylists?.uploads;
+      if (!uploadsPlaylistId) {
+        throw new Error(`Channel @${handle} has no uploads playlist`);
+      }
+
+      const playlistItems = await this.getPlaylistItemsWithPublishedAt(
+        apiKey,
+        uploadsPlaylistId,
+      );
+      if (playlistItems.length === 0) {
+        const thumb =
+          channel.snippet?.thumbnails?.high ||
+          channel.snippet?.thumbnails?.medium ||
+          channel.snippet?.thumbnails?.default;
+        return {
+          handle,
+          channelTitle: channel.snippet?.title || handle,
+          channelThumbnailUrl: thumb?.url || '',
+          videos: [],
+        };
+      }
+
+      const videoIds = playlistItems.map((i) => i.videoId);
+      const details = await this.getVideoDetails(apiKey, videoIds);
+      const detailById = new Map(details.map((d) => [d.id, d]));
+
+      const videos: YouTubeChannelVideo[] = [];
+      for (const item of playlistItems) {
+        const detail = detailById.get(item.videoId);
+        if (!detail) continue;
+        const thumb =
+          detail.snippet?.thumbnails?.high ||
+          detail.snippet?.thumbnails?.medium ||
+          detail.snippet?.thumbnails?.default;
+        videos.push({
+          id: detail.id,
+          title: detail.snippet?.title || item.title || 'Video',
+          description: detail.snippet?.description || '',
+          thumbnailUrl:
+            thumb?.url ||
+            `https://img.youtube.com/vi/${detail.id}/hqdefault.jpg`,
+          youtubeUrl: `https://www.youtube.com/watch?v=${detail.id}`,
+          publishedAt: detail.snippet?.publishedAt || item.publishedAt,
+          viewCount: parseInt(detail.statistics?.viewCount || '0', 10) || 0,
+          duration: detail.contentDetails?.duration || '',
+          channelTitle: detail.snippet?.channelTitle || channel.snippet?.title || '',
+        });
+      }
+
+      this.sortYouTubeChannelVideos(videos, sort);
+
+      const channelThumb =
+        channel.snippet?.thumbnails?.high ||
+        channel.snippet?.thumbnails?.medium ||
+        channel.snippet?.thumbnails?.default;
+
+      return {
+        handle,
+        channelTitle: channel.snippet?.title || handle,
+        channelThumbnailUrl: channelThumb?.url || '',
+        videos,
+      };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`YouTube channel @${handle} failed: ${msg}`);
+      return null;
+    }
+  }
+
+  private sortYouTubeChannelVideos(
+    videos: YouTubeChannelVideo[],
+    sort: YouTubeChannelVideoSort,
+  ) {
+    videos.sort((a, b) => {
+      if (sort === 'popular') {
+        return b.viewCount - a.viewCount;
+      }
+      const aTime = new Date(a.publishedAt).getTime();
+      const bTime = new Date(b.publishedAt).getTime();
+      return sort === 'oldest' ? aTime - bTime : bTime - aTime;
+    });
+  }
+
+  private async getChannelByHandle(
+    apiKey: string,
+    handle: string,
+  ): Promise<{
+    snippet?: {
+      title?: string;
+      thumbnails?: {
+        high?: { url: string };
+        medium?: { url: string };
+        default?: { url: string };
+      };
+    };
+    contentDetails?: { relatedPlaylists?: { uploads?: string } };
+  }> {
+    const { data } = await firstValueFrom(
+      this.http.get<{
+        items?: Array<{
+          snippet?: {
+            title?: string;
+            thumbnails?: {
+              high?: { url: string };
+              medium?: { url: string };
+              default?: { url: string };
+            };
+          };
+          contentDetails?: { relatedPlaylists?: { uploads?: string } };
+        }>;
+      }>(`${this.youtubeBase}/channels`, {
+        params: {
+          part: 'snippet,contentDetails',
+          forHandle: handle,
+          key: apiKey,
+        },
+      }),
+    );
+    const item = data?.items?.[0];
+    if (!item) throw new Error(`YouTube channel @${handle} not found`);
+    return item;
+  }
+
+  private async getPlaylistItemsWithPublishedAt(
+    apiKey: string,
+    playlistId: string,
+  ): Promise<Array<{ videoId: string; title: string; publishedAt: string }>> {
+    const items: Array<{ videoId: string; title: string; publishedAt: string }> =
+      [];
+    let pageToken: string | undefined;
+    do {
+      const { data } = await firstValueFrom(
+        this.http.get<
+          YouTubePlaylistItemsResponse & { nextPageToken?: string }
+        >(`${this.youtubeBase}/playlistItems`, {
+          params: {
+            part: 'snippet',
+            playlistId,
+            maxResults: 50,
+            pageToken: pageToken || undefined,
+            key: apiKey,
+          },
+        }),
+      );
+      for (const item of data?.items || []) {
+        const videoId = item.snippet?.resourceId?.videoId;
+        if (!videoId) continue;
+        items.push({
+          videoId,
+          title: item.snippet?.title || '',
+          publishedAt: item.snippet?.publishedAt || '',
+        });
+      }
+      pageToken = data?.nextPageToken;
+    } while (pageToken);
+    return items;
+  }
+
+  private async getVideoDetails(
+    apiKey: string,
+    videoIds: string[],
+  ): Promise<
+    Array<{
+      id: string;
+      snippet?: {
+        title?: string;
+        description?: string;
+        publishedAt?: string;
+        channelTitle?: string;
+        thumbnails?: {
+          high?: { url: string };
+          medium?: { url: string };
+          default?: { url: string };
+        };
+      };
+      statistics?: { viewCount?: string };
+      contentDetails?: { duration?: string };
+    }>
+  > {
+    const results: Array<{
+      id: string;
+      snippet?: {
+        title?: string;
+        description?: string;
+        publishedAt?: string;
+        channelTitle?: string;
+        thumbnails?: {
+          high?: { url: string };
+          medium?: { url: string };
+          default?: { url: string };
+        };
+      };
+      statistics?: { viewCount?: string };
+      contentDetails?: { duration?: string };
+    }> = [];
+    for (let i = 0; i < videoIds.length; i += 50) {
+      const chunk = videoIds.slice(i, i + 50);
+      const { data } = await firstValueFrom(
+        this.http.get<{
+          items?: Array<{
+            id: string;
+            snippet?: {
+              title?: string;
+              description?: string;
+              publishedAt?: string;
+              channelTitle?: string;
+              thumbnails?: {
+                high?: { url: string };
+                medium?: { url: string };
+                default?: { url: string };
+              };
+            };
+            statistics?: { viewCount?: string };
+            contentDetails?: { duration?: string };
+          }>;
+        }>(`${this.youtubeBase}/videos`, {
+          params: {
+            part: 'snippet,statistics,contentDetails',
+            id: chunk.join(','),
+            key: apiKey,
+          },
+        }),
+      );
+      results.push(...(data?.items || []));
+    }
+    return results;
   }
 
   /**

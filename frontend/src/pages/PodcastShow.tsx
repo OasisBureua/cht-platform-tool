@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { PODCAST_SHOWS } from '../data/podcastsCatalog';
@@ -6,7 +5,6 @@ import { SeriesSection } from '../components/podcasts/PodcastSeriesSection';
 
 export default function PodcastShow() {
   const { showId } = useParams<{ showId: string }>();
-  const [sortNewestFirst, setSortNewestFirst] = useState(true);
   const show = PODCAST_SHOWS.find((s) => s.id === showId);
 
   if (!showId || !show) {
@@ -25,11 +23,7 @@ export default function PodcastShow() {
         </Link>
       </div>
 
-      <SeriesSection
-        show={show}
-        sortNewestFirst={sortNewestFirst}
-        onToggleSort={() => setSortNewestFirst((v) => !v)}
-      />
+      <SeriesSection show={show} showPlayer />
     </div>
   );
 }

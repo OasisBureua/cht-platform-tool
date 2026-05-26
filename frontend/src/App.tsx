@@ -186,6 +186,7 @@ function App() {
               <Route path="surveys/:id" element={<SurveyDetail />} />
 
               <Route path="podcasts" element={<Podcasts />} />
+              <Route path="podcasts/:showId" element={<PodcastShow />} />
 
               <Route path="watch/:videoId" element={<WatchVideo />} />
               <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
