@@ -19,8 +19,7 @@ export const CHM_PODCAST_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: st
 ] as const;
 
 export const BREAST_FRIENDS_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
-  { label: 'YouTube', href: 'https://www.youtube.com/@breastfriendspodcast' },
-  { label: 'Link in bio', href: 'https://linkin.bio/breastfriendspodcast/' },
+  { label: 'Breast Friends', href: 'https://linkin.bio/breastfriendspodcast/' },
   ...CHM_PODCAST_PLATFORM_LINKS,
 ] as const;
 
