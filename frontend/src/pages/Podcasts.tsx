@@ -8,6 +8,7 @@ import {
   type PodcastShow,
 } from '../data/podcastsCatalog';
 import { SeriesSection, useShowLatestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
 function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   const n = shows.length;
@@ -155,7 +156,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
 function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode | null }) {
   if (!episode) return null;
   const playHref = episode.videoId
-    ? `/app/podcasts/${show.id}?v=${episode.videoId}`
+    ? podcastEpisodeWatchPath(show.id, episode.videoId)
     : `/app/podcasts/${show.id}`;
 
   return (
@@ -273,7 +274,7 @@ export default function Podcasts() {
           </p>
         </div>
         {shows.map((show) => (
-          <SeriesSection key={show.id} show={show} showPlayer={false} />
+          <SeriesSection key={show.id} show={show} />
         ))}
       </div>
 

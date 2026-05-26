@@ -59,6 +59,7 @@ const Settings              = lazy(() => import('./pages/Settings'));
 const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
+const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
 const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
 const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
@@ -186,6 +187,7 @@ function App() {
               <Route path="surveys/:id" element={<SurveyDetail />} />
 
               <Route path="podcasts" element={<Podcasts />} />
+              <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
               <Route path="podcasts/:showId" element={<PodcastShow />} />
 
               <Route path="watch/:videoId" element={<WatchVideo />} />

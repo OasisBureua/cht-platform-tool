@@ -362,8 +362,34 @@ export class CatalogService implements OnModuleInit {
   }
 
   /**
-   * Get all uploads from a YouTube channel (@handle) for podcast pages.
-   * Sort: latest (publish date desc), popular (views desc), oldest (publish date asc).
+   * Channel uploads (UU… playlist) include Shorts; mimic youtube.com/@handle/videos
+   * by dropping Shorts (≤60s) and #Shorts-tagged uploads.
+   */
+  private static readonly SHORTS_MAX_SECONDS = 60;
+
+  private parseDurationSeconds(iso: string | undefined): number {
+    if (!iso) return 0;
+    const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso);
+    if (!match) return 0;
+    const hours = parseInt(match[1] || '0', 10);
+    const minutes = parseInt(match[2] || '0', 10);
+    const seconds = parseInt(match[3] || '0', 10);
+    return hours * 3600 + minutes * 60 + seconds;
+  }
+
+  private isLikelyYouTubeShort(detail: {
+    snippet?: { title?: string };
+    contentDetails?: { duration?: string };
+  }): boolean {
+    const title = detail.snippet?.title || '';
+    if (/#shorts\b/i.test(title)) return true;
+    const secs = this.parseDurationSeconds(detail.contentDetails?.duration);
+    return secs > 0 && secs <= CatalogService.SHORTS_MAX_SECONDS;
+  }
+
+  /**
+   * Get long-form uploads from a YouTube channel (@handle) for podcast pages.
+   * Excludes Shorts (same as the channel's /videos tab). Sort: latest, popular, oldest.
    */
   async getYouTubeChannelVideos(
     rawHandle: string,
@@ -405,9 +431,14 @@ export class CatalogService implements OnModuleInit {
       const detailById = new Map(details.map((d) => [d.id, d]));
 
       const videos: YouTubeChannelVideo[] = [];
+      let shortsSkipped = 0;
       for (const item of playlistItems) {
         const detail = detailById.get(item.videoId);
         if (!detail) continue;
+        if (this.isLikelyYouTubeShort(detail)) {
+          shortsSkipped += 1;
+          continue;
+        }
         const thumb =
           detail.snippet?.thumbnails?.high ||
           detail.snippet?.thumbnails?.medium ||
@@ -425,6 +456,12 @@ export class CatalogService implements OnModuleInit {
           duration: detail.contentDetails?.duration || '',
           channelTitle: detail.snippet?.channelTitle || channel.snippet?.title || '',
         });
+      }
+
+      if (shortsSkipped > 0) {
+        this.logger.log(
+          `YouTube @${handle}: excluded ${shortsSkipped} Short(s); returning ${videos.length} video(s)`,
+        );
       }
 
       this.sortYouTubeChannelVideos(videos, sort);

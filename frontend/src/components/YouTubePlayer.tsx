@@ -28,6 +28,8 @@ interface YTPlayer {
   isMuted: () => boolean;
   playVideo: () => void;
   pauseVideo: () => void;
+  loadVideoById: (videoId: string) => void;
+  destroy: () => void;
   getCurrentTime: () => number;
   getDuration: () => number;
   getPlayerState: () => number;
@@ -85,6 +87,14 @@ export function YouTubePlayer({ youtubeUrl, muted = true, autoplay = true, class
     loadYouTubeAPI().then(() => {
       if (!window.YT?.Player || !el.parentNode) return;
       const PlayerState = window.YT.PlayerState;
+
+      if (playerRef.current) {
+        progressFiredRef.current = new Set();
+        startFiredRef.current = false;
+        playerRef.current.loadVideoById(videoId);
+        if (autoplay) playerRef.current.playVideo();
+        return;
+      }
 
       playerRef.current = new window.YT.Player(elementId, {
         videoId,
@@ -149,6 +159,11 @@ export function YouTubePlayer({ youtubeUrl, muted = true, autoplay = true, class
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
+      }
+      try {
+        playerRef.current?.destroy();
+      } catch {
+        /* player may already be torn down */
       }
       playerRef.current = null;
     };

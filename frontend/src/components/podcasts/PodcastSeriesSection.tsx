@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useMatch } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
 import {
@@ -10,9 +10,9 @@ import {
 import { usePodcastEpisodes } from '../../hooks/usePodcastYouTubeEpisodes';
 import { formatViewCount } from '../../utils/youtubeDuration';
 import type { PodcastEpisodeSort } from '../../utils/podcastYouTube';
-import { YouTubePlayer } from '../YouTubePlayer';
 import { podcastsApi } from '../../api/podcasts';
 import { mapPodcastEpisodesToUi } from '../../utils/podcastYouTube';
+import { podcastEpisodeWatchPath } from '../../utils/podcastRoutes';
 
 export function latestEpisode(show: PodcastShow, episodes?: PodcastEpisode[]): PodcastEpisode | null {
   const eps = episodes?.length ? episodes : show.episodes;
@@ -29,15 +29,13 @@ const SORT_OPTIONS: { value: PodcastEpisodeSort; label: string }[] = [
   { value: 'oldest', label: 'Oldest' },
 ];
 
-function EpisodeRow({
-  ep,
-  showId,
-  isActive,
-}: {
-  ep: PodcastEpisode;
-  showId: string;
-  isActive: boolean;
-}) {
+function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
+  const watchMatch = useMatch('/app/podcasts/:showId/watch/:episodeId');
+  const isActive =
+    !!ep.videoId &&
+    watchMatch?.params.showId === showId &&
+    watchMatch.params.episodeId === ep.videoId;
+
   const playLabel = `Episode ${ep.num.replace(/\D/g, '')}: ${ep.title}`;
   const className = [
     'group flex w-full gap-3 rounded-2xl px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-50/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 active:scale-[0.995] dark:hover:bg-zinc-800/85 dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5',
@@ -95,7 +93,11 @@ function EpisodeRow({
   if (ep.videoId) {
     return (
       <li>
-        <Link to={`/app/podcasts/${showId}?v=${ep.videoId}`} className={className} aria-label={playLabel}>
+        <Link
+          to={podcastEpisodeWatchPath(showId, ep.videoId)}
+          className={className}
+          aria-label={playLabel}
+        >
           {inner}
         </Link>
       </li>
@@ -111,17 +113,8 @@ function EpisodeRow({
   );
 }
 
-export function SeriesSection({
-  show,
-  showPlayer = true,
-}: {
-  show: PodcastShow;
-  /** When false, hide inline player (catalog page embeds many series). */
-  showPlayer?: boolean;
-}) {
+export function SeriesSection({ show }: { show: PodcastShow }) {
   const [sort, setSort] = useState<PodcastEpisodeSort>('latest');
-  const [searchParams] = useSearchParams();
-  const activeVideoId = searchParams.get('v');
 
   const episodesQuery = usePodcastEpisodes(
     show.remoteEpisodes ? show.id : undefined,
@@ -133,10 +126,6 @@ export function SeriesSection({
   const listenPlatforms = show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS;
 
   const latest = useMemo(() => latestEpisode(show, episodes), [show, episodes]);
-  const activeEpisode = useMemo(
-    () => episodes.find((ep) => ep.videoId === activeVideoId) ?? null,
-    [episodes, activeVideoId],
-  );
 
   return (
     <section
@@ -175,7 +164,10 @@ export function SeriesSection({
                   const play =
                     show.playLatest ??
                     (latest?.videoId
-                      ? ({ kind: 'app' as const, to: `/app/podcasts/${show.id}?v=${latest.videoId}` })
+                      ? ({
+                          kind: 'app' as const,
+                          to: podcastEpisodeWatchPath(show.id, latest.videoId),
+                        })
                       : latest?.youtubeUrl
                         ? ({ kind: 'external' as const, href: latest.youtubeUrl })
                         : ({ kind: 'external' as const, href: 'https://communityhealth.media' }));
@@ -219,22 +211,6 @@ export function SeriesSection({
           </div>
         </div>
       </div>
-
-      {showPlayer && activeEpisode?.youtubeUrl ? (
-        <div className="border-t border-zinc-200/80 bg-zinc-950 px-4 py-4 dark:border-zinc-800 sm:px-6">
-          <YouTubePlayer
-            youtubeUrl={activeEpisode.youtubeUrl}
-            title={activeEpisode.title}
-            autoplay={false}
-            muted={false}
-            className="aspect-video w-full overflow-hidden rounded-xl"
-          />
-          <p className="mt-3 text-sm font-semibold text-zinc-100">{activeEpisode.title}</p>
-          {activeEpisode.description ? (
-            <p className="mt-1 text-sm leading-relaxed text-zinc-400">{activeEpisode.description}</p>
-          ) : null}
-        </div>
-      ) : null}
 
       <div className="bg-zinc-50/95 px-4 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.75),inset_0_12px_32px_-24px_rgba(15,23,42,0.08)] dark:bg-zinc-950/85 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),inset_0_12px_32px_-24px_rgba(0,0,0,0.35)] sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -287,7 +263,6 @@ export function SeriesSection({
               key={show.id + (ep.videoId ?? ep.num) + ep.title}
               ep={ep}
               showId={show.id}
-              isActive={!!ep.videoId && ep.videoId === activeVideoId}
             />
           ))}
         </ul>

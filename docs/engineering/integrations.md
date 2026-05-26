@@ -94,4 +94,4 @@ Transactional email from the worker (`EMAIL_FROM`, typically `info@communityheal
 - `YOUTUBE_API_KEY`
 - `YOUTUBE_PLAYLIST_IDS` (comma-separated) — catalog playlists
 
-Podcast show pages load episodes via `GET /api/podcasts/:showId/episodes?sort=latest|popular|oldest`. The server maps each show to its source channel (YouTube Data API v3 under the hood, using `YOUTUBE_API_KEY`).
+Podcast show pages load episodes via `GET /api/podcasts/:showId/episodes?sort=latest|popular|oldest`. The server maps each show to its YouTube channel and returns **long-form videos only** (Shorts excluded, matching `youtube.com/@handle/videos`), using `YOUTUBE_API_KEY`.

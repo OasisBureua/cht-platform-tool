@@ -1,14 +1,21 @@
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { PODCAST_SHOWS } from '../data/podcastsCatalog';
 import { SeriesSection } from '../components/podcasts/PodcastSeriesSection';
+import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
 export default function PodcastShow() {
   const { showId } = useParams<{ showId: string }>();
+  const [searchParams] = useSearchParams();
+  const legacyVideoId = searchParams.get('v');
   const show = PODCAST_SHOWS.find((s) => s.id === showId);
 
   if (!showId || !show) {
     return <Navigate to="/app/podcasts" replace />;
+  }
+
+  if (legacyVideoId) {
+    return <Navigate to={podcastEpisodeWatchPath(showId, legacyVideoId)} replace />;
   }
 
   return (
@@ -23,7 +30,7 @@ export default function PodcastShow() {
         </Link>
       </div>
 
-      <SeriesSection show={show} showPlayer />
+      <SeriesSection show={show} />
     </div>
   );
 }
