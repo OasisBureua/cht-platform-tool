@@ -279,7 +279,9 @@ export function useShowLatestEpisode(show: PodcastShow): PodcastEpisode | null {
       if (!show.remoteEpisodes) return null;
       const result = await podcastsApi.getEpisodes(show.id, 'latest');
       if (!result.episodes.length) return null;
-      return mapPodcastEpisodesToUi(result.episodes, result.show.title)[0] ?? null;
+      return mapPodcastEpisodesToUi(result.episodes, result.show.title, {
+        minDurationSeconds: show.minEpisodeDurationSeconds,
+      })[0] ?? null;
     },
     enabled: !!show.remoteEpisodes,
     staleTime: 15 * 60 * 1000,

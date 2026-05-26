@@ -6,6 +6,8 @@ export type PodcastShowConfig = {
   id: string;
   title: string;
   youtubeChannelHandle: string;
+  /** Exclude promos/clips/Shorts — only list uploads at least this long (seconds). */
+  minEpisodeDurationSeconds?: number;
 };
 
 export const PODCAST_SHOWS: Record<string, PodcastShowConfig> = {
@@ -13,6 +15,7 @@ export const PODCAST_SHOWS: Record<string, PodcastShowConfig> = {
     id: 'breast-friends',
     title: 'Breast Friends',
     youtubeChannelHandle: 'breastfriendspodcast',
+    minEpisodeDurationSeconds: 15 * 60,
   },
 };
 

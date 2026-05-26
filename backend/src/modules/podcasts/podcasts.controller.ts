@@ -61,6 +61,9 @@ export class PodcastsController {
     const channel = await this.catalogService.getYouTubeChannelVideos(
       show.youtubeChannelHandle,
       sortKey,
+      show.minEpisodeDurationSeconds != null
+        ? { minDurationSeconds: show.minEpisodeDurationSeconds }
+        : undefined,
     );
 
     if (!channel) {

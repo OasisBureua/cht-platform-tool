@@ -59,6 +59,8 @@ export type PodcastShow = {
   episodes: PodcastEpisode[];
   /** When true, episodes load from GET /api/podcasts/:id/episodes */
   remoteEpisodes?: boolean;
+  /** Client-side filter for promos/Shorts when API returns unfiltered uploads. */
+  minEpisodeDurationSeconds?: number;
   /** Override default CHM “Listen on” links */
   platformLinks?: ReadonlyArray<{ label: string; href: string }>;
   /** Primary CTA for “Play latest” (defaults to CHM marketing site when omitted). */
@@ -76,6 +78,7 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     category: 'Clinical · Oncology',
     updateNote: 'New episodes monthly',
     remoteEpisodes: true,
+    minEpisodeDurationSeconds: 15 * 60,
     platformLinks: BREAST_FRIENDS_PLATFORM_LINKS,
     episodes: [],
   },

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { podcastsApi } from '../api/podcasts';
-import type { PodcastEpisode } from '../data/podcastsCatalog';
+import { PODCAST_SHOWS, type PodcastEpisode } from '../data/podcastsCatalog';
 import { mapPodcastEpisodesToUi, type PodcastEpisodeSort } from '../utils/podcastYouTube';
 
 export function usePodcastEpisodes(showId: string | undefined, sort: PodcastEpisodeSort) {
@@ -10,7 +10,11 @@ export function usePodcastEpisodes(showId: string | undefined, sort: PodcastEpis
       const data = await podcastsApi.getEpisodes(showId!, sort);
       return {
         showTitle: data.show.title,
-        episodes: mapPodcastEpisodesToUi(data.episodes, data.show.title),
+        episodes: mapPodcastEpisodesToUi(data.episodes, data.show.title, {
+          minDurationSeconds: showId
+            ? PODCAST_SHOWS.find((s) => s.id === showId)?.minEpisodeDurationSeconds
+            : undefined,
+        }),
       };
     },
     enabled: !!showId,

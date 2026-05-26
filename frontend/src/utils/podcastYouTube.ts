@@ -1,14 +1,25 @@
 import type { PodcastEpisode } from '../data/podcastsCatalog';
 import { formatYouTubeDuration } from './youtubeDuration';
 import type { PodcastEpisodeDto } from '../api/podcasts';
+import { isPodcastEpisodeVideo } from './youtubeShorts';
 
 export type PodcastEpisodeSort = 'latest' | 'popular' | 'oldest';
 
 export function mapPodcastEpisodesToUi(
   episodes: PodcastEpisodeDto[],
   showTitle: string,
+  options?: { minDurationSeconds?: number },
 ): PodcastEpisode[] {
-  return episodes.map((v) => {
+  return episodes
+    .filter((v) =>
+      isPodcastEpisodeVideo({
+        title: v.title,
+        description: v.description,
+        duration: v.duration,
+        minDurationSeconds: options?.minDurationSeconds,
+      }),
+    )
+    .map((v) => {
     const published = new Date(v.publishedAt);
     return {
       num: v.episodeNumber > 0 ? `Ep ${v.episodeNumber}` : 'Ep',

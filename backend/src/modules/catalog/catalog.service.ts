@@ -4,6 +4,10 @@ import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaHubService, type MediaHubClip } from './mediahub.service';
 import { firstValueFrom } from 'rxjs';
+import {
+  isLikelyYouTubeShort,
+  isPodcastEpisodeVideo,
+} from '../../utils/youtube-shorts.util';
 
 export interface CatalogItem {
   id: string;
@@ -362,38 +366,13 @@ export class CatalogService implements OnModuleInit {
   }
 
   /**
-   * Channel uploads (UU… playlist) include Shorts; mimic youtube.com/@handle/videos
-   * by dropping Shorts (≤60s) and #Shorts-tagged uploads.
-   */
-  private static readonly SHORTS_MAX_SECONDS = 60;
-
-  private parseDurationSeconds(iso: string | undefined): number {
-    if (!iso) return 0;
-    const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso);
-    if (!match) return 0;
-    const hours = parseInt(match[1] || '0', 10);
-    const minutes = parseInt(match[2] || '0', 10);
-    const seconds = parseInt(match[3] || '0', 10);
-    return hours * 3600 + minutes * 60 + seconds;
-  }
-
-  private isLikelyYouTubeShort(detail: {
-    snippet?: { title?: string };
-    contentDetails?: { duration?: string };
-  }): boolean {
-    const title = detail.snippet?.title || '';
-    if (/#shorts\b/i.test(title)) return true;
-    const secs = this.parseDurationSeconds(detail.contentDetails?.duration);
-    return secs > 0 && secs <= CatalogService.SHORTS_MAX_SECONDS;
-  }
-
-  /**
-   * Get long-form uploads from a YouTube channel (@handle) for podcast pages.
-   * Excludes Shorts (same as the channel's /videos tab). Sort: latest, popular, oldest.
+   * Channel uploads (UU… playlist) include Shorts and promos; mimic youtube.com/@handle/videos
+   * by dropping Shorts (≤3 min / #Shorts) and optionally enforcing a minimum episode length.
    */
   async getYouTubeChannelVideos(
     rawHandle: string,
     sort: YouTubeChannelVideoSort = 'latest',
+    options?: { minDurationSeconds?: number },
   ): Promise<YouTubeChannelVideosResult | null> {
     const apiKey = this.config.get<string>('youtube.apiKey');
     if (!apiKey) return null;
@@ -431,12 +410,25 @@ export class CatalogService implements OnModuleInit {
       const detailById = new Map(details.map((d) => [d.id, d]));
 
       const videos: YouTubeChannelVideo[] = [];
-      let shortsSkipped = 0;
+      let skipped = 0;
       for (const item of playlistItems) {
         const detail = detailById.get(item.videoId);
         if (!detail) continue;
-        if (this.isLikelyYouTubeShort(detail)) {
-          shortsSkipped += 1;
+        const snippet = detail.snippet;
+        const duration = detail.contentDetails?.duration || '';
+        const candidate = {
+          title: snippet?.title || item.title || '',
+          description: snippet?.description || '',
+          tags: snippet?.tags,
+          duration,
+        };
+        const minDurationSeconds = options?.minDurationSeconds;
+        const include =
+          minDurationSeconds != null
+            ? isPodcastEpisodeVideo({ ...candidate, minDurationSeconds })
+            : !isLikelyYouTubeShort(candidate);
+        if (!include) {
+          skipped += 1;
           continue;
         }
         const thumb =
@@ -458,9 +450,9 @@ export class CatalogService implements OnModuleInit {
         });
       }
 
-      if (shortsSkipped > 0) {
+      if (skipped > 0) {
         this.logger.log(
-          `YouTube @${handle}: excluded ${shortsSkipped} Short(s); returning ${videos.length} video(s)`,
+          `YouTube @${handle}: excluded ${skipped} Short/promo upload(s); returning ${videos.length} video(s)`,
         );
       }
 
@@ -584,6 +576,7 @@ export class CatalogService implements OnModuleInit {
         description?: string;
         publishedAt?: string;
         channelTitle?: string;
+        tags?: string[];
         thumbnails?: {
           high?: { url: string };
           medium?: { url: string };
@@ -601,6 +594,7 @@ export class CatalogService implements OnModuleInit {
         description?: string;
         publishedAt?: string;
         channelTitle?: string;
+        tags?: string[];
         thumbnails?: {
           high?: { url: string };
           medium?: { url: string };
