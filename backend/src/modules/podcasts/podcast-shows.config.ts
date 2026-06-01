@@ -17,6 +17,12 @@ export const PODCAST_SHOWS: Record<string, PodcastShowConfig> = {
     youtubeChannelHandle: 'breastfriendspodcast',
     minEpisodeDurationSeconds: 15 * 60,
   },
+  'cancer-unfiltered': {
+    id: 'cancer-unfiltered',
+    title: 'Cancer Unfiltered',
+    youtubeChannelHandle: 'CancerUnfilteredPodcast',
+    minEpisodeDurationSeconds: 15 * 60,
+  },
 };
 
 export function getPodcastShowConfig(showId: string): PodcastShowConfig | null {

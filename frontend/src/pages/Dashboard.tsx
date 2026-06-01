@@ -302,7 +302,7 @@ export default function Dashboard() {
     slides.push({
       id: 'podcast-episodes',
       eyebrow: 'New podcast episodes',
-      title: 'Breast Friends & CHM audio',
+      title: 'CHM podcasts',
       description:
         'Browse short expert-led videos, disease-area playlists, and new catalog releases in one place.',
       imageUrl: podcastThumb,

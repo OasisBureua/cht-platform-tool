@@ -23,6 +23,11 @@ export const BREAST_FRIENDS_PLATFORM_LINKS: ReadonlyArray<{ label: string; href:
   ...CHM_PODCAST_PLATFORM_LINKS,
 ] as const;
 
+export const CANCER_UNFILTERED_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
+  { label: 'Cancer Unfiltered', href: 'https://linkin.bio/cancerunfiltered/' },
+  ...CHM_PODCAST_PLATFORM_LINKS,
+] as const;
+
 export type PodcastPlayLatest =
   | { kind: 'external'; href: string }
   | { kind: 'app'; to: string };
@@ -79,6 +84,20 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     remoteEpisodes: true,
     minEpisodeDurationSeconds: 15 * 60,
     platformLinks: BREAST_FRIENDS_PLATFORM_LINKS,
+    episodes: [],
+  },
+  {
+    id: 'cancer-unfiltered',
+    title: 'Cancer Unfiltered',
+    tagline:
+      'Candid conversations with leading oncologists on the realities of cancer care—honest perspectives, real-world insights, and what it means for patients and clinicians.',
+    image: '/images/podcasts/cancer-unfiltered/cover.png',
+    logo: '/images/podcasts/cancer-unfiltered/logo.png',
+    category: 'Clinical · Oncology',
+    updateNote: 'New episodes monthly',
+    remoteEpisodes: true,
+    minEpisodeDurationSeconds: 15 * 60,
+    platformLinks: CANCER_UNFILTERED_PLATFORM_LINKS,
     episodes: [],
   },
 ];
