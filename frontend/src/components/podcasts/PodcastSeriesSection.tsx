@@ -124,6 +124,8 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
     ? episodesQuery.data?.episodes ?? []
     : show.episodes;
   const listenPlatforms = show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS;
+  const seriesHubHref =
+    listenPlatforms.find((platform) => platform.label === show.title)?.href ?? null;
 
   const latest = useMemo(() => latestEpisode(show, episodes), [show, episodes]);
 
@@ -170,7 +172,10 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
                         })
                       : latest?.youtubeUrl
                         ? ({ kind: 'external' as const, href: latest.youtubeUrl })
-                        : ({ kind: 'external' as const, href: 'https://communityhealth.media' }));
+                        : ({
+                            kind: 'external' as const,
+                            href: seriesHubHref ?? 'https://communityhealth.media',
+                          }));
                   const playClass =
                     'inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-bold text-white shadow-[0_8px_28px_-12px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 active:scale-[0.96]';
                   if (play.kind === 'app') {

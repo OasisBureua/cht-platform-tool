@@ -18,15 +18,23 @@ export const CHM_PODCAST_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: st
   { label: 'Goodpods', href: 'https://goodpods.com/profile/chm-111066' },
 ] as const;
 
-export const BREAST_FRIENDS_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
-  { label: 'Breast Friends', href: 'https://linkin.bio/breastfriendspodcast/' },
-  ...CHM_PODCAST_PLATFORM_LINKS,
-] as const;
+/** Series Linkin.bio hub + shared CHM listen destinations — use for each new show in `PODCAST_SHOWS`. */
+export function podcastSeriesPlatformLinks(
+  seriesLabel: string,
+  linkInBioHref: string,
+): ReadonlyArray<{ label: string; href: string }> {
+  return [{ label: seriesLabel, href: linkInBioHref }, ...CHM_PODCAST_PLATFORM_LINKS];
+}
 
-export const CANCER_UNFILTERED_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
-  { label: 'Cancer Unfiltered', href: 'https://linkin.bio/cancerunfiltered/' },
-  ...CHM_PODCAST_PLATFORM_LINKS,
-] as const;
+export const BREAST_FRIENDS_PLATFORM_LINKS = podcastSeriesPlatformLinks(
+  'Breast Friends',
+  'https://linkin.bio/breastfriendspodcast/',
+);
+
+export const CANCER_UNFILTERED_PLATFORM_LINKS = podcastSeriesPlatformLinks(
+  'Cancer Unfiltered',
+  'https://linkin.bio/cancerunfiltered/',
+);
 
 export type PodcastPlayLatest =
   | { kind: 'external'; href: string }
