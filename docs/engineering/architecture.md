@@ -64,7 +64,7 @@ Frontend and backend fetch public MediaHub API content for disease-area playlist
 
 | Environment | URL | Terraform |
 |-------------|-----|-----------|
-| Staging | `staging.testapp.communityhealth.media` | `us-east-1-staging` |
+| Staging | `devapp.communityhealth.media` | `us-east-1` |
 | Platform (prod) | `testapp.communityhealth.media` | `us-east-1` |
 
 Both run in AWS account `233636046512`, region `us-east-1`. Account-level security services (GuardDuty, AWS Config) are managed only from the platform stack.
