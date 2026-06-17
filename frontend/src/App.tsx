@@ -21,6 +21,8 @@ const Join                  = lazy(() => import('./pages/public/Join'));
 const Login                 = lazy(() => import('./pages/public/Login'));
 const AdminLogin            = lazy(() => import('./pages/public/AdminLogin'));
 const ForgotPassword        = lazy(() => import('./pages/public/ForgotPassword'));
+const ResetPasswordConfirm  = lazy(() => import('./pages/public/ResetPasswordConfirm'));
+const MfaSetup              = lazy(() => import('./pages/public/MfaSetup'));
 const AuthCallback          = lazy(() => import('./pages/public/AuthCallback'));
 const CompleteProfile       = lazy(() => import('./pages/public/CompleteProfile'));
 const Privacy               = lazy(() => import('./pages/public/Privacy'));
@@ -123,6 +125,8 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+              <Route path="/mfa/setup" element={<MfaSetup />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/privacy" element={<Privacy />} />

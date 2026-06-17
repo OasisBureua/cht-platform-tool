@@ -96,6 +96,32 @@ output "cluster_name" {
   value       = module.ecs_cluster.cluster_name
 }
 
+# Cognito
+output "cognito_user_pool_id" {
+  description = "Cognito User Pool ID (set as COGNITO_USER_POOL_ID on ECS)"
+  value       = var.enable_cognito_pools ? module.cognito[0].user_pool_id : null
+}
+
+output "cognito_client_id" {
+  description = "cht-web Cognito app client ID (set as COGNITO_CLIENT_ID on ECS and in frontend)"
+  value       = var.enable_cognito_pools ? module.cognito[0].client_id : null
+}
+
+output "cognito_hosted_ui_base_url" {
+  description = "Cognito Hosted UI base URL (used for Google OAuth)"
+  value       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : null
+}
+
+output "cognito_jwks_uri" {
+  description = "JWKS endpoint for JWT validation in the backend"
+  value       = var.enable_cognito_pools ? module.cognito[0].jwks_uri : null
+}
+
+output "cognito_issuer_url" {
+  description = "JWT issuer URL (iss claim) for backend token validation"
+  value       = var.enable_cognito_pools ? module.cognito[0].issuer_url : null
+}
+
 # Next steps
 output "next_steps" {
   description = "What to do next"

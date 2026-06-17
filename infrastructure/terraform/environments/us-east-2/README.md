@@ -1,42 +1,31 @@
-# us-east-2 Standby Infrastructure
+# us-east-2 DR Infrastructure (active-passive)
 
-## Status: NOT DEPLOYED (Manual Failover)
+Standby regional stack for disaster recovery with:
 
-This directory contains the complete infrastructure code for us-east-2, but it is **NOT deployed by default** to save costs (~$268/month).
+- DR ECS/ALB in `us-east-2`
+- Cross-region RDS read replica (optional, enabled by default)
+- DR-local Secrets Manager copies sourced from `us-east-1`
+- Output `secondary_api_origin_domain` for CloudFront API origin failover
 
-## When to Deploy
+## Deploy
 
-Deploy this infrastructure when:
-- us-east-1 has a **regional outage**
-- us-east-1 is experiencing **extended downtime** (>30 minutes)
-- You need to perform **maintenance** on us-east-1
-
-## How to Deploy (During Disaster)
 ```bash
-cd ~/Documents/cht-platform-tool/infrastructure/terraform/environments/us-east-2-standby
-
-# 1. Initialize
+cd infrastructure/terraform/environments/us-east-2
 terraform init
-
-# 2. Plan
-terraform plan -out=disaster-recovery.tfplan
-
-# 3. Deploy (takes ~25-30 minutes)
-terraform apply disaster-recovery.tfplan
-
-# 4. Update DNS (manual)
-# Update Route53 records in us-east-1 to point to us-east-2 resources
-
-# 5. Test
-curl https://testapp.communityhealth.media/health/ready
+terraform plan -var-file=../variables/platform.tfvars -out=dr.plan
+terraform apply dr.plan
 ```
 
-## Cost
+## After deploy
 
-- **NOT deployed:** $0/month
-- **When deployed:** ~$268/month
-- **Activation time:** ~25-30 minutes
+1. Capture output:
+   - `terraform output secondary_api_origin_domain`
+2. Set in `environments/variables/platform.tfvars`:
+   - `secondary_api_origin_domain = "<output value>"`
+3. Apply `us-east-1` stack to activate CloudFront API origin failover.
 
-## Manual Failover Steps
+## Notes
 
-See: `../../DISASTER-RECOVERY-MANUAL-FAILOVER.md` for complete procedure.
+- Public DNS still points to the single CloudFront distribution.
+- CloudFront handles API failover between primary and secondary ALB origins.
+- Frontend static assets should be deployed to both regional S3 buckets via CI.

@@ -13,6 +13,15 @@ variable "kms_key_id" {
   type        = string
 }
 
+variable "replica_regions" {
+  description = "Optional list of region replicas for Secrets Manager secret replication."
+  type = list(object({
+    region     = string
+    kms_key_id = optional(string)
+  }))
+  default = []
+}
+
 # Database
 variable "db_username" {
   description = "Database username"

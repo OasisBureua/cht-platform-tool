@@ -8,6 +8,8 @@ import { getPostLoginPath } from '../../utils/postLoginRedirect';
 export default function AdminLogin() {
   const location = useLocation();
   const { user, isAuthenticated, isLoading, login } = useAuth();
+  const mediahubAuthDecommissioned =
+    import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/admin';
 
   const [email, setEmail] = useState('');
@@ -17,6 +19,10 @@ export default function AdminLogin() {
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
   const handleGoogleLogin = () => {
+    if (mediahubAuthDecommissioned) {
+      setError('Google sign-in is temporarily unavailable while auth is migrating.');
+      return;
+    }
     setError(null);
     setOauthLoading('google');
     window.location.href = buildOAuthAuthorizeUrl('google', from);
@@ -97,27 +103,35 @@ export default function AdminLogin() {
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
 
-            <div className="relative mt-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={!!oauthLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {oauthLoading === 'google' ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Google
-            </button>
+            {!mediahubAuthDecommissioned ? (
+              <>
+                <div className="relative mt-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={!!oauthLoading}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {oauthLoading === 'google' ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  Google
+                </button>
+              </>
+            ) : (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Google sign-in is temporarily unavailable while auth is migrating.
+              </p>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500">

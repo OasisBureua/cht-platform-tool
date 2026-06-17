@@ -13,6 +13,14 @@ resource "aws_secretsmanager_secret" "database" {
   kms_key_id              = var.kms_key_id
   recovery_window_in_days = 30
 
+  dynamic "replica" {
+    for_each = var.replica_regions
+    content {
+      region     = replica.value.region
+      kms_key_id = try(replica.value.kms_key_id, null)
+    }
+  }
+
   tags = {
     Name        = "${local.prefix}-database-credentials"
     Environment = var.environment
@@ -37,6 +45,14 @@ resource "aws_secretsmanager_secret" "app_secrets" {
   description             = "Application secrets for ${var.project} ${var.environment}"
   kms_key_id              = var.kms_key_id
   recovery_window_in_days = 30
+
+  dynamic "replica" {
+    for_each = var.replica_regions
+    content {
+      region     = replica.value.region
+      kms_key_id = try(replica.value.kms_key_id, null)
+    }
+  }
 
   tags = {
     Name        = "${local.prefix}-app-secrets"

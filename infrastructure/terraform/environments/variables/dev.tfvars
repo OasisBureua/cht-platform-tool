@@ -29,9 +29,15 @@ worker_max_capacity  = 10
 # SSL Certificates (testapp - issued)
 acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
 cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
+# us-east-2 DR ALB certificate (must be issued in us-east-2)
+# dr_acm_certificate_arn     = "arn:aws:acm:us-east-2:233636046512:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 # Domain (testapp.communityhealth.media)
 domain_name = "testapp.communityhealth.media"
+# Secrets replication (cross-region DR)
+secrets_replica_regions = ["us-east-2"]
+# CloudFront API origin failover target (us-east-2 ALB DNS). Leave empty until DR ALB is deployed.
+# secondary_api_origin_domain = "internal-cht-platform-dev-alb-xxxxxxxx.us-east-2.elb.amazonaws.com"
 
 # MediaHub Public API (catalog - clips, tags, doctors, search)
 # Get from MediaHub/CHM team. Set via TF_VAR_mediahub_api_key or here.
@@ -55,5 +61,14 @@ domain_name = "testapp.communityhealth.media"
 
 # Optional: SNS for alerts
 # alarm_notification_emails = ["ops@example.com"]
+
+# Cognito (Phase 2 — dev pool for testing before platform cutover)
+# See docs/runbooks/cognito-migration-spec.md
+enable_cognito_pools      = true
+cognito_domain_prefix     = "chm-platform-dev"
+cognito_user_pool_tier    = "ESSENTIALS"
+cognito_mfa_configuration = "OPTIONAL"
+# cognito_google_client_id     = ""  # Add when Google Cloud OAuth creds are ready
+# cognito_google_client_secret = ""
 
 # Cost: ~$145/month

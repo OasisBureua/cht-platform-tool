@@ -43,6 +43,8 @@ const PLATFORM_HOME = '/app/home';
 
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
+  const mediahubAuthDecommissioned =
+    import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -67,6 +69,10 @@ export default function Join() {
   }
 
   const handleOAuth = (provider: 'google') => {
+    if (mediahubAuthDecommissioned) {
+      setError('Account creation is temporarily unavailable while auth is migrating.');
+      return;
+    }
     setError(null);
     setOauthLoading(provider);
     // Use direct authorize URL with redirect_to - fixes Google OAuth redirect (Sebastien)
@@ -76,6 +82,10 @@ export default function Join() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    if (mediahubAuthDecommissioned) {
+      setError('Account creation is temporarily unavailable while auth is migrating.');
+      return;
+    }
 
     if (!firstName.trim()) { setError('First name is required.'); return; }
     if (!lastName.trim()) { setError('Last name is required.'); return; }
@@ -192,22 +202,28 @@ export default function Join() {
           </p>
 
           {/* OAuth sign-up creates CHT account and redirects to platform */}
-          <div className="mt-4 space-y-2">
-            <button
-              type="button"
-              onClick={() => handleOAuth('google')}
-              disabled={!!oauthLoading}
-              className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
-            >
-              {oauthLoading === 'google' ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Continue with Google
-            </button>
-            <p className="text-center text-xs text-gray-500">Sign up with Google</p>
-          </div>
+          {!mediahubAuthDecommissioned ? (
+            <div className="mt-4 space-y-2">
+              <button
+                type="button"
+                onClick={() => handleOAuth('google')}
+                disabled={!!oauthLoading}
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
+              >
+                {oauthLoading === 'google' ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                Continue with Google
+              </button>
+              <p className="text-center text-xs text-gray-500">Sign up with Google</p>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              New account creation is temporarily unavailable while auth is migrating.
+            </div>
+          )}
 
           <div className="mt-4">
             <div className="relative">
@@ -373,10 +389,14 @@ export default function Join() {
               <div className="sm:col-span-2">
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || mediahubAuthDecommissioned}
                   className="w-full rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
                 >
-                  {submitting ? 'Creating account...' : 'Create account'}
+                  {mediahubAuthDecommissioned
+                    ? 'Account creation temporarily unavailable'
+                    : submitting
+                    ? 'Creating account...'
+                    : 'Create account'}
                 </button>
               </div>
             </div>

@@ -174,6 +174,11 @@ module "secrets" {
   project     = var.project
   environment = var.environment
   kms_key_id  = module.kms.secrets_kms_key_id
+  replica_regions = [
+    for region in var.secrets_replica_regions : {
+      region = region
+    }
+  ]
 
   db_username          = module.rds.db_username
   db_password          = module.rds.db_password
@@ -373,6 +378,7 @@ module "cloudfront" {
   certificate_arn       = var.cloudfront_certificate_arn
   domain_aliases        = [var.domain_name]
   api_origin_domain     = module.alb.alb_dns_name
+  secondary_api_origin_domain = var.secondary_api_origin_domain
   price_class           = "PriceClass_100"
   web_acl_id            = module.waf_cloudfront.web_acl_arn
 }
@@ -423,6 +429,26 @@ module "cloudtrail" {
   s3_kms_key_arn         = module.kms.s3_kms_key_arn
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
   log_retention_days     = local.log_retention_days
+}
+
+# ============================================
+# Security - Cognito User Pool
+# ============================================
+module "cognito" {
+  count  = var.enable_cognito_pools ? 1 : 0
+  source = "../../modules/security/cognito"
+
+  project       = var.project
+  environment   = var.environment
+  domain_prefix = var.cognito_domain_prefix
+
+  callback_urls = ["https://${var.domain_name}/auth/callback"]
+  logout_urls   = ["https://${var.domain_name}"]
+
+  mfa_configuration    = var.cognito_mfa_configuration
+  user_pool_tier       = var.cognito_user_pool_tier
+  google_client_id     = var.cognito_google_client_id
+  google_client_secret = var.cognito_google_client_secret
 }
 
 # ============================================

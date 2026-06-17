@@ -25,6 +25,15 @@ export default () => ({
   supabase: {
     url: process.env.SUPABASE_URL,
     anonKey: process.env.SUPABASE_ANON_KEY,
+    /**
+     * When true, block MediaHub/GoTrue-backed user creation flows (signup + oauth login).
+     * Existing email/password login can remain temporarily available for migrated users.
+     */
+    authDecommissioned:
+      process.env.SUPABASE_AUTH_DECOMMISSIONED === undefined
+        ? true
+        : process.env.SUPABASE_AUTH_DECOMMISSIONED === 'true' ||
+          process.env.SUPABASE_AUTH_DECOMMISSIONED === '1',
   },
 
   // Session TTL in seconds (default 30 min). Sessions stored in Postgres.

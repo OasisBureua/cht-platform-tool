@@ -6,6 +6,8 @@ import cookieParser from 'cookie-parser';
 import * as express from 'express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { AuthService } from './auth/auth.service';
+import { getSessionTokenFromRequest } from './auth/session-cookie';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -77,12 +79,43 @@ async function bootstrap() {
   });
 
   // Swagger - available in all envs but only accessible internally in prod
+  const authService = app.get(AuthService);
+  app.use('/api/docs', async (req, res, next) => {
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) {
+      return res.status(401).json({ error: 'Admin session required.' });
+    }
+    const user = await authService.getSession(sessionToken);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required.' });
+    }
+    return next();
+  });
+  app.use('/api/docs-json', async (req, res, next) => {
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) {
+      return res.status(401).json({ error: 'Admin session required.' });
+    }
+    const user = await authService.getSession(sessionToken);
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Admin access required.' });
+    }
+    return next();
+  });
+
   const swaggerConfig = new DocumentBuilder()
     .setTitle('CHT Platform API')
     .setDescription(
       'Internal API for CHT Platform - admin operations, user management, programs, payments',
     )
     .setVersion(process.env.APP_VERSION || '1.0.0')
+    .addCookieAuth('cht_session', {
+      type: 'apiKey',
+      in: 'cookie',
+      name: 'cht_session',
+      description:
+        'Session cookie set by POST /api/auth/login. Swagger works when logged in as admin in the same browser.',
+    })
     .addBearerAuth(
       { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       'session-token',

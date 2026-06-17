@@ -20,6 +20,8 @@ Operational runbooks for the [CHM Platform Roadmap](../reports/CHM-Platform-Road
 
 | Runbook | Phase | Status |
 | ------- | ----- | ------ |
+| [cognito-migration-spec.md](./cognito-migration-spec.md) | Phase 2 | In progress |
+| [multi-region-active-passive-us-east-2.md](./multi-region-active-passive-us-east-2.md) | Phase 2b | In progress |
 | [stable-dev-environment.md](./stable-dev-environment.md) | Phase 3 | Outline |
 | [mediahub-platform-cutover.md](./mediahub-platform-cutover.md) | Phase 4 | Approved |
 | [cache-sync-contract.md](./cache-sync-contract.md) | Phase 4 | Approved |

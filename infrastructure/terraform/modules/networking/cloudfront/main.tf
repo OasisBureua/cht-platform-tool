@@ -1,5 +1,10 @@
 locals {
-  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  prefix                     = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  api_failover_enabled       = var.api_origin_domain != "" && var.secondary_api_origin_domain != ""
+  primary_api_origin_id      = "ALB-API-PRIMARY"
+  secondary_api_origin_id    = "ALB-API-SECONDARY"
+  api_origin_group_id        = "ALB-API-GROUP"
+  api_target_origin_id       = local.api_failover_enabled ? local.api_origin_group_id : local.primary_api_origin_id
 }
 
 # SPA viewer-request handler: rewrite deep-link URIs to /index.html so React
@@ -88,13 +93,47 @@ resource "aws_cloudfront_distribution" "frontend" {
     for_each = var.api_origin_domain != "" ? [1] : []
     content {
       domain_name = var.api_origin_domain
-      origin_id   = "ALB-API"
+      origin_id   = local.primary_api_origin_id
 
       custom_origin_config {
         http_port              = 80
         https_port             = 443
         origin_protocol_policy = "https-only"
         origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
+  dynamic "origin" {
+    for_each = local.api_failover_enabled ? [1] : []
+    content {
+      domain_name = var.secondary_api_origin_domain
+      origin_id   = local.secondary_api_origin_id
+
+      custom_origin_config {
+        http_port              = 80
+        https_port             = 443
+        origin_protocol_policy = "https-only"
+        origin_ssl_protocols   = ["TLSv1.2"]
+      }
+    }
+  }
+
+  dynamic "origin_group" {
+    for_each = local.api_failover_enabled ? [1] : []
+    content {
+      origin_id = local.api_origin_group_id
+
+      failover_criteria {
+        status_codes = [500, 502, 503, 504]
+      }
+
+      member {
+        origin_id = local.primary_api_origin_id
+      }
+
+      member {
+        origin_id = local.secondary_api_origin_id
       }
     }
   }
@@ -131,7 +170,7 @@ resource "aws_cloudfront_distribution" "frontend" {
       path_pattern               = ordered_cache_behavior.value
       allowed_methods            = ["GET", "HEAD", "OPTIONS"]
       cached_methods             = ["GET", "HEAD"]
-      target_origin_id           = "ALB-API"
+      target_origin_id           = local.api_target_origin_id
       compress                   = true
       viewer_protocol_policy     = "redirect-to-https"
       response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
@@ -154,7 +193,7 @@ resource "aws_cloudfront_distribution" "frontend" {
       path_pattern               = ordered_cache_behavior.value
       allowed_methods            = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
       cached_methods             = ["GET", "HEAD"]
-      target_origin_id           = "ALB-API"
+      target_origin_id           = local.api_target_origin_id
       compress                   = true
       viewer_protocol_policy     = "redirect-to-https"
       response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id

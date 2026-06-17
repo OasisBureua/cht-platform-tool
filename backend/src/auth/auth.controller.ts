@@ -54,11 +54,15 @@ interface LoginSuccess {
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
+  private readonly supabaseAuthDecommissioned: boolean;
 
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-  ) {}
+  ) {
+    this.supabaseAuthDecommissioned =
+      this.configService.get<boolean>('supabase.authDecommissioned') ?? true;
+  }
 
   private attachSessionCookie(
     res: ExpressResponse,
@@ -86,6 +90,13 @@ export class AuthController {
     @Body('state') state?: string,
     @Body('zipCode') zipCode?: string,
   ): Promise<{ error?: string }> {
+    if (this.supabaseAuthDecommissioned) {
+      return {
+        error:
+          'New account creation is temporarily disabled while auth is migrating. Please contact support.',
+      };
+    }
+
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
@@ -203,6 +214,13 @@ export class AuthController {
     @Body('access_token') accessToken: string,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
+    if (this.supabaseAuthDecommissioned) {
+      return {
+        error:
+          'Google OAuth is temporarily disabled while auth is migrating. Please sign in with email/password.',
+      };
+    }
+
     const token = accessToken?.trim();
     if (!token) {
       return { error: 'access_token is required.' };

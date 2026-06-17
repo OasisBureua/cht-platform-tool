@@ -16,6 +16,14 @@ export const validationSchema = Joi.object({
   AUTH0_AUDIENCE: Joi.string().allow('').optional(),
   AUTH0_CLIENT_ID: Joi.string().allow('').optional(),
 
+  // GoTrue/Supabase auth wiring (optional during migration)
+  GOTRUE_JWT_SECRET: Joi.string().allow('').optional(),
+  SUPABASE_URL: Joi.string().allow('').optional(),
+  SUPABASE_ANON_KEY: Joi.string().allow('').optional(),
+  SUPABASE_AUTH_DECOMMISSIONED: Joi.string()
+    .valid('true', 'false', '1', '0', '')
+    .optional(),
+
   // Bill.com (optional - empty strings allowed)
   BILL_DEV_KEY: Joi.string().allow('').optional(),
   BILL_SESSION_ID: Joi.string().allow('').optional(),

@@ -41,6 +41,12 @@ variable "api_origin_domain" {
   default     = ""
 }
 
+variable "secondary_api_origin_domain" {
+  description = "Secondary ALB domain for CloudFront origin failover on /api/* and /health/* (optional)"
+  type        = string
+  default     = ""
+}
+
 variable "price_class" {
   description = "CloudFront price class"
   type        = string

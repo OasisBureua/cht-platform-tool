@@ -7,6 +7,8 @@ import { getPostLoginPath } from '../../utils/postLoginRedirect';
 export default function Login() {
   const location = useLocation();
   const { user, isAuthenticated, isLoading, login } = useAuth();
+  const mediahubAuthDecommissioned =
+    import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   const [email, setEmail] = useState('');
@@ -16,6 +18,10 @@ export default function Login() {
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
   const handleOAuth = (provider: 'google') => {
+    if (mediahubAuthDecommissioned) {
+      setError('Google sign-in is temporarily unavailable while auth is migrating.');
+      return;
+    }
     setError(null);
     setOauthLoading(provider);
     const url = buildOAuthAuthorizeUrl(provider, from);
@@ -129,29 +135,35 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-6 space-y-3">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+          {!mediahubAuthDecommissioned ? (
+            <div className="mt-6 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => handleOAuth('google')}
+                disabled={!!oauthLoading}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {oauthLoading === 'google' ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                ) : (
+                  <GoogleIcon />
+                )}
+                Continue with Google
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => handleOAuth('google')}
-              disabled={!!oauthLoading}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {oauthLoading === 'google' ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Continue with Google
-            </button>
-          </div>
+          ) : (
+            <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Google sign-in is temporarily unavailable while auth is migrating.
+            </p>
+          )}
 
           {/* Footer */}
           <p className="mt-6 text-center text-sm text-gray-600">

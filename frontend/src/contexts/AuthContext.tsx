@@ -48,6 +48,17 @@ interface AuthContextValue {
     },
   ) => Promise<{ error?: AuthError }>;
   resetPasswordForEmail: (email: string) => Promise<{ error?: AuthError }>;
+  confirmPasswordReset: (
+    email: string,
+    code: string,
+    newPassword: string,
+  ) => Promise<{ error?: AuthError }>;
+  beginMfaSetup: () => Promise<{
+    error?: AuthError;
+    secretCode?: string;
+    otpauthUri?: string;
+  }>;
+  verifyMfaSetup: (code: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
   getAuthHeaders: () => Promise<Record<string, string>>;
   refreshProfile: () => Promise<void>;
@@ -56,6 +67,8 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const DISABLE_AUTH_FEATURE_MSG = 'Not available while VITE_DISABLE_AUTH is enabled.';
+const MEDIAHUB_AUTH_DECOMMISSIONED =
+  import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
 
 /**
  * When VITE_DISABLE_AUTH=true, ProtectedRoute still skips checks, but login forms need a real
@@ -95,6 +108,11 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       signUp: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       resetPasswordForEmail: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      confirmPasswordReset: async () => ({
+        error: { message: DISABLE_AUTH_FEATURE_MSG },
+      }),
+      beginMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      verifyMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       logout,
       getAuthHeaders,
       refreshProfile: async () => {},
@@ -327,6 +345,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
 
   const loginOAuth = useCallback(
     async (accessTokenValue: string) => {
+      if (MEDIAHUB_AUTH_DECOMMISSIONED) {
+        return {
+          error: {
+            message:
+              'Google OAuth is temporarily unavailable while auth is migrating.',
+          },
+        };
+      }
       const token = (accessTokenValue || '').trim();
       if (!token) return { error: { message: 'Access token is required.' } };
 
@@ -376,6 +402,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         zipCode?: string;
       },
     ) => {
+      if (MEDIAHUB_AUTH_DECOMMISSIONED) {
+        return {
+          error: {
+            message:
+              'New account creation is temporarily unavailable while auth is migrating.',
+          },
+        };
+      }
       const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -422,6 +456,81 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     [apiUrl],
   );
 
+  const confirmPasswordReset = useCallback(
+    async (email: string, code: string, newPassword: string) => {
+      const emailStr = (email || '').trim();
+      const codeStr = (code || '').trim();
+      const nextPassword = (newPassword || '').trim();
+
+      if (!emailStr) return { error: { message: 'Email is required.' } };
+      if (!codeStr) return { error: { message: 'Reset code is required.' } };
+      if (!nextPassword || nextPassword.length < 8) {
+        return { error: { message: 'Password must be at least 8 characters.' } };
+      }
+
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/recover/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: emailStr,
+          code: codeStr,
+          password: nextPassword,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: { message: data?.error || 'Password reset failed.' } };
+      }
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return {};
+    },
+    [apiUrl],
+  );
+
+  const beginMfaSetup = useCallback(async () => {
+    const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/mfa/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return { error: { message: data?.error || 'Could not start MFA setup.' } };
+    }
+    if (data.error) {
+      return { error: { message: data.error } };
+    }
+    return {
+      secretCode: data.secretCode as string | undefined,
+      otpauthUri: data.otpauthUri as string | undefined,
+    };
+  }, [apiUrl]);
+
+  const verifyMfaSetup = useCallback(
+    async (code: string) => {
+      const codeStr = (code || '').trim();
+      if (!codeStr) return { error: { message: 'MFA code is required.' } };
+
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/mfa/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeStr }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: { message: data?.error || 'MFA verification failed.' } };
+      }
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return {};
+    },
+    [apiUrl],
+  );
+
   const logout = useCallback(() => {
     void authFetch(`${apiUrl.replace(/\/$/, '')}/auth/logout`, { method: 'POST' }).catch(() => {});
     setAuthMode(null);
@@ -456,6 +565,9 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     loginOAuth,
     signUp,
     resetPasswordForEmail,
+    confirmPasswordReset,
+    beginMfaSetup,
+    verifyMfaSetup,
     logout,
     getAuthHeaders,
     refreshProfile,

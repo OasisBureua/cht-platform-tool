@@ -183,6 +183,49 @@ export class AdminController {
     };
   }
 
+  @Get('auth-status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Get runtime auth/decommission status flags',
+    description:
+      'Operational diagnostics for auth migration. Returns booleans only; no secrets are exposed.',
+  })
+  getAuthStatus() {
+    const supabaseUrl = this.config.get<string>('supabase.url')?.trim() || '';
+    const supabaseAnonKey =
+      this.config.get<string>('supabase.anonKey')?.trim() || '';
+    const gotrueJwtSecret =
+      this.config.get<string>('gotrue.jwtSecret')?.trim() || '';
+    const mediahubApiKey = this.config.get<string>('mediahub.apiKey')?.trim() || '';
+    const mediahubBaseUrl =
+      this.config.get<string>('mediahub.baseUrl')?.trim() ||
+      'https://mediahub.communityhealth.media/api/public';
+    const supabaseAuthDecommissioned =
+      this.config.get<boolean>('supabase.authDecommissioned') ?? true;
+
+    return {
+      authMigration: {
+        supabaseAuthDecommissioned,
+        signupEnabled: !supabaseAuthDecommissioned,
+        oauthLoginEnabled: !supabaseAuthDecommissioned,
+      },
+      legacySupabaseAuth: {
+        configured: !!(supabaseUrl && supabaseAnonKey),
+        supabaseUrlConfigured: !!supabaseUrl,
+        supabaseAnonKeyConfigured: !!supabaseAnonKey,
+        gotrueJwtValidationEnabled: !!gotrueJwtSecret,
+      },
+      mediahubIntegration: {
+        mediahubBaseUrl,
+        apiKeyConfigured: !!mediahubApiKey,
+        hcpUpsertEnabled: !!mediahubApiKey,
+        userCreationEnabled: false,
+      },
+    };
+  }
+
   @Post('uploads/session-hero/presign')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

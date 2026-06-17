@@ -13,6 +13,12 @@ variable "domain_name" {
   type        = string
 }
 
+variable "secondary_api_origin_domain" {
+  description = "Secondary region ALB DNS for CloudFront API origin failover (e.g. us-east-2 backend ALB DNS)."
+  type        = string
+  default     = ""
+}
+
 # Docker images
 variable "backend_image" {
   description = "Backend Docker image"
@@ -119,6 +125,12 @@ variable "cloudfront_certificate_arn" {
 # Monitoring
 variable "alarm_notification_emails" {
   description = "Email addresses to receive alarm notifications (DLQ, ECS, RDS, ALB, etc.). Must confirm subscription via email."
+  type        = list(string)
+  default     = []
+}
+
+variable "secrets_replica_regions" {
+  description = "Secrets Manager replica regions for database/app secrets (e.g. [\"us-east-2\"])."
   type        = list(string)
   default     = []
 }
@@ -331,4 +343,43 @@ variable "session_reminders_schedule_expression" {
   description = "EventBridge schedule for the session-reminder scan (default: every 3 hours)"
   type        = string
   default     = "cron(0 0/3 * * ? *)"
+}
+
+# Cognito
+variable "enable_cognito_pools" {
+  description = "Create a Cognito User Pool for this environment. Set true in platform.tfvars and dev.tfvars."
+  type        = bool
+  default     = false
+}
+
+variable "cognito_domain_prefix" {
+  description = "Cognito hosted UI domain prefix — globally unique across all AWS accounts (e.g. chm-platform)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_mfa_configuration" {
+  description = "MFA enforcement level: OPTIONAL (grace period) or ON (enforced). Flip to ON via platform.tfvars at day 14."
+  type        = string
+  default     = "OPTIONAL"
+}
+
+variable "cognito_user_pool_tier" {
+  description = "Cognito user pool tier (LITE/ESSENTIALS/PLUS). Use ESSENTIALS or PLUS for multi-region replication add-on."
+  type        = string
+  default     = "ESSENTIALS"
+}
+
+variable "cognito_google_client_id" {
+  description = "Google OAuth client ID for Cognito identity provider (leave empty until creds are ready)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "cognito_google_client_secret" {
+  description = "Google OAuth client secret for Cognito identity provider (leave empty until creds are ready)"
+  type        = string
+  sensitive   = true
+  default     = ""
 }
