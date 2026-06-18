@@ -135,6 +135,30 @@ variable "secrets_replica_regions" {
   default     = []
 }
 
+variable "enable_ecr_replication" {
+  description = "Replicate cht-platform-* ECR images from us-east-1 to the DR region (account-level; applies on platform or dev apply)."
+  type        = bool
+  default     = true
+}
+
+variable "ecr_replication_destination_region" {
+  description = "Destination region for ECR image replication."
+  type        = string
+  default     = "us-east-2"
+}
+
+variable "ecr_repository_prefix" {
+  description = "ECR repository name prefix to replicate."
+  type        = string
+  default     = "cht-platform-"
+}
+
+variable "ecr_repository_names" {
+  description = "ECR repository names replicated to the DR region."
+  type        = list(string)
+  default     = ["cht-platform-backend", "cht-platform-worker"]
+}
+
 # Application secrets
 variable "supabase_url" {
   description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"

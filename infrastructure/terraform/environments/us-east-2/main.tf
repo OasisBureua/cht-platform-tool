@@ -395,3 +395,15 @@ module "cloudwatch" {
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = module.sns_alerts.topic_arn
 }
+
+# ============================================
+# Monitoring - GuardDuty (us-east-2 — DR region compliance)
+# ============================================
+module "guardduty" {
+  source = "../../modules/monitoring/guardduty"
+
+  project         = local.dr_project
+  environment     = var.environment
+  enable_detector = true
+  sns_topic_arn   = module.sns_alerts.topic_arn
+}

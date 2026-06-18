@@ -18,6 +18,8 @@ Set up active-passive disaster recovery for CHT with primary in `us-east-1` and 
   - origin-group failover on 5xx status codes
 - `us-east-1` environment accepts `secondary_api_origin_domain`
 - `platform.tfvars` and `dev.tfvars` include `secondary_api_origin_domain` placeholder
+- **ECR replication** `us-east-1` → `us-east-2` for `cht-platform-*` repos (platform apply)
+- **GuardDuty** in both regions (`us-east-1` platform stack, `us-east-2` DR stack) → regional SNS alerts
 
 This allows `/api*` and `/health*` traffic to fail over automatically once the `us-east-2` ALB exists and the domain is configured.
 
@@ -30,10 +32,12 @@ This allows `/api*` and `/health*` traffic to fail over automatically once the `
 - Mirror core modules from `us-east-1`:
   - VPC, ECS cluster/services, ALB, S3 buckets, IAM, KMS, secrets, SQS, EventBridge, monitoring
 - Set standby ECS desired count to ~50% of primary for backend/worker
-- Keep global/account-level singletons out of secondary stack:
+- Keep global edge singletons out of secondary stack:
   - CloudFront/WAF (global edge)
   - Route53 hosted zone records (single control plane)
-  - GuardDuty/AWS Config/CloudTrail account-level resources
+- Regional compliance in DR stack:
+  - GuardDuty detector + EventBridge → SNS (us-east-2)
+  - ECR images replicated from us-east-1 (configured on platform apply)
 
 ### 2) Data replication
 
@@ -99,11 +103,13 @@ aws cognito-idp describe-user-pool \
 
 ## Apply order
 
-1. Deploy `us-east-2` stack (standby infra)
-2. Stand up replicated data (RDS replica + secrets replication)
-3. Set `secondary_api_origin_domain` in `platform.tfvars`
-4. Apply `us-east-1` to enable CloudFront API failover
-5. Run controlled failover test and record results
+1. Deploy `us-east-1` stack for your environment (enables ECR replication to us-east-2 on first apply)
+2. Deploy `us-east-2` stack (standby infra + GuardDuty)
+3. Stand up replicated data (RDS replica + secrets replication)
+4. Set `secondary_api_origin_domain` in `platform.tfvars` or `dev.tfvars`
+5. Apply `us-east-1` to enable CloudFront API failover
+6. Deploy frontend to both S3 buckets: `./scripts/deploy-frontend.sh <env> both`
+7. Run controlled failover test and record results
 
 ---
 

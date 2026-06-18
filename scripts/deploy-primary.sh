@@ -5,73 +5,102 @@ echo "🚀 CHT Platform - Deploy Primary Region"
 echo "========================================"
 echo ""
 
-# Check which environment
+# platform → platform.tfvars (testapp.communityhealth.media)
+# dev      → dev.tfvars      (devapp.communityhealth.media)
 ENV=${1:-platform}
-VAR_FILE="infrastructure/terraform/environments/variables/${ENV}.tfvars"
+
+case "$ENV" in
+  platform|dev) ;;
+  prod)
+    ENV=platform
+    ;;
+  *)
+    echo "❌ Unknown environment: $1"
+    echo "Usage: ./deploy-primary.sh [platform|dev]"
+    echo "  platform  uses infrastructure/terraform/environments/variables/platform.tfvars"
+    echo "  dev       uses infrastructure/terraform/environments/variables/dev.tfvars"
+    exit 1
+    ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/${ENV}.tfvars"
+
 if [ ! -f "$VAR_FILE" ]; then
     echo "❌ Variable file not found: $VAR_FILE"
-    echo "Usage: ./deploy-primary.sh [platform|dev|prod]"
-    echo "  platform = single consolidated account (default)"
     exit 1
 fi
 
+# Both clusters can run the same ECR images (override with BACKEND_IMAGE / WORKER_IMAGE / IMAGE_TAG).
+ECR_REGISTRY="${ECR_REGISTRY:-233636046512.dkr.ecr.us-east-1.amazonaws.com}"
+IMAGE_TAG="${IMAGE_TAG:-platform-latest}"
+BACKEND_IMAGE="${BACKEND_IMAGE:-${ECR_REGISTRY}/cht-platform-backend:${IMAGE_TAG}}"
+WORKER_IMAGE="${WORKER_IMAGE:-${ECR_REGISTRY}/cht-platform-worker:${IMAGE_TAG}}"
+
+DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
+
 echo "📦 Environment: $ENV"
-echo "📄 Variables: ../variables/${ENV}.tfvars"
+echo "📄 Variables:  ${ENV}.tfvars"
+echo "🌐 Domain:      ${DOMAIN:-unknown}"
+echo "🐳 Backend:     $BACKEND_IMAGE"
+echo "🐳 Worker:      $WORKER_IMAGE"
 echo ""
 
-cd infrastructure/terraform/environments/us-east-1
+cd "$REPO_ROOT/infrastructure/terraform/environments/us-east-1"
 
-# Initialize (-reconfigure picks up backend block changes, e.g. S3 use_lockfile)
 echo "🔧 Initializing Terraform..."
 terraform init -reconfigure
 
-# Validate
 echo ""
 echo "✅ Validating configuration..."
 terraform validate
 
-# Plan
 echo ""
 echo "📋 Planning deployment..."
-terraform plan -var-file="../variables/${ENV}.tfvars" -out=tfplan
+terraform plan \
+  -var-file="../variables/${ENV}.tfvars" \
+  -var="backend_image=${BACKEND_IMAGE}" \
+  -var="worker_image=${WORKER_IMAGE}" \
+  -out=tfplan
 
-# Show plan summary
 echo ""
 echo "📊 Plan Summary:"
 terraform show -json tfplan | jq -r '.resource_changes[] | select(.change.actions != ["no-op"]) | "\(.change.actions[0]): \(.type).\(.name)"'
 echo ""
 
-# Confirm
 read -p "Deploy to us-east-1 ($ENV)? (yes/no): " CONFIRM
 if [ "$CONFIRM" != "yes" ]; then
     echo "❌ Deployment cancelled."
-    rm tfplan
+    rm -f tfplan
     exit 0
 fi
 
-# Apply
 echo ""
 echo "🚀 Deploying infrastructure..."
 terraform apply tfplan
-rm tfplan
+rm -f tfplan
 
 echo ""
 echo "✅ us-east-1 ($ENV) deployed successfully!"
 echo ""
 
-# Show outputs
 echo "📋 Deployment Outputs:"
 terraform output
 
-# Save outputs to file
 echo ""
-echo "💾 Saving outputs to us-east-1-outputs.txt..."
-terraform output > ~/cht-us-east-1-$ENV-outputs.txt
+echo "💾 Saving outputs..."
+terraform output > ~/cht-us-east-1-${ENV}-outputs.txt
 
 echo ""
 echo "📋 Next steps:"
-echo "1. Add Route53 NS records to your DNS provider"
-echo "2. Deploy frontend: ./deploy-frontend.sh $ENV"
-echo "3. Run database migrations: ./run-migrations.sh $ENV"
-echo "4. Test: curl https://testapp.communityhealth.media/health/ready  # platform"
-echo "   Test: curl https://staging.testapp.communityhealth.media/health/ready  # staging"
+echo "1. Add Route53 NS records to your DNS provider (if not already delegated)"
+echo "2. Deploy DR standby: ./scripts/deploy-secondary.sh $ENV"
+echo "3. Deploy frontend: ./scripts/deploy-frontend.sh $ENV both"
+echo "4. Run database migrations: ./scripts/run-migrations.sh $ENV"
+if [ -n "$DOMAIN" ]; then
+  echo "5. Test: curl https://${DOMAIN}/health/ready"
+else
+  echo "5. Test: curl https://testapp.communityhealth.media/health/ready  # platform"
+  echo "         curl https://devapp.communityhealth.media/health/ready    # dev"
+fi

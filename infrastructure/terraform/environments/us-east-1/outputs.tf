@@ -122,6 +122,16 @@ output "cognito_issuer_url" {
   value       = var.enable_cognito_pools ? module.cognito[0].issuer_url : null
 }
 
+output "ecr_dr_registry_url" {
+  description = "ECR registry in the DR region (use for us-east-2 ECS images after replication)."
+  value       = try(module.ecr_replication[0].dr_registry_url, null)
+}
+
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID in us-east-1 (platform only)."
+  value       = module.guardduty.detector_id
+}
+
 # Next steps
 output "next_steps" {
   description = "What to do next"

@@ -37,9 +37,10 @@ Document substitutes when primary contacts are unavailable.
 
 ### Amazon GuardDuty
 
-- **Scope:** One detector per account/region; managed by **platform** Terraform (`monitoring/guardduty`).
-- **Routing:** EventBridge rule `cht-platform-guardduty-findings` → SNS topic `cht-platform-alerts`.
-- **Action:** Open [GuardDuty console](https://console.aws.amazon.com/guardduty/) → Findings. Note severity, resource, and finding type.
+- **Scope:** One detector per account **per region**.
+- **us-east-1:** Managed by platform Terraform (`cht-platform-guardduty-findings` → `cht-platform-alerts`).
+- **us-east-2:** Managed by DR Terraform (`cht-platform-dr-use2-*-guardduty-findings` → regional alerts topic).
+- **Action:** Open [GuardDuty console](https://console.aws.amazon.com/guardduty/) → switch region → Findings.
 
 ### Amazon CloudWatch alarms
 

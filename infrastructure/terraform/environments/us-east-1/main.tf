@@ -33,8 +33,9 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  resource_prefix   = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
-  log_retention_days = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  resource_prefix            = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  log_retention_days         = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  manage_account_resources   = var.environment == "platform"
 }
 
 # ============================================
@@ -452,14 +453,28 @@ module "cognito" {
 }
 
 # ============================================
-# Monitoring - GuardDuty (account-level — platform environment only)
+# Compute - ECR cross-region replication (account-level)
+# Replicates cht-platform-* images from us-east-1 → us-east-2 for all environments.
+# ============================================
+module "ecr_replication" {
+  count  = var.enable_ecr_replication ? 1 : 0
+  source = "../../modules/compute/ecr-replication"
+
+  destination_region  = var.ecr_replication_destination_region
+  repository_prefix   = var.ecr_repository_prefix
+  repository_names    = var.ecr_repository_names
+}
+
+# ============================================
+# Monitoring - GuardDuty (us-east-1 — platform environment only)
 # ============================================
 module "guardduty" {
   source = "../../modules/monitoring/guardduty"
 
-  project       = var.project
-  environment   = var.environment
-  sns_topic_arn = module.sns_alerts.topic_arn
+  project         = var.project
+  environment     = var.environment
+  enable_detector = local.manage_account_resources
+  sns_topic_arn   = module.sns_alerts.topic_arn
 }
 
 # ============================================

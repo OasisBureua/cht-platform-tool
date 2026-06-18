@@ -6,79 +6,145 @@ echo "================================="
 echo ""
 
 if [ -z "$1" ]; then
-    echo "Usage: ./deploy-frontend.sh [platform|staging|dev|prod]"
+    echo "Usage: ./deploy-frontend.sh [platform|dev] [both]"
+    echo ""
+    echo "  platform       testapp.communityhealth.media  (platform.tfvars)"
+    echo "  dev            devapp.communityhealth.media    (dev.tfvars)"
+    echo "  both (optional) also sync build to us-east-2 DR S3 bucket"
     exit 1
 fi
 
 ENV=$1
+SYNC_SECONDARY=false
+if [ "${2:-}" = "both" ]; then
+  SYNC_SECONDARY=true
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-cd "$REPO_ROOT"
-
-echo "📦 Environment: $ENV"
-echo ""
+PRIMARY_TF_DIR="$REPO_ROOT/infrastructure/terraform/environments/us-east-1"
+SECONDARY_TF_DIR="$REPO_ROOT/infrastructure/terraform/environments/us-east-2"
+VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/${ENV}.tfvars"
+AWS_REGION="${AWS_REGION:-us-east-1}"
 
 case "$ENV" in
-  platform)
-    API_URL="https://testapp.communityhealth.media/api"
-    APP_URL="https://testapp.communityhealth.media"
-    TF_DIR="infrastructure/terraform/environments/us-east-1"
-    SECRET_ID="cht-platform-app-secrets"
-    ;;
-  staging)
-    API_URL="https://staging.testapp.communityhealth.media/api"
-    APP_URL="https://staging.testapp.communityhealth.media"
-    TF_DIR="infrastructure/terraform/environments/us-east-1-staging"
-    SECRET_ID="cht-platform-staging-app-secrets"
-    ;;
-  dev)
-    API_URL="https://testapp.communityhealth.media/api"
-    APP_URL="https://testapp.communityhealth.media"
-    TF_DIR="infrastructure/terraform/environments/us-east-1"
-    SECRET_ID="cht-platform-dev-app-secrets"
-    ;;
+  platform|dev) ;;
   prod)
-    API_URL="https://testapp.communityhealth.media/api"
-    APP_URL="https://testapp.communityhealth.media"
-    TF_DIR="infrastructure/terraform/environments/us-east-1"
-    SECRET_ID="cht-platform-prod-app-secrets"
+    echo "ℹ️  'prod' is an alias for platform (testapp.communityhealth.media)"
+    ENV=platform
+    VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/platform.tfvars"
     ;;
   *)
-    echo "❌ Unknown environment: $ENV (use platform, staging, dev, or prod)"
+    echo "❌ Unknown environment: $1 (use platform or dev)"
     exit 1
     ;;
 esac
 
-cd "$TF_DIR"
+if [ ! -f "$VAR_FILE" ]; then
+  echo "❌ Variable file not found: $VAR_FILE"
+  exit 1
+fi
+
+DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
+if [ -z "$DOMAIN" ]; then
+  echo "❌ Could not read domain_name from $VAR_FILE"
+  exit 1
+fi
+
+API_URL="https://${DOMAIN}/api"
+APP_URL="https://${DOMAIN}"
+
+case "$ENV" in
+  platform)
+    EXPECTED_BUCKET="cht-platform-frontend"
+    EXPECTED_DR_BUCKET="cht-platform-dr-use2-frontend"
+    ;;
+  dev)
+    EXPECTED_BUCKET="cht-platform-dev-frontend"
+    EXPECTED_DR_BUCKET="cht-platform-dr-use2-dev-frontend"
+    ;;
+esac
+
+echo "📦 Environment: $ENV"
+echo "📄 Variables:  $(basename "$VAR_FILE")"
+echo "🌐 Domain:      $DOMAIN"
+echo "🪣 Primary S3:  $EXPECTED_BUCKET"
+if [ "$SYNC_SECONDARY" = true ]; then
+  echo "🪣 DR S3:       $EXPECTED_DR_BUCKET (us-east-2)"
+fi
+echo ""
+
+cd "$PRIMARY_TF_DIR"
+echo "🔧 Reading primary Terraform outputs..."
+terraform init -input=false >/dev/null
+
 BUCKET=$(terraform output -raw frontend_bucket)
 DIST_ID=$(terraform output -raw cloudfront_distribution_id)
+TF_API_URL=$(terraform output -raw api_url 2>/dev/null || true)
+COGNITO_USER_POOL_ID=$(terraform output -raw cognito_user_pool_id 2>/dev/null || true)
+COGNITO_CLIENT_ID=$(terraform output -raw cognito_client_id 2>/dev/null || true)
+COGNITO_HOSTED_UI=$(terraform output -raw cognito_hosted_ui_base_url 2>/dev/null || true)
 cd "$REPO_ROOT"
 
-echo "🪣 S3 Bucket: $BUCKET"
+if [ "$BUCKET" != "$EXPECTED_BUCKET" ]; then
+  echo "❌ S3 bucket mismatch for $ENV."
+  echo "   Expected: $EXPECTED_BUCKET"
+  echo "   State has: $BUCKET"
+  echo "   Run: ./scripts/deploy-primary.sh $ENV"
+  exit 1
+fi
+
+if [ -n "$TF_API_URL" ] && [ "$TF_API_URL" != "$API_URL" ]; then
+  echo "❌ Terraform state domain does not match ${ENV}.tfvars."
+  echo "   tfvars:  $API_URL"
+  echo "   state:   $TF_API_URL"
+  echo "   Run: ./scripts/deploy-primary.sh $ENV"
+  exit 1
+fi
+
+if [ -z "$COGNITO_USER_POOL_ID" ] || [ -z "$COGNITO_CLIENT_ID" ] || [ -z "$COGNITO_HOSTED_UI" ]; then
+  echo "❌ Cognito outputs missing. Set enable_cognito_pools = true and apply ${ENV}.tfvars first."
+  exit 1
+fi
+
+DR_BUCKET=""
+if [ "$SYNC_SECONDARY" = true ]; then
+  cd "$SECONDARY_TF_DIR"
+  terraform init -input=false >/dev/null
+  DR_BUCKET=$(terraform output -raw frontend_bucket 2>/dev/null || true)
+  cd "$REPO_ROOT"
+
+  if [ -z "$DR_BUCKET" ]; then
+    echo "❌ DR frontend bucket not found in us-east-2 state."
+    echo "   Run: ./scripts/deploy-secondary.sh $ENV"
+    exit 1
+  fi
+
+  if [ "$DR_BUCKET" != "$EXPECTED_DR_BUCKET" ]; then
+    echo "❌ DR S3 bucket mismatch for $ENV."
+    echo "   Expected: $EXPECTED_DR_BUCKET"
+    echo "   State has: $DR_BUCKET"
+    exit 1
+  fi
+fi
+
 echo "☁️  CloudFront: $DIST_ID"
-echo "📡 API URL: $API_URL"
-echo "🌐 App URL: $APP_URL"
+echo "📡 API URL:    $API_URL"
+echo "🌐 App URL:    $APP_URL"
+echo "🔐 Cognito:    $COGNITO_HOSTED_UI"
 echo ""
 
 echo "🔨 Building frontend..."
 cd "$REPO_ROOT/frontend"
 
-echo "📥 Fetching Supabase config from Secrets Manager ($SECRET_ID)..."
-SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id "$SECRET_ID" --query SecretString --output text 2>/dev/null || true)
-if [ -n "$SECRET_JSON" ]; then
-  SUPABASE_URL=$(echo "$SECRET_JSON" | jq -r '.supabase_url // empty')
-  SUPABASE_ANON_KEY=$(echo "$SECRET_JSON" | jq -r '.supabase_anon_key // empty')
-fi
-if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
-  echo "⚠️  Could not load supabase_url/supabase_anon_key from Secrets Manager. Ensure $SECRET_ID exists and has been applied."
-  exit 1
-fi
-
 build_env_file() {
   echo "VITE_API_URL=$API_URL"
-  echo "VITE_SUPABASE_URL=$SUPABASE_URL"
-  echo "VITE_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY"
   echo "VITE_APP_URL=$APP_URL"
+  echo "VITE_COGNITO_USER_POOL_ID=$COGNITO_USER_POOL_ID"
+  echo "VITE_COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID"
+  echo "VITE_COGNITO_DOMAIN=$COGNITO_HOSTED_UI"
+  echo "VITE_COGNITO_REGION=$AWS_REGION"
+  echo "VITE_MEDIAHUB_AUTH_DECOMMISSIONED=true"
   echo "VITE_DISABLE_AUTH=false"
   echo "VITE_USE_DEV_AUTH=false"
 }
@@ -87,13 +153,19 @@ build_env_file > .env.production
 npm run build
 
 echo ""
-echo "📤 Uploading to S3..."
-aws s3 sync dist/ s3://$BUCKET/ --delete
+echo "📤 Uploading to primary S3 ($BUCKET)..."
+aws s3 sync dist/ "s3://${BUCKET}/" --delete
+
+if [ "$SYNC_SECONDARY" = true ]; then
+  echo ""
+  echo "📤 Uploading to DR S3 ($DR_BUCKET, us-east-2)..."
+  aws s3 sync dist/ "s3://${DR_BUCKET}/" --delete
+fi
 
 echo ""
 echo "🔄 Invalidating CloudFront cache..."
 aws cloudfront create-invalidation \
-  --distribution-id $DIST_ID \
+  --distribution-id "$DIST_ID" \
   --paths "/*"
 
 cd "$REPO_ROOT"
@@ -103,3 +175,6 @@ echo "✅ Frontend deployed successfully!"
 echo ""
 echo "🌐 App URL:  $APP_URL"
 echo "📡 API URL:  $API_URL"
+if [ "$SYNC_SECONDARY" = true ]; then
+  echo "🪣 DR bucket: s3://${DR_BUCKET}/"
+fi

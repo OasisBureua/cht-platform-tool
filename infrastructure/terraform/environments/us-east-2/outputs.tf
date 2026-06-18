@@ -3,6 +3,11 @@ output "secondary_api_origin_domain" {
   value       = module.alb.alb_dns_name
 }
 
+output "frontend_bucket" {
+  description = "DR frontend S3 bucket in us-east-2 (sync from deploy-frontend.sh both)."
+  value       = module.s3_frontend.bucket_id
+}
+
 output "secondary_alb_zone_id" {
   description = "ALB hosted zone ID for diagnostics."
   value       = module.alb.alb_zone_id
@@ -36,4 +41,14 @@ output "dr_read_replica_endpoint" {
 output "dr_read_replica_identifier" {
   description = "DR cross-region read replica identifier."
   value       = var.enable_db_replica ? aws_db_instance.replica[0].id : null
+}
+
+output "guardduty_detector_id" {
+  description = "GuardDuty detector ID in us-east-2."
+  value       = module.guardduty.detector_id
+}
+
+output "ecr_registry_url" {
+  description = "Regional ECR registry URL (images replicated from us-east-1)."
+  value       = "${data.aws_caller_identity.current.account_id}.dkr.ecr.us-east-2.amazonaws.com"
 }

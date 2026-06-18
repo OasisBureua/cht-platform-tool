@@ -1,0 +1,116 @@
+#!/bin/bash
+set -e
+
+echo "🚀 CHT Platform - Deploy Secondary Region (us-east-2 DR standby)"
+echo "================================================================="
+echo ""
+
+# platform → platform.tfvars (testapp.communityhealth.media)
+# dev      → dev.tfvars      (devapp.communityhealth.media)
+ENV=${1:-platform}
+
+case "$ENV" in
+  platform|dev) ;;
+  prod)
+    ENV=platform
+    ;;
+  *)
+    echo "❌ Unknown environment: $1"
+    echo "Usage: ./deploy-secondary.sh [platform|dev]"
+    echo "  platform  uses infrastructure/terraform/environments/variables/platform.tfvars"
+    echo "  dev       uses infrastructure/terraform/environments/variables/dev.tfvars"
+    exit 1
+    ;;
+esac
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/${ENV}.tfvars"
+TF_DIR="$REPO_ROOT/infrastructure/terraform/environments/us-east-2"
+
+if [ ! -f "$VAR_FILE" ]; then
+  echo "❌ Variable file not found: $VAR_FILE"
+  exit 1
+fi
+
+ECR_REGISTRY="${ECR_REGISTRY:-233636046512.dkr.ecr.us-east-2.amazonaws.com}"
+IMAGE_TAG="${IMAGE_TAG:-platform-latest}"
+BACKEND_IMAGE="${BACKEND_IMAGE:-${ECR_REGISTRY}/cht-platform-backend:${IMAGE_TAG}}"
+WORKER_IMAGE="${WORKER_IMAGE:-${ECR_REGISTRY}/cht-platform-worker:${IMAGE_TAG}}"
+
+DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
+
+case "$ENV" in
+  platform) EXPECTED_FRONTEND_BUCKET="cht-platform-dr-use2-frontend" ;;
+  dev)      EXPECTED_FRONTEND_BUCKET="cht-platform-dr-use2-dev-frontend" ;;
+esac
+
+echo "📦 Environment: $ENV"
+echo "📄 Variables:  ${ENV}.tfvars"
+echo "🌐 Domain:      ${DOMAIN:-unknown}"
+echo "🪣 DR frontend: $EXPECTED_FRONTEND_BUCKET"
+echo "🐳 Backend:     $BACKEND_IMAGE"
+echo "🐳 Worker:      $WORKER_IMAGE"
+echo ""
+echo "ℹ️  Prerequisite: primary us-east-1 must already be deployed for $ENV"
+echo "   ./scripts/deploy-primary.sh $ENV"
+echo "ℹ️  ECR images pull from us-east-2 (replicated from us-east-1 via platform apply)"
+echo ""
+
+cd "$TF_DIR"
+
+echo "🔧 Initializing Terraform..."
+terraform init -reconfigure
+
+echo ""
+echo "✅ Validating configuration..."
+terraform validate
+
+echo ""
+echo "📋 Planning deployment..."
+terraform plan \
+  -var-file="../variables/${ENV}.tfvars" \
+  -var="backend_image=${BACKEND_IMAGE}" \
+  -var="worker_image=${WORKER_IMAGE}" \
+  -out=tfplan
+
+echo ""
+echo "📊 Plan Summary:"
+terraform show -json tfplan | jq -r '.resource_changes[] | select(.change.actions != ["no-op"]) | "\(.change.actions[0]): \(.type).\(.name)"'
+echo ""
+
+read -p "Deploy to us-east-2 ($ENV)? (yes/no): " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+  echo "❌ Deployment cancelled."
+  rm -f tfplan
+  exit 0
+fi
+
+echo ""
+echo "🚀 Deploying DR standby infrastructure..."
+terraform apply tfplan
+rm -f tfplan
+
+SECONDARY_ORIGIN=$(terraform output -raw secondary_api_origin_domain)
+FRONTEND_BUCKET=$(terraform output -raw frontend_bucket 2>/dev/null || echo "$EXPECTED_FRONTEND_BUCKET")
+
+terraform output > ~/cht-us-east-2-${ENV}-outputs.txt
+
+cd "$REPO_ROOT"
+
+echo ""
+echo "✅ us-east-2 ($ENV) deployed successfully!"
+echo ""
+echo "📋 Key outputs:"
+echo "   Secondary API origin: $SECONDARY_ORIGIN"
+echo "   DR frontend bucket:   $FRONTEND_BUCKET"
+echo "   Full outputs:         ~/cht-us-east-2-${ENV}-outputs.txt"
+echo ""
+echo "📋 Next steps:"
+echo "1. In ${ENV}.tfvars (us-east-1), set CloudFront API failover:"
+echo "     secondary_api_origin_domain = \"$SECONDARY_ORIGIN\""
+echo "2. Re-apply primary: ./scripts/deploy-primary.sh $ENV"
+echo "3. Deploy frontend to both buckets: ./scripts/deploy-frontend.sh $ENV both"
+if [ -n "$DOMAIN" ]; then
+  echo "4. DR smoke test: scale primary ECS to 0, then curl https://${DOMAIN}/health/ready"
+fi
