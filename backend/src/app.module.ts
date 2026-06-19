@@ -27,16 +27,17 @@ import { ContactModule } from './modules/contact/contact.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
+const usePrettyLogs = process.env.LOG_PRETTY === 'true';
+
 @Module({
   imports: [
     LoggerModule.forRoot({
       forRoutes: [{ method: RequestMethod.ALL, path: '{*splat}' }],
       pinoHttp: {
         level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
-        transport:
-          process.env.NODE_ENV !== 'production'
-            ? { target: 'pino-pretty', options: { colorize: true } }
-            : undefined,
+        transport: usePrettyLogs
+          ? { target: 'pino-pretty', options: { colorize: true } }
+          : undefined,
         serializers: {
           req: (req) => ({ method: req.method, url: req.url }),
           res: (res) => ({ statusCode: res.statusCode }),

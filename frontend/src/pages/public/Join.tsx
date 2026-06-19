@@ -3,6 +3,8 @@ import { Link, Navigate } from 'react-router-dom';
 import { Award, DollarSign, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
+import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
+import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, mediahubAuthDecommissioned } from '../../lib/auth-config';
 import { signupProfessionSelectOptions, professionRequiresNpi } from '../../data/profession-options';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
@@ -43,8 +45,7 @@ const PLATFORM_HOME = '/app/home';
 
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
-  const mediahubAuthDecommissioned =
-    import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
+  const signupEnabled = cognitoAuthEnabled || !mediahubAuthDecommissioned;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -68,21 +69,28 @@ export default function Join() {
     return <Navigate to={PLATFORM_HOME} replace />;
   }
 
-  const handleOAuth = (provider: 'google') => {
-    if (mediahubAuthDecommissioned) {
-      setError('Account creation is temporarily unavailable while auth is migrating.');
+  const handleOAuth = async (provider: 'google') => {
+    if (!googleOAuthEnabled) {
+      setError(googleOAuthMigrationMessage);
       return;
     }
     setError(null);
     setOauthLoading(provider);
-    // Use direct authorize URL with redirect_to - fixes Google OAuth redirect (Sebastien)
-    window.location.href = buildOAuthAuthorizeUrl(provider, PLATFORM_HOME);
+    try {
+      const url = cognitoAuthEnabled
+        ? await buildCognitoAuthorizeUrl('Google', PLATFORM_HOME)
+        : buildOAuthAuthorizeUrl(provider, PLATFORM_HOME);
+      window.location.href = url;
+    } catch (err) {
+      setOauthLoading(null);
+      setError(err instanceof Error ? err.message : 'Could not start Google sign-up.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (mediahubAuthDecommissioned) {
+    if (!signupEnabled) {
       setError('Account creation is temporarily unavailable while auth is migrating.');
       return;
     }
@@ -139,13 +147,22 @@ export default function Join() {
         <div className="w-full max-w-md rounded-2xl border border-gray-200/90 bg-white/95 p-8 text-center shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.12)]">
           <h2 className="text-balance text-xl font-semibold text-gray-900">Check your email</h2>
           <p className="text-pretty mt-2 text-sm text-gray-600">
-            We&apos;ve sent a verification link to <strong>{email}</strong>. Click the link to verify your account, then you can sign in.
+            {cognitoAuthEnabled ? (
+              <>
+                We sent a 6-digit verification code to <strong>{email}</strong> from{' '}
+                <strong>noreply@communityhealth.media</strong>. Enter the code on the next screen, then sign in.
+              </>
+            ) : (
+              <>
+                We&apos;ve sent a verification link to <strong>{email}</strong>. Click the link to verify your account, then you can sign in.
+              </>
+            )}
           </p>
           <Link
-            to="/login"
+            to={cognitoAuthEnabled ? `/verify-email?email=${encodeURIComponent(email.trim())}` : '/login'}
             className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
           >
-            Go to Login
+            {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
           </Link>
         </div>
       </div>
@@ -202,7 +219,7 @@ export default function Join() {
           </p>
 
           {/* OAuth sign-up creates CHT account and redirects to platform */}
-          {!mediahubAuthDecommissioned ? (
+          {googleOAuthEnabled ? (
             <div className="mt-4 space-y-2">
               <button
                 type="button"
@@ -221,7 +238,7 @@ export default function Join() {
             </div>
           ) : (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
-              New account creation is temporarily unavailable while auth is migrating.
+              {googleOAuthMigrationMessage}
             </div>
           )}
 
@@ -389,10 +406,10 @@ export default function Join() {
               <div className="sm:col-span-2">
                 <button
                   type="submit"
-                  disabled={submitting || mediahubAuthDecommissioned}
+                  disabled={submitting || !signupEnabled}
                   className="w-full rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
                 >
-                  {mediahubAuthDecommissioned
+                  {!signupEnabled
                     ? 'Account creation temporarily unavailable'
                     : submitting
                     ? 'Creating account...'

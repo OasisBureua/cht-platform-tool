@@ -122,6 +122,16 @@ output "cognito_issuer_url" {
   value       = var.enable_cognito_pools ? module.cognito[0].issuer_url : null
 }
 
+output "cognito_waf_web_acl_arn" {
+  description = "Regional WAF ACL protecting the Cognito user pool"
+  value       = var.enable_cognito_pools ? module.cognito[0].cognito_waf_web_acl_arn : null
+}
+
+output "cognito_kms_key_arn" {
+  description = "Multi-Region KMS key for Cognito MRR (when enabled)"
+  value       = var.enable_cognito_pools ? module.cognito[0].cognito_kms_key_arn : null
+}
+
 output "ecr_dr_registry_url" {
   description = "ECR registry in the DR region (use for us-east-2 ECS images after replication)."
   value       = try(module.ecr_replication[0].dr_registry_url, null)
@@ -142,7 +152,7 @@ output "next_steps" {
     📋 Add NS records in your DNS provider (GoDaddy for communityhealth.media):
     
     Type: NS
-    Name: testapp
+    Name: ${replace(var.domain_name, ".communityhealth.media", "")}
     Value: Add 4 records, one per line:
     ${join("\n    ", module.route53.name_servers)}
     

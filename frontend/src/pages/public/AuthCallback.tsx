@@ -2,11 +2,16 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
+import { cognitoAuthEnabled } from '../../lib/auth-config';
+import {
+  consumeCognitoOAuthState,
+  getCognitoCallbackUrl,
+} from '../../lib/cognito-oauth';
 
 /**
- * OAuth callback page. GoTrue redirects here after Google OAuth sign-in.
- * URL hash contains: access_token, refresh_token, etc.
- * Capture hash at module load (before Supabase client can clear it).
+ * OAuth callback page.
+ * Cognito PKCE: ?code=...&state=... → POST /auth/cognito/callback
+ * Legacy GoTrue: #access_token=... → POST /auth/login-oauth
  */
 const INITIAL_HASH =
   typeof window !== 'undefined' && window.location.hash ? window.location.hash.slice(1) : '';
@@ -14,27 +19,55 @@ const INITIAL_HASH =
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { loginOAuth } = useAuth();
+  const { completeCognitoCallback, loginOAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const hash = INITIAL_HASH || window.location.hash?.slice(1);
-    const query = window.location.search?.slice(1);
-    const hashParams = hash ? new URLSearchParams(hash) : null;
-    const queryParams = query ? new URLSearchParams(query) : null;
-
-    const params = hashParams ?? queryParams;
-    if (params) {
-      const errorDesc = params.get('error_description');
-      if (errorDesc) {
-        setError(decodeURIComponent(errorDesc));
-        return;
-      }
+    const errorDesc = searchParams.get('error_description');
+    if (errorDesc) {
+      setError(decodeURIComponent(errorDesc));
+      return;
     }
 
-    const accessToken = hashParams?.get('access_token') ?? queryParams?.get('access_token');
-    if (!accessToken || !accessToken.trim()) {
-      setError('Missing access token. Please try signing in again.');
+    const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    const fromParam = searchParams.get('from') || undefined;
+    const fromPath = fromParam && fromParam !== 'undefined' ? fromParam : undefined;
+
+    if (code && cognitoAuthEnabled) {
+      let cancelled = false;
+      const oauthState = consumeCognitoOAuthState(state);
+      const redirectUri = oauthState?.redirectUri || getCognitoCallbackUrl(oauthState?.from);
+      const codeVerifier = oauthState?.verifier;
+
+      if (!codeVerifier) {
+        setError('Missing PKCE verifier. Please try signing in again.');
+        return;
+      }
+
+      completeCognitoCallback(code, redirectUri, codeVerifier).then((result) => {
+        if (cancelled) return;
+        if (result.error) {
+          setError(result.error.message || 'Sign-in failed.');
+          return;
+        }
+        navigate(
+          getPostLoginPath(result.role, oauthState?.from || fromPath),
+          { replace: true },
+        );
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const hash = INITIAL_HASH || window.location.hash?.slice(1);
+    const hashParams = hash ? new URLSearchParams(hash) : null;
+    const accessToken = hashParams?.get('access_token') ?? searchParams.get('access_token');
+
+    if (!accessToken?.trim()) {
+      setError('Missing authorization response. Please try signing in again.');
       return;
     }
 
@@ -45,15 +78,13 @@ export default function AuthCallback() {
         setError(result.error.message || 'Sign-in failed.');
         return;
       }
-      const fromParam = searchParams.get('from');
-      const fromPath = fromParam && fromParam !== 'undefined' ? fromParam : undefined;
       navigate(getPostLoginPath(result.role, fromPath), { replace: true });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [loginOAuth, navigate, searchParams]);
+  }, [completeCognitoCallback, loginOAuth, navigate, searchParams]);
 
   if (error) {
     return (

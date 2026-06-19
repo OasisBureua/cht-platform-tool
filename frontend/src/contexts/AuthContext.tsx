@@ -9,6 +9,8 @@ import {
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
 import { resolveApiBaseUrl } from '../config/app-urls';
+import { cognitoAuthEnabled, mediahubAuthDecommissioned } from '../lib/auth-config';
+import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
 
 export interface AuthUser {
   userId: string;
@@ -28,11 +30,26 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  /** GoTrue JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
+  /** GoTrue/Cognito JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
   accessToken: string | null;
-  login: (email: string, password: string) => Promise<{ error?: AuthError }>;
-  /** Exchange GoTrue OAuth access_token (Google) for CHT session. Returns profileComplete when successful. */
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ error?: AuthError; mfa?: { session: string } }>;
+  /** Legacy GoTrue OAuth access_token exchange. Use completeCognitoCallback for Cognito PKCE. */
   loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
+  /** Exchange Cognito authorization code (PKCE) for CHT session cookie. */
+  completeCognitoCallback: (
+    code: string,
+    redirectUri: string,
+    codeVerifier: string,
+  ) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
+  /** Complete Cognito SOFTWARE_TOKEN_MFA after login returns a challenge. */
+  completeMfaLogin: (
+    email: string,
+    session: string,
+    code: string,
+  ) => Promise<{ error?: AuthError }>;
   signUp: (
     email: string,
     password: string,
@@ -47,6 +64,8 @@ interface AuthContextValue {
       zipCode?: string;
     },
   ) => Promise<{ error?: AuthError }>;
+  confirmEmailSignup: (email: string, code: string) => Promise<{ error?: AuthError }>;
+  resendEmailVerificationCode: (email: string) => Promise<{ error?: AuthError }>;
   resetPasswordForEmail: (email: string) => Promise<{ error?: AuthError }>;
   confirmPasswordReset: (
     email: string,
@@ -67,8 +86,6 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const DISABLE_AUTH_FEATURE_MSG = 'Not available while VITE_DISABLE_AUTH is enabled.';
-const MEDIAHUB_AUTH_DECOMMISSIONED =
-  import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
 
 /**
  * When VITE_DISABLE_AUTH=true, ProtectedRoute still skips checks, but login forms need a real
@@ -106,7 +123,13 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       accessToken: null,
       login,
       loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      completeCognitoCallback: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      completeMfaLogin: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       signUp: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      confirmEmailSignup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      resendEmailVerificationCode: async () => ({
+        error: { message: DISABLE_AUTH_FEATURE_MSG },
+      }),
       resetPasswordForEmail: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       confirmPasswordReset: async () => ({
         error: { message: DISABLE_AUTH_FEATURE_MSG },
@@ -285,13 +308,45 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       ? profile || { userId: devUserId, email: '', name: 'User' }
       : profile;
 
+  const applyLoginSuccess = useCallback((data: Record<string, unknown>) => {
+    if (data.session_token) {
+      setAuthMode('cookie');
+      setDevUserId('');
+      setAccessToken((data.access_token as string | undefined) ?? null);
+      setProfile({
+        userId: data.userId as string,
+        email: data.email as string | undefined,
+        name: data.name as string | undefined,
+        firstName: data.firstName as string | undefined,
+        lastName: data.lastName as string | undefined,
+        role: data.role as string | undefined,
+        profileComplete: (data.profileComplete as boolean | undefined) ?? true,
+      });
+      return true;
+    }
+    if (data.userId) {
+      setAuthMode('dev');
+      setAccessToken(null);
+      setDevUserId(data.userId as string);
+      setProfile({
+        userId: data.userId as string,
+        email: data.email as string | undefined,
+        name: data.name as string | undefined,
+        role: data.role as string | undefined,
+      });
+      return true;
+    }
+    return false;
+  }, []);
+
   const login = useCallback(
     async (email: string, password: string) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
+      const loginPath = cognitoAuthEnabled ? '/auth/cognito/login' : '/auth/login';
       let res: Response;
       try {
-        res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/login`, {
+        res = await authFetch(`${apiUrl.replace(/\/$/, '')}${loginPath}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: (email || '').trim(), password: password || '' }),
@@ -312,40 +367,72 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         return { error: { message: data.error } };
       }
 
-      if (data.session_token) {
-        setAuthMode('cookie');
-        setDevUserId('');
-        setAccessToken(data.access_token ?? null);
-        setProfile({
-          userId: data.userId,
-          email: data.email,
-          name: data.name,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          role: data.role,
-          profileComplete: data.profileComplete ?? true,
-        });
-      } else if (data.userId) {
-        setAuthMode('dev');
-        setAccessToken(null);
-        setDevUserId(data.userId);
-        setProfile({
-          userId: data.userId,
-          email: data.email,
-          name: data.name,
-          role: data.role,
-        });
-      } else {
-        return { error: { message: 'Login failed.' } };
+      if (data.challenge === 'SOFTWARE_TOKEN_MFA' && data.session) {
+        return { mfa: { session: data.session as string } };
       }
-      return {};
+
+      if (applyLoginSuccess(data)) {
+        return {};
+      }
+      return { error: { message: 'Login failed.' } };
     },
-    [apiUrl],
+    [apiUrl, applyLoginSuccess],
+  );
+
+  const completeMfaLogin = useCallback(
+    async (email: string, session: string, code: string) => {
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/mfa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (email || '').trim(),
+          session,
+          code: (code || '').trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      if (applyLoginSuccess(data)) {
+        return {};
+      }
+      return { error: { message: 'MFA login failed.' } };
+    },
+    [apiUrl, applyLoginSuccess],
+  );
+
+  const completeCognitoCallback = useCallback(
+    async (code: string, redirectUri: string, codeVerifier: string) => {
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/callback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: code.trim(),
+          redirect_uri: redirectUri.trim(),
+          code_verifier: codeVerifier.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+
+      if (applyLoginSuccess(data)) {
+        return {
+          profileComplete: data.profileComplete as boolean | undefined,
+          role: data.role as string | undefined,
+        };
+      }
+      return { error: { message: 'Login failed.' } };
+    },
+    [apiUrl, applyLoginSuccess],
   );
 
   const loginOAuth = useCallback(
     async (accessTokenValue: string) => {
-      if (MEDIAHUB_AUTH_DECOMMISSIONED) {
+      if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
         return {
           error: {
             message:
@@ -367,24 +454,15 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         return { error: { message: data.error } };
       }
 
-      if (data.session_token) {
-        setAuthMode('cookie');
-        setDevUserId('');
-        setAccessToken(data.access_token ?? null);
-        setProfile({
-          userId: data.userId,
-          email: data.email,
-          name: data.name,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          role: data.role,
-          profileComplete: data.profileComplete ?? true,
-        });
-        return { profileComplete: data.profileComplete ?? true, role: data.role as string | undefined };
+      if (applyLoginSuccess(data)) {
+        return {
+          profileComplete: data.profileComplete as boolean | undefined,
+          role: data.role as string | undefined,
+        };
       }
       return { error: { message: 'Login failed.' } };
     },
-    [apiUrl],
+    [apiUrl, applyLoginSuccess],
   );
 
   const signUp = useCallback(
@@ -402,7 +480,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         zipCode?: string;
       },
     ) => {
-      if (MEDIAHUB_AUTH_DECOMMISSIONED) {
+      if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
         return {
           error: {
             message:
@@ -410,7 +488,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           },
         };
       }
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/signup`, {
+      const signupPath = cognitoAuthEnabled ? '/auth/cognito/signup' : '/auth/signup';
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}${signupPath}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -428,6 +507,47 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json().catch(() => ({}));
 
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return {};
+    },
+    [apiUrl],
+  );
+
+  const confirmEmailSignup = useCallback(
+    async (email: string, code: string) => {
+      if (!cognitoAuthEnabled) {
+        return { error: { message: 'Email verification is not available.' } };
+      }
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (email || '').trim(),
+          code: (code || '').trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return {};
+    },
+    [apiUrl],
+  );
+
+  const resendEmailVerificationCode = useCallback(
+    async (email: string) => {
+      if (!cognitoAuthEnabled) {
+        return { error: { message: 'Email verification is not available.' } };
+      }
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/resend-code`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: (email || '').trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
       if (data.error) {
         return { error: { message: data.error } };
       }
@@ -532,21 +652,36 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    void authFetch(`${apiUrl.replace(/\/$/, '')}/auth/logout`, { method: 'POST' }).catch(() => {});
-    setAuthMode(null);
-    setDevUserId('');
-    setAccessToken(null);
-    setProfile(null);
-    try {
-      if (typeof localStorage?.removeItem === 'function') {
-        localStorage.removeItem(DEV_USER_KEY);
+    const finishLogout = () => {
+      setAuthMode(null);
+      setDevUserId('');
+      setAccessToken(null);
+      setProfile(null);
+      try {
+        if (typeof localStorage?.removeItem === 'function') {
+          localStorage.removeItem(DEV_USER_KEY);
+        }
+        if (typeof sessionStorage?.removeItem === 'function') {
+          sessionStorage.removeItem('cht-profile-reminder-seen');
+        }
+      } catch {
+        /* ignore */
       }
-      if (typeof sessionStorage?.removeItem === 'function') {
-        sessionStorage.removeItem('cht-profile-reminder-seen');
+
+      if (cognitoAuthEnabled) {
+        try {
+          window.location.href = buildCognitoLogoutUrl();
+          return;
+        } catch {
+          /* fall through to /login */
+        }
       }
-    } catch {
-      /* ignore */
-    }
+      window.location.href = '/login';
+    };
+
+    void authFetch(`${apiUrl.replace(/\/$/, '')}/auth/logout`, { method: 'POST' })
+      .catch(() => {})
+      .finally(finishLogout);
   }, [apiUrl]);
 
   const getAuthHeaders = useCallback(async (): Promise<Record<string, string>> => {
@@ -563,7 +698,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     accessToken,
     login,
     loginOAuth,
+    completeCognitoCallback,
+    completeMfaLogin,
     signUp,
+    confirmEmailSignup,
+    resendEmailVerificationCode,
     resetPasswordForEmail,
     confirmPasswordReset,
     beginMfaSetup,

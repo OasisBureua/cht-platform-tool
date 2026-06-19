@@ -161,3 +161,39 @@ variable "session_assets_public_url_base" {
   type        = string
   default     = ""
 }
+
+variable "run_db_migrations" {
+  description = "Run prisma migrate deploy on container start. Set false for DR standby on a read replica."
+  type        = bool
+  default     = true
+}
+
+variable "cognito_user_pool_id" {
+  description = "Cognito user pool ID for backend auth (empty disables Cognito routes)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_client_id" {
+  description = "Cognito app client ID (cht-web PKCE client)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_hosted_ui_base_url" {
+  description = "Cognito Hosted UI base URL for OAuth token exchange"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_jwks_uri" {
+  description = "Cognito JWKS URI for JWT validation"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_region" {
+  description = "AWS region where the Cognito user pool lives (usually us-east-1, even for DR tasks)"
+  type        = string
+  default     = ""
+}

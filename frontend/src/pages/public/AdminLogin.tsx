@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
+import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
+import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
 import { Shield } from 'lucide-react';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 
 export default function AdminLogin() {
   const location = useLocation();
   const { user, isAuthenticated, isLoading, login } = useAuth();
-  const mediahubAuthDecommissioned =
-    import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/admin';
 
   const [email, setEmail] = useState('');
@@ -18,14 +18,22 @@ export default function AdminLogin() {
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
-  const handleGoogleLogin = () => {
-    if (mediahubAuthDecommissioned) {
-      setError('Google sign-in is temporarily unavailable while auth is migrating.');
+  const handleGoogleLogin = async () => {
+    if (!googleOAuthEnabled) {
+      setError(googleOAuthMigrationMessage);
       return;
     }
     setError(null);
     setOauthLoading('google');
-    window.location.href = buildOAuthAuthorizeUrl('google', from);
+    try {
+      const url = cognitoAuthEnabled
+        ? await buildCognitoAuthorizeUrl('Google', from)
+        : buildOAuthAuthorizeUrl('google', from);
+      window.location.href = url;
+    } catch (err) {
+      setOauthLoading(null);
+      setError(err instanceof Error ? err.message : 'Could not start Google sign-in.');
+    }
   };
 
   if (isAuthenticated && !isLoading) {
@@ -103,7 +111,7 @@ export default function AdminLogin() {
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
 
-            {!mediahubAuthDecommissioned ? (
+            {googleOAuthEnabled ? (
               <>
                 <div className="relative mt-4">
                   <div className="absolute inset-0 flex items-center">
@@ -129,7 +137,7 @@ export default function AdminLogin() {
               </>
             ) : (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Google sign-in is temporarily unavailable while auth is migrating.
+                {googleOAuthMigrationMessage}
               </p>
             )}
           </form>

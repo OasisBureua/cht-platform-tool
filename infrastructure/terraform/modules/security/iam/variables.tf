@@ -33,3 +33,9 @@ variable "session_assets_bucket_arn" {
   type        = string
   default     = ""
 }
+
+variable "cognito_user_pool_arn" {
+  description = "Cognito user pool ARN for AdminAddUserToGroup / AdminRemoveUserFromGroup (empty disables)"
+  type        = string
+  default     = ""
+}

@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
+import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
+import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 
 export default function Login() {
   const location = useLocation();
-  const { user, isAuthenticated, isLoading, login } = useAuth();
-  const mediahubAuthDecommissioned =
-    import.meta.env.VITE_MEDIAHUB_AUTH_DECOMMISSIONED !== 'false';
+  const { user, isAuthenticated, isLoading, login, completeMfaLogin } = useAuth();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
 
   const [email, setEmail] = useState('');
@@ -16,18 +16,26 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [mfaSession, setMfaSession] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
 
-  const handleOAuth = (provider: 'google') => {
-    if (mediahubAuthDecommissioned) {
-      setError('Google sign-in is temporarily unavailable while auth is migrating.');
+  const handleOAuth = async (provider: 'google') => {
+    if (!googleOAuthEnabled) {
+      setError(googleOAuthMigrationMessage);
       return;
     }
     setError(null);
     setOauthLoading(provider);
-    const url = buildOAuthAuthorizeUrl(provider, from);
-    // Debug: verify redirect_to is in URL (should contain testapp.communityhealth.media/auth/callback)
-    if (import.meta.env.DEV) console.log('[OAuth] Redirecting to:', url);
-    window.location.href = url;
+    try {
+      const url = cognitoAuthEnabled
+        ? await buildCognitoAuthorizeUrl('Google', from)
+        : buildOAuthAuthorizeUrl(provider, from);
+      if (import.meta.env.DEV) console.log('[OAuth] Redirecting to:', url);
+      window.location.href = url;
+    } catch (err) {
+      setOauthLoading(null);
+      setError(err instanceof Error ? err.message : 'Could not start Google sign-in.');
+    }
   };
 
   // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop
@@ -49,13 +57,29 @@ export default function Login() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
 
     setSubmitting(true);
-    const { error: err } = await login(email, password);
+    const { error: err, mfa } = await login(email, password);
     setSubmitting(false);
+    if (mfa?.session) {
+      setMfaSession(mfa.session);
+      return;
+    }
     if (err) {
       setError(err.message || 'Login failed. Please check your credentials.');
       return;
     }
     // Don't navigate here - let the isAuthenticated check above render <Navigate> after state updates
+  };
+
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaSession) return;
+    setError(null);
+    setSubmitting(true);
+    const { error: err } = await completeMfaLogin(email, mfaSession, mfaCode);
+    setSubmitting(false);
+    if (err) {
+      setError(err.message || 'MFA verification failed.');
+    }
   };
 
   // Show loading after successful login while validating session
@@ -85,12 +109,31 @@ export default function Login() {
 
         {/* Form section */}
         <div className="p-6">
-          <form className="space-y-4" onSubmit={handleLogin}>
+          <form className="space-y-4" onSubmit={mfaSession ? handleMfaSubmit : handleLogin}>
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
                 {error}
               </div>
             )}
+            {mfaSession ? (
+              <>
+                <p className="text-sm text-gray-600">
+                  Enter the 6-digit code from your authenticator app.
+                </p>
+                <Input
+                  id="mfaCode"
+                  label="Authentication code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value)}
+                  required
+                />
+              </>
+            ) : (
+              <>
             <Input
               id="email"
               label="Email address"
@@ -109,6 +152,8 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+              </>
+            )}
 
             <div className="flex items-center justify-between">
               <label className="flex cursor-pointer items-center gap-2">
@@ -131,11 +176,11 @@ export default function Login() {
               disabled={submitting}
               className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
             >
-              {submitting ? 'Signing in...' : 'Login'}
+              {submitting ? 'Signing in...' : mfaSession ? 'Verify code' : 'Login'}
             </button>
           </form>
 
-          {!mediahubAuthDecommissioned ? (
+          {googleOAuthEnabled && !mfaSession ? (
             <div className="mt-6 space-y-3">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -159,11 +204,11 @@ export default function Login() {
                 Continue with Google
               </button>
             </div>
-          ) : (
+          ) : !mfaSession ? (
             <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Google sign-in is temporarily unavailable while auth is migrating.
+              {googleOAuthMigrationMessage}
             </p>
-          )}
+          ) : null}
 
           {/* Footer */}
           <p className="mt-6 text-center text-sm text-gray-600">
@@ -200,6 +245,8 @@ function Input({
   value,
   onChange,
   required,
+  inputMode,
+  autoComplete,
 }: {
   id?: string;
   label: string;
@@ -208,6 +255,8 @@ function Input({
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   required?: boolean;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  autoComplete?: string;
 }) {
   return (
     <div className="space-y-1.5">
@@ -219,6 +268,8 @@ function Input({
         value={value}
         onChange={onChange}
         required={required}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
         className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
       />
     </div>

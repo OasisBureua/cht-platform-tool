@@ -131,6 +131,16 @@ resource "aws_iam_role_policy" "backend_task" {
           ]
           Resource = "${var.session_assets_bucket_arn}/session-heroes/*"
         }
+      ] : [],
+      var.cognito_user_pool_arn != "" ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "cognito-idp:AdminAddUserToGroup",
+            "cognito-idp:AdminRemoveUserFromGroup"
+          ]
+          Resource = var.cognito_user_pool_arn
+        }
       ] : []
     )
   })

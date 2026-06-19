@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
+import { CognitoService } from './cognito.service';
 import { isProfileCompleteForPayments } from '../common/profile-payment-eligibility';
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
@@ -23,6 +24,7 @@ export class AuthService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private outboundSync: OutboundSyncService,
+    private cognitoService: CognitoService,
   ) {}
 
   /**
@@ -46,6 +48,29 @@ export class AuthService {
       where: { authId },
     });
 
+    if (!user && email?.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const byEmail = await this.prisma.user.findUnique({
+        where: { email: normalizedEmail },
+      });
+      if (byEmail) {
+        this.logger.log(
+          `Linking existing user ${byEmail.id} (${normalizedEmail}) to authId ${authId}`,
+        );
+        user = await this.prisma.user.update({
+          where: { id: byEmail.id },
+          data: { authId },
+        });
+        this.cognitoService
+          .syncGroupsForRole(user.email, user.role)
+          .catch((err) =>
+            this.logger.warn(
+              `[Auth] Cognito group sync after authId link failed: ${err}`,
+            ),
+          );
+      }
+    }
+
     if (!user) {
       this.logger.log(`Creating new user for authId: ${authId}`);
       const npi =
@@ -55,7 +80,7 @@ export class AuthService {
       user = await this.prisma.user.create({
         data: {
           authId,
-          email: email || `${authId}@auth0.user`,
+          email: (email || `${authId}@auth0.user`).trim().toLowerCase(),
           firstName: firstName || 'User',
           lastName: lastName || '',
           npiNumber: npi,
@@ -103,6 +128,30 @@ export class AuthService {
    */
   async invalidateAuthCache(_userId: string): Promise<void> {
     // No cache to invalidate
+  }
+
+  /**
+   * Update Postgres role, refresh active sessions, and sync Cognito groups.
+   */
+  async setUserRole(
+    userId: string,
+    role: UserRole,
+  ): Promise<{ id: string; email: string; role: UserRole }> {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { role },
+      select: { id: true, email: true, role: true },
+    });
+
+    await this.prisma.session.updateMany({
+      where: { userId },
+      data: { role },
+    });
+
+    await this.cognitoService.syncGroupsForRole(updated.email, role);
+    await this.invalidateAuthCache(userId);
+
+    return updated;
   }
 
   /**
@@ -194,12 +243,27 @@ export class AuthService {
       }
       return null;
     }
+    const dbUser = await this.prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { role: true },
+    });
+
     const authUser = new AuthUser();
     authUser.authId = session.authId;
     authUser.userId = session.userId;
     authUser.email = session.email;
     authUser.name = session.name;
-    authUser.role = session.role;
+    authUser.role = dbUser?.role ?? session.role;
+
+    if (dbUser && dbUser.role !== session.role) {
+      await this.prisma.session
+        .update({
+          where: { id: session.id },
+          data: { role: dbUser.role },
+        })
+        .catch(() => {});
+    }
+
     return authUser;
   }
 

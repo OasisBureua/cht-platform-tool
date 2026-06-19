@@ -3,7 +3,7 @@
 Set up active-passive disaster recovery for CHT with primary in `us-east-1` and standby in `us-east-2`.
 
 **Topology:** Active-passive  
-**Failover mode:** Automatic (CloudFront API origin failover)  
+**Failover mode:** Automatic for `/health*` only (CloudFront origin group). `/api*` stays on primary ALB — AWS origin groups do not support POST/PUT/PATCH/DELETE. Full API DR requires manual origin swap or Route53 failover (see runbook).  
 **RTO/RPO target:** 60 min / 15 min  
 **Standby capacity:** 50% of primary  
 **Queue strategy:** Regional queues + replay/rebuild during failover
@@ -12,10 +12,11 @@ Set up active-passive disaster recovery for CHT with primary in `us-east-1` and 
 
 ## What is implemented now
 
-- CloudFront module supports optional API origin failover:
+- CloudFront module supports optional **health-check** origin failover (origin group on `/health*` only):
   - primary API origin (`us-east-1` ALB)
   - secondary API origin (`us-east-2` ALB)
-  - origin-group failover on 5xx status codes
+  - origin-group failover on 5xx for GET/HEAD/OPTIONS paths only
+  - `/api*` remains on primary ALB (CloudFront origin groups cannot proxy mutating HTTP methods)
 - `us-east-1` environment accepts `secondary_api_origin_domain`
 - `platform.tfvars` and `dev.tfvars` include `secondary_api_origin_domain` placeholder
 - **ECR replication** `us-east-1` → `us-east-2` for `cht-platform-*` repos (platform apply)
@@ -103,7 +104,14 @@ aws cognito-idp describe-user-pool \
 
 ## Apply order
 
-1. Deploy `us-east-1` stack for your environment (enables ECR replication to us-east-2 on first apply)
+Each environment uses its **own Terraform state** (see `infrastructure/terraform/environments/backends/README.md`):
+
+| Environment | Primary state key | DR state key |
+| ------------- | ----------------- | ------------ |
+| platform      | `us-east-1/terraform.tfstate` | `us-east-2/terraform.tfstate` |
+| dev           | `us-east-1-dev/terraform.tfstate` | `us-east-2-dev/terraform.tfstate` |
+
+1. Deploy `us-east-1` stack for your environment (enables ECR replication to us-east-2 on first **platform** apply)
 2. Deploy `us-east-2` stack (standby infra + GuardDuty)
 3. Stand up replicated data (RDS replica + secrets replication)
 4. Set `secondary_api_origin_domain` in `platform.tfvars` or `dev.tfvars`

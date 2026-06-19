@@ -132,3 +132,27 @@ variable "primary_db_instance_identifier" {
   default     = ""
 }
 
+variable "cognito_user_pool_id" {
+  description = "Primary Cognito user pool ID (same pool as us-east-1 primary)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_client_id" {
+  description = "Cognito app client ID (cht-web)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_hosted_ui_base_url" {
+  description = "Cognito Hosted UI base URL from primary region"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_jwks_uri" {
+  description = "Cognito JWKS URI from primary region"
+  type        = string
+  default     = ""
+}
+

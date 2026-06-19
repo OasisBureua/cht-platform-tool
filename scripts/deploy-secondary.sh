@@ -33,20 +33,60 @@ if [ ! -f "$VAR_FILE" ]; then
   exit 1
 fi
 
+read_tfvar() {
+  grep -E "^${1}[[:space:]]*=" "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/'
+}
+
+TF_BACKEND_IMAGE=$(read_tfvar backend_image)
+TF_WORKER_IMAGE=$(read_tfvar worker_image)
+if [ -z "$TF_BACKEND_IMAGE" ] || [ -z "$TF_WORKER_IMAGE" ]; then
+  echo "❌ Could not read backend_image/worker_image from $VAR_FILE"
+  exit 1
+fi
+
+# DR pulls from us-east-2 ECR (replicated). Tag/repo come from tfvars unless overridden.
 ECR_REGISTRY="${ECR_REGISTRY:-233636046512.dkr.ecr.us-east-2.amazonaws.com}"
-IMAGE_TAG="${IMAGE_TAG:-platform-latest}"
-BACKEND_IMAGE="${BACKEND_IMAGE:-${ECR_REGISTRY}/cht-platform-backend:${IMAGE_TAG}}"
-WORKER_IMAGE="${WORKER_IMAGE:-${ECR_REGISTRY}/cht-platform-worker:${IMAGE_TAG}}"
+dr_image() {
+  local tf_image=$1
+  local tag="${tf_image##*:}"
+  local repo
+  repo=$(basename "${tf_image%:*}")
+  echo "${ECR_REGISTRY}/${repo}:${tag}"
+}
+if [ -n "$BACKEND_IMAGE" ]; then
+  :
+elif [ -n "$IMAGE_TAG" ]; then
+  BACKEND_IMAGE="${ECR_REGISTRY}/cht-platform-backend:${IMAGE_TAG}"
+else
+  BACKEND_IMAGE=$(dr_image "$TF_BACKEND_IMAGE")
+fi
+if [ -n "$WORKER_IMAGE" ]; then
+  :
+elif [ -n "$IMAGE_TAG" ]; then
+  WORKER_IMAGE="${ECR_REGISTRY}/cht-platform-worker:${IMAGE_TAG}"
+else
+  WORKER_IMAGE=$(dr_image "$TF_WORKER_IMAGE")
+fi
 
 DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
 
 case "$ENV" in
+  platform)
+    BACKEND_CONFIG="$REPO_ROOT/infrastructure/terraform/environments/backends/us-east-2-platform.hcl"
+    ;;
+  dev)
+    BACKEND_CONFIG="$REPO_ROOT/infrastructure/terraform/environments/backends/us-east-2-dev.hcl"
+    ;;
+esac
+
+case "$ENV" in
   platform) EXPECTED_FRONTEND_BUCKET="cht-platform-dr-use2-frontend" ;;
-  dev)      EXPECTED_FRONTEND_BUCKET="cht-platform-dr-use2-dev-frontend" ;;
+  dev)      EXPECTED_FRONTEND_BUCKET="cht-dr-use2-dev-frontend" ;;
 esac
 
 echo "📦 Environment: $ENV"
 echo "📄 Variables:  ${ENV}.tfvars"
+echo "🗄️  State:       $(grep -E '^key' "$BACKEND_CONFIG" | sed 's/key = "//;s/"//')"
 echo "🌐 Domain:      ${DOMAIN:-unknown}"
 echo "🪣 DR frontend: $EXPECTED_FRONTEND_BUCKET"
 echo "🐳 Backend:     $BACKEND_IMAGE"
@@ -60,7 +100,7 @@ echo ""
 cd "$TF_DIR"
 
 echo "🔧 Initializing Terraform..."
-terraform init -reconfigure
+terraform init -reconfigure -backend-config="$BACKEND_CONFIG"
 
 echo ""
 echo "✅ Validating configuration..."

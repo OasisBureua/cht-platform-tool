@@ -1,6 +1,11 @@
 locals {
   is_prod = var.environment == "prod" || var.environment == "platform"
   prefix  = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  node_env = contains(["prod", "platform"], var.environment) ? "production" : (
+    var.environment == "staging" ? "staging" : (
+      var.environment == "test" ? "test" : "development"
+    )
+  )
 }
 
 # Security Group for Backend
@@ -42,7 +47,8 @@ resource "aws_ecs_task_definition" "backend" {
   task_role_arn            = var.task_role_arn
 
   container_definitions = jsonencode([
-    {
+    merge(
+      {
       name      = "backend"
       image     = var.container_image
       essential = true
@@ -58,7 +64,7 @@ resource "aws_ecs_task_definition" "backend" {
         [
           {
             name  = "NODE_ENV"
-            value = var.environment == "prod" || var.environment == "platform" ? "production" : var.environment
+            value = local.node_env
           },
           {
             name  = "PORT"
@@ -83,7 +89,12 @@ resource "aws_ecs_task_definition" "backend" {
                 { name = "SESSION_ASSETS_S3_BUCKET", value = var.session_assets_s3_bucket },
                 { name = "SESSION_ASSETS_PUBLIC_URL_BASE", value = var.session_assets_public_url_base },
               ]
-            : []
+            : [],
+          var.cognito_user_pool_id != "" ? [{ name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id }] : [],
+          var.cognito_client_id != "" ? [{ name = "COGNITO_CLIENT_ID", value = var.cognito_client_id }] : [],
+          var.cognito_user_pool_id != "" ? [{ name = "COGNITO_REGION", value = var.cognito_region != "" ? var.cognito_region : var.aws_region }] : [],
+          var.cognito_hosted_ui_base_url != "" ? [{ name = "COGNITO_HOSTED_UI_BASE_URL", value = var.cognito_hosted_ui_base_url }] : [],
+          var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
         )
       )
 
@@ -221,7 +232,11 @@ resource "aws_ecs_task_definition" "backend" {
         retries     = 3
         startPeriod = 90
       }
-    }
+      },
+      var.run_db_migrations ? {} : {
+        command = ["sh", "-c", "node dist/src/main.js"]
+      }
+    )
   ])
 
   tags = {

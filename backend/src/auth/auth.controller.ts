@@ -14,6 +14,8 @@ import * as jwt from 'jsonwebtoken';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
+import { CognitoService, CognitoTokens } from './cognito.service';
+import { UserRole } from '@prisma/client';
 import {
   clearSessionCookie,
   getSessionTokenFromRequest,
@@ -58,6 +60,7 @@ export class AuthController {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly cognitoService: CognitoService,
     private readonly configService: ConfigService,
   ) {
     this.supabaseAuthDecommissioned =
@@ -71,6 +74,350 @@ export class AuthController {
     const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
     const nodeEnv = this.configService.get<string>('nodeEnv');
     setSessionCookie(res, sessionToken, ttl, nodeEnv);
+  }
+
+  private async sessionFromCognitoTokens(
+    tokens: CognitoTokens,
+    res: ExpressResponse,
+    profile?: {
+      firstName?: string;
+      lastName?: string;
+      npiNumber?: string | null;
+      specialty?: string | null;
+      institution?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zipCode?: string | null;
+    },
+  ): Promise<LoginSuccess | { error: string }> {
+    let claims;
+    try {
+      claims = this.cognitoService.parseIdTokenClaims(tokens.idToken);
+    } catch {
+      return { error: 'Invalid token.' };
+    }
+
+    const authId = claims.sub;
+    if (!authId) return { error: 'Invalid token.' };
+
+    const user = await this.authService.findOrCreateByAuthId(
+      authId,
+      claims.email,
+      profile?.firstName || claims.given_name,
+      profile?.lastName || claims.family_name,
+      profile?.npiNumber ?? null,
+      profile?.specialty ?? null,
+      profile?.institution ?? null,
+      profile?.city ?? null,
+      profile?.state ?? null,
+      profile?.zipCode ?? null,
+    );
+    if (!user) return { error: 'User not found.' };
+
+    const sessionToken = await this.authService.createSession(
+      user,
+      tokens.accessToken,
+    );
+    const dbUser = await this.authService.getUserById(user.userId);
+    const profileComplete = this.authService.isProfileComplete(dbUser);
+
+    this.attachSessionCookie(res, sessionToken);
+    return {
+      session_token: sessionToken,
+      access_token: tokens.accessToken,
+      refresh_token: tokens.refreshToken,
+      userId: user.userId,
+      email: user.email,
+      name: user.name,
+      firstName: dbUser?.firstName ?? profile?.firstName ?? claims.given_name ?? 'User',
+      lastName: dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
+      role: user.role,
+      profileComplete,
+    };
+  }
+
+  /**
+   * POST /api/auth/cognito/login
+   * Email/password via Cognito USER_PASSWORD_AUTH → Postgres session cookie.
+   */
+  @Post('cognito/login')
+  async cognitoLogin(
+    @Body('email') email: string,
+    @Body('password') password: string,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<
+    | LoginSuccess
+    | { error: string }
+    | { challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+  > {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Cognito login is not configured.' };
+    }
+
+    const emailStr = (email || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+      return { error: 'Please enter a valid email address.' };
+    }
+    if (!password) return { error: 'Password is required.' };
+
+    try {
+      const result = await this.cognitoService.loginWithPassword(
+        emailStr,
+        password,
+      );
+      if (result.kind === 'mfa') {
+        return {
+          challenge: result.challenge,
+          session: result.session,
+        };
+      }
+      const loginResult = await this.sessionFromCognitoTokens(
+        result.tokens,
+        res,
+      );
+      if ('error' in loginResult) return loginResult;
+      this.logger.log(
+        `[Auth] Cognito login success: userId=${loginResult.userId} email=${loginResult.email}`,
+      );
+      return loginResult;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Login failed.';
+      this.logger.warn(`[Auth] Cognito login failed for ${emailStr}: ${msg}`);
+      if (/not authorized|incorrect username or password/i.test(msg)) {
+        return { error: 'Invalid email or password.' };
+      }
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/mfa
+   * Complete SOFTWARE_TOKEN_MFA challenge after cognito/login.
+   */
+  @Post('cognito/mfa')
+  async cognitoMfa(
+    @Body('email') email: string,
+    @Body('session') session: string,
+    @Body('code') code: string,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<LoginSuccess | { error: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Cognito login is not configured.' };
+    }
+
+    const emailStr = (email || '').trim();
+    const sessionStr = (session || '').trim();
+    const codeStr = (code || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!sessionStr) return { error: 'MFA session is required.' };
+    if (!codeStr) return { error: 'MFA code is required.' };
+
+    try {
+      const tokens = await this.cognitoService.respondToMfaChallenge(
+        sessionStr,
+        codeStr,
+        emailStr,
+      );
+      const loginResult = await this.sessionFromCognitoTokens(tokens, res);
+      if ('error' in loginResult) return loginResult;
+      this.logger.log(
+        `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email}`,
+      );
+      return loginResult;
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'MFA verification failed.';
+      this.logger.warn(`[Auth] Cognito MFA failed for ${emailStr}: ${msg}`);
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/callback
+   * Exchange OAuth authorization code (PKCE) for Postgres session cookie.
+   */
+  @Post('cognito/callback')
+  async cognitoCallback(
+    @Body('code') code: string,
+    @Body('redirect_uri') redirectUri: string,
+    @Body('code_verifier') codeVerifier: string,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<LoginSuccess | { error: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Cognito login is not configured.' };
+    }
+
+    const codeStr = (code || '').trim();
+    const redirect = (redirectUri || '').trim();
+    const verifier = (codeVerifier || '').trim();
+    if (!codeStr) return { error: 'Authorization code is required.' };
+    if (!redirect) return { error: 'redirect_uri is required.' };
+    if (!verifier) return { error: 'code_verifier is required.' };
+
+    try {
+      const tokens = await this.cognitoService.exchangeAuthorizationCode(
+        codeStr,
+        redirect,
+        verifier,
+      );
+      const loginResult = await this.sessionFromCognitoTokens(tokens, res);
+      if ('error' in loginResult) return loginResult;
+      this.logger.log(
+        `[Auth] Cognito OAuth login success: userId=${loginResult.userId} email=${loginResult.email}`,
+      );
+      return loginResult;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'OAuth login failed.';
+      this.logger.warn(`[Auth] Cognito callback failed: ${msg}`);
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/signup
+   * Register a Cognito user and create the CHT User row.
+   */
+  @Post('cognito/signup')
+  async cognitoSignup(
+    @Body('email') email: string,
+    @Body('password') password: string,
+    @Body('firstName') firstName?: string,
+    @Body('lastName') lastName?: string,
+    @Body('profession') profession?: string,
+    @Body('npiNumber') npiNumber?: string,
+    @Body('institution') institution?: string,
+    @Body('city') city?: string,
+    @Body('state') state?: string,
+    @Body('zipCode') zipCode?: string,
+  ): Promise<{ error?: string; userConfirmed?: boolean }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Sign up is not configured. Contact support.' };
+    }
+
+    const emailStr = (email || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
+      return { error: 'Please enter a valid email address.' };
+    }
+    if (!password) return { error: 'Password is required.' };
+    if (password.length < 8) {
+      return { error: 'Password must be at least 8 characters.' };
+    }
+    if (!firstName?.trim()) return { error: 'First name is required.' };
+    if (!lastName?.trim()) return { error: 'Last name is required.' };
+    if (!profession?.trim()) return { error: 'Profession is required.' };
+
+    const professionTrim = profession.trim();
+    const npiRequiredProfessions = new Set([
+      'Physician',
+      'Nurse Practitioner',
+      'Physician Assistant',
+      'Pharmacist',
+      'Nurse',
+      'Other HCP',
+    ]);
+    const npiOptional = !npiRequiredProfessions.has(professionTrim);
+    const npi = (npiNumber || '').replace(/\D/g, '');
+    if (!npiOptional && npi.length !== 10) {
+      return { error: 'NPI number must be 10 digits.' };
+    }
+    if (npiOptional && npi.length > 0 && npi.length !== 10) {
+      return { error: 'If provided, NPI must be exactly 10 digits.' };
+    }
+
+    try {
+      const signup = await this.cognitoService.signUp(
+        emailStr,
+        password,
+        firstName,
+        lastName,
+      );
+
+      await this.authService.findOrCreateByAuthId(
+        signup.userSub,
+        emailStr,
+        firstName,
+        lastName,
+        npiOptional ? npi || null : npi,
+        professionTrim,
+        institution || null,
+        city || null,
+        state || null,
+        zipCode || null,
+      );
+
+      await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
+
+      this.logger.log(`[Auth] Cognito signup success for ${emailStr}`);
+      return { userConfirmed: signup.userConfirmed };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Sign up failed.';
+      this.logger.warn(`[Auth] Cognito signup failed for ${emailStr}: ${msg}`);
+      if (/usernameexists|already exists/i.test(msg)) {
+        return { error: 'An account with this email already exists.' };
+      }
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/confirm
+   * Confirm email verification code after Cognito signup.
+   */
+  @Post('cognito/confirm')
+  async cognitoConfirmSignup(
+    @Body('email') email: string,
+    @Body('code') code: string,
+  ): Promise<{ error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Email verification is not configured. Contact support.' };
+    }
+
+    const emailStr = (email || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!code?.trim()) return { error: 'Verification code is required.' };
+
+    try {
+      await this.cognitoService.confirmSignUp(emailStr, code);
+      this.logger.log(`[Auth] Cognito email confirmed for ${emailStr}`);
+      return {};
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Verification failed.';
+      this.logger.warn(`[Auth] Cognito confirm failed for ${emailStr}: ${msg}`);
+      if (/expired|invalid|mismatch/i.test(msg)) {
+        return {
+          error:
+            'That verification code is invalid or expired. Request a new code and try again.',
+        };
+      }
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/resend-code
+   */
+  @Post('cognito/resend-code')
+  async cognitoResendConfirmation(
+    @Body('email') email: string,
+  ): Promise<{ error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Email verification is not configured. Contact support.' };
+    }
+
+    const emailStr = (email || '').trim();
+    if (!emailStr) return { error: 'Email is required.' };
+
+    try {
+      await this.cognitoService.resendConfirmationCode(emailStr);
+      this.logger.log(`[Auth] Cognito verification code resent for ${emailStr}`);
+      return {};
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not resend code.';
+      this.logger.warn(`[Auth] Cognito resend failed for ${emailStr}: ${msg}`);
+      return { error: msg };
+    }
   }
 
   /**
@@ -470,6 +817,19 @@ export class AuthController {
   async recover(@Body('email') email: string): Promise<{ error?: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
+
+    if (this.cognitoService.isConfigured()) {
+      try {
+        await this.cognitoService.forgotPassword(emailStr);
+        this.logger.log(`[Auth] Cognito recover email sent to ${emailStr}`);
+        return {};
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : 'Password reset failed.';
+        this.logger.warn(`[Auth] Cognito recover failed for ${emailStr}: ${msg}`);
+        return { error: msg };
+      }
+    }
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');

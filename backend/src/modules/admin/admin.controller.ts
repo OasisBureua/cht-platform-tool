@@ -37,7 +37,7 @@ import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { CurrentUser } from '../../auth/current-user.decorator';
-import { AuthUser } from '../../auth/auth.service';
+import { AuthService, AuthUser } from '../../auth/auth.service';
 import { ProgramsService } from '../programs/programs.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SurveysService } from '../surveys/surveys.service';
@@ -82,6 +82,7 @@ export class AdminController {
     private surveysService: SurveysService,
     private prisma: PrismaService,
     private config: ConfigService,
+    private authService: AuthService,
     private zoom: ZoomService,
     private sessionHeroPresign: SessionHeroPresignService,
   ) {}
@@ -143,11 +144,7 @@ export class AdminController {
     if (!user) {
       throw new BadRequestException(`No user found with email: ${email}`);
     }
-    const updated = await this.prisma.user.update({
-      where: { id: user.id },
-      data: { role: UserRole.ADMIN },
-      select: { id: true, email: true, role: true },
-    });
+    const updated = await this.authService.setUserRole(user.id, UserRole.ADMIN);
     return { promoted: true, user: updated };
   }
 
@@ -621,12 +618,7 @@ export class AdminController {
         'Invalid role. Must be HCP, KOL, or ADMIN.',
       );
     }
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: { role },
-      select: { id: true, email: true, role: true },
-    });
-    return updated;
+    return this.authService.setUserRole(userId, role);
   }
 
   @Delete('users/:userId')

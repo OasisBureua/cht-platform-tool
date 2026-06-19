@@ -74,8 +74,66 @@ In AWS Console → Cognito → User Pools → `cht-platform-users` → App clien
 - `cht-web` client present
 - No client secret (public PKCE)
 - Callback URL: `https://testapp.communityhealth.media/auth/callback`
+- Logout URL: `https://testapp.communityhealth.media`
 - Allowed flows: Authorization code grant
 - Scopes: email, openid, profile
+- Token revocation enabled; auth flow session 3 minutes
+
+### Step 1.4 — Configure auth email (SES)
+
+By default Terraform uses `COGNITO_DEFAULT` (`no-reply@verificationemail.com`). For branded verification and password-reset emails, switch to SES in `dev.tfvars` / `platform.tfvars`:
+
+```hcl
+cognito_email_sending_account = "DEVELOPER"
+cognito_email_from            = "noreply@communityhealth.media"
+cognito_email_reply_to        = "info@communityhealth.media"
+```
+
+**Prerequisite:** `communityhealth.media` (or the FROM address) must already be verified in **Amazon SES → us-east-1** (same region as the user pool). The worker already sends from `info@communityhealth.media`; reuse that verified domain.
+
+After apply, confirm in Cognito → **Authentication methods → Email**:
+- Email provider: **Send email with Amazon SES**
+- SES Region: **US East (N. Virginia)**
+- FROM: your `cognito_email_from` value
+
+### Step 1.5 — WAF on Cognito user pool
+
+Set in `dev.tfvars` / `platform.tfvars`:
+
+```hcl
+enable_cognito_waf = true
+```
+
+Terraform creates a **REGIONAL** WAF ACL (rate limit + AWS managed rules) and associates it with the user pool. Confirm in Console → Cognito → **AWS WAF** → Status **Active**.
+
+Note: AWS WAF Fraud Control (ATP) rule groups are **not** supported on Cognito user pools.
+
+### Step 1.6 — Multi-Region replication (optional DR)
+
+Requires **ESSENTIALS** or **PLUS** tier. Terraform creates multi-Region KMS keys in us-east-1 + us-east-2 (with Cognito + Identity Store key policy). Complete pool replication via script (MRR APIs not yet in Terraform AWS provider 5.x):
+
+```hcl
+enable_cognito_mrr         = true
+cognito_mrr_replica_region = "us-east-2"
+```
+
+**Prerequisite — CMK + KMS replica:** MRR requires a **customer-managed multi-Region KMS key** on the user pool and the same MRK replicated to the target Region with a key policy allowing `cognito-idp.amazonaws.com` and `identitystore.amazonaws.com`. Terraform creates both when `enable_cognito_mrr = true` is applied. Cognito `UpdateUserPool` resets omitted fields — the MRR script sends `KeyConfiguration` on every update so the CMK is not cleared when switching the OIDC issuer.
+
+```bash
+./scripts/deploy-primary.sh dev          # creates KMS keys + primary WAF
+./scripts/cognito-setup-mrr.sh dev       # attach CMK, update issuer, create replica
+# After replica is ACTIVE in Console:
+# cognito_mrr_associate_waf_replica = true
+./scripts/deploy-primary.sh dev          # associates WAF in us-east-2
+```
+
+The MRR script uses raw Cognito JSON API calls (AWS CLI/boto3 service models may lag the June 2026 MRR APIs). If KMS attach fails with `kms:DescribeKey`, re-apply primary Terraform so the MRK policy includes `cognito-idp.amazonaws.com` and `identitystore.amazonaws.com`.
+
+**Terraform note:** With MRR enabled, `aws_cognito_user_pool` uses `lifecycle { ignore_changes = all }` because AWS provider 5.x cannot send `KeyConfiguration` on updates. After `./scripts/deploy-primary.sh`, `scripts/cognito-sync-pool-config.sh` applies email/verification/CMK/issuer settings via the MRR-safe API.
+
+**Important:** Switching to the multi-Region OIDC issuer changes the `iss` claim on new tokens. Backend JWKS validation uses pool ID and should continue to work — verify login after MRR setup.
+
+MRR adds per-MAU cost. TOTP MFA is **not** supported on secondary replicas during normal operation.
 
 ---
 

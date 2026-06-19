@@ -4,7 +4,10 @@ locals {
   primary_api_origin_id      = "ALB-API-PRIMARY"
   secondary_api_origin_id    = "ALB-API-SECONDARY"
   api_origin_group_id        = "ALB-API-GROUP"
-  api_target_origin_id       = local.api_failover_enabled ? local.api_origin_group_id : local.primary_api_origin_id
+  # Origin groups only support GET, HEAD, OPTIONS (AWS CloudFront limit). Use the group for
+  # /health* failover probes; keep /api* on the primary ALB (mutating methods required).
+  health_target_origin_id    = local.api_failover_enabled ? local.api_origin_group_id : local.primary_api_origin_id
+  api_target_origin_id       = local.primary_api_origin_id
 }
 
 # SPA viewer-request handler: rewrite deep-link URIs to /index.html so React
@@ -170,7 +173,7 @@ resource "aws_cloudfront_distribution" "frontend" {
       path_pattern               = ordered_cache_behavior.value
       allowed_methods            = ["GET", "HEAD", "OPTIONS"]
       cached_methods             = ["GET", "HEAD"]
-      target_origin_id           = local.api_target_origin_id
+      target_origin_id           = local.health_target_origin_id
       compress                   = true
       viewer_protocol_policy     = "redirect-to-https"
       response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id

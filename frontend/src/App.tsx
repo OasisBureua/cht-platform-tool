@@ -18,6 +18,7 @@ const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail')
 const About                 = lazy(() => import('./pages/public/About'));
 const Contact               = lazy(() => import('./pages/public/Contact'));
 const Join                  = lazy(() => import('./pages/public/Join'));
+const VerifyEmail           = lazy(() => import('./pages/public/VerifyEmail'));
 const Login                 = lazy(() => import('./pages/public/Login'));
 const AdminLogin            = lazy(() => import('./pages/public/AdminLogin'));
 const ForgotPassword        = lazy(() => import('./pages/public/ForgotPassword'));
@@ -122,6 +123,7 @@ function App() {
               <Route path="/portfolios" element={<Portfolios />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/join" element={<Join />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />

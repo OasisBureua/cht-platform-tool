@@ -10,10 +10,10 @@ terraform {
 
   backend "s3" {
     bucket       = "cht-platform-terraform-state"
-    key          = "us-east-2/terraform.tfstate"
     region       = "us-east-1"
     encrypt      = true
     use_lockfile = true
+    # State key: pass via -backend-config=../backends/us-east-2-{platform|dev}.hcl
   }
 }
 
@@ -181,10 +181,11 @@ resource "aws_secretsmanager_secret_version" "database" {
   secret_string = jsonencode({
     username = local.primary_db_secret.username
     password = local.primary_db_secret.password
-    host     = var.enable_db_replica ? aws_db_instance.replica[0].endpoint : local.primary_db_secret.host
+    # Standby tasks use the cross-region read replica (read-only until promotion failover).
+    host     = var.enable_db_replica ? aws_db_instance.replica[0].address : local.primary_db_secret.host
     port     = local.primary_db_secret.port
     dbname   = local.primary_db_secret.dbname
-    url      = format("postgresql://%s:%s@%s/%s", local.primary_db_secret.username, urlencode(local.primary_db_secret.password), var.enable_db_replica ? aws_db_instance.replica[0].endpoint : local.primary_db_secret.host, local.primary_db_secret.dbname)
+    url      = format("postgresql://%s:%s@%s:%s/%s", local.primary_db_secret.username, urlencode(local.primary_db_secret.password), var.enable_db_replica ? aws_db_instance.replica[0].address : local.primary_db_secret.host, local.primary_db_secret.port, local.primary_db_secret.dbname)
   })
 }
 
@@ -283,6 +284,12 @@ module "ecs_backend" {
   sqs_cme_queue_url     = module.sqs.cme_queue_url
   session_assets_s3_bucket       = module.s3_session_assets.bucket_id
   session_assets_public_url_base = module.s3_session_assets.public_url_base
+  run_db_migrations              = false
+  cognito_user_pool_id         = var.cognito_user_pool_id
+  cognito_client_id            = var.cognito_client_id
+  cognito_hosted_ui_base_url   = var.cognito_hosted_ui_base_url
+  cognito_jwks_uri             = var.cognito_jwks_uri
+  cognito_region               = "us-east-1"
 }
 
 module "ecs_worker" {
@@ -367,6 +374,7 @@ resource "aws_db_instance" "replica" {
   replicate_source_db    = data.aws_db_instance.primary.db_instance_arn
   instance_class         = var.dr_rds_instance_class
   kms_key_id             = module.kms.rds_kms_key_arn
+  storage_encrypted      = true # inherited from primary; must match AWS or Terraform replaces the replica
   publicly_accessible    = false
   multi_az               = false
   auto_minor_version_upgrade = true
@@ -376,7 +384,7 @@ resource "aws_db_instance" "replica" {
 
   backup_retention_period = 7
   skip_final_snapshot     = true
-  deletion_protection     = true
+  deletion_protection     = contains(["prod", "platform"], var.environment)
 }
 
 # ============================================

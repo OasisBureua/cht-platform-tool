@@ -35,7 +35,40 @@ output "multi_region_replication_supported" {
 
 output "multi_region_replication_managed_in_module" {
   description = "Whether this Terraform module currently configures Cognito multi-region replication."
-  value       = false
+  value       = var.enable_multi_region_replication
 }
 
-data "aws_region" "current" {}
+output "cognito_kms_key_arn" {
+  description = "Multi-Region KMS key ARN for Cognito user pool encryption (primary)"
+  value       = var.enable_multi_region_replication ? aws_kms_key.cognito_mrk[0].arn : null
+}
+
+output "cognito_kms_replica_key_arn" {
+  description = "Multi-Region KMS replica key ARN in the replica region"
+  value       = var.enable_multi_region_replication ? aws_kms_replica_key.cognito_mrk[0].arn : null
+}
+
+output "cognito_waf_web_acl_arn" {
+  description = "Regional WAF web ACL ARN associated with the primary Cognito user pool"
+  value       = var.enable_waf ? module.waf_primary[0].web_acl_arn : null
+}
+
+output "cognito_waf_replica_web_acl_arn" {
+  description = "Regional WAF web ACL ARN in the replica region (for MRR)"
+  value       = var.enable_waf && var.enable_multi_region_replication ? module.waf_replica[0].web_acl_arn : null
+}
+
+output "replica_user_pool_arn" {
+  description = "Expected ARN of the Cognito replica user pool after MRR setup"
+  value       = var.enable_multi_region_replication ? local.replica_user_pool_arn : null
+}
+
+output "email_sending_account" {
+  description = "Email sending mode configured on the user pool"
+  value       = local.use_ses_email ? "DEVELOPER" : "COGNITO_DEFAULT"
+}
+
+output "email_from_address" {
+  description = "FROM address for Cognito emails (null when using COGNITO_DEFAULT)"
+  value       = local.use_ses_email ? var.email_from_address : null
+}

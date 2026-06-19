@@ -10,10 +10,10 @@ terraform {
 
   backend "s3" {
     bucket       = "cht-platform-terraform-state" # Create with: aws s3 mb s3://cht-platform-terraform-state
-    key          = "us-east-1/terraform.tfstate"
     region       = "us-east-1"
     encrypt      = true
     use_lockfile = true
+    # State key: pass via -backend-config=../backends/us-east-1-{platform|dev}.hcl
   }
 }
 
@@ -25,6 +25,20 @@ provider "aws" {
       Project     = var.project
       Environment = var.environment
       Region      = "us-east-1"
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
+provider "aws" {
+  alias  = "replica"
+  region = var.cognito_mrr_replica_region
+
+  default_tags {
+    tags = {
+      Project     = var.project
+      Environment = var.environment
+      Region      = var.cognito_mrr_replica_region
       ManagedBy   = "Terraform"
     }
   }
@@ -240,6 +254,7 @@ module "iam" {
   ]
   certificates_bucket_arn = module.s3_certificates.bucket_arn
   session_assets_bucket_arn = module.s3_session_assets.bucket_arn
+  cognito_user_pool_arn = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
 }
 
 # ============================================
@@ -302,6 +317,11 @@ module "ecs_backend" {
   sqs_cme_queue_url     = module.sqs.cme_queue_url
   session_assets_s3_bucket         = module.s3_session_assets.bucket_id
   session_assets_public_url_base   = module.s3_session_assets.public_url_base
+  cognito_user_pool_id             = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
+  cognito_client_id                = var.enable_cognito_pools ? module.cognito[0].client_id : ""
+  cognito_hosted_ui_base_url       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
+  cognito_jwks_uri                 = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
+  cognito_region                   = "us-east-1"
 }
 
 # ============================================
@@ -439,6 +459,10 @@ module "cognito" {
   count  = var.enable_cognito_pools ? 1 : 0
   source = "../../modules/security/cognito"
 
+  providers = {
+    aws.replica = aws.replica
+  }
+
   project       = var.project
   environment   = var.environment
   domain_prefix = var.cognito_domain_prefix
@@ -450,6 +474,18 @@ module "cognito" {
   user_pool_tier       = var.cognito_user_pool_tier
   google_client_id     = var.cognito_google_client_id
   google_client_secret = var.cognito_google_client_secret
+
+  email_sending_account  = var.cognito_email_sending_account
+  email_from_address     = var.cognito_email_from
+  email_reply_to_address = var.cognito_email_reply_to
+
+  enable_waf                      = var.enable_cognito_waf
+  waf_enable_managed_rules        = var.cognito_waf_enable_managed_rules
+  waf_enable_rate_limit           = var.cognito_waf_enable_rate_limit
+  waf_rate_limit_count            = var.cognito_waf_rate_limit_count
+  enable_multi_region_replication = var.enable_cognito_mrr
+  replica_region                  = var.cognito_mrr_replica_region
+  associate_waf_with_replica      = var.cognito_mrr_associate_waf_replica
 }
 
 # ============================================

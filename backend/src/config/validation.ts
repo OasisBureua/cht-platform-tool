@@ -7,6 +7,7 @@ export const validationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().default(3000),
   FRONTEND_URL: Joi.string().default('http://localhost:5173'),
+  LOG_PRETTY: Joi.string().valid('true', 'false', '1', '0', '').optional(),
 
   // Database (required)
   DATABASE_URL: Joi.string().required(),
@@ -23,6 +24,14 @@ export const validationSchema = Joi.object({
   SUPABASE_AUTH_DECOMMISSIONED: Joi.string()
     .valid('true', 'false', '1', '0', '')
     .optional(),
+
+  // Cognito (optional — when set, Cognito replaces GoTrue for auth)
+  COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
+  COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_REGION: Joi.string().allow('').optional(),
+  COGNITO_HOSTED_UI_BASE_URL: Joi.string().allow('').optional(),
+  COGNITO_DOMAIN_PREFIX: Joi.string().allow('').optional(),
+  COGNITO_JWKS_URI: Joi.string().allow('').optional(),
 
   // Bill.com (optional - empty strings allowed)
   BILL_DEV_KEY: Joi.string().allow('').optional(),

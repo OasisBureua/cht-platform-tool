@@ -32,16 +32,44 @@ if [ ! -f "$VAR_FILE" ]; then
     exit 1
 fi
 
-# Both clusters can run the same ECR images (override with BACKEND_IMAGE / WORKER_IMAGE / IMAGE_TAG).
+read_tfvar() {
+    grep -E "^${1}[[:space:]]*=" "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/'
+}
+
+TF_BACKEND_IMAGE=$(read_tfvar backend_image)
+TF_WORKER_IMAGE=$(read_tfvar worker_image)
+if [ -z "$TF_BACKEND_IMAGE" ] || [ -z "$TF_WORKER_IMAGE" ]; then
+    echo "❌ Could not read backend_image/worker_image from $VAR_FILE"
+    exit 1
+fi
+
+# Use images from tfvars by default. Override with BACKEND_IMAGE / WORKER_IMAGE, or IMAGE_TAG + ECR_REGISTRY.
 ECR_REGISTRY="${ECR_REGISTRY:-233636046512.dkr.ecr.us-east-1.amazonaws.com}"
-IMAGE_TAG="${IMAGE_TAG:-platform-latest}"
-BACKEND_IMAGE="${BACKEND_IMAGE:-${ECR_REGISTRY}/cht-platform-backend:${IMAGE_TAG}}"
-WORKER_IMAGE="${WORKER_IMAGE:-${ECR_REGISTRY}/cht-platform-worker:${IMAGE_TAG}}"
+if [ -n "$BACKEND_IMAGE" ]; then
+    :
+elif [ -n "$IMAGE_TAG" ]; then
+    BACKEND_IMAGE="${ECR_REGISTRY}/cht-platform-backend:${IMAGE_TAG}"
+else
+    BACKEND_IMAGE="$TF_BACKEND_IMAGE"
+fi
+if [ -n "$WORKER_IMAGE" ]; then
+    :
+elif [ -n "$IMAGE_TAG" ]; then
+    WORKER_IMAGE="${ECR_REGISTRY}/cht-platform-worker:${IMAGE_TAG}"
+else
+    WORKER_IMAGE="$TF_WORKER_IMAGE"
+fi
 
 DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
 
+case "$ENV" in
+  platform) BACKEND_CONFIG="$REPO_ROOT/infrastructure/terraform/environments/backends/us-east-1-platform.hcl" ;;
+  dev)      BACKEND_CONFIG="$REPO_ROOT/infrastructure/terraform/environments/backends/us-east-1-dev.hcl" ;;
+esac
+
 echo "📦 Environment: $ENV"
 echo "📄 Variables:  ${ENV}.tfvars"
+echo "🗄️  State:       $(grep -E '^key' "$BACKEND_CONFIG" | sed 's/key = "//;s/"//')"
 echo "🌐 Domain:      ${DOMAIN:-unknown}"
 echo "🐳 Backend:     $BACKEND_IMAGE"
 echo "🐳 Worker:      $WORKER_IMAGE"
@@ -50,7 +78,7 @@ echo ""
 cd "$REPO_ROOT/infrastructure/terraform/environments/us-east-1"
 
 echo "🔧 Initializing Terraform..."
-terraform init -reconfigure
+terraform init -reconfigure -backend-config="$BACKEND_CONFIG"
 
 echo ""
 echo "✅ Validating configuration..."
@@ -80,6 +108,14 @@ echo ""
 echo "🚀 Deploying infrastructure..."
 terraform apply tfplan
 rm -f tfplan
+
+ENABLE_COGNITO_MRR=$(grep -E '^enable_cognito_mrr[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^=]*=[[:space:]]*//' | tr '[:upper:]' '[:lower:]')
+COGNITO_EMAIL_ACCOUNT=$(grep -E '^cognito_email_sending_account[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/' | tr '[:upper:]' '[:lower:]')
+if [ "$ENABLE_COGNITO_MRR" = "true" ] || [ "$COGNITO_EMAIL_ACCOUNT" = "developer" ]; then
+  echo ""
+  echo "🔐 Syncing Cognito pool config (MRR-safe API)..."
+  "$REPO_ROOT/scripts/cognito-sync-pool-config.sh" "$ENV"
+fi
 
 echo ""
 echo "✅ us-east-1 ($ENV) deployed successfully!"

@@ -21,6 +21,16 @@ export default () => ({
     jwtSecret: process.env.GOTRUE_JWT_SECRET,
   },
 
+  // Amazon Cognito (replaces GoTrue when COGNITO_USER_POOL_ID is set)
+  cognito: {
+    userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
+    clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
+    region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
+    hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
+    domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
+    jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
+  },
+
   // Supabase Auth (for backend login validation)
   supabase: {
     url: process.env.SUPABASE_URL,

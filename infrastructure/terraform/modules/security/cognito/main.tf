@@ -1,14 +1,27 @@
+data "aws_region" "current" {}
+
+data "aws_caller_identity" "current" {}
+
 locals {
   # Matches the resource_prefix convention used in the us-east-1 environment
-  name_prefix    = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
-  enable_google  = var.google_client_id != "" && var.google_client_secret != ""
+  name_prefix   = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  enable_google = var.google_client_id != "" && var.google_client_secret != ""
+
+  use_ses_email = var.email_sending_account == "DEVELOPER" && var.email_from_address != ""
+
+  ses_domain = local.use_ses_email && var.ses_source_arn == "" ? element(split("@", var.email_from_address), 1) : ""
+
+  ses_source_arn = local.use_ses_email ? (
+    var.ses_source_arn != "" ? var.ses_source_arn :
+    "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/${local.ses_domain}"
+  ) : ""
 }
 
 # ============================================
 # Cognito User Pool
 # ============================================
 resource "aws_cognito_user_pool" "main" {
-  name = "${local.name_prefix}-users"
+  name           = "${local.name_prefix}-users"
   user_pool_tier = var.user_pool_tier
 
   # Email is the username; no separate username field
@@ -35,9 +48,29 @@ resource "aws_cognito_user_pool" "main" {
     enabled = true
   }
 
-  # Use Cognito's default SES for now; swap to custom SES domain when verified
-  email_configuration {
-    email_sending_account = "COGNITO_DEFAULT"
+  # COGNITO_DEFAULT → no-reply@verificationemail.com (dev only).
+  # DEVELOPER → verified SES identity in us-east-1 (recommended for dev + platform).
+  dynamic "email_configuration" {
+    for_each = local.use_ses_email ? [1] : []
+    content {
+      email_sending_account  = "DEVELOPER"
+      from_email_address     = var.email_from_address
+      reply_to_email_address = var.email_reply_to_address != "" ? var.email_reply_to_address : null
+      source_arn             = local.ses_source_arn
+    }
+  }
+
+  dynamic "email_configuration" {
+    for_each = local.use_ses_email ? [] : [1]
+    content {
+      email_sending_account = "COGNITO_DEFAULT"
+    }
+  }
+
+  verification_message_template {
+    default_email_option = "CONFIRM_WITH_CODE"
+    email_subject        = var.verification_email_subject
+    email_message        = var.verification_email_message
   }
 
   account_recovery_setting {
@@ -53,10 +86,10 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   schema {
-    attribute_data_type      = "String"
-    name                     = "email"
-    required                 = true
-    mutable                  = true
+    attribute_data_type = "String"
+    name                = "email"
+    required            = true
+    mutable             = true
 
     string_attribute_constraints {
       min_length = 3
@@ -64,9 +97,26 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
-  # Retain pool if Terraform is accidentally asked to destroy it
+  # Cognito UpdateUserPool resets omitted fields. MRR-enabled pools also require
+  # KeyConfiguration on every update; AWS provider 5.x cannot send it. Ignore in-place
+  # pool setting changes here and apply them via scripts/cognito-sync-pool-config.sh.
   lifecycle {
     prevent_destroy = true
+    ignore_changes = [
+      name,
+      username_attributes,
+      auto_verified_attributes,
+      mfa_configuration,
+      email_configuration,
+      password_policy,
+      schema,
+      username_configuration,
+      account_recovery_setting,
+      admin_create_user_config,
+      verification_message_template,
+      software_token_mfa_configuration,
+      user_pool_tier,
+    ]
   }
 }
 
@@ -115,6 +165,10 @@ resource "aws_cognito_user_pool_client" "cht_web" {
   access_token_validity  = 1
   id_token_validity      = 1
   refresh_token_validity = 30
+
+  # Match console: 3-minute auth flow session, token revocation enabled
+  auth_session_validity   = 3
+  enable_token_revocation = true
 
   # Prevents leaking whether an email is registered
   prevent_user_existence_errors = "ENABLED"

@@ -27,9 +27,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   private isJwtAuthConfigured(): boolean {
+    const cognitoPoolId = this.configService.get<string>('cognito.userPoolId');
     const auth0Domain = this.configService.get<string>('auth0.domain');
     const gotrueSecret = this.configService.get<string>('gotrue.jwtSecret');
-    return !!(auth0Domain || gotrueSecret);
+    return !!(cognitoPoolId || auth0Domain || gotrueSecret);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

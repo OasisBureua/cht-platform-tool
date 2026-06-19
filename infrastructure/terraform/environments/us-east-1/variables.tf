@@ -407,3 +407,68 @@ variable "cognito_google_client_secret" {
   sensitive   = true
   default     = ""
 }
+
+variable "cognito_email_sending_account" {
+  description = "COGNITO_DEFAULT or DEVELOPER (Amazon SES). Use DEVELOPER with cognito_email_from for branded auth emails."
+  type        = string
+  default     = "COGNITO_DEFAULT"
+
+  validation {
+    condition     = contains(["COGNITO_DEFAULT", "DEVELOPER"], var.cognito_email_sending_account)
+    error_message = "cognito_email_sending_account must be COGNITO_DEFAULT or DEVELOPER."
+  }
+}
+
+variable "cognito_email_from" {
+  description = "FROM address for Cognito verification/recovery emails (requires SES-verified domain/address in us-east-1)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_email_reply_to" {
+  description = "Optional REPLY-TO for Cognito auth emails"
+  type        = string
+  default     = ""
+}
+
+variable "enable_cognito_waf" {
+  description = "Attach regional AWS WAF to the Cognito user pool"
+  type        = bool
+  default     = false
+}
+
+variable "cognito_waf_enable_managed_rules" {
+  description = "Enable AWS managed rule groups on the Cognito WAF ACL"
+  type        = bool
+  default     = true
+}
+
+variable "cognito_waf_enable_rate_limit" {
+  description = "Enable IP rate limiting on Cognito auth via WAF"
+  type        = bool
+  default     = true
+}
+
+variable "cognito_waf_rate_limit_count" {
+  description = "Max Cognito auth requests per 5 minutes per IP"
+  type        = number
+  default     = 1000
+}
+
+variable "enable_cognito_mrr" {
+  description = "Create multi-Region KMS keys for Cognito MRR; run scripts/cognito-setup-mrr.sh after apply"
+  type        = bool
+  default     = false
+}
+
+variable "cognito_mrr_replica_region" {
+  description = "AWS Region for Cognito user pool replica"
+  type        = string
+  default     = "us-east-2"
+}
+
+variable "cognito_mrr_associate_waf_replica" {
+  description = "Associate WAF with Cognito replica pool (set true after cognito-setup-mrr.sh completes)"
+  type        = bool
+  default     = false
+}
