@@ -137,7 +137,8 @@ resource "aws_iam_role_policy" "backend_task" {
           Effect = "Allow"
           Action = [
             "cognito-idp:AdminAddUserToGroup",
-            "cognito-idp:AdminRemoveUserFromGroup"
+            "cognito-idp:AdminRemoveUserFromGroup",
+            "cognito-idp:AdminGetUser"
           ]
           Resource = var.cognito_user_pool_arn
         }

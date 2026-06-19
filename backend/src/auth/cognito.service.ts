@@ -10,6 +10,7 @@ import {
   ForgotPasswordCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminGetUserCommand,
   type AuthenticationResultType,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { UserRole } from '@prisma/client';
@@ -212,8 +213,8 @@ export class CognitoService {
   async syncGroupsForRole(email: string, role: UserRole): Promise<void> {
     if (!this.isConfigured()) return;
 
-    const username = email.trim().toLowerCase();
-    if (!username.includes('@')) return;
+    const username =
+      (await this.resolveUsername(email)) ?? email.trim().toLowerCase();
 
     const addGroup =
       role === UserRole.ADMIN ? COGNITO_GROUP_ADMIN : COGNITO_GROUP_HCP;
@@ -222,6 +223,42 @@ export class CognitoService {
 
     await this.addUserToGroup(username, addGroup);
     await this.removeUserFromGroup(username, removeGroup);
+  }
+
+  /** Resolve pool Username (may differ from email alias for older accounts). */
+  async resolveUsername(email: string): Promise<string | null> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes('@')) return null;
+
+    try {
+      const response = await this.client.send(
+        new AdminGetUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: normalized,
+        }),
+      );
+      return response.Username ?? normalized;
+    } catch (err) {
+      const name = err instanceof Error ? err.name : '';
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/UserNotFoundException/i.test(name) || /user does not exist/i.test(msg)) {
+        this.logger.warn(
+          `[Cognito] Cannot sync groups: ${normalized} not found in pool`,
+        );
+        return null;
+      }
+      this.logger.warn(
+        `[Cognito] resolveUsername failed for ${normalized}: ${name || msg}`,
+      );
+      return null;
+    }
+  }
+
+  private cognitoErrorMessage(err: unknown): string {
+    if (err instanceof Error) {
+      return err.name ? `${err.name}: ${err.message}` : err.message;
+    }
+    return String(err);
   }
 
   private async addUserToGroup(
@@ -238,14 +275,14 @@ export class CognitoService {
       );
       this.logger.log(`[Cognito] Added ${username} to ${groupName}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (/user does not exist|usernotfound/i.test(msg)) {
+      const msg = this.cognitoErrorMessage(err);
+      if (/UserNotFoundException|user does not exist/i.test(msg)) {
         this.logger.warn(
           `[Cognito] Skipped add to ${groupName}: ${username} not in pool`,
         );
         return;
       }
-      this.logger.warn(
+      this.logger.error(
         `[Cognito] Failed to add ${username} to ${groupName}: ${msg}`,
       );
     }
@@ -265,13 +302,15 @@ export class CognitoService {
       );
       this.logger.log(`[Cognito] Removed ${username} from ${groupName}`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = this.cognitoErrorMessage(err);
       if (
-        /user does not exist|usernotfound|not a member|not found/i.test(msg)
+        /UserNotFoundException|user does not exist|not a member|ResourceNotFoundException/i.test(
+          msg,
+        )
       ) {
         return;
       }
-      this.logger.warn(
+      this.logger.error(
         `[Cognito] Failed to remove ${username} from ${groupName}: ${msg}`,
       );
     }

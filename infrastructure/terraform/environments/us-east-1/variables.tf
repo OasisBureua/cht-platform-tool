@@ -122,6 +122,19 @@ variable "cloudfront_certificate_arn" {
   default     = ""
 }
 
+# Shared with dev.tfvars / platform.tfvars for deploy-secondary.sh (us-east-2). Not used by this stack.
+variable "dr_acm_certificate_arn" {
+  description = "ACM certificate ARN for us-east-2 DR ALB (consumed by us-east-2 apply only)."
+  type        = string
+  default     = ""
+}
+
+variable "dr_rds_instance_class" {
+  description = "RDS instance class for us-east-2 DR read replica (consumed by us-east-2 apply only)."
+  type        = string
+  default     = "db.t3.small"
+}
+
 # Monitoring
 variable "alarm_notification_emails" {
   description = "Email addresses to receive alarm notifications (DLQ, ECS, RDS, ALB, etc.). Must confirm subscription via email."

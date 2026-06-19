@@ -242,10 +242,11 @@ module "iam" {
     module.secrets.database_secret_arn,
     module.secrets.app_secrets_arn
   ]
-  kms_key_arns = [
+  kms_key_arns = compact([
     module.kms.secrets_kms_key_arn,
-    module.kms.sqs_kms_key_arn
-  ]
+    module.kms.sqs_kms_key_arn,
+    var.enable_cognito_pools && var.enable_cognito_mrr ? module.cognito[0].cognito_kms_key_arn : "",
+  ])
   sqs_queue_arns = [
     module.sqs.email_queue_arn,
     module.sqs.payment_queue_arn,

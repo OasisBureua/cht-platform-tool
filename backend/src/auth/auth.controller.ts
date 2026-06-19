@@ -114,6 +114,14 @@ export class AuthController {
     );
     if (!user) return { error: 'User not found.' };
 
+    void this.cognitoService
+      .syncGroupsForRole(user.email, user.role)
+      .catch((err) =>
+        this.logger.warn(
+          `[Auth] Cognito group sync on login failed for ${user.email}: ${err}`,
+        ),
+      );
+
     const sessionToken = await this.authService.createSession(
       user,
       tokens.accessToken,
@@ -380,6 +388,7 @@ export class AuthController {
 
     try {
       await this.cognitoService.confirmSignUp(emailStr, code);
+      await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
       this.logger.log(`[Auth] Cognito email confirmed for ${emailStr}`);
       return {};
     } catch (err) {

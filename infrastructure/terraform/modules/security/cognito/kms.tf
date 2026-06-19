@@ -43,6 +43,24 @@ data "aws_iam_policy_document" "cognito_mrk" {
       values   = [data.aws_caller_identity.current.account_id]
     }
   }
+
+  # Backend ECS task calls Cognito Admin APIs (group sync) against CMK-encrypted user pools.
+  statement {
+    sid    = "AllowBackendEcsTask"
+    effect = "Allow"
+
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${local.name_prefix}-ecs-task"]
+    }
+
+    actions = [
+      "kms:Decrypt",
+      "kms:DescribeKey",
+    ]
+
+    resources = ["*"]
+  }
 }
 
 resource "aws_kms_key" "cognito_mrk" {
