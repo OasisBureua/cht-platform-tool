@@ -8,6 +8,7 @@ import {
   ConfirmSignUpCommand,
   ResendConfirmationCodeCommand,
   ForgotPasswordCommand,
+  ConfirmForgotPasswordCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminGetUserCommand,
@@ -203,6 +204,21 @@ export class CognitoService {
       new ForgotPasswordCommand({
         ClientId: this.clientId,
         Username: email.trim().toLowerCase(),
+      }),
+    );
+  }
+
+  async confirmForgotPassword(
+    email: string,
+    code: string,
+    password: string,
+  ): Promise<void> {
+    await this.client.send(
+      new ConfirmForgotPasswordCommand({
+        ClientId: this.clientId,
+        Username: email.trim().toLowerCase(),
+        ConfirmationCode: code.trim(),
+        Password: password,
       }),
     );
   }

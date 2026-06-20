@@ -103,9 +103,10 @@ resource "aws_security_group" "worker" {
 }
 
 # ============================================
-# Database - RDS PostgreSQL
+# Database - RDS PostgreSQL (legacy; removed after Aurora cutover)
 # ============================================
 module "rds" {
+  count  = var.enable_aurora_global && var.decommission_rds ? 0 : 1
   source = "../../modules/database/rds"
 
   project                 = var.project
@@ -119,6 +120,88 @@ module "rds" {
   allocated_storage       = var.rds_allocated_storage
   multi_az                = var.rds_multi_az
   backup_retention_period = var.rds_backup_retention
+}
+
+# ============================================
+# Database - Aurora Global (primary cluster)
+# ============================================
+module "aurora_global" {
+  count  = var.enable_aurora_global ? 1 : 0
+  source = "../../modules/database/aurora-global"
+
+  role                    = "primary"
+  project                 = var.project
+  environment             = var.environment
+  vpc_id                  = module.vpc.vpc_id
+  private_subnet_ids      = module.vpc.private_subnet_ids
+  allowed_security_groups = [module.ecs_backend.security_group_id, aws_security_group.worker.id]
+  kms_key_arn             = module.kms.rds_kms_key_arn
+  instance_class          = var.aurora_instance_class
+  engine_version          = var.aurora_engine_version
+  backup_retention_period = var.rds_backup_retention
+  deletion_protection     = contains(["prod", "platform"], var.environment)
+}
+
+locals {
+  app_db_username = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].master_username
+    : module.rds[0].db_username
+  )
+  app_db_password = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].master_password
+    : module.rds[0].db_password
+  )
+  app_db_endpoint = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].cluster_endpoint
+    : module.rds[0].db_endpoint
+  )
+  app_db_port = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? tostring(module.aurora_global[0].cluster_port)
+    : module.rds[0].db_port
+  )
+  app_db_name = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].database_name
+    : module.rds[0].db_name
+  )
+  app_db_connection_string = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].connection_string
+    : module.rds[0].db_connection_string
+  )
+}
+
+resource "aws_secretsmanager_secret" "aurora_migration" {
+  count = var.enable_aurora_global ? 1 : 0
+
+  name                    = "${local.resource_prefix}-aurora-database-credentials"
+  description             = "Aurora Global writer credentials for DMS migration (not used by ECS until cutover)"
+  kms_key_id              = module.kms.secrets_kms_key_id
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = "${local.resource_prefix}-aurora-database-credentials"
+    Environment = var.environment
+    Purpose     = "AuroraMigration"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "aurora_migration" {
+  count = var.enable_aurora_global ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.aurora_migration[0].id
+  secret_string = jsonencode({
+    username = module.aurora_global[0].master_username
+    password = module.aurora_global[0].master_password
+    host     = module.aurora_global[0].cluster_endpoint
+    port     = module.aurora_global[0].cluster_port
+    dbname   = module.aurora_global[0].database_name
+    url      = module.aurora_global[0].connection_string
+  })
 }
 
 # ============================================
@@ -195,12 +278,12 @@ module "secrets" {
     }
   ]
 
-  db_username          = module.rds.db_username
-  db_password          = module.rds.db_password
-  db_endpoint          = module.rds.db_endpoint
-  db_port              = module.rds.db_port
-  db_name              = module.rds.db_name
-  db_connection_string = module.rds.db_connection_string
+  db_username          = local.app_db_username
+  db_password          = local.app_db_password
+  db_endpoint          = local.app_db_endpoint
+  db_port              = local.app_db_port
+  db_name              = local.app_db_name
+  db_connection_string = local.app_db_connection_string
 
   supabase_url                              = var.supabase_url
   supabase_anon_key                         = var.supabase_anon_key
@@ -399,9 +482,10 @@ module "cloudfront" {
   cloudfront_oai_path   = module.s3_frontend.cloudfront_oai_path
   certificate_arn       = var.cloudfront_certificate_arn
   domain_aliases        = [var.domain_name]
-  api_origin_domain     = module.alb.alb_dns_name
+  api_origin_domain           = module.alb.alb_dns_name
   secondary_api_origin_domain = var.secondary_api_origin_domain
-  price_class           = "PriceClass_100"
+  route_api_to_secondary      = var.route_api_to_secondary
+  price_class                 = "PriceClass_100"
   web_acl_id            = module.waf_cloudfront.web_acl_arn
 }
 
@@ -433,7 +517,7 @@ module "cloudwatch" {
   environment    = var.environment
   aws_region     = "us-east-1"
   cluster_name   = module.ecs_cluster.cluster_name
-  db_instance_id = split(":", module.rds.db_endpoint)[0]
+  db_instance_id = var.enable_aurora_global && var.decommission_rds ? module.aurora_global[0].cluster_id : split(":", module.rds[0].db_endpoint)[0]
   alb_arn_suffix = split("/", module.alb.alb_arn)[3]
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = module.sns_alerts.topic_arn

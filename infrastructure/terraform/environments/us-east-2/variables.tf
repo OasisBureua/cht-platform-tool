@@ -120,6 +120,36 @@ variable "dr_rds_instance_class" {
   default     = "db.t3.small"
 }
 
+variable "enable_aurora_global" {
+  description = "Attach DR Aurora secondary cluster to primary Global Database."
+  type        = bool
+  default     = false
+}
+
+variable "aurora_instance_class" {
+  description = "Aurora instance class for Global Database secondary cluster."
+  type        = string
+  default     = "db.r6g.large"
+}
+
+variable "aurora_engine_version" {
+  description = "Aurora PostgreSQL engine version (fallback if primary state output missing)."
+  type        = string
+  default     = "15.17"
+}
+
+variable "decommission_rds" {
+  description = "Remove RDS read replica after Aurora cutover."
+  type        = bool
+  default     = false
+}
+
+variable "aurora_use_for_app" {
+  description = "Point DR database secret at Aurora reader endpoint."
+  type        = bool
+  default     = false
+}
+
 variable "rds_engine_version" {
   description = "RDS engine version for parameter group family compatibility."
   type        = string

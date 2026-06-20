@@ -47,6 +47,12 @@ variable "secondary_api_origin_domain" {
   default     = ""
 }
 
+variable "route_api_to_secondary" {
+  description = "Send /api* to the secondary ALB (manual DR drill). Requires secondary_api_origin_domain."
+  type        = bool
+  default     = false
+}
+
 variable "price_class" {
   description = "CloudFront price class"
   type        = string

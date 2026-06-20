@@ -103,6 +103,10 @@ locals {
   cognito_hosted_ui_base_url = var.cognito_hosted_ui_base_url != "" ? var.cognito_hosted_ui_base_url : local.primary_cognito_hosted_ui_base_url
   cognito_jwks_uri           = var.cognito_jwks_uri != "" ? var.cognito_jwks_uri : local.primary_cognito_jwks_uri
   cognito_user_pool_arn = local.cognito_user_pool_id != "" ? "arn:aws:cognito-idp:us-east-1:${data.aws_caller_identity.current.account_id}:userpool/${local.cognito_user_pool_id}" : ""
+
+  primary_aurora_global_cluster_id = try(tostring(data.terraform_remote_state.primary.outputs.aurora_global_cluster_id), "")
+  primary_aurora_engine_version    = try(tostring(data.terraform_remote_state.primary.outputs.aurora_engine_version), var.aurora_engine_version)
+  aurora_global_enabled            = var.enable_aurora_global && local.primary_aurora_global_cluster_id != ""
 }
 
 # ============================================
@@ -197,19 +201,6 @@ resource "aws_secretsmanager_secret" "database" {
   description             = "DR copy of database credentials for ${var.project} ${var.environment}"
   kms_key_id              = module.kms.secrets_kms_key_id
   recovery_window_in_days = 30
-}
-
-resource "aws_secretsmanager_secret_version" "database" {
-  secret_id = aws_secretsmanager_secret.database.id
-  secret_string = jsonencode({
-    username = local.primary_db_secret.username
-    password = local.primary_db_secret.password
-    # Standby tasks use the cross-region read replica (read-only until promotion failover).
-    host     = var.enable_db_replica ? aws_db_instance.replica[0].address : local.primary_db_secret.host
-    port     = local.primary_db_secret.port
-    dbname   = local.primary_db_secret.dbname
-    url      = format("postgresql://%s:%s@%s:%s/%s", local.primary_db_secret.username, urlencode(local.primary_db_secret.password), var.enable_db_replica ? aws_db_instance.replica[0].address : local.primary_db_secret.host, local.primary_db_secret.port, local.primary_db_secret.dbname)
-  })
 }
 
 resource "aws_secretsmanager_secret" "app_secrets" {
@@ -358,16 +349,37 @@ module "scheduled_eventbridge" {
 }
 
 # ============================================
-# Database - Cross-region read replica
+# Database - Aurora Global (secondary cluster)
+# ============================================
+module "aurora_global" {
+  count  = local.aurora_global_enabled ? 1 : 0
+  source = "../../modules/database/aurora-global"
+
+  role                      = "secondary"
+  project                   = var.project
+  environment               = var.environment
+  vpc_id                    = module.vpc.vpc_id
+  private_subnet_ids        = module.vpc.private_subnet_ids
+  allowed_security_groups   = [module.ecs_backend.security_group_id, module.ecs_worker.security_group_id]
+  kms_key_arn               = module.kms.rds_kms_key_arn
+  instance_class            = var.aurora_instance_class
+  engine_version            = local.primary_aurora_engine_version
+  global_cluster_identifier = local.primary_aurora_global_cluster_id
+  backup_retention_period   = var.rds_backup_retention
+  deletion_protection       = contains(["prod", "platform"], var.environment)
+}
+
+# ============================================
+# Database - Cross-region read replica (legacy; removed after Aurora cutover)
 # ============================================
 resource "aws_db_subnet_group" "replica" {
-  count      = var.enable_db_replica ? 1 : 0
+  count      = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds) ? 1 : 0
   name       = "${local.dr_resource_prefix}-db-subnet"
   subnet_ids = module.vpc.private_subnet_ids
 }
 
 resource "aws_security_group" "rds_replica" {
-  count       = var.enable_db_replica ? 1 : 0
+  count       = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds) ? 1 : 0
   name        = "${local.dr_resource_prefix}-rds-sg"
   description = "Security group for DR RDS replica"
   vpc_id      = module.vpc.vpc_id
@@ -393,7 +405,7 @@ resource "aws_security_group" "rds_replica" {
 }
 
 resource "aws_db_instance" "replica" {
-  count = var.enable_db_replica ? 1 : 0
+  count = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds) ? 1 : 0
 
   identifier             = "${local.dr_resource_prefix}-db-replica"
   replicate_source_db    = data.aws_db_instance.primary.db_instance_arn
@@ -412,18 +424,36 @@ resource "aws_db_instance" "replica" {
   deletion_protection     = contains(["prod", "platform"], var.environment)
 }
 
+locals {
+  dr_database_host = local.aurora_global_enabled && var.aurora_use_for_app ? module.aurora_global[0].reader_host : (
+    length(aws_db_instance.replica) > 0 ? aws_db_instance.replica[0].address : local.primary_db_secret.host
+  )
+}
+
+resource "aws_secretsmanager_secret_version" "database" {
+  secret_id = aws_secretsmanager_secret.database.id
+  secret_string = jsonencode({
+    username = local.primary_db_secret.username
+    password = local.primary_db_secret.password
+    host     = local.dr_database_host
+    port     = local.primary_db_secret.port
+    dbname   = local.primary_db_secret.dbname
+    url      = format("postgresql://%s:%s@%s:%s/%s", local.primary_db_secret.username, urlencode(local.primary_db_secret.password), local.dr_database_host, local.primary_db_secret.port, local.primary_db_secret.dbname)
+  })
+}
+
 # ============================================
 # Monitoring - CloudWatch
 # ============================================
 module "cloudwatch" {
-  count  = var.enable_db_replica ? 1 : 0
+  count  = var.enable_db_replica || local.aurora_global_enabled ? 1 : 0
   source = "../../modules/monitoring/cloudwatch"
 
   project        = local.dr_project
   environment    = var.environment
   aws_region     = "us-east-2"
   cluster_name   = module.ecs_cluster.cluster_name
-  db_instance_id = aws_db_instance.replica[0].id
+  db_instance_id = length(aws_db_instance.replica) > 0 ? aws_db_instance.replica[0].id : module.aurora_global[0].cluster_id
   alb_arn_suffix = split("/", module.alb.alb_arn)[3]
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = module.sns_alerts.topic_arn

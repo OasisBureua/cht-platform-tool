@@ -890,6 +890,61 @@ export class AuthController {
     return {};
   }
 
+  /**
+   * POST /api/auth/recover/confirm
+   * Complete Cognito password reset with email verification code.
+   */
+  @Post('recover/confirm')
+  async recoverConfirm(
+    @Body('email') email: string,
+    @Body('code') code: string,
+    @Body('password') password: string,
+  ): Promise<{ error?: string }> {
+    const emailStr = (email || '').trim();
+    const codeStr = (code || '').trim();
+    const passwordStr = password || '';
+
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!codeStr) return { error: 'Reset code is required.' };
+    if (!passwordStr || passwordStr.length < 8) {
+      return { error: 'Password must be at least 8 characters.' };
+    }
+
+    if (this.cognitoService.isConfigured()) {
+      try {
+        await this.cognitoService.confirmForgotPassword(
+          emailStr,
+          codeStr,
+          passwordStr,
+        );
+        this.logger.log(`[Auth] Cognito password reset confirmed for ${emailStr}`);
+        return {};
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Password reset failed.';
+        this.logger.warn(
+          `[Auth] Cognito recover confirm failed for ${emailStr}: ${msg}`,
+        );
+        if (/CodeMismatchException/i.test(msg)) {
+          return { error: 'Invalid reset code.' };
+        }
+        if (/ExpiredCodeException/i.test(msg)) {
+          return {
+            error: 'Reset code has expired. Request a new one from Forgot Password.',
+          };
+        }
+        if (/InvalidPasswordException/i.test(msg)) {
+          return {
+            error:
+              'Password does not meet requirements. Use at least 8 characters with upper, lower, number, and symbol.',
+          };
+        }
+        return { error: msg };
+      }
+    }
+
+    return { error: 'Password reset is not configured.' };
+  }
+
   @Post('logout')
   async logout(
     @Req() req: Request,

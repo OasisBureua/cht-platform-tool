@@ -42,9 +42,34 @@ output "certificates_bucket" {
 
 # Database
 output "rds_endpoint" {
-  description = "RDS endpoint"
-  value       = module.rds.db_endpoint
+  description = "RDS endpoint (null after decommission_rds)"
+  value       = length(module.rds) > 0 ? module.rds[0].db_endpoint : null
   sensitive   = true
+}
+
+output "aurora_global_cluster_id" {
+  description = "Aurora Global cluster identifier for secondary region attachment"
+  value       = var.enable_aurora_global ? module.aurora_global[0].global_cluster_id : null
+}
+
+output "aurora_writer_endpoint" {
+  description = "Aurora primary writer cluster endpoint"
+  value       = var.enable_aurora_global ? module.aurora_global[0].cluster_endpoint : null
+}
+
+output "aurora_reader_endpoint" {
+  description = "Aurora primary regional reader endpoint"
+  value       = var.enable_aurora_global ? module.aurora_global[0].cluster_reader_endpoint : null
+}
+
+output "aurora_migration_secret_name" {
+  description = "Secrets Manager name for Aurora DMS target credentials"
+  value       = var.enable_aurora_global ? aws_secretsmanager_secret.aurora_migration[0].name : null
+}
+
+output "aurora_engine_version" {
+  description = "Aurora PostgreSQL engine version"
+  value       = var.enable_aurora_global ? module.aurora_global[0].engine_version : null
 }
 
 # Alerts

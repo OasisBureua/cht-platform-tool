@@ -4,26 +4,39 @@
 # Usage:
 #   ./scripts/cognito-sync-user-groups.sh dev
 #   ADMIN_EMAILS="admin@example.com,other@example.com" ./scripts/cognito-sync-user-groups.sh dev
+#   ./scripts/cognito-sync-user-groups.sh platform --from-json
 #
 # Requires: aws CLI, jq. Uses the dev/platform Cognito pool in us-east-1.
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV=${1:-dev}
+MODE=${2:-}
 AWS_REGION=${AWS_REGION:-us-east-1}
 GROUP_HCP=cht-hcp
 GROUP_ADMIN=cht-admin
+ROLES_JSON="${REPO_ROOT}/data/cognito/platform-users-roles.json"
+
+resolve_platform_pool_id() {
+  if [ -n "${COGNITO_USER_POOL_ID:-}" ]; then
+    echo "$COGNITO_USER_POOL_ID"
+    return 0
+  fi
+  terraform -chdir="${REPO_ROOT}/infrastructure/terraform/environments/us-east-1" output -raw cognito_user_pool_id 2>/dev/null || true
+}
 
 case "$ENV" in
   dev) POOL_ID=${COGNITO_USER_POOL_ID:-us-east-1_J51gzfO0I} ;;
   platform)
-    POOL_ID=${COGNITO_USER_POOL_ID:-}
+    POOL_ID="$(resolve_platform_pool_id)"
     if [ -z "$POOL_ID" ]; then
-      echo "Set COGNITO_USER_POOL_ID for platform, or pass via terraform output."
+      echo "Set COGNITO_USER_POOL_ID for platform, or apply Terraform and ensure cognito_user_pool_id output exists."
       exit 1
     fi
     ;;
   *)
-    echo "Usage: $0 [dev|platform]"
+    echo "Usage: $0 [dev|platform] [--from-json]"
     exit 1
     ;;
 esac
@@ -76,6 +89,19 @@ sync_user() {
 }
 
 echo "Syncing Cognito groups for pool $POOL_ID ($ENV)..."
+
+if [ "$MODE" = "--from-json" ]; then
+  if [ ! -f "$ROLES_JSON" ]; then
+    echo "Missing roles file: $ROLES_JSON" >&2
+    exit 1
+  fi
+  while IFS=$'\t' read -r email role; do
+    [ -z "$email" ] && continue
+    sync_user "$email" "$role"
+  done < <(jq -r '.[] | [.email, .role] | @tsv' "$ROLES_JSON")
+  echo "Done."
+  exit 0
+fi
 
 TOKEN=""
 while true; do

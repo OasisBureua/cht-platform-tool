@@ -1,4 +1,6 @@
 locals {
+  # MRR uses the same UserPoolId in the replica region (e.g. us-east-1_whXKKxAdX in us-east-2).
+  # Only associate WAF after ./scripts/cognito-setup-mrr.sh creates the replica.
   replica_user_pool_arn = var.enable_multi_region_replication ? "arn:aws:cognito-idp:${var.replica_region}:${data.aws_caller_identity.current.account_id}:userpool/${aws_cognito_user_pool.main.id}" : ""
 }
 

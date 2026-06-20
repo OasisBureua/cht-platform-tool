@@ -7,7 +7,11 @@ locals {
   # Origin groups only support GET, HEAD, OPTIONS (AWS CloudFront limit). Use the group for
   # /health* and /actuator* failover probes; keep /api* on the primary ALB (mutating methods required).
   health_target_origin_id    = local.api_failover_enabled ? local.api_origin_group_id : local.primary_api_origin_id
-  api_target_origin_id       = local.primary_api_origin_id
+  api_target_origin_id = (
+    var.route_api_to_secondary && local.api_failover_enabled
+    ? local.secondary_api_origin_id
+    : local.primary_api_origin_id
+  )
   # Ops/metadata paths forwarded to the backend ALB (not the S3 SPA).
   backend_metadata_paths     = ["/health*", "/actuator*"]
 }

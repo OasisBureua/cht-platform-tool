@@ -19,6 +19,12 @@ variable "secondary_api_origin_domain" {
   default     = ""
 }
 
+variable "route_api_to_secondary" {
+  description = "Route CloudFront /api* to the secondary ALB (DR drill). Set false to restore primary."
+  type        = bool
+  default     = false
+}
+
 # Docker images
 variable "backend_image" {
   description = "Backend Docker image"
@@ -55,6 +61,36 @@ variable "rds_multi_az" {
 variable "rds_backup_retention" {
   description = "RDS backup retention period (days)"
   type        = number
+}
+
+variable "enable_aurora_global" {
+  description = "Provision Aurora PostgreSQL Global Database (parallel to RDS during migration)"
+  type        = bool
+  default     = false
+}
+
+variable "aurora_instance_class" {
+  description = "Aurora instance class for Global Database primary and secondary"
+  type        = string
+  default     = "db.r6g.large"
+}
+
+variable "aurora_engine_version" {
+  description = "Aurora PostgreSQL engine version"
+  type        = string
+  default     = "15.17"
+}
+
+variable "decommission_rds" {
+  description = "Remove RDS after Aurora cutover (requires enable_aurora_global)"
+  type        = bool
+  default     = false
+}
+
+variable "aurora_use_for_app" {
+  description = "Point app database secrets at Aurora writer (post-DMS cutover)"
+  type        = bool
+  default     = false
 }
 
 # Compute - Backend
