@@ -75,7 +75,13 @@ async function bootstrap() {
 
   // Set global prefix but exclude health endpoints
   app.setGlobalPrefix('api', {
-    exclude: ['health', 'health/ready', 'health/live', 'health/detail'],
+    exclude: [
+      'health',
+      'health/ready',
+      'health/live',
+      'health/detail',
+      'actuator/info',
+    ],
   });
 
   // Swagger - available in all envs but only accessible internally in prod
@@ -142,7 +148,8 @@ async function bootstrap() {
   logger.log(`🔍 Health ready: ${baseUrl}/health/ready`);
   logger.log(`💚 Health live: ${baseUrl}/health/live`);
   logger.log(`📋 Health detail: ${baseUrl}/health/detail`);
-  logger.log(`📦 Version: ${process.env.APP_VERSION || '1.0.0'}`);
+  logger.log(`ℹ️  Actuator info: ${baseUrl}/actuator/info`);
+  logger.log(`📦 Version: ${process.env.IMAGE_TAG || process.env.APP_VERSION || 'local'}`);
   logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.log(`📖 Swagger docs: ${baseUrl}/api/docs`);
 }

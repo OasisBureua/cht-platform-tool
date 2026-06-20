@@ -27,7 +27,7 @@ variable "rds_multi_az" {
 }
 
 variable "rds_backup_retention" {
-  description = "Primary only: RDS backup retention (days) in us-east-1."
+  description = "RDS backup retention (days) for primary us-east-1 and DR read replica."
   type        = number
   default     = 1
 }

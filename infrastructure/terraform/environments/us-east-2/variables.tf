@@ -133,25 +133,25 @@ variable "primary_db_instance_identifier" {
 }
 
 variable "cognito_user_pool_id" {
-  description = "Primary Cognito user pool ID (same pool as us-east-1 primary)"
+  description = "Primary Cognito user pool ID. Leave empty to import from us-east-1 Terraform state."
   type        = string
   default     = ""
 }
 
 variable "cognito_client_id" {
-  description = "Cognito app client ID (cht-web)"
+  description = "Cognito app client ID (cht-web). Leave empty to import from us-east-1 Terraform state."
   type        = string
   default     = ""
 }
 
 variable "cognito_hosted_ui_base_url" {
-  description = "Cognito Hosted UI base URL from primary region"
+  description = "Cognito Hosted UI base URL. Leave empty to import from us-east-1 Terraform state."
   type        = string
   default     = ""
 }
 
 variable "cognito_jwks_uri" {
-  description = "Cognito JWKS URI from primary region"
+  description = "Cognito JWKS URI. Leave empty to import from us-east-1 Terraform state."
   type        = string
   default     = ""
 }

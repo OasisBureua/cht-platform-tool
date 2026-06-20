@@ -8,6 +8,11 @@ export const validationSchema = Joi.object({
   PORT: Joi.number().default(3000),
   FRONTEND_URL: Joi.string().default('http://localhost:5173'),
   LOG_PRETTY: Joi.string().valid('true', 'false', '1', '0', '').optional(),
+  APP_NAME: Joi.string().allow('').optional(),
+  CHT_ENVIRONMENT: Joi.string().allow('').optional(),
+  IMAGE_TAG: Joi.string().allow('').optional(),
+  APP_VERSION: Joi.string().allow('').optional(),
+  CONTAINER_IMAGE: Joi.string().allow('').optional(),
 
   // Database (required)
   DATABASE_URL: Joi.string().required(),

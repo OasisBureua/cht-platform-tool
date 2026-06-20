@@ -42,6 +42,7 @@ locals {
   dr_project          = "${var.project}-dr-use2"
   dr_resource_prefix  = var.environment == "platform" ? local.dr_project : "${local.dr_project}-${var.environment}"
   primary_prefix      = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  primary_state_key   = var.environment == "platform" ? "us-east-1/terraform.tfstate" : "us-east-1-${var.environment}/terraform.tfstate"
   log_retention_days  = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
   standby_scale       = var.dr_standby_scale_factor
   backend_desired_dr  = max(1, ceil(var.backend_desired_count * local.standby_scale))
@@ -78,8 +79,30 @@ data "aws_secretsmanager_secret_version" "primary_app" {
   secret_id = data.aws_secretsmanager_secret.primary_app.id
 }
 
+data "terraform_remote_state" "primary" {
+  backend = "s3"
+
+  config = {
+    bucket = "cht-platform-terraform-state"
+    key    = local.primary_state_key
+    region = "us-east-1"
+  }
+}
+
 locals {
   primary_db_secret = jsondecode(data.aws_secretsmanager_secret_version.primary_database.secret_string)
+
+  primary_cognito_user_pool_id       = try(tostring(data.terraform_remote_state.primary.outputs.cognito_user_pool_id), "")
+  primary_cognito_client_id          = try(tostring(data.terraform_remote_state.primary.outputs.cognito_client_id), "")
+  primary_cognito_hosted_ui_base_url = try(tostring(data.terraform_remote_state.primary.outputs.cognito_hosted_ui_base_url), "")
+  primary_cognito_jwks_uri           = try(tostring(data.terraform_remote_state.primary.outputs.cognito_jwks_uri), "")
+  primary_cognito_kms_key_arn        = try(tostring(data.terraform_remote_state.primary.outputs.cognito_kms_key_arn), "")
+
+  cognito_user_pool_id = var.cognito_user_pool_id != "" ? var.cognito_user_pool_id : local.primary_cognito_user_pool_id
+  cognito_client_id    = var.cognito_client_id != "" ? var.cognito_client_id : local.primary_cognito_client_id
+  cognito_hosted_ui_base_url = var.cognito_hosted_ui_base_url != "" ? var.cognito_hosted_ui_base_url : local.primary_cognito_hosted_ui_base_url
+  cognito_jwks_uri           = var.cognito_jwks_uri != "" ? var.cognito_jwks_uri : local.primary_cognito_jwks_uri
+  cognito_user_pool_arn = local.cognito_user_pool_id != "" ? "arn:aws:cognito-idp:us-east-1:${data.aws_caller_identity.current.account_id}:userpool/${local.cognito_user_pool_id}" : ""
 }
 
 # ============================================
@@ -213,10 +236,12 @@ module "iam" {
     aws_secretsmanager_secret.database.arn,
     aws_secretsmanager_secret.app_secrets.arn
   ]
-  kms_key_arns = [
+  kms_key_arns = compact([
     module.kms.secrets_kms_key_arn,
-    module.kms.sqs_kms_key_arn
-  ]
+    module.kms.sqs_kms_key_arn,
+    local.primary_cognito_kms_key_arn,
+  ])
+  cognito_user_pool_arn = local.cognito_user_pool_arn
   sqs_queue_arns = [
     module.sqs.email_queue_arn,
     module.sqs.payment_queue_arn,
@@ -285,10 +310,10 @@ module "ecs_backend" {
   session_assets_s3_bucket       = module.s3_session_assets.bucket_id
   session_assets_public_url_base = module.s3_session_assets.public_url_base
   run_db_migrations              = false
-  cognito_user_pool_id         = var.cognito_user_pool_id
-  cognito_client_id            = var.cognito_client_id
-  cognito_hosted_ui_base_url   = var.cognito_hosted_ui_base_url
-  cognito_jwks_uri             = var.cognito_jwks_uri
+  cognito_user_pool_id         = local.cognito_user_pool_id
+  cognito_client_id            = local.cognito_client_id
+  cognito_hosted_ui_base_url   = local.cognito_hosted_ui_base_url
+  cognito_jwks_uri             = local.cognito_jwks_uri
   cognito_region               = "us-east-1"
 }
 
@@ -382,7 +407,7 @@ resource "aws_db_instance" "replica" {
   db_subnet_group_name   = aws_db_subnet_group.replica[0].name
   vpc_security_group_ids = [aws_security_group.rds_replica[0].id]
 
-  backup_retention_period = 7
+  backup_retention_period = var.rds_backup_retention
   skip_final_snapshot     = true
   deletion_protection     = contains(["prod", "platform"], var.environment)
 }

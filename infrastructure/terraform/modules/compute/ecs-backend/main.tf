@@ -6,6 +6,8 @@ locals {
       var.environment == "test" ? "test" : "development"
     )
   )
+  container_image_parts = split(":", var.container_image)
+  container_image_tag   = length(local.container_image_parts) > 1 ? local.container_image_parts[length(local.container_image_parts) - 1] : "unknown"
 }
 
 # Security Group for Backend
@@ -73,6 +75,26 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name  = "AWS_REGION"
             value = var.aws_region
+          },
+          {
+            name  = "APP_NAME"
+            value = "cht-platform-backend"
+          },
+          {
+            name  = "CHT_ENVIRONMENT"
+            value = var.environment
+          },
+          {
+            name  = "IMAGE_TAG"
+            value = local.container_image_tag
+          },
+          {
+            name  = "APP_VERSION"
+            value = local.container_image_tag
+          },
+          {
+            name  = "CONTAINER_IMAGE"
+            value = var.container_image
           },
           {
             name  = "SESSION_TTL_SECONDS"

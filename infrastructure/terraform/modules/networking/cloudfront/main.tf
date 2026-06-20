@@ -5,9 +5,11 @@ locals {
   secondary_api_origin_id    = "ALB-API-SECONDARY"
   api_origin_group_id        = "ALB-API-GROUP"
   # Origin groups only support GET, HEAD, OPTIONS (AWS CloudFront limit). Use the group for
-  # /health* failover probes; keep /api* on the primary ALB (mutating methods required).
+  # /health* and /actuator* failover probes; keep /api* on the primary ALB (mutating methods required).
   health_target_origin_id    = local.api_failover_enabled ? local.api_origin_group_id : local.primary_api_origin_id
   api_target_origin_id       = local.primary_api_origin_id
+  # Ops/metadata paths forwarded to the backend ALB (not the S3 SPA).
+  backend_metadata_paths     = ["/health*", "/actuator*"]
 }
 
 # SPA viewer-request handler: rewrite deep-link URIs to /index.html so React
@@ -168,7 +170,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   dynamic "ordered_cache_behavior" {
-    for_each = var.api_origin_domain != "" ? ["/health*"] : []
+    for_each = var.api_origin_domain != "" ? toset(local.backend_metadata_paths) : toset([])
     content {
       path_pattern               = ordered_cache_behavior.value
       allowed_methods            = ["GET", "HEAD", "OPTIONS"]

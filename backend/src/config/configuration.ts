@@ -4,6 +4,19 @@ export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 
+  app: {
+    name: process.env.APP_NAME?.trim() || 'cht-platform-backend',
+    environment:
+      process.env.CHT_ENVIRONMENT?.trim() ||
+      process.env.NODE_ENV?.trim() ||
+      'development',
+    imageTag:
+      process.env.IMAGE_TAG?.trim() ||
+      process.env.APP_VERSION?.trim() ||
+      'local',
+    containerImage: process.env.CONTAINER_IMAGE?.trim() || '',
+  },
+
   // Database
   database: {
     url: process.env.DATABASE_URL || '',
