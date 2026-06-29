@@ -3,8 +3,10 @@ import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
-import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
+import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } from '../../lib/auth-config';
+import { executeRecaptcha } from '../../lib/recaptcha';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
+import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 
 export default function Login() {
   const location = useLocation();
@@ -57,17 +59,29 @@ export default function Login() {
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
 
     setSubmitting(true);
-    const { error: err, mfa } = await login(email, password);
-    setSubmitting(false);
-    if (mfa?.session) {
-      setMfaSession(mfa.session);
-      return;
+    try {
+      let recaptchaToken: string | undefined;
+      if (recaptchaEnabled) {
+        recaptchaToken = await executeRecaptcha('login');
+      }
+      const { error: err, mfa } = await login(email, password, recaptchaToken);
+      if (mfa?.session) {
+        setMfaSession(mfa.session);
+        return;
+      }
+      if (err) {
+        setError(err.message || 'Login failed. Please check your credentials.');
+        return;
+      }
+    } catch (captchaErr) {
+      setError(
+        captchaErr instanceof Error
+          ? captchaErr.message
+          : 'Captcha verification failed. Please try again.',
+      );
+    } finally {
+      setSubmitting(false);
     }
-    if (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
-      return;
-    }
-    // Don't navigate here - let the isAuthenticated check above render <Navigate> after state updates
   };
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
@@ -211,6 +225,7 @@ export default function Login() {
           ) : null}
 
           {/* Footer */}
+          <RecaptchaNotice />
           <p className="mt-6 text-center text-sm text-gray-600">
             Don&apos;t have an account?{' '}
             <Link

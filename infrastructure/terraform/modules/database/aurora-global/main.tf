@@ -1,6 +1,9 @@
 locals {
   prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
   name   = var.role == "primary" ? "${local.prefix}-aurora-primary" : "${local.prefix}-aurora-secondary"
+
+  # IAM roles are account-global; primary creates once, secondary references it.
+  enhanced_monitoring_role_name = "${local.prefix}-aurora-enhanced-monitoring"
 }
 
 resource "aws_db_subnet_group" "aurora" {
@@ -112,29 +115,76 @@ resource "aws_rds_cluster" "this" {
   final_snapshot_identifier           = var.environment == "dev" ? null : "${local.name}-final"
   enabled_cloudwatch_logs_exports     = ["postgresql"]
   copy_tags_to_snapshot               = true
-  iam_database_authentication_enabled = false
+  iam_database_authentication_enabled = var.iam_database_authentication_enabled
 
   db_cluster_parameter_group_name = var.role == "primary" ? aws_rds_cluster_parameter_group.aurora[0].name : null
 
   lifecycle {
-    ignore_changes = [master_password]
+    # Secondary clusters are joined to the global cluster at create time; re-setting
+    # global_cluster_identifier on an existing cluster fails with InvalidParameterCombination.
+    ignore_changes = [master_password, global_cluster_identifier]
   }
 }
 
+resource "aws_iam_role" "enhanced_monitoring" {
+  count = var.enhanced_monitoring_interval > 0 && var.role == "primary" ? 1 : 0
+
+  name = local.enhanced_monitoring_role_name
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "monitoring.rds.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name        = local.enhanced_monitoring_role_name
+    Environment = var.environment
+  }
+}
+
+data "aws_iam_role" "enhanced_monitoring" {
+  count = var.enhanced_monitoring_interval > 0 && var.role == "secondary" ? 1 : 0
+
+  name = local.enhanced_monitoring_role_name
+}
+
+resource "aws_iam_role_policy_attachment" "enhanced_monitoring" {
+  count = var.enhanced_monitoring_interval > 0 && var.role == "primary" ? 1 : 0
+
+  role       = aws_iam_role.enhanced_monitoring[0].name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+}
+
+locals {
+  enhanced_monitoring_role_arn = var.enhanced_monitoring_interval > 0 ? (
+    var.role == "primary" ? aws_iam_role.enhanced_monitoring[0].arn : data.aws_iam_role.enhanced_monitoring[0].arn
+  ) : null
+}
+
 resource "aws_rds_cluster_instance" "this" {
-  identifier         = "${local.name}-1"
+  count = var.instance_count
+
+  identifier         = "${local.name}-${count.index + 1}"
   cluster_identifier = aws_rds_cluster.this.id
   instance_class     = var.instance_class
   engine             = aws_rds_cluster.this.engine
   engine_version     = aws_rds_cluster.this.engine_version
 
-  publicly_accessible          = false
-  auto_minor_version_upgrade   = true
-  performance_insights_enabled = true
+  publicly_accessible             = false
+  auto_minor_version_upgrade      = true
+  performance_insights_enabled    = true
   performance_insights_kms_key_id = var.kms_key_arn
+  monitoring_interval             = var.enhanced_monitoring_interval
+  monitoring_role_arn             = local.enhanced_monitoring_role_arn
 
   tags = {
-    Name        = "${local.name}-1"
+    Name        = "${local.name}-${count.index + 1}"
     Environment = var.environment
   }
 }

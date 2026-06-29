@@ -5,6 +5,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { GoTrueStrategy } from './gotrue.strategy';
 import { CognitoStrategy } from './cognito.strategy';
 import { CognitoService } from './cognito.service';
+import { RecaptchaService } from './recaptcha.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -22,6 +23,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
   providers: [
     AuthService,
     CognitoService,
+    RecaptchaService,
     JwtAuthGuard,
     {
       provide: JwtStrategy,

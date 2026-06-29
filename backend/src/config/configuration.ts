@@ -62,6 +62,11 @@ export default () => ({
   // Session TTL in seconds (default 30 min). Sessions stored in Postgres.
   sessionTtlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '1800', 10),
 
+  recaptcha: {
+    secretKey: process.env.RECAPTCHA_SECRET_KEY?.trim() || '',
+    minScore: parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5'),
+  },
+
   // Bill.com
   bill: {
     devKey: process.env.BILL_DEV_KEY,

@@ -234,3 +234,10 @@ variable "hubspot_access_token" {
   sensitive   = true
   default     = ""
 }
+
+variable "recaptcha_secret_key" {
+  description = "Google reCAPTCHA v3 secret key for login/join verification"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

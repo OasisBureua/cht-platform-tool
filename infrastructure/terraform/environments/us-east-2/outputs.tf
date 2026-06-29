@@ -35,12 +35,12 @@ output "dr_app_secrets_arn" {
 
 output "dr_read_replica_endpoint" {
   description = "DR cross-region read replica endpoint."
-  value       = var.enable_db_replica ? aws_db_instance.replica[0].endpoint : null
+  value       = length(aws_db_instance.replica) > 0 ? aws_db_instance.replica[0].endpoint : null
 }
 
 output "dr_read_replica_identifier" {
   description = "DR cross-region read replica identifier."
-  value       = var.enable_db_replica ? aws_db_instance.replica[0].id : null
+  value       = length(aws_db_instance.replica) > 0 ? aws_db_instance.replica[0].id : null
 }
 
 output "guardduty_detector_id" {

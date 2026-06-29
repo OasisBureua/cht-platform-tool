@@ -117,6 +117,7 @@ resource "aws_ecs_task_definition" "backend" {
           var.cognito_user_pool_id != "" ? [{ name = "COGNITO_REGION", value = var.cognito_region != "" ? var.cognito_region : var.aws_region }] : [],
           var.cognito_hosted_ui_base_url != "" ? [{ name = "COGNITO_HOSTED_UI_BASE_URL", value = var.cognito_hosted_ui_base_url }] : [],
           var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
+          [{ name = "RECAPTCHA_MIN_SCORE", value = tostring(var.recaptcha_min_score) }],
         )
       )
 
@@ -228,6 +229,10 @@ resource "aws_ecs_task_definition" "backend" {
         {
           name      = "HUBSPOT_ACCESS_TOKEN"
           valueFrom = "${var.app_secrets_arn}:hubspot_access_token::"
+        },
+        {
+          name      = "RECAPTCHA_SECRET_KEY"
+          valueFrom = "${var.app_secrets_arn}:recaptcha_secret_key::"
         }
       ]
 

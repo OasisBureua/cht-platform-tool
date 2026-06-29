@@ -457,6 +457,25 @@ variable "cognito_google_client_secret" {
   default     = ""
 }
 
+variable "recaptcha_site_key" {
+  description = "Google reCAPTCHA v3 site key (public; baked into frontend build)"
+  type        = string
+  default     = ""
+}
+
+variable "recaptcha_secret_key" {
+  description = "Google reCAPTCHA v3 secret key for backend token verification"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "recaptcha_min_score" {
+  description = "Minimum reCAPTCHA v3 score (0.0–1.0) for login/signup"
+  type        = number
+  default     = 0.5
+}
+
 variable "cognito_email_sending_account" {
   description = "COGNITO_DEFAULT or DEVELOPER (Amazon SES). Use DEVELOPER with cognito_email_from for branded auth emails."
   type        = string

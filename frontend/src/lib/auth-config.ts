@@ -18,3 +18,6 @@ export const googleOAuthMigrationMessage =
 export const googleOAuthEnabled = cognitoAuthEnabled
   ? import.meta.env.VITE_GOOGLE_OAUTH_ENABLED === 'true'
   : !mediahubAuthDecommissioned;
+
+/** reCAPTCHA v3 on email/password login and join when site key is set. */
+export const recaptchaEnabled = !!import.meta.env.VITE_RECAPTCHA_SITE_KEY?.trim();

@@ -79,3 +79,31 @@ variable "deletion_protection" {
   type        = bool
   default     = true
 }
+
+variable "instance_count" {
+  description = "Number of Aurora instances per regional cluster (minimum 2 recommended for HA)"
+  type        = number
+  default     = 2
+
+  validation {
+    condition     = var.instance_count >= 1 && var.instance_count <= 15
+    error_message = "instance_count must be between 1 and 15"
+  }
+}
+
+variable "enhanced_monitoring_interval" {
+  description = "Enhanced Monitoring interval in seconds (0 disables; valid: 1, 5, 10, 15, 30, 60)"
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = contains([0, 1, 5, 10, 15, 30, 60], var.enhanced_monitoring_interval)
+    error_message = "enhanced_monitoring_interval must be 0, 1, 5, 10, 15, 30, or 60"
+  }
+}
+
+variable "iam_database_authentication_enabled" {
+  description = "Enable IAM database authentication (password auth continues to work)"
+  type        = bool
+  default     = true
+}

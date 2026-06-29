@@ -311,6 +311,7 @@ module "secrets" {
   bill_mfa_device_name                      = var.bill_mfa_device_name
   admin_bootstrap_secret                    = var.admin_bootstrap_secret
   hubspot_access_token                      = var.hubspot_access_token
+  recaptcha_secret_key                      = var.recaptcha_secret_key
 }
 
 # ============================================
@@ -406,6 +407,7 @@ module "ecs_backend" {
   cognito_hosted_ui_base_url       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
   cognito_jwks_uri                 = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
   cognito_region                   = "us-east-1"
+  recaptcha_min_score              = var.recaptcha_min_score
 }
 
 # ============================================

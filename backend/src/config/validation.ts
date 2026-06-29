@@ -38,6 +38,9 @@ export const validationSchema = Joi.object({
   COGNITO_DOMAIN_PREFIX: Joi.string().allow('').optional(),
   COGNITO_JWKS_URI: Joi.string().allow('').optional(),
 
+  RECAPTCHA_SECRET_KEY: Joi.string().allow('').optional(),
+  RECAPTCHA_MIN_SCORE: Joi.number().min(0).max(1).optional(),
+
   // Bill.com (optional - empty strings allowed)
   BILL_DEV_KEY: Joi.string().allow('').optional(),
   BILL_SESSION_ID: Joi.string().allow('').optional(),

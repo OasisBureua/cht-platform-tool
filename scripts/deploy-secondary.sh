@@ -99,6 +99,8 @@ echo ""
 
 cd "$TF_DIR"
 
+"$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-2 "$ENV"
+
 echo "🔧 Initializing Terraform..."
 terraform init -reconfigure -backend-config="$BACKEND_CONFIG"
 

@@ -89,5 +89,6 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     bill_mfa_device_name                      = var.bill_mfa_device_name
     admin_bootstrap_secret                    = var.admin_bootstrap_secret
     hubspot_access_token                      = var.hubspot_access_token
+    recaptcha_secret_key                      = var.recaptcha_secret_key
   })
 }

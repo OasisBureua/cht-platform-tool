@@ -52,9 +52,12 @@ locals {
   worker_min_dr       = max(1, floor(var.worker_min_capacity * local.standby_scale))
   worker_max_dr       = max(1, ceil(var.worker_max_capacity * local.standby_scale))
   primary_db_id       = var.primary_db_instance_identifier != "" ? var.primary_db_instance_identifier : "${local.primary_prefix}-db"
+  legacy_rds_replica_enabled = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds)
 }
 
 data "aws_db_instance" "primary" {
+  count = local.legacy_rds_replica_enabled ? 1 : 0
+
   provider               = aws.use1
   db_instance_identifier = local.primary_db_id
 }
@@ -373,13 +376,13 @@ module "aurora_global" {
 # Database - Cross-region read replica (legacy; removed after Aurora cutover)
 # ============================================
 resource "aws_db_subnet_group" "replica" {
-  count      = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds) ? 1 : 0
+  count      = local.legacy_rds_replica_enabled ? 1 : 0
   name       = "${local.dr_resource_prefix}-db-subnet"
   subnet_ids = module.vpc.private_subnet_ids
 }
 
 resource "aws_security_group" "rds_replica" {
-  count       = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds) ? 1 : 0
+  count       = local.legacy_rds_replica_enabled ? 1 : 0
   name        = "${local.dr_resource_prefix}-rds-sg"
   description = "Security group for DR RDS replica"
   vpc_id      = module.vpc.vpc_id
@@ -405,10 +408,10 @@ resource "aws_security_group" "rds_replica" {
 }
 
 resource "aws_db_instance" "replica" {
-  count = var.enable_db_replica && !(var.enable_aurora_global && var.decommission_rds) ? 1 : 0
+  count = local.legacy_rds_replica_enabled ? 1 : 0
 
   identifier             = "${local.dr_resource_prefix}-db-replica"
-  replicate_source_db    = data.aws_db_instance.primary.db_instance_arn
+  replicate_source_db    = data.aws_db_instance.primary[0].db_instance_arn
   instance_class         = var.dr_rds_instance_class
   kms_key_id             = module.kms.rds_kms_key_arn
   storage_encrypted      = true # inherited from primary; must match AWS or Terraform replaces the replica

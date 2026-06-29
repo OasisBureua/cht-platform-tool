@@ -4,8 +4,10 @@ import { Award, DollarSign, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
-import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, mediahubAuthDecommissioned } from '../../lib/auth-config';
+import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, mediahubAuthDecommissioned, recaptchaEnabled } from '../../lib/auth-config';
+import { executeRecaptcha } from '../../lib/recaptcha';
 import { signupProfessionSelectOptions, professionRequiresNpi } from '../../data/profession-options';
+import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
   i === 0 ? { ...o, label: 'Select your role' } : { ...o },
@@ -123,22 +125,35 @@ export default function Join() {
     }
 
     setSubmitting(true);
-    const { error: err } = await signUp(email, password, {
-      firstName,
-      lastName,
-      profession,
-      npiNumber: requiresNpi ? (npi || undefined) : undefined,
-      institution: institution.trim() || undefined,
-      city: city.trim() || undefined,
-      state: state || undefined,
-      zipCode: zipCode.trim() || undefined,
-    });
-    setSubmitting(false);
-    if (err) {
-      setError(err.message || 'Sign up failed. Please try again.');
-      return;
+    try {
+      let recaptchaToken: string | undefined;
+      if (recaptchaEnabled) {
+        recaptchaToken = await executeRecaptcha('signup');
+      }
+      const { error: err } = await signUp(email, password, {
+        firstName,
+        lastName,
+        profession,
+        npiNumber: requiresNpi ? (npi || undefined) : undefined,
+        institution: institution.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state || undefined,
+        zipCode: zipCode.trim() || undefined,
+      }, recaptchaToken);
+      if (err) {
+        setError(err.message || 'Sign up failed. Please try again.');
+        return;
+      }
+      setSuccess(true);
+    } catch (captchaErr) {
+      setError(
+        captchaErr instanceof Error
+          ? captchaErr.message
+          : 'Captcha verification failed. Please try again.',
+      );
+    } finally {
+      setSubmitting(false);
     }
-    setSuccess(true);
   };
 
   if (success) {
@@ -426,6 +441,8 @@ export default function Join() {
             </Link>
             .
           </p>
+
+          <RecaptchaNotice />
 
           <div className="mt-4 text-sm text-gray-600">
             Already have an account?{' '}

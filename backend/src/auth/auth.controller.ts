@@ -15,6 +15,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
+import { RecaptchaService } from './recaptcha.service';
 import { UserRole } from '@prisma/client';
 import {
   clearSessionCookie,
@@ -61,6 +62,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly cognitoService: CognitoService,
+    private readonly recaptchaService: RecaptchaService,
     private readonly configService: ConfigService,
   ) {
     this.supabaseAuthDecommissioned =
@@ -74,6 +76,19 @@ export class AuthController {
     const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
     const nodeEnv = this.configService.get<string>('nodeEnv');
     setSessionCookie(res, sessionToken, ttl, nodeEnv);
+  }
+
+  private async verifyRecaptchaOrError(
+    token: string | undefined,
+    action: 'login' | 'signup',
+    req: Request,
+  ): Promise<string | null> {
+    const result = await this.recaptchaService.verify(
+      token,
+      action,
+      req.ip,
+    );
+    return 'error' in result ? result.error : null;
   }
 
   private async sessionFromCognitoTokens(
@@ -152,6 +167,8 @@ export class AuthController {
   async cognitoLogin(
     @Body('email') email: string,
     @Body('password') password: string,
+    @Body('recaptchaToken') recaptchaToken: string | undefined,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<
     | LoginSuccess
@@ -160,6 +177,15 @@ export class AuthController {
   > {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Cognito login is not configured.' };
+    }
+
+    const captchaError = await this.verifyRecaptchaOrError(
+      recaptchaToken,
+      'login',
+      req,
+    );
+    if (captchaError) {
+      return { error: captchaError };
     }
 
     const emailStr = (email || '').trim();
@@ -290,6 +316,8 @@ export class AuthController {
   async cognitoSignup(
     @Body('email') email: string,
     @Body('password') password: string,
+    @Body('recaptchaToken') recaptchaToken: string | undefined,
+    @Req() req: Request,
     @Body('firstName') firstName?: string,
     @Body('lastName') lastName?: string,
     @Body('profession') profession?: string,
@@ -301,6 +329,15 @@ export class AuthController {
   ): Promise<{ error?: string; userConfirmed?: boolean }> {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Sign up is not configured. Contact support.' };
+    }
+
+    const captchaError = await this.verifyRecaptchaOrError(
+      recaptchaToken,
+      'signup',
+      req,
+    );
+    if (captchaError) {
+      return { error: captchaError };
     }
 
     const emailStr = (email || '').trim();

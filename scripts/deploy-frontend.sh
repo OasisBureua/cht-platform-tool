@@ -49,6 +49,8 @@ fi
 DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
 PROJECT=$(grep -E '^project[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
 TF_ENVIRONMENT=$(grep -E '^environment[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
+RECAPTCHA_SITE_KEY=$(grep -E '^recaptcha_site_key[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/' || true)
+GOOGLE_CLIENT_ID=$(grep -E '^cognito_google_client_id[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/' || true)
 
 if [ -z "$DOMAIN" ]; then
   echo "❌ Could not read domain_name from $VAR_FILE"
@@ -182,6 +184,12 @@ build_env_file() {
   echo "VITE_MEDIAHUB_AUTH_DECOMMISSIONED=true"
   echo "VITE_DISABLE_AUTH=false"
   echo "VITE_USE_DEV_AUTH=false"
+  if [ -n "$RECAPTCHA_SITE_KEY" ]; then
+    echo "VITE_RECAPTCHA_SITE_KEY=$RECAPTCHA_SITE_KEY"
+  fi
+  if [ -n "$GOOGLE_CLIENT_ID" ]; then
+    echo "VITE_GOOGLE_OAUTH_ENABLED=true"
+  fi
 }
 build_env_file > "$VITE_ENV_FILE"
 

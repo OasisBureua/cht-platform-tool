@@ -35,6 +35,7 @@ interface AuthContextValue {
   login: (
     email: string,
     password: string,
+    recaptchaToken?: string,
   ) => Promise<{ error?: AuthError; mfa?: { session: string } }>;
   /** Legacy GoTrue OAuth access_token exchange. Use completeCognitoCallback for Cognito PKCE. */
   loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
@@ -63,6 +64,7 @@ interface AuthContextValue {
       state?: string;
       zipCode?: string;
     },
+    recaptchaToken?: string,
   ) => Promise<{ error?: AuthError }>;
   confirmEmailSignup: (email: string, code: string) => Promise<{ error?: AuthError }>;
   resendEmailVerificationCode: (email: string) => Promise<{ error?: AuthError }>;
@@ -340,7 +342,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, recaptchaToken?: string) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
       const loginPath = cognitoAuthEnabled ? '/auth/cognito/login' : '/auth/login';
@@ -349,7 +351,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         res = await authFetch(`${apiUrl.replace(/\/$/, '')}${loginPath}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: (email || '').trim(), password: password || '' }),
+          body: JSON.stringify({
+            email: (email || '').trim(),
+            password: password || '',
+            recaptchaToken,
+          }),
           signal: controller.signal,
         });
       } catch (err) {
@@ -479,6 +485,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         state?: string;
         zipCode?: string;
       },
+      recaptchaToken?: string,
     ) => {
       if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
         return {
@@ -503,6 +510,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           city: options?.city,
           state: options?.state,
           zipCode: options?.zipCode,
+          recaptchaToken,
         }),
       });
       const data = await res.json().catch(() => ({}));

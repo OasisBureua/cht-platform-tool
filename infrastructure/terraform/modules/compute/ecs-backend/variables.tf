@@ -197,3 +197,9 @@ variable "cognito_region" {
   type        = string
   default     = ""
 }
+
+variable "recaptcha_min_score" {
+  description = "Minimum reCAPTCHA v3 score for login/signup verification"
+  type        = number
+  default     = 0.5
+}
