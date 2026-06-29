@@ -25,6 +25,7 @@ import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 import { validateTaxId, sanitizeCompanyName } from './w9-validation';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
+import { programHasPostEventSurvey } from '../../utils/program-survey-config';
 
 @Injectable()
 export class PaymentsService {
@@ -646,7 +647,11 @@ export class PaymentsService {
       }
 
       if (
-        reg.program.jotformSurveyUrl?.trim() &&
+        (await programHasPostEventSurvey(
+          this.prisma,
+          payment.programId!,
+          reg.program.jotformSurveyUrl,
+        )) &&
         !reg.postEventSurveyAcknowledgedAt
       ) {
         throw new ForbiddenException(
@@ -791,7 +796,11 @@ export class PaymentsService {
       }
 
       if (
-        reg.program.jotformSurveyUrl?.trim() &&
+        (await programHasPostEventSurvey(
+          this.prisma,
+          dto.programId,
+          reg.program.jotformSurveyUrl,
+        )) &&
         !reg.postEventSurveyAcknowledgedAt
       ) {
         throw new ForbiddenException(

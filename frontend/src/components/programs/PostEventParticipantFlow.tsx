@@ -3,6 +3,7 @@ import type { Program, ProgramRegistrationState } from '../../api/programs';
 import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
 import { BillComMark } from '../branding/BillComMark';
+import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
 
 type Phase = 'intro' | 'survey' | 'payout' | 'done';
 
@@ -30,6 +31,9 @@ export default function PostEventParticipantFlow(props: {
     Program,
     | 'id'
     | 'jotformSurveyUrl'
+    | 'hasPostEventSurvey'
+    | 'feedbackSurveyId'
+    | 'feedbackUsesJotform'
     | 'honorariumAmount'
     | 'zoomSessionType'
     | 'startDate'
@@ -37,16 +41,19 @@ export default function PostEventParticipantFlow(props: {
     | 'zoomSessionEndedAt'
   >;
   userId: string;
+  userSummary?: { firstName?: string; lastName?: string; email?: string };
   enrolled: boolean;
   myRegistration: ProgramRegistrationState | null | undefined;
   /** While true, parent should hide the page "Back" control so the learner cannot return mid-flow. */
   onPostEventNavLockChange?: (locked: boolean) => void;
 }) {
-  const { program, userId, enrolled, myRegistration, onPostEventNavLockChange } = props;
+  const { program, userId, userSummary, enrolled, myRegistration, onPostEventNavLockChange } = props;
   const [phase, setPhase] = useState<Phase>('intro');
   const [flowStarted, setFlowStarted] = useState(() => readFlowStarted(program.id));
 
-  const hasSurvey = !!program.jotformSurveyUrl?.trim();
+  const hasSurvey =
+    program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
+  const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
   const hasHonorarium = !!program.honorariumAmount && program.honorariumAmount > 0;
   const timeUnlocked = isPostEventSurveyUnlocked(program);
   const att = myRegistration?.postEventAttendanceStatus;
@@ -92,7 +99,7 @@ export default function PostEventParticipantFlow(props: {
     const req = !!myRegistration.honorariumRequestedAt;
     // Jotform submission recorded server-side → user already filled the form; drop into survey phase
     // so they can click "Complete survey" even if localStorage was cleared (new device, incognito, etc.)
-    const jotformSubmitted = !!myRegistration.postEventJotformSubmissionId;
+    const jotformSubmitted = surveySubmitted;
 
     if (hasSurvey && !ack) {
       if (flowStarted || jotformSubmitted) setPhase('survey');
@@ -169,7 +176,7 @@ export default function PostEventParticipantFlow(props: {
   const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
   const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
 
-  const jotformSubmitted = !!myRegistration?.postEventJotformSubmissionId;
+  const jotformSubmitted = surveySubmitted;
   const surveyStepLabel = hasSurvey
     ? surveyAcked
       ? 'Survey complete'
@@ -269,19 +276,32 @@ export default function PostEventParticipantFlow(props: {
           userId={userId}
           myRegistration={myRegistration}
           hasHonorarium={hasHonorarium}
-          surveyReadyForAck={Boolean(myRegistration?.postEventJotformSubmissionId)}
+          surveyReadyForAck={surveySubmitted}
           betweenAckHelpAndButton={
-            myRegistration?.postEventJotformSubmissionId &&
-            !myRegistration.postEventSurveyAcknowledgedAt ? null : (
+            surveySubmitted && !myRegistration.postEventSurveyAcknowledgedAt ? null : program.feedbackSurveyId ? (
+              <ProgramSurveyPanel
+                surveyId={program.feedbackSurveyId}
+                userId={userId}
+                programId={program.id}
+                legacyJotformUrl={program.jotformSurveyUrl}
+                feedbackUsesJotform={program.feedbackUsesJotform}
+                authenticated
+                userSummary={userSummary}
+              />
+            ) : program.jotformSurveyUrl?.trim() ? (
               <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
                 <iframe
                   title="Post-event survey"
-                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
+                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl, {
+                    legacyAttribution: true,
+                    userId,
+                    programId: program.id,
+                  })}
                   className="w-full h-[480px]"
                   allow="camera; microphone"
                 />
               </div>
-            )
+            ) : null
           }
           onSurveyAcknowledged={({ hasHonorarium: h }) => {
             if (h) setPhase('payout');

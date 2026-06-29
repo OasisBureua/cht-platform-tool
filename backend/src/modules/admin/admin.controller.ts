@@ -54,6 +54,7 @@ import { SendRegistrationInvitesDto } from '../programs/dto/send-registration-in
 import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 
 /** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
 function lastProgramRegistrationSubmittedAtIso(r: {
@@ -315,28 +316,41 @@ export class AdminController {
         hostBio: true,
         jotformIntakeFormUrl: true,
         jotformSurveyUrl: true,
+        zoomSessionType: true,
       },
       orderBy: { createdAt: 'desc' },
     });
 
-    return programs.map((p) => {
-      const missingFields: string[] = [];
-      if (!p.sponsorName || p.sponsorName === 'TBD')
-        missingFields.push('Sponsor');
-      if (p.honorariumAmount == null) missingFields.push('Honorarium');
-      if (!p.description?.trim()) missingFields.push('Description');
-      if (!p.hostDisplayName?.trim()) missingFields.push('Host');
-      if (!p.jotformIntakeFormUrl?.trim()) missingFields.push('Intake form');
-      if (!p.jotformSurveyUrl?.trim()) missingFields.push('Post-event survey');
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
 
-      return {
-        id: p.id,
-        title: p.title,
-        startDate: p.startDate?.toISOString() ?? null,
-        createdAt: p.createdAt.toISOString(),
-        missingFields,
-      };
-    });
+    return Promise.all(
+      programs.map(async (p) => {
+        const surveyMeta = await loadProgramSurveyMeta(
+          this.prisma,
+          p,
+          defaultIntake,
+        );
+        const missingFields: string[] = [];
+        if (!p.sponsorName || p.sponsorName === 'TBD')
+          missingFields.push('Sponsor');
+        if (p.honorariumAmount == null) missingFields.push('Honorarium');
+        if (!p.description?.trim()) missingFields.push('Description');
+        if (!p.hostDisplayName?.trim()) missingFields.push('Host');
+        if (!surveyMeta.hasIntakeSurvey) missingFields.push('Intake form');
+        if (!surveyMeta.hasPostEventSurvey)
+          missingFields.push('Post-event survey');
+
+        return {
+          id: p.id,
+          title: p.title,
+          startDate: p.startDate?.toISOString() ?? null,
+          createdAt: p.createdAt.toISOString(),
+          missingFields,
+        };
+      }),
+    );
   }
 
   @Post('programs')
@@ -849,16 +863,6 @@ export class AdminController {
           enum: ['WEBINAR', 'MEETING'],
           default: 'WEBINAR',
         },
-        postEventJotformFormIdOrUrl: {
-          type: 'string',
-          description:
-            'Optional. Jotform form ID or URL for post-event (FEEDBACK) survey; saved to Surveys and program hub.',
-        },
-        jotformIntakeFormUrl: {
-          type: 'string',
-          description:
-            'Required for WEBINAR. Registration / invitation Jotform URL used for learner intake.',
-        },
         honorariumAmount: {
           type: 'number',
           description:
@@ -894,10 +898,6 @@ export class AdminController {
       timezone?: string;
       status?: 'DRAFT' | 'PUBLISHED';
       zoomSessionType?: 'WEBINAR' | 'MEETING';
-      /** When set for WEBINAR, clones invitation from template then uses this form for post-event (skips env post template). For MEETING, only attaches this survey. */
-      postEventJotformFormIdOrUrl?: string;
-      /** WEBINAR: required per-session intake URL. */
-      jotformIntakeFormUrl?: string;
       /** WEBINAR only. Dollars (e.g. 250 = $250); stored as cents on Program. */
       honorariumAmount?: number;
       /** Primary speaker / KOL display name. */
@@ -933,13 +933,6 @@ export class AdminController {
         'honorariumAmount must be a non-negative number (USD).',
       );
     }
-
-    if (sessionType === 'WEBINAR' && !body.jotformIntakeFormUrl?.trim()) {
-      throw new BadRequestException(
-        'Jotform intake URL is required for webinars.',
-      );
-    }
-
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
@@ -1025,9 +1018,7 @@ export class AdminController {
       }
     }
 
-    let jotformFormsWarning: string | undefined;
-
-    const manualIntakeUrl = body.jotformIntakeFormUrl?.trim();
+    let surveysWarning: string | undefined;
 
     const program = await this.programsService.createProgram({
       title: body.title.trim(),
@@ -1052,9 +1043,6 @@ export class AdminController {
       body.honorariumAmount > 0
         ? { honorariumAmount: body.honorariumAmount }
         : {}),
-      ...(sessionType === 'WEBINAR' && manualIntakeUrl
-        ? { jotformIntakeFormUrl: manualIntakeUrl }
-        : {}),
       ...(body.sessionDisclaimer?.trim()
         ? { sessionDisclaimer: body.sessionDisclaimer.trim() }
         : {}),
@@ -1063,75 +1051,20 @@ export class AdminController {
         : {}),
     });
 
-    const manualPost = body.postEventJotformFormIdOrUrl?.trim();
-
     if (sessionType === 'WEBINAR') {
       try {
-        if (manualIntakeUrl) {
-          if (manualPost) {
-            await this.surveysService.applyManualPostEventJotform(
-              program.id,
-              program.title,
-              manualPost,
-            );
-          } else {
-            await this.surveysService.createWebinarPostEventOnlyFromTemplates(
-              program.id,
-              program.title,
-            );
-          }
-        } else if (manualPost) {
-          await this.surveysService.createWebinarInvitationAndManualPostSurvey(
-            program.id,
-            program.title,
-            manualPost,
-          );
-        } else {
-          await this.surveysService.createWebinarJotformPairFromTemplates(
-            program.id,
-            program.title,
-          );
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(
-          `Webinar Jotform clone failed for program ${program.id}: ${msg}`,
-        );
-        jotformFormsWarning =
-          'The webinar was saved, but the invitation and post-event Jotforms were not created automatically. ' +
-          'This usually means Jotform templates or API access still need to be configured for this environment. ' +
-          'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
-          'Learner signup is not blocked.';
-        if (manualPost) {
-          try {
-            await this.surveysService.applyManualPostEventJotform(
-              program.id,
-              program.title,
-              manualPost,
-            );
-            this.logger.log(
-              `Saved manual post-event survey for program ${program.id} after invitation clone failure`,
-            );
-          } catch (e2) {
-            const m2 = e2 instanceof Error ? e2.message : String(e2);
-            this.logger.warn(
-              `Manual post-event survey could not be saved for program ${program.id}: ${m2}`,
-            );
-          }
-        }
-      }
-    } else if (manualPost) {
-      try {
-        await this.surveysService.applyManualPostEventJotform(
+        await this.surveysService.attachSurveysForNewWebinar(
           program.id,
           program.title,
-          manualPost,
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(
-          `Post-event Jotform for office hours program ${program.id}: ${msg}`,
+          `Native survey setup failed for program ${program.id}: ${msg}`,
         );
+        surveysWarning =
+          'The webinar was saved, but native intake/post-event surveys could not be created. ' +
+          'Retry from Program hub or contact your technical administrator.';
       }
     }
 
@@ -1151,7 +1084,7 @@ export class AdminController {
                 'Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET to your environment variables to enable Zoom meeting creation.',
             }
           : {}),
-      ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
+      ...(surveysWarning ? { surveysWarning } : {}),
     };
   }
 
@@ -1240,23 +1173,21 @@ export class AdminController {
       registrationRequiresApproval: true,
     });
 
-    let jotformFormsWarning: string | undefined;
+    let surveysWarning: string | undefined;
     if (sessionType === 'WEBINAR') {
       try {
-        await this.surveysService.createWebinarJotformPairFromTemplates(
+        await this.surveysService.attachSurveysForNewWebinar(
           program.id,
           program.title,
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(
-          `Webinar Jotform clone failed for imported program ${program.id}: ${msg}`,
+          `Native survey setup failed for imported program ${program.id}: ${msg}`,
         );
-        jotformFormsWarning =
-          'The webinar was saved, but the invitation and post-event Jotforms were not created automatically. ' +
-          'This usually means Jotform templates or API access still need to be configured for this environment. ' +
-          'You can add form URLs manually in Program hub, or ask your technical administrator to finish deployment setup and try again. ' +
-          'Learner signup is not blocked.';
+        surveysWarning =
+          'The webinar was saved, but native intake/post-event surveys could not be created. ' +
+          'Retry from Program hub or contact your technical administrator.';
       }
     }
 
@@ -1268,7 +1199,7 @@ export class AdminController {
       zoomMeetingId: zoomData.id,
       zoomJoinUrl: zoomData.joinUrl,
       zoomStartUrl: zoomData.startUrl,
-      ...(jotformFormsWarning ? { jotformFormsWarning } : {}),
+      ...(surveysWarning ? { surveysWarning } : {}),
     };
   }
 
@@ -1310,6 +1241,38 @@ export class AdminController {
       data.registrationRequiresApproval = body.registrationRequiresApproval;
     }
     return this.prisma.program.update({ where: { id }, data });
+  }
+
+  @Post('programs/:id/native-surveys')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Replace Jotform intake/post-event with native Survey rows for one program (dev cutover)',
+  })
+  async ensureNativeSurveysForProgram(@Param('id') id: string) {
+    const program = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true, title: true },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+    return this.surveysService.ensureNativeSurveyPairForProgram(
+      program.id,
+      program.title,
+    );
+  }
+
+  @Post('webinars/ensure-native-surveys')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Replace Jotform intake/post-event with native surveys for all published webinars',
+  })
+  async ensureNativeSurveysForAllWebinars() {
+    return this.surveysService.ensureNativeSurveysForPublishedWebinars();
   }
 
   @Get('webinar-registrations/pending')

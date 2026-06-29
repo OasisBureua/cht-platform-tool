@@ -441,6 +441,8 @@ enum SurveyType {
   PRE_TEST
   POST_TEST
   FEEDBACK
+  /// Webinar registration intake (native replacement for Jotform intake).
+  INTAKE
 }
 
 // ============================================================================

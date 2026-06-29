@@ -37,6 +37,12 @@ export interface Program {
   zoomSessionEndedAt?: string;
   jotformSurveyUrl?: string;
   jotformIntakeFormUrl?: string;
+  hasPostEventSurvey?: boolean;
+  hasIntakeSurvey?: boolean;
+  feedbackSurveyId?: string;
+  intakeSurveyId?: string;
+  feedbackUsesJotform?: boolean;
+  intakeUsesJotform?: boolean;
   jotformPreEventUrl?: string;
   registrationRequiresApproval?: boolean;
   hostDisplayName?: string;
@@ -76,6 +82,14 @@ export interface ProgramRegistrationState {
   postEventAttendanceStatus?: PostEventAttendanceStatus;
   postEventSurveyAcknowledgedAt?: string;
   postEventJotformSubmissionId?: string;
+  /** True when post-event answers exist (native SurveyResponse or legacy Jotform id). */
+  postEventSurveySubmitted?: boolean;
+  /** True when intake answers exist (native SurveyResponse or legacy Jotform id). */
+  intakeSurveySubmitted?: boolean;
+  hasPostEventSurvey?: boolean;
+  hasIntakeSurvey?: boolean;
+  feedbackSurveyId?: string;
+  intakeSurveyId?: string;
   honorariumRequestedAt?: string;
   honorariumPayment?: { id: string; status: string } | null;
 }

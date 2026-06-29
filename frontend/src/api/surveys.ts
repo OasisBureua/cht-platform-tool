@@ -1,7 +1,7 @@
 import apiClient from './client';
 import { mockSurveys } from '../mocks/surveys.mock';
 
-export type SurveyType = 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+export type SurveyType = 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
 
 export interface SurveyQuestion {
   id?: string;
@@ -67,7 +67,7 @@ export const surveysApi = {
     }
   },
 
-  submitResponse: async (id: string, payload: { userId: string; answers: Record<string, unknown> }) => {
+  submitResponse: async (id: string, payload: { answers: Record<string, unknown> }) => {
     const { data } = await apiClient.post(`/surveys/${id}/responses`, {
       answers: payload.answers,
     });

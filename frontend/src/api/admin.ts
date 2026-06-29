@@ -64,19 +64,9 @@ export interface CreateWebinarPayload {
   startDate: string;
   duration: number;
   timezone?: string;
-  /** WEBINAR = Zoom Webinar + Jotform invitation & post-event clones from env; MEETING = Office Hours. */
+  /** WEBINAR = Zoom Webinar + native intake/post-event surveys; MEETING = Office Hours. */
   zoomSessionType?: ZoomSessionType;
   status?: 'DRAFT' | 'PUBLISHED';
-  /**
-   * Optional Jotform form ID or URL for the post-event (FEEDBACK) survey.
-   * Saved to the program and listed under Surveys for learners.
-   */
-  postEventJotformFormIdOrUrl?: string;
-  /**
-   * Optional (WEBINAR). Full Jotform form URL for registration / intake.
-   * When set, skips automatic invitation clone from env for this session.
-   */
-  jotformIntakeFormUrl?: string;
   /**
    * Optional. Honorarium in USD for learners (paid via Bill.com after post-event flow). WEBINAR only.
    */
@@ -303,8 +293,8 @@ export const adminApi = {
 
   createWebinar: async (
     payload: CreateWebinarPayload,
-  ): Promise<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }> => {
-    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }>(
+  ): Promise<AdminWebinar & { zoomWarning?: string; surveysWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string; surveysWarning?: string }>(
       '/admin/webinars',
       payload,
     );
@@ -324,8 +314,8 @@ export const adminApi = {
     zoomId: string;
     zoomSessionType?: ZoomSessionType;
     sponsorName?: string;
-  }): Promise<AdminWebinar & { jotformFormsWarning?: string }> => {
-    const { data } = await apiClient.post<AdminWebinar & { jotformFormsWarning?: string }>(
+  }): Promise<AdminWebinar & { surveysWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { surveysWarning?: string }>(
       '/admin/webinars/import-from-zoom',
       body,
     );

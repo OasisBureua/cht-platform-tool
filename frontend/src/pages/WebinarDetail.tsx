@@ -123,10 +123,10 @@ export default function WebinarDetail() {
     const enrolledHere = id ? enrolledProgramIds.has(id) : false;
     if (
       enrolledHere &&
-      program?.jotformSurveyUrl?.trim() &&
+      (program?.hasPostEventSurvey || program?.jotformSurveyUrl?.trim()) &&
       registration?.status === 'APPROVED' &&
       !registration.postEventSurveyAcknowledgedAt &&
-      !registration.postEventJotformSubmissionId &&
+      !registration.postEventSurveySubmitted &&
       (registration.postEventAttendanceStatus === 'VERIFIED' ||
         registration.postEventAttendanceStatus === 'NOT_REQUIRED')
     ) {
@@ -267,7 +267,8 @@ export default function WebinarDetail() {
     (a) => a.programId === program.id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
   );
 
-  const hasPostEventSurvey = !!program.jotformSurveyUrl?.trim();
+  const hasPostEventSurvey =
+    program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
   const wantsPostEventExtras =
     hasPostEventSurvey || !!(program.honorariumAmount && program.honorariumAmount > 0);
@@ -278,7 +279,7 @@ export default function WebinarDetail() {
     enrolled &&
     hasPostEventSurvey &&
     !surveyDone &&
-    !!myRegistration?.postEventJotformSubmissionId &&
+    !!myRegistration?.postEventSurveySubmitted &&
     !myRegistration?.postEventSurveyAcknowledgedAt;
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
@@ -291,6 +292,7 @@ export default function WebinarDetail() {
     (program.zoomSessionType === 'WEBINAR' ||
       (program.zoomSessionType === 'MEETING' &&
         (slots.length > 0 ||
+          program.hasIntakeSurvey ||
           !!program.jotformIntakeFormUrl?.trim() ||
           !!program.registrationRequiresApproval)));
 
@@ -656,6 +658,11 @@ export default function WebinarDetail() {
         <PostEventParticipantFlow
           program={program}
           userId={userId}
+          userSummary={{
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+            email: user?.email,
+          }}
           enrolled={enrolled}
           myRegistration={myRegistration}
           onPostEventNavLockChange={setPostEventNavLock}

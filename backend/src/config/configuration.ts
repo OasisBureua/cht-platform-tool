@@ -130,6 +130,13 @@ export default () => ({
       process.env.SURVEY_BONUS_AMOUNT_CENTS || '0',
       10,
     ),
+    useNativeForms:
+      process.env.SURVEYS_USE_NATIVE_FORMS?.trim().toLowerCase() !== 'false' &&
+      process.env.SURVEYS_USE_LEGACY_JOTFORM_FORMS?.trim().toLowerCase() !==
+        'true',
+    useLegacyJotformForms:
+      process.env.SURVEYS_USE_LEGACY_JOTFORM_FORMS?.trim().toLowerCase() ===
+      'true',
   },
 
   // MediaHub Public API (catalog - clips, tags, doctors, search)

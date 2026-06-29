@@ -17,6 +17,12 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import {
+  loadProgramSurveyMeta,
+  programHasPostEventSurvey,
+  userHasIntakeSurveyResponse,
+  userHasPostEventSurveyResponse,
+} from '../../utils/program-survey-config';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { HubSpotService } from '../hubspot/hubspot.service';
@@ -102,11 +108,12 @@ export class ProgramRegistrationsService {
       return PostEventAttendanceStatus.NOT_REQUIRED;
     }
     const hasHonorarium = (program.honorariumAmount ?? 0) > 0;
-    const hasJotform = !!program.jotformSurveyUrl?.trim();
     const feedbackCount = await this.prisma.survey.count({
       where: { programId, type: 'FEEDBACK' },
     });
-    if (hasHonorarium || hasJotform || feedbackCount > 0) {
+    const hasPostEventSurvey =
+      !!program.jotformSurveyUrl?.trim() || feedbackCount > 0;
+    if (hasHonorarium || hasPostEventSurvey) {
       return PostEventAttendanceStatus.PENDING_VERIFICATION;
     }
     return PostEventAttendanceStatus.NOT_REQUIRED;
@@ -310,9 +317,33 @@ export class ProgramRegistrationsService {
   async getMyRegistration(userId: string, programId: string) {
     const reg = await this.prisma.programRegistration.findUnique({
       where: { userId_programId: { userId, programId } },
-      include: { slot: true },
+      include: { slot: true, program: true },
     });
     if (!reg) return null;
+
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      reg.program,
+      defaultIntake,
+    );
+
+    const [postEventSurveySubmitted, intakeSurveySubmitted] = await Promise.all([
+      userHasPostEventSurveyResponse(
+        this.prisma,
+        userId,
+        surveyMeta.feedbackSurveyId,
+        reg,
+      ),
+      userHasIntakeSurveyResponse(
+        this.prisma,
+        userId,
+        surveyMeta.intakeSurveyId,
+        reg,
+      ),
+    ]);
 
     const honorariumPayment = await this.prisma.payment.findFirst({
       where: { userId, programId, type: 'HONORARIUM' },
@@ -333,6 +364,12 @@ export class ProgramRegistrationsService {
         reg.postEventSurveyAcknowledgedAt?.toISOString(),
       postEventJotformSubmissionId:
         reg.postEventJotformSubmissionId ?? undefined,
+      postEventSurveySubmitted,
+      intakeSurveySubmitted,
+      hasPostEventSurvey: surveyMeta.hasPostEventSurvey,
+      hasIntakeSurvey: surveyMeta.hasIntakeSurvey,
+      feedbackSurveyId: surveyMeta.feedbackSurveyId,
+      intakeSurveyId: surveyMeta.intakeSurveyId,
       honorariumRequestedAt: reg.honorariumRequestedAt?.toISOString(),
       honorariumPayment: honorariumPayment
         ? { id: honorariumPayment.id, status: honorariumPayment.status }
@@ -1320,6 +1357,7 @@ export class ProgramRegistrationsService {
       where: { id: programId },
       select: {
         jotformSurveyUrl: true,
+        jotformIntakeFormUrl: true,
         zoomSessionType: true,
         startDate: true,
         duration: true,
@@ -1327,9 +1365,18 @@ export class ProgramRegistrationsService {
       },
     });
     if (!program) throw new NotFoundException('Program not found');
-    if (!program.jotformSurveyUrl?.trim()) {
+
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      { id: programId, ...program },
+      defaultIntake,
+    );
+    if (!surveyMeta.hasPostEventSurvey) {
       throw new BadRequestException(
-        'This program does not have a post-event survey URL.',
+        'This program does not have a post-event survey.',
       );
     }
     this.assertProgramPostEventWindowOpen(program);
@@ -1351,6 +1398,18 @@ export class ProgramRegistrationsService {
     if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
       throw new ForbiddenException(
         'Attendance was not verified for this session.',
+      );
+    }
+
+    const submitted = await userHasPostEventSurveyResponse(
+      this.prisma,
+      userId,
+      surveyMeta.feedbackSurveyId,
+      reg,
+    );
+    if (!submitted) {
+      throw new BadRequestException(
+        'Submit the post-event survey before acknowledging completion.',
       );
     }
 
@@ -1425,10 +1484,12 @@ export class ProgramRegistrationsService {
       };
     }
 
-    if (
-      program.jotformSurveyUrl?.trim() &&
-      !reg.postEventSurveyAcknowledgedAt
-    ) {
+    const hasPostEventSurvey = await programHasPostEventSurvey(
+      this.prisma,
+      programId,
+      program.jotformSurveyUrl,
+    );
+    if (hasPostEventSurvey && !reg.postEventSurveyAcknowledgedAt) {
       throw new BadRequestException(
         'Complete and acknowledge the post-event survey first.',
       );

@@ -21,7 +21,7 @@ describe('AdminController importZoomSession', () => {
     getMeetingById: jest.Mock;
   };
   let programsService: { createProgram: jest.Mock };
-  let surveysService: { createWebinarJotformPairFromTemplates: jest.Mock };
+  let surveysService: { attachSurveysForNewWebinar: jest.Mock };
 
   beforeEach(() => {
     prisma = { program: { findFirst: jest.fn() } };
@@ -32,9 +32,10 @@ describe('AdminController importZoomSession', () => {
     };
     programsService = { createProgram: jest.fn() };
     surveysService = {
-      createWebinarJotformPairFromTemplates: jest
-        .fn()
-        .mockResolvedValue(undefined),
+      attachSurveysForNewWebinar: jest.fn().mockResolvedValue({
+        intakeSurveyId: 'survey-intake-1',
+        feedbackSurveyId: 'survey-feedback-1',
+      }),
     };
 
     controller = new AdminController(
@@ -43,6 +44,7 @@ describe('AdminController importZoomSession', () => {
       surveysService as unknown as SurveysService,
       prisma as unknown as PrismaService,
       {} as ConfigService,
+      {} as import('../auth/auth.service').AuthService,
       zoom as unknown as ZoomService,
       {} as SessionHeroPresignService,
     );
@@ -128,9 +130,10 @@ describe('AdminController importZoomSession', () => {
         registrationRequiresApproval: true,
       }),
     );
-    expect(
-      surveysService.createWebinarJotformPairFromTemplates,
-    ).toHaveBeenCalledWith('prog-import-1', 'Zoom Webinar Title');
+    expect(surveysService.attachSurveysForNewWebinar).toHaveBeenCalledWith(
+      'prog-import-1',
+      'Zoom Webinar Title',
+    );
     expect(result).toEqual(
       expect.objectContaining({
         id: 'prog-import-1',
@@ -164,8 +167,6 @@ describe('AdminController importZoomSession', () => {
 
     expect(zoom.getMeetingById).toHaveBeenCalledWith('555');
     expect(zoom.getWebinarById).not.toHaveBeenCalled();
-    expect(
-      surveysService.createWebinarJotformPairFromTemplates,
-    ).not.toHaveBeenCalled();
+    expect(surveysService.attachSurveysForNewWebinar).not.toHaveBeenCalled();
   });
 });
