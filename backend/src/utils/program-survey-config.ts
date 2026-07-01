@@ -2,6 +2,16 @@ import { ProgramZoomSessionType, SurveyType } from '@prisma/client';
 import { effectiveWebinarIntakeFormUrl } from './webinar-intake-url';
 import { surveyQuestionsAreNative } from './native-survey-questions';
 
+/** Learners may complete post-event FEEDBACK surveys within this window from survey creation. */
+export const POST_EVENT_SURVEY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function isPostEventSurveyWithinWindow(
+  surveyCreatedAt: Date,
+  nowMs: number = Date.now(),
+): boolean {
+  return nowMs < surveyCreatedAt.getTime() + POST_EVENT_SURVEY_WINDOW_MS;
+}
+
 export type ProgramSurveyMeta = {
   hasPostEventSurvey: boolean;
   hasIntakeSurvey: boolean;
@@ -94,15 +104,9 @@ export async function loadProgramSurveyMeta(
 }
 
 export function registrationHasIntakeSubmission(reg: {
-  intakeJotformSubmissionId?: string | null;
+  intakeSubmissionId?: string | null;
 }): boolean {
-  return !!reg.intakeJotformSubmissionId?.trim();
-}
-
-export function registrationHasPostEventSubmission(reg: {
-  postEventJotformSubmissionId?: string | null;
-}): boolean {
-  return !!reg.postEventJotformSubmissionId?.trim();
+  return !!reg.intakeSubmissionId?.trim();
 }
 
 export async function userHasIntakeSurveyResponse(
@@ -115,7 +119,7 @@ export async function userHasIntakeSurveyResponse(
   },
   userId: string,
   intakeSurveyId?: string,
-  reg?: { intakeJotformSubmissionId?: string | null },
+  reg?: { intakeSubmissionId?: string | null },
 ): Promise<boolean> {
   if (reg && registrationHasIntakeSubmission(reg)) return true;
   if (!intakeSurveyId) return false;
@@ -135,9 +139,7 @@ export async function userHasPostEventSurveyResponse(
   },
   userId: string,
   feedbackSurveyId?: string,
-  reg?: { postEventJotformSubmissionId?: string | null },
 ): Promise<boolean> {
-  if (reg && registrationHasPostEventSubmission(reg)) return true;
   if (!feedbackSurveyId) return false;
   const row = await prisma.surveyResponse.findUnique({
     where: { userId_surveyId: { userId, surveyId: feedbackSurveyId } },

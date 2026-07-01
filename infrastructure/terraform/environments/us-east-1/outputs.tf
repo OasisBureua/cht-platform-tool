@@ -72,6 +72,17 @@ output "aurora_engine_version" {
   value       = var.enable_aurora_global ? module.aurora_global[0].engine_version : null
 }
 
+output "redis_url" {
+  description = "Redis connection URL injected into the backend (when ElastiCache is enabled)"
+  value       = local.elasticache_enabled ? module.elasticache[0].redis_url : null
+  sensitive   = true
+}
+
+output "elasticache_primary_endpoint" {
+  description = "ElastiCache Redis primary endpoint hostname"
+  value       = local.elasticache_enabled ? module.elasticache[0].primary_endpoint_address : null
+}
+
 # Alerts
 output "sns_alerts_topic_arn" {
   description = "SNS topic ARN for alarm notifications"

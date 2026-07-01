@@ -2,6 +2,8 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../../prisma/prisma.service';
+import { RedisCacheService } from '../../cache/redis-cache.service';
+import { cacheKeyHash } from '../../cache/cache-key.util';
 import { MediaHubService, type MediaHubClip } from './mediahub.service';
 import { firstValueFrom } from 'rxjs';
 import {
@@ -108,7 +110,32 @@ export class CatalogService implements OnModuleInit {
     private http: HttpService,
     private prisma: PrismaService,
     private mediahub: MediaHubService,
+    private cache: RedisCacheService,
   ) {}
+
+  private async cachedYouTube<T>(
+    key: string,
+    loader: () => Promise<T>,
+  ): Promise<T> {
+    const hit = await this.cache.getJson<T>(key);
+    if (hit != null) return hit;
+    const value = await loader();
+    await this.cache.setJson(key, value);
+    return value;
+  }
+
+  private async cachedYouTubeNullable<T>(
+    key: string,
+    loader: () => Promise<T | null>,
+  ): Promise<T | null> {
+    const hit = await this.cache.getJson<T>(key);
+    if (hit != null) return hit;
+    const value = await loader();
+    if (value != null) {
+      await this.cache.setJson(key, value);
+    }
+    return value;
+  }
 
   /**
    * Get catalog items from MediaHub (when configured), YouTube playlists, or DB programs.
@@ -135,7 +162,9 @@ export class CatalogService implements OnModuleInit {
 
     if (apiKey && playlistIds.length > 0) {
       try {
-        const items = await this.fetchFromYouTube(apiKey, playlistIds);
+        const items = await this.cachedYouTube('cht:catalog:youtube:items', () =>
+          this.fetchFromYouTube(apiKey, playlistIds),
+        );
         this.logger.log(`YouTube catalog: fetched ${items.length} playlists`);
         return items;
       } catch (err) {
@@ -173,38 +202,42 @@ export class CatalogService implements OnModuleInit {
   private async fetchFromYouTube(
     apiKey: string,
     playlistIds: string[],
+    options?: { previewTitles?: boolean },
   ): Promise<CatalogItem[]> {
-    const items: CatalogItem[] = [];
+    const previewTitles = options?.previewTitles !== false;
+    const ids = playlistIds.slice(0, 20);
 
-    for (const playlistId of playlistIds.slice(0, 20)) {
-      try {
-        const playlist = await this.getPlaylistDetails(apiKey, playlistId);
-        const videoTitles = await this.getPlaylistVideoTitles(
-          apiKey,
-          playlistId,
-        );
+    const rows = await Promise.all(
+      ids.map(async (playlistId) => {
+        try {
+          const playlist = await this.getPlaylistDetails(apiKey, playlistId);
+          const videoTitles = previewTitles
+            ? await this.getPlaylistVideoTitles(apiKey, playlistId)
+            : [];
 
-        const thumb =
-          playlist.snippet?.thumbnails?.high ||
-          playlist.snippet?.thumbnails?.medium ||
-          playlist.snippet?.thumbnails?.default;
+          const thumb =
+            playlist.snippet?.thumbnails?.high ||
+            playlist.snippet?.thumbnails?.medium ||
+            playlist.snippet?.thumbnails?.default;
 
-        /** YouTube’s total playlist size (prefer over truncated preview titles). */
-        const itemTotal = playlist.contentDetails?.itemCount;
-        items.push({
-          id: playlist.id,
-          title: playlist.snippet?.title || 'Untitled Playlist',
-          thumbnailUrl: thumb?.url || '',
-          videoNames: videoTitles,
-          videoCount: itemTotal != null ? itemTotal : videoTitles.length,
-          playUrl: `https://www.youtube.com/playlist?list=${playlistId}`,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to fetch playlist ${playlistId}: ${err}`);
-      }
-    }
+          /** YouTube’s total playlist size (prefer over truncated preview titles). */
+          const itemTotal = playlist.contentDetails?.itemCount;
+          return {
+            id: playlist.id,
+            title: playlist.snippet?.title || 'Untitled Playlist',
+            thumbnailUrl: thumb?.url || '',
+            videoNames: videoTitles,
+            videoCount: itemTotal != null ? itemTotal : videoTitles.length,
+            playUrl: `https://www.youtube.com/playlist?list=${playlistId}`,
+          } as CatalogItem;
+        } catch (err) {
+          this.logger.warn(`Failed to fetch playlist ${playlistId}: ${err}`);
+          return null;
+        }
+      }),
+    );
 
-    return items;
+    return rows.filter((row): row is CatalogItem => row != null);
   }
 
   private async getPlaylistDetails(apiKey: string, playlistId: string) {
@@ -298,53 +331,54 @@ export class CatalogService implements OnModuleInit {
     const playlistIds = this.config.get<string[]>('youtube.playlistIds') || [];
     if (!apiKey || playlistIds.length === 0) return [];
 
-    // Shuffle playlist IDs and try up to 5 random ones
-    const shuffled = [...playlistIds]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 5);
-    const allVideos: PlaylistVideo[] = [];
+    return this.cachedYouTube(`cht:catalog:youtube:random:${count}`, async () => {
+      // Shuffle playlist IDs and try up to 5 random ones
+      const shuffled = [...playlistIds]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 5);
+      const allVideos: PlaylistVideo[] = [];
 
-    for (const playlistId of shuffled) {
-      if (allVideos.length >= count * 3) break;
-      try {
-        const { data } = await firstValueFrom(
-          this.http.get<YouTubePlaylistItemsResponse>(
-            `${this.youtubeBase}/playlistItems`,
-            {
-              params: {
-                part: 'snippet',
-                playlistId,
-                maxResults: 20,
-                key: apiKey,
+      for (const playlistId of shuffled) {
+        if (allVideos.length >= count * 3) break;
+        try {
+          const { data } = await firstValueFrom(
+            this.http.get<YouTubePlaylistItemsResponse>(
+              `${this.youtubeBase}/playlistItems`,
+              {
+                params: {
+                  part: 'snippet',
+                  playlistId,
+                  maxResults: 20,
+                  key: apiKey,
+                },
               },
-            },
-          ),
-        );
-        for (const item of data?.items || []) {
-          const videoId = item.snippet?.resourceId?.videoId;
-          if (!videoId) continue;
-          const thumb =
-            item.snippet?.thumbnails?.high ||
-            item.snippet?.thumbnails?.medium ||
-            item.snippet?.thumbnails?.default;
-          allVideos.push({
-            id: videoId,
-            title: item.snippet?.title || 'Video',
-            thumbnailUrl:
-              thumb?.url ||
-              `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-          });
+            ),
+          );
+          for (const item of data?.items || []) {
+            const videoId = item.snippet?.resourceId?.videoId;
+            if (!videoId) continue;
+            const thumb =
+              item.snippet?.thumbnails?.high ||
+              item.snippet?.thumbnails?.medium ||
+              item.snippet?.thumbnails?.default;
+            allVideos.push({
+              id: videoId,
+              title: item.snippet?.title || 'Video',
+              thumbnailUrl:
+                thumb?.url ||
+                `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+              youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+            });
+          }
+        } catch (err) {
+          this.logger.warn(
+            `Random videos: failed to fetch playlist ${playlistId}: ${err}`,
+          );
         }
-      } catch (err) {
-        this.logger.warn(
-          `Random videos: failed to fetch playlist ${playlistId}: ${err}`,
-        );
       }
-    }
 
-    // Shuffle and return the requested count
-    return allVideos.sort(() => Math.random() - 0.5).slice(0, count);
+      return allVideos.sort(() => Math.random() - 0.5).slice(0, count);
+    });
   }
 
   /**
@@ -356,8 +390,11 @@ export class CatalogService implements OnModuleInit {
     if (!apiKey || playlistIds.length === 0) {
       return [];
     }
+
     try {
-      return await this.fetchFromYouTube(apiKey, playlistIds);
+      return await this.cachedYouTube('cht:catalog:youtube:playlists:list', () =>
+        this.fetchFromYouTube(apiKey, playlistIds, { previewTitles: false }),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`YouTube playlists failed: ${msg}`);
@@ -380,8 +417,11 @@ export class CatalogService implements OnModuleInit {
     const handle = rawHandle.replace(/^@+/, '').trim();
     if (!handle) return null;
 
-    try {
-      const channel = await this.getChannelByHandle(apiKey, handle);
+    const cacheKey = `cht:catalog:youtube:channel:${handle}:${sort}:${options?.minDurationSeconds ?? 'default'}`;
+
+    return this.cachedYouTubeNullable(cacheKey, async () => {
+      try {
+        const channel = await this.getChannelByHandle(apiKey, handle);
       const uploadsPlaylistId =
         channel.contentDetails?.relatedPlaylists?.uploads;
       if (!uploadsPlaylistId) {
@@ -469,11 +509,12 @@ export class CatalogService implements OnModuleInit {
         channelThumbnailUrl: channelThumb?.url || '',
         videos,
       };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`YouTube channel @${handle} failed: ${msg}`);
-      return null;
-    }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`YouTube channel @${handle} failed: ${msg}`);
+        return null;
+      }
+    });
   }
 
   private sortYouTubeChannelVideos(
@@ -645,28 +686,33 @@ export class CatalogService implements OnModuleInit {
   ): Promise<{ playlist: CatalogItem; videos: PlaylistVideo[] } | null> {
     const apiKey = this.config.get<string>('youtube.apiKey');
     if (!apiKey) return null;
-    try {
-      const playlist = await this.getPlaylistDetails(apiKey, playlistId);
-      const videos = await this.getPlaylistVideosFull(apiKey, playlistId);
-      const thumb =
-        playlist.snippet?.thumbnails?.high ||
-        playlist.snippet?.thumbnails?.medium ||
-        playlist.snippet?.thumbnails?.default;
-      return {
-        playlist: {
-          id: playlist.id,
-          title: playlist.snippet?.title || 'Untitled Playlist',
-          thumbnailUrl: thumb?.url || '',
-          videoNames: videos.map((v) => v.title),
-          videoCount: videos.length,
-          playUrl: `https://www.youtube.com/playlist?list=${playlistId}`,
-        },
-        videos,
-      };
-    } catch (err) {
-      this.logger.warn(`Failed to fetch playlist ${playlistId}: ${err}`);
-      return null;
-    }
+
+    const cacheKey = `cht:catalog:youtube:playlist:${playlistId}`;
+
+    return this.cachedYouTubeNullable(cacheKey, async () => {
+      try {
+        const playlist = await this.getPlaylistDetails(apiKey, playlistId);
+        const videos = await this.getPlaylistVideosFull(apiKey, playlistId);
+        const thumb =
+          playlist.snippet?.thumbnails?.high ||
+          playlist.snippet?.thumbnails?.medium ||
+          playlist.snippet?.thumbnails?.default;
+        return {
+          playlist: {
+            id: playlist.id,
+            title: playlist.snippet?.title || 'Untitled Playlist',
+            thumbnailUrl: thumb?.url || '',
+            videoNames: videos.map((v) => v.title),
+            videoCount: videos.length,
+            playUrl: `https://www.youtube.com/playlist?list=${playlistId}`,
+          },
+          videos,
+        };
+      } catch (err) {
+        this.logger.warn(`Failed to fetch playlist ${playlistId}: ${err}`);
+        return null;
+      }
+    });
   }
 
   private async getPlaylistVideosFull(

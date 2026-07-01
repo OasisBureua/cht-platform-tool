@@ -63,6 +63,19 @@ variable "rds_backup_retention" {
   type        = number
 }
 
+variable "enable_elasticache" {
+  description = "Provision single-node ElastiCache Redis for upstream caching. Defaults to true when environment is dev."
+  type        = bool
+  default     = null
+  nullable    = true
+}
+
+variable "elasticache_node_type" {
+  description = "ElastiCache node type (dev: cache.t3.micro)"
+  type        = string
+  default     = "cache.t3.micro"
+}
+
 variable "enable_aurora_global" {
   description = "Provision Aurora PostgreSQL Global Database (parallel to RDS during migration)"
   type        = bool
@@ -235,6 +248,19 @@ variable "mediahub_base_url" {
 
 variable "mediahub_api_key" {
   description = "MediaHub Public API key for catalog"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "contenthub_base_url" {
+  description = "Content Hub API base URL for KOL network reads and HCP upsert"
+  type        = string
+  default     = ""
+}
+
+variable "contenthub_api_key" {
+  description = "Content Hub PUBLIC_API_KEY"
   type        = string
   sensitive   = true
   default     = ""

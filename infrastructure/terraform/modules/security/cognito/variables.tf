@@ -34,6 +34,12 @@ variable "logout_urls" {
   type        = list(string)
 }
 
+variable "app_client_name" {
+  description = "Display name for the public OAuth app client (shown on Cognito Hosted UI / Google consent when configured to match)"
+  type        = string
+  default     = "Community Health Media"
+}
+
 variable "mfa_configuration" {
   description = "MFA enforcement level: OPTIONAL (grace period) or ON (enforced after day 14 post-cutover)"
   type        = string

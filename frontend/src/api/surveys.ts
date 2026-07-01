@@ -28,6 +28,7 @@ export interface Survey {
 
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
 
   program?: {
     id: string;
@@ -43,13 +44,37 @@ export interface Survey {
 
 const ENABLE_MOCK_FALLBACK = import.meta.env.DEV;
 
+export type SurveyListResponse = {
+  active: Survey[];
+  completed: Survey[];
+};
+
+function normalizeSurveyList(data: unknown): SurveyListResponse {
+  if (Array.isArray(data)) {
+    return { active: data as Survey[], completed: [] };
+  }
+  const obj = data as SurveyListResponse | null | undefined;
+  return {
+    active: obj?.active ?? [],
+    completed: obj?.completed ?? [],
+  };
+}
+
 export const surveysApi = {
-  getAll: async (): Promise<Survey[]> => {
+  getAll: async (): Promise<SurveyListResponse> => {
     try {
       const { data } = await apiClient.get('/surveys');
-      return Array.isArray(data) && data.length > 0 ? data : (ENABLE_MOCK_FALLBACK ? mockSurveys : []);
+      const list = normalizeSurveyList(data);
+      if (list.active.length > 0 || list.completed.length > 0) {
+        return list;
+      }
+      return ENABLE_MOCK_FALLBACK
+        ? { active: mockSurveys, completed: [] }
+        : list;
     } catch {
-      if (ENABLE_MOCK_FALLBACK) return mockSurveys;
+      if (ENABLE_MOCK_FALLBACK) {
+        return { active: mockSurveys, completed: [] };
+      }
       throw new Error('Failed to load surveys');
     }
   },
@@ -71,13 +96,13 @@ export const surveysApi = {
     const { data } = await apiClient.post(`/surveys/${id}/responses`, {
       answers: payload.answers,
     });
-    return data;
+    return data as { id: string; submissionId?: string; submittedAt: string };
   },
 
-  /** Auth required. Reflects Jotform webhook-created rows as well as native submit. */
+  /** Auth required. Reflects webhook-created rows as well as native submit. */
   getMyResponse: async (
     id: string,
-  ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> => {
+  ): Promise<{ submitted: boolean; responseId?: string; submissionId?: string; submittedAt?: string }> => {
     const { data } = await apiClient.get(`/surveys/${id}/my-response`);
     return data;
   },

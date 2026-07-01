@@ -757,10 +757,10 @@ export default function AdminProgramHub() {
                             </td>
                             <td className="py-2 pr-4 text-gray-600">
                               <div className="space-y-1">
-                                <span>{r.postEventJotformSubmissionId ? 'Recorded' : '—'}</span>
-                                {r.postEventJotformSubmissionId ? (
+                                <span>{r.postEventSurveySubmitted ? 'Recorded' : '—'}</span>
+                                {r.postEventSurveyResponseId ? (
                                   <code className="block text-xs text-gray-500 break-all max-w-[14rem]">
-                                    {r.postEventJotformSubmissionId}
+                                    {r.postEventSurveyResponseId}
                                   </code>
                                 ) : null}
                                 {r.jotformPostEventSubmissionViewUrl ? (

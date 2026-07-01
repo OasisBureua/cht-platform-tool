@@ -140,12 +140,13 @@ export default function ExploreOpportunities() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: surveys = [], isLoading: surveysLoading } = useQuery({
+  const { data: surveyList, isLoading: surveysLoading } = useQuery({
     queryKey: ['surveys', userId],
     queryFn: surveysApi.getAll,
     enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
+  const surveys = surveyList?.active ?? [];
 
   const items = useMemo((): UnifiedItem[] => {
     const out: UnifiedItem[] = [];

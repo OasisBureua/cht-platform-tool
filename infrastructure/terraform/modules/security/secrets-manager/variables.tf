@@ -88,6 +88,19 @@ variable "mediahub_api_key" {
   default     = ""
 }
 
+variable "contenthub_base_url" {
+  description = "Content Hub public API base URL for KOL network (GET /kols*)"
+  type        = string
+  default     = ""
+}
+
+variable "contenthub_api_key" {
+  description = "Content Hub PUBLIC_API_KEY for server-to-server calls"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "youtube_api_key" {
   description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
   type        = string

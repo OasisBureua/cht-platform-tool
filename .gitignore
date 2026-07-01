@@ -55,3 +55,8 @@ coverage/
 
 # VSCode
 .vscode/
+
+# Old docs
+KOL_Network_API_Spec.pdf
+Post-Event Survey.pdf
+Test Intake Fofm.pdf

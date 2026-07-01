@@ -203,3 +203,9 @@ variable "recaptcha_min_score" {
   type        = number
   default     = 0.5
 }
+
+variable "redis_url" {
+  description = "Redis URL for upstream caching (empty disables cache)"
+  type        = string
+  default     = ""
+}

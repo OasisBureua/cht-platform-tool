@@ -147,6 +147,12 @@ export default () => ({
     apiKey: process.env.MEDIAHUB_API_KEY,
   },
 
+  // Content Hub — KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
+  contenthub: {
+    baseUrl: process.env.CONTENTHUB_BASE_URL || '',
+    apiKey: process.env.CONTENTHUB_API_KEY,
+  },
+
   // YouTube Data API v3 (for catalog playlists - fallback when MediaHub not configured)
   youtube: (() => {
     let ids: string[] =
@@ -255,5 +261,14 @@ export default () => ({
     audienceId: process.env.MAILCHIMP_AUDIENCE_ID,
     serverPrefix:
       process.env.MAILCHIMP_SERVER || process.env.MAILCHIMP_SERVER_PREFIX,
+  },
+
+  redis: {
+    url: process.env.REDIS_URL?.trim() || '',
+    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '86400', 10),
+  },
+
+  internalCache: {
+    secret: process.env.INTERNAL_CACHE_SECRET?.trim() || '',
   },
 });

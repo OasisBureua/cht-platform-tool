@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
 import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, mediahubAuthDecommissioned, recaptchaEnabled } from '../../lib/auth-config';
+import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { executeRecaptcha } from '../../lib/recaptcha';
 import { signupProfessionSelectOptions, professionRequiresNpi } from '../../data/profession-options';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
@@ -249,7 +250,7 @@ export default function Join() {
                 )}
                 Continue with Google
               </button>
-              <p className="text-center text-xs text-gray-500">Sign up with Google</p>
+              <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
             </div>
           ) : (
             <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">

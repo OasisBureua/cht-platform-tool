@@ -4,8 +4,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
 import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
+import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { Shield } from 'lucide-react';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
+import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function AdminLogin() {
   const location = useLocation();
@@ -80,6 +82,9 @@ export default function AdminLogin() {
         </div>
 
         <div className="p-6">
+          <div className="mb-4">
+            <AuthMigrationNotice variant="login" />
+          </div>
           <form className="space-y-4" onSubmit={handleLogin}>
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -134,6 +139,7 @@ export default function AdminLogin() {
                   )}
                   Google
                 </button>
+                <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
               </>
             ) : (
               <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

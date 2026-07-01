@@ -224,7 +224,7 @@ model ProgramRegistration {
   userId                    String
   programId                 String
   status                    ProgramRegistrationStatus   @default(PENDING)
-  intakeJotformSubmissionId String?
+  intakeSubmissionId String?
   intakeJotformSubmittedAt  DateTime?
   officeHoursSlotId         String?
   adminNotes                String?                   @db.Text
@@ -235,8 +235,6 @@ model ProgramRegistration {
   postEventAttendanceReviewedAt        DateTime?
   postEventAttendanceReviewedByUserId  String?
   postEventSurveyAcknowledgedAt        DateTime?
-  /// Jotform submission id for post-event survey (first submission wins; webhook sets).
-  postEventJotformSubmissionId        String?
   honorariumRequestedAt                DateTime?
   /// Set after the ~24h pre-session reminder email is sent. Reset to null when session time changes so a new reminder fires.
   reminder24hSentAt                    DateTime?
@@ -457,8 +455,8 @@ model SurveyResponse {
   answers     Json     // Survey answers in JSON format
   score       Float?   // Score if applicable
   
-  // Jotform tracking
-  jotformSubmissionId String? @unique
+  // External submission id (UUID for native submit; Jotform id for legacy webhooks)
+  submissionId String? @unique
   
   // Timestamps
   submittedAt DateTime @default(now())

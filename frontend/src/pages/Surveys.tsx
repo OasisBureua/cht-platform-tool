@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowRight, ClipboardList, AlertCircle, Loader2, ClipboardCheck } from 'lucide-react';
+import { ArrowRight, ClipboardList, AlertCircle, Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { surveysApi, type Survey, type SurveyType } from '../api/surveys';
 
 const CARD_IMAGES = [
@@ -32,23 +32,41 @@ function typeBadge(type: SurveyType) {
   return { label: type, className: 'bg-gray-100 text-gray-800' };
 }
 
+function getRemainingDays(createdAt: string): number {
+  const created = new Date(createdAt).getTime();
+  if (Number.isNaN(created)) return 7;
+  const expiresAt = created + 7 * 24 * 60 * 60 * 1000;
+  const remainingMs = Math.max(0, expiresAt - Date.now());
+  return Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+}
+
 export default function Surveys() {
   const { user } = useAuth();
   const userId = user?.userId;
-  const { data: surveys = [], isLoading } = useQuery({
+  const { data: surveyList, isLoading } = useQuery({
     queryKey: ['surveys', userId],
     queryFn: surveysApi.getAll,
     enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
-  const activeCount = surveys.length;
-  const completedCount = 0;
-  const expiringCount = activeCount > 0 ? 1 : 0;
+
+  const activeSurveys = surveyList?.active ?? [];
+  const completedSurveys = surveyList?.completed ?? [];
+  const activeCount = activeSurveys.length;
+  const completedCount = completedSurveys.length;
+  const expiringCount = useMemo(
+    () => activeSurveys.filter((s) => getRemainingDays(s.createdAt) <= 2).length,
+    [activeSurveys],
+  );
   const availableToEarn = useMemo(
     () =>
-      surveys.reduce((sum, s) => sum + honorariumCentsToDollars(s.program?.honorariumAmount ?? null), 0),
-    [surveys],
+      activeSurveys
+        .filter((s) => s.type === 'FEEDBACK')
+        .reduce((sum, s) => sum + honorariumCentsToDollars(s.program?.honorariumAmount ?? null), 0),
+    [activeSurveys],
   );
+
+  const hasAny = activeCount > 0 || completedCount > 0;
 
   return (
     <div className="-mt-[15px] space-y-2.5 sm:space-y-4">
@@ -102,19 +120,38 @@ export default function Surveys() {
           <div className="flex justify-center py-16">
             <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
           </div>
-        ) : surveys.length === 0 ? (
+        ) : !hasAny ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-12px_rgba(0,0,0,0.45)]">
             <p className="font-semibold text-gray-900 dark:text-zinc-100">No post-session surveys yet</p>
             <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">Enroll in a Live activity, then check back after the session ends.</p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Active surveys</h3>
-            <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {surveys.map((survey, idx) => (
-                <SurveyGridCard key={survey.id} survey={survey} imageUrl={CARD_IMAGES[idx % CARD_IMAGES.length]} />
-              ))}
-            </div>
+          <div className="space-y-6">
+            {activeCount > 0 ? (
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Active surveys</h3>
+                <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {activeSurveys.map((survey, idx) => (
+                    <SurveyGridCard key={survey.id} survey={survey} imageUrl={CARD_IMAGES[idx % CARD_IMAGES.length]} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {completedCount > 0 ? (
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Completed</h3>
+                <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {completedSurveys.map((survey, idx) => (
+                    <CompletedSurveyGridCard
+                      key={survey.id}
+                      survey={survey}
+                      imageUrl={CARD_IMAGES[(activeCount + idx) % CARD_IMAGES.length]}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
@@ -132,9 +169,10 @@ function StatChip({ label, value }: { label: string; value: number }) {
 }
 
 function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string }) {
-  const honorarium = formatHonorarium(survey.program?.honorariumAmount ?? null);
+  const showHonorarium = survey.type === 'FEEDBACK';
+  const honorarium = showHonorarium ? formatHonorarium(survey.program?.honorariumAmount ?? null) : null;
   const payoutLabel = honorarium ?? '—';
-  const remainingDays = getRemainingDays(survey.updatedAt);
+  const remainingDays = getRemainingDays(survey.createdAt);
   const badge = typeBadge(survey.type);
 
   return (
@@ -155,7 +193,9 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
       <div className="space-y-2.5 p-3">
         <div className="flex items-start justify-between gap-2">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>{badge.label}</span>
-          <span className="tabular-nums inline-flex items-center text-base font-extrabold text-zinc-900 dark:text-zinc-100">{payoutLabel}</span>
+          {showHonorarium ? (
+            <span className="tabular-nums inline-flex items-center text-base font-extrabold text-zinc-900 dark:text-zinc-100">{payoutLabel}</span>
+          ) : null}
         </div>
 
         <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100 [overflow-wrap:anywhere]">
@@ -176,14 +216,14 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
             {survey.required ? 'Survey Required' : 'Optional'}
           </span>
           <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 tabular-nums">
-            {remainingDays}d remaining
+            {remainingDays <= 0 ? 'Expired' : `${remainingDays}d remaining`}
           </span>
         </div>
 
         <div className="flex w-full justify-center">
           <span className="inline-flex min-h-[40px] min-w-[132px] items-center justify-center gap-1.5 rounded-md bg-orange-600 px-4 text-xs font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:bg-orange-700 group-active:scale-[0.96]">
             <ClipboardList className="h-3.5 w-3.5" aria-hidden />
-            {survey.type === 'FEEDBACK' ? 'Complete post-event' : 'Take Survey'}
+            Complete post-event
           </span>
         </div>
       </div>
@@ -191,11 +231,53 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
   );
 }
 
-function getRemainingDays(updatedAt: string): number {
-  const updated = new Date(updatedAt).getTime();
-  if (Number.isNaN(updated)) return 7;
-  const expiresAt = updated + 7 * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const remainingMs = Math.max(0, expiresAt - now);
-  return Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string }) {
+  const honorarium = formatHonorarium(survey.program?.honorariumAmount ?? null);
+  const badge = typeBadge(survey.type);
+
+  return (
+    <Link
+      to={`/app/surveys/${survey.id}`}
+      className="group block min-w-0 overflow-hidden rounded-lg border border-zinc-200/80 bg-white opacity-90 shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md active:scale-[0.96] dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <div className="relative aspect-[249/140] w-full overflow-hidden">
+        <img
+          src={imageUrl}
+          alt=""
+          className="h-full w-full object-cover outline outline-1 -outline-offset-1 outline-black/10 grayscale-[0.15]"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          draggable={false}
+        />
+      </div>
+      <div className="space-y-2.5 p-3">
+        <div className="flex items-start justify-between gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>{badge.label}</span>
+          {honorarium ? (
+            <span className="tabular-nums text-sm font-bold text-zinc-600 dark:text-zinc-400">{honorarium}</span>
+          ) : null}
+        </div>
+
+        <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-700 dark:text-zinc-300 [overflow-wrap:anywhere]">
+          {survey.title}
+        </p>
+        {survey.program?.title ? (
+          <p className="line-clamp-1 text-left text-[11px] text-zinc-500">{survey.program.title}</p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-800">
+            <CheckCircle2 className="h-3 w-3" aria-hidden />
+            Completed
+          </span>
+        </div>
+
+        <div className="flex w-full justify-center">
+          <span className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-4 text-xs font-semibold text-zinc-700 group-hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            View submission
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
 }

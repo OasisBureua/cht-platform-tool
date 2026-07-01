@@ -1296,20 +1296,20 @@ export class AdminController {
         defaultIntake,
       );
       const intakeComplete =
-        !intakeRequired || !!r.intakeJotformSubmissionId?.trim();
+        !intakeRequired || !!r.intakeSubmissionId?.trim();
       return {
         id: r.id,
         status: r.status,
         createdAt: r.createdAt.toISOString(),
         updatedAt: r.updatedAt.toISOString(),
         lastSubmittedAt: lastProgramRegistrationSubmittedAtIso(r),
-        intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+        intakeSubmissionId: r.intakeSubmissionId,
         intakeRequired,
         intakeComplete,
         jotformIntakeSubmissionViewUrl: intakeRequired
           ? buildJotformIntakeSubmissionViewUrl(
               r.program.jotformIntakeFormUrl,
-              r.intakeJotformSubmissionId,
+              r.intakeSubmissionId,
             )
           : null,
         user: r.user,
@@ -1459,6 +1459,23 @@ export class AdminController {
     const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
       undefined;
+    const feedbackSurvey = await this.prisma.survey.findFirst({
+      where: { programId: id, type: 'FEEDBACK' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+    const postEventResponses = feedbackSurvey
+      ? await this.prisma.surveyResponse.findMany({
+          where: {
+            surveyId: feedbackSurvey.id,
+            userId: { in: rows.map((r) => r.userId) },
+          },
+          select: { userId: true, id: true, submissionId: true },
+        })
+      : [];
+    const postEventByUser = new Map(
+      postEventResponses.map((resp) => [resp.userId, resp]),
+    );
     return rows.map((r) => {
       const intakeRequired = !!effectiveWebinarIntakeFormUrl(
         r.program.zoomSessionType,
@@ -1466,7 +1483,10 @@ export class AdminController {
         defaultIntake,
       );
       const intakeComplete =
-        !intakeRequired || !!r.intakeJotformSubmissionId?.trim();
+        !intakeRequired || !!r.intakeSubmissionId?.trim();
+      const postEventResponse = postEventByUser.get(r.userId);
+      const postEventJotformSubmissionId =
+        postEventResponse?.submissionId?.trim() || null;
       return {
         id: r.id,
         status: r.status,
@@ -1476,22 +1496,23 @@ export class AdminController {
         reviewedAt: r.reviewedAt?.toISOString(),
         calendarInviteSentAt: r.calendarInviteSentAt?.toISOString(),
         adminNotes: r.adminNotes,
-        intakeJotformSubmissionId: r.intakeJotformSubmissionId,
+        intakeSubmissionId: r.intakeSubmissionId,
         intakeRequired,
         intakeComplete,
         jotformIntakeSubmissionViewUrl: intakeRequired
           ? buildJotformIntakeSubmissionViewUrl(
               r.program.jotformIntakeFormUrl,
-              r.intakeJotformSubmissionId,
+              r.intakeSubmissionId,
             )
           : null,
-        postEventJotformSubmissionId: r.postEventJotformSubmissionId,
+        postEventSurveySubmitted: !!postEventResponse,
+        postEventSurveyResponseId: postEventResponse?.id ?? null,
+        postEventJotformSubmissionId,
         jotformPostEventSubmissionViewUrl:
-          r.program.jotformSurveyUrl?.trim() &&
-          r.postEventJotformSubmissionId?.trim()
+          r.program.jotformSurveyUrl?.trim() && postEventJotformSubmissionId
             ? buildJotformIntakeSubmissionViewUrl(
                 r.program.jotformSurveyUrl,
-                r.postEventJotformSubmissionId,
+                postEventJotformSubmissionId,
               )
             : null,
         user: r.user,

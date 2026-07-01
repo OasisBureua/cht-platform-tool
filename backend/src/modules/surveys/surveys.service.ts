@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
 import { UserRole, SurveyType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -40,10 +41,58 @@ export class SurveysService {
   ) {}
 
   /**
-   * List surveys. Admins see all. Learners only see FEEDBACK post-event surveys they may take
-   * (enrolled, post–live window, attendance verified when required).
+   * List surveys. Admins see all in `active`. Learners see FEEDBACK post-event surveys only
+   * (intake/registration forms are excluded), split into active and completed.
    */
-  async getAllForUser(userId: string, role: UserRole) {
+  async getAllForUser(
+    userId: string,
+    role: UserRole,
+  ): Promise<{
+    active: Array<{
+      id: string;
+      programId: string;
+      title: string;
+      description: string | null;
+      type: string;
+      required: boolean;
+      jotformFormId: string | null;
+      jotformFormUrl: string | null;
+      createdAt: string;
+      updatedAt: string;
+      completedAt?: string;
+      program: {
+        id: string;
+        title: string;
+        sponsorName: string | null;
+        honorariumAmount: number | null;
+        creditAmount: number;
+        zoomSessionType: string;
+        startDate: Date | null;
+      };
+    }>;
+    completed: Array<{
+      id: string;
+      programId: string;
+      title: string;
+      description: string | null;
+      type: string;
+      required: boolean;
+      jotformFormId: string | null;
+      jotformFormUrl: string | null;
+      createdAt: string;
+      updatedAt: string;
+      completedAt?: string;
+      program: {
+        id: string;
+        title: string;
+        sponsorName: string | null;
+        honorariumAmount: number | null;
+        creditAmount: number;
+        zoomSessionType: string;
+        startDate: Date | null;
+      };
+    }>;
+  }> {
     const surveys = await this.prisma.survey.findMany({
       include: {
         program: {
@@ -76,23 +125,60 @@ export class SurveysService {
       program: s.program,
     }));
     if (role === UserRole.ADMIN) {
-      return mapped;
+      return { active: mapped, completed: [] };
     }
-    const out: typeof mapped = [];
+
+    const active: typeof mapped = [];
+    const completed: Array<(typeof mapped)[0] & { completedAt: string }> = [];
+
     for (const s of mapped) {
-      if (s.type === 'FEEDBACK' && s.programId) {
-        const ok =
-          await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(
-            userId,
-            s.programId,
-          );
-        if (!ok) {
-          continue;
-        }
+      if (s.type !== SurveyType.FEEDBACK || !s.programId) {
+        continue;
       }
-      out.push(s);
+
+      const enrolled = await this.prisma.programEnrollment.findUnique({
+        where: { userId_programId: { userId, programId: s.programId } },
+        select: { id: true },
+      });
+      if (!enrolled) {
+        continue;
+      }
+
+      const [existing, reg] = await Promise.all([
+        this.prisma.surveyResponse.findUnique({
+          where: { userId_surveyId: { userId, surveyId: s.id } },
+          select: { id: true, submittedAt: true },
+        }),
+        this.prisma.programRegistration.findUnique({
+          where: { userId_programId: { userId, programId: s.programId } },
+          select: { postEventSurveyAcknowledgedAt: true },
+        }),
+      ]);
+
+      const isCompleted =
+        !!existing ||
+        !!reg?.postEventSurveyAcknowledgedAt;
+
+      if (isCompleted) {
+        const completedAt =
+          existing?.submittedAt.toISOString() ??
+          reg?.postEventSurveyAcknowledgedAt?.toISOString() ??
+          s.updatedAt;
+        completed.push({ ...s, completedAt });
+        continue;
+      }
+
+      const ok =
+        await this.programRegistrations.canUserAccessPostEventFeedbackSurvey(
+          userId,
+          s.programId,
+        );
+      if (ok) {
+        active.push(s);
+      }
     }
-    return out;
+
+    return { active, completed };
   }
 
   /**
@@ -199,13 +285,14 @@ export class SurveysService {
   ): Promise<{
     submitted: boolean;
     responseId?: string;
+    submissionId?: string;
     submittedAt?: string;
   }> {
     await this.ensureUserCanAccessSurvey(surveyId, userId, role);
 
     const row = await this.prisma.surveyResponse.findUnique({
       where: { userId_surveyId: { userId, surveyId } },
-      select: { id: true, submittedAt: true },
+      select: { id: true, submittedAt: true, submissionId: true },
     });
     if (!row) {
       return { submitted: false };
@@ -213,6 +300,7 @@ export class SurveysService {
     return {
       submitted: true,
       responseId: row.id,
+      submissionId: row.submissionId ?? undefined,
       submittedAt: row.submittedAt.toISOString(),
     };
   }
@@ -806,7 +894,7 @@ export class SurveysService {
     userId: string,
     role: UserRole,
     dto: SubmitSurveyResponseDto,
-  ): Promise<{ id: string; submittedAt: string }> {
+  ): Promise<{ id: string; submissionId?: string; submittedAt: string }> {
     await this.ensureUserCanAccessSurvey(surveyId, userId, role);
     assertNoIdentityFieldsInSurveyAnswers(dto.answers);
     const answers = stripIdentityFieldsFromSurveyAnswers(dto.answers);
@@ -829,6 +917,7 @@ export class SurveysService {
     if (existing && survey.type === SurveyType.FEEDBACK) {
       return {
         id: existing.id,
+        submissionId: existing.submissionId ?? undefined,
         submittedAt: existing.submittedAt.toISOString(),
       };
     }
@@ -841,6 +930,7 @@ export class SurveysService {
           answers: answers as object,
           score: dto.score,
           submittedAt: new Date(),
+          ...(!existing.submissionId ? { submissionId: randomUUID() } : {}),
         },
       });
       await this.formJotformProgress
@@ -857,6 +947,7 @@ export class SurveysService {
           answers: answers as object,
           score: dto.score,
           submittedAt: new Date(),
+          submissionId: randomUUID(),
         },
       });
 
@@ -920,7 +1011,7 @@ export class SurveysService {
       await this.prisma.programRegistration
         .updateMany({
           where: { userId, programId: survey.programId },
-          data: { postEventJotformSubmissionId: response.id },
+          data: { postEventSurveyAcknowledgedAt: new Date() },
         })
         .catch((err: unknown) => {
           this.logger.warn(
@@ -930,11 +1021,12 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.INTAKE) {
+      const intakeSubmissionId = response.submissionId ?? response.id;
       await this.programRegistrations
-        .recordWebinarIntakeFromJotformWebhook(
+        .recordWebinarIntakeSubmission(
           userId,
           survey.programId,
-          response.id,
+          intakeSubmissionId,
         )
         .catch((err: unknown) => {
           this.logger.warn(
@@ -945,6 +1037,7 @@ export class SurveysService {
 
     return {
       id: response.id,
+      submissionId: response.submissionId ?? undefined,
       submittedAt: response.submittedAt.toISOString(),
     };
   }

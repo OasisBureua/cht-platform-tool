@@ -74,16 +74,15 @@ export interface ProgramRegistrationState {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
   officeHoursSlotId?: string;
   /** Present when intake Jotform redirect included a submission id */
-  intakeJotformSubmissionId?: string;
+  intakeSubmissionId?: string;
   /** When intake was recorded (submit or webhook) */
   intakeJotformSubmittedAt?: string;
   createdAt: string;
   reviewedAt?: string;
   postEventAttendanceStatus?: PostEventAttendanceStatus;
   postEventSurveyAcknowledgedAt?: string;
-  postEventJotformSubmissionId?: string;
-  /** True when post-event answers exist (native SurveyResponse or legacy Jotform id). */
   postEventSurveySubmitted?: boolean;
+  postEventSurveyResponseId?: string | null;
   /** True when intake answers exist (native SurveyResponse or legacy Jotform id). */
   intakeSurveySubmitted?: boolean;
   hasPostEventSurvey?: boolean;
@@ -255,7 +254,7 @@ export const programsApi = {
 
   submitRegistration: async (
     programId: string,
-    body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
+    body: { officeHoursSlotId?: string; intakeSubmissionId?: string },
   ): Promise<{ id: string; status: string; enrolled: boolean }> => {
     const { data } = await apiClient.post(`/programs/${encodeURIComponent(programId)}/registration`, body);
     return data;

@@ -132,7 +132,7 @@ resource "aws_cognito_user_pool_domain" "main" {
 # App Client — cht-web (PKCE public client)
 # ============================================
 resource "aws_cognito_user_pool_client" "cht_web" {
-  name         = "cht-web"
+  name         = var.app_client_name
   user_pool_id = aws_cognito_user_pool.main.id
 
   # Public client — no secret; PKCE enforced by the frontend

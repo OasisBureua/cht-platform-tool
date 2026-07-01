@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
+import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function ResetPasswordConfirm() {
   const navigate = useNavigate();
@@ -74,6 +75,9 @@ export default function ResetPasswordConfirm() {
       title="Reset your password"
       subtitle="Enter the reset code from your email and choose a new password."
     >
+      <div className="mb-4">
+        <AuthMigrationNotice variant="reset" />
+      </div>
       <form className="space-y-4" onSubmit={handleSubmit}>
         {error && (
           <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">

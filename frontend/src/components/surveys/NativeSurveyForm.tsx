@@ -18,6 +18,8 @@ type Props = {
   submitting?: boolean;
   onSubmit: (answers: Record<string, unknown>) => void;
   w9ProfileHref?: string;
+  /** When true, show W-9 / honorarium payout reminder (post-event surveys only). */
+  showPayoutNotice?: boolean;
 };
 
 export function NativeSurveyForm({
@@ -30,6 +32,7 @@ export function NativeSurveyForm({
   submitting,
   onSubmit,
   w9ProfileHref = '/app/profile',
+  showPayoutNotice = false,
 }: Props) {
   const visibleQuestions = useMemo(() => {
     const all = listNativeSurveyQuestions(questions);
@@ -83,13 +86,15 @@ export function NativeSurveyForm({
         />
       ))}
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
-        W-9 and honorarium payout details are managed in your{' '}
-        <Link to={w9ProfileHref} className="font-semibold underline">
-          profile &amp; payments
-        </Link>
-        , not in this survey.
-      </div>
+      {showPayoutNotice ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+          W-9 and honorarium payout details are managed in your{' '}
+          <Link to={w9ProfileHref} className="font-semibold underline">
+            profile &amp; payments
+          </Link>
+          . Complete those after you submit this survey if you have not already.
+        </div>
+      ) : null}
 
       <button
         type="submit"

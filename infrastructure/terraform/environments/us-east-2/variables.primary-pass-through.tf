@@ -101,6 +101,19 @@ variable "mediahub_api_key" {
   default     = ""
 }
 
+variable "contenthub_base_url" {
+  description = "Primary only: Content Hub API base URL."
+  type        = string
+  default     = ""
+}
+
+variable "contenthub_api_key" {
+  description = "Primary only: Content Hub PUBLIC_API_KEY."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "youtube_api_key" {
   description = "Primary only: YouTube Data API key."
   type        = string

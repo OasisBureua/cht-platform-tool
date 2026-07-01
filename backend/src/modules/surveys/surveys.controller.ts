@@ -25,8 +25,8 @@ export class SurveysController {
 
   /**
    * GET /api/surveys
-   * Learner: post-event (FEEDBACK) surveys are listed only when attendance allows.
-   * Admin: full list.
+   * Learner: post-event (FEEDBACK) surveys only — active and completed lists.
+   * Admin: full list in `active`.
    */
   @Get()
   @UseGuards(JwtAuthGuard)

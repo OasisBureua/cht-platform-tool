@@ -247,8 +247,9 @@ cp -r environments/dev environments/prod
 - Confirm private subnets can reach RDS
 
 ### Redis Connection Failed
-- Verify ElastiCache security group
-- Check REDIS_HOST/PORT in secrets
+- Verify ElastiCache security group allows backend ECS on port 6379
+- Check `REDIS_URL` on the backend task (set automatically when `enable_elasticache` is true)
+- Confirm backend tasks run in private subnets that can reach ElastiCache
 
 ## Security & SOC 2 (Phase 1)
 

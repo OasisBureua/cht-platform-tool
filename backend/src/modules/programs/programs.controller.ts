@@ -128,7 +128,7 @@ export class ProgramsController {
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
     @Body()
-    body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
+    body: { officeHoursSlotId?: string; intakeSubmissionId?: string },
   ) {
     return this.registrationsService.submitRegistration(
       user.userId,

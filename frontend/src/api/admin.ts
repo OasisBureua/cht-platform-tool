@@ -348,10 +348,12 @@ export const adminApi = {
       createdAt: string;
       updatedAt?: string;
       lastSubmittedAt?: string;
-      intakeJotformSubmissionId?: string | null;
+      intakeSubmissionId?: string | null;
       intakeRequired?: boolean;
       intakeComplete?: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;
+      postEventSurveySubmitted?: boolean;
+      postEventSurveyResponseId?: string | null;
       postEventJotformSubmissionId?: string | null;
       jotformPostEventSubmissionViewUrl?: string | null;
       postEventSurveyAcknowledgedAt?: string | null;
@@ -488,7 +490,7 @@ export const adminApi = {
       updatedAt?: string;
       /** Max(createdAt, updatedAt, intake submitted) — use for “last request” after resubmits */
       lastSubmittedAt?: string;
-      intakeJotformSubmissionId: string | null;
+      intakeSubmissionId: string | null;
       intakeRequired: boolean;
       intakeComplete: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;

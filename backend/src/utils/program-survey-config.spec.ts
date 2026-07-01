@@ -1,5 +1,9 @@
 import { ProgramZoomSessionType } from '@prisma/client';
-import { loadProgramSurveyMeta } from './program-survey-config';
+import {
+  isPostEventSurveyWithinWindow,
+  loadProgramSurveyMeta,
+  POST_EVENT_SURVEY_WINDOW_MS,
+} from './program-survey-config';
 
 describe('loadProgramSurveyMeta', () => {
   const prisma = {
@@ -51,5 +55,19 @@ describe('loadProgramSurveyMeta', () => {
 
     expect(meta.hasIntakeSurvey).toBe(true);
     expect(meta.intakeUsesJotform).toBe(true);
+  });
+});
+
+describe('isPostEventSurveyWithinWindow', () => {
+  it('allows access within 7 days of survey creation', () => {
+    const created = new Date('2026-06-01T12:00:00Z');
+    const now = created.getTime() + POST_EVENT_SURVEY_WINDOW_MS - 60_000;
+    expect(isPostEventSurveyWithinWindow(created, now)).toBe(true);
+  });
+
+  it('denies access after 7 days from survey creation', () => {
+    const created = new Date('2026-06-01T12:00:00Z');
+    const now = created.getTime() + POST_EVENT_SURVEY_WINDOW_MS + 1;
+    expect(isPostEventSurveyWithinWindow(created, now)).toBe(false);
   });
 });

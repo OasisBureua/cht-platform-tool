@@ -14,7 +14,7 @@ type Props = {
   feedbackUsesJotform?: boolean;
   authenticated: boolean;
   userSummary?: { firstName?: string; lastName?: string; email?: string };
-  onSubmitted?: () => void;
+  onSubmitted?: (submissionId: string) => void;
 };
 
 /**
@@ -47,10 +47,11 @@ export function ProgramSurveyPanel({
   const submitMut = useMutation({
     mutationFn: (answers: Record<string, unknown>) =>
       surveysApi.submitResponse(surveyId, { answers }),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', surveyId, 'my-response'] });
       queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
-      onSubmitted?.();
+      onSubmitted?.(data.submissionId ?? data.id);
     },
   });
 
@@ -86,6 +87,7 @@ export function ProgramSurveyPanel({
         authenticated={authenticated}
         userSummary={userSummary}
         submitting={submitMut.isPending}
+        showPayoutNotice={survey.type === 'FEEDBACK'}
         onSubmit={(answers) => submitMut.mutate(answers)}
       />
     );

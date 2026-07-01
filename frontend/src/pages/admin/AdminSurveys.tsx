@@ -7,7 +7,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminSurveys() {
   const queryClient = useQueryClient();
-  const { data: surveys, isLoading, error } = useQuery({
+  const { data: surveyList, isLoading, error } = useQuery({
     queryKey: ['admin', 'surveys'],
     queryFn: () => surveysApi.getAll(),
   });
@@ -40,7 +40,7 @@ export default function AdminSurveys() {
     );
   }
 
-  const items = surveys ?? [];
+  const items = surveyList?.active ?? [];
 
   return (
     <div className="space-y-6">

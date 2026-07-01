@@ -68,6 +68,8 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     gotrue_jwt_secret                         = var.gotrue_jwt_secret
     mediahub_base_url                         = var.mediahub_base_url
     mediahub_api_key                          = var.mediahub_api_key
+    contenthub_base_url                       = var.contenthub_base_url
+    contenthub_api_key                        = var.contenthub_api_key
     youtube_api_key                           = var.youtube_api_key
     youtube_playlist_ids                      = var.youtube_playlist_ids
     zoom_account_id                           = var.zoom_account_id

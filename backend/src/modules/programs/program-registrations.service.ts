@@ -18,6 +18,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import {
+  isPostEventSurveyWithinWindow,
   loadProgramSurveyMeta,
   programHasPostEventSurvey,
   userHasIntakeSurveyResponse,
@@ -149,14 +150,26 @@ export class ProgramRegistrationsService {
       return false;
     }
 
+    const feedbackSurvey = await this.prisma.survey.findFirst({
+      where: { programId, type: 'FEEDBACK' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true },
+    });
+    if (!feedbackSurvey) {
+      return false;
+    }
+
+    const now = new Date();
+    if (!isPostEventSurveyWithinWindow(feedbackSurvey.createdAt, now.getTime())) {
+      return false;
+    }
+
     if (
       program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
       program.zoomSessionType !== ProgramZoomSessionType.MEETING
     ) {
       return true;
     }
-
-    const now = new Date();
     let postSurveyAllowed = false;
     if (program.zoomSessionEndedAt) {
       postSurveyAllowed = now >= program.zoomSessionEndedAt;
@@ -335,7 +348,6 @@ export class ProgramRegistrationsService {
         this.prisma,
         userId,
         surveyMeta.feedbackSurveyId,
-        reg,
       ),
       userHasIntakeSurveyResponse(
         this.prisma,
@@ -355,15 +367,13 @@ export class ProgramRegistrationsService {
       id: reg.id,
       status: reg.status,
       officeHoursSlotId: reg.officeHoursSlotId ?? undefined,
-      intakeJotformSubmissionId: reg.intakeJotformSubmissionId ?? undefined,
+      intakeSubmissionId: reg.intakeSubmissionId ?? undefined,
       intakeJotformSubmittedAt: reg.intakeJotformSubmittedAt?.toISOString(),
       createdAt: reg.createdAt.toISOString(),
       reviewedAt: reg.reviewedAt?.toISOString(),
       postEventAttendanceStatus: reg.postEventAttendanceStatus,
       postEventSurveyAcknowledgedAt:
         reg.postEventSurveyAcknowledgedAt?.toISOString(),
-      postEventJotformSubmissionId:
-        reg.postEventJotformSubmissionId ?? undefined,
       postEventSurveySubmitted,
       intakeSurveySubmitted,
       hasPostEventSurvey: surveyMeta.hasPostEventSurvey,
@@ -429,7 +439,7 @@ export class ProgramRegistrationsService {
   async submitRegistration(
     userId: string,
     programId: string,
-    body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
+    body: { officeHoursSlotId?: string; intakeSubmissionId?: string },
   ) {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
@@ -494,11 +504,11 @@ export class ProgramRegistrationsService {
       status === ProgramRegistrationStatus.APPROVED &&
       existingRegistration?.status !== ProgramRegistrationStatus.APPROVED;
 
-    const intakeSid = body.intakeJotformSubmissionId?.trim();
-    const incomingIntakeDefined = body.intakeJotformSubmissionId !== undefined;
+    const intakeSid = body.intakeSubmissionId?.trim();
+    const incomingIntakeDefined = body.intakeSubmissionId !== undefined;
     const mergedIntakeId = incomingIntakeDefined
       ? intakeSid || null
-      : (existingRegistration?.intakeJotformSubmissionId ?? null);
+      : (existingRegistration?.intakeSubmissionId ?? null);
 
     const reg = await this.prisma.programRegistration.upsert({
       where: { userId_programId: { userId, programId } },
@@ -513,7 +523,7 @@ export class ProgramRegistrationsService {
               )
             : PostEventAttendanceStatus.NOT_REQUIRED,
         officeHoursSlotId: body.officeHoursSlotId ?? null,
-        intakeJotformSubmissionId: intakeSid || null,
+        intakeSubmissionId: intakeSid || null,
         intakeJotformSubmittedAt: intakeSid ? new Date() : null,
       },
       update: {
@@ -532,7 +542,7 @@ export class ProgramRegistrationsService {
             : {}),
         officeHoursSlotId: body.officeHoursSlotId ?? undefined,
         ...(incomingIntakeDefined
-          ? { intakeJotformSubmissionId: intakeSid || null }
+          ? { intakeSubmissionId: intakeSid || null }
           : {}),
         /** Refresh whenever they submit again and an intake id is on file (body or existing). */
         intakeJotformSubmittedAt: mergedIntakeId ? new Date() : null,
@@ -677,7 +687,7 @@ export class ProgramRegistrationsService {
       try {
         const intakeSid = intakeByProgramId?.[programId]?.trim();
         const result = await this.submitRegistration(userId, programId, {
-          ...(intakeSid ? { intakeJotformSubmissionId: intakeSid } : {}),
+          ...(intakeSid ? { intakeSubmissionId: intakeSid } : {}),
         });
         submitted.push({
           programId,
@@ -724,9 +734,9 @@ export class ProgramRegistrationsService {
   }
 
   /**
-   * Jotform webhook: published webinar intake submitted — persist submission id and optionally enroll.
+   * Intake submitted (native survey or Jotform webhook) — persist submission id and optionally enroll.
    */
-  async recordWebinarIntakeFromJotformWebhook(
+  async recordWebinarIntakeSubmission(
     userId: string,
     programId: string,
     submissionId: string,
@@ -744,15 +754,17 @@ export class ProgramRegistrationsService {
       );
       return false;
     }
-    const intakeEffective = effectiveWebinarIntakeFormUrl(
-      program.zoomSessionType,
-      program.jotformIntakeFormUrl,
+    const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
-        undefined,
+      undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      program,
+      defaultIntake,
     );
-    if (!intakeEffective) {
+    if (!surveyMeta.hasIntakeSurvey) {
       this.logger.warn(
-        `Intake webhook: program ${programId} has no intake URL configured`,
+        `Intake: program ${programId} has no intake survey configured`,
       );
       return false;
     }
@@ -770,11 +782,11 @@ export class ProgramRegistrationsService {
           programId,
           status: ProgramRegistrationStatus.APPROVED,
           postEventAttendanceStatus: att,
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
         update: {
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
       });
@@ -789,7 +801,7 @@ export class ProgramRegistrationsService {
       await this.prisma.programRegistration.update({
         where: { id: existing.id },
         data: {
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
       });
@@ -813,7 +825,7 @@ export class ProgramRegistrationsService {
           postEventAttendanceStatus: approvedNow
             ? attendanceIfApproved
             : PostEventAttendanceStatus.NOT_REQUIRED,
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
       });
@@ -828,7 +840,7 @@ export class ProgramRegistrationsService {
       await this.prisma.programRegistration.update({
         where: { id: existing.id },
         data: {
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
           status: nextStatus,
           ...(nextStatus === ProgramRegistrationStatus.PENDING
@@ -1164,7 +1176,6 @@ export class ProgramRegistrationsService {
           ...(status === ProgramRegistrationStatus.REJECTED
             ? {
                 postEventSurveyAcknowledgedAt: null,
-                postEventJotformSubmissionId: null,
                 honorariumRequestedAt: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
@@ -1176,7 +1187,6 @@ export class ProgramRegistrationsService {
                 postEventAttendanceStatus:
                   PostEventAttendanceStatus.NOT_REQUIRED,
                 postEventSurveyAcknowledgedAt: null,
-                postEventJotformSubmissionId: null,
                 honorariumRequestedAt: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
@@ -1333,7 +1343,6 @@ export class ProgramRegistrationsService {
             status: ProgramRegistrationStatus.REJECTED,
             postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
             postEventSurveyAcknowledgedAt: null,
-            postEventJotformSubmissionId: null,
             honorariumRequestedAt: null,
             postEventAttendanceReviewedAt: null,
             postEventAttendanceReviewedByUserId: null,
@@ -1405,7 +1414,6 @@ export class ProgramRegistrationsService {
       this.prisma,
       userId,
       surveyMeta.feedbackSurveyId,
-      reg,
     );
     if (!submitted) {
       throw new BadRequestException(

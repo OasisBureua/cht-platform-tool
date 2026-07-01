@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { RequestMethod } from '@nestjs/common';
 import { join } from 'path';
+import { randomUUID } from 'node:crypto';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -24,6 +25,8 @@ import { JotformModule } from './modules/jotform/jotform.module';
 import { HubSpotModule } from './modules/hubspot/hubspot.module';
 import { OutboundSyncModule } from './modules/outbound-sync/outbound-sync.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { CacheModule } from './cache/cache.module';
+import { InternalModule } from './modules/internal/internal.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -35,6 +38,17 @@ const usePrettyLogs = process.env.LOG_PRETTY === 'true';
       forRoutes: [{ method: RequestMethod.ALL, path: '{*splat}' }],
       pinoHttp: {
         level: process.env.NODE_ENV !== 'production' ? 'debug' : 'info',
+        genReqId: (req) => {
+          const incoming = req.headers['x-request-id'];
+          if (typeof incoming === 'string' && incoming.trim()) {
+            return incoming.trim();
+          }
+          if (Array.isArray(incoming)) {
+            const first = incoming.find((v) => typeof v === 'string' && v.trim());
+            if (first?.trim()) return first.trim();
+          }
+          return randomUUID();
+        },
         transport: usePrettyLogs
           ? { target: 'pino-pretty', options: { colorize: true } }
           : undefined,
@@ -54,6 +68,7 @@ const usePrettyLogs = process.env.LOG_PRETTY === 'true';
         abortEarly: false,
       },
     }),
+    CacheModule,
     ThrottlerModule.forRoot([
       { name: 'short', ttl: 1000, limit: 10 },
       { name: 'medium', ttl: 10000, limit: 50 },
@@ -76,6 +91,7 @@ const usePrettyLogs = process.env.LOG_PRETTY === 'true';
     HubSpotModule,
     OutboundSyncModule,
     ContactModule,
+    InternalModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

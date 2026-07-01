@@ -1,9 +1,19 @@
 import apiClient from './client';
 
+/** HCP Intel overlay from Content Hub when kols.hcp_npi is linked. Email is omitted on the public KOL UI. */
+export interface PublicKolIntel {
+  npi?: string | null;
+  specialty?: string | null;
+  location?: string | null;
+  affiliation?: string | null;
+  publications_approx?: number | null;
+  open_payments?: { total: number; records: number; years: string } | null;
+  ai_brief?: { whoTheyAre?: string } | null;
+}
+
 /**
- * Public KOL (mirrors MediaHub PublicKOL shape, proxied through CHT backend).
- * Source of truth for the /kol-network page; replaces the static
- * `frontend/src/data/dol-network.ts` file.
+ * Public KOL — proxied from Content Hub via CHT GET /api/kol-network/*.
+ * Source of truth for roster; static dol-network.ts fills education/social only.
  */
 export interface PublicKol {
   id: string;
@@ -19,6 +29,7 @@ export interface PublicKol {
   shoot_count: number;
   first_appeared_at: string | null;
   is_new: boolean;
+  intel?: PublicKolIntel | null;
 }
 
 export interface PublicKolRegionFacet {
@@ -58,11 +69,6 @@ export interface PublicKolPublicationList {
 }
 
 export const kolNetworkApi = {
-  /**
-   * List public KOLs with region + institution facets.
-   * Returns an empty payload when MediaHub is unreachable (CHT backend
-   * degrades gracefully) so the UI can render an empty state.
-   */
   list: async (params?: KolListParams): Promise<PublicKolList> => {
     const queryParams: Record<string, string | number | undefined> = {};
     if (params?.region) queryParams.region = params.region;
@@ -79,9 +85,6 @@ export const kolNetworkApi = {
     );
   },
 
-  /**
-   * Fetch a single KOL profile by slug. 404 → null (caller renders not-found).
-   */
   get: async (slug: string): Promise<PublicKol | null> => {
     try {
       const { data } = await apiClient.get<PublicKol>(
@@ -96,12 +99,6 @@ export const kolNetworkApi = {
     }
   },
 
-  /**
-   * Recent OpenAlex-derived publications for a KOL. Always returns an
-   * array shape — empty when the KOL has no OpenAlex linkage or the
-   * MediaHub call fails. Caller renders an empty-state message rather
-   * than treating that as an error.
-   */
   publications: async (
     slug: string,
     params?: { limit?: number; offset?: number },

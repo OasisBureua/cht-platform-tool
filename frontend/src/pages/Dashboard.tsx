@@ -185,11 +185,12 @@ export default function Dashboard() {
     retry: 1,
   });
 
-  const { data: surveys = [], isLoading: surveysLoading } = useQuery({
+  const { data: surveyList, isLoading: surveysLoading } = useQuery({
     queryKey: ['surveys'],
     queryFn: surveysApi.getAll,
     staleTime: 5 * 60 * 1000,
   });
+  const surveys = surveyList?.active ?? [];
 
   const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
     queryKey: ['office-hours'],

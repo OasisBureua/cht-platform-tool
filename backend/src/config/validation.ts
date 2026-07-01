@@ -80,6 +80,10 @@ export const validationSchema = Joi.object({
   MEDIAHUB_BASE_URL: Joi.string().allow('').optional(),
   MEDIAHUB_API_KEY: Joi.string().allow('').optional(),
 
+  // Content Hub producer API (KOL network + HCP upsert; catalog stays on MediaHub)
+  CONTENTHUB_BASE_URL: Joi.string().allow('').optional(),
+  CONTENTHUB_API_KEY: Joi.string().allow('').optional(),
+
   // YouTube (optional – for catalog playlists, fallback when MediaHub not configured)
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),
   YOUTUBE_PLAYLIST_IDS: Joi.string().allow('').optional(),
@@ -116,4 +120,8 @@ export const validationSchema = Joi.object({
   MAILCHIMP_AUDIENCE_ID: Joi.string().allow('').optional(),
   MAILCHIMP_SERVER: Joi.string().allow('').optional(),
   MAILCHIMP_SERVER_PREFIX: Joi.string().allow('').optional(),
+
+  REDIS_URL: Joi.string().allow('').optional(),
+  REDIS_CACHE_TTL_SECONDS: Joi.number().optional(),
+  INTERNAL_CACHE_SECRET: Joi.string().allow('').optional(),
 });

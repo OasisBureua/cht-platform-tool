@@ -47,9 +47,10 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
-  resource_prefix            = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
-  log_retention_days         = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
-  manage_account_resources   = var.environment == "platform"
+  resource_prefix          = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  log_retention_days       = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  manage_account_resources = var.environment == "platform"
+  elasticache_enabled      = var.enable_elasticache != null ? var.enable_elasticache : var.environment == "dev"
 }
 
 # ============================================
@@ -290,6 +291,8 @@ module "secrets" {
   gotrue_jwt_secret                         = var.gotrue_jwt_secret
   mediahub_base_url                         = var.mediahub_base_url
   mediahub_api_key                          = var.mediahub_api_key
+  contenthub_base_url                       = var.contenthub_base_url
+  contenthub_api_key                        = var.contenthub_api_key
   youtube_api_key                           = var.youtube_api_key
   youtube_playlist_ids                      = var.youtube_playlist_ids
   zoom_account_id                           = var.zoom_account_id
@@ -337,9 +340,9 @@ module "iam" {
     module.sqs.cme_queue_arn,
     module.sqs.scheduled_jobs_queue_arn
   ]
-  certificates_bucket_arn = module.s3_certificates.bucket_arn
+  certificates_bucket_arn   = module.s3_certificates.bucket_arn
   session_assets_bucket_arn = module.s3_session_assets.bucket_arn
-  cognito_user_pool_arn = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
+  cognito_user_pool_arn     = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
 }
 
 # ============================================
@@ -370,44 +373,71 @@ module "ecs_cluster" {
 }
 
 # ============================================
+# Cache - ElastiCache Redis (dev by default)
+# ============================================
+module "elasticache" {
+  count  = local.elasticache_enabled ? 1 : 0
+  source = "../../modules/cache/elasticache"
+
+  project            = var.project
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  node_type          = var.elasticache_node_type
+}
+
+# ============================================
 # Compute - ECS Backend Service
 # ============================================
 module "ecs_backend" {
   source = "../../modules/compute/ecs-backend"
 
-  project               = var.project
-  environment           = var.environment
-  aws_region            = "us-east-1"
-  vpc_id                = module.vpc.vpc_id
-  private_subnet_ids    = module.vpc.private_subnet_ids
-  cluster_id            = module.ecs_cluster.cluster_id
-  cluster_name          = module.ecs_cluster.cluster_name
-  execution_role_arn    = module.iam.ecs_task_execution_role_arn
-  task_role_arn         = module.iam.ecs_task_role_arn
-  alb_security_group_id = module.alb.alb_security_group_id
-  target_group_arn      = module.alb.backend_target_group_arn
-  alb_listener_arn      = module.alb.https_listener_arn
-  log_group_name        = module.ecs_cluster.log_group_name
-  container_image       = var.backend_image
-  database_secret_arn   = module.secrets.database_secret_arn
-  app_secrets_arn       = module.secrets.app_secrets_arn
-  task_cpu              = var.backend_task_cpu
-  task_memory           = var.backend_task_memory
-  desired_count         = var.backend_desired_count
-  min_capacity          = var.backend_min_capacity
-  max_capacity          = var.backend_max_capacity
-  frontend_url          = "https://${var.domain_name}"
-  sqs_email_queue_url   = module.sqs.email_queue_url
-  sqs_payment_queue_url = module.sqs.payment_queue_url
-  sqs_cme_queue_url     = module.sqs.cme_queue_url
-  session_assets_s3_bucket         = module.s3_session_assets.bucket_id
-  session_assets_public_url_base   = module.s3_session_assets.public_url_base
-  cognito_user_pool_id             = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
-  cognito_client_id                = var.enable_cognito_pools ? module.cognito[0].client_id : ""
-  cognito_hosted_ui_base_url       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
-  cognito_jwks_uri                 = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
-  cognito_region                   = "us-east-1"
-  recaptcha_min_score              = var.recaptcha_min_score
+  project                        = var.project
+  environment                    = var.environment
+  aws_region                     = "us-east-1"
+  vpc_id                         = module.vpc.vpc_id
+  private_subnet_ids             = module.vpc.private_subnet_ids
+  cluster_id                     = module.ecs_cluster.cluster_id
+  cluster_name                   = module.ecs_cluster.cluster_name
+  execution_role_arn             = module.iam.ecs_task_execution_role_arn
+  task_role_arn                  = module.iam.ecs_task_role_arn
+  alb_security_group_id          = module.alb.alb_security_group_id
+  target_group_arn               = module.alb.backend_target_group_arn
+  alb_listener_arn               = module.alb.https_listener_arn
+  log_group_name                 = module.ecs_cluster.log_group_name
+  container_image                = var.backend_image
+  database_secret_arn            = module.secrets.database_secret_arn
+  app_secrets_arn                = module.secrets.app_secrets_arn
+  task_cpu                       = var.backend_task_cpu
+  task_memory                    = var.backend_task_memory
+  desired_count                  = var.backend_desired_count
+  min_capacity                   = var.backend_min_capacity
+  max_capacity                   = var.backend_max_capacity
+  frontend_url                   = "https://${var.domain_name}"
+  sqs_email_queue_url            = module.sqs.email_queue_url
+  sqs_payment_queue_url          = module.sqs.payment_queue_url
+  sqs_cme_queue_url              = module.sqs.cme_queue_url
+  session_assets_s3_bucket       = module.s3_session_assets.bucket_id
+  session_assets_public_url_base = module.s3_session_assets.public_url_base
+  cognito_user_pool_id           = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
+  cognito_client_id              = var.enable_cognito_pools ? module.cognito[0].client_id : ""
+  cognito_hosted_ui_base_url     = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
+  cognito_jwks_uri               = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
+  cognito_region                 = "us-east-1"
+  recaptcha_min_score            = var.recaptcha_min_score
+  redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
+}
+
+resource "aws_security_group_rule" "elasticache_from_backend" {
+  count = local.elasticache_enabled ? 1 : 0
+
+  type                     = "ingress"
+  description              = "Redis from backend ECS tasks"
+  from_port                = module.elasticache[0].port
+  to_port                  = module.elasticache[0].port
+  protocol                 = "tcp"
+  security_group_id        = module.elasticache[0].security_group_id
+  source_security_group_id = module.ecs_backend.security_group_id
 }
 
 # ============================================
@@ -416,26 +446,26 @@ module "ecs_backend" {
 module "ecs_worker" {
   source = "../../modules/compute/ecs-worker"
 
-  project               = var.project
-  environment           = var.environment
-  aws_region            = "us-east-1"
-  vpc_id                = module.vpc.vpc_id
-  private_subnet_ids    = module.vpc.private_subnet_ids
-  cluster_id            = module.ecs_cluster.cluster_id
-  cluster_name          = module.ecs_cluster.cluster_name
-  execution_role_arn    = module.iam.ecs_task_execution_role_arn
-  task_role_arn         = module.iam.worker_task_role_arn
-  log_group_name        = module.ecs_cluster.log_group_name
-  container_image       = var.worker_image
-  database_secret_arn   = module.secrets.database_secret_arn
-  app_secrets_arn       = module.secrets.app_secrets_arn
-  primary_queue_name    = "${local.resource_prefix}-email-queue"
-  task_cpu              = var.worker_task_cpu
-  task_memory           = var.worker_task_memory
-  desired_count         = var.worker_desired_count
-  min_capacity          = var.worker_min_capacity
-  max_capacity          = var.worker_max_capacity
-  security_group_ids    = [aws_security_group.worker.id]
+  project                      = var.project
+  environment                  = var.environment
+  aws_region                   = "us-east-1"
+  vpc_id                       = module.vpc.vpc_id
+  private_subnet_ids           = module.vpc.private_subnet_ids
+  cluster_id                   = module.ecs_cluster.cluster_id
+  cluster_name                 = module.ecs_cluster.cluster_name
+  execution_role_arn           = module.iam.ecs_task_execution_role_arn
+  task_role_arn                = module.iam.worker_task_role_arn
+  log_group_name               = module.ecs_cluster.log_group_name
+  container_image              = var.worker_image
+  database_secret_arn          = module.secrets.database_secret_arn
+  app_secrets_arn              = module.secrets.app_secrets_arn
+  primary_queue_name           = "${local.resource_prefix}-email-queue"
+  task_cpu                     = var.worker_task_cpu
+  task_memory                  = var.worker_task_memory
+  desired_count                = var.worker_desired_count
+  min_capacity                 = var.worker_min_capacity
+  max_capacity                 = var.worker_max_capacity
+  security_group_ids           = [aws_security_group.worker.id]
   sqs_email_queue_url          = module.sqs.email_queue_url
   sqs_payment_queue_url        = module.sqs.payment_queue_url
   sqs_cme_queue_url            = module.sqs.cme_queue_url
@@ -450,10 +480,10 @@ module "ecs_worker" {
 module "scheduled_eventbridge" {
   source = "../../modules/messaging/eventbridge-scheduled-jobs"
 
-  project                  = var.project
-  environment              = var.environment
-  scheduled_jobs_queue_arn = module.sqs.scheduled_jobs_queue_arn
-  scheduled_jobs_queue_url = module.sqs.scheduled_jobs_queue_url
+  project                    = var.project
+  environment                = var.environment
+  scheduled_jobs_queue_arn   = module.sqs.scheduled_jobs_queue_arn
+  scheduled_jobs_queue_url   = module.sqs.scheduled_jobs_queue_url
   session_reminders_schedule = var.session_reminders_schedule_expression
 }
 
@@ -477,18 +507,18 @@ module "waf_cloudfront" {
 module "cloudfront" {
   source = "../../modules/networking/cloudfront"
 
-  project               = var.project
-  environment           = var.environment
-  s3_bucket_id          = module.s3_frontend.bucket_id
-  s3_bucket_domain_name = module.s3_frontend.bucket_domain_name
-  cloudfront_oai_path   = module.s3_frontend.cloudfront_oai_path
-  certificate_arn       = var.cloudfront_certificate_arn
-  domain_aliases        = [var.domain_name]
+  project                     = var.project
+  environment                 = var.environment
+  s3_bucket_id                = module.s3_frontend.bucket_id
+  s3_bucket_domain_name       = module.s3_frontend.bucket_domain_name
+  cloudfront_oai_path         = module.s3_frontend.cloudfront_oai_path
+  certificate_arn             = var.cloudfront_certificate_arn
+  domain_aliases              = [var.domain_name]
   api_origin_domain           = module.alb.alb_dns_name
   secondary_api_origin_domain = var.secondary_api_origin_domain
   route_api_to_secondary      = var.route_api_to_secondary
   price_class                 = "PriceClass_100"
-  web_acl_id            = module.waf_cloudfront.web_acl_arn
+  web_acl_id                  = module.waf_cloudfront.web_acl_arn
 }
 
 # ============================================
@@ -583,9 +613,9 @@ module "ecr_replication" {
   count  = var.enable_ecr_replication ? 1 : 0
   source = "../../modules/compute/ecr-replication"
 
-  destination_region  = var.ecr_replication_destination_region
-  repository_prefix   = var.ecr_repository_prefix
-  repository_names    = var.ecr_repository_names
+  destination_region = var.ecr_replication_destination_region
+  repository_prefix  = var.ecr_repository_prefix
+  repository_names   = var.ecr_repository_names
 }
 
 # ============================================

@@ -4,9 +4,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
 import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } from '../../lib/auth-config';
+import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { executeRecaptcha } from '../../lib/recaptcha';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
+import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function Login() {
   const location = useLocation();
@@ -123,6 +125,11 @@ export default function Login() {
 
         {/* Form section */}
         <div className="p-6">
+          {!mfaSession ? (
+            <div className="mb-4">
+              <AuthMigrationNotice variant="login" />
+            </div>
+          ) : null}
           <form className="space-y-4" onSubmit={mfaSession ? handleMfaSubmit : handleLogin}>
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -217,6 +224,7 @@ export default function Login() {
                 )}
                 Continue with Google
               </button>
+              <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
             </div>
           ) : !mfaSession ? (
             <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

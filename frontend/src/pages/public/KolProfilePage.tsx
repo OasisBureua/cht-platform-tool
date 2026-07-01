@@ -9,12 +9,8 @@ import {
   Sparkles,
   Twitter,
 } from 'lucide-react';
-import {
-  findKolInDirectory,
-  useKolDirectory,
-  type DolEntry,
-  type DolRegion,
-} from '../../hooks/useKolDirectory';
+import { useKolProfile } from '../../hooks/useKolProfile';
+import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 
 type TabId = 'overview' | 'background' | 'engagement';
 
@@ -55,7 +51,6 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
     npi: i?.npi,
     rosterOnly: i?.rosterOnly ?? false,
     phone: i?.phone,
-    email: i?.email,
     linkedInUrl: i?.linkedInUrl,
     twitterUrl: i?.twitterUrl,
     webUrl: i?.webUrl,
@@ -70,26 +65,26 @@ export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
   const [tab, setTab] = useState<TabId>('overview');
 
-  const directory = useKolDirectory();
-  const found = kolId ? findKolInDirectory(directory, kolId) : null;
+  const profile = useKolProfile(kolId);
 
   const vm = useMemo(() => {
-    if (!found) return null;
-    return buildViewModel(found.region, found.entry);
-  }, [found]);
+    if (profile.loadState !== 'ready') return null;
+    return buildViewModel(profile.region, profile.entry);
+  }, [profile]);
 
-  if (directory.loadState === 'loading') {
+  if (profile.loadState === 'loading') {
     return (
       <div className="min-h-screen w-full bg-zinc-50 px-6 py-20 text-center text-zinc-500 dark:bg-black dark:text-zinc-400">
         Loading profile…
       </div>
     );
   }
-  if (!kolId || !found || !vm) {
+  if (!kolId || profile.loadState !== 'ready' || !vm) {
     return <Navigate to="/kol-network" replace />;
   }
 
-  const { region, entry } = found;
+  const { entry } = profile;
+  const hasAiBrief = Boolean(vm.aiBrief?.whoTheyAre?.trim());
 
   return (
     <div className="min-h-screen w-full bg-zinc-50 pb-20 text-zinc-900 dark:bg-black dark:text-zinc-100">
@@ -164,7 +159,7 @@ export default function KolProfilePage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Institution</p>
                 <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.institution}</p>
               </div>
-              {entry.bio ? (
+              {entry.bio && !hasAiBrief ? (
                 <div className="sm:col-span-2">
                   <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Summary</p>
                   <p className="mt-1 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.bio}</p>
@@ -172,7 +167,7 @@ export default function KolProfilePage() {
               ) : null}
             </div>
 
-            {(vm.phone || vm.email || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
+            {(vm.phone || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {vm.phone ? (
                   <a
@@ -180,11 +175,6 @@ export default function KolProfilePage() {
                     className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
                   >
                     {vm.phone}
-                  </a>
-                ) : null}
-                {vm.email ? (
-                  <a href={`mailto:${vm.email}`} className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
-                    {vm.email}
                   </a>
                 ) : null}
                 <SocialIcon href={vm.linkedInUrl} label="LinkedIn">
@@ -230,32 +220,40 @@ export default function KolProfilePage() {
           <div className="mt-4 space-y-4" role="tabpanel">
             {tab === 'overview' ? (
               <>
-                {vm.aiBrief?.whoTheyAre ? (
+                {hasAiBrief ? (
                   <article className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                     <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
                       <Sparkles className="h-4 w-4 text-amber-500" aria-hidden />
                       <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Intel summary</span>
-                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-zinc-400">MediaHub</span>
+                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                        AI-generated
+                      </span>
                     </div>
                     <div className="space-y-4 px-4 py-4 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                      {vm.aiBrief.whoTheyAre ? (
+                      {vm.aiBrief?.whoTheyAre ? (
                         <div>
                           <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Who they are</p>
                           <p className="mt-1">{vm.aiBrief.whoTheyAre}</p>
                         </div>
                       ) : null}
-                      {vm.aiBrief.focus ? (
+                      {vm.aiBrief?.focus ? (
                         <div>
                           <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Focus</p>
                           <p className="mt-1">{vm.aiBrief.focus}</p>
                         </div>
                       ) : null}
-                      {vm.aiBrief.chmContext ? (
+                      {vm.aiBrief?.chmContext ? (
                         <div>
                           <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">CHM context</p>
                           <p className="mt-1">{vm.aiBrief.chmContext}</p>
                         </div>
                       ) : null}
+                    </div>
+                    <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                      <p className="text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
+                        AI-generated summaries are provided for convenience and may contain
+                        inaccuracies. Verify important details against primary sources.
+                      </p>
                     </div>
                   </article>
                 ) : (

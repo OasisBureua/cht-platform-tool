@@ -51,214 +51,223 @@ resource "aws_ecs_task_definition" "backend" {
   container_definitions = jsonencode([
     merge(
       {
-      name      = "backend"
-      image     = var.container_image
-      essential = true
+        name      = "backend"
+        image     = var.container_image
+        essential = true
 
-      portMappings = [
-        {
-          containerPort = 3000
-          protocol      = "tcp"
-        }
-      ]
-
-      environment = concat(
-        [
+        portMappings = [
           {
-            name  = "NODE_ENV"
-            value = local.node_env
-          },
-          {
-            name  = "PORT"
-            value = "3000"
-          },
-          {
-            name  = "AWS_REGION"
-            value = var.aws_region
-          },
-          {
-            name  = "APP_NAME"
-            value = "cht-platform-backend"
-          },
-          {
-            name  = "CHT_ENVIRONMENT"
-            value = var.environment
-          },
-          {
-            name  = "IMAGE_TAG"
-            value = local.container_image_tag
-          },
-          {
-            name  = "APP_VERSION"
-            value = local.container_image_tag
-          },
-          {
-            name  = "CONTAINER_IMAGE"
-            value = var.container_image
-          },
-          {
-            name  = "SESSION_TTL_SECONDS"
-            value = "1800"
+            containerPort = 3000
+            protocol      = "tcp"
           }
-        ],
-        concat(
-          var.frontend_url != "" ? [{ name = "FRONTEND_URL", value = var.frontend_url }] : [],
-          var.sqs_email_queue_url != "" ? [{ name = "SQS_EMAIL_QUEUE_URL", value = var.sqs_email_queue_url }] : [],
-          var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : [],
-          var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : [],
-          var.session_assets_s3_bucket != "" && var.session_assets_public_url_base != ""
+        ]
+
+        environment = concat(
+          [
+            {
+              name  = "NODE_ENV"
+              value = local.node_env
+            },
+            {
+              name  = "PORT"
+              value = "3000"
+            },
+            {
+              name  = "AWS_REGION"
+              value = var.aws_region
+            },
+            {
+              name  = "APP_NAME"
+              value = "cht-platform-backend"
+            },
+            {
+              name  = "CHT_ENVIRONMENT"
+              value = var.environment
+            },
+            {
+              name  = "IMAGE_TAG"
+              value = local.container_image_tag
+            },
+            {
+              name  = "APP_VERSION"
+              value = local.container_image_tag
+            },
+            {
+              name  = "CONTAINER_IMAGE"
+              value = var.container_image
+            },
+            {
+              name  = "SESSION_TTL_SECONDS"
+              value = "1800"
+            }
+          ],
+          concat(
+            var.frontend_url != "" ? [{ name = "FRONTEND_URL", value = var.frontend_url }] : [],
+            var.sqs_email_queue_url != "" ? [{ name = "SQS_EMAIL_QUEUE_URL", value = var.sqs_email_queue_url }] : [],
+            var.sqs_payment_queue_url != "" ? [{ name = "SQS_PAYMENT_QUEUE_URL", value = var.sqs_payment_queue_url }] : [],
+            var.sqs_cme_queue_url != "" ? [{ name = "SQS_CME_QUEUE_URL", value = var.sqs_cme_queue_url }] : [],
+            var.session_assets_s3_bucket != "" && var.session_assets_public_url_base != ""
             ? [
-                { name = "SESSION_ASSETS_S3_BUCKET", value = var.session_assets_s3_bucket },
-                { name = "SESSION_ASSETS_PUBLIC_URL_BASE", value = var.session_assets_public_url_base },
-              ]
+              { name = "SESSION_ASSETS_S3_BUCKET", value = var.session_assets_s3_bucket },
+              { name = "SESSION_ASSETS_PUBLIC_URL_BASE", value = var.session_assets_public_url_base },
+            ]
             : [],
-          var.cognito_user_pool_id != "" ? [{ name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id }] : [],
-          var.cognito_client_id != "" ? [{ name = "COGNITO_CLIENT_ID", value = var.cognito_client_id }] : [],
-          var.cognito_user_pool_id != "" ? [{ name = "COGNITO_REGION", value = var.cognito_region != "" ? var.cognito_region : var.aws_region }] : [],
-          var.cognito_hosted_ui_base_url != "" ? [{ name = "COGNITO_HOSTED_UI_BASE_URL", value = var.cognito_hosted_ui_base_url }] : [],
-          var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
-          [{ name = "RECAPTCHA_MIN_SCORE", value = tostring(var.recaptcha_min_score) }],
+            var.cognito_user_pool_id != "" ? [{ name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id }] : [],
+            var.cognito_client_id != "" ? [{ name = "COGNITO_CLIENT_ID", value = var.cognito_client_id }] : [],
+            var.cognito_user_pool_id != "" ? [{ name = "COGNITO_REGION", value = var.cognito_region != "" ? var.cognito_region : var.aws_region }] : [],
+            var.cognito_hosted_ui_base_url != "" ? [{ name = "COGNITO_HOSTED_UI_BASE_URL", value = var.cognito_hosted_ui_base_url }] : [],
+            var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
+            [{ name = "RECAPTCHA_MIN_SCORE", value = tostring(var.recaptcha_min_score) }],
+            var.redis_url != "" ? [{ name = "REDIS_URL", value = var.redis_url }] : [],
+          )
         )
-      )
 
-      secrets = [
-        {
-          name      = "DATABASE_URL"
-          valueFrom = "${var.database_secret_arn}:url::"
-        },
-        {
-          name      = "SUPABASE_URL"
-          valueFrom = "${var.app_secrets_arn}:supabase_url::"
-        },
-        {
-          name      = "SUPABASE_ANON_KEY"
-          valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
-        },
-        {
-          name      = "GOTRUE_JWT_SECRET"
-          valueFrom = "${var.app_secrets_arn}:gotrue_jwt_secret::"
-        },
-        {
-          name      = "MEDIAHUB_BASE_URL"
-          valueFrom = "${var.app_secrets_arn}:mediahub_base_url::"
-        },
-        {
-          name      = "MEDIAHUB_API_KEY"
-          valueFrom = "${var.app_secrets_arn}:mediahub_api_key::"
-        },
-        {
-          name      = "YOUTUBE_API_KEY"
-          valueFrom = "${var.app_secrets_arn}:youtube_api_key::"
-        },
-        {
-          name      = "YOUTUBE_PLAYLIST_IDS"
-          valueFrom = "${var.app_secrets_arn}:youtube_playlist_ids::"
-        },
-        {
-          name      = "ZOOM_ACCOUNT_ID"
-          valueFrom = "${var.app_secrets_arn}:zoom_account_id::"
-        },
-        {
-          name      = "ZOOM_CLIENT_ID"
-          valueFrom = "${var.app_secrets_arn}:zoom_client_id::"
-        },
-        {
-          name      = "ZOOM_CLIENT_SECRET"
-          valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
-        },
-        {
-          name      = "ZOOM_WEBHOOK_SECRET"
-          valueFrom = "${var.app_secrets_arn}:zoom_webhook_secret::"
-        },
-        {
-          name      = "ZOOM_SDK_KEY"
-          valueFrom = "${var.app_secrets_arn}:zoom_sdk_key::"
-        },
-        {
-          name      = "ZOOM_SDK_SECRET"
-          valueFrom = "${var.app_secrets_arn}:zoom_sdk_secret::"
-        },
-        {
-          name      = "JOTFORM_API_KEY"
-          valueFrom = "${var.app_secrets_arn}:jotform_api_key::"
-        },
-        {
-          name      = "JOTFORM_WEBINAR_DEFAULT_INTAKE_URL"
-          valueFrom = "${var.app_secrets_arn}:jotform_webinar_default_intake_url::"
-        },
-        {
-          name      = "JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID"
-          valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
-        },
-        {
-          name      = "BILL_DEV_KEY"
-          valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
-        },
-        {
-          name      = "BILL_USERNAME"
-          valueFrom = "${var.app_secrets_arn}:bill_username::"
-        },
-        {
-          name      = "BILL_PASSWORD"
-          valueFrom = "${var.app_secrets_arn}:bill_password::"
-        },
-        {
-          name      = "BILL_ORG_ID"
-          valueFrom = "${var.app_secrets_arn}:bill_org_id::"
-        },
-        {
-          name      = "BILL_FUNDING_ACCOUNT_ID"
-          valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
-        },
-        {
-          name      = "BILL_WEBHOOK_SECRET"
-          valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
-        },
-        {
-          name      = "BILL_MFA_REMEMBER_ME_ID"
-          valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
-        },
-        {
-          name      = "BILL_MFA_DEVICE_NAME"
-          valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
-        },
-        {
-          name      = "ADMIN_BOOTSTRAP_SECRET"
-          valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
-        },
-        {
-          name      = "HUBSPOT_ACCESS_TOKEN"
-          valueFrom = "${var.app_secrets_arn}:hubspot_access_token::"
-        },
-        {
-          name      = "RECAPTCHA_SECRET_KEY"
-          valueFrom = "${var.app_secrets_arn}:recaptcha_secret_key::"
+        secrets = [
+          {
+            name      = "DATABASE_URL"
+            valueFrom = "${var.database_secret_arn}:url::"
+          },
+          {
+            name      = "SUPABASE_URL"
+            valueFrom = "${var.app_secrets_arn}:supabase_url::"
+          },
+          {
+            name      = "SUPABASE_ANON_KEY"
+            valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
+          },
+          {
+            name      = "GOTRUE_JWT_SECRET"
+            valueFrom = "${var.app_secrets_arn}:gotrue_jwt_secret::"
+          },
+          {
+            name      = "MEDIAHUB_BASE_URL"
+            valueFrom = "${var.app_secrets_arn}:mediahub_base_url::"
+          },
+          {
+            name      = "MEDIAHUB_API_KEY"
+            valueFrom = "${var.app_secrets_arn}:mediahub_api_key::"
+          },
+          {
+            name      = "CONTENTHUB_BASE_URL"
+            valueFrom = "${var.app_secrets_arn}:contenthub_base_url::"
+          },
+          {
+            name      = "CONTENTHUB_API_KEY"
+            valueFrom = "${var.app_secrets_arn}:contenthub_api_key::"
+          },
+          {
+            name      = "YOUTUBE_API_KEY"
+            valueFrom = "${var.app_secrets_arn}:youtube_api_key::"
+          },
+          {
+            name      = "YOUTUBE_PLAYLIST_IDS"
+            valueFrom = "${var.app_secrets_arn}:youtube_playlist_ids::"
+          },
+          {
+            name      = "ZOOM_ACCOUNT_ID"
+            valueFrom = "${var.app_secrets_arn}:zoom_account_id::"
+          },
+          {
+            name      = "ZOOM_CLIENT_ID"
+            valueFrom = "${var.app_secrets_arn}:zoom_client_id::"
+          },
+          {
+            name      = "ZOOM_CLIENT_SECRET"
+            valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
+          },
+          {
+            name      = "ZOOM_WEBHOOK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:zoom_webhook_secret::"
+          },
+          {
+            name      = "ZOOM_SDK_KEY"
+            valueFrom = "${var.app_secrets_arn}:zoom_sdk_key::"
+          },
+          {
+            name      = "ZOOM_SDK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:zoom_sdk_secret::"
+          },
+          {
+            name      = "JOTFORM_API_KEY"
+            valueFrom = "${var.app_secrets_arn}:jotform_api_key::"
+          },
+          {
+            name      = "JOTFORM_WEBINAR_DEFAULT_INTAKE_URL"
+            valueFrom = "${var.app_secrets_arn}:jotform_webinar_default_intake_url::"
+          },
+          {
+            name      = "JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID"
+            valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
+          },
+          {
+            name      = "BILL_DEV_KEY"
+            valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
+          },
+          {
+            name      = "BILL_USERNAME"
+            valueFrom = "${var.app_secrets_arn}:bill_username::"
+          },
+          {
+            name      = "BILL_PASSWORD"
+            valueFrom = "${var.app_secrets_arn}:bill_password::"
+          },
+          {
+            name      = "BILL_ORG_ID"
+            valueFrom = "${var.app_secrets_arn}:bill_org_id::"
+          },
+          {
+            name      = "BILL_FUNDING_ACCOUNT_ID"
+            valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
+          },
+          {
+            name      = "BILL_WEBHOOK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
+          },
+          {
+            name      = "BILL_MFA_REMEMBER_ME_ID"
+            valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
+          },
+          {
+            name      = "BILL_MFA_DEVICE_NAME"
+            valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
+          },
+          {
+            name      = "ADMIN_BOOTSTRAP_SECRET"
+            valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
+          },
+          {
+            name      = "HUBSPOT_ACCESS_TOKEN"
+            valueFrom = "${var.app_secrets_arn}:hubspot_access_token::"
+          },
+          {
+            name      = "RECAPTCHA_SECRET_KEY"
+            valueFrom = "${var.app_secrets_arn}:recaptcha_secret_key::"
+          }
+        ]
+
+        environmentFiles = var.sqs_queue_urls_env_file_arn != "" ? [
+          {
+            value = var.sqs_queue_urls_env_file_arn
+            type  = "s3"
+          }
+        ] : []
+
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            "awslogs-group"         = var.log_group_name
+            "awslogs-region"        = var.aws_region
+            "awslogs-stream-prefix" = "backend"
+          }
         }
-      ]
 
-      environmentFiles = var.sqs_queue_urls_env_file_arn != "" ? [
-        {
-          value = var.sqs_queue_urls_env_file_arn
-          type  = "s3"
+        healthCheck = {
+          command     = ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
+          interval    = 30
+          timeout     = 5
+          retries     = 3
+          startPeriod = 90
         }
-      ] : []
-
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = var.log_group_name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "backend"
-        }
-      }
-
-      healthCheck = {
-        command     = ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 90
-      }
       },
       var.run_db_migrations ? {} : {
         command = ["sh", "-c", "node dist/src/main.js"]

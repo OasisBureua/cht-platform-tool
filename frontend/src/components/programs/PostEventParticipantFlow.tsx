@@ -241,13 +241,11 @@ export default function PostEventParticipantFlow(props: {
           <p className="text-sm text-gray-600">
             {hasSurvey ? (
               <>
-                Complete the post-event survey in the next step, then use <strong>Complete survey</strong> to save your
-                progress.
+                Complete the post-event survey in the next step to save your responses.
                 {hasHonorarium ? (
                   <>
                     {' '}
-                    On the next screen, confirm your payout details and use <strong>Continue</strong> to create a{' '}
-                    <strong>pending</strong> honorarium for an administrator to review and pay.
+                    Honorarium amount and payout steps are shown there after you submit.
                   </>
                 ) : null}{' '}
                 You cannot return to a previous step after you continue.

@@ -73,15 +73,6 @@ export function defaultWebinarIntakeQuestions() {
         text('company_website', 'Company website', { required: false }),
         text('linkedin', 'LinkedIn account handle', { required: false }),
         text('x_handle', 'X account handle', { required: false }),
-        single('honorarium_method', 'How would you like to receive your honorarium?', [
-          'Check',
-          'PayPal / Zelle',
-          'ACH / Wire',
-        ]),
-        text('payment_instructions', 'Please provide payment instructions', {
-          required: true,
-          long: true,
-        }),
       ]),
     ],
   };
@@ -203,10 +194,6 @@ export function defaultPostEventFeedbackQuestions() {
           'q23_faculty',
           'What change do you anticipate in your practice, and what questions remain for faculty?',
           { required: true, long: true },
-        ),
-        info(
-          'w9_notice',
-          'W-9 and honorarium payout details are managed in your profile and payments settings — not in this survey.',
         ),
       ]),
     ],

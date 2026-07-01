@@ -10,10 +10,10 @@ import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
   Award,
-  DollarSign,
   ChevronLeft,
   CheckCircle2,
   Circle,
+  DollarSign,
   ExternalLink,
   Video,
   Calendar,
@@ -327,7 +327,7 @@ export default function WebinarDetail() {
 
   const pendingRegistrationMessage =
     myRegistration?.status === 'PENDING'
-      ? myRegistration.intakeJotformSubmissionId
+      ? myRegistration.intakeSubmissionId
         ? 'Your registration survey was received. Waiting for an administrator to approve you before you can join the webinar in the app.'
         : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'
       : null;
@@ -686,7 +686,7 @@ export default function WebinarDetail() {
             <p className="text-xs font-semibold text-gray-900 truncate">{program.title}</p>
             <p className="text-xs text-gray-600 truncate">
               {program.honorariumAmount ? `${formatMoney(program.honorariumAmount)} honorarium` : 'Honorarium available'} •{' '}
-              {program.creditAmount} CME
+              {program.creditAmount > 0 ? `${program.creditAmount} CME` : 'Live session'}
             </p>
           </div>
 

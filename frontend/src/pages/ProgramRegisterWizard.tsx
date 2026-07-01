@@ -105,12 +105,10 @@ export default function ProgramRegisterWizard() {
   });
 
   useEffect(() => {
-    if (myRegistration?.intakeSurveySubmitted) {
-      setIntakeSubmissionId(myRegistration.intakeJotformSubmissionId?.trim() || 'native');
-    } else if (myRegistration?.intakeJotformSubmissionId?.trim()) {
-      setIntakeSubmissionId(myRegistration.intakeJotformSubmissionId.trim());
+    if (myRegistration?.intakeSubmissionId?.trim()) {
+      setIntakeSubmissionId(myRegistration.intakeSubmissionId.trim());
     }
-  }, [myRegistration?.intakeSurveySubmitted, myRegistration?.intakeJotformSubmissionId]);
+  }, [myRegistration?.intakeSubmissionId]);
 
   const { data: slots = [] } = useQuery({
     queryKey: ['program-slots', id],
@@ -130,7 +128,7 @@ export default function ProgramRegisterWizard() {
     mutationFn: () =>
       programsApi.submitRegistration(id!, {
         officeHoursSlotId: selectedSlotId,
-        intakeJotformSubmissionId: intakeSubmissionId?.trim(),
+        intakeSubmissionId: intakeSubmissionId?.trim(),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
@@ -245,9 +243,9 @@ export default function ProgramRegisterWizard() {
                     lastName: user?.lastName,
                     email: user?.email,
                   }}
-                  onSubmitted={() => {
+                  onSubmitted={(submissionId) => {
                     queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
-                    setIntakeSubmissionId('native');
+                    setIntakeSubmissionId(submissionId);
                   }}
                 />
               ) : (

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
+import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function ForgotPassword() {
   const { resetPasswordForEmail } = useAuth();
@@ -29,7 +30,7 @@ export default function ForgotPassword() {
         title="Check your email"
         subtitle={
           <>
-            If an account exists for <strong>{email}</strong>, you&apos;ll receive a password reset link.
+            If an account exists for <strong>{email}</strong>, you&apos;ll receive a 6-digit reset code by email.
           </>
         }
       >
@@ -50,11 +51,14 @@ export default function ForgotPassword() {
   }
 
   return (
-    <AuthFormCard
-      title="Forgot Password?"
-      subtitle="Enter your email and we'll send you a reset link."
-    >
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <AuthFormCard
+        title="Forgot Password?"
+        subtitle="Enter your email and we'll send you a 6-digit reset code."
+      >
+        <div className="mb-4">
+          <AuthMigrationNotice variant="forgot" />
+        </div>
+        <form className="space-y-4" onSubmit={handleSubmit}>
         {error && (
           <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}

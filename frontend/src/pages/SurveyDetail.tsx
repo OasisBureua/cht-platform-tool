@@ -277,6 +277,7 @@ export default function SurveyDetail() {
                     }}
                     disabled={formLocked || submitMutation.isPending}
                     submitting={submitMutation.isPending}
+                    showPayoutNotice={isPostEventFeedback}
                     onSubmit={(answers) => submitMutation.mutate(answers)}
                   />
                 ) : hasJotform && jotformEmbedUrl ? (
@@ -333,18 +334,18 @@ export default function SurveyDetail() {
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
                   <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
                   <p className="text-sm text-gray-600">
-                    After you submit the survey above, use <strong>Complete survey</strong> to lock in your response
+                    Submit the survey above to save your responses
                     {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
-                      ? ', then confirm payout details and tap Continue to create your pending honorarium request'
+                      ? ', then confirm payout details below to create your pending honorarium request'
                       : ''}
-                    . Each step can only be submitted once.
+                    .
                   </p>
                   <PostEventFeedbackLearnerActions
                     programId={survey.programId}
                     userId={userId}
                     myRegistration={programRegistration}
                     hasHonorarium={Boolean(survey.program?.honorariumAmount && survey.program.honorariumAmount > 0)}
-                    surveyReadyForAck={started || surveySaved}
+                    surveyReadyForAck={surveySaved && !useNativeRenderer}
                     surveyDetailId={id}
                   />
                 </div>
