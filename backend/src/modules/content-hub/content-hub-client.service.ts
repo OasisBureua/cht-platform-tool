@@ -4,6 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { isAxiosError } from 'axios';
 import { RedisCacheService } from '../../cache/redis-cache.service';
+import { CACHE_NAMESPACE } from '../../cache/cache-keys';
 import { cacheKeyHash } from '../../cache/cache-key.util';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 import { newContentHubRequestId } from '../../utils/request-id';
@@ -63,7 +64,7 @@ export class ContentHubClientService {
         ) as Record<string, string | number | boolean>)
       : undefined;
 
-    const cacheKey = `cht:contenthub:${path}:${cacheKeyHash(cleanParams ?? {})}`;
+    const cacheKey = `${CACHE_NAMESPACE.CONTENTHUB}:${path}:${cacheKeyHash(cleanParams ?? {})}`;
     const cached = await this.cache.getJson<T>(cacheKey);
     if (cached != null) return cached;
 

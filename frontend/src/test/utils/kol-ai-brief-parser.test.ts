@@ -45,4 +45,17 @@ describe('normalizeKolAiBrief', () => {
       chmContext: 'Early platform engagement.',
     });
   });
+
+  it('reads Content Hub PublicKOLAIBrief snake_case fields', () => {
+    const normalized = normalizeKolAiBrief({
+      who_they_are: 'Mark Pegram is a hematology and oncology specialist.',
+      what_they_focus_on: 'Gynecologic and breast malignancies.',
+      chm_context: 'Minimal CHM engagement to date.',
+    });
+    expect(normalized).toEqual({
+      whoTheyAre: 'Mark Pegram is a hematology and oncology specialist.',
+      focus: 'Gynecologic and breast malignancies.',
+      chmContext: 'Minimal CHM engagement to date.',
+    });
+  });
 });

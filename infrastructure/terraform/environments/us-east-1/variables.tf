@@ -266,6 +266,13 @@ variable "contenthub_api_key" {
   default     = ""
 }
 
+variable "internal_cache_secret" {
+  description = "Shared secret for POST /api/internal/cache/clear (Content Hub Lambda + ops)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "youtube_api_key" {
   description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
   type        = string

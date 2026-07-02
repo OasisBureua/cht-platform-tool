@@ -25,11 +25,23 @@ export function resolveKolDisplayBrief(
 ): KolDisplayBrief | null {
   const ai = entry.intel?.aiBrief;
   const normalizedAi = normalizeKolAiBrief(ai);
-  const whoFromAi = normalizedAi?.whoTheyAre?.trim();
-  if (whoFromAi) {
+  const hasIntelBrief = Boolean(
+    normalizedAi?.whoTheyAre?.trim() ||
+      normalizedAi?.focus?.trim() ||
+      normalizedAi?.chmContext?.trim(),
+  );
+  if (hasIntelBrief) {
+    const whoTheyAre =
+      normalizedAi?.whoTheyAre?.trim() ||
+      normalizedAi?.focus?.trim() ||
+      normalizedAi?.chmContext?.trim() ||
+      '';
     return {
-      whoTheyAre: whoFromAi,
-      focus: normalizedAi?.focus?.trim() || undefined,
+      whoTheyAre,
+      focus:
+        normalizedAi?.focus?.trim() && normalizedAi?.focus?.trim() !== whoTheyAre
+          ? normalizedAi.focus.trim()
+          : undefined,
       chmContext: normalizedAi?.chmContext?.trim() || undefined,
       isAiGenerated: true,
     };
@@ -73,7 +85,7 @@ export function apiIntelToKolIntel(
   }
   if (intel.open_payments) out.openPayments = intel.open_payments;
   const normalized = normalizeKolAiBrief(intel.ai_brief);
-  if (normalized?.whoTheyAre) {
+  if (normalized) {
     out.aiBrief = normalized;
   }
   return Object.keys(out).length ? out : undefined;
@@ -123,7 +135,12 @@ export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
 }
 
 export function hasAiSummary(entry: Pick<DolEntry, 'intel' | 'bio'>): boolean {
-  return Boolean(entry.intel?.aiBrief?.whoTheyAre?.trim());
+  const brief = entry.intel?.aiBrief;
+  return Boolean(
+    brief?.whoTheyAre?.trim() ||
+      brief?.focus?.trim() ||
+      brief?.chmContext?.trim(),
+  );
 }
 
 export function hasDisplaySummary(

@@ -1,5 +1,12 @@
 import apiClient from './client';
 
+/** Structured AI intel brief from Content Hub `PublicKOLAIBrief`. */
+export interface PublicKolAiBrief {
+  who_they_are?: string | null;
+  what_they_focus_on?: string | null;
+  chm_context?: string | null;
+}
+
 /** HCP Intel overlay from Content Hub when kols.hcp_npi is linked. Email is omitted on the public KOL UI. */
 export interface PublicKolIntel {
   npi?: string | null;
@@ -8,7 +15,7 @@ export interface PublicKolIntel {
   affiliation?: string | null;
   publications_approx?: number | null;
   open_payments?: { total: number; records: number; years: string } | null;
-  ai_brief?: { whoTheyAre?: string } | null;
+  ai_brief?: PublicKolAiBrief | null;
 }
 
 /**

@@ -254,3 +254,10 @@ variable "recaptcha_secret_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "internal_cache_secret" {
+  description = "Shared secret for POST /api/internal/cache/clear (Content Hub Lambda + ops scripts)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

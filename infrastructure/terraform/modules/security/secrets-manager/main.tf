@@ -92,5 +92,6 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     admin_bootstrap_secret                    = var.admin_bootstrap_secret
     hubspot_access_token                      = var.hubspot_access_token
     recaptcha_secret_key                      = var.recaptcha_secret_key
+    internal_cache_secret                     = var.internal_cache_secret
   })
 }

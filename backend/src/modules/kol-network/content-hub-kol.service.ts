@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ContentHubClientService } from '../content-hub/content-hub-client.service';
+import { normalizePublicKolAiBrief } from '../../utils/kol-ai-brief';
 import type {
   KolListQuery,
   PublicKol,
@@ -16,6 +17,19 @@ export class ContentHubKolService {
     return this.client.isConfigured();
   }
 
+  private normalizeKol(kol: PublicKol): PublicKol {
+    if (!kol.intel?.ai_brief) return kol;
+    const ai_brief = normalizePublicKolAiBrief(kol.intel.ai_brief);
+    if (!ai_brief) return kol;
+    return {
+      ...kol,
+      intel: {
+        ...kol.intel,
+        ai_brief,
+      },
+    };
+  }
+
   async getKols(params?: KolListQuery): Promise<PublicKolList> {
     const query: Record<string, string | number | boolean | undefined> = {};
     if (params?.region) query.region = params.region;
@@ -25,13 +39,18 @@ export class ContentHubKolService {
     if (params?.limit != null) query.limit = params.limit;
     if (params?.offset != null) query.offset = params.offset;
 
-    return this.client.get<PublicKolList>('/kols', query);
+    const data = await this.client.get<PublicKolList>('/kols', query);
+    return {
+      ...data,
+      items: data.items.map((item) => this.normalizeKol(item)),
+    };
   }
 
   async getKol(slug: string): Promise<PublicKol> {
-    return this.client.get<PublicKol>(
+    const kol = await this.client.get<PublicKol>(
       `/kols/${encodeURIComponent(slug)}`,
     );
+    return this.normalizeKol(kol);
   }
 
   async getKolPublications(

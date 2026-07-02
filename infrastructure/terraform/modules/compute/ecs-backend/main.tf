@@ -242,6 +242,10 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name      = "RECAPTCHA_SECRET_KEY"
             valueFrom = "${var.app_secrets_arn}:recaptcha_secret_key::"
+          },
+          {
+            name      = "INTERNAL_CACHE_SECRET"
+            valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
           }
         ]
 

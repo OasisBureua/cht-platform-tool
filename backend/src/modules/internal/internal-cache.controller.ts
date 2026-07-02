@@ -4,53 +4,55 @@ import {
   HttpCode,
   Logger,
   Post,
-  UnauthorizedException,
+  Query,
+  BadRequestException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { RedisCacheService } from '../../cache/redis-cache.service';
+import { CacheClearService } from '../../cache/cache-clear.service';
+import type { CacheClearScope } from '../../cache/cache-keys';
 
 /**
- * POST /internal/cache/catalog/clear — invalidate cached YouTube + Content Hub reads.
- * Called by Content Hub sync jobs after successful ingest (see cache-sync-contract.md).
+ * Internal cache invalidation for sync jobs and ops (see docs/runbooks/cache-sync-contract.md).
+ *
+ * POST /internal/cache/clear?scope=catalog|contenthub|all
+ * POST /internal/cache/catalog/clear  — legacy alias (clears all upstream cache)
  */
 @Controller('internal/cache')
 export class InternalCacheController {
   private readonly logger = new Logger(InternalCacheController.name);
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly cache: RedisCacheService,
-  ) {}
+  constructor(private readonly cacheClear: CacheClearService) {}
+
+  @Post('clear')
+  async clearCache(
+    @Query('scope') scope?: string,
+    @Headers('authorization') authorization?: string,
+    @Headers('x-internal-secret') internalSecret?: string,
+  ) {
+    this.cacheClear.assertInternalSecret(authorization, internalSecret);
+    const resolved = parseScope(scope);
+    return this.cacheClear.clear(resolved);
+  }
 
   @Post('catalog/clear')
-  @HttpCode(204)
+  @HttpCode(200)
   async clearCatalogCache(
     @Headers('authorization') authorization?: string,
     @Headers('x-internal-secret') internalSecret?: string,
-  ): Promise<void> {
-    const expected = this.config.get<string>('internalCache.secret')?.trim();
-    if (!expected) {
-      throw new UnauthorizedException('Cache clear is not configured');
-    }
-
-    const bearer = authorization?.startsWith('Bearer ')
-      ? authorization.slice(7).trim()
-      : '';
-    const provided = internalSecret?.trim() || bearer;
-    if (!provided || provided !== expected) {
-      throw new UnauthorizedException('Invalid cache clear secret');
-    }
-
-    if (!this.cache.isEnabled()) {
-      this.logger.warn('Cache clear requested but Redis is not connected');
-      return;
-    }
-
-    const patterns = ['cht:catalog:*', 'cht:kol-network:*', 'cht:contenthub:*'];
-    let total = 0;
-    for (const pattern of patterns) {
-      total += await this.cache.deleteByPattern(pattern);
-    }
-    this.logger.log(`Cache cleared (${total} keys)`);
+  ) {
+    this.cacheClear.assertInternalSecret(authorization, internalSecret);
+    const result = await this.cacheClear.clear('all');
+    this.logger.log(
+      `Legacy catalog/clear cleared ${result.total} keys (scope=all)`,
+    );
+    return result;
   }
+}
+
+function parseScope(raw?: string): CacheClearScope {
+  const scope = raw?.trim().toLowerCase();
+  if (!scope || scope === 'all') return 'all';
+  if (scope === 'catalog' || scope === 'contenthub') return scope;
+  throw new BadRequestException(
+    'Invalid scope — use catalog, contenthub, or all',
+  );
 }

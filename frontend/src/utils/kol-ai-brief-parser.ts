@@ -1,14 +1,19 @@
+import type { PublicKolAiBrief } from '../api/kol-network';
+
 export type ParsedKolAiBrief = {
   whoTheyAre?: string;
   focus?: string;
   chmContext?: string;
 };
 
-type AiBriefInput = {
+/** Static mock / legacy camelCase fields on top of Content Hub snake_case. */
+type LegacyKolAiBriefInput = {
   whoTheyAre?: string | null;
   focus?: string | null;
   chmContext?: string | null;
 };
+
+export type KolAiBriefInput = PublicKolAiBrief & LegacyKolAiBriefInput;
 
 const SECTION_NAMES =
   'who they are|what they focus on|focus|chm context';
@@ -67,15 +72,26 @@ function looksLikeCombinedBrief(text: string): boolean {
   return sectionHeaderRegex('i').test(text);
 }
 
-/** Normalize API/static aiBrief — structured fields or a single combined markdown string. */
+function readBriefFields(aiBrief: KolAiBriefInput): {
+  whoRaw: string;
+  focusRaw: string;
+  chmRaw: string;
+} {
+  return {
+    whoRaw: (aiBrief.who_they_are ?? aiBrief.whoTheyAre)?.trim() ?? '',
+    focusRaw: (aiBrief.what_they_focus_on ?? aiBrief.focus)?.trim() ?? '',
+    chmRaw: (aiBrief.chm_context ?? aiBrief.chmContext)?.trim() ?? '',
+  };
+}
+
+/** Normalize Content Hub / legacy ai_brief payloads to camelCase UI fields. */
 export function normalizeKolAiBrief(
-  aiBrief?: AiBriefInput | null,
+  aiBrief?: KolAiBriefInput | null,
 ): ParsedKolAiBrief | undefined {
   if (!aiBrief) return undefined;
 
-  const whoRaw = aiBrief.whoTheyAre?.trim() ?? '';
-  const focusRaw = aiBrief.focus?.trim() ?? '';
-  const chmRaw = aiBrief.chmContext?.trim() ?? '';
+  const { whoRaw, focusRaw, chmRaw } = readBriefFields(aiBrief);
+  if (!whoRaw && !focusRaw && !chmRaw) return undefined;
 
   let parsed: ParsedKolAiBrief = {};
   if (whoRaw && looksLikeCombinedBrief(whoRaw)) {
@@ -86,9 +102,15 @@ export function normalizeKolAiBrief(
     );
   }
 
-  return {
+  const normalized: ParsedKolAiBrief = {
     whoTheyAre: parsed.whoTheyAre || undefined,
     focus: focusRaw || parsed.focus || undefined,
     chmContext: chmRaw || parsed.chmContext || undefined,
   };
+
+  if (!normalized.whoTheyAre && !normalized.focus && !normalized.chmContext) {
+    return undefined;
+  }
+
+  return normalized;
 }

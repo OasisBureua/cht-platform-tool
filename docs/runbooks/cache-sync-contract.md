@@ -24,42 +24,88 @@ Defines Redis caching on **chm-backend only** and cache invalidation when MediaH
 
 | Item | Value |
 | ---- | ----- |
-| Cluster | Shared ElastiCache (prefixes `cht:*`) |
+| Cluster | **One** shared ElastiCache Redis per environment (cost + ops simplicity) |
+| Isolation | **Logical key prefixes** — not separate clusters or durable DB storage |
 | TTL | `EX 86400` |
+
+Nothing cached here is authoritative data (no sessions, payments, or user records). MediaHub catalog reads, Content Hub KOL/intel reads, and YouTube fallbacks are ephemeral upstream caches only.
 
 ### Key patterns
 
-| Key | Content |
+| Prefix | Content |
 | --- | ------- |
-| `cht:catalog:tags` | Tags JSON |
-| `cht:catalog:clips:{hash(params)}` | Clips list response |
-| `cht:catalog:playlists:{hash(params)}` | Playlist tags |
-| `cht:kol-network:{hash(params)}` | KOL list response |
+| `cht:catalog:*` | YouTube playlist/channel catalog fallbacks |
+| `cht:contenthub:*` | Content Hub producer reads (`/kols`, `/kols/{slug}`, publications, …) |
+| `cht:kol-network:*` | Legacy prefix — cleared for backwards compatibility |
 
-`hash(params)` = stable hash of sorted query string.
+`hash(params)` = stable hash of sorted query string (Content Hub paths include this in the key).
 
 ---
 
-## Sync refresh flow
+## Cache clear endpoints
+
+### Internal (sync jobs + ops script)
 
 ```
-mediahub-worker completes successful sync
-    → POST https://<chm-backend>/internal/cache/catalog/clear
-    → Header: Authorization: Bearer <INTERNAL_CACHE_SECRET>
-    → chm-backend deletes keys matching cht:catalog:* and cht:kol-network:*
-    → Next user request = cache miss → fetch mediahub-api → store 24h
-```
-
-### Internal endpoint (CHT)
-
-```
-POST /internal/cache/catalog/clear
+POST /api/internal/cache/clear?scope=catalog|contenthub|all
 Authorization: Bearer ${INTERNAL_CACHE_SECRET}
 ```
 
-Response: `204 No Content`
+Legacy alias (clears **all** upstream prefixes — used by MediaHub worker today):
 
-**Security:** ALB rule or SG — not public internet; shared secret in Secrets Manager.
+```
+POST /api/internal/cache/catalog/clear
+Authorization: Bearer ${INTERNAL_CACHE_SECRET}
+```
+
+Response (JSON):
+
+```json
+{
+  "scope": "contenthub",
+  "enabled": true,
+  "deletedByPattern": { "cht:contenthub:*": 12, "cht:kol-network:*": 0 },
+  "total": 12
+}
+```
+
+**Manual from laptop:**
+
+```bash
+INTERNAL_CACHE_SECRET=... ./scripts/clear-upstream-cache.sh dev contenthub
+```
+
+After Content Hub KOL or AI brief updates, use `scope=contenthub`. After MediaHub sync, use `scope=all` (or legacy `catalog/clear`).
+
+### Security
+
+Stored in AWS Secrets Manager app JSON key **`internal_cache_secret`** (Terraform `internal_cache_secret` in `dev.tfvars` / `platform.tfvars`).
+
+Same value on:
+- CHT backend ECS → env `INTERNAL_CACHE_SECRET`
+- Content Hub Lambda → env `INTERNAL_CACHE_SECRET`
+- Manual: `INTERNAL_CACHE_SECRET=... ./scripts/clear-upstream-cache.sh dev contenthub`
+
+Generate: `openssl rand -hex 32`
+
+```
+mediahub-worker completes successful sync
+    → POST https://<chm-backend>/api/internal/cache/catalog/clear
+    → Header: Authorization: Bearer <INTERNAL_CACHE_SECRET>
+    → chm-backend deletes keys matching cht:catalog:*, cht:contenthub:*, cht:kol-network:*
+    → Next user request = cache miss → fetch upstream → store 24h
+```
+
+Content Hub ingest (KOL intel / AI brief):
+
+```
+contenthub-worker completes KOL enrichment
+    → POST .../api/internal/cache/clear?scope=contenthub
+```
+
+### Security
+
+Shared secret in Secrets Manager or ECS env (`INTERNAL_CACHE_SECRET`). Content Hub Lambda and ops scripts use this — not admin login.
 
 ### Worker hook (MediaHub)
 

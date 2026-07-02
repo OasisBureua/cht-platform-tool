@@ -114,6 +114,13 @@ variable "contenthub_api_key" {
   default     = ""
 }
 
+variable "internal_cache_secret" {
+  description = "Primary only: shared secret for POST /api/internal/cache/clear."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "youtube_api_key" {
   description = "Primary only: YouTube Data API key."
   type        = string
