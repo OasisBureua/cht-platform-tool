@@ -5,6 +5,59 @@ import {
   type KolIntel,
 } from '../data/dol-network';
 import { deriveKolUsState, kolInstitutionLabel } from './kol-state';
+import { normalizeKolAiBrief } from './kol-ai-brief-parser';
+
+export type KolDisplayBrief = {
+  whoTheyAre: string;
+  focus?: string;
+  chmContext?: string;
+  /** Sourced from Content Hub / static `intel.aiBrief`, not bio fallback. */
+  isAiGenerated: boolean;
+};
+
+function roleLead(role: string): string {
+  return role.split(/[.;]/)[0]?.trim() ?? role.trim();
+}
+
+/** Intel card content for directory cards and profile overview — always populated when name/role/bio exist. */
+export function resolveKolDisplayBrief(
+  entry: Pick<DolEntry, 'name' | 'role' | 'bio' | 'intel'>,
+): KolDisplayBrief | null {
+  const ai = entry.intel?.aiBrief;
+  const normalizedAi = normalizeKolAiBrief(ai);
+  const whoFromAi = normalizedAi?.whoTheyAre?.trim();
+  if (whoFromAi) {
+    return {
+      whoTheyAre: whoFromAi,
+      focus: normalizedAi?.focus?.trim() || undefined,
+      chmContext: normalizedAi?.chmContext?.trim() || undefined,
+      isAiGenerated: true,
+    };
+  }
+
+  const bio = entry.bio?.trim();
+  const role = entry.role?.trim();
+  if (bio) {
+    return {
+      whoTheyAre: bio,
+      focus: role ? roleLead(role) : undefined,
+      isAiGenerated: false,
+    };
+  }
+  if (role) {
+    return {
+      whoTheyAre: `${entry.name} — ${roleLead(role)}`,
+      isAiGenerated: false,
+    };
+  }
+  if (entry.name?.trim()) {
+    return {
+      whoTheyAre: entry.name.trim(),
+      isAiGenerated: false,
+    };
+  }
+  return null;
+}
 
 export function apiIntelToKolIntel(
   intel: PublicKolIntel | null | undefined,
@@ -19,8 +72,9 @@ export function apiIntelToKolIntel(
     out.publicationsApprox = intel.publications_approx;
   }
   if (intel.open_payments) out.openPayments = intel.open_payments;
-  if (intel.ai_brief?.whoTheyAre) {
-    out.aiBrief = { whoTheyAre: intel.ai_brief.whoTheyAre };
+  const normalized = normalizeKolAiBrief(intel.ai_brief);
+  if (normalized?.whoTheyAre) {
+    out.aiBrief = normalized;
   }
   return Object.keys(out).length ? out : undefined;
 }
@@ -70,4 +124,10 @@ export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
 
 export function hasAiSummary(entry: Pick<DolEntry, 'intel' | 'bio'>): boolean {
   return Boolean(entry.intel?.aiBrief?.whoTheyAre?.trim());
+}
+
+export function hasDisplaySummary(
+  entry: Pick<DolEntry, 'name' | 'role' | 'bio' | 'intel'>,
+): boolean {
+  return resolveKolDisplayBrief(entry) != null;
 }

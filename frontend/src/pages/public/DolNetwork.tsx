@@ -2,7 +2,8 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowUpDown, BadgeCheck, GraduationCap, MapPin, Sparkles } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
-import { hasAiSummary } from '../../utils/kol-directory-merge';
+import { hasAiSummary, resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
+import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
 
 type FlatKol = DolEntry & {
   stateId: string;
@@ -319,20 +320,12 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
 }
 
 function cardSummarySnippet(k: FlatKol): string {
-  const fromIntel = k.intel?.aiBrief?.whoTheyAre?.trim();
-  if (fromIntel) return fromIntel;
-  return k.bio.trim();
-}
-
-/** Catalogue clips & shorts where MediaHub tags this doctor (`GET /catalog/clips?doctor=`). */
-function catalogContentHref(k: FlatKol): string {
-  const slug = (k.intel?.catalogDoctorSlug ?? k.id).trim();
-  return `/catalog?${new URLSearchParams({ doctor: slug }).toString()}`;
+  return resolveKolDisplayBrief(k)?.whoTheyAre ?? k.bio.trim();
 }
 
 function KolCard({ k }: { k: FlatKol }) {
   const profileHref = `/kol-network/profile/${k.id}`;
-  const contentHref = catalogContentHref(k);
+  const contentHref = kolCatalogBrowseHref(k);
   const inst = institutionHint(k);
   const roleLead = (k.role.split(/[.;]/)[0]?.trim() ?? k.role).slice(0, 72);
   const summary = cardSummarySnippet(k);
