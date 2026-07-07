@@ -166,7 +166,7 @@
 @layer utilities {
   /** Public site header: frosted / “liquid glass” bar (content scrolls underneath) */
   .nav-liquid-glass {
-    @apply border-b border-black/[0.04] bg-white/55 shadow-[0_8px_40px_-12px_rgba(234,88,12,0.1),inset_0_1px_0_0_rgba(255,255,255,0.65)];
+    @apply border-b border-black/[0.04] bg-white/55 shadow-[0_8px_40px_-12px_rgba(58,131,155,0.1),inset_0_1px_0_0_rgba(255,255,255,0.65)];
     -webkit-backdrop-filter: blur(20px) saturate(1.35);
     backdrop-filter: blur(20px) saturate(1.35);
   }
@@ -376,31 +376,31 @@
     color: rgb(174 174 183) !important;
   }
 
-  /* Keep brand (orange) text readable on dark surfaces. */
+  /* Keep brand (teal) text readable on dark surfaces. */
   .dark .text-brand-800,
   .dark .text-brand-700,
   .dark .text-brand-600 {
-    color: rgb(251 146 60) !important;
+    color: rgb(91 176 197) !important;
   }
   .dark .text-brand-500 {
-    color: rgb(253 186 116) !important;
+    color: rgb(143 203 217) !important;
   }
   .dark .text-brand-400 {
-    color: rgb(253 224 171) !important;
+    color: rgb(189 225 234) !important;
   }
 
-  /* Slightly tame orange fills on dark for contrast. */
+  /* Slightly tame brand (teal) fills on dark for contrast. */
   .dark .bg-brand-500 {
-    background-color: rgb(234 88 12) !important;
+    background-color: rgb(61 164 192) !important;
   }
   .dark .bg-brand-600 {
-    background-color: rgb(194 65 12) !important;
+    background-color: rgb(58 131 155) !important;
   }
   .dark .hover\:bg-brand-600:hover {
-    background-color: rgb(194 65 12) !important;
+    background-color: rgb(58 131 155) !important;
   }
   .dark .hover\:bg-brand-700:hover {
-    background-color: rgb(154 52 18) !important;
+    background-color: rgb(49 107 127) !important;
   }
 
   .dark .border-gray-50,
