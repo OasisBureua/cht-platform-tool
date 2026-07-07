@@ -400,7 +400,7 @@ export default function Dashboard() {
         <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-accent-700 dark:text-accent-300">New here?</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-steel-700 dark:text-steel-300">New here?</p>
               <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
               <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
             </div>
@@ -422,7 +422,7 @@ export default function Dashboard() {
                 className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white hover:shadow-[0_10px_40px_-22px_rgba(0,0,0,0.15)] active:scale-[0.96]"
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <item.icon className="h-4 w-4 text-accent-600 dark:text-accent-400" aria-hidden />
+                  <item.icon className="h-4 w-4 text-steel-600 dark:text-steel-400" aria-hidden />
                   <p className="text-sm font-bold text-zinc-900">{item.title}</p>
                 </div>
                 <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
@@ -433,7 +433,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={closeOnboarding}
-              className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-orange-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
+              className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
             >
               Continue
             </button>
@@ -447,7 +447,7 @@ export default function Dashboard() {
       >
         <div className="px-4 pb-6 pt-5 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8">
           <div className="mb-5 px-0.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-accent-700 dark:text-accent-300">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-steel-700 dark:text-steel-300">
               Overview
             </p>
             <h2
@@ -468,7 +468,7 @@ export default function Dashboard() {
               'group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px]',
               nextLiveCoverUrl
                 ? 'shadow-[0_22px_56px_-28px_rgba(0,0,0,0.4)] hover:shadow-[0_28px_64px_-28px_rgba(0,0,0,0.48)] dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.75)]'
-                : 'bg-gradient-to-br from-accent-100/90 via-white to-amber-50/80 shadow-[0_20px_56px_-30px_rgba(49,105,149,0.12)] hover:shadow-[0_28px_64px_-30px_rgba(49,105,149,0.18)] dark:from-zinc-900 dark:via-accent-950/20 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]',
+                : 'bg-gradient-to-br from-steel-100/90 via-white to-amber-50/80 shadow-[0_20px_56px_-30px_rgba(49,105,149,0.12)] hover:shadow-[0_28px_64px_-30px_rgba(49,105,149,0.18)] dark:from-zinc-900 dark:via-steel-950/20 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]',
             ].join(' ')}
           >
             {nextLiveCoverUrl ? (
@@ -483,7 +483,7 @@ export default function Dashboard() {
               </>
             ) : (
               <>
-                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-accent-300/25 blur-3xl dark:bg-accent-500/15" />
+                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-steel-300/25 blur-3xl dark:bg-steel-500/15" />
                 <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-amber-300/35 blur-3xl dark:bg-orange-600/10" />
               </>
             )}
@@ -497,7 +497,7 @@ export default function Dashboard() {
                   'h-5 w-5 shrink-0 transition-[color,transform] duration-200 group-hover:translate-x-0.5',
                   nextLiveCoverUrl
                     ? 'text-white/90 group-hover:text-white'
-                    : 'text-chm-expertise group-hover:text-chm-knowledge dark:text-accent-400 dark:group-hover:text-accent-300',
+                    : 'text-chm-expertise group-hover:text-chm-knowledge dark:text-steel-400 dark:group-hover:text-steel-300',
                 ].join(' ')}
                 aria-hidden
               />
@@ -531,7 +531,7 @@ export default function Dashboard() {
                   <p
                     className={[
                       'mt-4 text-xs font-semibold uppercase tracking-[0.12em]',
-                      nextLiveCoverUrl ? 'text-chm-sharing' : 'text-accent-700 dark:text-accent-300',
+                      nextLiveCoverUrl ? 'text-chm-sharing' : 'text-steel-700 dark:text-steel-300',
                     ].join(' ')}
                   >
                     Tap to open session

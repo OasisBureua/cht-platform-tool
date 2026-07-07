@@ -25,10 +25,12 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function readStoredScheme(): ColorScheme {
-  if (typeof window === 'undefined') return 'system';
+  // Platform defaults to LIGHT (was `system`). Users can still choose dark/system;
+  // the choice is persisted and honored on return.
+  if (typeof window === 'undefined') return 'light';
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw === 'light' || raw === 'dark' || raw === 'system') return raw;
-  return 'system';
+  return 'light';
 }
 
 function systemPrefersDark(): boolean {

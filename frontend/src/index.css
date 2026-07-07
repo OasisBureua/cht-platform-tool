@@ -50,6 +50,52 @@
   --chm-precision-black: #485165;
   --chm-connection-orange: #e7764f;
   --chm-discovery-gray: #79869a;
+
+  /* ============================================================
+   * SEMANTIC DESIGN TOKENS (light — platform default)
+   * HSL channel triplets so Tailwind `hsl(var(--x) / <alpha>)`
+   * opacity modifiers work. Consumed by tailwind.config colors.
+   * PRIMARY = teal (knowledge/expertise), ACCENT = connection orange.
+   * ============================================================ */
+  --background: 220 33% 96%;        /* #f2f4f8 chm surface */
+  --foreground: 221 17% 34%;        /* #485165 precision */
+  --card: 0 0% 100%;                /* #ffffff */
+  --card-foreground: 221 17% 34%;
+  --muted: 220 20% 94%;             /* #eef1f6 */
+  --muted-foreground: 216 15% 54%;  /* #79869a discovery */
+  --border: 214 32% 91%;            /* #e2e8f0 */
+  --input: 214 20% 85%;
+  --ring: 193 52% 50%;              /* teal focus ring */
+
+  --primary: 193 52% 50%;           /* #3da4c0 knowledge blue */
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 196 45% 42%;     /* #3a839b expertise blue */
+
+  --accent: 15 76% 61%;             /* #e7764f connection orange */
+  --accent-foreground: 0 0% 100%;
+  --accent-hover: 15 62% 51%;       /* #d15b34 */
+
+  --radius: 0.75rem;                /* platform keeps its rounded language */
+}
+
+.dark {
+  --background: 240 10% 4%;         /* #09090b zinc-950 */
+  --foreground: 240 5% 96%;         /* #f4f4f5 */
+  --card: 240 6% 10%;               /* #18181b zinc-900 */
+  --card-foreground: 240 5% 96%;
+  --muted: 240 4% 16%;              /* #27272a zinc-800 */
+  --muted-foreground: 240 5% 65%;   /* #a1a1aa zinc-400 */
+  --border: 240 4% 16%;
+  --input: 240 4% 20%;
+  --ring: 191 58% 56%;
+
+  --primary: 191 58% 56%;           /* brighter teal on dark */
+  --primary-foreground: 240 10% 4%;
+  --primary-hover: 193 52% 50%;
+
+  --accent: 17 81% 66%;             /* #ef8a63 warmer orange on dark */
+  --accent-foreground: 240 10% 4%;
+  --accent-hover: 15 76% 61%;
 }
 
 @keyframes shimmer {
@@ -120,7 +166,7 @@
 @layer utilities {
   /** Public site header: frosted / “liquid glass” bar (content scrolls underneath) */
   .nav-liquid-glass {
-    @apply border-b border-black/[0.04] bg-white/55 shadow-[0_8px_40px_-12px_rgba(234,88,12,0.1),inset_0_1px_0_0_rgba(255,255,255,0.65)];
+    @apply border-b border-black/[0.04] bg-white/55 shadow-[0_8px_40px_-12px_rgba(58,131,155,0.1),inset_0_1px_0_0_rgba(255,255,255,0.65)];
     -webkit-backdrop-filter: blur(20px) saturate(1.35);
     backdrop-filter: blur(20px) saturate(1.35);
   }
@@ -330,31 +376,31 @@
     color: rgb(174 174 183) !important;
   }
 
-  /* Keep brand (orange) text readable on dark surfaces. */
+  /* Keep brand (teal) text readable on dark surfaces. */
   .dark .text-brand-800,
   .dark .text-brand-700,
   .dark .text-brand-600 {
-    color: rgb(251 146 60) !important;
+    color: rgb(91 176 197) !important;
   }
   .dark .text-brand-500 {
-    color: rgb(253 186 116) !important;
+    color: rgb(143 203 217) !important;
   }
   .dark .text-brand-400 {
-    color: rgb(253 224 171) !important;
+    color: rgb(189 225 234) !important;
   }
 
-  /* Slightly tame orange fills on dark for contrast. */
+  /* Slightly tame brand (teal) fills on dark for contrast. */
   .dark .bg-brand-500 {
-    background-color: rgb(234 88 12) !important;
+    background-color: rgb(61 164 192) !important;
   }
   .dark .bg-brand-600 {
-    background-color: rgb(194 65 12) !important;
+    background-color: rgb(58 131 155) !important;
   }
   .dark .hover\:bg-brand-600:hover {
-    background-color: rgb(194 65 12) !important;
+    background-color: rgb(58 131 155) !important;
   }
   .dark .hover\:bg-brand-700:hover {
-    background-color: rgb(154 52 18) !important;
+    background-color: rgb(49 107 127) !important;
   }
 
   .dark .border-gray-50,

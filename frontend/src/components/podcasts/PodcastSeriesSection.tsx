@@ -151,8 +151,8 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
               referrerPolicy="no-referrer"
             />
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-700 dark:text-accent-300">
-                <Sparkles className="h-3.5 w-3.5 shrink-0 text-accent-600 dark:text-accent-400" aria-hidden />
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-steel-700 dark:text-steel-300">
+                <Sparkles className="h-3.5 w-3.5 shrink-0 text-steel-600 dark:text-steel-400" aria-hidden />
                 <span>{show.category}</span>
               </div>
               <h2 className="mt-1 text-balance text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-3xl md:text-4xl">

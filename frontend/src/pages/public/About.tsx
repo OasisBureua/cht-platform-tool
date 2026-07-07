@@ -121,7 +121,7 @@ export default function About() {
               <div className="space-y-3">
                 <Link
                   to="/catalog"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-orange-600 px-7 py-3 text-base font-semibold text-white hover:bg-orange-700"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
                 >
                   Browse Catalogue <ArrowRight className="h-4 w-4" />
                 </Link>

@@ -81,6 +81,17 @@ const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
 const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
 
+// ── Content Hub (admin report generator, lazy) ───────────────────────────────
+const ContentHubLayout          = lazy(() => import('./pages/admin/content-hub/components/ContentHubLayout'));
+const ContentHubDashboard       = lazy(() => import('./pages/admin/content-hub/Dashboard'));
+const ContentHubNewReport       = lazy(() => import('./pages/admin/content-hub/NewReport'));
+const ContentHubTemplates       = lazy(() => import('./pages/admin/content-hub/Templates'));
+const ContentHubIntegrations    = lazy(() => import('./pages/admin/content-hub/Integrations'));
+const ContentHubCampaignDetail  = lazy(() => import('./pages/admin/content-hub/CampaignDetail'));
+const ContentHubUploadData      = lazy(() => import('./pages/admin/content-hub/UploadData'));
+const ContentHubAnalyticsReport = lazy(() => import('./pages/admin/content-hub/AnalyticsReport'));
+const ContentHubExecutiveReport = lazy(() => import('./pages/admin/content-hub/ExecutiveReport'));
+
 // ── Shared page-level loading fallback ───────────────────────────────────────
 function PageLoader() {
   return (
@@ -255,6 +266,18 @@ function App() {
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
+
+              {/* Content Hub — ported report generator (self-contained, localStorage data layer) */}
+              <Route path="content-hub" element={<ContentHubLayout />}>
+                <Route index element={<ContentHubDashboard />} />
+                <Route path="new" element={<ContentHubNewReport />} />
+                <Route path="templates" element={<ContentHubTemplates />} />
+                <Route path="integrations" element={<ContentHubIntegrations />} />
+                <Route path="campaigns/:id" element={<ContentHubCampaignDetail />} />
+                <Route path="campaigns/:id/upload" element={<ContentHubUploadData />} />
+                <Route path="campaigns/:id/report" element={<ContentHubAnalyticsReport />} />
+                <Route path="campaigns/:id/executive-report" element={<ContentHubExecutiveReport />} />
+              </Route>
             </Route>
           </Routes>
         </Suspense>
