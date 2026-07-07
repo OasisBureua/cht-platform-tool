@@ -205,7 +205,7 @@ export class CatalogService implements OnModuleInit {
     options?: { previewTitles?: boolean },
   ): Promise<CatalogItem[]> {
     const previewTitles = options?.previewTitles !== false;
-    const ids = playlistIds.slice(0, 20);
+    const ids = playlistIds;
 
     const rows = await Promise.all(
       ids.map(async (playlistId) => {

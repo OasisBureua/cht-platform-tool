@@ -681,4 +681,51 @@ export const adminApi = {
     const { data } = await apiClient.get<WebhookImportedProgram[]>('/admin/programs/webhook-imports');
     return data ?? [];
   },
+
+  // ─── KOL Network ─────────────────────────────────────────────────────────
+
+  getKolNetwork: async (params?: { q?: string }): Promise<AdminKolNetworkList> => {
+    const { data } = await apiClient.get<AdminKolNetworkList>('/admin/kol-network', { params });
+    return data ?? { items: [], total: 0, institutions: [] };
+  },
+
+  updateKolVisibility: async (
+    slug: string,
+    patch: { visibleOnPublic?: boolean; visibleOnApp?: boolean },
+  ): Promise<{ slug: string; visibility: KolVisibilityFlags }> => {
+    const { data } = await apiClient.patch<{ slug: string; visibility: KolVisibilityFlags }>(
+      `/admin/kol-network/${encodeURIComponent(slug)}/visibility`,
+      patch,
+    );
+    return data;
+  },
+};
+
+export type KolVisibilityFlags = {
+  visibleOnPublic: boolean;
+  visibleOnApp: boolean;
+};
+
+export type AdminKolNetworkItem = {
+  id: string;
+  slug: string;
+  name: string;
+  title: string | null;
+  specialty: string | null;
+  institution: string | null;
+  region_label: string | null;
+  shoot_count: number;
+  is_new: boolean;
+  intel?: {
+    publications_approx?: number | null;
+    open_payments?: { total: number; records: number; years: string } | null;
+    specialty?: string | null;
+  } | null;
+  visibility: KolVisibilityFlags;
+};
+
+export type AdminKolNetworkList = {
+  items: AdminKolNetworkItem[];
+  total: number;
+  institutions: string[];
 };

@@ -69,6 +69,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
     q: debouncedSearch || undefined,
     institution: institution || undefined,
     new_only: newOnly || undefined,
+    surface: embedded ? 'app' : 'public',
   });
   const flat = useMemo(() => flattenNetwork(directory.regions), [directory.regions]);
 

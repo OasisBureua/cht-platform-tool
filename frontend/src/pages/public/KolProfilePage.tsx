@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Briefcase,
-  Calendar,
   ExternalLink,
   Linkedin,
   Sparkles,
@@ -309,18 +308,7 @@ export default function KolProfilePage() {
             ) : null}
 
             {tab === 'engagement' ? (
-              <div className="space-y-4">
-                <KolCatalogContentSection entry={entry} variant="engagement" limit={12} />
-                <article className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-8 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                    <Calendar className="h-6 w-6 text-zinc-400" aria-hidden />
-                  </div>
-                  <h2 className="mt-3 text-base font-bold text-zinc-900 dark:text-zinc-100">Platform engagement</h2>
-                  <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                    Webinars, RSVPs, and learner questions will appear here when this physician engages with CHT programs.
-                  </p>
-                </article>
-              </div>
+              <KolCatalogContentSection entry={entry} variant="engagement" limit={12} />
             ) : null}
           </div>
         </div>

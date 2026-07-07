@@ -88,6 +88,10 @@
   "prisma": {
     "seed": "npx ts-node prisma/seed.ts"
   },
+  "overrides": {
+    "test-exclude": "^7.0.1",
+    "glob": "^13.0.6"
+  },
   "jest": {
     "moduleFileExtensions": [
       "js",

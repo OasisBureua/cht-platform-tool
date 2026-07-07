@@ -52,14 +52,16 @@ export interface PublicKolList {
   institutions: string[];
 }
 
-export interface KolListParams {
+export type KolListParams = {
   region?: string;
   institution?: string;
   q?: string;
   new_only?: boolean;
   limit?: number;
   offset?: number;
-}
+  /** `public` = marketing /kol-network; `app` = member CHM Docs directory */
+  surface?: 'public' | 'app';
+};
 
 export interface PublicKolPublication {
   title: string;
@@ -84,6 +86,7 @@ export const kolNetworkApi = {
     if (params?.new_only) queryParams.new_only = 'true';
     if (params?.limit != null) queryParams.limit = params.limit;
     if (params?.offset != null) queryParams.offset = params.offset;
+    if (params?.surface) queryParams.surface = params.surface;
     const { data } = await apiClient.get<PublicKolList>('/kol-network', {
       params: queryParams,
     });
@@ -92,10 +95,11 @@ export const kolNetworkApi = {
     );
   },
 
-  get: async (slug: string): Promise<PublicKol | null> => {
+  get: async (slug: string, surface?: 'public' | 'app'): Promise<PublicKol | null> => {
     try {
       const { data } = await apiClient.get<PublicKol>(
         `/kol-network/${encodeURIComponent(slug)}`,
+        { params: surface ? { surface } : undefined },
       );
       return data ?? null;
     } catch (err: unknown) {

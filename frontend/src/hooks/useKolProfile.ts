@@ -20,10 +20,13 @@ function regionForEntry(entry: DolEntry): DolRegion {
   };
 }
 
-export function useKolProfile(slug: string | undefined): KolProfile {
+export function useKolProfile(
+  slug: string | undefined,
+  surface: 'public' | 'app' = 'public',
+): KolProfile {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['kol-network', 'profile', slug],
-    queryFn: () => kolNetworkApi.get(slug!),
+    queryKey: ['kol-network', 'profile', slug, surface],
+    queryFn: () => kolNetworkApi.get(slug!, surface),
     enabled: Boolean(slug?.trim()),
     staleTime: 60_000,
   });

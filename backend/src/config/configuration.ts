@@ -164,26 +164,36 @@ export default () => ({
         const fs = require('fs');
         const path = require('path');
         const dataDir = path.resolve(process.cwd(), '..', 'data');
-        const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
-          ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
-          : [
-              path.join(dataDir, 'youtube-playlists.csv'),
-              path.join(dataDir, 'YT Playlist IDs - Sheet1.csv'),
-            ].find((p) => fs.existsSync(p)) ||
-            path.join(dataDir, 'youtube-playlists.csv');
-        if (fs.existsSync(csvPath)) {
-          const content = fs.readFileSync(csvPath, 'utf8');
-          const lines = content.split(/\r?\n/).filter((l) => l.trim());
-          const start = lines[0]?.toLowerCase().includes('playlist') ? 1 : 0;
-          const idRegex = /PL[\w-]{20,}/g;
-          for (let i = start; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.startsWith('#')) continue;
-            const matches = line.match(idRegex);
-            if (matches) ids.push(...matches);
-          }
-          ids = [...new Set(ids)];
+        const txtPath = path.join(dataDir, 'youtube-playlist-ids.txt');
+        if (fs.existsSync(txtPath)) {
+          ids = fs
+            .readFileSync(txtPath, 'utf8')
+            .split(/\r?\n/)
+            .map((l: string) => l.trim())
+            .filter((l: string) => l && !l.startsWith('#') && l.startsWith('PL'));
         }
+        if (ids.length === 0) {
+          const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
+            ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
+            : [
+                path.join(dataDir, 'youtube-playlists.csv'),
+                path.join(dataDir, 'YT Playlist IDs - Sheet1.csv'),
+              ].find((p) => fs.existsSync(p)) ||
+              path.join(dataDir, 'youtube-playlists.csv');
+          if (fs.existsSync(csvPath)) {
+            const content = fs.readFileSync(csvPath, 'utf8');
+            const lines = content.split(/\r?\n/).filter((l: string) => l.trim());
+            const start = lines[0]?.toLowerCase().includes('playlist') ? 1 : 0;
+            const idRegex = /PL[\w-]{20,}/g;
+            for (let i = start; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.startsWith('#')) continue;
+              const matches = line.match(idRegex);
+              if (matches) ids.push(...matches);
+            }
+          }
+        }
+        ids = [...new Set(ids)];
       } catch {
         /* ignore */
       }

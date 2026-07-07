@@ -10,6 +10,8 @@ export type KolListFilters = {
   /** Exact institution match — use values from API `institutions` facet. */
   institution?: string;
   new_only?: boolean;
+  /** `public` = marketing site; `app` = in-app CHM Docs */
+  surface?: 'public' | 'app';
 };
 
 /** Group merged entries by US state (50 states + DC); unknown state last. */
@@ -53,6 +55,7 @@ export function useKolDirectory(filters: KolListFilters = {}): KolDirectory {
     q: filters.q?.trim() || undefined,
     institution: filters.institution?.trim() || undefined,
     new_only: filters.new_only || undefined,
+    surface: filters.surface,
   };
 
   const { data, isLoading, isError } = useQuery({
@@ -62,6 +65,7 @@ export function useKolDirectory(filters: KolListFilters = {}): KolDirectory {
         q: normalized.q,
         institution: normalized.institution,
         new_only: normalized.new_only,
+        surface: normalized.surface,
         limit: 200,
       }),
     staleTime: 60_000,

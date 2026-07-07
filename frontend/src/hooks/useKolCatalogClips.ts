@@ -11,11 +11,14 @@ export type KolCatalogClipsResult = {
   loadState: 'idle' | 'loading' | 'ready' | 'empty';
 };
 
+type KolClipEntry = Pick<DolEntry, 'id' | 'name' | 'intel'>;
+
 async function fetchClipsForKol(
-  entry: Pick<DolEntry, 'id' | 'intel'>,
+  entry: KolClipEntry,
   limit: number,
+  doctors: { slug: string }[],
 ): Promise<{ clips: MediaHubClip[]; total: number; doctorSlug: string }> {
-  const slugs = kolCatalogDoctorSlugs(entry);
+  const slugs = kolCatalogDoctorSlugs(entry, doctors);
   if (slugs.length === 0) {
     return { clips: [], total: 0, doctorSlug: entry.id };
   }
@@ -38,17 +41,28 @@ async function fetchClipsForKol(
 }
 
 export function useKolCatalogClips(
-  entry: Pick<DolEntry, 'id' | 'intel' | 'shootCount'> | undefined,
+  entry: Pick<DolEntry, 'id' | 'name' | 'intel' | 'shootCount'> | undefined,
   limit = 8,
 ): KolCatalogClipsResult {
   const enabled = Boolean(entry?.id?.trim());
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['kol-network', 'catalog-clips', entry?.id, limit],
-    queryFn: () => fetchClipsForKol(entry!, limit),
+  const { data: doctors = [] } = useQuery({
+    queryKey: ['catalog', 'doctors'],
+    queryFn: () => catalogApi.getDoctors(),
+    staleTime: 30 * 60 * 1000,
     enabled,
+  });
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['kol-network', 'catalog-clips', entry?.id, entry?.name, limit, doctors.length],
+    queryFn: () => fetchClipsForKol(entry!, limit, doctors),
+    enabled: enabled && doctors.length >= 0,
     staleTime: 5 * 60 * 1000,
   });
+
+  const slugPreview = entry
+    ? kolCatalogDoctorSlugs(entry, doctors)[0] ?? entry.id
+    : '';
 
   if (!enabled) {
     return { clips: [], total: 0, doctorSlug: '', loadState: 'idle' };
@@ -57,7 +71,7 @@ export function useKolCatalogClips(
     return {
       clips: [],
       total: entry?.shootCount ?? 0,
-      doctorSlug: kolCatalogDoctorSlugs(entry!)[0] ?? entry!.id,
+      doctorSlug: slugPreview,
       loadState: 'loading',
     };
   }
@@ -65,7 +79,7 @@ export function useKolCatalogClips(
     return {
       clips: [],
       total: data?.total ?? entry?.shootCount ?? 0,
-      doctorSlug: data?.doctorSlug ?? kolCatalogDoctorSlugs(entry!)[0] ?? entry!.id,
+      doctorSlug: data?.doctorSlug ?? slugPreview,
       loadState: 'empty',
     };
   }

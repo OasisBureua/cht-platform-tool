@@ -9,12 +9,17 @@ import {
 import { isAxiosError } from 'axios';
 import { MediaHubService } from '../catalog/mediahub.service';
 import { ContentHubKolService } from './content-hub-kol.service';
+import { KolVisibilityService, type KolDirectorySurface } from './kol-visibility.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 import type {
   PublicKol,
   PublicKolList,
   PublicKolPublicationList,
 } from './kol-network.types';
+
+function parseSurface(value?: string): KolDirectorySurface {
+  return value === 'app' ? 'app' : 'public';
+}
 
 /**
  * GET /api/kol-network/* → Content Hub (CONTENTHUB_BASE_URL) when configured,
@@ -27,6 +32,7 @@ export class KolNetworkController {
   constructor(
     private readonly contentHub: ContentHubKolService,
     private readonly mediahub: MediaHubService,
+    private readonly visibility: KolVisibilityService,
   ) {}
 
   private logKolError(label: string, err: unknown): { status: number; message: string } {
@@ -48,7 +54,9 @@ export class KolNetworkController {
     @Query('new_only') newOnly?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('surface') surfaceParam?: string,
   ): Promise<PublicKolList> {
+    const surface = parseSurface(surfaceParam);
     const params = {
       region,
       institution,
@@ -64,26 +72,29 @@ export class KolNetworkController {
       institutions: [],
     };
 
+    let list: PublicKolList | null = null;
+
     if (this.contentHub.isConfigured()) {
       try {
-        return await this.contentHub.getKols(params);
+        list = await this.contentHub.getKols(params);
       } catch (err: unknown) {
         this.logKolError('Content Hub GET /kols failed', err);
         return empty;
       }
-    }
-
-    if (!this.mediahub.isConfigured()) {
+    } else if (this.mediahub.isConfigured()) {
+      try {
+        list = await this.mediahub.getKols(params);
+      } catch (err: unknown) {
+        this.logKolError('MediaHub GET /kols failed', err);
+        return empty;
+      }
+    } else {
       this.logger.warn('KOL producer not configured — /kol-network returning empty');
       return empty;
     }
 
-    try {
-      return await this.mediahub.getKols(params);
-    } catch (err: unknown) {
-      this.logKolError('MediaHub GET /kols failed', err);
-      return empty;
-    }
+    const visibility = await this.visibility.getVisibilityMap();
+    return this.visibility.filterKolList(list, surface, visibility);
   }
 
   @Get(':slug/publications')
@@ -120,16 +131,28 @@ export class KolNetworkController {
   }
 
   @Get(':slug')
-  async getKol(@Param('slug') slug: string): Promise<PublicKol> {
+  async getKol(
+    @Param('slug') slug: string,
+    @Query('surface') surfaceParam?: string,
+  ): Promise<PublicKol> {
+    const surface = parseSurface(surfaceParam);
     try {
+      let kol: PublicKol;
       if (this.contentHub.isConfigured()) {
-        return await this.contentHub.getKol(slug);
-      }
-      if (!this.mediahub.isConfigured()) {
+        kol = await this.contentHub.getKol(slug);
+      } else if (this.mediahub.isConfigured()) {
+        kol = await this.mediahub.getKol(slug);
+      } else {
         throw new NotFoundException('KOL directory unavailable');
       }
-      return await this.mediahub.getKol(slug);
+
+      const visible = await this.visibility.isKolVisible(kol, surface);
+      if (!visible) {
+        throw new NotFoundException(`KOL "${slug}" not found`);
+      }
+      return kol;
     } catch (err: unknown) {
+      if (err instanceof NotFoundException) throw err;
       const meta = this.logKolError(`GET /kols/${slug} failed`, err);
       if (meta.status === 404) {
         throw new NotFoundException(`KOL "${slug}" not found`);

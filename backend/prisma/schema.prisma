@@ -627,3 +627,16 @@ model AdminAuditLog {
   @@index([resource, resourceId])
   @@map("AdminAuditLog")
 }
+
+// ============================================================================
+// KOL DIRECTORY VISIBILITY (CHT overlay — Content Hub remains source of roster)
+// ============================================================================
+model KolDirectoryVisibility {
+  slug            String   @id
+  visibleOnPublic Boolean  @default(true)
+  visibleOnApp    Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+
+  @@map("kol_directory_visibility")
+}
