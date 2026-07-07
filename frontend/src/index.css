@@ -50,6 +50,52 @@
   --chm-precision-black: #485165;
   --chm-connection-orange: #e7764f;
   --chm-discovery-gray: #79869a;
+
+  /* ============================================================
+   * SEMANTIC DESIGN TOKENS (light — platform default)
+   * HSL channel triplets so Tailwind `hsl(var(--x) / <alpha>)`
+   * opacity modifiers work. Consumed by tailwind.config colors.
+   * PRIMARY = teal (knowledge/expertise), ACCENT = connection orange.
+   * ============================================================ */
+  --background: 220 33% 96%;        /* #f2f4f8 chm surface */
+  --foreground: 221 17% 34%;        /* #485165 precision */
+  --card: 0 0% 100%;                /* #ffffff */
+  --card-foreground: 221 17% 34%;
+  --muted: 220 20% 94%;             /* #eef1f6 */
+  --muted-foreground: 216 15% 54%;  /* #79869a discovery */
+  --border: 214 32% 91%;            /* #e2e8f0 */
+  --input: 214 20% 85%;
+  --ring: 193 52% 50%;              /* teal focus ring */
+
+  --primary: 193 52% 50%;           /* #3da4c0 knowledge blue */
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 196 45% 42%;     /* #3a839b expertise blue */
+
+  --accent: 15 76% 61%;             /* #e7764f connection orange */
+  --accent-foreground: 0 0% 100%;
+  --accent-hover: 15 62% 51%;       /* #d15b34 */
+
+  --radius: 0.75rem;                /* platform keeps its rounded language */
+}
+
+.dark {
+  --background: 240 10% 4%;         /* #09090b zinc-950 */
+  --foreground: 240 5% 96%;         /* #f4f4f5 */
+  --card: 240 6% 10%;               /* #18181b zinc-900 */
+  --card-foreground: 240 5% 96%;
+  --muted: 240 4% 16%;              /* #27272a zinc-800 */
+  --muted-foreground: 240 5% 65%;   /* #a1a1aa zinc-400 */
+  --border: 240 4% 16%;
+  --input: 240 4% 20%;
+  --ring: 191 58% 56%;
+
+  --primary: 191 58% 56%;           /* brighter teal on dark */
+  --primary-foreground: 240 10% 4%;
+  --primary-hover: 193 52% 50%;
+
+  --accent: 17 81% 66%;             /* #ef8a63 warmer orange on dark */
+  --accent-foreground: 240 10% 4%;
+  --accent-hover: 15 76% 61%;
 }
 
 @keyframes shimmer {
