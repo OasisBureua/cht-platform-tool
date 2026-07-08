@@ -41,9 +41,49 @@ permissions:
   issues: write
 
 jobs:
+  changes:
+    name: Detect deploy scope
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_backend: ${{ steps.scope.outputs.deploy_backend }}
+      deploy_frontend: ${{ steps.scope.outputs.deploy_frontend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'worker/**'
+            frontend:
+              - 'frontend/**'
+            infra:
+              - 'infrastructure/**'
+              - 'scripts/**'
+              - '.github/workflows/deploy-dev.yml'
+              - '.github/workflows/deploy-prod.yml'
+
+      - name: Set deploy scope
+        id: scope
+        run: |
+          chmod +x scripts/ci-detect-deploy-scope.sh
+          ./scripts/ci-detect-deploy-scope.sh \
+            "${{ github.event_name }}" \
+            "${{ steps.filter.outputs.backend }}" \
+            "${{ steps.filter.outputs.frontend }}" \
+            "${{ steps.filter.outputs.infra }}"
+
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
 
@@ -61,33 +101,40 @@ jobs:
             frontend/package-lock.json
 
       - name: Backend - Install dependencies
+        if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ./backend
         run: npm ci
 
       - name: Backend - Generate Prisma client
+        if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ./backend
         run: npx prisma generate
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
 
       - name: Backend - Run tests
+        if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ./backend
         run: npm test
 
       - name: Frontend - Install dependencies
+        if: needs.changes.outputs.deploy_frontend == 'true'
         working-directory: ./frontend
         run: npm ci
 
       - name: Frontend - Run tests
+        if: needs.changes.outputs.deploy_frontend == 'true'
         working-directory: ./frontend
         run: npm test
 
       - name: Setup Terraform
+        if: needs.changes.outputs.deploy_backend == 'true'
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform validate
+        if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
           terraform init -backend=false
@@ -96,12 +143,22 @@ jobs:
   deploy:
     name: Deploy to dev
     runs-on: ubuntu-latest
-    needs: test
+    needs: [changes, test]
+    if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
     environment: development
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Deploy scope summary
+        run: |
+          echo "## Deploy scope" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Lane | Run |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-----|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend (images + Terraform + ECS) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend (build + S3 + CloudFront) | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6
@@ -110,9 +167,11 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
+        if: needs.changes.outputs.deploy_backend == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Generate image tag
+        if: needs.changes.outputs.deploy_backend == 'true'
         id: meta
         run: |
           chmod +x scripts/next-dev-image-tag.sh
@@ -121,9 +180,11 @@ jobs:
           echo "Deploying image tag: ${IMAGE_TAG}"
 
       - name: Set up Docker Buildx
+        if: needs.changes.outputs.deploy_backend == 'true'
         uses: docker/setup-buildx-action@v4
 
       - name: Build and push backend image
+        if: needs.changes.outputs.deploy_backend == 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./backend
@@ -135,6 +196,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build and push worker image
+        if: needs.changes.outputs.deploy_backend == 'true'
         uses: docker/build-push-action@v7
         with:
           context: ./worker
@@ -146,12 +208,14 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Setup Terraform
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
       - name: Verify GitHub Environment secrets
+        if: needs.changes.outputs.deploy_backend == 'true'
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
@@ -180,10 +244,12 @@ jobs:
         run: ./scripts/verify-github-env-secrets.sh development
 
       - name: Terraform Init
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
 
       - name: Terraform Plan
+        if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
           terraform plan \
@@ -223,6 +289,7 @@ jobs:
           TF_VAR_internal_cache_secret: ${{ secrets.INTERNAL_CACHE_SECRET }}
 
       - name: Plan summary
+        if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
           echo "## Terraform plan summary" >> "$GITHUB_STEP_SUMMARY"
@@ -251,7 +318,7 @@ jobs:
           fi
 
       - name: Approve Terraform apply
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'
         uses: trstringer/manual-approval@v1
         timeout-minutes: 120
         with:
@@ -268,12 +335,16 @@ jobs:
             Comment **deny** to cancel the apply (the workflow will fail).
 
       - name: Terraform Apply
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform apply tfplan
 
       - name: Get Terraform outputs
-        if: github.event.inputs.plan_only != 'true'
+        if: |
+          github.event.inputs.plan_only != 'true' && (
+            needs.changes.outputs.deploy_frontend == 'true' ||
+            needs.changes.outputs.deploy_backend == 'true'
+          )
         id: outputs
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
@@ -285,7 +356,7 @@ jobs:
           echo "cognito_hosted_ui_base_url=$(terraform output -raw cognito_hosted_ui_base_url)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -293,7 +364,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build Frontend
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
         working-directory: ./frontend
         run: |
           npm ci
@@ -314,7 +385,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload to S3
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
         working-directory: ./frontend
         run: |
           aws s3 sync dist/ s3://${{ steps.outputs.outputs.frontend_bucket }}/ \
@@ -326,14 +397,14 @@ jobs:
             --cache-control "public, max-age=0, must-revalidate"
 
       - name: Invalidate CloudFront
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
 
       - name: Wait for ECS services stable
-        if: github.event.inputs.plan_only != 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'
         run: |
           CLUSTER="${{ steps.outputs.outputs.cluster_name }}"
           aws ecs wait services-stable \
@@ -343,7 +414,7 @@ jobs:
           echo "ECS services stable in cluster $CLUSTER"
 
       - name: Health Check
-        if: github.event.inputs.plan_only != 'true'
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true')
         id: healthcheck
         continue-on-error: true
         run: |
@@ -354,19 +425,19 @@ jobs:
           curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "${{ env.APP_URL }}/"
 
       - name: Final health gate
-        if: github.event.inputs.plan_only != 'true' && steps.healthcheck.outcome == 'failure'
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true') && steps.healthcheck.outcome == 'failure'
         run: |
           echo "Health check failed — marking workflow failed."
           exit 1
 
       - name: Deployment Summary
-        if: github.event.inputs.plan_only != 'true'
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true')
         run: |
           echo "## CHT Platform dev deploy" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Image tag | \`${{ steps.meta.outputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image tag | \`${{ needs.changes.outputs.deploy_backend == 'true' && steps.meta.outputs.image_tag || 'n/a' }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Frontend | ${{ env.APP_URL }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| API | ${{ env.API_URL }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
