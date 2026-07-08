@@ -35,8 +35,8 @@ jobs:
           echo "::error::Pull requests to main must come from a release/* branch (e.g. release/v1.0.0). Head branch: ${HEAD_REF:-<unknown>}"
           exit 1
 
-  release-contains-main:
-    name: release-contains-main
+  release-contains-develop:
+    name: release-contains-develop
     runs-on: ubuntu-latest
     if: startsWith(github.head_ref, 'release/')
     steps:
@@ -44,14 +44,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify release branch is based on main
+      - name: Verify release branch is based on develop
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          git fetch origin main
-          if git merge-base --is-ancestor origin/main "origin/${HEAD_REF}"; then
-            echo "✓ origin/main is an ancestor of origin/${HEAD_REF}"
+          git fetch origin develop
+          if git merge-base --is-ancestor origin/develop "origin/${HEAD_REF}"; then
+            echo "✓ origin/develop is an ancestor of origin/${HEAD_REF}"
           else
-            echo "::error::Release branch must be created from (or include) main. Re-create: git checkout main && git pull && git checkout -b ${HEAD_REF}"
+            echo "::error::Release branch must be created from (or include) develop. Re-create: git checkout develop && git pull && git checkout -b ${HEAD_REF}"
             exit 1
           fi

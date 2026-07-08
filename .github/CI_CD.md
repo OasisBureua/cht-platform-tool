@@ -31,7 +31,7 @@ Repo → **Settings → Rules → Rulesets → New branch ruleset**
 | Restrict deletions | ✓ |
 | Block force pushes | ✓ |
 | Require a pull request | ✓ (1 approval, optional code owners) |
-| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-main`** (after first workflow run) |
+| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-develop`** (after first workflow run) |
 | Require branches up to date | ✓ (recommended) |
 
 Do **not** allow broad bypass on this ruleset.
@@ -44,7 +44,7 @@ Do **not** allow broad bypass on this ruleset.
 | Check name (exact) |
 |--------------------|
 | `main-from-release-only` |
-| `release-contains-main` |
+| `release-contains-develop` |
 
 Optional: also require **PR Validation / Validate PR** from `pr-validation.yml`.
 
@@ -63,8 +63,8 @@ New ruleset:
 
 **Creating `release/*` from `main`:** GitHub has no single “must branch off main” toggle. Enforce with:
 
-- Team process: `git checkout main && git pull && git checkout -b release/v1.0.0`
-- CI job **`release-contains-main`** (in `branch-policy.yml`) on PRs to `main`
+- Team process: `git checkout develop && git pull && git checkout -b release/v1.0.0`
+- CI job **`release-contains-develop`** (in `branch-policy.yml`) on PRs to `main`
 
 ### 3. Recommended git flow (matches Content Hub)
 
