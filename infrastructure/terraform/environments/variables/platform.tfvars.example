@@ -7,15 +7,15 @@
 #   ./scripts/deploy-primary.sh platform
 # or the GitHub Actions workflow deploy-prod.yml.
 
-project      = "cht-platform"
-environment  = "platform"
+project     = "cht-platform"
+environment = "platform"
 
 # Public domain (Route53 / CloudFront)
 domain_name  = "testapp.communityhealth.media"
 
 # Primary Docker images (ECR)
-backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:platform-latest"
-worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:platform-latest"
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v3.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v3.0.0"
 
 # Core database shape (example values — adjust for prod)
 rds_instance_class     = "db.t3.medium"

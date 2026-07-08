@@ -108,8 +108,8 @@ jobs:
       - name: Generate image tag
         id: meta
         run: |
-          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-          IMAGE_TAG="dev-${SHORT_SHA}-$(date +%s)"
+          chmod +x scripts/next-dev-image-tag.sh
+          IMAGE_TAG="$(./scripts/next-dev-image-tag.sh cht-platform-backend "$AWS_REGION")"
           echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "Deploying image tag: ${IMAGE_TAG}"
 

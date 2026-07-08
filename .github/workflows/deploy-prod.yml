@@ -15,8 +15,8 @@ env:
   APP_URL: https://testapp.communityhealth.media
   API_URL: https://testapp.communityhealth.media/api
   TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
-  # Non-secret infra defaults; secrets override via TF_VAR_* from the platform environment.
-  TF_VAR_FILE: ../variables/platform.tfvars.example
+  TF_VAR_FILE: ../variables/platform.github.tfvars
+  TF_BACKEND_CONFIG: ../backends/us-east-1-platform.hcl
   ECS_CLUSTER: cht-platform-cluster
   ECS_BACKEND_SERVICE: cht-platform-backend
   ECS_WORKER_SERVICE: cht-platform-worker
@@ -105,13 +105,9 @@ jobs:
       - name: Generate image tag
         id: meta
         run: |
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            IMAGE_TAG="${GITHUB_REF_NAME}"
-          else
-            SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
-            IMAGE_TAG="platform-${SHORT_SHA}-$(date +%s)"
-          fi
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+          chmod +x scripts/next-prod-image-tag.sh
+          IMAGE_TAG="$(./scripts/next-prod-image-tag.sh cht-platform-backend "$AWS_REGION")"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "Building with tag: ${IMAGE_TAG}"
 
       - name: Set up Docker Buildx
@@ -143,10 +139,11 @@ jobs:
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
       - name: Terraform Init
         working-directory: ${{ env.TF_ENV_DIR }}
-        run: terraform init
+        run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
 
       - name: Verify GitHub Environment secrets (platform)
         env:
