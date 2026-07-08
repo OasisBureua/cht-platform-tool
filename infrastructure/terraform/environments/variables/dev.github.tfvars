@@ -1,9 +1,9 @@
-# CHT Platform — dev.github.tfvars
+# CHT Platform dev — dev.github.tfvars
 # Non-secret infra for GitHub Actions deploy-dev.yml (committed).
 # Secrets: GitHub Environment "development" → TF_VAR_* (see .github/CI_CD.md).
 # Local dev: copy dev.tfvars.example → dev.tfvars and add secrets inline or via TF_VAR_*.
 
-project     = "cht-platform"
+project     = "cht"
 environment = "dev"
 
 # Domain and certificates (devapp)
