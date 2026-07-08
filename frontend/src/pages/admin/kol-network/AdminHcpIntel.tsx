@@ -1,18 +1,15 @@
-import { useState, type ReactNode } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useRef, useState, type ReactNode } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   AlertCircle,
   ArrowLeft,
   Beaker,
   BookOpen,
-  Building2,
   CalendarCheck,
   DollarSign,
   ExternalLink,
-  GraduationCap,
   Loader2,
-  MapPin,
   Newspaper,
   Pill,
   RefreshCw,
@@ -29,6 +26,7 @@ import {
   intelApi,
   demoKolProfile,
   demoKolPublications,
+  type AIBrief,
   type DrugShift,
   type EngagementSignals,
   type HCPSignal,
@@ -39,11 +37,12 @@ import {
   type ShiftsResponse,
   type SignalType,
 } from './lib/intel';
+import { cn } from './components/cn';
 import { Card, CardContent, CardHeader, CardTitle } from './components/Card';
 import { Badge, DemoBadge } from './components/Badge';
-import { Button } from './components/Button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/Tabs';
+import { Button, buttonVariants } from './components/Button';
 import { InitialsAvatar } from './components/InitialsAvatar';
+import { RxTrendChart } from './components/RxTrendChart';
 
 // ─── helpers (ported from MediaHub hcps/[npi]/page.tsx) ─────────────────────
 
@@ -86,7 +85,7 @@ function externalLinks(kol: PublicKol): { label: string; href: string }[] {
   const newsQuery = `("${fullName}" OR "Dr. ${last}")${hosp ? ` "${hosp}"` : ''} (oncology OR cancer OR hematology)`;
   return [
     { label: 'PubMed', href: `https://pubmed.ncbi.nlm.nih.gov/?term=${encodeURIComponent(pubmedTerm)}` },
-    { label: 'ClinicalTrials.gov', href: `https://clinicaltrials.gov/search?term=${encodeURIComponent(ctParts.join(' AND '))}` },
+    { label: 'CT.gov', href: `https://clinicaltrials.gov/search?term=${encodeURIComponent(ctParts.join(' AND '))}` },
     { label: 'Google News', href: `https://news.google.com/search?q=${encodeURIComponent(newsQuery)}` },
   ];
 }
@@ -110,8 +109,11 @@ const NEGATIVE = 'text-red-600 dark:text-red-400';
 // ─── page ────────────────────────────────────────────────────────────────────
 
 /**
- * Internal HCP intelligence detail — structural port of MediaHub's
- * dashboard/hcps/[npi] page, restyled with CHT platform tokens.
+ * Internal HCP intelligence detail — "Mix 1 · A + B" layout: identity band +
+ * KPI tiles up top, the AI Intelligence Briefing as the editorial centerpiece
+ * with the Rx attribution chart and signal feed beside it, publications and
+ * trials/grants below, and the remaining detail (engagement, prescribing,
+ * Open Payments, news) as stacked cards below the fold.
  *
  * Live data: KOL profile + publications (kolNetworkApi, proxied MediaHub
  * public directory). Everything else flows through the demo seam in
@@ -120,12 +122,6 @@ const NEGATIVE = 'text-red-600 dark:text-red-400';
 export default function AdminHcpIntel() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const activeTab = searchParams.get('tab') ?? 'overview';
-  const setActiveTab = (v: string) => {
-    setSearchParams(v === 'overview' ? {} : { tab: v }, { replace: true });
-  };
 
   const profileQuery = useQuery({
     queryKey: ['admin', 'kol-network', 'detail', id],
@@ -215,6 +211,13 @@ export default function AdminHcpIntel() {
     networkMode: 'always',
     retry: false,
   });
+  const rxTrendQuery = useQuery({
+    queryKey: ['admin', 'kol-intel', id, 'rx-trend'],
+    queryFn: () => intelApi.getRxTrend(id),
+    enabled: !!kol,
+    networkMode: 'always',
+    retry: false,
+  });
   const paymentsQuery = useQuery({
     queryKey: ['admin', 'kol-intel', id, 'payments'],
     queryFn: () => intelApi.getOpenPayments(id),
@@ -248,6 +251,15 @@ export default function AdminHcpIntel() {
     }
   }
 
+  // "Log outreach" toast stub — outreach logging isn't wired to a backend yet.
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  function showToast(msg: string) {
+    setToast(msg);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3500);
+  }
+
   if (isLoading) {
     return (
       <div className="flex min-h-[30vh] items-center justify-center">
@@ -270,11 +282,71 @@ export default function AdminHcpIntel() {
 
   const rx = rxQuery.data ?? [];
   const totalRxAllYears = rx.reduce((a, r) => a + r.total_claims_all_years, 0);
-  const topRxDrug = rx[0]?.drug_normalized ?? null;
   const links = externalLinks(kol);
+  const shifts = shiftsQuery.data ?? null;
+  const payments = paymentsQuery.data ?? null;
+  const timeline = timelineQuery.data ?? [];
+  const news = newsQuery.data ?? [];
+
+  // Headline attribution: strongest post-CHM lift from the shifts seam.
+  const topLift = shifts?.shifts.find((s) => s.has_lift) ?? null;
+  const liftLabel =
+    topLift && topLift.pct_lift !== null
+      ? `${topLift.pct_lift > 0 ? '+' : ''}${topLift.pct_lift.toFixed(0)}%`
+      : '—';
+
+  const paymentsTotal = payments?.summary.total_usd ?? null;
+  const paymentsLabel =
+    paymentsTotal === null
+      ? '—'
+      : paymentsTotal >= 1000
+        ? `$${Math.round(paymentsTotal / 1000)}K`
+        : `$${paymentsTotal.toLocaleString()}`;
+  const paymentsNote = payments?.summary.year_range
+    ? `${payments.summary.year_range[0]}–${payments.summary.year_range[1]} · disclosed`
+    : 'CMS Sunshine Act';
+
+  // Signal feed — freshest item per intel stream (webinar / Rx / pubs / news).
+  const signals: { id: string; tone: 'teal' | 'orange'; meta: string; line: string }[] = [];
+  const webinar = timeline.find((s) => s.signal_type === 'webinar_attendance');
+  if (webinar) {
+    signals.push({
+      id: 'sig-webinar',
+      tone: 'teal',
+      meta: `${formatDate(webinar.observed_at)} · Webinar`,
+      line: webinar.entities_json?.asked_question
+        ? `Attended "${webinar.title}" · asked a question`
+        : `Attended "${webinar.title}"`,
+    });
+  }
+  if (topLift && topLift.pct_lift !== null) {
+    signals.push({
+      id: 'sig-rx',
+      tone: 'orange',
+      meta: 'Prescribing',
+      line: `${topLift.drug_normalized} claims trending ↑ ${topLift.pct_lift.toFixed(0)}% YoY`,
+    });
+  }
+  const firstPub = pubs?.items[0];
+  if (firstPub) {
+    signals.push({
+      id: 'sig-pub',
+      tone: 'teal',
+      meta: `${formatDate(firstPub.published_at)} · Publication`,
+      line: `${firstPub.is_first_author ? 'First-author: ' : ''}${firstPub.title}`,
+    });
+  }
+  if (news[0]) {
+    signals.push({
+      id: 'sig-news',
+      tone: 'teal',
+      meta: `${formatDate(news[0].observed_at)} · News`,
+      line: news[0].title ?? '(untitled)',
+    });
+  }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Back — browser history so the user returns to wherever they came from */}
       <button
         onClick={() => navigate(-1)}
@@ -283,182 +355,247 @@ export default function AdminHcpIntel() {
         <ArrowLeft className="h-3.5 w-3.5" /> Back
       </button>
 
-      {/* Big header card */}
+      {/* 1 · Identity band */}
       <Card>
-        <CardContent className="grid grid-cols-1 gap-5 p-5 md:grid-cols-[1fr_auto]">
-          <div className="flex gap-5">
-            <InitialsAvatar
-              name={kol.name}
-              photoUrl={kol.photo_url}
-              className="h-20 w-20 shrink-0 text-2xl"
-            />
-            <div className="min-w-0 flex-1 space-y-2">
-              <div className="flex flex-wrap items-baseline gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{kol.name}</h1>
-                {kol.title && <span className="text-sm text-muted-foreground">{kol.title}</span>}
-                {kol.shoot_count > 0 && (
-                  <Badge
-                    variant="positive"
-                    title="Has appeared in CHM-produced content — actively engaged KOL."
-                  >
-                    Engaged
-                  </Badge>
-                )}
-                {kol.is_new && (
-                  <Badge variant="accent" title="Recently added to the KOL network.">
-                    New
-                  </Badge>
-                )}
-                {usingDemoProfile && <DemoBadge />}
-              </div>
-              {kol.specialty && <p className="text-sm text-muted-foreground">{kol.specialty}</p>}
-              <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-muted-foreground">
-                {kol.institution && (
-                  <span className="inline-flex items-center gap-1">
-                    <Building2 className="h-3.5 w-3.5" />
-                    {kol.institution}
-                  </span>
-                )}
-                {(kol.region_label || kol.region) && (
-                  <span className="inline-flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5" />
-                    {kol.region_label ?? kol.region}
-                  </span>
-                )}
-                {kol.first_appeared_at && (
-                  <span className="inline-flex items-center gap-1">
-                    <CalendarCheck className="h-3.5 w-3.5" />
-                    First appeared {formatDate(kol.first_appeared_at)}
-                  </span>
-                )}
-              </div>
-              {links.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  {links.map((l) => (
-                    <a
-                      key={l.label}
-                      href={l.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-7 items-center gap-1 rounded-lg border border-border px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {l.label}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  ))}
-                </div>
+        <CardContent className="flex flex-wrap items-center gap-4 p-4 md:p-5">
+          <InitialsAvatar name={kol.name} photoUrl={kol.photo_url} className="h-14 w-14 shrink-0 text-lg" />
+          <div className="min-w-0 flex-1 basis-56">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <h1 className="text-lg font-bold tracking-tight text-foreground">{kol.name}</h1>
+              {kol.title && <span className="text-xs text-muted-foreground">{kol.title}</span>}
+              {kol.shoot_count > 0 && (
+                <Badge
+                  variant="teal"
+                  className="text-[10px]"
+                  title="Has appeared in CHM-produced content — actively engaged KOL."
+                >
+                  Engaged
+                </Badge>
               )}
+              {kol.is_new && (
+                <Badge variant="orange" className="text-[10px]" title="Recently added to the KOL network.">
+                  New
+                </Badge>
+              )}
+              {usingDemoProfile && <DemoBadge />}
             </div>
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {[kol.specialty, kol.institution, kol.region_label ?? kol.region]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+            {kol.bio && (
+              <p className="mt-0.5 line-clamp-1 text-xs italic text-muted-foreground/80" title={kol.bio}>
+                {kol.bio}
+              </p>
+            )}
           </div>
-
-          {/* Headline stats */}
-          <div className="grid grid-cols-3 gap-4 md:min-w-[170px] md:grid-cols-1 md:text-right">
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">CHM shoots</p>
-              <p className="font-mono text-3xl font-bold tabular-nums text-foreground">
-                {kol.shoot_count}
-              </p>
-              <p className="text-[10px] text-muted-foreground">
-                {usingDemoProfile ? 'MediaHub · demo' : 'MediaHub · live'}
-              </p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Total Rx</p>
-              <p className="font-mono text-3xl font-bold tabular-nums text-foreground">
-                {rx.length > 0 ? totalRxAllYears.toLocaleString() : '—'}
-              </p>
-              <p className="text-[10px] text-muted-foreground">CMS Part D · demo</p>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Top drug</p>
-              <p className="text-sm font-semibold text-foreground">{topRxDrug ?? '—'}</p>
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {links.slice(0, 2).map((l) => (
+              <a
+                key={l.label}
+                href={l.href}
+                target="_blank"
+                rel="noreferrer"
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }), 'group')}
+              >
+                {l.label}
+                <ExternalLink className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </a>
+            ))}
+            <Button
+              size="sm"
+              onClick={() =>
+                showToast(
+                  `Outreach logging for ${kol.name} is a stub — it will create a CRM touchpoint once wired to the backend.`,
+                )
+              }
+            >
+              Log outreach
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="overview">
-            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="engagement">
-            <CalendarCheck className="mr-1.5 h-3.5 w-3.5" />
-            Engagement
-          </TabsTrigger>
-          <TabsTrigger value="publications">
-            <BookOpen className="mr-1.5 h-3.5 w-3.5" />
-            Publications
-            {pubs && pubs.total > 0 && ` (${pubs.total})`}
-          </TabsTrigger>
-          <TabsTrigger value="trials">
-            <Beaker className="mr-1.5 h-3.5 w-3.5" />
-            Trials &amp; Grants
-          </TabsTrigger>
-          <TabsTrigger value="prescribing">
-            <Pill className="mr-1.5 h-3.5 w-3.5" />
-            Prescribing
-          </TabsTrigger>
-          <TabsTrigger value="payments">
-            <DollarSign className="mr-1.5 h-3.5 w-3.5" />
-            Open Payments
-          </TabsTrigger>
-          <TabsTrigger value="news">
-            <Newspaper className="mr-1.5 h-3.5 w-3.5" />
-            News
-          </TabsTrigger>
-        </TabsList>
+      {/* 2 · KPI stat tiles */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiTile
+          eyebrow="Shoots"
+          value={kol.shoot_count.toLocaleString()}
+          note={usingDemoProfile ? 'MediaHub · demo' : 'MediaHub · live'}
+        />
+        <KpiTile
+          eyebrow="Total Rx"
+          value={rx.length > 0 ? totalRxAllYears.toLocaleString() : '—'}
+          note="CMS Part D · demo"
+        />
+        <KpiTile
+          accent
+          eyebrow="Rx lift post-CHM"
+          value={liftLabel}
+          note={topLift?.drug_normalized ?? 'no anchored lift'}
+        />
+        <KpiTile eyebrow="Open Payments" value={paymentsLabel} note={paymentsNote} />
+      </div>
 
-        <TabsContent value="overview" className="mt-4">
-          <OverviewTab
-            kol={kol}
-            profileDemo={usingDemoProfile}
-            brief={briefQuery.data ?? null}
-            briefLoading={briefQuery.isLoading}
-            regenerating={briefRegenerating}
-            onRegenerate={regenerateBrief}
-          />
-        </TabsContent>
+      {/* 3 · Briefing centerpiece + attribution chart / signals */}
+      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
+        <BriefingCard
+          brief={briefQuery.data ?? null}
+          loading={briefQuery.isLoading}
+          regenerating={briefRegenerating}
+          onRegenerate={regenerateBrief}
+        />
 
-        <TabsContent value="engagement" className="mt-4">
-          <EngagementTab
-            engagement={engagementQuery.data ?? null}
-            timeline={timelineQuery.data ?? []}
-          />
-        </TabsContent>
+        <div className="flex flex-col gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Eyebrow className="flex items-center gap-1.5">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Rx · pre / post first CHM shoot
+                </Eyebrow>
+                <DemoBadge />
+              </div>
+              {rxTrendQuery.data && (
+                <p className="text-[11px] text-muted-foreground">
+                  {rxTrendQuery.data.drug} · monthly claims
+                </p>
+              )}
+            </CardHeader>
+            <CardContent className="pb-3">
+              {rxTrendQuery.data ? (
+                <RxTrendChart points={rxTrendQuery.data.points} />
+              ) : (
+                <div className="flex h-44 items-center justify-center">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" aria-label="Loading" />
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <TabsContent value="publications" className="mt-4">
-          <PublicationsTab
-            loading={!pubsDemo && pubsQuery.isLoading}
-            demo={pubsDemo}
-            publications={pubs?.items ?? []}
-            total={pubs?.total ?? 0}
-          />
-        </TabsContent>
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <Eyebrow>Signals</Eyebrow>
+                <DemoBadge />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-0.5 pb-3">
+              {signals.length === 0 ? (
+                <p className="py-3 text-center text-sm text-muted-foreground">No signals yet.</p>
+              ) : (
+                signals.map((s) => (
+                  <div
+                    key={s.id}
+                    className="-mx-2 flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-200 hover:bg-muted/60"
+                  >
+                    <span
+                      className={cn(
+                        'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                        s.tone === 'orange' ? 'bg-accent' : 'bg-primary',
+                      )}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-muted-foreground">{s.meta}</p>
+                      <p className="truncate text-xs font-semibold text-foreground" title={s.line}>
+                        {s.line}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
-        <TabsContent value="trials" className="mt-4">
-          <TrialsGrantsTab trials={trialsQuery.data ?? []} nih={nihQuery.data ?? null} />
-        </TabsContent>
+      {/* 4 · Publications (live) + Trials & Grants (demo) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PublicationsCard
+          loading={!pubsDemo && pubsQuery.isLoading}
+          demo={pubsDemo}
+          publications={pubs?.items ?? []}
+          total={pubs?.total ?? 0}
+        />
+        <TrialsGrantsCard trials={trialsQuery.data ?? []} nih={nihQuery.data ?? null} />
+      </div>
 
-        <TabsContent value="prescribing" className="mt-4">
-          <PrescribingTab rx={rx} shifts={shiftsQuery.data ?? null} />
-        </TabsContent>
+      {/* 5 · Below the fold — remaining detail as stacked cards */}
+      <EngagementSection engagement={engagementQuery.data ?? null} timeline={timeline} />
+      <PrescribingSection rx={rx} shifts={shifts} />
+      <OpenPaymentsCard payments={payments} />
+      <NewsSection news={news} moreHref={links[2]?.href} />
 
-        <TabsContent value="payments" className="mt-4">
-          <OpenPaymentsCard payments={paymentsQuery.data ?? null} />
-        </TabsContent>
-
-        <TabsContent value="news" className="mt-4">
-          <NewsTab news={newsQuery.data ?? []} />
-        </TabsContent>
-      </Tabs>
+      {/* Toast stub for "Log outreach" */}
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-4 right-4 z-50 w-[340px] rounded-xl border border-border bg-card p-4 shadow-card-hover"
+        >
+          <p className="text-sm font-semibold text-foreground">Log outreach</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{toast}</p>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── shared atoms ────────────────────────────────────────────────────────────
+
+/** Small uppercase teal section label — the platform's card-header language. */
+function Eyebrow({ className, children }: { className?: string; children: ReactNode }) {
+  return (
+    <span
+      className={cn('text-[10px] font-bold uppercase tracking-[0.14em] text-primary', className)}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** KPI stat tile with the shared hover-lift. `accent` = soft orange gradient. */
+function KpiTile({
+  eyebrow,
+  value,
+  note,
+  accent = false,
+}: {
+  eyebrow: string;
+  value: string;
+  note: string;
+  accent?: boolean;
+}) {
+  return (
+    <Card
+      variant="interactive"
+      className={cn(
+        accent &&
+          'bg-gradient-to-br from-card to-accent-100/70 hover:border-accent/40 dark:to-accent-500/15',
+      )}
+    >
+      <CardContent className="p-4">
+        <p
+          className={cn(
+            'text-[10px] font-bold uppercase tracking-[0.14em]',
+            accent ? 'text-accent-600 dark:text-accent-400' : 'text-primary',
+          )}
+        >
+          {eyebrow}
+        </p>
+        <p
+          className={cn(
+            'mt-1 font-mono text-2xl font-bold tabular-nums',
+            accent ? 'text-accent-600 dark:text-accent-300' : 'text-foreground',
+          )}
+        >
+          {value}
+        </p>
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{note}</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 function MiniKPI({ label, value }: { label: string; value: string | number }) {
   return (
@@ -488,6 +625,7 @@ function DrugChip({ drug, klass }: { drug: string; klass?: string | null }) {
 /**
  * Minimal markdown renderer — just enough for the AI brief's headers +
  * paragraphs + bold/italic (ported from MediaHub; avoids a markdown dep).
+ * Headers render as muted eyebrows per the approved dossier layout.
  */
 function MiniMarkdown({ text }: { text: string }) {
   const lines = text.split(/\r?\n/);
@@ -532,12 +670,12 @@ function MiniMarkdown({ text }: { text: string }) {
   };
 
   return (
-    <div className="space-y-3 text-sm leading-relaxed">
+    <div className="space-y-2 text-sm leading-relaxed">
       {blocks.map((b, i) =>
         b.type === 'h2' ? (
           <h3
             key={i}
-            className="mt-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground first:mt-0"
+            className="mt-4 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground first:mt-0"
           >
             {b.content}
           </h3>
@@ -582,113 +720,294 @@ function PaginatedList<T>({
   );
 }
 
-// ─── Overview tab (AI brief + about) ────────────────────────────────────────
+// ─── Intelligence Briefing (editorial centerpiece) ──────────────────────────
 
-function OverviewTab({
-  kol,
-  profileDemo,
+function BriefingCard({
   brief,
-  briefLoading,
+  loading,
   regenerating,
   onRegenerate,
 }: {
-  kol: PublicKol;
-  profileDemo: boolean;
-  brief: { brief_markdown: string; generated_at: string; model_used: string; stale: boolean } | null;
-  briefLoading: boolean;
+  brief: AIBrief | null;
+  loading: boolean;
   regenerating: boolean;
   onRegenerate: () => void;
 }) {
   return (
-    <div className="space-y-4">
-      {/* AI Brief — demo seam */}
-      <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            AI Brief
-            {brief?.stale && <Badge variant="muted">Stale &gt;7d</Badge>}
-            <DemoBadge />
-          </CardTitle>
-          <Button size="sm" variant="outline" disabled={regenerating} onClick={onRegenerate}>
-            <RefreshCw className={`h-3.5 w-3.5 ${regenerating ? 'animate-spin' : ''}`} />
-            Regenerate
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {briefLoading || !brief ? (
-            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-              Generating brief…
-            </div>
-          ) : (
-            <>
-              <MiniMarkdown text={brief.brief_markdown} />
-              <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
-                {new Date(brief.generated_at).toLocaleString()} · {brief.model_used}
-              </p>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Professional background — live from the KOL directory profile */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2">
-            <GraduationCap className="h-4 w-4" />
-            Professional background
-            {profileDemo && <DemoBadge />}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          {kol.title && <Kv label="Title" value={kol.title} />}
-          {kol.specialty && <Kv label="Specialty" value={kol.specialty} />}
-          {kol.institution && <Kv label="Institution" value={kol.institution} />}
-          {(kol.region_label || kol.region) && (
-            <Kv label="Region" value={kol.region_label ?? kol.region ?? ''} />
-          )}
-          {kol.bio && (
-            <div>
-              <p className="mb-1 text-xs uppercase text-muted-foreground">Bio</p>
-              <p className="italic text-muted-foreground">{kol.bio}</p>
-            </div>
-          )}
-          {!kol.title && !kol.specialty && !kol.institution && !kol.bio && (
-            <p className="italic text-sm text-muted-foreground">No profile metadata on file.</p>
-          )}
-          <p className="border-t border-border pt-2 text-xs text-muted-foreground">
-            {profileDemo
-              ? 'Source: seeded demo profile (backend unreachable)'
-              : 'Source: MediaHub KOL directory · live'}
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+    <Card className="transition-all duration-200 hover:ring-1 hover:ring-primary/20">
+      <CardHeader className="flex-row items-center justify-between space-y-0 gap-3 pb-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5" />
+            Intelligence Briefing
+          </Eyebrow>
+          {brief?.stale && <Badge variant="muted">Stale &gt;7d</Badge>}
+          <DemoBadge />
+        </div>
+        <Button size="sm" variant="outline" disabled={regenerating} onClick={onRegenerate}>
+          <RefreshCw className={cn('h-3.5 w-3.5', regenerating && 'animate-spin')} />
+          Regenerate
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {loading || !brief ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            Generating brief…
+          </div>
+        ) : (
+          <>
+            <MiniMarkdown text={brief.brief_markdown} />
+            <p className="mt-4 border-t border-border pt-3 text-xs text-muted-foreground">
+              {new Date(brief.generated_at).toLocaleString()} · {brief.model_used}
+            </p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-function Kv({ label, value }: { label: string; value: string }) {
+// ─── Publications (LIVE) ─────────────────────────────────────────────────────
+
+function PublicationsCard({
+  loading,
+  demo,
+  publications,
+  total,
+}: {
+  loading: boolean;
+  demo: boolean;
+  publications: PublicKolPublication[];
+  total: number;
+}) {
   return (
-    <div>
-      <p className="mb-1 text-xs uppercase text-muted-foreground">{label}</p>
-      <p className="whitespace-pre-wrap">{value}</p>
-    </div>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <BookOpen className="h-3.5 w-3.5" />
+            Publications {total > 0 && `(${total})`}
+          </Eyebrow>
+          <span className="text-[11px] text-muted-foreground">
+            {demo ? 'OpenAlex' : 'OpenAlex · live'}
+          </span>
+          {demo && <DemoBadge />}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex min-h-[120px] items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" />
+          </div>
+        ) : publications.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No OpenAlex-linked publications for this KOL yet.
+          </p>
+        ) : (
+          <PaginatedList
+            items={publications}
+            pageSize={5}
+            renderItem={(p) => {
+              const inner = (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span>{formatDate(p.published_at)}</span>
+                      {p.journal && (
+                        <>
+                          <span>·</span>
+                          <span className="italic">{p.journal}</span>
+                        </>
+                      )}
+                      {p.is_first_author && (
+                        <Badge variant="teal" className="text-[10px]">
+                          First author
+                        </Badge>
+                      )}
+                      {p.is_last_author && (
+                        <Badge variant="outline" className="text-[10px]">
+                          Senior author
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-medium text-foreground transition-colors duration-200 group-hover:text-primary">
+                      {p.title}
+                    </p>
+                  </div>
+                  {p.url && (
+                    <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                  )}
+                </>
+              );
+              const rowClass =
+                'group -mx-2 flex gap-3 rounded-xl px-2.5 py-2.5 transition-colors duration-200 hover:bg-muted/50';
+              return p.url ? (
+                <a
+                  key={`${p.title}-${p.published_at}`}
+                  href={p.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={rowClass}
+                >
+                  {inner}
+                </a>
+              ) : (
+                <div key={`${p.title}-${p.published_at}`} className={rowClass}>
+                  {inner}
+                </div>
+              );
+            }}
+          />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-// ─── Engagement tab ──────────────────────────────────────────────────────────
+// ─── Trials & Grants (demo) ──────────────────────────────────────────────────
 
-type EngagementPill = 'all' | 'shoot' | 'webinar' | 'qa';
+function TrialsGrantsCard({
+  trials,
+  nih,
+}: {
+  trials: HCPSignal[];
+  nih: NIHGrantsResponse | null;
+}) {
+  const summary = nih?.summary;
+  const hasGrants = !!summary && summary.total_grants > 0;
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <Beaker className="h-3.5 w-3.5" />
+            Trials &amp; Grants
+          </Eyebrow>
+          <DemoBadge />
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {trials.length === 0 ? (
+          <p className="py-2 text-center text-sm text-muted-foreground">
+            No registered trials matched to this HCP.
+          </p>
+        ) : (
+          <div className="space-y-1">
+            {trials.map((s) => {
+              const Icon = signalIcon(s.signal_type);
+              return (
+                <a
+                  key={s.id}
+                  href={s.url ?? '#'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group -mx-2 flex gap-3 rounded-xl px-2.5 py-2.5 transition-colors duration-200 hover:bg-muted/50"
+                >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-0.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="uppercase">{s.signal_type}</span>
+                      <span>·</span>
+                      <span>{s.source}</span>
+                      <span>·</span>
+                      <span>{formatDate(s.observed_at)}</span>
+                    </div>
+                    <p className="text-sm font-medium text-foreground transition-colors duration-200 group-hover:text-primary">
+                      {s.title ?? '(untitled)'}
+                    </p>
+                    {s.drugs.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {s.drugs.map((d) => (
+                          <DrugChip key={`${s.id}-${d.drug_normalized}`} drug={d.drug_normalized} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        )}
 
-function EngagementTab({
+        {hasGrants && summary && nih && (
+          <div className="border-t border-border pt-3">
+            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+              NIH grants · RePORTER (PI-name match)
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              <MiniKPI label="Grants" value={summary.total_grants} />
+              <MiniKPI label="Active" value={summary.active_grants} />
+              <MiniKPI
+                label="Lifetime award"
+                value={`$${Math.round(summary.total_award_usd / 1000).toLocaleString()}K`}
+              />
+            </div>
+            {summary.top_agencies.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {summary.top_agencies.slice(0, 5).map((a) => (
+                  <Badge key={a.agency} variant="teal" className="gap-1.5 text-[10px]">
+                    {a.agency}
+                    <span className="font-mono tabular-nums opacity-80">
+                      ${Math.round(a.total_usd).toLocaleString()}
+                    </span>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="mt-2 space-y-1">
+              {nih.grants.slice(0, 3).map((g) => (
+                <a
+                  key={g.appl_id}
+                  href={`https://reporter.nih.gov/project-details/${g.appl_id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="group -mx-2 flex items-start justify-between gap-3 rounded-xl px-2.5 py-2 transition-colors duration-200 hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground transition-colors duration-200 group-hover:text-primary">
+                      {g.project_title ?? g.project_num ?? g.appl_id}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {g.fiscal_year ?? '—'} · {g.activity_code ?? '—'} · {g.agency_ic ?? '—'}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-mono text-sm font-semibold tabular-nums">
+                      {g.award_amount
+                        ? `$${g.award_amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                        : '—'}
+                    </p>
+                    {g.is_active && (
+                      <Badge variant="teal" className="mt-1 text-[9px]">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Engagement detail (below the fold) ─────────────────────────────────────
+
+type EngagementPillFilter = 'all' | 'shoot' | 'webinar' | 'qa';
+
+function EngagementSection({
   engagement,
   timeline,
 }: {
   engagement: EngagementSignals | null;
   timeline: HCPSignal[];
 }) {
-  const [activePill, setActivePill] = useState<EngagementPill>('all');
+  const [activePill, setActivePill] = useState<EngagementPillFilter>('all');
 
   const filtered = timeline.filter((s) => {
     if (activePill === 'all') return true;
@@ -725,86 +1044,77 @@ function EngagementTab({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Engagement summary — one-glance answer */}
-      {engagement && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="space-y-3 p-4 pt-4">
-            <div className="flex justify-end">
-              <DemoBadge />
-            </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <MiniKPI label="Attended" value={engagement.webinars_attended} />
-              <MiniKPI label="RSVP only" value={engagement.webinars_rsvp_only} />
-              <MiniKPI label="Questions asked" value={engagement.questions_asked} />
-              <MiniKPI
-                label="Q&A rate"
-                value={
-                  engagement.qa_rate === null ? '—' : `${Math.round(engagement.qa_rate * 100)}%`
-                }
-              />
-            </div>
-            {topDrugs.length > 0 && (
-              <div className="border-t border-primary/20 pt-3">
-                <p className="mb-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                  Top engagement drugs
-                </p>
-                <div className="flex flex-wrap gap-1">
-                  {topDrugs.map((d) => (
-                    <DrugChip key={d} drug={d} />
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Activity timeline with pill filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            Activity timeline
-            <DemoBadge />
-          </CardTitle>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <EngagementPillButton
-              label="All"
-              count={timeline.length}
-              active={activePill === 'all'}
-              onClick={() => setActivePill('all')}
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <CalendarCheck className="h-3.5 w-3.5" />
+            Engagement detail
+          </Eyebrow>
+          <DemoBadge />
+        </div>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <EngagementPillButton
+            label="All"
+            count={timeline.length}
+            active={activePill === 'all'}
+            onClick={() => setActivePill('all')}
+          />
+          <EngagementPillButton
+            label="CHM Shoots"
+            count={timeline.filter((s) => s.signal_type === 'clip_appearance').length}
+            active={activePill === 'shoot'}
+            onClick={() => setActivePill('shoot')}
+          />
+          <EngagementPillButton
+            label="Webinars"
+            count={timeline.filter((s) => s.signal_type === 'webinar_attendance').length}
+            active={activePill === 'webinar'}
+            onClick={() => setActivePill('webinar')}
+          />
+          <EngagementPillButton
+            label="Q&A"
+            count={timeline.filter((s) => Boolean(s.entities_json?.asked_question)).length}
+            active={activePill === 'qa'}
+            onClick={() => setActivePill('qa')}
+          />
+          {/* Future CHT-event pills — greyed out until CHT engagement events land */}
+          {['Videos', 'Emails', 'Surveys', 'Payments', 'Chat'].map((p) => (
+            <span
+              key={p}
+              className="inline-flex items-center gap-1 rounded-pill border border-dashed border-border/60 px-2.5 py-0.5 text-[10px] text-muted-foreground/60"
+              title="Coming when CHT engagement events are wired up"
+            >
+              {p} · soon
+            </span>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {engagement && (
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <MiniKPI label="Attended" value={engagement.webinars_attended} />
+            <MiniKPI label="RSVP only" value={engagement.webinars_rsvp_only} />
+            <MiniKPI label="Questions asked" value={engagement.questions_asked} />
+            <MiniKPI
+              label="Q&A rate"
+              value={engagement.qa_rate === null ? '—' : `${Math.round(engagement.qa_rate * 100)}%`}
             />
-            <EngagementPillButton
-              label="CHM Shoots"
-              count={timeline.filter((s) => s.signal_type === 'clip_appearance').length}
-              active={activePill === 'shoot'}
-              onClick={() => setActivePill('shoot')}
-            />
-            <EngagementPillButton
-              label="Webinars"
-              count={timeline.filter((s) => s.signal_type === 'webinar_attendance').length}
-              active={activePill === 'webinar'}
-              onClick={() => setActivePill('webinar')}
-            />
-            <EngagementPillButton
-              label="Q&A"
-              count={timeline.filter((s) => Boolean(s.entities_json?.asked_question)).length}
-              active={activePill === 'qa'}
-              onClick={() => setActivePill('qa')}
-            />
-            {/* Future CHT-event pills — greyed out until CHT engagement events land */}
-            {['Videos', 'Emails', 'Surveys', 'Payments', 'Chat'].map((p) => (
-              <span
-                key={p}
-                className="inline-flex items-center gap-1 rounded-pill border border-dashed border-border/60 px-2.5 py-0.5 text-[10px] text-muted-foreground/60"
-                title="Coming when CHT engagement events are wired up"
-              >
-                {p} · soon
-              </span>
-            ))}
           </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
+        )}
+        {topDrugs.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+              Top engagement drugs
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {topDrugs.map((d) => (
+                <DrugChip key={d} drug={d} />
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="space-y-2">
           {filtered.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted-foreground">
               No events match this filter.
@@ -818,7 +1128,10 @@ function EngagementTab({
                   ? `${s.title} — ${s.panel.join(', ')}`
                   : s.title;
               return (
-                <div key={s.id} className="rounded-xl border border-border p-3">
+                <div
+                  key={s.id}
+                  className="rounded-xl border border-border p-3 transition-colors duration-200 hover:bg-muted/60"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -852,9 +1165,9 @@ function EngagementTab({
               );
             })
           )}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -873,269 +1186,24 @@ function EngagementPillButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={cn(
+        'inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-[11px] transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active
           ? 'border-primary bg-primary text-primary-foreground'
-          : 'border-border text-muted-foreground hover:bg-muted'
-      }`}
+          : 'border-border text-muted-foreground hover:bg-muted',
+      )}
     >
       {label}
-      <span className={`font-mono tabular-nums ${active ? 'opacity-90' : 'opacity-60'}`}>
+      <span className={cn('font-mono tabular-nums', active ? 'opacity-90' : 'opacity-60')}>
         {count}
       </span>
     </button>
   );
 }
 
-// ─── Publications tab (LIVE) ────────────────────────────────────────────────
+// ─── Prescribing detail (below the fold) ────────────────────────────────────
 
-function PublicationsTab({
-  loading,
-  demo,
-  publications,
-  total,
-}: {
-  loading: boolean;
-  demo: boolean;
-  publications: PublicKolPublication[];
-  total: number;
-}) {
-  if (loading) {
-    return (
-      <div className="flex min-h-[160px] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" />
-      </div>
-    );
-  }
-  if (publications.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 pt-6 text-center text-sm text-muted-foreground">
-          No OpenAlex-linked publications for this KOL yet.
-        </CardContent>
-      </Card>
-    );
-  }
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4" />
-          Publications ({total})
-          <span className="text-xs font-normal text-muted-foreground">
-            {demo ? 'OpenAlex' : 'OpenAlex · live'}
-          </span>
-          {demo && <DemoBadge />}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <PaginatedList
-          items={publications}
-          pageSize={10}
-          renderItem={(p) => {
-            const inner = (
-              <>
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
-                  <BookOpen className="h-3.5 w-3.5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="mb-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span>{formatDate(p.published_at)}</span>
-                    {p.journal && (
-                      <>
-                        <span>·</span>
-                        <span className="italic">{p.journal}</span>
-                      </>
-                    )}
-                    {p.is_first_author && <Badge variant="positive">First author</Badge>}
-                    {p.is_last_author && <Badge variant="outline">Senior author</Badge>}
-                  </div>
-                  <p className="text-sm font-medium">{p.title}</p>
-                </div>
-              </>
-            );
-            return p.url ? (
-              <a
-                key={`${p.title}-${p.published_at}`}
-                href={p.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex gap-3 rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/30"
-              >
-                {inner}
-              </a>
-            ) : (
-              <div key={`${p.title}-${p.published_at}`} className="flex gap-3 rounded-xl border border-border p-3">
-                {inner}
-              </div>
-            );
-          }}
-        />
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Trials & Grants tab ─────────────────────────────────────────────────────
-
-function TrialsGrantsTab({
-  trials,
-  nih,
-}: {
-  trials: HCPSignal[];
-  nih: NIHGrantsResponse | null;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Clinical trials — demo seam */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2">
-            <Beaker className="h-4 w-4" />
-            Clinical trials ({trials.length})
-            <DemoBadge />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {trials.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              No registered trials matched to this HCP.
-            </p>
-          ) : (
-            trials.map((s) => {
-              const Icon = signalIcon(s.signal_type);
-              return (
-                <a
-                  key={s.id}
-                  href={s.url ?? '#'}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex gap-3 rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/30"
-                >
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted">
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="uppercase">{s.signal_type}</span>
-                      <span>·</span>
-                      <span>{s.source}</span>
-                      <span>·</span>
-                      <span>{formatDate(s.observed_at)}</span>
-                    </div>
-                    <p className="text-sm font-medium">{s.title ?? '(untitled)'}</p>
-                    {s.drugs.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {s.drugs.map((d) => (
-                          <DrugChip key={`${s.id}-${d.drug_normalized}`} drug={d.drug_normalized} />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </a>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
-
-      <NIHGrantsCard nih={nih} />
-    </div>
-  );
-}
-
-function NIHGrantsCard({ nih }: { nih: NIHGrantsResponse | null }) {
-  const summary = nih?.summary;
-  const hasGrants = !!summary && summary.total_grants > 0;
-  return (
-    <Card className="border-l-4 border-l-primary">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-primary" />
-          NIH Grants
-          <DemoBadge />
-        </CardTitle>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Active + historical NIH funding. Matched by PI name via NIH RePORTER.
-        </p>
-      </CardHeader>
-      <CardContent>
-        {!hasGrants && (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No NIH grants matched to this HCP (PI name match).
-          </p>
-        )}
-        {hasGrants && summary && nih && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              <MiniKPI label="Grants" value={summary.total_grants} />
-              <MiniKPI label="Active" value={summary.active_grants} />
-              <MiniKPI
-                label="Lifetime award"
-                value={`$${Math.round(summary.total_award_usd).toLocaleString()}`}
-              />
-            </div>
-            {summary.top_agencies.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {summary.top_agencies.slice(0, 5).map((a) => (
-                  <Badge key={a.agency} variant="positive" className="gap-1.5">
-                    {a.agency}
-                    <span className="font-mono tabular-nums opacity-80">
-                      ${Math.round(a.total_usd).toLocaleString()}
-                    </span>
-                  </Badge>
-                ))}
-              </div>
-            )}
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                Recent grants
-              </p>
-              {nih.grants.slice(0, 5).map((g) => (
-                <a
-                  key={g.appl_id}
-                  href={`https://reporter.nih.gov/project-details/${g.appl_id}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-start justify-between gap-3 rounded-xl border border-border p-2 transition-colors hover:border-primary/40 hover:bg-muted/30"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {g.project_title ?? g.project_num ?? g.appl_id}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {g.fiscal_year ?? '—'} · {g.activity_code ?? '—'} · {g.agency_ic ?? '—'} ·{' '}
-                      {g.organization ?? '—'}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <p className="font-mono text-sm font-semibold tabular-nums">
-                      {g.award_amount
-                        ? `$${g.award_amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                        : '—'}
-                    </p>
-                    {g.is_active && (
-                      <Badge variant="positive" className="mt-1 text-[9px]">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
-                </a>
-              ))}
-            </div>
-            <p className="border-t border-border pt-2 text-[10px] text-muted-foreground">
-              Source: NIH RePORTER · reporter.nih.gov · matched by PI name
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Prescribing tab ─────────────────────────────────────────────────────────
-
-function PrescribingTab({
+function PrescribingSection({
   rx,
   shifts,
 }: {
@@ -1152,74 +1220,69 @@ function PrescribingTab({
     );
   }
   return (
-    <div className="space-y-4">
-      {/* Data source note */}
-      <div className="flex items-start gap-2 rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-        <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          <strong className="text-foreground">CMS Part D · annual.</strong> Year-over-year deltas
-          only. Monthly granularity requires PurpleLab integration (not yet connected).
-        </span>
-        <DemoBadge className="ml-auto shrink-0" />
-      </div>
-
-      {/* Top drugs table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Top drugs (all years)</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border text-xs text-muted-foreground">
-                <tr>
-                  <th className="p-3 text-left font-semibold">#</th>
-                  <th className="p-3 text-left font-semibold">Drug</th>
-                  <th className="p-3 text-left font-semibold">Class</th>
-                  <th className="p-3 pr-4 text-right font-semibold">Claims</th>
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <Pill className="h-3.5 w-3.5" />
+            Prescribing detail
+          </Eyebrow>
+          <DemoBadge />
+        </div>
+        <p className="mt-1 flex items-start gap-1.5 text-xs text-muted-foreground">
+          <TrendingUp className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>
+            <strong className="text-foreground">CMS Part D · annual.</strong> Year-over-year deltas
+            only. Monthly granularity requires PurpleLab integration (not yet connected).
+          </span>
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4 p-0 pb-2">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border text-xs text-muted-foreground">
+              <tr>
+                <th className="p-3 pl-5 text-left font-semibold">#</th>
+                <th className="p-3 text-left font-semibold">Drug</th>
+                <th className="p-3 text-left font-semibold">Class</th>
+                <th className="p-3 pr-5 text-right font-semibold">Claims</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rx.slice(0, 15).map((d, i) => (
+                <tr
+                  key={d.drug_normalized}
+                  className="border-b border-border transition-colors duration-200 last:border-0 hover:bg-muted/40"
+                >
+                  <td className="p-3 pl-5 font-mono tabular-nums text-muted-foreground">{i + 1}</td>
+                  <td className="p-3 font-medium">
+                    {d.drug_normalized}
+                    {d.brand_name && d.brand_name.toLowerCase() !== d.drug_normalized && (
+                      <span className="ml-1 text-xs text-muted-foreground">({d.brand_name})</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-xs text-muted-foreground">{d.drug_class ?? '—'}</td>
+                  <td className="p-3 pr-5 text-right font-mono tabular-nums">
+                    {d.total_claims_all_years.toLocaleString()}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {rx.slice(0, 15).map((d, i) => (
-                  <tr key={d.drug_normalized} className="border-b border-border last:border-0">
-                    <td className="p-3 font-mono tabular-nums text-muted-foreground">{i + 1}</td>
-                    <td className="p-3 font-medium">
-                      {d.drug_normalized}
-                      {d.brand_name && d.brand_name.toLowerCase() !== d.drug_normalized && (
-                        <span className="ml-1 text-xs text-muted-foreground">({d.brand_name})</span>
-                      )}
-                    </td>
-                    <td className="p-3 text-xs text-muted-foreground">{d.drug_class ?? '—'}</td>
-                    <td className="p-3 pr-4 text-right font-mono tabular-nums">
-                      {d.total_claims_all_years.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Pre/post CHM attendance shifts */}
-      {shifts && shifts.shifts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2">
-              Pre/post CHM attendance shifts
-              <DemoBadge />
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
+        {shifts && shifts.shifts.length > 0 && (
+          <div>
+            <p className="border-t border-border p-3 pl-5 text-xs text-muted-foreground">
+              <strong className="text-foreground">Pre/post CHM attendance shifts.</strong>{' '}
               Year-over-year Rx delta anchored on first CHM webinar attendance. Directional signal
               only.
             </p>
-          </CardHeader>
-          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-xs text-muted-foreground">
                   <tr>
-                    <th className="p-3 text-left font-semibold">Drug</th>
+                    <th className="p-3 pl-5 text-left font-semibold">Drug</th>
                     <th className="p-3 text-left font-semibold">Class</th>
                     <th className="p-3 text-right font-semibold">
                       Pre ({shifts.shifts[0]?.pre_window_label})
@@ -1228,13 +1291,16 @@ function PrescribingTab({
                       Post ({shifts.shifts[0]?.post_window_label})
                     </th>
                     <th className="p-3 text-right font-semibold">Δ</th>
-                    <th className="p-3 pr-4 text-right font-semibold">% lift</th>
+                    <th className="p-3 pr-5 text-right font-semibold">% lift</th>
                   </tr>
                 </thead>
                 <tbody>
                   {shifts.shifts.map((s: DrugShift) => (
-                    <tr key={s.drug_normalized} className="border-b border-border last:border-0">
-                      <td className="p-3 font-medium">{s.drug_normalized}</td>
+                    <tr
+                      key={s.drug_normalized}
+                      className="border-b border-border transition-colors duration-200 last:border-0 hover:bg-muted/40"
+                    >
+                      <td className="p-3 pl-5 font-medium">{s.drug_normalized}</td>
                       <td className="p-3 text-xs text-muted-foreground">{s.drug_class ?? '—'}</td>
                       <td className="p-3 text-right font-mono tabular-nums">
                         {s.pre_claims.toLocaleString()}
@@ -1243,14 +1309,15 @@ function PrescribingTab({
                         {s.post_claims.toLocaleString()}
                       </td>
                       <td
-                        className={`p-3 text-right font-mono tabular-nums ${
-                          s.delta > 0 ? POSITIVE : s.delta < 0 ? NEGATIVE : ''
-                        }`}
+                        className={cn(
+                          'p-3 text-right font-mono tabular-nums',
+                          s.delta > 0 ? POSITIVE : s.delta < 0 ? NEGATIVE : '',
+                        )}
                       >
                         {s.delta > 0 ? '+' : ''}
                         {s.delta}
                       </td>
-                      <td className="p-3 pr-4 text-right font-mono tabular-nums">
+                      <td className="p-3 pr-5 text-right font-mono tabular-nums">
                         {s.pct_lift === null ? (
                           '—'
                         ) : (
@@ -1265,26 +1332,28 @@ function PrescribingTab({
                 </tbody>
               </table>
             </div>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
-// ─── Open Payments tab ───────────────────────────────────────────────────────
+// ─── Open Payments (below the fold) ──────────────────────────────────────────
 
 function OpenPaymentsCard({ payments }: { payments: OpenPaymentsResponse | null }) {
   const summary = payments?.summary;
   const hasData = !!summary && summary.record_count > 0;
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <DollarSign className="h-4 w-4" />
-          Open Payments (CMS Sunshine Act)
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <DollarSign className="h-3.5 w-3.5" />
+            Open Payments (CMS Sunshine Act)
+          </Eyebrow>
           <DemoBadge />
-        </CardTitle>
+        </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Disclosed pharma→physician payments: speaker fees, meals, consulting, research. Public
           federal data.
@@ -1319,7 +1388,7 @@ function OpenPaymentsCard({ payments }: { payments: OpenPaymentsResponse | null 
                   {summary.by_company.slice(0, 5).map((c) => (
                     <div
                       key={c.company}
-                      className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
+                      className="flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm transition-colors duration-200 hover:bg-muted/40"
                     >
                       <span className="min-w-0 truncate pr-3">{c.company}</span>
                       <div className="flex shrink-0 items-center gap-3">
@@ -1383,48 +1452,60 @@ function OpenPaymentsCard({ payments }: { payments: OpenPaymentsResponse | null 
   );
 }
 
-// ─── News tab ────────────────────────────────────────────────────────────────
+// ─── News (below the fold) ───────────────────────────────────────────────────
 
-function NewsTab({ news }: { news: NewsArticle[] }) {
-  if (news.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-6 pt-6 text-center text-sm text-muted-foreground">
-          No news or media mentions yet.
-        </CardContent>
-      </Card>
-    );
-  }
+function NewsSection({ news, moreHref }: { news: NewsArticle[]; moreHref?: string }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2">
-          <Newspaper className="h-4 w-4" />
-          News &amp; media mentions ({news.length})
-          <span className="text-xs font-normal text-muted-foreground">Google News</span>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Eyebrow className="flex items-center gap-1.5">
+            <Newspaper className="h-3.5 w-3.5" />
+            News &amp; media mentions {news.length > 0 && `(${news.length})`}
+          </Eyebrow>
+          <span className="text-[11px] text-muted-foreground">Google News</span>
           <DemoBadge />
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <PaginatedList
-          items={news}
-          pageSize={10}
-          renderItem={(n) => (
+          {moreHref && (
             <a
-              key={n.id}
-              href={n.url ?? '#'}
+              href={moreHref}
               target="_blank"
               rel="noreferrer"
-              className="block rounded-xl border border-border p-3 transition-colors hover:border-primary/40 hover:bg-muted/30"
+              className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'group ml-auto h-7 px-2.5 text-[11px]')}
             >
-              <p className="text-xs text-muted-foreground">
-                {formatDate(n.observed_at)}
-                {n.source_name && ` · ${n.source_name}`}
-              </p>
-              <p className="text-sm font-medium">{n.title}</p>
+              Search Google News
+              <ExternalLink className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5" />
             </a>
           )}
-        />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {news.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            No news or media mentions yet.
+          </p>
+        ) : (
+          <PaginatedList
+            items={news}
+            pageSize={10}
+            renderItem={(n) => (
+              <a
+                key={n.id}
+                href={n.url ?? '#'}
+                target="_blank"
+                rel="noreferrer"
+                className="group -mx-2 block rounded-xl px-2.5 py-2.5 transition-colors duration-200 hover:bg-muted/50"
+              >
+                <p className="text-[11px] text-muted-foreground">
+                  {formatDate(n.observed_at)}
+                  {n.source_name && ` · ${n.source_name}`}
+                </p>
+                <p className="text-sm font-medium text-foreground transition-colors duration-200 group-hover:text-primary">
+                  {n.title}
+                </p>
+              </a>
+            )}
+          />
+        )}
       </CardContent>
     </Card>
   );

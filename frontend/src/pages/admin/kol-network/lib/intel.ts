@@ -163,6 +163,22 @@ export interface ShiftsResponse {
   shifts: DrugShift[];
 }
 
+/** One month of Rx claims for the attribution trend chart. */
+export interface RxTrendPoint {
+  /** Short month label, e.g. "Sep 24". */
+  month: string;
+  /** Monthly claims for the focus drug. */
+  claims: number;
+  /** True on the month of the first CHM shoot (attribution anchor). */
+  chmShoot?: boolean;
+}
+
+export interface RxTrendResponse {
+  /** Focus drug the trend is plotted for. */
+  drug: string;
+  points: RxTrendPoint[];
+}
+
 // ─── Demo roster (directory fallback when the CHT backend is unreachable) ───
 //
 // The directory + intel pages render this seeded roster when kolNetworkApi
@@ -459,6 +475,27 @@ const DEMO_SHIFTS: ShiftsResponse = {
   ],
 };
 
+/**
+ * Monthly claims for the headline drug, pre/post the first CHM shoot.
+ * Anchors the "Rx · pre / post first CHM shoot" attribution chart —
+ * real monthly granularity requires PurpleLab (not yet connected).
+ */
+const DEMO_RX_TREND: RxTrendResponse = {
+  drug: 'elacestrant',
+  points: [
+    { month: 'Sep 24', claims: 14 },
+    { month: 'Oct 24', claims: 16 },
+    { month: 'Nov 24', claims: 15 },
+    { month: 'Dec 24', claims: 18 },
+    { month: 'Jan 25', claims: 19, chmShoot: true },
+    { month: 'Feb 25', claims: 24 },
+    { month: 'Mar 25', claims: 29 },
+    { month: 'Apr 25', claims: 34 },
+    { month: 'May 25', claims: 38 },
+    { month: 'Jun 25', claims: 43 },
+  ],
+};
+
 const DEMO_ENGAGEMENT: EngagementSignals = {
   webinars_attended: 6,
   webinars_rsvp_only: 2,
@@ -737,6 +774,8 @@ export const intelApi = {
   getRxHistory: async (_slug: string): Promise<RxVolumesByDrug[]> => DEMO_RX,
 
   getShifts: async (_slug: string): Promise<ShiftsResponse> => DEMO_SHIFTS,
+
+  getRxTrend: async (_slug: string): Promise<RxTrendResponse> => DEMO_RX_TREND,
 
   getOpenPayments: async (_slug: string): Promise<OpenPaymentsResponse> => DEMO_PAYMENTS,
 
