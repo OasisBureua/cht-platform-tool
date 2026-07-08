@@ -439,15 +439,17 @@ export default function AdminHcpIntel() {
       </div>
 
       {/* 3 · Briefing centerpiece + attribution chart / signals */}
-      <div className="grid gap-4 lg:grid-cols-[1.5fr_1fr]">
-        <BriefingCard
-          brief={briefQuery.data ?? null}
-          loading={briefQuery.isLoading}
-          regenerating={briefRegenerating}
-          onRegenerate={regenerateBrief}
-        />
+      <div className="grid items-stretch gap-4 lg:grid-cols-[1.4fr_1fr]">
+        <div className="min-w-0">
+          <BriefingCard
+            brief={briefQuery.data ?? null}
+            loading={briefQuery.isLoading}
+            regenerating={briefRegenerating}
+            onRegenerate={regenerateBrief}
+          />
+        </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card>
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -474,7 +476,7 @@ export default function AdminHcpIntel() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="flex-1">
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Eyebrow>Signals</Eyebrow>
