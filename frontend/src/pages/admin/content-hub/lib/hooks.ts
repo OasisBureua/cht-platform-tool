@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as store from './store';
 import type {
   Campaign,
+  HubspotStatus,
   IntegrationSettings,
   Platform,
   Template,
@@ -23,7 +24,9 @@ export const qk = {
   executiveReport: (id: string | number) => [KEY, 'campaign', String(id), 'executive-report'] as const,
   templates: () => [KEY, 'templates'] as const,
   integrations: () => [KEY, 'integrations'] as const,
+  integrationsConnection: () => [KEY, 'integrations-connection'] as const,
   hubspotStatus: () => [KEY, 'hubspot-status'] as const,
+  contentHubHealth: () => [KEY, 'health'] as const,
 };
 
 const n = (id: string | number) => Number(id);
@@ -144,13 +147,45 @@ export function useUpdateIntegrations() {
       Promise.resolve(store.updateIntegrations(patch)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.integrations() });
+      qc.invalidateQueries({ queryKey: qk.integrationsConnection() });
       qc.invalidateQueries({ queryKey: qk.hubspotStatus() });
+      qc.invalidateQueries({ queryKey: qk.contentHubHealth() });
     },
   });
 }
 
+export function useContentHubHealth(enabled = true) {
+  return useQuery({
+    queryKey: qk.contentHubHealth(),
+    queryFn: () => store.getContentHubHealth(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useIntegrationsConnection(enabled = true) {
+  return useQuery({
+    queryKey: qk.integrationsConnection(),
+    queryFn: () => store.getIntegrationsConnection(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useHubspotStatus(enabled = true) {
-  return useQuery({ queryKey: qk.hubspotStatus(), queryFn: () => store.getHubspotStatus(), enabled });
+  const query = useIntegrationsConnection(enabled);
+  const hubspot = query.data?.hubspot;
+  return {
+    ...query,
+    data: hubspot
+      ? ({
+          connected: hubspot.connected,
+          accountName: hubspot.accountName ?? null,
+          portalId: hubspot.portalId ?? null,
+          error: hubspot.error,
+        } satisfies HubspotStatus)
+      : undefined,
+  };
 }
 
 export type { Template };

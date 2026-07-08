@@ -82,6 +82,7 @@ export const validationSchema = Joi.object({
 
   // Content Hub producer API (KOL network + HCP upsert; catalog stays on MediaHub)
   CONTENTHUB_BASE_URL: Joi.string().allow('').optional(),
+  CONTENTHUB_ADMIN_BASE_URL: Joi.string().allow('').optional(),
   CONTENTHUB_API_KEY: Joi.string().allow('').optional(),
 
   // YouTube (optional – for catalog playlists, fallback when MediaHub not configured)

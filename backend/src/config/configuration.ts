@@ -150,6 +150,13 @@ export default () => ({
   // Content Hub — KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
   contenthub: {
     baseUrl: process.env.CONTENTHUB_BASE_URL || '',
+    adminBaseUrl: (() => {
+      const explicit = process.env.CONTENTHUB_ADMIN_BASE_URL?.trim();
+      if (explicit) return explicit.replace(/\/$/, '');
+      const pub = (process.env.CONTENTHUB_BASE_URL || '').replace(/\/$/, '');
+      if (!pub) return '';
+      return pub.replace(/\/api\/public\/?$/, '/api/admin');
+    })(),
     apiKey: process.env.CONTENTHUB_API_KEY,
   },
 

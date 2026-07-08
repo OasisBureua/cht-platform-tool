@@ -27,6 +27,7 @@ import { OutboundSyncModule } from './modules/outbound-sync/outbound-sync.module
 import { ContactModule } from './modules/contact/contact.module';
 import { CacheModule } from './cache/cache.module';
 import { InternalModule } from './modules/internal/internal.module';
+import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 
@@ -92,6 +93,7 @@ const usePrettyLogs = process.env.LOG_PRETTY === 'true';
     OutboundSyncModule,
     ContactModule,
     InternalModule,
+    AdminContentHubModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
