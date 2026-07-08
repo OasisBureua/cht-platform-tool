@@ -1,15 +1,7 @@
 name: Deploy to Platform
 
-# Deployments temporarily disabled — re-enable push triggers and DEPLOY_ENABLED when ready.
+# Manual deploy only. Re-enable push triggers and DEPLOY_ENABLED when ready.
 on:
-  # push:
-  #   branches:
-  #     - 'release/**'
-  #   tags:
-  #     - 'v*'
-  #   paths-ignore:
-  #     - '**.md'
-  #     - 'docs/**'
   workflow_dispatch:
 
 concurrency:

@@ -9,11 +9,6 @@ output "backend_security_group_id" {
   value       = module.ecs_backend.security_group_id
 }
 
-output "nat_gateway_public_ips" {
-  description = "NAT EIPs for ECS egress — whitelist on Content Hub internet-facing ALB SG (HTTPS 443)"
-  value       = module.vpc.nat_gateway_public_ips
-}
-
 output "alb_dns_name" {
   description = "ALB DNS name"
   value       = module.alb.alb_dns_name

@@ -1,12 +1,12 @@
-# Dependabot opens weekly update PRs. Major bumps for Prisma and lucide-react
+# Dependabot opens monthly update PRs. Major bumps for Prisma and lucide-react
 # require code migrations — ignore them until those are done deliberately.
 version: 2
 updates:
   - package-ecosystem: npm
     directory: /backend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     ignore:
       # Prisma 7 needs prisma.config.ts, schema changes, and driver adapters.
       - dependency-name: "prisma"
@@ -34,8 +34,8 @@ updates:
   - package-ecosystem: npm
     directory: /frontend
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     ignore:
       # lucide-react 1.x removed brand icons (Instagram, Linkedin, Facebook).
       - dependency-name: "lucide-react"
@@ -55,8 +55,8 @@ updates:
   - package-ecosystem: pip
     directory: /worker
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
     groups:
       worker-aws-sdk:
         patterns:
@@ -66,5 +66,5 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    open-pull-requests-limit: 3
