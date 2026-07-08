@@ -13,6 +13,14 @@ resource "aws_secretsmanager_secret" "database" {
   kms_key_id              = var.kms_key_id
   recovery_window_in_days = 30
 
+  dynamic "replica" {
+    for_each = var.replica_regions
+    content {
+      region     = replica.value.region
+      kms_key_id = try(replica.value.kms_key_id, null)
+    }
+  }
+
   tags = {
     Name        = "${local.prefix}-database-credentials"
     Environment = var.environment
@@ -38,6 +46,14 @@ resource "aws_secretsmanager_secret" "app_secrets" {
   kms_key_id              = var.kms_key_id
   recovery_window_in_days = 30
 
+  dynamic "replica" {
+    for_each = var.replica_regions
+    content {
+      region     = replica.value.region
+      kms_key_id = try(replica.value.kms_key_id, null)
+    }
+  }
+
   tags = {
     Name        = "${local.prefix}-app-secrets"
     Environment = var.environment
@@ -52,6 +68,8 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     gotrue_jwt_secret                         = var.gotrue_jwt_secret
     mediahub_base_url                         = var.mediahub_base_url
     mediahub_api_key                          = var.mediahub_api_key
+    contenthub_base_url                       = var.contenthub_base_url
+    contenthub_api_key                        = var.contenthub_api_key
     youtube_api_key                           = var.youtube_api_key
     youtube_playlist_ids                      = var.youtube_playlist_ids
     zoom_account_id                           = var.zoom_account_id
@@ -73,5 +91,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     bill_mfa_device_name                      = var.bill_mfa_device_name
     admin_bootstrap_secret                    = var.admin_bootstrap_secret
     hubspot_access_token                      = var.hubspot_access_token
+    recaptcha_secret_key                      = var.recaptcha_secret_key
+    internal_cache_secret                     = var.internal_cache_secret
   })
 }

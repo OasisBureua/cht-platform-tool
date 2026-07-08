@@ -1,13 +1,18 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../../auth/auth.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { CatalogModule } from '../catalog/catalog.module';
+import { ContentHubModule } from '../content-hub/content-hub.module';
+import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
+import { AdminKolNetworkController } from './admin-kol-network.controller';
+import { ContentHubKolService } from './content-hub-kol.service';
 import { KolNetworkController } from './kol-network.controller';
+import { KolVisibilityService } from './kol-visibility.service';
 
-/**
- * KOL Network module — re-exports MediaHubService via CatalogModule so we
- * share a single HttpModule + connection pool with the catalog endpoints.
- */
 @Module({
-  imports: [CatalogModule],
-  controllers: [KolNetworkController],
+  imports: [AuthModule, PrismaModule, ContentHubModule, CatalogModule],
+  controllers: [KolNetworkController, AdminKolNetworkController],
+  providers: [ContentHubKolService, KolVisibilityService, AdminAuditInterceptor],
+  exports: [ContentHubKolService, KolVisibilityService],
 })
 export class KolNetworkModule {}

@@ -2,6 +2,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import type {
+  MediaHubKol,
+  MediaHubKolList,
+  MediaHubKolPublicationList,
+} from '../kol-network/kol-network.types';
+
+export type {
+  MediaHubKol,
+  MediaHubKolList,
+  MediaHubKolPublicationList,
+} from '../kol-network/kol-network.types';
 
 const MEDIAHUB_BASE_URL = 'https://mediahub.communityhealth.media/api/public';
 
@@ -135,7 +146,8 @@ export class MediaHubService {
 
     // Platform default: 'youtube' (audit fix: LinkedIn text-only posts leak into
     // video carousels). Empty string explicitly opts out.
-    const platform = params?.platform === undefined ? 'youtube' : params.platform;
+    const platform =
+      params?.platform === undefined ? 'youtube' : params.platform;
     if (platform) searchParams.platform = platform;
 
     if (params?.sort_by) searchParams.sort_by = params.sort_by;
@@ -168,13 +180,7 @@ export class MediaHubService {
    */
   async getPlaylistTags(params?: {
     tag?: string;
-    lane?:
-      | 'biomarker'
-      | 'drug'
-      | 'trial'
-      | 'doctor_pair'
-      | 'mixed'
-      | 'archive';
+    lane?: 'biomarker' | 'drug' | 'trial' | 'doctor_pair' | 'mixed' | 'archive';
     limit?: number;
     offset?: number;
   }): Promise<MediaHubPlaylistTagList> {
@@ -287,49 +293,6 @@ export class MediaHubService {
       cleanParams,
     );
   }
-}
-
-export interface MediaHubKol {
-  id: string;
-  slug: string;
-  name: string;
-  title: string | null;
-  specialty: string | null;
-  institution: string | null;
-  bio: string | null;
-  photo_url: string | null;
-  region: string | null;
-  region_label: string | null;
-  shoot_count: number;
-  first_appeared_at: string | null;
-  is_new: boolean;
-}
-
-export interface MediaHubKolRegionFacet {
-  slug: string;
-  label: string;
-  kol_count: number;
-}
-
-export interface MediaHubKolList {
-  items: MediaHubKol[];
-  total: number;
-  regions: MediaHubKolRegionFacet[];
-  institutions: string[];
-}
-
-export interface MediaHubKolPublication {
-  title: string;
-  url: string | null;
-  journal: string | null;
-  published_at: string;
-  is_first_author: boolean;
-  is_last_author: boolean;
-}
-
-export interface MediaHubKolPublicationList {
-  items: MediaHubKolPublication[];
-  total: number;
 }
 
 /**

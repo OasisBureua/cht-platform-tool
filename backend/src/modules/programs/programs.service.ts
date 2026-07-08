@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
@@ -225,6 +226,11 @@ export class ProgramsService {
     );
 
     let jotformSurveyUrl = program.jotformSurveyUrl?.trim() || undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      program,
+      defaultIntake,
+    );
     if (!jotformSurveyUrl && program.zoomSessionType === 'WEBINAR') {
       const feedback = await this.prisma.survey.findFirst({
         where: {
@@ -270,6 +276,12 @@ export class ProgramsService {
       zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),
       jotformSurveyUrl,
       jotformIntakeFormUrl: intakeForClient,
+      hasPostEventSurvey: surveyMeta.hasPostEventSurvey,
+      hasIntakeSurvey: surveyMeta.hasIntakeSurvey,
+      feedbackSurveyId: surveyMeta.feedbackSurveyId,
+      intakeSurveyId: surveyMeta.intakeSurveyId,
+      feedbackUsesJotform: surveyMeta.feedbackUsesJotform,
+      intakeUsesJotform: surveyMeta.intakeUsesJotform,
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,

@@ -1,19 +1,14 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowUpDown, BadgeCheck, GraduationCap, MapPin } from 'lucide-react';
+import { ArrowUpDown, BadgeCheck, GraduationCap, MapPin, Sparkles } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
+import { hasAiSummary, resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
+import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
 
 type FlatKol = DolEntry & {
   stateId: string;
   stateTitle: string;
 };
-
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-function isRecentlyNew(k: { isNew?: boolean; addedAt?: string }): boolean {
-  if (!k.isNew) return false;
-  if (!k.addedAt) return false;
-  return Date.now() - new Date(k.addedAt).getTime() <= SEVEN_DAYS_MS;
-}
 
 function flattenNetwork(regions: DolRegion[]): FlatKol[] {
   return regions.flatMap((r) =>
@@ -47,14 +42,9 @@ function avatarUrl(name: string): string {
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
 }
 
-function matchesQuery(k: FlatKol, q: string): boolean {
-  if (!q.trim()) return true;
-  const hay = `${k.name} ${k.role} ${k.bio} ${k.education} ${k.stateTitle}`.toLowerCase();
-  return hay.includes(q.trim().toLowerCase());
-}
-
 export default function DolNetwork({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [stateId, setStateId] = useState('');
   const [institution, setInstitution] = useState('');
   const [newOnly, setNewOnly] = useState(false);
@@ -70,27 +60,27 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
     return () => document.removeEventListener('click', onDoc);
   }, []);
 
-  const directory = useKolDirectory();
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => window.clearTimeout(t);
+  }, [search]);
+
+  const directory = useKolDirectory({
+    q: debouncedSearch || undefined,
+    institution: institution || undefined,
+    new_only: newOnly || undefined,
+    surface: embedded ? 'app' : 'public',
+  });
   const flat = useMemo(() => flattenNetwork(directory.regions), [directory.regions]);
 
-  const institutions = useMemo(() => {
-    const set = new Set<string>();
-    flat.forEach((k) => {
-      const h = institutionHint(k);
-      if (h) set.add(h);
-    });
-    return [...set].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
-  }, [flat]);
+  const institutions = directory.institutions;
 
   const filtered = useMemo(() => {
     return flat.filter((k) => {
-      if (!matchesQuery(k, search)) return false;
       if (stateId && k.stateId !== stateId) return false;
-      if (institution && institutionHint(k) !== institution) return false;
-      if (newOnly && !isRecentlyNew(k)) return false;
       return true;
     });
-  }, [flat, search, stateId, institution, newOnly]);
+  }, [flat, stateId]);
 
   const sorted = useMemo(() => {
     const out = [...filtered];
@@ -101,8 +91,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
       out.sort((a, b) => last(b.name).localeCompare(last(a.name), undefined, { sensitivity: 'base' }));
     } else if (sortMode === 'new-first') {
       out.sort((a, b) => {
-        const aNew = isRecentlyNew(a);
-        const bNew = isRecentlyNew(b);
+        const aNew = Boolean(a.isNew);
+        const bNew = Boolean(b.isNew);
         if (aNew !== bNew) return aNew ? -1 : 1;
         return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
       });
@@ -316,29 +306,27 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
           )}
         </main>
 
-        <p className="mt-12 text-center text-xs text-gray-500 border-t border-gray-200 pt-8">
-          Community Health Technologies - KOL Network | ★ = Newly added
-        </p>
+        <footer className="mt-12 space-y-2 border-t border-gray-200 pt-8 text-center">
+          <p className="text-xs text-gray-500">
+            Community Health Technologies — KOL Network | ★ = Newly added (within 60 days)
+          </p>
+          <p className="mx-auto max-w-2xl text-[10px] leading-snug text-gray-500">
+            AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
+            important details against primary sources.
+          </p>
+        </footer>
       </div>
     </div>
   );
 }
 
 function cardSummarySnippet(k: FlatKol): string {
-  const fromIntel = k.intel?.aiBrief?.whoTheyAre?.trim();
-  if (fromIntel) return fromIntel;
-  return k.bio.trim();
-}
-
-/** Catalogue clips & shorts where MediaHub tags this doctor (`GET /catalog/clips?doctor=`). */
-function catalogContentHref(k: FlatKol): string {
-  const slug = (k.intel?.catalogDoctorSlug ?? k.id).trim();
-  return `/catalog?${new URLSearchParams({ doctor: slug }).toString()}`;
+  return resolveKolDisplayBrief(k)?.whoTheyAre ?? k.bio.trim();
 }
 
 function KolCard({ k }: { k: FlatKol }) {
   const profileHref = `/kol-network/profile/${k.id}`;
-  const contentHref = catalogContentHref(k);
+  const contentHref = kolCatalogBrowseHref(k);
   const inst = institutionHint(k);
   const roleLead = (k.role.split(/[.;]/)[0]?.trim() ?? k.role).slice(0, 72);
   const summary = cardSummarySnippet(k);
@@ -403,7 +391,15 @@ function KolCard({ k }: { k: FlatKol }) {
             </div>
           </div>
           <div className="mt-2.5 border-t border-gray-200/80 pt-2.5">
-            <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Summary</p>
+            <div className="flex items-center gap-1">
+              <p className="text-[9px] font-medium uppercase tracking-wide text-gray-400">Summary</p>
+              {hasAiSummary(k) ? (
+                <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold uppercase tracking-wide text-amber-700">
+                  <Sparkles className="h-2.5 w-2.5" aria-hidden />
+                  AI
+                </span>
+              ) : null}
+            </div>
             <p className="mt-1 text-[10px] leading-snug text-gray-600 line-clamp-3">{summaryShort}</p>
           </div>
         </div>

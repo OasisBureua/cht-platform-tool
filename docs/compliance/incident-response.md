@@ -37,9 +37,10 @@ Document substitutes when primary contacts are unavailable.
 
 ### Amazon GuardDuty
 
-- **Scope:** One detector per account/region; managed by **platform** Terraform (`monitoring/guardduty`).
-- **Routing:** EventBridge rule `cht-platform-guardduty-findings` → SNS topic `cht-platform-alerts`.
-- **Action:** Open [GuardDuty console](https://console.aws.amazon.com/guardduty/) → Findings. Note severity, resource, and finding type.
+- **Scope:** One detector per account **per region**.
+- **us-east-1:** Managed by platform Terraform (`cht-platform-guardduty-findings` → `cht-platform-alerts`).
+- **us-east-2:** Managed by DR Terraform (`cht-platform-dr-use2-*-guardduty-findings` → regional alerts topic).
+- **Action:** Open [GuardDuty console](https://console.aws.amazon.com/guardduty/) → switch region → Findings.
 
 ### Amazon CloudWatch alarms
 
@@ -72,7 +73,7 @@ All alarms publish to SNS `cht-platform-alerts` (staging: `cht-platform-staging-
 ### External signals
 
 - GitHub Dependabot / security alerts
-- Failed deploy workflows (`deploy-staging.yml`, `deploy-prod.yml`)
+- Failed deploy workflows (`deploy-dev.yml`, `deploy-prod.yml`)
 - User reports via support channels
 - Vendor notifications (AWS, Zoom, Bill.com, etc.)
 
@@ -92,7 +93,7 @@ Detect → Triage → Contain → Eradicate → Recover → Post-incident review
 4. Check quick health:
    ```bash
    curl -sf https://testapp.communityhealth.media/health/ready
-   curl -sf https://staging.testapp.communityhealth.media/health/ready
+   curl -sf https://devapp.communityhealth.media/health/ready
    ./smoke.sh https://testapp.communityhealth.media
    ```
 5. Gather evidence **before** making destructive changes:
@@ -189,7 +190,7 @@ Use when repo secrets, PATs, or org access may be compromised.
 - [ ] Audit **Organization audit log** and **Security log**
 - [ ] Revoke suspicious PATs, SSH keys, and OAuth apps
 - [ ] Review members with **admin** on `OasisBureua/cht-platform-tool`
-- [ ] Rotate **GitHub Environment secrets** (`staging`, `platform`/`production`)
+- [ ] Rotate **GitHub Environment secrets** (`dev`, `platform`/`production`)
 - [ ] Confirm **branch protection** and required reviews on `main` / `release/**`
 - [ ] Disable or pause **Actions** temporarily only if runner compromise is suspected
 - [ ] Verify `AWS_ROLE_ARN` OIDC role trust policy matches expected repos/environments

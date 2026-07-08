@@ -29,14 +29,16 @@ export function buildWebinarAccessEmail(
   p: WebinarAccessTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first   = escape(p.firstName.trim() || 'there');
-  const title   = escape(p.programTitle);
+  const first = escape(p.firstName.trim() || 'there');
+  const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const host    = p.hostDisplayName?.trim() ? escape(p.hostDisplayName.trim()) : null;
+  const host = p.hostDisplayName?.trim()
+    ? escape(p.hostDisplayName.trim())
+    : null;
   const zoomUrl = escape(p.zoomJoinUrl.trim());
 
-  const when     = formatEventWhen(p.startDate, p.durationMinutes, escape);
+  const when = formatEventWhen(p.startDate, p.durationMinutes, escape);
   const descPlain = p.programDescription
     ? sanitizePlainDescription(p.programDescription).slice(0, 400)
     : null;
@@ -80,8 +82,12 @@ export function buildWebinarAccessEmail(
   // ── HTML ─────────────────────────────────────────────────────────────────────
   const detailRows = [
     `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Date &amp; Time</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${when.html}</td></tr>`,
-    host ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>` : '',
-  ].filter(Boolean).join('');
+    host
+      ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
 
   const descHtml = descPlain
     ? `<p style="margin:14px 0 0;color:${E.MUTED};font-size:13px;line-height:1.6;border-top:1px solid ${E.BORDER};padding-top:14px">${escape(descPlain)}</p>`
@@ -122,7 +128,11 @@ export function buildWebinarAccessEmail(
     ${emailSupportLine(support)}
   `;
 
-  const html = emailWrap({ sponsorName: sponsor, subtitle: 'Your Zoom Link', body });
+  const html = emailWrap({
+    sponsorName: sponsor,
+    subtitle: 'Your Zoom Link',
+    body,
+  });
   return { subject, text, html };
 }
 
@@ -138,15 +148,24 @@ function formatEventWhen(
     };
   }
   const long = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit',
-    timeZone: 'America/New_York', timeZoneName: 'short',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+    timeZoneName: 'short',
   }).format(start);
-  const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
+  const dur =
+    durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
   const line = long + dur;
   return { plain: line, html: escape(line) };
 }
 
 function sanitizePlainDescription(s: string): string {
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

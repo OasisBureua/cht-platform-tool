@@ -13,6 +13,15 @@ variable "kms_key_id" {
   type        = string
 }
 
+variable "replica_regions" {
+  description = "Optional list of region replicas for Secrets Manager secret replication."
+  type = list(object({
+    region     = string
+    kms_key_id = optional(string)
+  }))
+  default = []
+}
+
 # Database
 variable "db_username" {
   description = "Database username"
@@ -74,6 +83,19 @@ variable "mediahub_base_url" {
 
 variable "mediahub_api_key" {
   description = "MediaHub Public API key for catalog (clips, tags, doctors, search)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "contenthub_base_url" {
+  description = "Content Hub public API base URL for KOL network (GET /kols*)"
+  type        = string
+  default     = ""
+}
+
+variable "contenthub_api_key" {
+  description = "Content Hub PUBLIC_API_KEY for server-to-server calls"
   type        = string
   sensitive   = true
   default     = ""
@@ -221,6 +243,20 @@ variable "admin_bootstrap_secret" {
 
 variable "hubspot_access_token" {
   description = "HubSpot private app or Service Key token for CRM contact sync"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "recaptcha_secret_key" {
+  description = "Google reCAPTCHA v3 secret key for login/join verification"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "internal_cache_secret" {
+  description = "Shared secret for POST /api/internal/cache/clear (Content Hub Lambda + ops scripts)"
   type        = string
   sensitive   = true
   default     = ""

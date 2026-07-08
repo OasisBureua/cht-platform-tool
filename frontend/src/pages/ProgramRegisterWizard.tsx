@@ -8,6 +8,7 @@ import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlo
 import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
+import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
 import { BillComMark } from '../components/branding/BillComMark';
 import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
@@ -16,7 +17,9 @@ type StepKey = 'intake' | 'slot' | 'submit';
 
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
-  if (p.jotformIntakeFormUrl?.trim()) steps.push('intake');
+  if (p.hasIntakeSurvey || p.intakeSurveyId || p.jotformIntakeFormUrl?.trim()) {
+    steps.push('intake');
+  }
   if (hasSlots) steps.push('slot');
   steps.push('submit');
   return steps;
@@ -102,10 +105,10 @@ export default function ProgramRegisterWizard() {
   });
 
   useEffect(() => {
-    if (myRegistration?.intakeJotformSubmissionId?.trim()) {
-      setIntakeSubmissionId(myRegistration.intakeJotformSubmissionId.trim());
+    if (myRegistration?.intakeSubmissionId?.trim()) {
+      setIntakeSubmissionId(myRegistration.intakeSubmissionId.trim());
     }
-  }, [myRegistration?.intakeJotformSubmissionId]);
+  }, [myRegistration?.intakeSubmissionId]);
 
   const { data: slots = [] } = useQuery({
     queryKey: ['program-slots', id],
@@ -125,7 +128,7 @@ export default function ProgramRegisterWizard() {
     mutationFn: () =>
       programsApi.submitRegistration(id!, {
         officeHoursSlotId: selectedSlotId,
-        intakeJotformSubmissionId: intakeSubmissionId?.trim(),
+        intakeSubmissionId: intakeSubmissionId?.trim(),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
@@ -140,9 +143,10 @@ export default function ProgramRegisterWizard() {
     if (!program?.jotformIntakeFormUrl?.trim()) return '';
     return buildIntakeFormUrl(program.jotformIntakeFormUrl, {
       returnRedirect: returnUrl || undefined,
+      jotformSessionId: intakeJotformResume?.sessionId,
+      legacyAttribution: true,
       userId: userId || undefined,
       programId: program.id,
-      jotformSessionId: intakeJotformResume?.sessionId,
     });
   }, [program, returnUrl, userId, intakeJotformResume?.sessionId]);
 
@@ -222,37 +226,60 @@ export default function ProgramRegisterWizard() {
         </ol>
 
         <div className="mt-8 space-y-4">
-          {current === 'intake' && program.jotformIntakeFormUrl && (
+          {current === 'intake' &&
+          (program.intakeSurveyId || program.jotformIntakeFormUrl) ? (
             <div className="space-y-3">
               <p className="text-sm font-semibold text-gray-900">Your information</p>
-              <p className="text-xs text-gray-600">
-                Submit the form below, or{' '}
-                <a
-                  href={intakeFormSrc}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-gray-900 underline"
-                >
-                  open it in a new tab
-                </a>
-                .
-              </p>
+              {program.intakeSurveyId && !program.intakeUsesJotform ? (
+                <ProgramSurveyPanel
+                  surveyId={program.intakeSurveyId}
+                  userId={userId ?? ''}
+                  programId={program.id}
+                  legacyJotformUrl={program.jotformIntakeFormUrl}
+                  feedbackUsesJotform={program.intakeUsesJotform}
+                  authenticated={!!userId}
+                  userSummary={{
+                    firstName: user?.firstName,
+                    lastName: user?.lastName,
+                    email: user?.email,
+                  }}
+                  onSubmitted={(submissionId) => {
+                    queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
+                    setIntakeSubmissionId(submissionId);
+                  }}
+                />
+              ) : (
+                <>
+                  <p className="text-xs text-gray-600">
+                    Submit the form below, or{' '}
+                    <a
+                      href={intakeFormSrc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-gray-900 underline"
+                    >
+                      open it in a new tab
+                    </a>
+                    .
+                  </p>
+                  <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+                    <iframe
+                      title="Intake form"
+                      src={intakeFormSrc}
+                      className="h-[480px] w-full"
+                      allow="camera; microphone"
+                    />
+                  </div>
+                </>
+              )}
               {intakeSubmissionId?.trim() ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                   Intake submission recorded. Use <strong>Continue</strong>, then <strong>Submit registration</strong> to
                   send your request for admin approval.
                 </p>
               ) : null}
-              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                <iframe
-                  title="Intake form"
-                  src={intakeFormSrc}
-                  className="h-[480px] w-full"
-                  allow="camera; microphone"
-                />
-              </div>
             </div>
-          )}
+          ) : null}
 
           {current === 'pre' && program.jotformPreEventUrl && (
             <div className="space-y-3">
@@ -283,7 +310,7 @@ export default function ProgramRegisterWizard() {
                 href="/app/payments"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
+                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 Open payout setup
                 <ExternalLink className="h-4 w-4" />
@@ -323,7 +350,8 @@ export default function ProgramRegisterWizard() {
                   {program.zoomSessionType === 'MEETING' ? ' and reserve your slot' : ''}.
                 </p>
               )}
-              {!!program.jotformIntakeFormUrl?.trim() && !intakeSubmissionId?.trim() ? (
+              {(program.hasIntakeSurvey || program.jotformIntakeFormUrl?.trim()) &&
+              !intakeSubmissionId?.trim() ? (
                 <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
                   Intake is optional before you submit. Complete the form when you can so we can keep your answers on
                   file (return from Jotform or wait for the automatic save).

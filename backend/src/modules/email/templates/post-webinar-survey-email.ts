@@ -28,16 +28,19 @@ export function buildPostWebinarSurveyEmail(
   p: PostWebinarSurveyTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first   = escape(p.firstName.trim() || 'there');
-  const title   = escape(p.programTitle);
+  const first = escape(p.firstName.trim() || 'there');
+  const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const ctaUrl  = p.surveyUrl?.trim() ? escape(p.surveyUrl.trim()) : escape(p.appSessionUrl);
+  const ctaUrl = p.surveyUrl?.trim()
+    ? escape(p.surveyUrl.trim())
+    : escape(p.appSessionUrl);
   const hasSurveyLink = Boolean(p.surveyUrl?.trim());
 
-  const honorariumLine = p.honorariumCents && p.honorariumCents > 0
-    ? formatHonorariumLine(p.honorariumCents)
-    : null;
+  const honorariumLine =
+    p.honorariumCents && p.honorariumCents > 0
+      ? formatHonorariumLine(p.honorariumCents)
+      : null;
 
   const subject = `Action required: complete your post-event survey — ${p.programTitle}`;
 
@@ -53,10 +56,14 @@ export function buildPostWebinarSurveyEmail(
       ? `Survey completion is required for honorarium processing (${honorariumLine.plain}). Completing the survey confirms your participation and starts the payment process.`
       : null,
     honorariumLine ? '' : null,
-    hasSurveyLink ? 'Complete the survey here:' : 'Access your session page to complete the survey:',
+    hasSurveyLink
+      ? 'Complete the survey here:'
+      : 'Access your session page to complete the survey:',
     hasSurveyLink ? (p.surveyUrl as string) : p.appSessionUrl,
     '',
-    hasSurveyLink ? `You can also view your session details in the app:\n${p.appSessionUrl}\n` : null,
+    hasSurveyLink
+      ? `You can also view your session details in the app:\n${p.appSessionUrl}\n`
+      : null,
     `Questions? Contact us at ${p.supportEmail}.`,
     '',
     'Best regards,',
@@ -94,21 +101,33 @@ export function buildPostWebinarSurveyEmail(
     ${emailButton(ctaUrl, ctaLabel)}
     ${emailUrlLine(ctaUrl)}
 
-    ${hasSurveyLink ? `
+    ${
+      hasSurveyLink
+        ? `
     <p style="margin:20px 0 0;color:${E.MUTED};font-size:13px;line-height:1.6">
       You can also view any additional post-event steps on the
       <a href="${escape(p.appSessionUrl)}" style="color:${E.LINK}">session page in the app</a>.
-    </p>` : ''}
+    </p>`
+        : ''
+    }
 
     ${emailSupportLine(support)}
   `;
 
-  const html = emailWrap({ sponsorName: sponsor, subtitle: 'Post-Event Survey', body });
+  const html = emailWrap({
+    sponsorName: sponsor,
+    subtitle: 'Post-Event Survey',
+    body,
+  });
   return { subject, text, html };
 }
 
 function formatHonorariumLine(honorariumCents: number): { plain: string } {
   const dollars = honorariumCents / 100;
-  const formatted = dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  const formatted = dollars.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  });
   return { plain: `${formatted} subject to eligibility and program policy` };
 }

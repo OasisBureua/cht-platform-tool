@@ -10,10 +10,10 @@ terraform {
 
   backend "s3" {
     bucket       = "cht-platform-terraform-state" # Create with: aws s3 mb s3://cht-platform-terraform-state
-    key          = "us-east-1/terraform.tfstate"
     region       = "us-east-1"
     encrypt      = true
     use_lockfile = true
+    # State key: pass via -backend-config=../backends/us-east-1-{platform|dev}.hcl
   }
 }
 
@@ -30,11 +30,27 @@ provider "aws" {
   }
 }
 
+provider "aws" {
+  alias  = "replica"
+  region = var.cognito_mrr_replica_region
+
+  default_tags {
+    tags = {
+      Project     = var.project
+      Environment = var.environment
+      Region      = var.cognito_mrr_replica_region
+      ManagedBy   = "Terraform"
+    }
+  }
+}
+
 data "aws_caller_identity" "current" {}
 
 locals {
-  resource_prefix   = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
-  log_retention_days = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  resource_prefix          = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  log_retention_days       = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  manage_account_resources = var.environment == "platform"
+  elasticache_enabled      = var.enable_elasticache != null ? var.enable_elasticache : var.environment == "dev"
 }
 
 # ============================================
@@ -88,9 +104,10 @@ resource "aws_security_group" "worker" {
 }
 
 # ============================================
-# Database - RDS PostgreSQL
+# Database - RDS PostgreSQL (legacy; removed after Aurora cutover)
 # ============================================
 module "rds" {
+  count  = var.enable_aurora_global && var.decommission_rds ? 0 : 1
   source = "../../modules/database/rds"
 
   project                 = var.project
@@ -104,6 +121,88 @@ module "rds" {
   allocated_storage       = var.rds_allocated_storage
   multi_az                = var.rds_multi_az
   backup_retention_period = var.rds_backup_retention
+}
+
+# ============================================
+# Database - Aurora Global (primary cluster)
+# ============================================
+module "aurora_global" {
+  count  = var.enable_aurora_global ? 1 : 0
+  source = "../../modules/database/aurora-global"
+
+  role                    = "primary"
+  project                 = var.project
+  environment             = var.environment
+  vpc_id                  = module.vpc.vpc_id
+  private_subnet_ids      = module.vpc.private_subnet_ids
+  allowed_security_groups = [module.ecs_backend.security_group_id, aws_security_group.worker.id]
+  kms_key_arn             = module.kms.rds_kms_key_arn
+  instance_class          = var.aurora_instance_class
+  engine_version          = var.aurora_engine_version
+  backup_retention_period = var.rds_backup_retention
+  deletion_protection     = contains(["prod", "platform"], var.environment)
+}
+
+locals {
+  app_db_username = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].master_username
+    : module.rds[0].db_username
+  )
+  app_db_password = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].master_password
+    : module.rds[0].db_password
+  )
+  app_db_endpoint = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].cluster_endpoint
+    : module.rds[0].db_endpoint
+  )
+  app_db_port = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? tostring(module.aurora_global[0].cluster_port)
+    : module.rds[0].db_port
+  )
+  app_db_name = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].database_name
+    : module.rds[0].db_name
+  )
+  app_db_connection_string = (
+    var.enable_aurora_global && (var.aurora_use_for_app || var.decommission_rds)
+    ? module.aurora_global[0].connection_string
+    : module.rds[0].db_connection_string
+  )
+}
+
+resource "aws_secretsmanager_secret" "aurora_migration" {
+  count = var.enable_aurora_global ? 1 : 0
+
+  name                    = "${local.resource_prefix}-aurora-database-credentials"
+  description             = "Aurora Global writer credentials for DMS migration (not used by ECS until cutover)"
+  kms_key_id              = module.kms.secrets_kms_key_id
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = "${local.resource_prefix}-aurora-database-credentials"
+    Environment = var.environment
+    Purpose     = "AuroraMigration"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "aurora_migration" {
+  count = var.enable_aurora_global ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.aurora_migration[0].id
+  secret_string = jsonencode({
+    username = module.aurora_global[0].master_username
+    password = module.aurora_global[0].master_password
+    host     = module.aurora_global[0].cluster_endpoint
+    port     = module.aurora_global[0].cluster_port
+    dbname   = module.aurora_global[0].database_name
+    url      = module.aurora_global[0].connection_string
+  })
 }
 
 # ============================================
@@ -174,19 +273,26 @@ module "secrets" {
   project     = var.project
   environment = var.environment
   kms_key_id  = module.kms.secrets_kms_key_id
+  replica_regions = [
+    for region in var.secrets_replica_regions : {
+      region = region
+    }
+  ]
 
-  db_username          = module.rds.db_username
-  db_password          = module.rds.db_password
-  db_endpoint          = module.rds.db_endpoint
-  db_port              = module.rds.db_port
-  db_name              = module.rds.db_name
-  db_connection_string = module.rds.db_connection_string
+  db_username          = local.app_db_username
+  db_password          = local.app_db_password
+  db_endpoint          = local.app_db_endpoint
+  db_port              = local.app_db_port
+  db_name              = local.app_db_name
+  db_connection_string = local.app_db_connection_string
 
   supabase_url                              = var.supabase_url
   supabase_anon_key                         = var.supabase_anon_key
   gotrue_jwt_secret                         = var.gotrue_jwt_secret
   mediahub_base_url                         = var.mediahub_base_url
   mediahub_api_key                          = var.mediahub_api_key
+  contenthub_base_url                       = var.contenthub_base_url
+  contenthub_api_key                        = var.contenthub_api_key
   youtube_api_key                           = var.youtube_api_key
   youtube_playlist_ids                      = var.youtube_playlist_ids
   zoom_account_id                           = var.zoom_account_id
@@ -208,6 +314,8 @@ module "secrets" {
   bill_mfa_device_name                      = var.bill_mfa_device_name
   admin_bootstrap_secret                    = var.admin_bootstrap_secret
   hubspot_access_token                      = var.hubspot_access_token
+  recaptcha_secret_key                      = var.recaptcha_secret_key
+  internal_cache_secret                     = var.internal_cache_secret
 }
 
 # ============================================
@@ -222,18 +330,20 @@ module "iam" {
     module.secrets.database_secret_arn,
     module.secrets.app_secrets_arn
   ]
-  kms_key_arns = [
+  kms_key_arns = compact([
     module.kms.secrets_kms_key_arn,
-    module.kms.sqs_kms_key_arn
-  ]
+    module.kms.sqs_kms_key_arn,
+    var.enable_cognito_pools && var.enable_cognito_mrr ? module.cognito[0].cognito_kms_key_arn : "",
+  ])
   sqs_queue_arns = [
     module.sqs.email_queue_arn,
     module.sqs.payment_queue_arn,
     module.sqs.cme_queue_arn,
     module.sqs.scheduled_jobs_queue_arn
   ]
-  certificates_bucket_arn = module.s3_certificates.bucket_arn
+  certificates_bucket_arn   = module.s3_certificates.bucket_arn
   session_assets_bucket_arn = module.s3_session_assets.bucket_arn
+  cognito_user_pool_arn     = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
 }
 
 # ============================================
@@ -264,38 +374,71 @@ module "ecs_cluster" {
 }
 
 # ============================================
+# Cache - ElastiCache Redis (dev by default)
+# ============================================
+module "elasticache" {
+  count  = local.elasticache_enabled ? 1 : 0
+  source = "../../modules/cache/elasticache"
+
+  project            = var.project
+  environment        = var.environment
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  node_type          = var.elasticache_node_type
+}
+
+# ============================================
 # Compute - ECS Backend Service
 # ============================================
 module "ecs_backend" {
   source = "../../modules/compute/ecs-backend"
 
-  project               = var.project
-  environment           = var.environment
-  aws_region            = "us-east-1"
-  vpc_id                = module.vpc.vpc_id
-  private_subnet_ids    = module.vpc.private_subnet_ids
-  cluster_id            = module.ecs_cluster.cluster_id
-  cluster_name          = module.ecs_cluster.cluster_name
-  execution_role_arn    = module.iam.ecs_task_execution_role_arn
-  task_role_arn         = module.iam.ecs_task_role_arn
-  alb_security_group_id = module.alb.alb_security_group_id
-  target_group_arn      = module.alb.backend_target_group_arn
-  alb_listener_arn      = module.alb.https_listener_arn
-  log_group_name        = module.ecs_cluster.log_group_name
-  container_image       = var.backend_image
-  database_secret_arn   = module.secrets.database_secret_arn
-  app_secrets_arn       = module.secrets.app_secrets_arn
-  task_cpu              = var.backend_task_cpu
-  task_memory           = var.backend_task_memory
-  desired_count         = var.backend_desired_count
-  min_capacity          = var.backend_min_capacity
-  max_capacity          = var.backend_max_capacity
-  frontend_url          = "https://${var.domain_name}"
-  sqs_email_queue_url   = module.sqs.email_queue_url
-  sqs_payment_queue_url = module.sqs.payment_queue_url
-  sqs_cme_queue_url     = module.sqs.cme_queue_url
-  session_assets_s3_bucket         = module.s3_session_assets.bucket_id
-  session_assets_public_url_base   = module.s3_session_assets.public_url_base
+  project                        = var.project
+  environment                    = var.environment
+  aws_region                     = "us-east-1"
+  vpc_id                         = module.vpc.vpc_id
+  private_subnet_ids             = module.vpc.private_subnet_ids
+  cluster_id                     = module.ecs_cluster.cluster_id
+  cluster_name                   = module.ecs_cluster.cluster_name
+  execution_role_arn             = module.iam.ecs_task_execution_role_arn
+  task_role_arn                  = module.iam.ecs_task_role_arn
+  alb_security_group_id          = module.alb.alb_security_group_id
+  target_group_arn               = module.alb.backend_target_group_arn
+  alb_listener_arn               = module.alb.https_listener_arn
+  log_group_name                 = module.ecs_cluster.log_group_name
+  container_image                = var.backend_image
+  database_secret_arn            = module.secrets.database_secret_arn
+  app_secrets_arn                = module.secrets.app_secrets_arn
+  task_cpu                       = var.backend_task_cpu
+  task_memory                    = var.backend_task_memory
+  desired_count                  = var.backend_desired_count
+  min_capacity                   = var.backend_min_capacity
+  max_capacity                   = var.backend_max_capacity
+  frontend_url                   = "https://${var.domain_name}"
+  sqs_email_queue_url            = module.sqs.email_queue_url
+  sqs_payment_queue_url          = module.sqs.payment_queue_url
+  sqs_cme_queue_url              = module.sqs.cme_queue_url
+  session_assets_s3_bucket       = module.s3_session_assets.bucket_id
+  session_assets_public_url_base = module.s3_session_assets.public_url_base
+  cognito_user_pool_id           = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
+  cognito_client_id              = var.enable_cognito_pools ? module.cognito[0].client_id : ""
+  cognito_hosted_ui_base_url     = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
+  cognito_jwks_uri               = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
+  cognito_region                 = "us-east-1"
+  recaptcha_min_score            = var.recaptcha_min_score
+  redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
+}
+
+resource "aws_security_group_rule" "elasticache_from_backend" {
+  count = local.elasticache_enabled ? 1 : 0
+
+  type                     = "ingress"
+  description              = "Redis from backend ECS tasks"
+  from_port                = module.elasticache[0].port
+  to_port                  = module.elasticache[0].port
+  protocol                 = "tcp"
+  security_group_id        = module.elasticache[0].security_group_id
+  source_security_group_id = module.ecs_backend.security_group_id
 }
 
 # ============================================
@@ -304,26 +447,26 @@ module "ecs_backend" {
 module "ecs_worker" {
   source = "../../modules/compute/ecs-worker"
 
-  project               = var.project
-  environment           = var.environment
-  aws_region            = "us-east-1"
-  vpc_id                = module.vpc.vpc_id
-  private_subnet_ids    = module.vpc.private_subnet_ids
-  cluster_id            = module.ecs_cluster.cluster_id
-  cluster_name          = module.ecs_cluster.cluster_name
-  execution_role_arn    = module.iam.ecs_task_execution_role_arn
-  task_role_arn         = module.iam.worker_task_role_arn
-  log_group_name        = module.ecs_cluster.log_group_name
-  container_image       = var.worker_image
-  database_secret_arn   = module.secrets.database_secret_arn
-  app_secrets_arn       = module.secrets.app_secrets_arn
-  primary_queue_name    = "${local.resource_prefix}-email-queue"
-  task_cpu              = var.worker_task_cpu
-  task_memory           = var.worker_task_memory
-  desired_count         = var.worker_desired_count
-  min_capacity          = var.worker_min_capacity
-  max_capacity          = var.worker_max_capacity
-  security_group_ids    = [aws_security_group.worker.id]
+  project                      = var.project
+  environment                  = var.environment
+  aws_region                   = "us-east-1"
+  vpc_id                       = module.vpc.vpc_id
+  private_subnet_ids           = module.vpc.private_subnet_ids
+  cluster_id                   = module.ecs_cluster.cluster_id
+  cluster_name                 = module.ecs_cluster.cluster_name
+  execution_role_arn           = module.iam.ecs_task_execution_role_arn
+  task_role_arn                = module.iam.worker_task_role_arn
+  log_group_name               = module.ecs_cluster.log_group_name
+  container_image              = var.worker_image
+  database_secret_arn          = module.secrets.database_secret_arn
+  app_secrets_arn              = module.secrets.app_secrets_arn
+  primary_queue_name           = "${local.resource_prefix}-email-queue"
+  task_cpu                     = var.worker_task_cpu
+  task_memory                  = var.worker_task_memory
+  desired_count                = var.worker_desired_count
+  min_capacity                 = var.worker_min_capacity
+  max_capacity                 = var.worker_max_capacity
+  security_group_ids           = [aws_security_group.worker.id]
   sqs_email_queue_url          = module.sqs.email_queue_url
   sqs_payment_queue_url        = module.sqs.payment_queue_url
   sqs_cme_queue_url            = module.sqs.cme_queue_url
@@ -338,10 +481,10 @@ module "ecs_worker" {
 module "scheduled_eventbridge" {
   source = "../../modules/messaging/eventbridge-scheduled-jobs"
 
-  project                  = var.project
-  environment              = var.environment
-  scheduled_jobs_queue_arn = module.sqs.scheduled_jobs_queue_arn
-  scheduled_jobs_queue_url = module.sqs.scheduled_jobs_queue_url
+  project                    = var.project
+  environment                = var.environment
+  scheduled_jobs_queue_arn   = module.sqs.scheduled_jobs_queue_arn
+  scheduled_jobs_queue_url   = module.sqs.scheduled_jobs_queue_url
   session_reminders_schedule = var.session_reminders_schedule_expression
 }
 
@@ -365,16 +508,18 @@ module "waf_cloudfront" {
 module "cloudfront" {
   source = "../../modules/networking/cloudfront"
 
-  project               = var.project
-  environment           = var.environment
-  s3_bucket_id          = module.s3_frontend.bucket_id
-  s3_bucket_domain_name = module.s3_frontend.bucket_domain_name
-  cloudfront_oai_path   = module.s3_frontend.cloudfront_oai_path
-  certificate_arn       = var.cloudfront_certificate_arn
-  domain_aliases        = [var.domain_name]
-  api_origin_domain     = module.alb.alb_dns_name
-  price_class           = "PriceClass_100"
-  web_acl_id            = module.waf_cloudfront.web_acl_arn
+  project                     = var.project
+  environment                 = var.environment
+  s3_bucket_id                = module.s3_frontend.bucket_id
+  s3_bucket_domain_name       = module.s3_frontend.bucket_domain_name
+  cloudfront_oai_path         = module.s3_frontend.cloudfront_oai_path
+  certificate_arn             = var.cloudfront_certificate_arn
+  domain_aliases              = [var.domain_name]
+  api_origin_domain           = module.alb.alb_dns_name
+  secondary_api_origin_domain = var.secondary_api_origin_domain
+  route_api_to_secondary      = var.route_api_to_secondary
+  price_class                 = "PriceClass_100"
+  web_acl_id                  = module.waf_cloudfront.web_acl_arn
 }
 
 # ============================================
@@ -405,7 +550,7 @@ module "cloudwatch" {
   environment    = var.environment
   aws_region     = "us-east-1"
   cluster_name   = module.ecs_cluster.cluster_name
-  db_instance_id = split(":", module.rds.db_endpoint)[0]
+  db_instance_id = var.enable_aurora_global && var.decommission_rds ? module.aurora_global[0].cluster_id : split(":", module.rds[0].db_endpoint)[0]
   alb_arn_suffix = split("/", module.alb.alb_arn)[3]
   log_group_name = module.ecs_cluster.log_group_name
   sns_topic_arn  = module.sns_alerts.topic_arn
@@ -426,14 +571,64 @@ module "cloudtrail" {
 }
 
 # ============================================
-# Monitoring - GuardDuty (account-level — platform environment only)
+# Security - Cognito User Pool
+# ============================================
+module "cognito" {
+  count  = var.enable_cognito_pools ? 1 : 0
+  source = "../../modules/security/cognito"
+
+  providers = {
+    aws.replica = aws.replica
+  }
+
+  project       = var.project
+  environment   = var.environment
+  domain_prefix = var.cognito_domain_prefix
+
+  callback_urls = ["https://${var.domain_name}/auth/callback"]
+  logout_urls   = ["https://${var.domain_name}"]
+
+  mfa_configuration    = var.cognito_mfa_configuration
+  user_pool_tier       = var.cognito_user_pool_tier
+  google_client_id     = var.cognito_google_client_id
+  google_client_secret = var.cognito_google_client_secret
+
+  email_sending_account  = var.cognito_email_sending_account
+  email_from_address     = var.cognito_email_from
+  email_reply_to_address = var.cognito_email_reply_to
+
+  enable_waf                      = var.enable_cognito_waf
+  waf_enable_managed_rules        = var.cognito_waf_enable_managed_rules
+  waf_enable_rate_limit           = var.cognito_waf_enable_rate_limit
+  waf_rate_limit_count            = var.cognito_waf_rate_limit_count
+  enable_multi_region_replication = var.enable_cognito_mrr
+  replica_region                  = var.cognito_mrr_replica_region
+  associate_waf_with_replica      = var.cognito_mrr_associate_waf_replica
+}
+
+# ============================================
+# Compute - ECR cross-region replication (account-level)
+# Replicates cht-platform-* images from us-east-1 → us-east-2 for all environments.
+# ============================================
+module "ecr_replication" {
+  count  = var.enable_ecr_replication ? 1 : 0
+  source = "../../modules/compute/ecr-replication"
+
+  destination_region = var.ecr_replication_destination_region
+  repository_prefix  = var.ecr_repository_prefix
+  repository_names   = var.ecr_repository_names
+}
+
+# ============================================
+# Monitoring - GuardDuty (us-east-1 — platform environment only)
 # ============================================
 module "guardduty" {
   source = "../../modules/monitoring/guardduty"
 
-  project       = var.project
-  environment   = var.environment
-  sns_topic_arn = module.sns_alerts.topic_arn
+  project         = var.project
+  environment     = var.environment
+  enable_detector = local.manage_account_resources
+  sns_topic_arn   = module.sns_alerts.topic_arn
 }
 
 # ============================================

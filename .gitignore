@@ -11,6 +11,8 @@ env/
 .env
 .env.local
 .env.*.local
+frontend/.env.production
+backend/.env
 
 # IDE
 .vscode/
@@ -33,9 +35,12 @@ frontend/.vite/
 .terraform/
 .terraform.lock.hcl
 *.tfplan
-# Platform tfvars contains API keys - use platform.tfvars.example as template
+# Tfvars with real secrets — use *.tfvars.example as templates
 infrastructure/terraform/environments/variables/platform.tfvars
-infrastructure/terraform/environments/variables/staging.tfvars
+infrastructure/terraform/environments/variables/dev.tfvars
+infrastructure/terraform/environments/variables/prod.tfvars
+# ACM cert ARNs written by scripts/request-certificate.sh (local only)
+infrastructure/terraform/environments/variables/.cert-arns*
 # Local override files with real secrets (never commit)
 infrastructure/terraform/environments/variables/*.local.tfvars
 
@@ -50,3 +55,8 @@ coverage/
 
 # VSCode
 .vscode/
+
+# Old docs
+KOL_Network_API_Spec.pdf
+Post-Event Survey.pdf
+Test Intake Fofm.pdf

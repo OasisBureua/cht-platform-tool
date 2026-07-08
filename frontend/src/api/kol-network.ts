@@ -1,9 +1,26 @@
 import apiClient from './client';
 
+/** Structured AI intel brief from Content Hub `PublicKOLAIBrief`. */
+export interface PublicKolAiBrief {
+  who_they_are?: string | null;
+  what_they_focus_on?: string | null;
+  chm_context?: string | null;
+}
+
+/** HCP Intel overlay from Content Hub when kols.hcp_npi is linked. Email is omitted on the public KOL UI. */
+export interface PublicKolIntel {
+  npi?: string | null;
+  specialty?: string | null;
+  location?: string | null;
+  affiliation?: string | null;
+  publications_approx?: number | null;
+  open_payments?: { total: number; records: number; years: string } | null;
+  ai_brief?: PublicKolAiBrief | null;
+}
+
 /**
- * Public KOL (mirrors MediaHub PublicKOL shape, proxied through CHT backend).
- * Source of truth for the /kol-network page; replaces the static
- * `frontend/src/data/dol-network.ts` file.
+ * Public KOL — proxied from Content Hub via CHT GET /api/kol-network/*.
+ * Source of truth for roster; static dol-network.ts fills education/social only.
  */
 export interface PublicKol {
   id: string;
@@ -19,6 +36,7 @@ export interface PublicKol {
   shoot_count: number;
   first_appeared_at: string | null;
   is_new: boolean;
+  intel?: PublicKolIntel | null;
 }
 
 export interface PublicKolRegionFacet {
@@ -34,14 +52,16 @@ export interface PublicKolList {
   institutions: string[];
 }
 
-export interface KolListParams {
+export type KolListParams = {
   region?: string;
   institution?: string;
   q?: string;
   new_only?: boolean;
   limit?: number;
   offset?: number;
-}
+  /** `public` = marketing /kol-network; `app` = member CHM Docs directory */
+  surface?: 'public' | 'app';
+};
 
 export interface PublicKolPublication {
   title: string;
@@ -58,11 +78,6 @@ export interface PublicKolPublicationList {
 }
 
 export const kolNetworkApi = {
-  /**
-   * List public KOLs with region + institution facets.
-   * Returns an empty payload when MediaHub is unreachable (CHT backend
-   * degrades gracefully) so the UI can render an empty state.
-   */
   list: async (params?: KolListParams): Promise<PublicKolList> => {
     const queryParams: Record<string, string | number | undefined> = {};
     if (params?.region) queryParams.region = params.region;
@@ -71,6 +86,7 @@ export const kolNetworkApi = {
     if (params?.new_only) queryParams.new_only = 'true';
     if (params?.limit != null) queryParams.limit = params.limit;
     if (params?.offset != null) queryParams.offset = params.offset;
+    if (params?.surface) queryParams.surface = params.surface;
     const { data } = await apiClient.get<PublicKolList>('/kol-network', {
       params: queryParams,
     });
@@ -79,13 +95,11 @@ export const kolNetworkApi = {
     );
   },
 
-  /**
-   * Fetch a single KOL profile by slug. 404 → null (caller renders not-found).
-   */
-  get: async (slug: string): Promise<PublicKol | null> => {
+  get: async (slug: string, surface?: 'public' | 'app'): Promise<PublicKol | null> => {
     try {
       const { data } = await apiClient.get<PublicKol>(
         `/kol-network/${encodeURIComponent(slug)}`,
+        { params: surface ? { surface } : undefined },
       );
       return data ?? null;
     } catch (err: unknown) {
@@ -96,12 +110,6 @@ export const kolNetworkApi = {
     }
   },
 
-  /**
-   * Recent OpenAlex-derived publications for a KOL. Always returns an
-   * array shape — empty when the KOL has no OpenAlex linkage or the
-   * MediaHub call fails. Caller renders an empty-state message rather
-   * than treating that as an error.
-   */
   publications: async (
     slug: string,
     params?: { limit?: number; offset?: number },

@@ -68,13 +68,11 @@ export class WebinarsService {
     return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
   }
 
-  private programImageUrl(
-    program: {
-      sessionHeroImageUrl?: string | null;
-      thumbnailUrl?: string | null;
-      videos?: Array<{ platform: string; videoId: string }>;
-    },
-  ): string | undefined {
+  private programImageUrl(program: {
+    sessionHeroImageUrl?: string | null;
+    thumbnailUrl?: string | null;
+    videos?: Array<{ platform: string; videoId: string }>;
+  }): string | undefined {
     const firstVideo = program.videos?.[0];
     const youtubeFallback =
       firstVideo?.platform === 'YOUTUBE'

@@ -291,6 +291,7 @@ export default function LiveMultiRegister() {
     if (!currentIntakeProgram?.jotformIntakeFormUrl?.trim()) return '';
     return buildIntakeFormUrl(currentIntakeProgram.jotformIntakeFormUrl, {
       returnRedirect: intakeReturnUrl || undefined,
+      legacyAttribution: true,
       userId: user?.userId || undefined,
       programId: currentIntakeProgram.id,
       jotformSessionId: intakeJotformResume?.sessionId,

@@ -1,11 +1,10 @@
 locals {
-  prefix                   = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
-  manage_account_resources = var.environment == "platform"
+  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
 }
 
-# GuardDuty detector is one per AWS account/region — platform only.
+# GuardDuty detector — one per AWS account/region.
 resource "aws_guardduty_detector" "main" {
-  count  = local.manage_account_resources ? 1 : 0
+  count  = var.enable_detector ? 1 : 0
   enable = true
 
   tags = {
@@ -15,7 +14,7 @@ resource "aws_guardduty_detector" "main" {
 }
 
 resource "aws_cloudwatch_event_rule" "guardduty_findings" {
-  count       = local.manage_account_resources ? 1 : 0
+  count       = var.enable_detector ? 1 : 0
   name        = "${local.prefix}-guardduty-findings"
   description = "Route GuardDuty findings to SNS alerts"
 
@@ -31,7 +30,7 @@ resource "aws_cloudwatch_event_rule" "guardduty_findings" {
 }
 
 resource "aws_cloudwatch_event_target" "guardduty_sns" {
-  count     = local.manage_account_resources ? 1 : 0
+  count     = var.enable_detector ? 1 : 0
   rule      = aws_cloudwatch_event_rule.guardduty_findings[0].name
   target_id = "guardduty-sns"
   arn       = var.sns_topic_arn

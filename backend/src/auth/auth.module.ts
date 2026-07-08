@@ -3,6 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
 import { GoTrueStrategy } from './gotrue.strategy';
+import { CognitoStrategy } from './cognito.strategy';
+import { CognitoService } from './cognito.service';
+import { RecaptchaService } from './recaptcha.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -19,10 +22,15 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
   ],
   providers: [
     AuthService,
+    CognitoService,
+    RecaptchaService,
     JwtAuthGuard,
     {
       provide: JwtStrategy,
       useFactory: (config: ConfigService, auth: AuthService) => {
+        if (config.get<string>('cognito.userPoolId')) {
+          return new CognitoStrategy(config, auth);
+        }
         if (config.get<string>('auth0.domain')) {
           return new JwtStrategy(config, auth);
         }
@@ -35,6 +43,6 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
       inject: [ConfigService, AuthService],
     },
   ],
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, CognitoService],
 })
 export class AuthModule {}

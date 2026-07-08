@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 # Verify GitHub Environment secrets via gh CLI (local pre-deploy check).
-# Usage: ./scripts/verify-github-secrets.sh [staging|production|development]
+# Usage: ./scripts/verify-github-secrets.sh [staging|platform|production|development]
 set -euo pipefail
 
-GH_ENV="${1:-staging}"
+RAW_ENV="${1:-staging}"
+case "$RAW_ENV" in
+  production|platform) GH_ENV="platform" ;;
+  staging|development) GH_ENV="$RAW_ENV" ;;
+  *)
+    echo "Unknown environment: $RAW_ENV (use staging, platform, production, or development)"
+    exit 1
+    ;;
+esac
 
 echo "🔍 Verifying GitHub Environment: $GH_ENV"
 echo "======================================"
@@ -92,7 +100,7 @@ echo ""
 echo "================================================"
 echo ""
 
-if [ "$GH_ENV" = "staging" ] || [ "$GH_ENV" = "production" ]; then
+if [ "$GH_ENV" = "staging" ] || [ "$GH_ENV" = "platform" ]; then
   CERT_ARN=""
   CERT_FILE="infrastructure/terraform/environments/variables/.cert-arns-testapp"
   if [ -f "$CERT_FILE" ]; then

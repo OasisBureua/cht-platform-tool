@@ -31,7 +31,7 @@ export function PlaylistFocusNav({ isInApp, allowedPlaylistFocusFilters }: Playl
     return [
       'shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-colors',
       active
-        ? 'bg-accent-600 text-white dark:bg-accent-500'
+        ? 'bg-steel-600 text-white dark:bg-steel-500'
         : 'bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
     ].join(' ');
   }

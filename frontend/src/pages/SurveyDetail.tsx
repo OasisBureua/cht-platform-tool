@@ -12,7 +12,10 @@ import {
   PostEventAttendanceMessage,
   PostEventFeedbackLearnerActions,
 } from '../components/programs/PostEventFeedbackLearnerActions';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { NativeSurveyForm } from '../components/surveys/NativeSurveyForm';
+import { surveyHasNativeQuestions } from '../utils/survey-questions';
+import { buildPostEventSurveyEmbedSrc } from '../utils/post-event-survey';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 
 function typeLabel(type?: Survey['type']) {
   if (!type) return 'Survey';
@@ -56,6 +59,7 @@ export default function SurveyDetail() {
     programRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
 
   const hasJotform = Boolean(survey?.jotformFormId);
+  const useNativeRenderer = Boolean(survey && surveyHasNativeQuestions(survey.questions));
 
   const { data: myResponse } = useQuery({
     queryKey: ['survey', id, 'my-response'],
@@ -83,16 +87,24 @@ export default function SurveyDetail() {
     : null;
   const jotformFormUrl = baseUrl;
   const jotformEmbedUrl = useMemo(() => {
-    if (!baseUrl || !survey) return null;
-    const q = new URLSearchParams();
-    if (userId) q.set('user_id', userId);
-    if (survey.programId) q.set('program_id', survey.programId);
+    if (!baseUrl || !survey || useNativeRenderer) return null;
     const sessionId = jotformResume?.sessionId?.trim();
-    if (sessionId) q.set('session', sessionId);
+    if (!sessionId) {
+      return buildPostEventSurveyEmbedSrc(baseUrl, {
+        legacyAttribution: hasJotform,
+        userId: hasJotform ? userId : undefined,
+        programId: hasJotform ? survey.programId : undefined,
+      });
+    }
+    const q = new URLSearchParams();
+    if (hasJotform) {
+      if (userId) q.set('user_id', userId);
+      if (survey.programId) q.set('program_id', survey.programId);
+    }
+    q.set('session', sessionId);
     const join = baseUrl.includes('?') ? '&' : '?';
-    const suffix = q.toString();
-    return suffix ? `${baseUrl}${join}${suffix}` : baseUrl;
-  }, [baseUrl, userId, survey, jotformResume?.sessionId]);
+    return `${baseUrl}${join}${q.toString()}`;
+  }, [baseUrl, userId, survey, jotformResume?.sessionId, hasJotform, useNativeRenderer]);
 
   useEffect(() => {
     const sid = searchParams.get('session') || searchParams.get('jotform_session');
@@ -118,17 +130,15 @@ export default function SurveyDetail() {
   }, [searchParams, userId, id, survey?.jotformFormId, queryClient, setSearchParams]);
 
   const submitMutation = useMutation({
-    mutationFn: async () => {
-      // UI-only placeholder submission payload (answers empty for now)
-      return surveysApi.submitResponse(id!, {
-        userId,
-        answers: {},
-      });
-    },
+    mutationFn: async (answers: Record<string, unknown>) =>
+      surveysApi.submitResponse(id!, { answers }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'jotform-resume'] });
+      if (survey?.programId) {
+        queryClient.invalidateQueries({ queryKey: ['program', survey.programId, 'registration'] });
+      }
     },
   });
 
@@ -140,7 +150,7 @@ export default function SurveyDetail() {
         <div className="mt-5">
           <Link
             to="/login"
-            className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
           >
             Sign in
           </Link>
@@ -244,7 +254,7 @@ export default function SurveyDetail() {
                   <button
                     type="button"
                     onClick={() => setStarted(true)}
-                    className="inline-flex w-fit items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-orange-700 active:scale-[0.96]"
+                    className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                   >
                     Start survey <ArrowRight className="ml-2 h-4 w-4" />
                   </button>
@@ -254,7 +264,23 @@ export default function SurveyDetail() {
 
             {started && !formLocked ? (
               <div>
-                {hasJotform && jotformEmbedUrl ? (
+                {useNativeRenderer ? (
+                  <NativeSurveyForm
+                    surveyId={survey.id}
+                    title={survey.title}
+                    questions={survey.questions}
+                    authenticated={!!userId}
+                    userSummary={{
+                      firstName: user?.firstName,
+                      lastName: user?.lastName,
+                      email: user?.email,
+                    }}
+                    disabled={formLocked || submitMutation.isPending}
+                    submitting={submitMutation.isPending}
+                    showPayoutNotice={isPostEventFeedback}
+                    onSubmit={(answers) => submitMutation.mutate(answers)}
+                  />
+                ) : hasJotform && jotformEmbedUrl ? (
                   <div className="space-y-4">
                     {surveySaved ? (
                       <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -293,29 +319,9 @@ export default function SurveyDetail() {
                     ) : null}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-                    <p className="font-semibold text-gray-900">Native survey renderer (placeholder)</p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      We’ll render questions natively once the question format is finalized.
-                      For now, you can preview the questions below.
-                    </p>
-
-                    <div className="mt-5">
-                      <button
-                        onClick={() => submitMutation.mutate()}
-                        disabled={submitMutation.isPending}
-                        className={[
-                          'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
-                          submitMutation.isPending
-                            ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                            : 'bg-brand-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]',
-                        ].join(' ')}
-                      >
-                        {submitMutation.isPending ? 'Submitting…' : 'Mark as completed (UI)'}
-                        <CheckCircle2 className="ml-2 h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                  <p className="text-sm text-gray-600">
+                    This survey is not available yet. Contact support if you need assistance.
+                  </p>
                 )}
               </div>
             ) : null}
@@ -328,18 +334,18 @@ export default function SurveyDetail() {
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
                   <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
                   <p className="text-sm text-gray-600">
-                    After you submit the Jotform above, use <strong>Complete survey</strong> to lock in your response
+                    Submit the survey above to save your responses
                     {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
-                      ? ', then confirm payout details and tap Continue to create your pending honorarium request'
+                      ? ', then confirm payout details below to create your pending honorarium request'
                       : ''}
-                    . Each step can only be submitted once.
+                    .
                   </p>
                   <PostEventFeedbackLearnerActions
                     programId={survey.programId}
                     userId={userId}
                     myRegistration={programRegistration}
                     hasHonorarium={Boolean(survey.program?.honorariumAmount && survey.program.honorariumAmount > 0)}
-                    surveyReadyForAck={started || surveySaved}
+                    surveyReadyForAck={surveySaved && !useNativeRenderer}
                     surveyDetailId={id}
                   />
                 </div>

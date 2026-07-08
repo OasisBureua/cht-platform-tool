@@ -18,9 +18,12 @@ const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail')
 const About                 = lazy(() => import('./pages/public/About'));
 const Contact               = lazy(() => import('./pages/public/Contact'));
 const Join                  = lazy(() => import('./pages/public/Join'));
+const VerifyEmail           = lazy(() => import('./pages/public/VerifyEmail'));
 const Login                 = lazy(() => import('./pages/public/Login'));
 const AdminLogin            = lazy(() => import('./pages/public/AdminLogin'));
 const ForgotPassword        = lazy(() => import('./pages/public/ForgotPassword'));
+const ResetPasswordConfirm  = lazy(() => import('./pages/public/ResetPasswordConfirm'));
+const MfaSetup              = lazy(() => import('./pages/public/MfaSetup'));
 const AuthCallback          = lazy(() => import('./pages/public/AuthCallback'));
 const CompleteProfile       = lazy(() => import('./pages/public/CompleteProfile'));
 const Privacy               = lazy(() => import('./pages/public/Privacy'));
@@ -59,6 +62,7 @@ const Settings              = lazy(() => import('./pages/Settings'));
 const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
+const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
 const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
 const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
@@ -72,10 +76,22 @@ const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarSched
 const AdminPayments         = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'));
 const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
+const AdminKolNetwork       = lazy(() => import('./pages/admin/AdminKolNetwork'));
 const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
 const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
+
+// ── Content Hub (admin report generator, lazy) ───────────────────────────────
+const ContentHubLayout          = lazy(() => import('./pages/admin/content-hub/components/ContentHubLayout'));
+const ContentHubDashboard       = lazy(() => import('./pages/admin/content-hub/Dashboard'));
+const ContentHubNewReport       = lazy(() => import('./pages/admin/content-hub/NewReport'));
+const ContentHubTemplates       = lazy(() => import('./pages/admin/content-hub/Templates'));
+const ContentHubIntegrations    = lazy(() => import('./pages/admin/content-hub/Integrations'));
+const ContentHubCampaignDetail  = lazy(() => import('./pages/admin/content-hub/CampaignDetail'));
+const ContentHubUploadData      = lazy(() => import('./pages/admin/content-hub/UploadData'));
+const ContentHubAnalyticsReport = lazy(() => import('./pages/admin/content-hub/AnalyticsReport'));
+const ContentHubExecutiveReport = lazy(() => import('./pages/admin/content-hub/ExecutiveReport'));
 
 // ── Shared page-level loading fallback ───────────────────────────────────────
 function PageLoader() {
@@ -119,9 +135,12 @@ function App() {
               <Route path="/portfolios" element={<Portfolios />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/join" element={<Join />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+              <Route path="/mfa/setup" element={<MfaSetup />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/privacy" element={<Privacy />} />
@@ -186,6 +205,8 @@ function App() {
               <Route path="surveys/:id" element={<SurveyDetail />} />
 
               <Route path="podcasts" element={<Podcasts />} />
+              <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
+              <Route path="podcasts/:showId" element={<PodcastShow />} />
 
               <Route path="watch/:videoId" element={<WatchVideo />} />
               <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
@@ -246,6 +267,19 @@ function App() {
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
+              <Route path="kol-network" element={<AdminKolNetwork />} />
+
+              {/* Content Hub — ported report generator (self-contained, localStorage data layer) */}
+              <Route path="content-hub" element={<ContentHubLayout />}>
+                <Route index element={<ContentHubDashboard />} />
+                <Route path="new" element={<ContentHubNewReport />} />
+                <Route path="templates" element={<ContentHubTemplates />} />
+                <Route path="integrations" element={<ContentHubIntegrations />} />
+                <Route path="campaigns/:id" element={<ContentHubCampaignDetail />} />
+                <Route path="campaigns/:id/upload" element={<ContentHubUploadData />} />
+                <Route path="campaigns/:id/report" element={<ContentHubAnalyticsReport />} />
+                <Route path="campaigns/:id/executive-report" element={<ContentHubExecutiveReport />} />
+              </Route>
             </Route>
           </Routes>
         </Suspense>

@@ -102,7 +102,7 @@ export class SesEmailService {
           programDescription: program.description,
           startDate: program.startDate,
           durationMinutes: program.duration,
-          honorariumCents: program.honorariumAmount,
+          honorariumCents: null,
           hostDisplayName: program.hostDisplayName,
           sponsorName: program.sponsorName,
           zoomJoinUrl: zoomTrim,

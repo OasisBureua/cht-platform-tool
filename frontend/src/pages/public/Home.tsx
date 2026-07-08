@@ -335,7 +335,7 @@ export default function Home() {
                 <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <Link
                     to="/join"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.28)_inset,0_8px_28px_-8px_rgba(234,88,12,0.45)] transition-[color,background-color,transform,box-shadow] hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-200 active:scale-[0.96]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.28)_inset,0_8px_28px_-8px_rgba(58,131,155,0.45)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-200 active:scale-[0.96]"
                   >
                     Get Started
                   </Link>
@@ -499,7 +499,7 @@ export default function Home() {
             </p>
             <Link
               to="/about"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_8px_26px_-10px_rgba(234,88,12,0.4)] transition-[color,background-color,transform,box-shadow] hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-300 active:scale-[0.96]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_8px_26px_-10px_rgba(58,131,155,0.4)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300 active:scale-[0.96]"
             >
               Learn More
             </Link>
@@ -662,7 +662,7 @@ export default function Home() {
           >
             <Link
               to="/join"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-orange-600 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-orange-700 active:scale-[0.96]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-brand-600 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
             >
               Get Started
             </Link>
@@ -688,7 +688,7 @@ export default function Home() {
           </h2>
           <Link
             to="/join"
-            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-full bg-orange-600 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-orange-700 active:scale-[0.96]"
+            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-full bg-brand-600 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
             style={{ animationDelay: `${HOME_STAGGER_MS.closingCta}ms` }}
           >
             Join Us
@@ -840,7 +840,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
               onClick={() => scrollTo(idx)}
               className={[
                 'h-2 rounded-full transition-[width,background-color] duration-300',
-                idx === activeIdx ? 'w-8 bg-accent-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
+                idx === activeIdx ? 'w-8 bg-steel-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
               ].join(' ')}
               aria-label={`Go to disease area ${idx + 1}`}
             />

@@ -26,7 +26,13 @@ describe('App (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     app.setGlobalPrefix('api', {
-      exclude: ['health', 'health/ready', 'health/live', 'health/detail'],
+      exclude: [
+        'health',
+        'health/ready',
+        'health/live',
+        'health/detail',
+        'actuator/info',
+      ],
     });
     await app.init();
   });
@@ -51,6 +57,19 @@ describe('App (e2e)', () => {
       .expect(200)
       .expect((res) => {
         expect(res.body).toHaveProperty('status');
+      });
+  });
+
+  it('/actuator/info (GET) returns deployment metadata', () => {
+    return request(app.getHttpServer())
+      .get('/actuator/info')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body).toHaveProperty('app-name', 'cht-platform-backend');
+        expect(res.body).toHaveProperty('env');
+        expect(res.body).toHaveProperty('region');
+        expect(res.body).toHaveProperty('image-tag');
+        expect(res.body).toHaveProperty('auth-provider');
       });
   });
 });

@@ -113,7 +113,7 @@ export class JotformWebhookService {
     }
 
     const existing = await this.prisma.surveyResponse.findUnique({
-      where: { jotformSubmissionId: String(submissionId) },
+      where: { submissionId: String(submissionId) },
     });
     if (existing) {
       this.logger.log(
@@ -136,7 +136,7 @@ export class JotformWebhookService {
     if (existingUserResponse) {
       if (survey.type === SurveyType.FEEDBACK) {
         this.logger.log(
-          `Jotform webhook: ignoring duplicate FEEDBACK submission ${submissionId} for user ${userId} survey ${survey.id} (existing submission ${existingUserResponse.jotformSubmissionId ?? existingUserResponse.id})`,
+          `Jotform webhook: ignoring duplicate FEEDBACK submission ${submissionId} for user ${userId} survey ${survey.id} (existing submission ${existingUserResponse.submissionId ?? existingUserResponse.id})`,
         );
         return { received: true, surveyResponseId: existingUserResponse.id };
       }
@@ -145,7 +145,7 @@ export class JotformWebhookService {
         where: { id: existingUserResponse.id },
         data: {
           answers: answers as object,
-          jotformSubmissionId: String(submissionId),
+          submissionId: String(submissionId),
           submittedAt: new Date(),
         },
       });
@@ -165,7 +165,7 @@ export class JotformWebhookService {
         userId,
         surveyId: survey.id,
         answers: answers as object,
-        jotformSubmissionId: String(submissionId),
+        submissionId: String(submissionId),
         submittedAt: new Date(),
       },
     });
@@ -182,11 +182,11 @@ export class JotformWebhookService {
       await this.prisma.programRegistration
         .updateMany({
           where: { userId, programId: survey.programId },
-          data: { postEventJotformSubmissionId: String(submissionId) },
+          data: { postEventSurveyAcknowledgedAt: new Date() },
         })
         .catch((err: unknown) => {
           this.logger.warn(
-            `Could not sync post-event Jotform submission id to registration: ${String(err)}`,
+            `Could not sync post-event survey acknowledgement to registration: ${String(err)}`,
           );
         });
     }
@@ -318,7 +318,7 @@ export class JotformWebhookService {
     }
 
     const recorded =
-      await this.programRegistrations.recordWebinarIntakeFromJotformWebhook(
+      await this.programRegistrations.recordWebinarIntakeSubmission(
         userId,
         programId,
         String(submissionId),
@@ -359,7 +359,7 @@ export class JotformWebhookService {
     payload: JotformWebhookPayload,
     submissionId: string,
     programId: string,
-  ): Promise<{ received: boolean }> {
+  ): Promise<{ received: boolean; surveyResponseId?: string }> {
     const userId = this.extractUserId(payload);
     if (!userId) {
       this.logger.warn(
@@ -383,20 +383,19 @@ export class JotformWebhookService {
       );
       return { received: true };
     }
-    if (reg.postEventJotformSubmissionId?.trim()) {
-      this.logger.log(
-        `Jotform post-event webhook: ignoring duplicate submission ${submissionId}; registration already has ${reg.postEventJotformSubmissionId}`,
+
+    const survey = await this.prisma.survey.findFirst({
+      where: { programId, type: SurveyType.FEEDBACK },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!survey) {
+      this.logger.warn(
+        `Jotform post-event webhook: no FEEDBACK survey row for program ${programId}; create a survey or use native post-event flow`,
       );
       return { received: true };
     }
-    await this.prisma.programRegistration.update({
-      where: { id: reg.id },
-      data: { postEventJotformSubmissionId: String(submissionId) },
-    });
-    this.logger.log(
-      `Jotform post-event webhook: recorded submission ${submissionId} for user ${userId} program ${programId}`,
-    );
-    return { received: true };
+
+    return this.processSurveySubmission(payload, survey, submissionId);
   }
 
   private extractProgramId(payload: JotformWebhookPayload): string | null {

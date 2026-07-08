@@ -28,7 +28,11 @@ export function setSessionCookie(
   maxAgeSeconds: number,
   nodeEnv?: string,
 ): void {
-  res.cookie(SESSION_COOKIE_NAME, token, sessionCookieOptions(maxAgeSeconds, nodeEnv));
+  res.cookie(
+    SESSION_COOKIE_NAME,
+    token,
+    sessionCookieOptions(maxAgeSeconds, nodeEnv),
+  );
 }
 
 export function clearSessionCookie(res: Response, nodeEnv?: string): void {

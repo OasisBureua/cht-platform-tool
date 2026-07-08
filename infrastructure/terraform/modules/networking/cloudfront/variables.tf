@@ -36,9 +36,21 @@ variable "domain_aliases" {
 }
 
 variable "api_origin_domain" {
-  description = "ALB domain for /api/* and /health/* paths (optional, set to empty to disable)"
+  description = "ALB domain for /api/*, /health/*, and /actuator/* paths (optional, set to empty to disable)"
   type        = string
   default     = ""
+}
+
+variable "secondary_api_origin_domain" {
+  description = "Secondary ALB domain for CloudFront origin failover on /api/*, /health/*, and /actuator/* (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "route_api_to_secondary" {
+  description = "Send /api* to the secondary ALB (manual DR drill). Requires secondary_api_origin_domain."
+  type        = bool
+  default     = false
 }
 
 variable "price_class" {

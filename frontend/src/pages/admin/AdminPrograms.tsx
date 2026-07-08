@@ -21,8 +21,13 @@ import SendRegistrationInvitesModal from '../../components/admin/SendRegistratio
 export default function AdminPrograms() {
   const location = useLocation();
   const navigate = useNavigate();
-  const locationState = location.state as { jotformFormsWarning?: string; warning?: string } | null;
-  const jotformScheduleFlash = locationState?.warning ?? locationState?.jotformFormsWarning;
+  const locationState = location.state as {
+    surveysWarning?: string;
+    jotformFormsWarning?: string;
+    warning?: string;
+  } | null;
+  const scheduleWarningFlash =
+    locationState?.warning ?? locationState?.surveysWarning ?? locationState?.jotformFormsWarning;
   const isOfficeHours = location.pathname.includes('/office-hours');
   const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
 
@@ -68,9 +73,9 @@ export default function AdminPrograms() {
 
   return (
     <div className="space-y-6">
-      {jotformScheduleFlash ? (
+      {scheduleWarningFlash ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <span>{jotformScheduleFlash}</span>
+          <span>{scheduleWarningFlash}</span>
           <button
             type="button"
             className="shrink-0 text-xs font-semibold text-amber-900 underline"
@@ -322,7 +327,7 @@ function WebinarRow({
       setImportError(null);
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       navigate(`/admin/programs/${data.id}/hub`, {
-        state: data.jotformFormsWarning ? { warning: data.jotformFormsWarning } : undefined,
+        state: data.surveysWarning ? { warning: data.surveysWarning } : undefined,
       });
     },
     onError: (err: unknown) => {

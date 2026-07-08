@@ -34,27 +34,30 @@ export function buildPreWebinarReminderEmail(
   p: PreWebinarReminderTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first   = escape(p.firstName.trim() || 'there');
-  const title   = escape(p.programTitle);
+  const first = escape(p.firstName.trim() || 'there');
+  const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
-  const host    = p.hostDisplayName?.trim() ? escape(p.hostDisplayName.trim()) : null;
+  const host = p.hostDisplayName?.trim()
+    ? escape(p.hostDisplayName.trim())
+    : null;
   const zoomUrl = p.zoomJoinUrl?.trim() ? escape(p.zoomJoinUrl.trim()) : null;
 
-  const when     = formatEventWhen(p.startDate, p.durationMinutes, escape);
+  const when = formatEventWhen(p.startDate, p.durationMinutes, escape);
   const descPlain = p.programDescription
     ? sanitizePlainDescription(p.programDescription).slice(0, 300)
     : null;
 
-  const timeLabel = p.hoursUntilStart <= 1
-    ? 'starting soon'
-    : p.hoursUntilStart <= 2
-      ? 'in about an hour'
-      : p.hoursUntilStart <= 4
-        ? 'in a few hours'
-        : p.hoursUntilStart <= 24
-          ? 'tomorrow'
-          : `in ${Math.round(p.hoursUntilStart / 24)} days`;
+  const timeLabel =
+    p.hoursUntilStart <= 1
+      ? 'starting soon'
+      : p.hoursUntilStart <= 2
+        ? 'in about an hour'
+        : p.hoursUntilStart <= 4
+          ? 'in a few hours'
+          : p.hoursUntilStart <= 24
+            ? 'tomorrow'
+            : `in ${Math.round(p.hoursUntilStart / 24)} days`;
 
   const subject = `Reminder: "${p.programTitle}" is ${timeLabel}`;
 
@@ -80,7 +83,9 @@ export function buildPreWebinarReminderEmail(
     'Quick tips:',
     '• Join 2–3 minutes early to test your audio.',
     '• Keep questions ready — there will be time for Q&A.',
-    zoomUrl ? '• The Zoom link above is your direct join link — no waiting room password needed.' : null,
+    zoomUrl
+      ? '• The Zoom link above is your direct join link — no waiting room password needed.'
+      : null,
     '',
     `Questions? Reach us at ${p.supportEmail}.`,
     '',
@@ -95,8 +100,12 @@ export function buildPreWebinarReminderEmail(
   // ── HTML ─────────────────────────────────────────────────────────────────────
   const detailRows = [
     `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Date &amp; Time</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${when.html}</td></tr>`,
-    host ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>` : '',
-  ].filter(Boolean).join('');
+    host
+      ? `<tr><td style="padding:5px 12px 5px 0;color:${E.LABEL};font-size:13px;white-space:nowrap;vertical-align:top">Faculty / Host</td><td style="padding:5px 0;font-weight:600;color:${E.BODY_TEXT}">${host}</td></tr>`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('');
 
   const descHtml = descPlain
     ? `<p style="margin:14px 0 0;color:${E.MUTED};font-size:13px;line-height:1.6;border-top:1px solid ${E.BORDER};padding-top:14px">${escape(descPlain)}</p>`
@@ -126,21 +135,29 @@ export function buildPreWebinarReminderEmail(
       ${zoomUrl ? `<div style="margin-top:16px">${emailButton(zoomUrl, 'Join on Zoom')}</div>` : ''}
     `)}
 
-    ${zoomUrl ? `
+    ${
+      zoomUrl
+        ? `
       <p style="margin:16px 0 0;color:${E.MUTED};font-size:13px">
         Or open the <a href="${escape(p.appSessionUrl)}" style="color:${E.LINK}">session page in the app</a> to join.
-      </p>` : `
+      </p>`
+        : `
       <p style="margin:20px 0 12px;color:${E.MUTED};font-size:14px;line-height:1.6">Join the session from the app:</p>
       ${emailButton(escape(p.appSessionUrl), 'Open Session')}
       ${emailUrlLine(escape(p.appSessionUrl))}
-    `}
+    `
+    }
 
     ${tipsHtml}
 
     ${emailSupportLine(support)}
   `;
 
-  const html = emailWrap({ sponsorName: sponsor, subtitle: 'Session Reminder', body });
+  const html = emailWrap({
+    sponsorName: sponsor,
+    subtitle: 'Session Reminder',
+    body,
+  });
   return { subject, text, html };
 }
 
@@ -156,15 +173,24 @@ function formatEventWhen(
     };
   }
   const long = new Intl.DateTimeFormat('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit',
-    timeZone: 'America/New_York', timeZoneName: 'short',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+    timeZoneName: 'short',
   }).format(start);
-  const dur = durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
+  const dur =
+    durationMin && durationMin > 0 ? ` (approx. ${durationMin} min)` : '';
   const line = long + dur;
   return { plain: line, html: escape(line) };
 }
 
 function sanitizePlainDescription(s: string): string {
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

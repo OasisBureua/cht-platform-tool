@@ -251,13 +251,7 @@ export class CatalogController {
   async getPlaylistsTags(
     @Query('tag') tag?: string,
     @Query('lane')
-    lane?:
-      | 'biomarker'
-      | 'drug'
-      | 'trial'
-      | 'doctor_pair'
-      | 'mixed'
-      | 'archive',
+    lane?: 'biomarker' | 'drug' | 'trial' | 'doctor_pair' | 'mixed' | 'archive',
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {

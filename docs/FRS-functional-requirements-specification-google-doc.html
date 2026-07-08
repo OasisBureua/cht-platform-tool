@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CHM · Functional Requirements Specification (FRS)</title>
+  <style>
+    @font-face {
+      font-family: Geist;
+      src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Geist Mono';
+      src: url('https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/fonts/geist-mono/GeistMono-Variable.woff2') format('woff2');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    :root {
+      --font-geist-sans: Geist, system-ui, sans-serif;
+      --font-geist-mono: 'Geist Mono', ui-monospace, monospace;
+      --bg: #fff;
+      --bg2: #fafafa;
+      --bg3: #f5f5f5;
+      --border: #eaeaea;
+      --tx: #000;
+      --tx2: #444;
+      --tx3: #888;
+      --tx4: #bbb;
+      --accent: #f5a623;
+      --accent-light: #fff5e1;
+      --blue: #1f51ff;
+      --orange: #d97757;
+      --r: 6px;
+      --rl: 8px;
+      --shadow: 0 1px 3px #0000000f, 0 1px 2px #0000000a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      font-family: var(--font-geist-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--tx);
+      line-height: 1.5;
+    }
+
+    .mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+
+    .shell {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 40px 96px;
+    }
+
+    .paste-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 12px 18px;
+      margin-bottom: 28px;
+      padding: 14px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--rl);
+      background: var(--bg2);
+    }
+
+    .paste-toolbar strong { color: var(--tx); font-weight: 600; }
+
+    .paste-steps {
+      font-size: 13px;
+      color: var(--tx2);
+      line-height: 1.65;
+      max-width: 560px;
+    }
+
+    .paste-steps ol {
+      margin: 10px 0 0 1.2em;
+      padding: 0;
+    }
+
+    .paste-steps li { margin: 6px 0; }
+
+    .toolbar-print-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px 18px;
+      margin-bottom: 14px;
+    }
+
+    .pdf-btn {
+      font-family: var(--font-geist-mono), ui-monospace, monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: var(--bg);
+      background: var(--tx);
+      border: 1px solid var(--tx);
+      border-radius: var(--rl);
+      padding: 10px 18px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .pdf-btn:hover { opacity: 0.92; }
+
+    .pdf-hint {
+      font-size: 12px;
+      color: var(--tx3);
+      line-height: 1.5;
+      max-width: 520px;
+    }
+
+    .pdf-hint strong { color: var(--tx); font-weight: 600; }
+
+    .paste-toolbar-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 14px 0 0;
+    }
+
+    .proposal-top {
+      display: flex;
+      align-items: flex-start;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+
+    .cb-brand { display: flex; align-items: center; gap: 10px; }
+
+    .hdr-mark {
+      background: var(--tx);
+      border-radius: 6px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .hdr-mark svg { color: var(--bg); }
+
+    .cb-brand__name {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--tx);
+    }
+
+    .cb-brand__sub {
+      font-family: var(--font-geist-mono), ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      color: var(--tx3);
+    }
+
+    .proposal-hero {
+      border: 1px solid var(--border);
+      border-radius: var(--rl);
+      background: var(--bg);
+      box-shadow: var(--shadow);
+      margin-bottom: 28px;
+      overflow: hidden;
+    }
+
+    .proposal-hero-inner { padding: 36px 32px 32px; }
+
+    .pill {
+      font-family: var(--font-geist-mono), ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.04em;
+      color: var(--tx3);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      margin-bottom: 16px;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+      flex-shrink: 0;
+    }
+
+    .proposal-title {
+      font-weight: 600;
+      font-size: clamp(24px, 3.6vw, 38px);
+      letter-spacing: -0.035em;
+      line-height: 1.08;
+      margin-bottom: 12px;
+      color: var(--tx);
+    }
+
+    .proposal-meta {
+      font-size: 15px;
+      color: var(--tx2);
+      line-height: 1.65;
+    }
+
+    .proposal-meta + .proposal-meta { margin-top: 10px; }
+
+    .proposal-meta strong { color: var(--tx); font-weight: 600; }
+
+    .context-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .context-chip {
+      font-family: var(--font-geist-mono), ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      color: var(--tx3);
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 5px 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .context-chip strong { color: var(--tx); font-weight: 600; }
+
+    .section-label {
+      font-family: var(--font-geist-mono), ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--tx3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .scope-section { margin-bottom: 36px; }
+
+    .scope-intro {
+      font-size: 15px;
+      line-height: 1.68;
+      color: var(--tx2);
+      margin-bottom: 12px;
+    }
+
+    .scope-intro:last-child { margin-bottom: 0; }
+
+    .scope-intro strong { color: var(--tx); font-weight: 600; }
+
+    .doc-h2 {
+      font-size: 21px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      margin: 40px 0 14px;
+      color: var(--tx);
+    }
+
+    .doc-h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 24px 0 10px;
+      color: var(--tx);
+    }
+
+    .doc-list {
+      margin: 0 0 16px;
+      padding-left: 1.3em;
+      color: var(--tx2);
+      font-size: 15px;
+      line-height: 1.62;
+    }
+
+    .doc-list li { margin: 8px 0; }
+
+    .doc-link { color: var(--blue); text-decoration: none; }
+    .doc-link:hover { text-decoration: underline; }
+
+    .doc-table-wrap { overflow-x: auto; margin: 14px 0 28px; }
+
+    table.doc-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--tx2);
+    }
+
+    table.doc-table th,
+    table.doc-table td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    table.doc-table thead th {
+      background: var(--bg2);
+      font-weight: 600;
+      color: var(--tx);
+    }
+
+    table.doc-table td:first-child {
+      font-weight: 500;
+      color: var(--tx);
+      width: 32%;
+      min-width: 120px;
+    }
+
+    .feature-block {
+      border: 1px solid var(--border);
+      border-radius: var(--rl);
+      background: var(--bg);
+      padding: 16px 18px;
+      margin-bottom: 12px;
+    }
+
+    .feature-block:last-child { margin-bottom: 0; }
+
+    .feature-id {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--tx);
+      margin-bottom: 10px;
+    }
+
+    .feature-line {
+      font-size: 14px;
+      line-height: 1.62;
+      color: var(--tx2);
+      margin-bottom: 6px;
+    }
+
+    .feature-line:last-child { margin-bottom: 0; }
+
+    .fl {
+      font-family: var(--font-geist-mono), ui-monospace, monospace;
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--tx3);
+      margin-right: 6px;
+    }
+
+    hr.doc-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 28px 0;
+    }
+
+    .doc-muted {
+      font-size: 13px;
+      color: var(--tx3);
+      font-style: italic;
+      margin-top: 36px;
+    }
+
+    code.path {
+      font-family: var(--font-geist-mono), monospace;
+      font-size: 12px;
+      background: var(--bg2);
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      color: var(--tx);
+    }
+
+    .sig-note {
+      font-family: var(--font-geist-mono), monospace;
+      font-size: 10px;
+      color: var(--tx3);
+      letter-spacing: 0.03em;
+      margin-top: 8px;
+    }
+
+    @media print {
+      @page { margin: 14mm 12mm; }
+      .no-print { display: none !important; }
+      html { background: #fff !important; }
+      body { background: #fff !important; }
+      .shell { max-width: 100%; padding: 0 8px 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="paste-toolbar no-print" aria-label="Export and paste">
+      <div class="toolbar-print-row">
+        <button type="button" class="pdf-btn" id="pdf-print-btn">Save as PDF</button>
+        <p class="pdf-hint">
+          Opens the print dialog. Choose <strong>Save as PDF</strong> (macOS) or <strong>Microsoft Print to PDF</strong> (Windows). Links stay clickable in Preview, Acrobat, and Chrome’s PDF viewer.
+        </p>
+      </div>
+      <hr class="paste-toolbar-divider" />
+      <p class="paste-steps">
+        <strong>Google Docs:</strong> open this file in Chrome/Safari/Edge (<em>File → Open</em> and choose this HTML), click inside the page, press <kbd class="mono">⌘A</kbd> / <kbd class="mono">Ctrl+A</kbd>, then <kbd class="mono">⌘C</kbd> / <kbd class="mono">Ctrl+C</kbd>. In Docs: <kbd class="mono">⌘V</kbd>. Then use <em>Format → Clear formatting</em> on any rogue blocks, or <em>Paste → Paste without formatting</em> if styles import oddly—and re-apply Heading 1 / Heading 2 to major titles.
+      </p>
+    </div>
+
+    <div class="proposal-top">
+      <div class="cb-brand">
+        <div class="hdr-mark" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2"/>
+            <path d="M7 9h10M7 13h7"/>
+          </svg>
+        </div>
+        <div>
+          <div class="cb-brand__name">Community Health Media</div>
+          <div class="cb-brand__sub">Platform · Product documentation</div>
+        </div>
+      </div>
+    </div>
+
+    <section class="proposal-hero" aria-labelledby="frs-heading">
+      <div class="proposal-hero-inner">
+        <div class="pill"><span class="pill-dot"></span> DRAFT FRS · FULL PLATFORM</div>
+        <h1 id="frs-heading" class="proposal-title">Functional Requirements Specification</h1>
+        <p class="proposal-meta">
+          <strong>Product:</strong> CHM Platform (cht-platform-tool) — public site, authenticated member app, and admin console.
+        </p>
+        <p class="proposal-meta">
+          <strong>Source file (editable):</strong> <code class="path">cht-platform-tool/docs/FRS-functional-requirements-specification.md</code>
+          on this machine.
+        </p>
+        <p class="proposal-meta">
+          <strong>Revision:</strong> Draft — verify against current implementation and compliance policies before sign-off.
+        </p>
+      </div>
+    </section>
+
+    <div class="context-bar">
+      <span class="context-chip">Companion <strong>Figma captures</strong></span>
+      <span class="context-chip">Scope <strong>Public + Member + Admin</strong></span>
+      <span class="context-chip">Focus <strong>Behavior · Errors · Edges</strong></span>
+    </div>
+
+    <p class="section-label">Design reference</p>
+    <div class="scope-section">
+      <p class="scope-intro">
+        <strong>Companion design (Figma):</strong>
+        <a class="doc-link" href="https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr/">CHM Platform — Screens &amp; FRS Scope</a>
+        — placeholder frames (<code class="path">01</code>–<code class="path">03</code>) plus live HTML captures via “HTML → Design” while dev server runs with the capture script in <code class="path">frontend/index.html</code>. Prefer capture frames (e.g. page <code class="path">05 — Captures from code (1:1)</code>) for faithful screens.
+      </p>
+      <p class="scope-intro">
+        <strong>Captured examples in-file:</strong>
+        when running locally, <code class="path">/app/home</code>
+        (<a class="doc-link" href="https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=22-2">node</a>),
+        <code class="path">/app/catalog</code>
+        (<a class="doc-link" href="https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=25-2">node</a>),
+        <code class="path">/app/surveys</code>
+        (<a class="doc-link" href="https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=26-2">node</a>),
+        <code class="path">/app/podcasts</code>
+        (<a class="doc-link" href="https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=27-2">node</a>),
+        <code class="path">/app/earnings</code>
+        (<a class="doc-link" href="https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=28-2">node</a>).
+        Use <code class="path">VITE_DISABLE_AUTH=true npm run dev</code> plus Figma capture to extend routes.
+      </p>
+    </div>
+
+    <h2 class="doc-h2">1. Introduction</h2>
+
+    <h3 class="doc-h3">1.1 Purpose</h3>
+    <p class="scope-intro">This FRS describes <strong>functional behavior</strong> the platform shall provide: user-visible flows, validations, responses, errors, and edge cases. It is intended to align engineering, QA, and design (wireframes / high-fidelity prototypes).</p>
+
+    <h3 class="doc-h3">1.2 Definitions</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table" role="presentation">
+        <thead>
+          <tr><th>Term</th><th>Meaning</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Visitor</strong></td><td>Unauthenticated browser user</td></tr>
+          <tr><td><strong>Member</strong></td><td>Authenticated clinician / platform user (<code class="path">/app</code>)</td></tr>
+          <tr><td><strong>Admin</strong></td><td>User with elevated privileges (<code class="path">/admin</code>)</td></tr>
+          <tr><td><strong>Catalog</strong></td><td>Video/browse experience (playlists, disease areas, clips)</td></tr>
+          <tr><td><strong>Program</strong></td><td>Live session or office-hours style offering requiring registration</td></tr>
+          <tr><td><strong>Supabase Auth</strong></td><td>Primary identity provider used by the SPA</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="doc-h3">1.3 Out of scope (explicit)</h3>
+    <ul class="doc-list">
+      <li>Exact API contracts / database schema</li>
+      <li>Detailed analytics taxonomy</li>
+      <li>Legal copy finalization (privacy/terms) unless referenced as placeholders</li>
+      <li>Non-functional SLAs unless noted as product expectations</li>
+    </ul>
+
+    <h3 class="doc-h3">1.4 Global prerequisites</h3>
+    <ul class="doc-list">
+      <li>Responsive web application; keyboard-accessible interactive controls where applicable.</li>
+      <li><strong>Auth:</strong> Protected areas require valid session; session expiry behaves per auth provider/session policy.</li>
+      <li><strong>Feature flags / env:</strong> <code class="path">VITE_DISABLE_AUTH</code> may bypass certain checks for local development only — behavior in production MUST NOT rely on bypass.</li>
+    </ul>
+
+    <hr class="doc-divider" />
+
+    <h2 class="doc-h2">2. Cross-cutting requirements</h2>
+
+    <h3 class="doc-h3">FRS-GLOBAL-001 — Navigation &amp; deep links</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table"><tbody>
+        <tr><td><strong>Actors</strong></td><td>Visitor, Member, Admin</td></tr>
+        <tr><td><strong>Trigger</strong></td><td>User opens URL path or in-app navigation control</td></tr>
+        <tr><td><strong>Behavior</strong></td><td>App renders the route mapped in the SPA; outdated paths redirect where defined (e.g. <code class="path">/webinars</code> → <code class="path">/live</code>).</td></tr>
+        <tr><td><strong>Errors</strong></td><td>Unknown routes: Visitor → sensible home/catalog landing; Member under <code class="path">/app</code> → fallback redirect to <code class="path">/app/home</code> per router configuration.</td></tr>
+        <tr><td><strong>Edge cases</strong></td><td>Bookmarked stale IDs (deleted clip/program/survey): show not-found / friendly empty state; avoid infinite redirect loops.</td></tr>
+      </tbody></table>
+    </div>
+
+    <h3 class="doc-h3">FRS-GLOBAL-002 — Authentication state</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table"><tbody>
+        <tr><td><strong>Actors</strong></td><td>Visitor, Member</td></tr>
+        <tr><td><strong>Trigger</strong></td><td>Login, logout, token refresh failure, OAuth callback</td></tr>
+        <tr><td><strong>Behavior</strong></td><td>Session establishes member context; authenticated layout shows app chrome; protected routes inaccessible without session redirect to login (or configured path).</td></tr>
+        <tr><td><strong>Errors</strong></td><td>Invalid credentials: inline message without revealing which field failed (security); OAuth error: actionable message + retry path.</td></tr>
+        <tr><td><strong>Edge cases</strong></td><td>Callback with missing/expired params; user closes OAuth window mid-flight; concurrent tabs logout.</td></tr>
+      </tbody></table>
+    </div>
+
+    <h3 class="doc-h3">FRS-GLOBAL-003 — Authorization (role-based)</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table"><tbody>
+        <tr><td><strong>Actors</strong></td><td>Member, Admin</td></tr>
+        <tr><td><strong>Behavior</strong></td><td>Admin routes gated by admin role; unauthorized users shall not access admin layouts or privileged actions.</td></tr>
+        <tr><td><strong>Errors</strong></td><td>403-style experience in UI when API denies; redirect or “not authorized” screen for admin-only pages.</td></tr>
+      </tbody></table>
+    </div>
+
+    <h3 class="doc-h3">FRS-GLOBAL-004 — Loading &amp; empty states</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table"><tbody>
+        <tr><td><strong>Actors</strong></td><td>All</td></tr>
+        <tr><td><strong>Behavior</strong></td><td>Long fetches show loading indicators or skeletons; lists with zero items show empty-state copy and CTAs where relevant.</td></tr>
+        <tr><td><strong>Errors</strong></td><td>Network/server errors: surfaced with retry affordance where implemented.</td></tr>
+      </tbody></table>
+    </div>
+
+    <h3 class="doc-h3">FRS-GLOBAL-005 — Forms &amp; submissions</h3>
+    <div class="doc-table-wrap">
+      <table class="doc-table"><tbody>
+        <tr><td><strong>Actors</strong></td><td>All</td></tr>
+        <tr><td><strong>Behavior</strong></td><td>Required fields enforced client-side consistent with backend; destructive actions confirmed when risk is high.</td></tr>
+        <tr><td><strong>Errors</strong></td><td>Validation summaries; preserve user input after recoverable failures.</td></tr>
+        <tr><td><strong>Edge cases</strong></td><td>Double-submit protection for payments/registrations/surveys.</td></tr>
+      </tbody></table>
+    </div>
+
+    <hr class="doc-divider" />
+
+    <h2 class="doc-h2">3. Public marketing &amp; informational site</h2>
+    <p class="scope-intro">Routes (representative): <code class="path">/home</code>, <code class="path">/about</code>, <code class="path">/services</code>, <code class="path">/portfolios</code>, <code class="path">/contact</code>, <code class="path">/join</code>, <code class="path">/for-hcps</code>, <code class="path">/what-we-do</code>, <code class="path">/privacy</code>, <code class="path">/terms</code>.</p>
+
+    <div class="feature-block"><div class="feature-id">FRS-PUB-001 — Home</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Triggers</span> Navigate to <code class="path">/home</code>.</p><p class="feature-line"><span class="fl">Main flow</span> Display primary marketing content and entry points into catalog/search/programs.</p><p class="feature-line"><span class="fl">Errors / edge</span> Hero/media assets fail → graceful degradation (alt text / static fallback).</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-002 — About / Services / Portfolios / What we do / For HCPs</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Present static/edited content sections; outbound links open in sensible targets (same tab vs new) per UX policy.</p><p class="feature-line"><span class="fl">Edge</span> Broken external links minimized via CMS/process (out of runtime scope).</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-003 — Contact</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Capture enquiry or display contact modalities per implementation; confirm submission success.</p><p class="feature-line"><span class="fl">Errors</span> SMTP/API failure shows retry; rate limiting yields friendly messaging.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-004 — Join (interest / onboarding entry)</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Multi-step or single form per implementation; success confirmation.</p><p class="feature-line"><span class="fl">Errors</span> Duplicate email/account rules from backend surfaced clearly.</p></div>
+
+    <h2 class="doc-h2">4. Public catalog &amp; media</h2>
+    <p class="scope-intro">Routes: <code class="path">/catalog</code>, <code class="path">/catalog/:diseaseSlug</code>, <code class="path">/catalog/clip/:id</code>, <code class="path">/catalog/playlist/:playlistId</code>, <code class="path">/watch/:videoId</code> (compat redirect).</p>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-CAT-001 — Catalog hub (videos)</div><p class="feature-line"><span class="fl">Actors</span> Visitor, Member (public layout).</p><p class="feature-line"><span class="fl">Behavior</span> Lists browsable curriculum (playlists, tags, hubs) per content model; navigation to clips and playlists.</p><p class="feature-line"><span class="fl">Errors</span> Fetch failure banner; retry.</p><p class="feature-line"><span class="fl">Edge</span> Extremely long lists pagination/virtualization expectation.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-CAT-002 — Disease detail</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Disease-scoped grouping of clips/resources; playable or deep-link behavior per media type.</p><p class="feature-line"><span class="fl">Errors</span> Unknown <code class="path">diseaseSlug</code> → not found state.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-CAT-003 — Clip detail</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Video or audio player shell, metadata, share controls if present, related clips.</p><p class="feature-line"><span class="fl">Errors</span> Missing clip ID or media unavailable → explanatory state.</p><p class="feature-line"><span class="fl">Edge</span> Playback errors (drm/network) surface player-level message.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-CAT-004 — Playlist detail</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Ordered list of items with progress/jump semantics as implemented.</p><p class="feature-line"><span class="fl">Errors</span> Invalid playlist ID → not found.</p></div>
+
+    <h2 class="doc-h2">5. Discovery &amp; authentication (public shells)</h2>
+    <p class="scope-intro">Routes: <code class="path">/search</code>, <code class="path">/login</code>, <code class="path">/forgot-password</code>, <code class="path">/auth/callback</code>, <code class="path">/complete-profile</code>.</p>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-AUTH-001 — Search</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Query content/sessions/surveys per backend capabilities; navigates to entities on select.</p><p class="feature-line"><span class="fl">Errors</span> Empty results copy; timeouts with retry.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-AUTH-002 — Login</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Email/password or OAuth per configuration; redirects post-login via <code class="path">postLoginRedirect</code> rules.</p><p class="feature-line"><span class="fl">Errors</span> Locked account/expired invitation if applicable; generic failure for ambiguous cases.</p><p class="feature-line"><span class="fl">Edge</span> Already logged-in user hits <code class="path">/login</code> → redirect into app/catalog.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-AUTH-003 — Forgot password</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Initiate reset workflow; acknowledge email sent without confirming address existence where security requires.</p><p class="feature-line"><span class="fl">Errors</span> Rate limit exceeded.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-AUTH-004 — Auth callback &amp; profile completion</div><p class="feature-line"><span class="fl">Actors</span> Visitor → Member.</p><p class="feature-line"><span class="fl">Behavior</span> Establish session after IdP handshake; funnel incomplete mandatory profile fields via <code class="path">/complete-profile</code>.</p><p class="feature-line"><span class="fl">Errors</span> Invalid/expired OAuth state; retries to login.</p></div>
+
+    <h2 class="doc-h2">6. Public programs</h2>
+    <p class="scope-intro">Routes: <code class="path">/live</code>, <code class="path">/live/:id</code>, redirects from <code class="path">/webinars*</code>, <code class="path">/chm-office-hours</code>, <code class="path">/chm-office-hours/:id</code>, <code class="path">/surveys</code> (listing).</p>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-PROG-001 — Live / webinars listing &amp; detail</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Upcoming/live/replay states; ICS or external links where applicable; CTA toward registration or replay.</p><p class="feature-line"><span class="fl">Errors</span> Deleted program → not found.</p><p class="feature-line"><span class="fl">Edge</span> Timezone display consistency.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-PROG-002 — Office hours listing &amp; detail</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Same pattern as programs with office-hours branding; registration CTA if required.</p><p class="feature-line"><span class="fl">Errors</span> Session full / closed registration states if implemented.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-PROG-003 — Public surveys listing</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Shows available surveys; deep link to survey experience (see member surveys for logged-in completion).</p><p class="feature-line"><span class="fl">Errors</span> None available → empty state.</p></div>
+
+    <h2 class="doc-h2">7. Public KOL / DOL network</h2>
+    <p class="scope-intro">Routes: <code class="path">/kol-network</code>, <code class="path">/kol-network/:regionSlug</code>, <code class="path">/kol-network/profile/:kolId</code>.</p>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-KOL-001 — Network hub &amp; region</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Explore directory by region; filter/list patterns per UI.</p><p class="feature-line"><span class="fl">Errors</span> Unknown region slug.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-PUB-KOL-002 — KOL profile</div><p class="feature-line"><span class="fl">Actors</span> Visitor.</p><p class="feature-line"><span class="fl">Behavior</span> Profile fields, links, associated content if any.</p><p class="feature-line"><span class="fl">Errors</span> Unknown <code class="path">kolId</code> → not found.</p></div>
+
+    <h2 class="doc-h2">8. Member app (<code class="path">/app/*</code>)</h2>
+    <p class="scope-intro">Global: layout with app navigation; requires Member session.</p>
+    <div class="feature-block"><div class="feature-id">FRS-APP-001 — Dashboard (<code class="path">/app/home</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Summary of prioritized actions (programs, surveys, payouts, highlights).</p><p class="feature-line"><span class="fl">Errors</span> Partial widget failure does not blank entire dashboard when isolated error boundaries exist.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-002 — Explore opportunities / in-app search (<code class="path">/app/search</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Search/register affordances tuned to authenticated user (eligibility nuances per API).</p><p class="feature-line"><span class="fl">Errors</span> Unauthorized opportunities hidden or messaged appropriately.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-003 — Programs — live webinars (<code class="path">/app/live</code>, <code class="path">/app/live/:id</code>, register)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> List, filters, detail, join/register flow; integrates <code class="path">ProgramRegisterWizard</code> for qualifying paths.</p><p class="feature-line"><span class="fl">Errors</span> Registration closed; capacity exceeded; prerequisite profile incomplete redirects to Settings/Complete Profile.</p><p class="feature-line"><span class="fl">Edge</span> Double registration attempt; cancelling registration if supported.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-004 — Office hours (<code class="path">/app/chm-office-hours</code> …)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Mirrors webinars pattern within office-hours context.</p><p class="feature-line"><span class="fl">Errors</span> Same class as webinars.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-005 — Surveys (<code class="path">/app/surveys</code>, <code class="path">/app/surveys/:id</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Assigned/available surveys; capture responses; autosave/interstitial behavior per survey engine.</p><p class="feature-line"><span class="fl">Errors</span> Submission API failure with retry and draft retention if implemented.</p><p class="feature-line"><span class="fl">Edge</span> Survey retracted mid-session.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-006 — Catalog in app (<code class="path">/app/catalog</code> …)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Authenticated playback context; entitlement checks if gated content exists server-side.</p><p class="feature-line"><span class="fl">Errors</span> 403 with explanation for gated items.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-007 — Watch deep link (<code class="path">/app/watch/:videoId</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Dedicated player shell / redirect into clip page per routing.</p><p class="feature-line"><span class="fl">Errors</span> Missing media → not found.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-008 — Playlists (<code class="path">/app/catalog/playlist/:playlistId</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Continue watching, ordered navigation.</p><p class="feature-line"><span class="fl">Errors</span> Playlist removed.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-009 — Podcasts (<code class="path">/app/podcasts</code>, show routes if present)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Listing, series/detail, playback or external integrations per implementation.</p><p class="feature-line"><span class="fl">Errors</span> Feed failures.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-010 — Earnings (<code class="path">/app/earnings</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Summaries of honoraria/earnings, statuses, explanatory copy.</p><p class="feature-line"><span class="fl">Errors</span> Payroll/payout vendor errors surfaced with reference/support path.</p><p class="feature-line"><span class="fl">Edge</span> Negative adjustments or clawbacks communicated clearly.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-011 — Payments (<code class="path">/app/payments</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Payment profile, tax/eligibility widgets, payout method onboarding per integrations.</p><p class="feature-line"><span class="fl">Errors</span> Verification failures from vendor; remediation steps.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-012 — Settings (<code class="path">/app/settings</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Profile, notifications, preferences, security actions allowed by backend.</p><p class="feature-line"><span class="fl">Errors</span> Conflict on save.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-APP-013 — Chatbot (<code class="path">/app/chatbot</code>)</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Behavior</span> Guided assistance; disclaimers when model/advisory limits apply per policy.</p><p class="feature-line"><span class="fl">Errors</span> Service unavailable; timeout.</p></div>
+
+    <h2 class="doc-h2">9. Registration wizard (member)</h2>
+    <p class="scope-intro">Routes: <code class="path">/app/live/:id/register</code>, <code class="path">/app/chm-office-hours/:id/register</code> (and webinar alias redirects).</p>
+    <div class="feature-block"><div class="feature-id">FRS-APP-REG-001 — Multi-step registration</div><p class="feature-line"><span class="fl">Actors</span> Member.</p><p class="feature-line"><span class="fl">Preconditions</span> Eligible session; prerequisites satisfied.</p><p class="feature-line"><span class="fl">Main flow</span> Stepper collects required attestations/info; submits registration transaction.</p><p class="feature-line"><span class="fl">Validations</span> Per-step required fields; attestation acceptance where legally required.</p><p class="feature-line"><span class="fl">Outputs</span> Confirmation screen/state; reflects in Programs list detail.</p><p class="feature-line"><span class="fl">Errors</span> Duplicate registration; transient network; server validation messages per field/group.</p><p class="feature-line"><span class="fl">Edge cases</span> User navigates back mid-flow; refreshes browser; session expires before submit → re-auth + resume expectation defined by implementation.</p></div>
+
+    <h2 class="doc-h2">10. Admin console (<code class="path">/admin/*</code>)</h2>
+    <p class="scope-intro"><strong>Actor:</strong> Admin only.</p>
+
+    <div class="feature-block"><div class="feature-id">FRS-ADM-001 — Dashboard</div><p class="feature-line"><span class="fl">Behavior</span> Operational snapshot; shortcuts to approvals, schedules, surveys.</p><p class="feature-line"><span class="fl">Errors</span> Aggregated widgets fail independently.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-002 — Programs administration</div><p class="feature-line"><span class="fl">Routes</span> Program list/hub contexts (<code class="path">/admin/programs</code>, <code class="path">:programId/hub</code>).</p><p class="feature-line"><span class="fl">Behavior</span> Manage program metadata, statuses, linkage to webinars/office hours as implemented.</p><p class="feature-line"><span class="fl">Errors</span> Conflict on edits; concurrency messaging.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-003 — Webinar approvals (<code class="path">/admin/webinar-approvals</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Review queue with approve/reject/comments per workflow.</p><p class="feature-line"><span class="fl">Errors</span> Already processed items; stale state refreshes after action.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-004 — Schedulers (<code class="path">/admin/webinar-scheduler</code>, <code class="path">/admin/office-hours-scheduler</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Configure Zoom/session types defaults; scheduling UI with validations (time zone, recurrence if any).</p><p class="feature-line"><span class="fl">Errors</span> Zoom/API quota; invalid host settings.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-005 — Surveys CMS (<code class="path">/admin/surveys</code>, create, edit)</div><p class="feature-line"><span class="fl">Behavior</span> Authoring, versioning if applicable; publish/unpublish semantics.</p><p class="feature-line"><span class="fl">Errors</span> Broken question schema save blocked with detail.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-006 — Admin payments (<code class="path">/admin/payments</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Operational payment views / actions scoped to admins.</p><p class="feature-line"><span class="fl">Errors</span> Sensitive actions audited; confirmations on irreversible ops.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-007 — Users (<code class="path">/admin/users</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Search, suspend, invite, role tweaks per policy; PII safeguards.</p><p class="feature-line"><span class="fl">Errors</span> Duplicate invite; conflicting role transitions.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-008 — HCP explorer (<code class="path">/admin/hcp-explorer</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Search/drill-down for clinicians with permission checks.</p><p class="feature-line"><span class="fl">Errors</span> Unauthorized export attempted → blocked UX.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-009 — Rx analytics (<code class="path">/admin/rx-analytics</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Charts/tables respecting data governance; anonymization thresholds if required.</p><p class="feature-line"><span class="fl">Errors</span> Incomplete data periods labeled.</p></div>
+    <div class="feature-block"><div class="feature-id">FRS-ADM-010 — Settings (<code class="path">/admin/settings</code>)</div><p class="feature-line"><span class="fl">Behavior</span> Tenant-level knobs as implemented.</p><p class="feature-line"><span class="fl">Errors</span> Validation failures; revert model if supported.</p></div>
+
+    <h2 class="doc-h2">11. Traceability (requirements ↔ UX surfaces)</h2>
+    <div class="doc-table-wrap">
+      <table class="doc-table">
+        <thead>
+          <tr><th>Requirement ID</th><th>Primary routes / surfaces</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>FRS-GLOBAL-*</strong></td><td>App-wide patterns</td></tr>
+          <tr><td><strong>FRS-PUB-*</strong></td><td><code class="path">/home</code>, informational pages</td></tr>
+          <tr><td><strong>FRS-PUB-CAT-*</strong></td><td><code class="path">/catalog*</code></td></tr>
+          <tr><td><strong>FRS-PUB-AUTH-*</strong></td><td><code class="path">/login</code>, <code class="path">/auth/callback</code>, <code class="path">/complete-profile</code>, <code class="path">/search</code></td></tr>
+          <tr><td><strong>FRS-PUB-PROG-*</strong></td><td><code class="path">/live*</code>, <code class="path">/chm-office-hours*</code>, <code class="path">/surveys</code> listing</td></tr>
+          <tr><td><strong>FRS-PUB-KOL-*</strong></td><td><code class="path">/kol-network*</code></td></tr>
+          <tr><td><strong>FRS-APP-*</strong></td><td><code class="path">/app/*</code> feature pages</td></tr>
+          <tr><td><strong>FRS-APP-REG-*</strong></td><td><code class="path">*/register</code> wizard</td></tr>
+          <tr><td><strong>FRS-ADM-*</strong></td><td><code class="path">/admin/*</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="doc-h2">12. Acceptance checklist (QA)</h2>
+    <p class="scope-intro">Per feature ID above:</p>
+    <ol class="doc-list">
+      <li>Happy path renders and persists correct state server-side where applicable.</li>
+      <li>Listed error states reproducible via fixtures or mocked API.</li>
+      <li>Edge cases (empty, stale ID, logout mid-flow) covered by cases in §2 and feature sections.</li>
+      <li>Accessibility: focus order sensible; major interactive elements reachable by keyboard where required by policy.</li>
+    </ol>
+
+    <h2 class="doc-h2">13. Approval</h2>
+    <div class="doc-table-wrap">
+      <table class="doc-table">
+        <thead>
+          <tr><th>Role</th><th>Name</th><th>Date</th><th>Signature</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Product</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>Design</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>Engineering</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>Compliance</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="doc-muted sig-note">End of draft FRS. Styling aligns with Oasis × CHM retainer proposal (Geist typography, bordered hero, chips — simplified for editorial paste).</p>
+  </div>
+
+  <script>
+    (function () {
+      var btn = document.getElementById('pdf-print-btn');
+      if (btn) btn.addEventListener('click', function () { window.print(); });
+    })();
+  </script>
+</body>
+</html>

@@ -11,28 +11,34 @@ echo ""
 
 ENV=${1:-platform}
 AWS_REGION=${AWS_REGION:-us-east-1}
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BACKENDS_DIR="$REPO_ROOT/infrastructure/terraform/environments/backends"
 
 case "$ENV" in
   platform)
     TF_DIR="infrastructure/terraform/environments/us-east-1"
+    BACKEND_CONFIG="$BACKENDS_DIR/us-east-1-platform.hcl"
     CLUSTER="cht-platform-cluster"
     SERVICE="cht-platform-backend"
     TASK_FAMILY="cht-platform-backend"
     ;;
   staging)
     TF_DIR="infrastructure/terraform/environments/us-east-1-staging"
+    BACKEND_CONFIG=""
     CLUSTER="cht-platform-staging-cluster"
     SERVICE="cht-platform-staging-backend"
     TASK_FAMILY="cht-platform-staging-backend"
     ;;
   dev)
     TF_DIR="infrastructure/terraform/environments/us-east-1"
-    CLUSTER="cht-platform-dev-cluster"
-    SERVICE="cht-platform-dev-backend"
-    TASK_FAMILY="cht-platform-dev-backend"
+    BACKEND_CONFIG="$BACKENDS_DIR/us-east-1-dev.hcl"
+    CLUSTER="cht-dev-cluster"
+    SERVICE="cht-dev-backend"
+    TASK_FAMILY="cht-dev-backend"
     ;;
   prod)
     TF_DIR="infrastructure/terraform/environments/us-east-1"
+    BACKEND_CONFIG="$BACKENDS_DIR/us-east-1-platform.hcl"
     CLUSTER="cht-platform-prod-cluster"
     SERVICE="cht-platform-prod-backend"
     TASK_FAMILY="cht-platform-prod-backend"
@@ -44,8 +50,12 @@ case "$ENV" in
     ;;
 esac
 
-if terraform -chdir="$TF_DIR" output -raw cluster_name &>/dev/null; then
-  CLUSTER=$(terraform -chdir="$TF_DIR" output -raw cluster_name)
+if [ -n "$BACKEND_CONFIG" ]; then
+  terraform -chdir="$REPO_ROOT/$TF_DIR" init -input=false -reconfigure -backend-config="$BACKEND_CONFIG" >/dev/null
+fi
+
+if terraform -chdir="$REPO_ROOT/$TF_DIR" output -raw cluster_name &>/dev/null; then
+  CLUSTER=$(terraform -chdir="$REPO_ROOT/$TF_DIR" output -raw cluster_name)
 fi
 
 echo "📦 Environment: $ENV"
