@@ -76,11 +76,12 @@ const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarSched
 const AdminPayments         = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'));
 const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
-const AdminKolNetwork       = lazy(() => import('./pages/admin/AdminKolNetwork'));
 const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
 const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
+const AdminKolDirectory     = lazy(() => import('./pages/admin/kol-network/AdminKolDirectory'));
+const AdminHcpIntel         = lazy(() => import('./pages/admin/kol-network/AdminHcpIntel'));
 
 // ── Content Hub (admin report generator, lazy) ───────────────────────────────
 const ContentHubLayout          = lazy(() => import('./pages/admin/content-hub/components/ContentHubLayout'));
@@ -267,7 +268,11 @@ function App() {
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
-              <Route path="kol-network" element={<AdminKolNetwork />} />
+
+              {/* KOL Network — internal HCP intelligence (ported from MediaHub) */}
+              <Route path="kol-network" element={<AdminKolDirectory />} />
+              <Route path="kol-network/hcps/:id" element={<AdminHcpIntel />} />
+
 
               {/* Content Hub — ported report generator (self-contained, localStorage data layer) */}
               <Route path="content-hub" element={<ContentHubLayout />}>

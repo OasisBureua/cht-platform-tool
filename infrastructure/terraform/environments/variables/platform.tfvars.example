@@ -1,0 +1,34 @@
+############################################
+# CHT Platform - platform.tfvars (example) #
+############################################
+
+# Copy this file to platform.tfvars and fill in
+# real values before running:
+#   ./scripts/deploy-primary.sh platform
+# or the GitHub Actions workflow deploy-prod.yml.
+
+project     = "cht-platform"
+environment = "platform"
+
+# Public domain (Route53 / CloudFront)
+domain_name  = "testapp.communityhealth.media"
+
+# Primary Docker images (ECR)
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v3.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v3.0.0"
+
+# Core database shape (example values — adjust for prod)
+rds_instance_class     = "db.t3.medium"
+rds_allocated_storage  = 50
+rds_multi_az           = true
+rds_backup_retention   = 7
+
+# Optional: Redis cache (defaults are fine for most cases)
+enable_elasticache    = true
+elasticache_node_type = "cache.t3.micro"
+
+# Aurora / migration flags (keep false unless you know you need them)
+enable_aurora_global = false
+decommission_rds     = false
+aurora_use_for_app   = false
+
