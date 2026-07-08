@@ -1,17 +1,24 @@
 name: Deploy to Development
 
-# Auto-deploy disabled — run manually via workflow_dispatch when IAM/TF is ready.
+# Manual dispatch or push to develop / feature branches (app + infra paths).
 on:
   workflow_dispatch:
     inputs:
-      apply_infrastructure:
-        description: 'Apply Terraform after plan? Choose "yes" only after reviewing the Terraform Plan step logs.'
-        required: true
-        type: choice
-        default: 'no'
-        options:
-          - 'no'
-          - 'yes'
+      plan_only:
+        description: 'Plan only — skip apply approval and deploy steps'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - develop
+      - 'feature/**'
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'worker/**'
+      - 'infrastructure/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
 
 concurrency:
   group: deploy-cht-dev
@@ -31,6 +38,7 @@ env:
 permissions:
   id-token: write
   contents: read
+  issues: write
 
 jobs:
   test:
@@ -234,25 +242,38 @@ jobs:
           echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
           echo "| create | ${ADD} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| update | ${CHANGE} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| delete | ${DESTROY} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| destroy | ${DESTROY} |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ github.event.inputs.apply_infrastructure }}" != "yes" ]; then
-            echo "⚠️ **Apply skipped** — re-run with **Apply Terraform = yes** to deploy." >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event.inputs.plan_only }}" = "true" ]; then
+            echo "ℹ️ **Plan only** — apply and deploy skipped." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⏸️ **Awaiting approval** — review the plan above, then approve the pending issue to run \`terraform apply\`." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Confirm Terraform apply
-        if: github.event.inputs.apply_infrastructure != 'yes'
-        run: |
-          echo "Terraform apply skipped (apply_infrastructure=${{ github.event.inputs.apply_infrastructure }})."
-          echo "Review the Terraform Plan step and plan summary, then re-run with Apply Terraform = yes."
+      - name: Approve Terraform apply
+        if: github.event.inputs.plan_only != 'true'
+        uses: trstringer/manual-approval@v1
+        timeout-minutes: 120
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "Approve dev Terraform apply (run #${{ github.run_number }})"
+          issue-body: |
+            Review the **Terraform Plan** step and plan summary for workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.
+
+            Plan: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Comment **approve** on this issue to run `terraform apply tfplan` and continue the dev deploy.
+            Comment **deny** to cancel the apply (the workflow will fail).
 
       - name: Terraform Apply
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform apply tfplan
 
       - name: Get Terraform outputs
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         id: outputs
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
@@ -264,7 +285,7 @@ jobs:
           echo "cognito_hosted_ui_base_url=$(terraform output -raw cognito_hosted_ui_base_url)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -272,7 +293,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build Frontend
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         working-directory: ./frontend
         run: |
           npm ci
@@ -293,7 +314,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload to S3
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         working-directory: ./frontend
         run: |
           aws s3 sync dist/ s3://${{ steps.outputs.outputs.frontend_bucket }}/ \
@@ -305,24 +326,24 @@ jobs:
             --cache-control "public, max-age=0, must-revalidate"
 
       - name: Invalidate CloudFront
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
 
       - name: Wait for ECS services stable
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         run: |
           CLUSTER="${{ steps.outputs.outputs.cluster_name }}"
           aws ecs wait services-stable \
             --cluster "$CLUSTER" \
-            --services cht-platform-backend cht-platform-worker \
+            --services cht-dev-backend cht-dev-worker \
             --region "$AWS_REGION"
           echo "ECS services stable in cluster $CLUSTER"
 
       - name: Health Check
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         id: healthcheck
         continue-on-error: true
         run: |
@@ -333,13 +354,13 @@ jobs:
           curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "${{ env.APP_URL }}/"
 
       - name: Final health gate
-        if: github.event.inputs.apply_infrastructure == 'yes' && steps.healthcheck.outcome == 'failure'
+        if: github.event.inputs.plan_only != 'true' && steps.healthcheck.outcome == 'failure'
         run: |
           echo "Health check failed — marking workflow failed."
           exit 1
 
       - name: Deployment Summary
-        if: github.event.inputs.apply_infrastructure == 'yes'
+        if: github.event.inputs.plan_only != 'true'
         run: |
           echo "## CHT Platform dev deploy" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
