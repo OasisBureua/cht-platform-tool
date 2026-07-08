@@ -6,13 +6,12 @@
 |----------|---------|---------|
 | `pr-validation.yml` | Pull requests | Lint, build, Terraform validate |
 | `branch-policy.yml` | PRs → `main` | Require head branch `release/*` (and based on `main`) |
-| `security-monthly.yml` | Monthly + manual | npm audit, Trivy filesystem scan |
-| `codeql.yml` | Monthly + manual | CodeQL analysis |
-| `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images, Terraform apply dev |
-| `deploy-prod.yml` | Manual | Deploy to platform (prod) |
+| `security-monthly.yml` | First Monday monthly | npm audit, Trivy filesystem scan |
+| `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images (`3.0.0`, `3.0.1`, …), Terraform apply dev |
+| `deploy-prod.yml` | Manual (from `v3.0.0`, `v3.0.1`, … tags) | Deploy to platform (prod) |
 | `rollback.yml` | Manual | Roll back ECS services |
 
-Dependabot is configured for **monthly** update PRs.
+Dependabot and CodeQL config files are removed for now. Optional: disable GitHub **default CodeQL** under Settings → Code security → Code scanning if PR scans still appear.
 
 Docs-only changes under `docs/**` do not trigger dev deploy.
 
@@ -32,7 +31,7 @@ Repo → **Settings → Rules → Rulesets → New branch ruleset**
 | Restrict deletions | ✓ |
 | Block force pushes | ✓ |
 | Require a pull request | ✓ (1 approval, optional code owners) |
-| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-main`** (after first workflow run) |
+| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-develop`** (after first workflow run) |
 | Require branches up to date | ✓ (recommended) |
 
 Do **not** allow broad bypass on this ruleset.
@@ -45,7 +44,7 @@ Do **not** allow broad bypass on this ruleset.
 | Check name (exact) |
 |--------------------|
 | `main-from-release-only` |
-| `release-contains-main` |
+| `release-contains-develop` |
 
 Optional: also require **PR Validation / Validate PR** from `pr-validation.yml`.
 
@@ -64,8 +63,8 @@ New ruleset:
 
 **Creating `release/*` from `main`:** GitHub has no single “must branch off main” toggle. Enforce with:
 
-- Team process: `git checkout main && git pull && git checkout -b release/v1.0.0`
-- CI job **`release-contains-main`** (in `branch-policy.yml`) on PRs to `main`
+- Team process: `git checkout develop && git pull && git checkout -b release/v1.0.0`
+- CI job **`release-contains-develop`** (in `branch-policy.yml`) on PRs to `main`
 
 ### 3. Recommended git flow (matches Content Hub)
 
@@ -90,9 +89,8 @@ In the `main` ruleset, ensure **Restrict updates** is on so nobody pushes to `ma
 - **Environment:** `development` (GitHub Environment secrets)
 - **Domain:** `devapp.communityhealth.media`
 - **Terraform:** `infrastructure/terraform/environments/us-east-1`
-- **Var file:** `infrastructure/terraform/environments/variables/dev.tfvars`
-- **State backend:** `infrastructure/terraform/environments/backends/us-east-1-dev.hcl`
-- **Image tags:** `dev-{sha}-{timestamp}` plus `dev-latest`
+- **Var file (CI):** `infrastructure/terraform/environments/variables/dev.github.tfvars`
+- **Image tags:** semver `3.0.0`, `3.0.1`, … (auto-increment patch); also pushes `dev-latest`
 
 Sync secrets into the `development` environment:
 
@@ -105,8 +103,9 @@ Sync secrets into the `development` environment:
 
 - **Environment:** `platform` (GitHub Environment secrets)
 - **Domain:** `testapp.communityhealth.media`
-- **Terraform:** `infrastructure/terraform/environments/us-east-1` + `platform.tfvars`
-- **Trigger:** Manual via `deploy-prod.yml` (from `release/**` branches)
+- **Var file (CI):** `infrastructure/terraform/environments/variables/platform.github.tfvars`
+- **State backend:** `infrastructure/terraform/environments/backends/us-east-1-platform.hcl`
+- **Image tags:** semver `v3.0.0`, `v3.0.1`, … (auto-increment patch); also pushes `platform-latest`
 
 Configure the `platform` environment with deployment branch rules for `release/**`.
 

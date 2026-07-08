@@ -6,8 +6,11 @@ import Login from '../../../pages/public/Login';
 const mockLogin = vi.fn();
 vi.mock('../../../contexts/AuthContext', () => ({
   useAuth: () => ({
+    user: null,
     isAuthenticated: false,
+    isLoading: false,
     login: mockLogin,
+    completeMfaLogin: vi.fn(),
     signUp: vi.fn(),
     resetPasswordForEmail: vi.fn(),
     logout: vi.fn(),
@@ -51,7 +54,7 @@ describe('Login', () => {
 
     await screen.findByText(/signing in/i);
 
-    expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123');
+    expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123', undefined);
   });
 
   it('shows error message when login fails', async () => {

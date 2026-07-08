@@ -17,7 +17,8 @@ export default function AdminSidebar() {
         </Link>
       </div>
 
-      <nav className="flex flex-1 flex-col items-center gap-6 py-4">
+      {/* Tight vertical rhythm so all items fit on-screen without scrolling */}
+      <nav className="flex flex-1 flex-col items-center gap-1 py-2">
         {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={`${to}-${label}`}
@@ -25,15 +26,15 @@ export default function AdminSidebar() {
             end={end}
             className={({ isActive }) =>
               [
-                'flex w-full flex-col items-center justify-center gap-1.5 py-2 text-center transition',
+                'flex w-full flex-col items-center justify-center gap-1 py-2 text-center transition',
                 isActive
                   ? 'text-primary'
                   : 'text-gray-700 hover:text-primary dark:text-zinc-300 dark:hover:text-primary',
               ].join(' ')
             }
           >
-            <Icon className="h-6 w-6 shrink-0" strokeWidth={2} aria-hidden />
-            <span className="text-xs font-medium">{label}</span>
+            <Icon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
+            <span className="text-[11px] font-medium leading-tight">{label}</span>
           </NavLink>
         ))}
       </nav>
