@@ -1,10 +1,11 @@
 name: Monthly Security Scan
 
+# First run: first Monday of each month (09:00 UTC). No push/PR triggers.
+
 on:
   schedule:
-    # First Monday of each month at 09:00 UTC
+    # First Monday of each month at 09:00 UTC (e.g. 2026-08-03)
     - cron: '0 9 1-7 * 1'
-  workflow_dispatch:
 
 permissions:
   contents: read

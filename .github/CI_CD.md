@@ -6,13 +6,12 @@
 |----------|---------|---------|
 | `pr-validation.yml` | Pull requests | Lint, build, Terraform validate |
 | `branch-policy.yml` | PRs → `main` | Require head branch `release/*` (and based on `main`) |
-| `security-monthly.yml` | Monthly + manual | npm audit, Trivy filesystem scan |
-| `codeql.yml` | Monthly + manual | CodeQL analysis |
+| `security-monthly.yml` | First Monday monthly | npm audit, Trivy filesystem scan |
 | `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images, Terraform apply dev |
 | `deploy-prod.yml` | Manual | Deploy to platform (prod) |
 | `rollback.yml` | Manual | Roll back ECS services |
 
-Dependabot is configured for **monthly** update PRs.
+Dependabot and CodeQL config files are removed for now. Optional: disable GitHub **default CodeQL** under Settings → Code security → Code scanning if PR scans still appear.
 
 Docs-only changes under `docs/**` do not trigger dev deploy.
 

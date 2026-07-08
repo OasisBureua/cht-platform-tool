@@ -1,6 +1,6 @@
 name: Deploy to Platform
 
-# Manual deploy only. Re-enable push triggers and DEPLOY_ENABLED when ready.
+# Manual platform deploy only (release/* branches via platform environment).
 on:
   workflow_dispatch:
 
@@ -9,7 +9,6 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DEPLOY_ENABLED: 'false' # set to 'true' to allow the deploy job (manual workflow_dispatch only while push is off)
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
   TERRAFORM_VERSION: 1.10.5
@@ -86,7 +85,6 @@ jobs:
     name: Deploy to Platform
     runs-on: ubuntu-latest
     needs: test
-    if: env.DEPLOY_ENABLED == 'true'
     # GitHub Environment "platform" — restrict deployment branches to release/** in repo settings.
     environment: platform
 

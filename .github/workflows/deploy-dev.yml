@@ -23,7 +23,7 @@ env:
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
   TERRAFORM_VERSION: 1.10.5
   TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
-  TF_VAR_FILE: ../variables/dev.tfvars
+  TF_VAR_FILE: ../variables/dev.github.tfvars
   TF_BACKEND_CONFIG: ../backends/us-east-1-dev.hcl
   APP_URL: https://devapp.communityhealth.media
   API_URL: https://devapp.communityhealth.media/api

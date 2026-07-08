@@ -1,0 +1,49 @@
+# CHT Platform — dev.tfvars.example
+# Copy to dev.tfvars for local applies:
+#   cp dev.tfvars.example dev.tfvars
+#
+# Non-secret infra values mirror dev.github.tfvars; secrets are left blank
+# and should be provided via TF_VAR_* or a non-committed dev.tfvars file.
+
+project     = "cht"
+environment = "dev"
+
+domain_name             = "devapp.communityhealth.media"
+acm_certificate_arn     = ""
+cloudfront_certificate_arn = ""
+
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:dev-latest"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:dev-latest"
+
+rds_instance_class    = "db.t3.micro"
+rds_engine_version    = "15.17"
+rds_allocated_storage = 20
+rds_multi_az          = false
+rds_backup_retention  = 1
+
+backend_task_cpu      = 256
+backend_task_memory   = 512
+backend_desired_count = 1
+backend_min_capacity  = 1
+backend_max_capacity  = 2
+
+worker_task_cpu      = 256
+worker_task_memory   = 512
+worker_desired_count = 1
+worker_min_capacity  = 1
+worker_max_capacity  = 2
+
+secrets_replica_regions   = []
+enable_ecr_replication    = false
+secondary_api_origin_domain = ""
+route_api_to_secondary    = false
+
+# ── Secrets (do NOT commit in dev.tfvars.example) ───────────
+# supabase_url         = ""
+# supabase_anon_key    = ""
+# gotrue_jwt_secret    = ""
+# mediahub_base_url    = ""
+# mediahub_api_key     = ""
+# youtube_api_key      = ""
+# youtube_playlist_ids = ""
+
