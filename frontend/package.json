@@ -16,7 +16,7 @@
     "@tanstack/react-query": "^5.100.14",
     "axios": "^1.15.2",
     "date-fns": "^4.3.0",
-    "lucide-react": "0.484.0",
+    "lucide-react": "0.577.0",
     "luxon": "^3.7.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
