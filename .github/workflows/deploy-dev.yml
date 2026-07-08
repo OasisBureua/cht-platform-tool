@@ -163,6 +163,12 @@ jobs:
           BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
           BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
           HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          COGNITO_GOOGLE_CLIENT_ID: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
+          COGNITO_GOOGLE_CLIENT_SECRET: ${{ secrets.COGNITO_GOOGLE_CLIENT_SECRET }}
+          RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          CONTENTHUB_API_KEY: ${{ secrets.CONTENTHUB_API_KEY }}
+          INTERNAL_CACHE_SECRET: ${{ secrets.INTERNAL_CACHE_SECRET }}
         run: ./scripts/verify-github-env-secrets.sh development
 
       - name: Terraform Init
@@ -202,6 +208,11 @@ jobs:
           TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          TF_VAR_cognito_google_client_id: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
+          TF_VAR_cognito_google_client_secret: ${{ secrets.COGNITO_GOOGLE_CLIENT_SECRET }}
+          TF_VAR_recaptcha_secret_key: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          TF_VAR_contenthub_api_key: ${{ secrets.CONTENTHUB_API_KEY }}
+          TF_VAR_internal_cache_secret: ${{ secrets.INTERNAL_CACHE_SECRET }}
 
       - name: Plan summary
         working-directory: ${{ env.TF_ENV_DIR }}
@@ -248,6 +259,9 @@ jobs:
           echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=$(terraform output -raw cognito_client_id)" >> $GITHUB_OUTPUT
+          echo "cognito_hosted_ui_base_url=$(terraform output -raw cognito_hosted_ui_base_url)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         if: github.event.inputs.apply_infrastructure == 'yes'
@@ -262,10 +276,19 @@ jobs:
         working-directory: ./frontend
         run: |
           npm ci
-          npm run build
+          npm run build -- --mode development
         env:
           VITE_API_URL: ${{ env.API_URL }}
           VITE_APP_URL: ${{ env.APP_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ steps.outputs.outputs.cognito_user_pool_id }}
+          VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.cognito_client_id }}
+          VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_hosted_ui_base_url }}
+          VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
+          VITE_MEDIAHUB_AUTH_DECOMMISSIONED: 'true'
+          VITE_DISABLE_AUTH: 'false'
+          VITE_USE_DEV_AUTH: 'false'
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          VITE_GOOGLE_OAUTH_ENABLED: 'true'
           VITE_SUPABASE_URL: https://mediahub.communityhealth.media
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
