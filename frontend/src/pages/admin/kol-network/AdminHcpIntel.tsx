@@ -476,14 +476,15 @@ export default function AdminHcpIntel() {
             </CardContent>
           </Card>
 
-          <Card className="flex-1">
+          {/* basis-0 + min-h-0 let the briefing set the row height; signals scroll inside */}
+          <Card className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden">
             <CardHeader className="pb-2">
               <div className="flex flex-wrap items-center gap-2">
                 <Eyebrow>Signals</Eyebrow>
                 <DemoBadge />
               </div>
             </CardHeader>
-            <CardContent className="space-y-0.5 pb-3">
+            <CardContent className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pb-3">
               {signals.length === 0 ? (
                 <p className="py-3 text-center text-sm text-muted-foreground">No signals yet.</p>
               ) : (
