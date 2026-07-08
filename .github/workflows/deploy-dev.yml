@@ -3,6 +3,15 @@ name: Deploy to Development
 # Auto-deploy disabled — run manually via workflow_dispatch when IAM/TF is ready.
 on:
   workflow_dispatch:
+    inputs:
+      apply_infrastructure:
+        description: 'Apply Terraform after plan? Choose "yes" only after reviewing the Terraform Plan step logs.'
+        required: true
+        type: choice
+        default: 'no'
+        options:
+          - 'no'
+          - 'yes'
 
 concurrency:
   group: deploy-cht-dev
@@ -160,14 +169,14 @@ jobs:
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
 
-      - name: Terraform Apply
+      - name: Terraform Plan
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
-          terraform apply \
+          terraform plan \
             -var-file="${{ env.TF_VAR_FILE }}" \
             -var="backend_image=${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}" \
             -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}" \
-            -auto-approve
+            -out=tfplan
         env:
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
           TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
@@ -194,7 +203,45 @@ jobs:
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
 
+      - name: Plan summary
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          echo "## Terraform plan summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          terraform show -json tfplan | jq -r '
+            .resource_changes[]
+            | select(.change.actions != ["no-op"])
+            | "\(.change.actions | join(",")): \(.address)"
+          ' >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          ADD=$(terraform show -json tfplan | jq '[.resource_changes[] | select(.change.actions | index("create"))] | length')
+          CHANGE=$(terraform show -json tfplan | jq '[.resource_changes[] | select(.change.actions == ["update"])] | length')
+          DESTROY=$(terraform show -json tfplan | jq '[.resource_changes[] | select(.change.actions | index("delete"))] | length')
+          echo "| Action | Count |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| create | ${ADD} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| update | ${CHANGE} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| delete | ${DESTROY} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event.inputs.apply_infrastructure }}" != "yes" ]; then
+            echo "⚠️ **Apply skipped** — re-run with **Apply Terraform = yes** to deploy." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Confirm Terraform apply
+        if: github.event.inputs.apply_infrastructure != 'yes'
+        run: |
+          echo "Terraform apply skipped (apply_infrastructure=${{ github.event.inputs.apply_infrastructure }})."
+          echo "Review the Terraform Plan step and plan summary, then re-run with Apply Terraform = yes."
+
+      - name: Terraform Apply
+        if: github.event.inputs.apply_infrastructure == 'yes'
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: terraform apply tfplan
+
       - name: Get Terraform outputs
+        if: github.event.inputs.apply_infrastructure == 'yes'
         id: outputs
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
@@ -203,6 +250,7 @@ jobs:
           echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
+        if: github.event.inputs.apply_infrastructure == 'yes'
         uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -210,6 +258,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Build Frontend
+        if: github.event.inputs.apply_infrastructure == 'yes'
         working-directory: ./frontend
         run: |
           npm ci
@@ -221,6 +270,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload to S3
+        if: github.event.inputs.apply_infrastructure == 'yes'
         working-directory: ./frontend
         run: |
           aws s3 sync dist/ s3://${{ steps.outputs.outputs.frontend_bucket }}/ \
@@ -232,12 +282,14 @@ jobs:
             --cache-control "public, max-age=0, must-revalidate"
 
       - name: Invalidate CloudFront
+        if: github.event.inputs.apply_infrastructure == 'yes'
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
 
       - name: Wait for ECS services stable
+        if: github.event.inputs.apply_infrastructure == 'yes'
         run: |
           CLUSTER="${{ steps.outputs.outputs.cluster_name }}"
           aws ecs wait services-stable \
@@ -247,6 +299,7 @@ jobs:
           echo "ECS services stable in cluster $CLUSTER"
 
       - name: Health Check
+        if: github.event.inputs.apply_infrastructure == 'yes'
         id: healthcheck
         continue-on-error: true
         run: |
@@ -257,12 +310,13 @@ jobs:
           curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "${{ env.APP_URL }}/"
 
       - name: Final health gate
-        if: steps.healthcheck.outcome == 'failure'
+        if: github.event.inputs.apply_infrastructure == 'yes' && steps.healthcheck.outcome == 'failure'
         run: |
           echo "Health check failed — marking workflow failed."
           exit 1
 
       - name: Deployment Summary
+        if: github.event.inputs.apply_infrastructure == 'yes'
         run: |
           echo "## CHT Platform dev deploy" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
