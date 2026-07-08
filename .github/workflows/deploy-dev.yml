@@ -1,18 +1,8 @@
 name: Deploy to Development
 
+# Auto-deploy disabled — run manually via workflow_dispatch when IAM/TF is ready.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - develop
-      - 'feature/**'
-    paths:
-      - 'backend/**'
-      - 'frontend/**'
-      - 'worker/**'
-      - 'infrastructure/**'
-      - 'scripts/**'
-      - '.github/workflows/**'
 
 concurrency:
   group: deploy-cht-dev

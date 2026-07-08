@@ -76,7 +76,6 @@ const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarSched
 const AdminPayments         = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'));
 const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
-const AdminKolNetwork       = lazy(() => import('./pages/admin/AdminKolNetwork'));
 const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
@@ -269,7 +268,6 @@ function App() {
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
-              <Route path="kol-network" element={<AdminKolNetwork />} />
 
               {/* KOL Network — internal HCP intelligence (ported from MediaHub) */}
               <Route path="kol-network" element={<AdminKolDirectory />} />
