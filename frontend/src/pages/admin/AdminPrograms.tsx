@@ -1,0 +1,876 @@
+import { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Calendar,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Video,
+  X,
+  Check,
+  Loader2,
+} from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
+import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
+import SendRegistrationInvitesModal from '../../components/admin/SendRegistrationInvitesModal';
+
+export default function AdminPrograms() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const locationState = location.state as {
+    surveysWarning?: string;
+    jotformFormsWarning?: string;
+    warning?: string;
+  } | null;
+  const scheduleWarningFlash =
+    locationState?.warning ?? locationState?.surveysWarning ?? locationState?.jotformFormsWarning;
+  const isOfficeHours = location.pathname.includes('/office-hours');
+  const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
+
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [sendInvitesOpen, setSendInvitesOpen] = useState(false);
+
+  const { data: webinars, isLoading, error } = useQuery({
+    queryKey: ['admin', 'webinars', zoomFilter],
+    queryFn: () => adminApi.getWebinars({ zoomSessionType: zoomFilter }),
+    staleTime: 30 * 1000,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: adminApi.deleteWebinar,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+      setDeleteConfirmId(null);
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        Failed to load {isOfficeHours ? 'Office Hours' : 'webinars'}. Please try again.
+      </div>
+    );
+  }
+
+  const items = webinars ?? [];
+  const upcomingZoomOnly = items.filter(
+    (w) => w.unlinkedFromZoom && w.startDate && new Date(w.startDate).getTime() >= Date.now() - 60 * 60 * 1000,
+  );
+
+  return (
+    <div className="space-y-6">
+      {scheduleWarningFlash ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span>{scheduleWarningFlash}</span>
+          <button
+            type="button"
+            className="shrink-0 text-xs font-semibold text-amber-900 underline"
+            onClick={() => navigate(location.pathname, { replace: true, state: {} })}
+          >
+            Dismiss
+          </button>
+        </div>
+      ) : null}
+      {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {isOfficeHours ? 'Office Hours' : 'Webinars'}
+          </h1>
+          <p className="text-sm text-gray-600">
+            {isOfficeHours
+              ? 'Zoom Meeting sessions for live Q&A—often scheduled beside webinars. Host admits participants from the waiting room.'
+              : 'Schedule and manage live Zoom Webinars and learner-facing registration.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {isOfficeHours ? (
+            <Link
+              to="/admin/programs"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+              Webinars
+            </Link>
+          ) : (
+            <Link
+              to="/admin/office-hours"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+            >
+              Office Hours
+            </Link>
+          )}
+          {!isOfficeHours ? (
+            <button
+              type="button"
+              onClick={() => setSendInvitesOpen(true)}
+              disabled={items.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-40"
+            >
+              Send registration invites
+            </button>
+          ) : null}
+          <Link
+            to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+          >
+            <Calendar className="h-4 w-4" />
+            {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
+          </Link>
+        </div>
+      </div>
+
+      {!isOfficeHours ? (
+        <SendRegistrationInvitesModal
+          webinars={items}
+          open={sendInvitesOpen}
+          onClose={() => {
+            setSendInvitesOpen(false);
+          }}
+        />
+      ) : null}
+
+      {!isOfficeHours && upcomingZoomOnly.length > 0 ? (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
+          <p className="font-semibold">
+            {upcomingZoomOnly.length} upcoming webinar{upcomingZoomOnly.length === 1 ? '' : 's'} on Zoom
+            {upcomingZoomOnly.length === 1 ? ' is' : ' are'} not linked to the platform yet.
+          </p>
+          <p className="mt-1 text-blue-800">
+            Amber rows below are pulled from your Zoom account. Create a program from the scheduler to publish them on LIVE.
+          </p>
+        </div>
+      ) : null}
+
+      {/* Delete confirmation overlay */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="font-semibold text-gray-900">
+                  Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  This will permanently remove the session. This action cannot be undone.
+                </p>
+              </div>
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="ml-4 shrink-0 text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteMutation.mutate(deleteConfirmId)}
+                disabled={deleteMutation.isPending}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
+              >
+                {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit modal */}
+      {editingId && (
+        <EditWebinarModal
+          key={editingId}
+          webinar={items.find((w) => w.id === editingId)!}
+          onClose={() => setEditingId(null)}
+          onSaved={(updatedId?: string) => {
+            // Invalidate admin list and all user-facing caches so speaker/panelist
+            // name changes are immediately reflected in the program hub and session pages.
+            queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+            queryClient.invalidateQueries({ queryKey: ['webinars'] });
+            if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
+            setEditingId(null);
+          }}
+        />
+      )}
+
+      {/* Table */}
+      {items.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center">
+          <Video className="h-12 w-12 text-gray-200 mx-auto mb-4" />
+          <p className="font-semibold text-gray-900">
+            {isOfficeHours ? 'No Office Hours scheduled' : 'No webinars yet'}
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            {isOfficeHours
+              ? 'Create a new Zoom Meeting session for live Q&A alongside your webinars.'
+              : 'Schedule your first Live session.'}
+          </p>
+          <Link
+            to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
+            className="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            <Calendar className="h-4 w-4" /> {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
+          </Link>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  {isOfficeHours ? 'Session' : 'Webinar'}
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden sm:table-cell">Date & Time</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden md:table-cell">Sponsor</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden lg:table-cell">Zoom</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {items.map((w) => (
+                <WebinarRow
+                  key={w.id}
+                  webinar={w}
+                  onEdit={() => setEditingId(w.id)}
+                  onDelete={() => setDeleteConfirmId(w.id)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Row ─────────────────────────────────────────────────────────────────────
+
+function WebinarRow({
+  webinar,
+  onEdit,
+  onDelete,
+}: {
+  webinar: AdminWebinar;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [importError, setImportError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
+
+  const openMenu = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + window.scrollY + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setMenuOpen(true);
+  };
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [menuOpen]);
+
+  const dateStr = webinar.startDate
+    ? format(parseISO(webinar.startDate), 'MMM d, yyyy · h:mm a')
+    : '-';
+
+  const durationStr = webinar.duration
+    ? webinar.duration < 60
+      ? `${webinar.duration} min`
+      : `${Math.floor(webinar.duration / 60)}h${webinar.duration % 60 ? ` ${webinar.duration % 60}m` : ''}`
+    : null;
+
+  const importMutation = useMutation({
+    mutationFn: () =>
+      adminApi.importFromZoom({
+        zoomId: webinar.zoomMeetingId!,
+        zoomSessionType: webinar.zoomSessionType ?? 'WEBINAR',
+      }),
+    onSuccess: (data) => {
+      setImportError(null);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+      navigate(`/admin/programs/${data.id}/hub`, {
+        state: data.surveysWarning ? { warning: data.surveysWarning } : undefined,
+      });
+    },
+    onError: (err: unknown) => {
+      const ax = err as {
+        response?: {
+          status?: number;
+          data?: { existingProgramId?: string; message?: string | { message?: string; existingProgramId?: string } };
+        };
+      };
+      const body = ax.response?.data;
+      const nested = typeof body?.message === 'object' ? body.message : undefined;
+      const existingId = body?.existingProgramId ?? nested?.existingProgramId;
+      if (ax.response?.status === 409 && existingId) {
+        navigate(`/admin/programs/${existingId}/hub`);
+        return;
+      }
+      const msg =
+        typeof body?.message === 'string'
+          ? body.message
+          : nested?.message ?? (err instanceof Error ? err.message : 'Could not create program from Zoom.');
+      setImportError(msg);
+    },
+  });
+
+  if (webinar.unlinkedFromZoom) {
+    return (
+      <tr className="bg-amber-50/60 hover:bg-amber-50">
+        <td className="px-4 py-3">
+          <p className="font-medium text-gray-900 line-clamp-1">{webinar.title}</p>
+          {durationStr && <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>}
+          <p className="text-xs font-medium text-amber-800 mt-1">
+            In Zoom only — schedule or publish in the platform to show on LIVE
+          </p>
+        </td>
+        <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">{dateStr}</td>
+        <td className="px-4 py-3 text-gray-600 hidden md:table-cell">—</td>
+        <td className="px-4 py-3">
+          <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
+            Zoom only
+          </span>
+        </td>
+        <td className="px-4 py-3 hidden lg:table-cell">
+          {webinar.zoomMeetingId ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600">
+              <Video className="h-3 w-3" />#{webinar.zoomMeetingId}
+            </span>
+          ) : null}
+        </td>
+        <td className="px-4 py-3 text-right">
+          <div className="flex flex-col items-end gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                setImportError(null);
+                importMutation.mutate();
+              }}
+              disabled={!webinar.zoomMeetingId || importMutation.isPending}
+              className="text-xs font-semibold text-brand-600 hover:underline disabled:opacity-50 inline-flex items-center gap-1"
+            >
+              {importMutation.isPending ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  Creating…
+                </>
+              ) : (
+                'Create program'
+              )}
+            </button>
+            {importError ? (
+              <p className="text-[10px] text-red-600 max-w-[12rem] text-right">{importError}</p>
+            ) : null}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr className="hover:bg-gray-50">
+      <td className="px-4 py-3">
+        <p className="font-medium text-gray-900 line-clamp-1">{webinar.title}</p>
+        {durationStr && (
+          <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>
+        )}
+        {webinar.zoomSessionType !== 'MEETING' &&
+          webinar.honorariumAmount != null &&
+          webinar.honorariumAmount > 0 && (
+            <p className="text-xs text-gray-500 mt-0.5">
+              Honorarium ${webinar.honorariumAmount.toLocaleString()}
+            </p>
+          )}
+      </td>
+
+      <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">
+        {dateStr}
+      </td>
+
+      <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
+        {webinar.sponsorName}
+      </td>
+
+      <td className="px-4 py-3">
+        <StatusBadge status={webinar.status} />
+      </td>
+
+      <td className="px-4 py-3 hidden lg:table-cell">
+        {webinar.zoomMeetingId ? (
+          <div className="flex flex-col gap-0.5">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-600">
+              <Video className="h-3 w-3" />
+              #{webinar.zoomMeetingId}
+            </span>
+            {webinar.zoomJoinUrl && (
+              <a
+                href={webinar.zoomJoinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Join link
+              </a>
+            )}
+            {webinar.zoomStartUrl && (
+              <a
+                href={webinar.zoomStartUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 transition-colors"
+              >
+                <ExternalLink className="h-3 w-3" /> Host start
+              </a>
+            )}
+            {webinar.zoomPanelistLinks?.map((p) => (
+              <a
+                key={p.email}
+                href={p.joinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors truncate max-w-[180px]"
+                title={`${p.name} (${p.email})`}
+              >
+                <ExternalLink className="h-3 w-3 shrink-0" />
+                Panelist: {p.name}
+              </a>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-gray-400">No Zoom</span>
+        )}
+      </td>
+
+      <td className="px-4 py-3 text-right">
+        <button
+          ref={buttonRef}
+          onClick={openMenu}
+          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
+
+        {menuOpen && (
+          <div
+            ref={menuRef}
+            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+            className="w-36 rounded-xl border border-gray-200 bg-white shadow-lg py-1"
+          >
+            <Link
+              to={`/admin/programs/${webinar.id}/hub`}
+              onClick={() => setMenuOpen(false)}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Program hub
+            </Link>
+            <button
+              onClick={() => { setMenuOpen(false); onEdit(); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Edit
+            </button>
+            <button
+              onClick={() => { setMenuOpen(false); onDelete(); }}
+              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </button>
+          </div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ─── Edit modal ───────────────────────────────────────────────────────────────
+
+function EditWebinarModal({
+  webinar,
+  onClose,
+  onSaved,
+}: {
+  webinar: AdminWebinar;
+  onClose: () => void;
+  onSaved: (updatedId?: string) => void;
+}) {
+  const [sessionKind, setSessionKind] = useState<ZoomSessionType>(
+    webinar.zoomSessionType ?? 'WEBINAR',
+  );
+  const localDate = webinar.startDate
+    ? format(parseISO(webinar.startDate), "yyyy-MM-dd'T'HH:mm")
+    : '';
+
+  const [title, setTitle] = useState(webinar.title);
+  const [description, setDescription] = useState(webinar.description);
+  const [sponsorName, setSponsorName] = useState(webinar.sponsorName);
+  const [startDate, setStartDate] = useState(localDate);
+  const [duration, setDuration] = useState(String(webinar.duration ?? ''));
+  const [status, setStatus] = useState<AdminWebinar['status']>(webinar.status);
+  const [honorariumUsd, setHonorariumUsd] = useState(
+    webinar.honorariumAmount != null ? String(webinar.honorariumAmount) : '',
+  );
+  const [hostDisplayName, setHostDisplayName] = useState(webinar.hostDisplayName ?? '');
+  const [hostBio, setHostBio] = useState(webinar.hostBio ?? '');
+  const [speakers, setSpeakers] = useState<string[]>(webinar.speakers ?? []);
+  const [sessionHeroImageUrl, setSessionHeroImageUrl] = useState(webinar.sessionHeroImageUrl ?? '');
+  const [sessionDisclaimer, setSessionDisclaimer] = useState(webinar.sessionDisclaimer ?? '');
+  const [error, setError] = useState<string | null>(null);
+
+  const updateMutation = useMutation({
+    mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),
+    onSuccess: () => onSaved(webinar.id),
+    onError: (err: unknown) => {
+      const ax = err as { response?: { data?: { message?: string | string[] } } };
+      const m = ax.response?.data?.message;
+      const msg = Array.isArray(m) ? m.join('; ') : m;
+      setError(msg || (err instanceof Error ? err.message : 'Failed to save. Please try again.'));
+    },
+  });
+
+  const handleSave = () => {
+    if (!title.trim()) { setError('Title is required.'); return; }
+
+    const durationNum = duration ? parseInt(duration, 10) : undefined;
+    if (duration && (isNaN(durationNum!) || durationNum! < 1 || durationNum! > 480)) {
+      setError('Duration must be between 1 and 480 minutes.');
+      return;
+    }
+
+    if (startDate) {
+      const d = new Date(startDate);
+      if (isNaN(d.getTime())) { setError('Invalid date and time.'); return; }
+    }
+
+    let honorariumPayload: number | undefined;
+    if (sessionKind === 'WEBINAR') {
+      if (honorariumUsd.trim() === '') {
+        honorariumPayload = 0;
+      } else {
+        const h = parseFloat(honorariumUsd);
+        if (Number.isNaN(h) || h < 0) {
+          setError('Honorarium must be a non-negative number (or leave blank to clear).');
+          return;
+        }
+        honorariumPayload = h;
+      }
+    }
+
+    setError(null);
+    const payload: UpdateWebinarPayload = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      sponsorName: sponsorName.trim() || undefined,
+      startDate: startDate ? new Date(startDate).toISOString() : undefined,
+      duration: durationNum,
+      status,
+      zoomSessionType: sessionKind !== (webinar.zoomSessionType ?? 'WEBINAR') ? sessionKind : undefined,
+      ...(sessionKind === 'WEBINAR' && honorariumPayload !== undefined
+        ? { honorariumAmount: honorariumPayload }
+        : {}),
+      hostDisplayName: hostDisplayName.trim() || undefined,
+      hostBio: hostBio.trim() || undefined,
+      speakers: speakers.map((s) => s.trim()).filter(Boolean),
+      sessionHeroImageUrl: sessionHeroImageUrl.trim() || null,
+      sessionDisclaimer: sessionDisclaimer.trim() || null,
+    };
+    updateMutation.mutate(payload);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+          <h2 className="font-semibold text-gray-900">
+            {sessionKind === 'MEETING' ? 'Edit Office Hours' : 'Edit webinar'}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Title *</label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Sponsor</label>
+              <input
+                type="text"
+                value={sponsorName}
+                onChange={(e) => setSponsorName(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as AdminWebinar['status'])}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              >
+                <option value="DRAFT">Draft</option>
+                <option value="PUBLISHED">Published</option>
+                <option value="ARCHIVED">Archived</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Session type</label>
+            <select
+              value={sessionKind}
+              onChange={(e) => setSessionKind(e.target.value as ZoomSessionType)}
+              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            >
+              <option value="WEBINAR">Live webinar (Zoom Webinar)</option>
+              <option value="MEETING">Office Hours (Zoom Meeting)</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Must match how this session exists in Zoom; the wrong choice can fail when syncing title or schedule.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Date & Time</label>
+              <input
+                type="datetime-local"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Duration (min)</label>
+              <input
+                type="number"
+                min="1"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            <SessionHeroImageField
+              value={sessionHeroImageUrl}
+              onChange={setSessionHeroImageUrl}
+            />
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Learner disclaimer <span className="font-normal text-gray-400">— optional</span>
+              </label>
+              <textarea
+                rows={3}
+                value={sessionDisclaimer}
+                onChange={(e) => setSessionDisclaimer(e.target.value)}
+                placeholder="Compliance or sponsor wording shown to learners"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-500">Leave blank and save to clear. Updates appear on registration and the session page.</p>
+            </div>
+          </div>
+
+          {sessionKind === 'WEBINAR' ? (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">
+                Honorarium (USD) — optional
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={honorariumUsd}
+                onChange={(e) => setHonorariumUsd(e.target.value)}
+                placeholder="Leave blank to remove"
+                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Webinars only. Save with an empty field to clear the honorarium for this program.
+              </p>
+            </div>
+          ) : null}
+
+          {sessionKind === 'WEBINAR' ? (
+            <>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Host <span className="font-normal text-gray-400">— optional</span>
+                </label>
+                <input
+                  type="text"
+                  value={hostDisplayName}
+                  onChange={(e) => setHostDisplayName(e.target.value)}
+                  placeholder="Dr. Jane Smith"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Person moderating/running the session. Shown as "Host:" on the webinar card.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Host bio <span className="font-normal text-gray-400">— optional</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={hostBio}
+                  onChange={(e) => setHostBio(e.target.value)}
+                  placeholder="Title, specialty, or brief note…"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
+                  Speakers / KOLs <span className="font-normal text-gray-400">— optional; add one or more</span>
+                </label>
+                <div className="space-y-2">
+                  {speakers.map((sp, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={sp}
+                        onChange={(e) => {
+                          const next = [...speakers];
+                          next[i] = e.target.value;
+                          setSpeakers(next);
+                        }}
+                        placeholder={`Speaker ${i + 1}`}
+                        className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setSpeakers(speakers.filter((_, idx) => idx !== i))}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        aria-label="Remove speaker"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setSpeakers([...speakers, ''])}
+                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                  >
+                    <span className="text-lg leading-none">+</span> Add speaker
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {webinar.zoomMeetingId && (
+            <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
+              Changes to title, date, and duration will also be synced to Zoom{' '}
+              {sessionKind === 'MEETING' ? 'Meeting' : 'webinar'} #{webinar.zoomMeetingId}.
+            </p>
+          )}
+
+          {error && (
+            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={updateMutation.isPending}
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {updateMutation.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusBadge({ status }: { status: AdminWebinar['status'] }) {
+  const map: Record<AdminWebinar['status'], { label: string; cls: string }> = {
+    PUBLISHED: { label: 'Live', cls: 'bg-green-50 text-green-700 border-green-200' },
+    DRAFT:     { label: 'Draft', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+    ARCHIVED:  { label: 'Archived', cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+  };
+  const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-700 border-gray-200' };
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
+      {label}
+    </span>
+  );
+}

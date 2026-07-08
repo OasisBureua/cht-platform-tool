@@ -1,0 +1,286 @@
+name: Deploy to Development
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+      - 'feature/**'
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'worker/**'
+      - 'infrastructure/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+
+concurrency:
+  group: deploy-cht-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
+  TERRAFORM_VERSION: 1.10.5
+  TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
+  TF_VAR_FILE: ../variables/dev.tfvars
+  TF_BACKEND_CONFIG: ../backends/us-east-1-dev.hcl
+  APP_URL: https://devapp.communityhealth.media
+  API_URL: https://devapp.communityhealth.media/api
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend - Install dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Backend - Generate Prisma client
+        working-directory: ./backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
+
+      - name: Backend - Run tests
+        working-directory: ./backend
+        run: npm test
+
+      - name: Frontend - Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend - Run tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform validate
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  deploy:
+    name: Deploy to dev
+    runs-on: ubuntu-latest
+    needs: test
+    environment: development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate image tag
+        id: meta
+        run: |
+          SHORT_SHA=$(echo "${GITHUB_SHA}" | cut -c1-7)
+          IMAGE_TAG="dev-${SHORT_SHA}-$(date +%s)"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: ${IMAGE_TAG}"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/cht-platform-backend:dev-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push worker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./worker
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/cht-platform-worker:dev-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Verify GitHub Environment secrets
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
+          MEDIAHUB_API_KEY: ${{ secrets.MEDIAHUB_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_PLAYLIST_IDS: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
+          ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+          ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          ZOOM_WEBHOOK_SECRET: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          ZOOM_SDK_KEY: ${{ secrets.ZOOM_SDK_KEY }}
+          ZOOM_SDK_SECRET: ${{ secrets.ZOOM_SDK_SECRET }}
+          JOTFORM_API_KEY: ${{ secrets.JOTFORM_API_KEY }}
+          BILL_DEV_KEY: ${{ secrets.BILL_DEV_KEY }}
+          BILL_USERNAME: ${{ secrets.BILL_USERNAME }}
+          BILL_PASSWORD: ${{ secrets.BILL_PASSWORD }}
+          BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
+          BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+        run: ./scripts/verify-github-env-secrets.sh development
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          terraform apply \
+            -var-file="${{ env.TF_VAR_FILE }}" \
+            -var="backend_image=${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}" \
+            -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}" \
+            -auto-approve
+        env:
+          TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
+          TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
+          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
+          TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
+          TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
+          TF_VAR_youtube_api_key: ${{ secrets.YOUTUBE_API_KEY }}
+          TF_VAR_youtube_playlist_ids: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
+          TF_VAR_zoom_account_id: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          TF_VAR_zoom_client_id: ${{ secrets.ZOOM_CLIENT_ID }}
+          TF_VAR_zoom_client_secret: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          TF_VAR_zoom_webhook_secret: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          TF_VAR_zoom_sdk_key: ${{ secrets.ZOOM_SDK_KEY }}
+          TF_VAR_zoom_sdk_secret: ${{ secrets.ZOOM_SDK_SECRET }}
+          TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
+          TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
+          TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
+          TF_VAR_bill_password: ${{ secrets.BILL_PASSWORD }}
+          TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
+          TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
+          TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
+          TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
+          TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
+          TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+
+      - name: Get Terraform outputs
+        id: outputs
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
+          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+        env:
+          VITE_API_URL: ${{ env.API_URL }}
+          VITE_APP_URL: ${{ env.APP_URL }}
+          VITE_SUPABASE_URL: https://mediahub.communityhealth.media
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload to S3
+        working-directory: ./frontend
+        run: |
+          aws s3 sync dist/ s3://${{ steps.outputs.outputs.frontend_bucket }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html"
+
+          aws s3 cp dist/index.html s3://${{ steps.outputs.outputs.frontend_bucket }}/index.html \
+            --cache-control "public, max-age=0, must-revalidate"
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
+            --paths "/*"
+
+      - name: Wait for ECS services stable
+        run: |
+          CLUSTER="${{ steps.outputs.outputs.cluster_name }}"
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services cht-platform-backend cht-platform-worker \
+            --region "$AWS_REGION"
+          echo "ECS services stable in cluster $CLUSTER"
+
+      - name: Health Check
+        id: healthcheck
+        continue-on-error: true
+        run: |
+          echo "Waiting 30s for deployment to stabilize..."
+          sleep 30
+          curl -fsS "${{ env.APP_URL }}/health/ready" && echo "✅ /health/ready passed!" || echo "❌ /health/ready failed"
+          curl -fsS "${{ env.APP_URL }}/health" && echo "✅ /health passed!" || echo "❌ /health failed"
+          curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "${{ env.APP_URL }}/"
+
+      - name: Final health gate
+        if: steps.healthcheck.outcome == 'failure'
+        run: |
+          echo "Health check failed — marking workflow failed."
+          exit 1
+
+      - name: Deployment Summary
+        run: |
+          echo "## CHT Platform dev deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image tag | \`${{ steps.meta.outputs.image_tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend | ${{ env.APP_URL }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API | ${{ env.API_URL }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Manual equivalent: \`./scripts/deploy-primary.sh dev\` + \`./scripts/deploy-frontend.sh dev\`" >> "$GITHUB_STEP_SUMMARY"

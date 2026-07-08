@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Preview · Live session hero (Variation B)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hero-row {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      gap: 0.75rem;
+      min-height: 17.5rem;
+    }
+    @media (min-width: 480px) { .hero-row { gap: 1rem; } }
+    @media (min-width: 640px) { .hero-row { gap: 2.5rem; min-height: 20rem; } }
+    .hero-main { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+    @media (min-width: 640px) { .hero-main { gap: 1rem; } }
+    .hero-rail {
+      flex-shrink: 0;
+      width: 6.5rem;
+      display: flex;
+      align-self: stretch;
+    }
+    @media (min-width: 400px) { .hero-rail { width: 7.25rem; } }
+    @media (min-width: 480px) { .hero-rail { width: 8.5rem; } }
+    @media (min-width: 640px) { .hero-rail { width: 9rem; } }
+    @media (min-width: 768px) { .hero-rail { width: 11.5rem; } }
+    .hero-cover {
+      position: relative;
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 8rem;
+      overflow: hidden;
+      border-radius: 0.75rem;
+      border: 1px solid rgb(229 231 235);
+      background: linear-gradient(135deg, rgb(224 242 254 / 0.9), rgb(250 250 250), rgb(204 251 241 / 0.7));
+    }
+    .btn-register {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 100%;
+      min-width: 10.75rem;
+      min-height: 2.625rem;
+      padding: 0.625rem 1.625rem;
+      border-radius: 0.5rem;
+      background: rgb(234 88 12);
+      color: white;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    @media (min-width: 640px) { .btn-register { width: auto; } }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-100 p-4 antialiased sm:p-6">
+  <header class="mb-6 max-w-3xl">
+    <h1 class="text-base font-bold text-zinc-900 sm:text-lg">Variation B · production layout</h1>
+    <p class="mt-1 text-xs text-zinc-600 sm:text-sm">Register left · full-height cover rail · pending flair at bottom of left column.</p>
+  </header>
+
+  <section class="mx-auto max-w-3xl overflow-hidden rounded-xl border-2 border-sky-200 bg-white shadow-sm">
+    <div class="p-4 sm:p-6">
+      <div class="hero-row">
+        <div class="hero-main">
+          <div class="flex flex-wrap gap-1.5">
+            <span class="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 sm:text-xs">Live</span>
+            <span class="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 sm:text-xs">Published</span>
+          </div>
+          <h2 class="text-balance text-xl font-bold text-gray-900 sm:text-2xl">Test1</h2>
+          <p class="text-sm text-gray-700">Test1</p>
+          <div class="flex flex-col gap-1 text-xs text-gray-600 min-[480px]:flex-row min-[480px]:gap-4 sm:text-sm">
+            <span>📅 Tue, May 26, 2026</span>
+            <span>🕐 12:00 PM EDT · 60 min</span>
+          </div>
+          <span class="inline-flex w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 sm:text-xs">$499.97 honorarium</span>
+          <!-- Pending: no Register CTA or helper copy (matches WebinarDetail when status === PENDING) -->
+          <div class="mt-auto w-full max-w-xl pt-1">
+            <p class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 sm:text-sm">
+              Registration is pending. Complete the survey if you have not yet, then wait for approval.
+            </p>
+          </div>
+        </div>
+        <div class="hero-rail">
+          <div class="hero-cover">
+            <div class="absolute inset-0 flex items-center justify-center px-1 text-center text-[10px] font-medium text-gray-500 sm:text-xs">Session cover</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

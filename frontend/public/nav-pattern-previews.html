@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <title>Mobile navigation pattern previews</title>
+    <style>
+      :root {
+        --brand: #2ba89a;
+        --brand-dark: #1e8578;
+        --bg: #f4f4f5;
+        --phone: #ffffff;
+        --text: #18181b;
+        --muted: #71717a;
+        --rail: #fafafa;
+        --border: rgba(0, 0, 0, 0.08);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        padding: clamp(1rem, 3vw, 2rem);
+        line-height: 1.45;
+      }
+      h1 {
+        font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        margin: 0 0 0.35rem;
+      }
+      .sub {
+        font-size: 0.95rem;
+        color: var(--muted);
+        max-width: 52rem;
+        margin-bottom: 2rem;
+      }
+      .grid {
+        display: grid;
+        gap: clamp(1.5rem, 4vw, 2.5rem);
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(3, 1fr);
+          align-items: start;
+        }
+      }
+      .card {
+        background: var(--phone);
+        border-radius: 1rem;
+        padding: 1rem 1rem 1.25rem;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 12px 40px -20px rgba(0, 0, 0, 0.15);
+        border: 1px solid var(--border);
+      }
+      .card h2 {
+        font-size: 1rem;
+        font-weight: 700;
+        margin: 0 0 0.35rem;
+      }
+      .card p.meta {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin: 0 0 1rem;
+      }
+      /* Phone chrome */
+      .phone {
+        width: 100%;
+        max-width: 304px;
+        margin: 0 auto;
+        border-radius: 1.75rem;
+        border: 3px solid #27272a;
+        overflow: hidden;
+        background: #27272a;
+        aspect-ratio: 9 / 17;
+        display: flex;
+        flex-direction: column;
+      }
+      .phone-notch {
+        height: 22px;
+        background: #27272a;
+        flex-shrink: 0;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding-bottom: 6px;
+      }
+      .phone-notch span {
+        width: 96px;
+        height: 5px;
+        background: #3f3f46;
+        border-radius: 99px;
+      }
+      /* Phones always use UI sans-serif — buttons ignore body font unless set explicitly */
+      .screen {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background: var(--phone);
+        border-radius: 0 0 1.35rem 1.35rem;
+        overflow: hidden;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .screen button {
+        font-family: inherit;
+      }
+      .topbar {
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        border-bottom: 1px solid #f4f4f5;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .ham {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px dashed var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      .content-fill {
+        flex: 1;
+        padding: 12px;
+        font-size: 10px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .content-fill strong {
+        display: block;
+        font-size: 11px;
+        color: var(--text);
+        margin-bottom: 6px;
+      }
+      /* Pattern A: rail */
+      .layout-rail {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+      .rail {
+        width: 52px;
+        background: var(--rail);
+        border-right: 1px solid #e4e4e7;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px 0;
+        gap: 8px;
+      }
+      .rail .rail-ico,
+      .rail button.rail-ico-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid #e4e4e7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .rail button.rail-ico-btn {
+        margin: 0;
+        padding: 0;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: inherit;
+        touch-action: manipulation;
+        -webkit-appearance: none;
+        appearance: none;
+        color: inherit;
+      }
+      .rail .rail-ico svg,
+      .rail button.rail-ico-btn svg {
+        width: 17px;
+        height: 17px;
+        color: #52525b;
+      }
+      .rail .rail-ico.on,
+      .rail button.rail-ico-btn.on {
+        background: rgba(43, 168, 154, 0.12);
+        border-color: rgba(43, 168, 154, 0.35);
+      }
+      .rail .rail-ico.on svg,
+      .rail button.rail-ico-btn.on svg {
+        color: var(--brand-dark);
+      }
+      .rail-main {
+        flex: 1;
+        min-width: 0;
+        padding: 8px 8px 8px 6px;
+        font-size: 9px;
+        color: var(--muted);
+        overflow-y: auto;
+        background: linear-gradient(180deg, #fafafa 0%, #fff 40%);
+      }
+      .feed-head {
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #a1a1aa;
+        margin: 4px 0 8px 2px;
+      }
+      .conv-row {
+        display: flex;
+        gap: 6px;
+        margin-bottom: 7px;
+        padding: 6px;
+        background: #fff;
+        border-radius: 10px;
+        border: 1px solid #f4f4f5;
+        box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+      }
+      .conv-row img {
+        width: 52px;
+        height: 34px;
+        object-fit: cover;
+        border-radius: 6px;
+        flex-shrink: 0;
+        background: #e4e4e7;
+      }
+      .conv-row .copy {
+        min-width: 0;
+      }
+      .conv-row .t {
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1.25;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .conv-row .s {
+        font-size: 8px;
+        color: #71717a;
+        margin-top: 3px;
+        line-height: 1.2;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      /* Pattern B: slide-reveal drawer — horizontal translation only; rounded edge + shadow for depth */
+      .scale-drawer-scene {
+        flex: 1;
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
+        background: #18181b;
+        perspective: none;
+      }
+      .scale-drawer-back {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 78%;
+        max-width: 220px;
+        background: linear-gradient(180deg, #ffffff 0%, #fafafa 100%);
+        padding: 14px 12px;
+        padding-bottom: 52px;
+        z-index: 0;
+        border-right: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: inset -6px 0 16px -12px rgba(0, 0, 0, 0.05);
+      }
+      .scale-drawer-back .logo {
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--brand);
+        margin-bottom: 14px;
+      }
+      .scale-drawer-back ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      .scale-drawer-back li {
+        font-size: 10px;
+        padding: 10px 8px;
+        border-radius: 10px;
+        margin-bottom: 4px;
+        color: var(--text);
+      }
+      .scale-drawer-back .subnav {
+        font-size: 8px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #a1a1aa;
+        margin: 12px 0 6px 4px;
+      }
+      .scale-drawer-back .hint-footer {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        padding-top: 10px;
+        border-top: 1px solid #e4e4e7;
+        font-size: 8px;
+        color: #71717a;
+      }
+      .scale-drawer-front {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+        display: flex;
+        flex-direction: column;
+        z-index: 1;
+        transform: translate3d(0, 0, 0);
+        transform-origin: right center;
+        border-radius: 0;
+        transition:
+          transform 0.3s cubic-bezier(0.33, 1, 0.68, 1),
+          border-radius 0.3s cubic-bezier(0.33, 1, 0.68, 1),
+          box-shadow 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+        will-change: transform;
+        backface-visibility: hidden;
+      }
+      .scale-drawer-scene.is-open .scale-drawer-front {
+        transform: translate3d(38%, 0, 0);
+        border-radius: 18px;
+        box-shadow:
+          -4px 0 20px rgba(0, 0, 0, 0.1),
+          0 12px 32px rgba(0, 0, 0, 0.14);
+      }
+      .scale-drawer-front-body {
+        flex: 1;
+        min-height: 0;
+        padding: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        font-size: 9px;
+        color: var(--muted);
+        line-height: 1.45;
+        -webkit-overflow-scrolling: touch;
+      }
+      .mock-hero {
+        position: relative;
+        height: 78px;
+        flex-shrink: 0;
+      }
+      .mock-hero img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .mock-hero .scrim {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to top, rgba(0, 0, 0, 0.72) 0%, transparent 50%);
+      }
+      .mock-hero .htag {
+        position: absolute;
+        left: 10px;
+        top: 10px;
+        font-size: 7px;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.94);
+        color: var(--brand-dark);
+      }
+      .mock-hero .htitle {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: 8px;
+        color: #fff;
+        font-size: 10px;
+        font-weight: 700;
+        line-height: 1.25;
+        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .mock-block {
+        padding: 10px 10px 8px;
+      }
+      .mock-label {
+        font-size: 8px;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #a1a1aa;
+        margin-bottom: 8px;
+      }
+      .feature-strip {
+        display: flex;
+        gap: 7px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        margin: 0 -2px;
+      }
+      .feature-strip::-webkit-scrollbar {
+        height: 0;
+      }
+      .ft-card {
+        flex: 0 0 94px;
+      }
+      .ft-card img {
+        width: 100%;
+        height: 54px;
+        object-fit: cover;
+        border-radius: 8px;
+        background: #e4e4e7;
+      }
+      .ft-card .ft-title {
+        font-size: 8px;
+        font-weight: 600;
+        color: var(--text);
+        margin-top: 5px;
+        line-height: 1.25;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .ft-card .ft-meta {
+        font-size: 7px;
+        color: #71717a;
+        margin-top: 2px;
+        line-height: 1.2;
+      }
+      .dash-greet {
+        padding: 10px 12px 4px;
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .dash-sub {
+        padding: 0 12px 10px;
+        font-size: 8px;
+        color: #71717a;
+        line-height: 1.35;
+      }
+      .earn-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin: 0 12px 10px;
+        padding: 5px 9px;
+        border-radius: 999px;
+        background: rgba(43, 168, 154, 0.1);
+        border: 1px solid rgba(43, 168, 154, 0.22);
+        font-size: 8px;
+        font-weight: 600;
+        color: var(--brand-dark);
+      }
+      .pattern-topbar {
+        height: 44px;
+        display: grid;
+        grid-template-columns: auto 1fr 28px;
+        align-items: center;
+        gap: 4px;
+        padding: 0 8px;
+        border-bottom: 1px solid #f4f4f5;
+        flex-shrink: 0;
+        background: #fff;
+      }
+      .pattern-topbar .tb-title {
+        justify-self: center;
+        font-size: 11px;
+        font-weight: 700;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+      }
+      .pattern-topbar .brand-mark {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--brand);
+        letter-spacing: -0.04em;
+        justify-self: start;
+      }
+      button.ham-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid #e4e4e7;
+        background: #fafafa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        cursor: pointer;
+        color: var(--text);
+        transition: transform 0.15s ease, background 0.15s ease;
+      }
+      button.ham-btn:active {
+        transform: scale(0.94);
+      }
+      #scale-drawer-scene .pattern-topbar {
+        position: relative;
+        z-index: 5;
+      }
+      #scale-drawer-toggle {
+        position: relative;
+        z-index: 6;
+        pointer-events: auto;
+        touch-action: manipulation;
+      }
+      .hint-open {
+        font-size: 9px;
+        font-weight: 600;
+        color: var(--muted);
+        margin-top: 0.75rem;
+        text-align: center;
+        pointer-events: none;
+        user-select: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .scale-drawer-front {
+          transition-duration: 0.01ms;
+        }
+      }
+      .layout-stack .dash-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        padding: 0;
+        font-size: 9px;
+        color: var(--muted);
+        -webkit-overflow-scrolling: touch;
+      }
+      /* Pattern C: bottom tabs */
+      .layout-stack {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .tabbar {
+        height: 52px;
+        border-top: 1px solid #e4e4e7;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 4px env(safe-area-inset-bottom, 4px);
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(8px);
+      }
+      .tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        font-size: 8px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+      button.tab-btn {
+        margin: 0;
+        padding: 4px 2px;
+        min-width: 0;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-size: 8px;
+        font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: 0.01em;
+        color: inherit;
+        touch-action: manipulation;
+        -webkit-appearance: none;
+        appearance: none;
+        border-radius: 10px;
+      }
+      button.tab-btn:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 1px;
+      }
+      .tab svg {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        display: block;
+        stroke: currentColor;
+        fill: none;
+        overflow: visible;
+      }
+      .tab.on {
+        color: var(--brand-dark);
+      }
+      .tab.more {
+        opacity: 0.85;
+      }
+      footer.note {
+        margin-top: 2.5rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+        max-width: 52rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Three mobile navigation patterns</h1>
+    <p class="sub">
+      Mockups use real CHM imagery (communityhealth.media thumbs), clip titles, and speaker lines so each pattern reads like the live catalog —
+      persistent rail · <strong>slide-reveal drawer</strong> (tap ☰) · bottom tabs + More.
+    </p>
+
+    <div class="grid">
+      <!-- A -->
+      <div class="card">
+        <h2>1 · Persistent mini rail</h2>
+        <div class="phone" id="demo-rail-phone" aria-hidden="true">
+          <div class="phone-notch"><span></span></div>
+          <div class="screen">
+            <div class="pattern-topbar rail-head">
+              <span class="brand-mark">chm</span>
+              <span style="display: flex; gap: 6px; align-items: center">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </span>
+            </div>
+            <div class="layout-rail">
+              <div class="rail">
+                <button type="button" class="rail-ico-btn on" aria-label="Home" title="Home">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </button>
+                <button type="button" class="rail-ico-btn" aria-label="Search" title="Search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </button>
+                <button type="button" class="rail-ico-btn" aria-label="LIVE" title="LIVE">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M16.24 7.76a6 6 0 0 1 7.07 10.06"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M2 12h.01"/><path d="M7.76 16.24a6 6 0 0 1 8.49 0"/><path d="M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+                </button>
+                <button type="button" class="rail-ico-btn" aria-label="Catalog" title="Catalog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="7 7 7 3 17 3 17 7"/></svg>
+                </button>
+                <button type="button" class="rail-ico-btn" aria-label="More" title="More">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                </button>
+              </div>
+              <div class="rail-main">
+                <div class="feed-head">HER2+ conversations</div>
+                <div class="conv-row">
+                  <img src="https://communityhealth.media/thumbs/destiny-breast09-the-future-of-c.jpg?v=p8" alt="" width="52" height="34" loading="lazy" />
+                  <div class="copy">
+                    <div class="t">DESTINY-Breast09 &amp; the Future of Care</div>
+                    <div class="s">Dr. Irene Kang &amp; Dr. Aditya Bardia</div>
+                  </div>
+                </div>
+                <div class="conv-row">
+                  <img src="https://communityhealth.media/thumbs/40-month-pfs-can-t-dxd-move-to-t.jpg?v=p8" alt="" width="52" height="34" loading="lazy" />
+                  <div class="copy">
+                    <div class="t">40-Month PFS: Can T-DXd Move to the Frontline?</div>
+                    <div class="s">Dr. Irene Kang &amp; Dr. Aditya Bardia</div>
+                  </div>
+                </div>
+                <div class="conv-row">
+                  <img src="https://communityhealth.media/thumbs/her2-expression-beyond-the-binar.jpg?v=p8" alt="" width="52" height="34" loading="lazy" />
+                  <div class="copy">
+                    <div class="t">HER2 Expression: Beyond the Binary</div>
+                    <div class="s">Dr. Aditya Bardia &amp; Dr. Reena Callahan</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B: slide-reveal -->
+      <div class="card">
+        <h2>2 · Slide-reveal drawer</h2>
+        <p class="meta">Same catalog · front pane slides aside (tap ☰)</p>
+        <div class="phone">
+          <div class="phone-notch"><span></span></div>
+          <div class="screen">
+            <div id="scale-drawer-scene" class="scale-drawer-scene">
+              <nav id="scale-drawer-nav" class="scale-drawer-back" aria-label="Primary navigation (revealed)">
+                <div class="logo">chm</div>
+                <ul>
+                  <li class="active">Search</li>
+                  <li>LIVE</li>
+                  <li>Conversations</li>
+                </ul>
+                <div class="subnav">Earn</div>
+                <ul>
+                  <li>Surveys</li>
+                  <li>Podcasts</li>
+                  <li>Earnings</li>
+                </ul>
+                <div class="hint-footer">Signed in · Settings · Sign out</div>
+              </nav>
+              <div class="scale-drawer-front">
+                <div class="pattern-topbar">
+                  <button type="button" class="ham-btn" id="scale-drawer-toggle" aria-expanded="false" aria-controls="scale-drawer-nav" aria-label="Toggle navigation menu">
+                    ☰
+                  </button>
+                  <span class="tb-title">Home</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                </div>
+                <div class="scale-drawer-front-body">
+                  <div class="mock-hero">
+                    <span class="htag">Featured</span>
+                    <img src="https://communityhealth.media/thumbs/destiny-breast09-the-future-of-c.jpg?v=p8" alt="" width="400" height="200" loading="lazy" />
+                    <div class="scrim" aria-hidden="true"></div>
+                    <div class="htitle">DESTINY-Breast09 &amp; the Future of Care</div>
+                  </div>
+                  <div class="mock-block">
+                    <div class="mock-label">Recently added</div>
+                    <div class="feature-strip">
+                      <div class="ft-card">
+                        <img src="https://communityhealth.media/thumbs/40-month-pfs-can-t-dxd-move-to-t.jpg?v=p8" alt="" loading="lazy" />
+                        <div class="ft-title">40-Month PFS · front line</div>
+                        <div class="ft-meta">Dr. Kang &amp; Dr. Bardia</div>
+                      </div>
+                      <div class="ft-card">
+                        <img src="https://communityhealth.media/thumbs/her2-expression-beyond-the-binar.jpg?v=p8" alt="" loading="lazy" />
+                        <div class="ft-title">HER2 · Beyond the Binary</div>
+                        <div class="ft-meta">Dr. Bardia &amp; Dr. Callahan</div>
+                      </div>
+                      <div class="ft-card">
+                        <img src="https://communityhealth.media/thumbs/83-pcr-destiny-breast11-breaks-t.jpg?v=p8" alt="" loading="lazy" />
+                        <div class="ft-title">83% pCR · DESTINY-Breast11</div>
+                        <div class="ft-meta">Dr. Iyengar &amp; Dr. Jhaveri</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="hint-open">Interactive demo · tap ☰</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- C -->
+      <div class="card">
+        <h2>3 · Bottom tabs + More</h2>
+        <div class="phone" id="demo-tabbar-phone" aria-hidden="true">
+          <div class="phone-notch"><span></span></div>
+          <div class="screen">
+            <div class="layout-stack">
+              <div class="pattern-topbar">
+                <span class="brand-mark">chm</span>
+                <span class="tb-title">Home</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+              <div class="dash-scroll">
+                <div class="dash-greet">Welcome back</div>
+                <div class="dash-sub">New clips from experts you follow · LIVE tomorrow 5 PM ET.</div>
+                <div class="earn-pill">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  $120 est. · surveys this week
+                </div>
+                <div class="mock-hero">
+                  <span class="htag">Tonight · LIVE</span>
+                  <img src="https://communityhealth.media/thumbs/destiny-breast09-the-future-of-c.jpg?v=p8" alt="" width="400" height="200" loading="lazy" />
+                  <div class="scrim" aria-hidden="true"></div>
+                  <div class="htitle">Roundtable · DESTINY-Breast09 first-line data</div>
+                </div>
+                <div class="mock-block">
+                  <div class="mock-label">For you</div>
+                  <div class="feature-strip">
+                    <div class="ft-card">
+                      <img src="https://communityhealth.media/thumbs/db09-delivers-40-month-pfs-a-fir.jpg?v=p8" alt="" loading="lazy" />
+                      <div class="ft-title">DB09 · 40-mo PFS</div>
+                      <div class="ft-meta">Dr. Pegram &amp; Dr. Iyengar</div>
+                    </div>
+                    <div class="ft-card">
+                      <img src="https://communityhealth.media/thumbs/is-t-dxd-rewriting-first-line-he.jpg?v=p8" alt="" loading="lazy" />
+                      <div class="ft-title">T-DXd · first-line HER2+</div>
+                      <div class="ft-meta">Dr. Pegram &amp; Dr. Yan</div>
+                    </div>
+                    <div class="ft-card">
+                      <img src="https://communityhealth.media/thumbs/has-her2-first-line-treatment-of.jpg?v=p8" alt="" loading="lazy" />
+                      <div class="ft-title">Has first-line changed?</div>
+                      <div class="ft-meta">Dr. Iyengar &amp; Dr. Dietrich</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="tabbar">
+                <button type="button" class="tab tab-btn on" aria-current="page" aria-label="Home">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                  Home
+                </button>
+                <button type="button" class="tab tab-btn" aria-label="Search">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  Search
+                </button>
+                <button type="button" class="tab tab-btn" aria-label="LIVE">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4.9 19.1C2 15.8 2 10 2 10s2-6 10-6 10 6 10 6-2 5.8-4.9 9.1"/><circle cx="12" cy="12" r="5"/></svg>
+                  LIVE
+                </button>
+                <button type="button" class="tab tab-btn" aria-label="Catalog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="7 7 7 3 17 3 17 7"/></svg>
+                  Catalog
+                </button>
+                <button type="button" class="tab tab-btn more" aria-label="More">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                  More
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="note">
+      Open from the dev server:
+      <strong>http://127.0.0.1:5174/nav-pattern-previews.html</strong>
+      — column 2 toggles slide-reveal; three patterns side-by-side on wide viewports.
+    </footer>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        var scene = document.getElementById('scale-drawer-scene');
+        var btn = document.getElementById('scale-drawer-toggle');
+        function setDrawerOpen(open) {
+          if (!scene || !btn) return;
+          scene.classList.toggle('is-open', open);
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        }
+        if (scene && btn) {
+          btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            setDrawerOpen(!scene.classList.contains('is-open'));
+          });
+          var nav = document.getElementById('scale-drawer-nav');
+          if (nav) {
+            nav.addEventListener('click', function () {
+              setDrawerOpen(false);
+            });
+          }
+          scene.addEventListener('click', function (e) {
+            if (!scene.classList.contains('is-open')) return;
+            var front = scene.querySelector('.scale-drawer-front');
+            if (front && !front.contains(e.target)) {
+              setDrawerOpen(false);
+            }
+          });
+        }
+
+        var railPhone = document.getElementById('demo-rail-phone');
+        if (railPhone) {
+          railPhone.querySelectorAll('.rail-ico-btn').forEach(function (el) {
+            el.addEventListener('click', function () {
+              railPhone.querySelectorAll('.rail-ico-btn').forEach(function (b) {
+                b.classList.remove('on');
+              });
+              el.classList.add('on');
+            });
+          });
+        }
+
+        var tabPhone = document.getElementById('demo-tabbar-phone');
+        if (tabPhone) {
+          tabPhone.querySelectorAll('.tab-btn').forEach(function (el) {
+            el.addEventListener('click', function () {
+              tabPhone.querySelectorAll('.tab-btn').forEach(function (b) {
+                b.classList.remove('on');
+                b.removeAttribute('aria-current');
+              });
+              el.classList.add('on');
+              el.setAttribute('aria-current', 'page');
+            });
+          });
+        }
+      });
+    </script>
+  </body>
+</html>

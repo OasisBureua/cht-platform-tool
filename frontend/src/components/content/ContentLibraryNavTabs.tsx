@@ -1,0 +1,73 @@
+import { Link, useLocation } from 'react-router-dom';
+import { Monitor, ListVideo, Library } from 'lucide-react';
+
+function tabClass(active: boolean) {
+  return [
+    'flex flex-col items-center gap-2 transition-colors min-w-[3.5rem]',
+    active
+      ? 'font-medium text-zinc-900 dark:text-zinc-100'
+      : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
+  ].join(' ');
+}
+
+type ContentLibraryNavTabsProps = {
+  isInApp: boolean;
+};
+
+/** Clips vs playlists for tab highlighting — matches VideosPage URL rules (in-app defaults to clips). */
+function effectiveContentView(search: string, isInApp: boolean): 'clips' | 'playlists' {
+  const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
+  const v = p.get('view');
+  if (v === 'clips') return 'clips';
+  if (v === 'playlists') return 'playlists';
+  const hasFilters =
+    !!(p.get('q')?.trim()) ||
+    !!p.get('tag') ||
+    !!p.get('doctor') ||
+    !!(p.get('sort') || p.get('sort_by'));
+  if (isInApp) return 'clips';
+  return hasFilters ? 'clips' : 'playlists';
+}
+
+/**
+ * Icon nav under the public content library: Catalog (clips), Conversations (Live), Playlists.
+ */
+export function ContentLibraryNavTabs({ isInApp }: ContentLibraryNavTabsProps) {
+  const { pathname, search } = useLocation();
+  const catalogPath = isInApp ? '/app/catalog' : '/catalog';
+  const liveTo = isInApp ? '/app/live' : '/live';
+
+  const clipsHref = `${catalogPath}?view=clips`;
+  const playlistsHref = `${catalogPath}?view=playlists`;
+
+  const onCatalogHub =
+    pathname.startsWith('/catalog') ||
+    pathname.startsWith('/app/catalog') ||
+    pathname === '/watch' ||
+    pathname === '/app/watch';
+
+  const activeView = effectiveContentView(search, isInApp);
+  const catalogTabActive = onCatalogHub && activeView === 'clips';
+  const playlistsTabActive = activeView === 'playlists';
+
+  return (
+    <section className="flex flex-wrap gap-4" aria-label="Content library sections">
+      <Link to={clipsHref} className={tabClass(catalogTabActive)}>
+        <ListVideo className="h-8 w-8" />
+        <span className="text-sm font-medium">Catalog</span>
+      </Link>
+      <Link to={liveTo} className={tabClass(false)}>
+        <Monitor className="h-8 w-8" />
+        <span className="text-sm font-medium">Conversations</span>
+      </Link>
+      <Link
+        to={playlistsHref}
+        className={tabClass(playlistsTabActive)}
+        aria-current={playlistsTabActive ? 'page' : undefined}
+      >
+        <Library className="h-8 w-8" />
+        <span className="text-sm font-medium">Playlists</span>
+      </Link>
+    </section>
+  );
+}

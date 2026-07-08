@@ -1,0 +1,642 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+// Run with: npx prisma db seed
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER MODEL
+// ============================================================================
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  firstName       String
+  lastName        String
+  authId          String   @unique // Auth0 user ID
+  
+  // Professional details
+  npiNumber       String?  @unique
+  specialty       String?
+  state           String?
+  licenseNumber   String?
+  
+  // Institution & Location
+  institution     String?
+  city            String?
+  zipCode         String?
+
+  // Role and status
+  role            UserRole @default(HCP)
+  status          UserStatus @default(ACTIVE)
+  
+  // Bill.com (Payment system)
+  billVendorId     String?
+  billVendorStatus String?  // onboarding_incomplete, pending, active, rejected
+  paymentEnabled   Boolean @default(false)
+  w9Submitted     Boolean @default(false)
+  w9SubmittedAt   DateTime?
+  
+  // Earnings tracking
+  totalEarnings       Int @default(0)  // Total lifetime earnings in cents
+  activitiesCompleted Int @default(0)  // Count of completed programs
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastLoginAt     DateTime?
+  
+  // Relations
+  enrollments     ProgramEnrollment[]
+  programRegistrations ProgramRegistration[]
+  videoViews      VideoView[]
+  surveyResponses SurveyResponse[]
+  formJotformProgress FormJotformProgress[]
+  payments        Payment[]
+  cmeCredits      CMECredit[]
+  analyticsEvents AnalyticsEvent[]
+
+  @@index([email])
+  @@index([authId])
+  @@index([billVendorId])
+  @@index([totalEarnings])
+  @@map("User")
+}
+
+// ============================================================================
+// SESSION MODEL
+// ============================================================================
+model Session {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  authId      String
+  userId      String
+  email       String
+  name        String
+  role        UserRole
+  expiresAt   DateTime
+  accessToken String?  // GoTrue JWT for chatbot (unlimited queries)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("Session")
+}
+
+enum UserRole {
+  HCP          // Healthcare Professional
+  KOL          // Key Opinion Leader
+  ADMIN        // Platform Administrator
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+// ============================================================================
+// PROGRAM MODEL
+// ============================================================================
+model Program {
+  id                String   @id @default(cuid())
+  title             String
+  description       String   @db.Text
+  thumbnailUrl      String?
+  
+  // CME Information
+  creditAmount      Float    // CME credits (e.g., 2.5)
+  accreditationBody String?  // e.g., "ACCME", "AMA"
+  
+  // Status and visibility
+  status            ProgramStatus @default(DRAFT)
+  
+  // Sponsorship
+  sponsorName       String
+  sponsorLogo       String?
+  /// Optional banner image URL for the live session detail / registration (admin-provided CDN or public URL).
+  sessionHeroImageUrl String?
+  /// Session-specific disclaimer shown to learners on registration and detail pages (HTML stripped client-side).
+  sessionDisclaimer   String? @db.Text
+  
+  // Scheduling
+  startDate         DateTime?
+  endDate           DateTime?
+  duration          Int?     // Duration in minutes (for webinars)
+  
+  // Survey integration (Jotform)
+  jotformSurveyId   String?
+  jotformSurveyUrl  String?
+  requiresSurvey    Boolean @default(false)
+  /// Intake / registration form (workflow trigger); embed on branded register page
+  jotformIntakeFormUrl String?
+  /// Pre-event questionnaire URL (iframe on program register flow)
+  jotformPreEventUrl   String?
+  /// Host display name ("Get time with …" / "Host: …")
+  hostDisplayName      String?
+  /// Short host bio shown on the detail page
+  hostBio              String?
+  /// Speaker / KOL names for the session (distinct from host); stored for display and Zoom panelist registration
+  speakers             String[]
+  /// Panelist join URLs returned by Zoom when the webinar was created (JSON array of {name,email,joinUrl})
+  zoomPanelistLinks    Json?
+  /// When true, users submit registration; admin approves before enrollment (webinars and office hours).
+  registrationRequiresApproval Boolean @default(false)
+  
+  // Payment configuration
+  honorariumAmount  Int?     // Amount in cents (e.g., 50000 = $500)
+  
+  // Zoom Events integration
+  zoomSessionType   ProgramZoomSessionType @default(WEBINAR)
+  zoomMeetingId     String?
+  zoomMeetingPassword String?
+  zoomJoinUrl       String?
+  zoomStartUrl      String?  // For host/KOL
+  /// Set from Zoom meeting.ended / webinar.ended webhooks when configured (preferred for post-event survey timing).
+  zoomSessionEndedAt DateTime?
+  /// True when this program was auto-created by a webinar.created / meeting.created Zoom webhook (outside the app).
+  /// Indicates admin review is required to fill in sponsor, honorarium, Jotform forms, host bio, etc.
+  importedViaWebhook Boolean @default(false)
+
+  // Timestamps
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  publishedAt       DateTime?
+  
+  // Relations
+  videos            Video[]
+  enrollments       ProgramEnrollment[]
+  programRegistrations ProgramRegistration[]
+  officeHoursSlots OfficeHoursSlot[]
+  programFormLinks  ProgramFormLink[]
+  surveys           Survey[]
+  payments          Payment[]
+  cmeCredits        CMECredit[]
+  webinarParticipantEvents WebinarParticipantEvent[]
+
+  @@index([status])
+  @@index([startDate])
+  @@index([status, startDate])
+  @@map("Program")
+}
+
+enum ProgramStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Zoom: WEBINAR = formal CME-style webinar; MEETING = interactive office hours (drop-in Q&A).
+enum ProgramZoomSessionType {
+  WEBINAR
+  MEETING
+}
+
+enum ProgramRegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  WAITLISTED
+}
+
+/// After registration is approved, LIVE sessions may require a second admin step before post-event survey / honorarium.
+enum PostEventAttendanceStatus {
+  NOT_REQUIRED
+  PENDING_VERIFICATION
+  VERIFIED
+  DENIED
+}
+
+enum ProgramFormLinkKind {
+  INTAKE
+  PRE_EVENT
+  POST_EVENT
+  CUSTOM
+}
+
+/// Application / sign-up for a program (uncapped); admin approves → enrollment created
+model ProgramRegistration {
+  id                        String                    @id @default(cuid())
+  userId                    String
+  programId                 String
+  status                    ProgramRegistrationStatus   @default(PENDING)
+  intakeSubmissionId String?
+  intakeJotformSubmittedAt  DateTime?
+  officeHoursSlotId         String?
+  adminNotes                String?                   @db.Text
+  reviewedAt                DateTime?
+  reviewedByUserId          String?
+  calendarInviteSentAt      DateTime?
+  postEventAttendanceStatus              PostEventAttendanceStatus @default(NOT_REQUIRED)
+  postEventAttendanceReviewedAt        DateTime?
+  postEventAttendanceReviewedByUserId  String?
+  postEventSurveyAcknowledgedAt        DateTime?
+  honorariumRequestedAt                DateTime?
+  /// Set after the ~24h pre-session reminder email is sent. Reset to null when session time changes so a new reminder fires.
+  reminder24hSentAt                    DateTime?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  slot    OfficeHoursSlot? @relation(fields: [officeHoursSlotId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, programId])
+  @@index([programId])
+  @@index([status])
+  @@index([postEventAttendanceStatus])
+  @@map("ProgramRegistration")
+}
+
+/// Jotform "Save & Continue" session id for resuming a partially filled form (24h TTL in app logic).
+enum FormJotformScope {
+  SURVEY
+  INTAKE
+}
+
+model FormJotformProgress {
+  id        String            @id @default(cuid())
+  userId    String
+  scope     FormJotformScope
+  refId     String
+  sessionId String
+  expiresAt DateTime
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, scope, refId])
+  @@index([expiresAt])
+  @@map("FormJotformProgress")
+}
+
+/// Optional time blocks for office hours (aligned with meeting duration); users pick one at registration
+model OfficeHoursSlot {
+  id           String   @id @default(cuid())
+  programId    String
+  startsAt     DateTime
+  endsAt       DateTime
+  label        String?
+  maxAttendees Int      @default(8)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  program       Program               @relation(fields: [programId], references: [id], onDelete: Cascade)
+  registrations ProgramRegistration[]
+
+  @@index([programId])
+  @@map("OfficeHoursSlot")
+}
+
+/// Extra self-serve Jotform links per program (beyond Program scalar URLs)
+model ProgramFormLink {
+  id         String              @id @default(cuid())
+  programId  String
+  kind       ProgramFormLinkKind
+  label      String
+  jotformUrl String
+  sortOrder  Int                 @default(0)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@map("ProgramFormLink")
+}
+
+// ============================================================================
+// VIDEO MODEL
+// ============================================================================
+model Video {
+  id          String   @id @default(cuid())
+  programId   String
+  
+  // Video details
+  title       String
+  description String?  @db.Text
+  
+  // Video platform (Vimeo/YouTube)
+  platform    VideoPlatform
+  videoId     String   // Platform-specific video ID
+  embedUrl    String   // Embed URL
+  
+  // Metadata
+  duration    Int      // Duration in seconds
+  order       Int      @default(0)  // Display order in program
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  views       VideoView[]
+
+  @@index([programId])
+  @@map("Video")
+}
+
+enum VideoPlatform {
+  VIMEO
+  YOUTUBE
+}
+
+// ============================================================================
+// VIDEO VIEW MODEL (Progress Tracking)
+// ============================================================================
+model VideoView {
+  id             String   @id @default(cuid())
+  userId         String
+  videoId        String
+  
+  // Progress tracking
+  watchedSeconds Int      @default(0)
+  progress       Float    @default(0)  // Percentage (0-100)
+  completed      Boolean  @default(false)
+  
+  // Timestamps
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  completedAt    DateTime?
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video          Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([videoId])
+  @@map("VideoView")
+}
+
+// ============================================================================
+// PROGRAM ENROLLMENT MODEL
+// ============================================================================
+model ProgramEnrollment {
+  id              String   @id @default(cuid())
+  userId          String
+  programId       String
+  
+  // Progress tracking
+  overallProgress Float    @default(0)  // Percentage (0-100)
+  completed       Boolean  @default(false)
+  
+  // Timestamps
+  enrolledAt      DateTime @default(now())
+  completedAt     DateTime?
+  updatedAt       DateTime @updatedAt
+  
+  // Relations
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program         Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, programId])
+  @@index([userId])
+  @@index([programId])
+  @@index([completed])
+  @@index([userId, completed])
+  @@map("ProgramEnrollment")
+}
+
+// ============================================================================
+// SURVEY MODEL
+// ============================================================================
+model Survey {
+  id          String   @id @default(cuid())
+  programId   String
+  
+  // Survey details
+  title       String
+  description String?  @db.Text
+  questions   Json     // Survey questions in JSON format
+  type        SurveyType
+  required    Boolean  @default(true)
+  
+  // Jotform integration
+  jotformFormId     String?
+  jotformWebhookUrl String?
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  program     Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  responses   SurveyResponse[]
+
+  @@index([programId])
+  @@map("Survey")
+}
+
+enum SurveyType {
+  PRE_TEST
+  POST_TEST
+  FEEDBACK
+  /// Webinar registration intake (native replacement for Jotform intake).
+  INTAKE
+}
+
+// ============================================================================
+// SURVEY RESPONSE MODEL
+// ============================================================================
+model SurveyResponse {
+  id          String   @id @default(cuid())
+  userId      String
+  surveyId    String
+  
+  // Response data
+  answers     Json     // Survey answers in JSON format
+  score       Float?   // Score if applicable
+  
+  // External submission id (UUID for native submit; Jotform id for legacy webhooks)
+  submissionId String? @unique
+  
+  // Timestamps
+  submittedAt DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  survey      Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, surveyId])
+  @@index([userId])
+  @@index([surveyId])
+  @@map("SurveyResponse")
+}
+
+// ============================================================================
+// PAYMENT MODEL
+// ============================================================================
+model Payment {
+  id          String   @id @default(cuid())
+  userId      String
+  programId   String?
+  
+  // Payment details
+  amount      Int      // Amount in cents
+  type        PaymentType
+  status      PaymentStatus
+  description String?
+  
+  // Bill.com integration
+  billPaymentIntentId String? @unique
+  billPaymentId       String? @unique
+
+  /// Unique per logical payout; worker uses ON CONFLICT DO NOTHING for SQS at-least-once / duplicate enqueue.
+  idempotencyKey String? @unique
+
+  // W9 tracking
+  w9Collected Boolean  @default(false)
+  
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  paidAt      DateTime?
+  failedAt    DateTime?
+  failureReason String?
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program     Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([programId])
+  @@index([status])
+  @@index([type])
+  @@index([userId, createdAt])
+  @@index([userId, status, paidAt])
+  @@map("Payment")
+}
+
+enum PaymentType {
+  HONORARIUM       // Payment for program participation
+  CME_COMPLETION   // Bonus for completing CME
+  SURVEY_BONUS     // Bonus for survey completion
+  REFERRAL         // Referral bonus
+}
+
+enum PaymentStatus {
+  PENDING      // Payment created but not processed
+  PROCESSING   // Being processed by Bill.com
+  PAID         // Successfully paid
+  FAILED       // Payment failed
+  CANCELLED    // Cancelled by admin
+}
+
+// ============================================================================
+// CME CREDIT MODEL
+// ============================================================================
+model CMECredit {
+  id             String   @id @default(cuid())
+  userId         String
+  programId      String
+  
+  // Credit details
+  credits        Float    // Number of CME credits earned
+  certificateUrl String?  // S3 URL to PDF certificate
+  
+  // Timestamps
+  issuedAt       DateTime @default(now())
+  expiresAt      DateTime?
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program        Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([programId])
+  @@map("CMECredit")
+}
+
+// ============================================================================
+// WEBINAR PARTICIPANT EVENT (Zoom webhook join/leave tracking)
+// ============================================================================
+model WebinarParticipantEvent {
+  id               String   @id @default(cuid())
+  programId        String
+  program          Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+  userId           String?  // Matched CHT user (by email) if found
+  event            String   // "JOINED" | "LEFT"
+  zoomMeetingId    String?  // Zoom meeting ID from webhook
+  zoomParticipantId String? // Zoom participant ID in meeting
+  participantName  String?
+  participantEmail String?
+  isHost           Boolean  @default(false)
+  occurredAt       DateTime @default(now())
+  rawPayload       Json?    // Full webhook payload for debugging
+
+  @@index([programId])
+  @@index([userId])
+  @@index([occurredAt])
+  @@index([event])
+  @@index([zoomMeetingId])
+  @@map("WebinarParticipantEvent")
+}
+
+// ============================================================================
+// ANALYTICS EVENT MODEL
+// ============================================================================
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  
+  // Event details
+  eventName String
+  eventData Json     // Event payload
+  
+  // Metadata
+  ipAddress String?
+  userAgent String?
+  
+  // Timestamp
+  timestamp DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventName])
+  @@index([timestamp])
+  @@map("AnalyticsEvent")
+}
+
+// ============================================================================
+// ADMIN AUDIT LOG (SOC 2 — admin mutation trail)
+// ============================================================================
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  actorId    String
+  actorEmail String?
+  action     String
+  resource   String?
+  resourceId String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@index([resource, resourceId])
+  @@map("AdminAuditLog")
+}
+
+// ============================================================================
+// KOL DIRECTORY VISIBILITY (CHT overlay — Content Hub remains source of roster)
+// ============================================================================
+model KolDirectoryVisibility {
+  slug            String   @id
+  visibleOnPublic Boolean  @default(true)
+  visibleOnApp    Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+
+  @@map("kol_directory_visibility")
+}
