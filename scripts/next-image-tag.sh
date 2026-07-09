@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Compute the next semver ECR tag for CHT Platform images.
-# Dev uses plain semver (3.0.0, 3.0.1, …); prod uses v-prefixed (v3.0.0, v3.0.1, …).
-# Ignores other tags (dev-latest, platform-latest, sha tags, etc.).
+# Compute the next semver ECR tag for CHT images.
+# Dev: 1.0.0, 1.0.1, … (cht-dev-* repos)
+# Platform: v1.0.0, v1.0.1, … (cht-platform-* repos)
+# Ignores floating tags (dev-latest, platform-latest, sha tags, etc.).
 #
 # Usage:
 #   ./scripts/next-image-tag.sh [ECR_REPO] [AWS_REGION] [PREFIX]
-#   ./scripts/next-image-tag.sh cht-platform-backend us-east-1      # → 3.0.0
-#   ./scripts/next-image-tag.sh cht-platform-backend us-east-1 v    # → v3.0.0
+#   ./scripts/next-image-tag.sh cht-dev-backend us-east-1       # → 1.0.0
+#   ./scripts/next-image-tag.sh cht-platform-backend us-east-1 v  # → v1.0.0
 
 set -euo pipefail
 
@@ -39,7 +40,7 @@ aws ecr describe-images \
 | uniq > "$TAGS_FILE" || true
 
 if [ ! -s "$TAGS_FILE" ]; then
-  echo "${PREFIX}3.0.0"
+  echo "${PREFIX}1.0.0"
   exit 0
 fi
 

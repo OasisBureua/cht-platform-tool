@@ -9,9 +9,12 @@ ENV=${2:?Usage: prepare-legacy-rds-decommission.sh <us-east-1|us-east-2> <platfo
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/${ENV}.tfvars"
+if [ ! -f "$VAR_FILE" ]; then
+  VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/${ENV}.github.tfvars"
+fi
 
 if [ ! -f "$VAR_FILE" ]; then
-  echo "❌ Variable file not found: $VAR_FILE"
+  echo "❌ Variable file not found: ${ENV}.tfvars or ${ENV}.github.tfvars"
   exit 1
 fi
 

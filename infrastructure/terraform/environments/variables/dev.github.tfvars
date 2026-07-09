@@ -12,8 +12,8 @@ acm_certificate_arn     = "arn:aws:acm:us-east-1:233636046512:certificate/6a358a
 cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/6a358a7c-fe5d-4bbe-8d09-b0fce55c61b7"
 
 # Images are overridden per deploy by workflow (-var backend_image / worker_image)
-backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:3.0.0"
-worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:3.0.0"
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-dev-backend:1.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-dev-worker:1.0.0"
 
 # Database (small dev)
 rds_instance_class    = "db.t3.micro"

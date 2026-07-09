@@ -40,7 +40,10 @@
         "ecr:DescribeRepositories",
         "ecr:ListImages"
       ],
-      "Resource": "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*"
+      "Resource": [
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*",
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-dev-*"
+      ]
     },
     {
       "Sid": "DeployS3",
