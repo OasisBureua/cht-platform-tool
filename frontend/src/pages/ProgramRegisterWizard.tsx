@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
+import { surveysApi } from '../api/surveys';
 import { BillComMark } from '../components/branding/BillComMark';
 import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
@@ -126,6 +127,32 @@ export default function ProgramRegisterWizard() {
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>();
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
+  const [intakeSubmitError, setIntakeSubmitError] = useState<string | null>(null);
+
+  const isNativeIntake =
+    !!program?.intakeSurveyId && program?.intakeUsesJotform !== true;
+
+  const { data: intakeMyResponse } = useQuery({
+    queryKey: ['survey', program?.intakeSurveyId, 'my-response'],
+    queryFn: () => surveysApi.getMyResponse(program!.intakeSurveyId!),
+    enabled: !!userId && !!program?.intakeSurveyId && isNativeIntake,
+  });
+
+  useEffect(() => {
+    if (!intakeMyResponse?.submitted) return;
+    const sid = intakeMyResponse.submissionId ?? intakeMyResponse.responseId;
+    if (sid?.trim()) {
+      setIntakeSubmissionId((prev) => prev?.trim() || sid.trim());
+    }
+  }, [intakeMyResponse]);
+
+  const currentStepKey = steps[stepIndex];
+
+  useEffect(() => {
+    if (currentStepKey !== 'intake') {
+      setIntakeSubmitting(false);
+    }
+  }, [currentStepKey]);
 
   const submitMut = useMutation({
     mutationFn: () =>
@@ -168,18 +195,22 @@ export default function ProgramRegisterWizard() {
 
   const current = steps[stepIndex];
   const isLastStep = stepIndex >= steps.length - 1;
-  const isNativeIntake =
-    !!program.intakeSurveyId && program.intakeUsesJotform !== true;
-  const intakeRecorded = !!intakeSubmissionId?.trim();
+  const intakeRecorded =
+    !!intakeSubmissionId?.trim() || !!intakeMyResponse?.submitted;
 
   const goNext = () => {
     if (current === 'intake' && isNativeIntake) {
+      setIntakeSubmitError(null);
       if (intakeRecorded) {
         setStepIndex((i) => Math.min(i + 1, steps.length - 1));
         return;
       }
       const form = document.getElementById(REGISTRATION_INTAKE_FORM_ID) as HTMLFormElement | null;
       if (form) {
+        if (!form.reportValidity()) {
+          setIntakeSubmitError('Complete the required intake fields before continuing.');
+          return;
+        }
         form.requestSubmit();
         return;
       }
@@ -266,7 +297,13 @@ export default function ProgramRegisterWizard() {
                   hideSubmitButton
                   formId={REGISTRATION_INTAKE_FORM_ID}
                   onSubmittingChange={setIntakeSubmitting}
+                  onSubmitError={() => {
+                    setIntakeSubmitting(false);
+                    setIntakeSubmitError('Could not save intake. Check your connection and try again.');
+                  }}
                   onSubmitted={(submissionId) => {
+                    setIntakeSubmitting(false);
+                    setIntakeSubmitError(null);
                     queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
                     setIntakeSubmissionId(submissionId);
                     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
@@ -296,6 +333,9 @@ export default function ProgramRegisterWizard() {
                   </div>
                 </>
               )}
+              {intakeSubmitError ? (
+                <p className="text-sm text-red-700">{intakeSubmitError}</p>
+              ) : null}
               {intakeRecorded ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                   Intake saved. Tap <strong>Continue</strong> for the next step.
@@ -397,7 +437,7 @@ export default function ProgramRegisterWizard() {
             onClick={goNext}
             disabled={
               submitMut.isPending ||
-              intakeSubmitting ||
+              (current === 'intake' && intakeSubmitting) ||
               (current === 'slot' && slots.length > 0 && !selectedSlotId)
             }
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"

@@ -19,6 +19,7 @@ type Props = {
   hideSubmitButton?: boolean;
   formId?: string;
   onSubmittingChange?: (submitting: boolean) => void;
+  onSubmitError?: () => void;
   onSubmitted?: (submissionId: string) => void;
 };
 
@@ -38,6 +39,7 @@ export function ProgramSurveyPanel({
   hideSubmitButton,
   formId,
   onSubmittingChange,
+  onSubmitError,
   onSubmitted,
 }: Props) {
   const queryClient = useQueryClient();
@@ -62,10 +64,15 @@ export function ProgramSurveyPanel({
       queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
       onSubmitted?.(data.submissionId ?? data.id);
     },
+    onError: () => {
+      onSubmittingChange?.(false);
+      onSubmitError?.();
+    },
   });
 
   useEffect(() => {
     onSubmittingChange?.(submitMut.isPending);
+    return () => onSubmittingChange?.(false);
   }, [submitMut.isPending, onSubmittingChange]);
 
   if (isLoading || !survey) {
