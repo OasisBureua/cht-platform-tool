@@ -19,6 +19,7 @@ import { assertProfileCompleteForPayments } from '../../common/profile-payment-e
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import {
   isPostEventSurveyWithinWindow,
+  getPostEventSurveyUnlockAt,
   loadProgramSurveyMeta,
   programHasPostEventSurvey,
   userHasIntakeSurveyResponse,
@@ -146,7 +147,13 @@ export class ProgramRegistrationsService {
       where: { userId_programId: { userId, programId } },
       select: { id: true },
     });
-    if (!enrolled) {
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+      select: { status: true, postEventAttendanceStatus: true },
+    });
+
+    if (!enrolled && (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)) {
       return false;
     }
 
@@ -160,7 +167,8 @@ export class ProgramRegistrationsService {
     }
 
     const now = new Date();
-    if (!isPostEventSurveyWithinWindow(feedbackSurvey.createdAt, now.getTime())) {
+    const unlockAt = getPostEventSurveyUnlockAt(program);
+    if (!isPostEventSurveyWithinWindow(unlockAt, now.getTime())) {
       return false;
     }
 
@@ -177,6 +185,8 @@ export class ProgramRegistrationsService {
       const durationMin = program.duration ?? 60;
       postSurveyAllowed =
         now.getTime() >= program.startDate.getTime() + durationMin * 60_000;
+    } else if (program.zoomSessionType === ProgramZoomSessionType.MEETING) {
+      postSurveyAllowed = true;
     } else {
       return false;
     }
@@ -184,10 +194,6 @@ export class ProgramRegistrationsService {
       return false;
     }
 
-    const reg = await this.prisma.programRegistration.findUnique({
-      where: { userId_programId: { userId, programId } },
-      select: { status: true, postEventAttendanceStatus: true },
-    });
     if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
       return false;
     }
@@ -1667,6 +1673,10 @@ export class ProgramRegistrationsService {
         postEventAttendanceReviewedByUserId: adminUserId,
       },
     });
+
+    if (status === 'VERIFIED') {
+      await this.ensureEnrollment(reg.userId, reg.programId);
+    }
 
     if (status === 'VERIFIED' && reg.user?.email) {
       this.sesEmail

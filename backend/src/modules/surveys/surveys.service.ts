@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { UserRole, SurveyType } from '@prisma/client';
+import { UserRole, SurveyType, ProgramRegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
@@ -104,6 +104,8 @@ export class SurveysService {
             creditAmount: true,
             zoomSessionType: true,
             startDate: true,
+            duration: true,
+            zoomSessionEndedAt: true,
           },
         },
       },
@@ -136,24 +138,31 @@ export class SurveysService {
         continue;
       }
 
-      const enrolled = await this.prisma.programEnrollment.findUnique({
-        where: { userId_programId: { userId, programId: s.programId } },
-        select: { id: true },
-      });
-      if (!enrolled) {
-        continue;
-      }
-
-      const [existing, reg] = await Promise.all([
-        this.prisma.surveyResponse.findUnique({
-          where: { userId_surveyId: { userId, surveyId: s.id } },
-          select: { id: true, submittedAt: true },
+      const [enrollment, reg] = await Promise.all([
+        this.prisma.programEnrollment.findUnique({
+          where: { userId_programId: { userId, programId: s.programId } },
+          select: { id: true },
         }),
         this.prisma.programRegistration.findUnique({
           where: { userId_programId: { userId, programId: s.programId } },
-          select: { postEventSurveyAcknowledgedAt: true },
+          select: {
+            status: true,
+            postEventSurveyAcknowledgedAt: true,
+          },
         }),
       ]);
+
+      if (
+        !enrollment &&
+        (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)
+      ) {
+        continue;
+      }
+
+      const existing = await this.prisma.surveyResponse.findUnique({
+        where: { userId_surveyId: { userId, surveyId: s.id } },
+        select: { id: true, submittedAt: true },
+      });
 
       const isCompleted =
         !!existing ||
@@ -197,6 +206,8 @@ export class SurveysService {
             creditAmount: true,
             zoomSessionType: true,
             startDate: true,
+            duration: true,
+            zoomSessionEndedAt: true,
           },
         },
       },

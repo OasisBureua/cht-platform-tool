@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, ClipboardList, AlertCircle, Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { surveysApi, type Survey, type SurveyType } from '../api/surveys';
+import { getPostEventSurveyRemainingDays } from '../utils/post-event-survey';
 
 const CARD_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -32,9 +33,12 @@ function typeBadge(type: SurveyType) {
   return { label: type, className: 'bg-gray-100 text-gray-800' };
 }
 
-function getRemainingDays(createdAt: string): number {
-  const created = new Date(createdAt).getTime();
-  if (Number.isNaN(created)) return 7;
+function getRemainingDays(survey: Survey): number {
+  if (survey.program) {
+    return getPostEventSurveyRemainingDays(survey.program);
+  }
+  const created = new Date(survey.createdAt).getTime();
+  if (Number.isNaN(created)) return 0;
   const expiresAt = created + 7 * 24 * 60 * 60 * 1000;
   const remainingMs = Math.max(0, expiresAt - Date.now());
   return Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
@@ -55,7 +59,7 @@ export default function Surveys() {
   const activeCount = activeSurveys.length;
   const completedCount = completedSurveys.length;
   const expiringCount = useMemo(
-    () => activeSurveys.filter((s) => getRemainingDays(s.createdAt) <= 2).length,
+    () => activeSurveys.filter((s) => getRemainingDays(s) <= 2).length,
     [activeSurveys],
   );
   const availableToEarn = useMemo(
@@ -172,7 +176,7 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
   const showHonorarium = survey.type === 'FEEDBACK';
   const honorarium = showHonorarium ? formatHonorarium(survey.program?.honorariumAmount ?? null) : null;
   const payoutLabel = honorarium ?? '—';
-  const remainingDays = getRemainingDays(survey.createdAt);
+  const remainingDays = getRemainingDays(survey);
   const badge = typeBadge(survey.type);
 
   return (

@@ -93,25 +93,6 @@ export function PostEventFeedbackLearnerActions(props: {
   const showAckBlock =
     !surveyAcked && attendanceOk && approved && (manualSurveyAckRequired || nativeSurveyMode);
 
-  const completeSurveyDisabled = nativeSurveyMode
-    ? surveyFormSubmitting || ackMut.isPending || surveyAcked || ackMut.isSuccess
-    : !surveyReadyForAck || ackMut.isPending || !!myRegistration.postEventSurveyAcknowledgedAt || ackMut.isSuccess;
-
-  const handleCompleteSurvey = () => {
-    if (nativeSurveyMode) {
-      onCompleteSurveyNative?.();
-      return;
-    }
-    ackMut.mutateAsync().catch(() => {});
-  };
-
-  const { data: preview, isError: previewError } = useQuery({
-    queryKey: ['programs', programId, 'honorarium-preview'],
-    queryFn: () => programsApi.getHonorariumPreview(programId),
-    enabled: showPayoutBlock,
-    retry: false,
-  });
-
   const ackMut = useMutation({
     mutationFn: () => programsApi.acknowledgePostEventSurvey(programId),
     onSuccess: () => {
@@ -139,6 +120,28 @@ export function PostEventFeedbackLearnerActions(props: {
       onHonorariumRequestSubmitted?.();
     },
   });
+
+  const { data: preview, isError: previewError } = useQuery({
+    queryKey: ['programs', programId, 'honorarium-preview'],
+    queryFn: () => programsApi.getHonorariumPreview(programId),
+    enabled: showPayoutBlock,
+    retry: false,
+  });
+
+  const completeSurveyDisabled = nativeSurveyMode
+    ? surveyFormSubmitting || ackMut.isPending || surveyAcked || ackMut.isSuccess
+    : !surveyReadyForAck ||
+      ackMut.isPending ||
+      !!myRegistration?.postEventSurveyAcknowledgedAt ||
+      ackMut.isSuccess;
+
+  const handleCompleteSurvey = () => {
+    if (nativeSurveyMode) {
+      onCompleteSurveyNative?.();
+      return;
+    }
+    ackMut.mutateAsync().catch(() => {});
+  };
 
   if (!myRegistration || !approved) {
     return null;

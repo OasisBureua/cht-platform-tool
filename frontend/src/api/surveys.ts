@@ -39,6 +39,8 @@ export interface Survey {
     creditAmount?: number | null;
     zoomSessionType?: string;
     startDate?: string | null;
+    duration?: number | null;
+    zoomSessionEndedAt?: string | null;
   };
 }
 
