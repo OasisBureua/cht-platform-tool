@@ -17,6 +17,8 @@ import { surveyHasNativeQuestions } from '../utils/survey-questions';
 import { buildPostEventSurveyEmbedSrc } from '../utils/post-event-survey';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
+const SURVEY_DETAIL_NATIVE_FORM_ID = 'survey-detail-native-form';
+
 function typeLabel(type?: Survey['type']) {
   if (!type) return 'Survey';
   if (type === 'PRE_TEST') return 'Pre-test';
@@ -38,6 +40,7 @@ export default function SurveyDetail() {
   const userId = user?.userId ?? '';
 
   const [started, setStarted] = useState(false);
+  const [nativeSurveyError, setNativeSurveyError] = useState<string | null>(null);
 
   const { data: survey, isLoading, isError, error } = useQuery({
     queryKey: ['survey', id],
@@ -133,6 +136,7 @@ export default function SurveyDetail() {
     mutationFn: async (answers: Record<string, unknown>) =>
       surveysApi.submitResponse(id!, { answers }),
     onSuccess: () => {
+      setNativeSurveyError(null);
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'jotform-resume'] });
@@ -140,7 +144,22 @@ export default function SurveyDetail() {
         queryClient.invalidateQueries({ queryKey: ['program', survey.programId, 'registration'] });
       }
     },
+    onError: () => {
+      setNativeSurveyError('Could not save survey. Check your connection and try again.');
+    },
   });
+
+  const handleCompleteNativeSurvey = () => {
+    setNativeSurveyError(null);
+    if (surveySaved || surveyAcked) return;
+    const form = document.getElementById(SURVEY_DETAIL_NATIVE_FORM_ID) as HTMLFormElement | null;
+    if (!form) return;
+    if (!form.reportValidity()) {
+      setNativeSurveyError('Complete all required fields before tapping Complete survey.');
+      return;
+    }
+    form.requestSubmit();
+  };
 
   if (!userId) {
     return (
@@ -277,6 +296,8 @@ export default function SurveyDetail() {
                     }}
                     disabled={formLocked || submitMutation.isPending}
                     submitting={submitMutation.isPending}
+                    hideSubmitButton={isPostEventFeedback}
+                    formId={isPostEventFeedback ? SURVEY_DETAIL_NATIVE_FORM_ID : undefined}
                     showPayoutNotice={isPostEventFeedback}
                     onSubmit={(answers) => submitMutation.mutate(answers)}
                   />
@@ -334,11 +355,24 @@ export default function SurveyDetail() {
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
                   <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
                   <p className="text-sm text-gray-600">
-                    Submit the survey above to save your responses
-                    {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
-                      ? ', then confirm payout details below to create your pending honorarium request'
-                      : ''}
-                    .
+                    {isPostEventFeedback && useNativeRenderer ? (
+                      <>
+                        Complete all questions above, then tap <strong>Complete survey</strong> below to save your
+                        responses
+                        {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
+                          ? ' before confirming payout details'
+                          : ''}
+                        .
+                      </>
+                    ) : (
+                      <>
+                        Submit the survey above to save your responses
+                        {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
+                          ? ', then confirm payout details below to create your pending honorarium request'
+                          : ''}
+                        .
+                      </>
+                    )}
                   </p>
                   <PostEventFeedbackLearnerActions
                     programId={survey.programId}
@@ -346,6 +380,10 @@ export default function SurveyDetail() {
                     myRegistration={programRegistration}
                     hasHonorarium={Boolean(survey.program?.honorariumAmount && survey.program.honorariumAmount > 0)}
                     surveyReadyForAck={surveySaved && !useNativeRenderer}
+                    nativeSurveyMode={isPostEventFeedback && useNativeRenderer}
+                    surveyFormSubmitting={submitMutation.isPending}
+                    surveySubmitError={nativeSurveyError}
+                    onCompleteSurveyNative={handleCompleteNativeSurvey}
                     surveyDetailId={id}
                   />
                 </div>

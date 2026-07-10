@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Program, ProgramRegistrationState } from '../../api/programs';
 import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
@@ -6,6 +7,8 @@ import { BillComMark } from '../branding/BillComMark';
 import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
 
 type Phase = 'intro' | 'survey' | 'payout' | 'done';
+
+const POST_EVENT_NATIVE_FORM_ID = 'post-event-native-survey';
 
 /** Persists across refresh: user clicked Continue for this program and is committed to the flow. */
 function flowStartedKey(programId: string) {
@@ -48,8 +51,11 @@ export default function PostEventParticipantFlow(props: {
   onPostEventNavLockChange?: (locked: boolean) => void;
 }) {
   const { program, userId, userSummary, enrolled, myRegistration, onPostEventNavLockChange } = props;
+  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>('intro');
   const [flowStarted, setFlowStarted] = useState(() => readFlowStarted(program.id));
+  const [nativeSurveySubmitting, setNativeSurveySubmitting] = useState(false);
+  const [nativeSurveyError, setNativeSurveyError] = useState<string | null>(null);
 
   const hasSurvey =
     program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
@@ -198,6 +204,35 @@ export default function PostEventParticipantFlow(props: {
   const nativePostEventSurvey =
     !!program.feedbackSurveyId && program.feedbackUsesJotform !== true;
 
+  useEffect(() => {
+    if (phase !== 'survey') {
+      setNativeSurveySubmitting(false);
+    }
+  }, [phase]);
+
+  const advanceAfterSurvey = () => {
+    if (hasHonorarium) setPhase('payout');
+    else setPhase('done');
+  };
+
+  const handleCompleteNativeSurvey = () => {
+    setNativeSurveyError(null);
+    if (surveySubmitted || surveyAcked) {
+      advanceAfterSurvey();
+      return;
+    }
+    const form = document.getElementById(POST_EVENT_NATIVE_FORM_ID) as HTMLFormElement | null;
+    if (!form) {
+      advanceAfterSurvey();
+      return;
+    }
+    if (!form.reportValidity()) {
+      setNativeSurveyError('Complete all required fields before tapping Complete survey.');
+      return;
+    }
+    form.requestSubmit();
+  };
+
   return (
     <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
       <h2 className="text-base font-semibold text-gray-900">Post-event steps</h2>
@@ -279,8 +314,12 @@ export default function PostEventParticipantFlow(props: {
           hasHonorarium={hasHonorarium}
           surveyReadyForAck={surveySubmitted}
           manualSurveyAckRequired={!nativePostEventSurvey}
+          nativeSurveyMode={nativePostEventSurvey}
+          surveyFormSubmitting={nativeSurveySubmitting}
+          surveySubmitError={nativeSurveyError}
+          onCompleteSurveyNative={handleCompleteNativeSurvey}
           betweenAckHelpAndButton={
-            surveySubmitted ? null : program.feedbackSurveyId ? (
+            surveySubmitted && !nativePostEventSurvey ? null : program.feedbackSurveyId ? (
               <ProgramSurveyPanel
                 surveyId={program.feedbackSurveyId}
                 userId={userId}
@@ -289,10 +328,19 @@ export default function PostEventParticipantFlow(props: {
                 feedbackUsesJotform={program.feedbackUsesJotform}
                 authenticated
                 userSummary={userSummary}
-                submitLabel="Continue"
+                hideSubmitButton={nativePostEventSurvey}
+                formId={nativePostEventSurvey ? POST_EVENT_NATIVE_FORM_ID : undefined}
+                onSubmittingChange={setNativeSurveySubmitting}
+                onSubmitError={() => {
+                  setNativeSurveySubmitting(false);
+                  setNativeSurveyError('Could not save survey. Check your connection and try again.');
+                }}
                 onSubmitted={() => {
-                  if (hasHonorarium) setPhase('payout');
-                  else setPhase('done');
+                  setNativeSurveySubmitting(false);
+                  setNativeSurveyError(null);
+                  queryClient.invalidateQueries({ queryKey: ['program', program.id, 'registration'] });
+                  queryClient.invalidateQueries({ queryKey: ['survey', program.feedbackSurveyId, 'my-response'] });
+                  advanceAfterSurvey();
                 }}
               />
             ) : program.jotformSurveyUrl?.trim() ? (
