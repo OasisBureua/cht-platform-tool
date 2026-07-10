@@ -519,6 +519,16 @@ export class AdminController {
     return this.surveysService.deleteSurvey(id);
   }
 
+  @Get('surveys/:id/responses')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List all learner responses for a survey' })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  listSurveyResponses(@Param('id') id: string) {
+    return this.surveysService.listResponsesForAdmin(id);
+  }
+
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -1411,7 +1421,33 @@ export class AdminController {
       await this.programRegistrations.listPendingPostEventAttendanceForAdmin();
     return rows.map((r) => ({
       id: r.id,
+      status: r.status,
       postEventAttendanceStatus: r.postEventAttendanceStatus,
+      postEventAttendanceReviewedAt:
+        r.postEventAttendanceReviewedAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
+  @Get('webinar-registrations/attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Post-event attendance records (pending, verified, denied) for published live sessions',
+  })
+  async listPostEventAttendance() {
+    const rows =
+      await this.programRegistrations.listPostEventAttendanceForAdmin();
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      postEventAttendanceStatus: r.postEventAttendanceStatus,
+      postEventAttendanceReviewedAt:
+        r.postEventAttendanceReviewedAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
       user: r.user,
       program: r.program,
@@ -1506,16 +1542,31 @@ export class AdminController {
     const intakeByUser = new Map(
       intakeResponses.map((resp) => [resp.userId, resp]),
     );
-    return rows.map((r) => {
+    const intakeBySubmissionId = new Map(
+      intakeResponses
+        .filter((resp) => resp.submissionId?.trim())
+        .map((resp) => [resp.submissionId!.trim(), resp]),
+    );
+    const intakeByResponseId = new Map(
+      intakeResponses.map((resp) => [resp.id, resp]),
+    );
+
+    const mapRegistrationRow = (r: (typeof rows)[number]) => {
       const intakeRequired = !!effectiveWebinarIntakeFormUrl(
         r.program.zoomSessionType,
         r.program.jotformIntakeFormUrl,
         defaultIntake,
       );
-      const intakeResponse = intakeByUser.get(r.userId);
+      const intakeSubmissionKey = r.intakeSubmissionId?.trim() ?? '';
+      const intakeResponse =
+        intakeByUser.get(r.userId) ??
+        (intakeSubmissionKey
+          ? intakeBySubmissionId.get(intakeSubmissionKey) ??
+            intakeByResponseId.get(intakeSubmissionKey)
+          : undefined);
       const intakeComplete =
         !intakeRequired ||
-        !!r.intakeSubmissionId?.trim() ||
+        !!intakeSubmissionKey ||
         !!intakeResponse;
       const postEventResponse = postEventByUser.get(r.userId);
       const postEventJotformSubmissionId =
@@ -1571,7 +1622,19 @@ export class AdminController {
           r.postEventSurveyAcknowledgedAt?.toISOString(),
         honorariumRequestedAt: r.honorariumRequestedAt?.toISOString(),
       };
-    });
+    };
+
+    return {
+      surveys: {
+        intake: intakeSurvey
+          ? { id: intakeSurvey.id, questions: intakeSurvey.questions }
+          : null,
+        feedback: feedbackSurvey
+          ? { id: feedbackSurvey.id, questions: feedbackSurvey.questions }
+          : null,
+      },
+      registrations: rows.map(mapRegistrationRow),
+    };
   }
 
   @Patch('registrations/:registrationId')

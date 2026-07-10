@@ -383,6 +383,73 @@ export class SurveysService {
     return { deleted: true, id };
   }
 
+  /** Admin: all submitted responses for a survey with learner identity. */
+  async listResponsesForAdmin(surveyId: string) {
+    const survey = await this.prisma.survey.findUnique({
+      where: { id: surveyId },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        questions: true,
+        programId: true,
+        program: { select: { id: true, title: true } },
+      },
+    });
+    if (!survey) throw new NotFoundException('Survey not found');
+
+    const responses = await this.prisma.surveyResponse.findMany({
+      where: { surveyId },
+      orderBy: { submittedAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+          },
+        },
+      },
+    });
+
+    const userIds = responses.map((r) => r.userId);
+    const registrations =
+      survey.programId && userIds.length > 0
+        ? await this.prisma.programRegistration.findMany({
+            where: {
+              programId: survey.programId,
+              userId: { in: userIds },
+            },
+            select: {
+              userId: true,
+              status: true,
+              postEventAttendanceStatus: true,
+            },
+          })
+        : [];
+    const regByUser = new Map(registrations.map((r) => [r.userId, r]));
+
+    return {
+      survey: {
+        id: survey.id,
+        title: survey.title,
+        type: survey.type,
+        questions: survey.questions,
+        program: survey.program,
+      },
+      responses: responses.map((r) => ({
+        id: r.id,
+        submissionId: r.submissionId,
+        submittedAt: r.submittedAt.toISOString(),
+        answers: r.answers,
+        user: r.user,
+        registration: regByUser.get(r.userId) ?? null,
+      })),
+    };
+  }
+
   /**
    * Create a Survey from a Jotform template: clone form, add webhook, create Survey.
    * Use when creating a new webinar/program that needs a unique survey.

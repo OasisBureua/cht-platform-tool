@@ -1715,14 +1715,29 @@ export class ProgramRegistrationsService {
   }
 
   async listPendingPostEventAttendanceForAdmin() {
+    return this.listPostEventAttendanceForAdmin({
+      statuses: [PostEventAttendanceStatus.PENDING_VERIFICATION],
+    });
+  }
+
+  /** All approved learners with attendance tracking (pending, verified, or denied). */
+  async listPostEventAttendanceForAdmin(opts?: {
+    programId?: string;
+    statuses?: PostEventAttendanceStatus[];
+  }) {
+    const statuses = opts?.statuses ?? [
+      PostEventAttendanceStatus.PENDING_VERIFICATION,
+      PostEventAttendanceStatus.VERIFIED,
+      PostEventAttendanceStatus.DENIED,
+    ];
     return this.prisma.programRegistration.findMany({
       where: {
         status: ProgramRegistrationStatus.APPROVED,
-        postEventAttendanceStatus:
-          PostEventAttendanceStatus.PENDING_VERIFICATION,
+        postEventAttendanceStatus: { in: statuses },
         program: {
           zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
           status: 'PUBLISHED',
+          ...(opts?.programId ? { id: opts.programId } : {}),
         },
       },
       include: {
@@ -1747,7 +1762,7 @@ export class ProgramRegistrationsService {
           },
         },
       },
-      orderBy: { updatedAt: 'asc' },
+      orderBy: [{ program: { title: 'asc' } }, { updatedAt: 'desc' }],
     });
   }
 

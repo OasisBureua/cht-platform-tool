@@ -116,6 +116,12 @@ export default function AdminSurveys() {
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <Link
+                        to={`/admin/surveys/${s.id}/responses`}
+                        className="text-sm font-semibold text-blue-700 hover:underline"
+                      >
+                        Responses
+                      </Link>
+                      <Link
                         to={`/admin/surveys/${s.id}/edit`}
                         className="text-sm font-semibold text-gray-900 hover:underline"
                       >

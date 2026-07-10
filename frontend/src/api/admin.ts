@@ -195,6 +195,56 @@ export interface WebhookImportedProgram {
   missingFields: string[];
 }
 
+export interface ProgramRegistrationAdminRow {
+  id: string;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  lastSubmittedAt?: string;
+  intakeSubmissionId?: string | null;
+  intakeRequired?: boolean;
+  intakeComplete?: boolean;
+  jotformIntakeSubmissionViewUrl?: string | null;
+  postEventSurveySubmitted?: boolean;
+  postEventSurveyResponseId?: string | null;
+  postEventSurveyAnswers?: Record<string, unknown> | null;
+  postEventSurveySubmittedAt?: string | null;
+  intakeSurveyResponseId?: string | null;
+  intakeSurveyAnswers?: Record<string, unknown> | null;
+  intakeSurveySubmittedAt?: string | null;
+  postEventJotformSubmissionId?: string | null;
+  jotformPostEventSubmissionViewUrl?: string | null;
+  postEventSurveyAcknowledgedAt?: string | null;
+  postEventAttendanceStatus?: string | null;
+  postEventAttendanceReviewedAt?: string | null;
+  user: { id: string; email: string; firstName: string; lastName: string };
+  slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
+}
+
+export interface PostEventAttendanceAdminRow {
+  id: string;
+  status: string;
+  postEventAttendanceStatus: string;
+  postEventAttendanceReviewedAt?: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    specialty?: string | null;
+    institution?: string | null;
+    city?: string | null;
+  };
+  program: {
+    id: string;
+    title: string;
+    zoomSessionType?: 'WEBINAR' | 'MEETING';
+    startDate?: string | null;
+    zoomJoinUrl?: string | null;
+  };
+}
+
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     try {
@@ -342,31 +392,25 @@ export const adminApi = {
 
   listProgramRegistrations: async (programId: string) => {
     const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/registrations`);
-    return data as Array<{
-      id: string;
-      status: string;
-      createdAt: string;
-      updatedAt?: string;
-      lastSubmittedAt?: string;
-      intakeSubmissionId?: string | null;
-      intakeRequired?: boolean;
-      intakeComplete?: boolean;
-      jotformIntakeSubmissionViewUrl?: string | null;
-      postEventSurveySubmitted?: boolean;
-      postEventSurveyResponseId?: string | null;
-      postEventSurveyAnswers?: Record<string, unknown> | null;
-      postEventSurveySubmittedAt?: string | null;
-      intakeSurveyResponseId?: string | null;
-      intakeSurveyAnswers?: Record<string, unknown> | null;
-      intakeSurveySubmittedAt?: string | null;
-      postEventJotformSubmissionId?: string | null;
-      jotformPostEventSubmissionViewUrl?: string | null;
-      postEventSurveyAcknowledgedAt?: string | null;
-      postEventAttendanceStatus?: string | null;
-      postEventAttendanceReviewedAt?: string | null;
-      user: { id: string; email: string; firstName: string; lastName: string };
-      slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
-    }>;
+    const payload = data as
+      | {
+          registrations: Array<ProgramRegistrationAdminRow>;
+          surveys?: {
+            intake?: { id: string; questions: unknown } | null;
+            feedback?: { id: string; questions: unknown } | null;
+          };
+        }
+      | ProgramRegistrationAdminRow[];
+    if (Array.isArray(payload)) {
+      return {
+        registrations: payload,
+        surveys: { intake: null, feedback: null },
+      };
+    }
+    return {
+      registrations: payload.registrations ?? [],
+      surveys: payload.surveys ?? { intake: null, feedback: null },
+    };
   },
 
   listProgramEnrollments: async (programId: string) => {
@@ -407,27 +451,42 @@ export const adminApi = {
 
   listPendingPostEventAttendance: async () => {
     const { data } = await apiClient.get('/admin/webinar-registrations/pending-attendance');
-    return data as Array<{
-      id: string;
-      postEventAttendanceStatus: string;
-      createdAt: string;
-      user: {
-        id: string;
-        email: string;
-        firstName: string;
-        lastName: string;
-        specialty?: string | null;
-        institution?: string | null;
-        city?: string | null;
-      };
-      program: {
+    return data as PostEventAttendanceAdminRow[];
+  },
+
+  listPostEventAttendance: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/attendance');
+    return data as PostEventAttendanceAdminRow[];
+  },
+
+  listSurveyResponses: async (surveyId: string) => {
+    const { data } = await apiClient.get(`/admin/surveys/${encodeURIComponent(surveyId)}/responses`);
+    return data as {
+      survey: {
         id: string;
         title: string;
-        zoomSessionType?: 'WEBINAR' | 'MEETING';
-        startDate?: string | null;
-        zoomJoinUrl?: string | null;
+        type: string;
+        questions: unknown;
+        program?: { id: string; title: string } | null;
       };
-    }>;
+      responses: Array<{
+        id: string;
+        submissionId: string | null;
+        submittedAt: string;
+        answers: Record<string, unknown>;
+        user: {
+          id: string;
+          email: string;
+          firstName: string;
+          lastName: string;
+          specialty?: string | null;
+        };
+        registration: {
+          status: string;
+          postEventAttendanceStatus: string;
+        } | null;
+      }>;
+    };
   },
 
   updatePostEventAttendance: async (registrationId: string, status: 'VERIFIED' | 'DENIED') => {

@@ -10,8 +10,8 @@ import {
   attendanceStatusLabel,
   registrationStatusClass,
   registrationStatusLabel,
-  surveyAnswersToRows,
 } from '../../utils/admin-survey-display';
+import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 
 export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
@@ -23,7 +23,6 @@ export default function AdminProgramHub() {
   const [formLabel, setFormLabel] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [webinarHubTab, setWebinarHubTab] = useState<'approvals' | 'enrolled' | 'surveys'>('approvals');
-  const [expandedSurveyRow, setExpandedSurveyRow] = useState<string | null>(null);
 
   const { data: program, isLoading: pLoading } = useQuery({
     queryKey: ['admin', 'program', programId],
@@ -35,11 +34,14 @@ export default function AdminProgramHub() {
     ? String((program as Record<string, unknown>).zoomSessionType || 'WEBINAR')
     : null;
 
-  const { data: registrations = [], isLoading: rLoading } = useQuery({
+  const { data: registrationPayload, isLoading: rLoading } = useQuery({
     queryKey: ['admin', 'program', programId, 'registrations'],
     queryFn: () => adminApi.listProgramRegistrations(programId!),
     enabled: !!programId && !!program,
   });
+  const registrations = registrationPayload?.registrations ?? [];
+  const intakeQuestions = registrationPayload?.surveys?.intake?.questions;
+  const feedbackQuestions = registrationPayload?.surveys?.feedback?.questions;
 
   const { data: enrollments = [], isLoading: eLoading } = useQuery({
     queryKey: ['admin', 'program', programId, 'enrollments'],
@@ -239,6 +241,8 @@ export default function AdminProgramHub() {
       adminApi.updatePostEventAttendance(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'program', programId, 'registrations'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'attendance'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending-attendance'] });
     },
   });
 
@@ -745,11 +749,12 @@ export default function AdminProgramHub() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {registrations.map((r) => {
-                            const rowKey = `intake-${r.id}`;
-                            const intakeRows = surveyAnswersToRows(r.intakeSurveyAnswers);
-                            const hasIntake = r.intakeComplete || intakeRows.length > 0;
+                            const hasIntake =
+                              r.intakeComplete ||
+                              !!r.intakeSurveyAnswers ||
+                              !!r.intakeSubmissionId?.trim();
                             return (
-                              <tr key={rowKey}>
+                              <tr key={`intake-${r.id}`}>
                                 <td className="py-2 pr-4 align-top">
                                   {r.user.firstName} {r.user.lastName}
                                   <div className="text-xs text-gray-500">{r.user.email}</div>
@@ -776,32 +781,12 @@ export default function AdminProgramHub() {
                                     </a>
                                   ) : null}
                                 </td>
-                                <td className="py-2 pr-4 align-top">
-                                  {intakeRows.length > 0 ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        className="text-xs font-semibold text-gray-900 underline"
-                                        onClick={() => setExpandedSurveyRow(expandedSurveyRow === rowKey ? null : rowKey)}
-                                      >
-                                        {expandedSurveyRow === rowKey ? 'Hide' : 'View'} ({intakeRows.length})
-                                      </button>
-                                      {expandedSurveyRow === rowKey ? (
-                                        <table className="mt-2 w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
-                                          <tbody>
-                                            {intakeRows.map((row) => (
-                                              <tr key={row.label} className="border-b border-gray-50 last:border-0">
-                                                <td className="py-1.5 pr-3 font-medium text-gray-700 align-top w-2/5">{row.label}</td>
-                                                <td className="py-1.5 text-gray-600">{row.value}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      ) : null}
-                                    </>
-                                  ) : (
-                                    <span className="text-gray-500">—</span>
-                                  )}
+                                <td className="py-2 pr-4 align-top min-w-[14rem]">
+                                  <SurveyAnswersTable
+                                    answers={r.intakeSurveyAnswers}
+                                    questionsSchema={intakeQuestions}
+                                    compact
+                                  />
                                 </td>
                               </tr>
                             );
@@ -825,18 +810,16 @@ export default function AdminProgramHub() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {registrations.map((r) => {
-                            const rowKey = `post-${r.id}`;
-                            const postRows = surveyAnswersToRows(r.postEventSurveyAnswers);
                             const att = r.postEventAttendanceStatus;
                             const attBusy = attendanceMut.isPending && attendanceMut.variables?.id === r.id;
                             return (
-                              <tr key={rowKey}>
+                              <tr key={`post-${r.id}`}>
                                 <td className="py-2 pr-4 align-top">
                                   {r.user.firstName} {r.user.lastName}
                                   <div className="text-xs text-gray-500">{r.user.email}</div>
                                 </td>
                                 <td className="py-2 pr-4 align-top">
-                                  <div className="space-y-1.5">
+                                  <div className="space-y-1">
                                     <span
                                       className={[
                                         'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
@@ -851,6 +834,11 @@ export default function AdminProgramHub() {
                                     >
                                       {attendanceStatusLabel(att)}
                                     </span>
+                                    {r.postEventAttendanceReviewedAt ? (
+                                      <div className="text-[11px] text-gray-500">
+                                        {format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, h:mm a')}
+                                      </div>
+                                    ) : null}
                                     {r.status === 'APPROVED' && att !== 'VERIFIED' && att !== 'NOT_REQUIRED' ? (
                                       <div className="flex gap-1.5">
                                         <button
@@ -892,32 +880,12 @@ export default function AdminProgramHub() {
                                     </a>
                                   ) : null}
                                 </td>
-                                <td className="py-2 pr-4 align-top">
-                                  {postRows.length > 0 ? (
-                                    <>
-                                      <button
-                                        type="button"
-                                        className="text-xs font-semibold text-gray-900 underline"
-                                        onClick={() => setExpandedSurveyRow(expandedSurveyRow === rowKey ? null : rowKey)}
-                                      >
-                                        {expandedSurveyRow === rowKey ? 'Hide' : 'View'} ({postRows.length})
-                                      </button>
-                                      {expandedSurveyRow === rowKey ? (
-                                        <table className="mt-2 w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
-                                          <tbody>
-                                            {postRows.map((row) => (
-                                              <tr key={row.label} className="border-b border-gray-50 last:border-0">
-                                                <td className="py-1.5 pr-3 font-medium text-gray-700 align-top w-2/5">{row.label}</td>
-                                                <td className="py-1.5 text-gray-600">{row.value}</td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      ) : null}
-                                    </>
-                                  ) : (
-                                    <span className="text-gray-500">—</span>
-                                  )}
+                                <td className="py-2 pr-4 align-top min-w-[14rem]">
+                                  <SurveyAnswersTable
+                                    answers={r.postEventSurveyAnswers}
+                                    questionsSchema={feedbackQuestions}
+                                    compact
+                                  />
                                 </td>
                               </tr>
                             );

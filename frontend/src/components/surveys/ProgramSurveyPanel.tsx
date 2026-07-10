@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { surveysApi } from '../../api/surveys';
@@ -15,6 +16,9 @@ type Props = {
   authenticated: boolean;
   userSummary?: { firstName?: string; lastName?: string; email?: string };
   submitLabel?: string;
+  hideSubmitButton?: boolean;
+  formId?: string;
+  onSubmittingChange?: (submitting: boolean) => void;
   onSubmitted?: (submissionId: string) => void;
 };
 
@@ -31,6 +35,9 @@ export function ProgramSurveyPanel({
   authenticated,
   userSummary,
   submitLabel,
+  hideSubmitButton,
+  formId,
+  onSubmittingChange,
   onSubmitted,
 }: Props) {
   const queryClient = useQueryClient();
@@ -56,6 +63,10 @@ export function ProgramSurveyPanel({
       onSubmitted?.(data.submissionId ?? data.id);
     },
   });
+
+  useEffect(() => {
+    onSubmittingChange?.(submitMut.isPending);
+  }, [submitMut.isPending, onSubmittingChange]);
 
   if (isLoading || !survey) {
     return (
@@ -90,6 +101,8 @@ export function ProgramSurveyPanel({
         userSummary={userSummary}
         submitting={submitMut.isPending}
         submitLabel={submitLabel}
+        hideSubmitButton={hideSubmitButton}
+        formId={formId}
         showPayoutNotice={survey.type === 'FEEDBACK'}
         onSubmit={(answers) => submitMut.mutate(answers)}
       />
