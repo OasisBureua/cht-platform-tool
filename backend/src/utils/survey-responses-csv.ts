@@ -112,11 +112,15 @@ export function buildSurveyResponsesCsv(input: {
 }
 
 export function surveyResponsesCsvFilename(
-  surveyTitle: string,
+  programTitle: string,
   surveyType: string,
 ): string {
-  const slug = slugifyFilenamePart(surveyTitle) || 'survey';
-  const type = slugifyFilenamePart(surveyType) || 'responses';
-  const date = new Date().toISOString().slice(0, 10);
-  return `${slug}-${type}-responses-${date}.csv`;
+  const programSlug = slugifyFilenamePart(programTitle) || 'survey';
+  const typeSlug =
+    surveyType === 'INTAKE'
+      ? 'registration'
+      : surveyType === 'FEEDBACK'
+        ? 'post-event'
+        : slugifyFilenamePart(surveyType) || 'survey';
+  return `${programSlug}-${typeSlug}-responses.csv`;
 }

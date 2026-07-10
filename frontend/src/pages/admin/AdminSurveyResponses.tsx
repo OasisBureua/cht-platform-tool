@@ -6,8 +6,9 @@ import { ChevronLeft, Download } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { downloadBlob } from '../../utils/download-blob';
+import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 import {
+  adminSurveyDisplayTitle,
   attendanceStatusLabel,
   registrationStatusClass,
   registrationStatusLabel,
@@ -55,13 +56,10 @@ export default function AdminSurveyResponses() {
     setCsvDownloading(true);
     try {
       const blob = await adminApi.downloadSurveyResponsesCsv(id);
-      const label =
-        survey.type === 'INTAKE'
-          ? 'registration-intake'
-          : survey.type === 'FEEDBACK'
-            ? 'post-event'
-            : 'survey';
-      downloadBlob(blob, `${label}-responses.csv`);
+      downloadBlob(
+        blob,
+        surveyResponsesDownloadFilename(survey.program?.title ?? '', survey.type),
+      );
     } finally {
       setCsvDownloading(false);
     }
@@ -79,7 +77,9 @@ export default function AdminSurveyResponses() {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{survey.title}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            {adminSurveyDisplayTitle(survey.program?.title, survey.type, survey.title)}
+          </h1>
           <p className="mt-1 text-sm text-gray-600">
             {survey.type} survey
             {survey.program ? (

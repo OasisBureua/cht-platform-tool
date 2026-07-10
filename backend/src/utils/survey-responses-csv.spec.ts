@@ -66,9 +66,12 @@ describe('survey-responses-csv', () => {
     expect(csv).toContain('"Says ""yes"", maybe"');
   });
 
-  it('builds a safe filename', () => {
-    expect(surveyResponsesCsvFilename('Testing Forms Pt. 2', 'FEEDBACK')).toMatch(
-      /^testing-forms-pt-2-feedback-responses-\d{4}-\d{2}-\d{2}\.csv$/,
+  it('builds a program-prefixed filename', () => {
+    expect(surveyResponsesCsvFilename('Program 1', 'INTAKE')).toBe(
+      'program-1-registration-responses.csv',
+    );
+    expect(surveyResponsesCsvFilename('Program 1', 'FEEDBACK')).toBe(
+      'program-1-post-event-responses.csv',
     );
   });
 });

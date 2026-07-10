@@ -51,4 +51,27 @@ export function attendanceStatusLabel(att: string | null | undefined): string {
   return '—';
 }
 
+/** Admin list labels, e.g. PROGRAM 1 - REGISTRATION (INTAKE). */
+export function adminSurveyDisplayTitle(
+  programTitle: string | null | undefined,
+  surveyType: string,
+  fallbackTitle?: string,
+): string {
+  const program =
+    programTitle?.trim() ||
+    fallbackTitle?.split(' - ')[0]?.trim() ||
+    'Survey';
+  const programLabel = program.toUpperCase();
+
+  if (surveyType === 'INTAKE') {
+    return `${programLabel} - REGISTRATION (INTAKE)`;
+  }
+  if (surveyType === 'FEEDBACK') {
+    return `${programLabel} - POST EVENT (FEEDBACK)`;
+  }
+
+  const typeLabel = surveyType.replace(/_/g, ' ').toUpperCase();
+  return `${programLabel} - ${typeLabel}`;
+}
+
 export type { SurveyQuestion };

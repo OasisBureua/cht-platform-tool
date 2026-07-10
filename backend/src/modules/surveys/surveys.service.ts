@@ -483,7 +483,10 @@ export class SurveysService {
       })),
     });
     return {
-      filename: surveyResponsesCsvFilename(survey.title, survey.type),
+      filename: surveyResponsesCsvFilename(
+        survey.program?.title ?? '',
+        survey.type,
+      ),
       body,
     };
   }

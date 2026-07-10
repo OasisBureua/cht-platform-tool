@@ -7,12 +7,13 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { Check, ChevronLeft, Copy, Download, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
+  adminSurveyDisplayTitle,
   attendanceStatusLabel,
   registrationStatusClass,
   registrationStatusLabel,
 } from '../../utils/admin-survey-display';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
-import { downloadBlob } from '../../utils/download-blob';
+import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 
 export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
@@ -51,7 +52,10 @@ export default function AdminProgramHub() {
     setCsvDownloading(kind);
     try {
       const blob = await adminApi.downloadSurveyResponsesCsv(surveyId);
-      downloadBlob(blob, `${kind}-survey-responses.csv`);
+      downloadBlob(
+        blob,
+        surveyResponsesDownloadFilename(program?.title ?? '', kind),
+      );
     } finally {
       setCsvDownloading(null);
     }
@@ -751,7 +755,9 @@ export default function AdminProgramHub() {
                 <div className="space-y-8">
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-gray-900">Registration intake</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {adminSurveyDisplayTitle(program?.title, 'INTAKE')}
+                      </h3>
                       {intakeSurveyId ? (
                         <button
                           type="button"
@@ -825,7 +831,9 @@ export default function AdminProgramHub() {
 
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-gray-900">Post-event survey</h3>
+                      <h3 className="text-sm font-semibold text-gray-900">
+                        {adminSurveyDisplayTitle(program?.title, 'FEEDBACK')}
+                      </h3>
                       {feedbackSurveyId ? (
                         <button
                           type="button"

@@ -44,6 +44,8 @@ Nothing cached here is authoritative data (no sessions, payments, or user record
 
 ## Cache clear endpoints
 
+API reference: [internal-cache-clear.md](../api/internal-cache-clear.md)
+
 ### Internal (sync jobs + ops script)
 
 ```
