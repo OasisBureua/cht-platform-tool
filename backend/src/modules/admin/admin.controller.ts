@@ -1462,19 +1462,49 @@ export class AdminController {
     const feedbackSurvey = await this.prisma.survey.findFirst({
       where: { programId: id, type: 'FEEDBACK' },
       orderBy: { createdAt: 'desc' },
-      select: { id: true },
+      select: { id: true, questions: true },
     });
+    const intakeSurvey = await this.prisma.survey.findFirst({
+      where: { programId: id, type: 'INTAKE' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, questions: true },
+    });
+    const userIds = rows.map((r) => r.userId);
     const postEventResponses = feedbackSurvey
       ? await this.prisma.surveyResponse.findMany({
           where: {
             surveyId: feedbackSurvey.id,
-            userId: { in: rows.map((r) => r.userId) },
+            userId: { in: userIds },
           },
-          select: { userId: true, id: true, submissionId: true },
+          select: {
+            userId: true,
+            id: true,
+            submissionId: true,
+            answers: true,
+            submittedAt: true,
+          },
+        })
+      : [];
+    const intakeResponses = intakeSurvey
+      ? await this.prisma.surveyResponse.findMany({
+          where: {
+            surveyId: intakeSurvey.id,
+            userId: { in: userIds },
+          },
+          select: {
+            userId: true,
+            id: true,
+            submissionId: true,
+            answers: true,
+            submittedAt: true,
+          },
         })
       : [];
     const postEventByUser = new Map(
       postEventResponses.map((resp) => [resp.userId, resp]),
+    );
+    const intakeByUser = new Map(
+      intakeResponses.map((resp) => [resp.userId, resp]),
     );
     return rows.map((r) => {
       const intakeRequired = !!effectiveWebinarIntakeFormUrl(
@@ -1482,8 +1512,11 @@ export class AdminController {
         r.program.jotformIntakeFormUrl,
         defaultIntake,
       );
+      const intakeResponse = intakeByUser.get(r.userId);
       const intakeComplete =
-        !intakeRequired || !!r.intakeSubmissionId?.trim();
+        !intakeRequired ||
+        !!r.intakeSubmissionId?.trim() ||
+        !!intakeResponse;
       const postEventResponse = postEventByUser.get(r.userId);
       const postEventJotformSubmissionId =
         postEventResponse?.submissionId?.trim() || null;
@@ -1507,6 +1540,13 @@ export class AdminController {
           : null,
         postEventSurveySubmitted: !!postEventResponse,
         postEventSurveyResponseId: postEventResponse?.id ?? null,
+        postEventSurveyAnswers: postEventResponse?.answers ?? null,
+        postEventSurveySubmittedAt:
+          postEventResponse?.submittedAt?.toISOString() ?? null,
+        intakeSurveyResponseId: intakeResponse?.id ?? null,
+        intakeSurveyAnswers: intakeResponse?.answers ?? null,
+        intakeSurveySubmittedAt:
+          intakeResponse?.submittedAt?.toISOString() ?? null,
         postEventJotformSubmissionId,
         jotformPostEventSubmissionViewUrl:
           r.program.jotformSurveyUrl?.trim() && postEventJotformSubmissionId

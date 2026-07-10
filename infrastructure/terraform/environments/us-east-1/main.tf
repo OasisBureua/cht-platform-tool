@@ -622,7 +622,6 @@ module "ecr_lifecycle" {
   source = "../../modules/compute/ecr-lifecycle"
 
   repository_names = local.ecr_repository_names
-  lifecycle_mode   = var.environment == "platform" ? "platform" : "dev"
 }
 
 # ============================================

@@ -195,6 +195,9 @@ export default function PostEventParticipantFlow(props: {
   const activeStep =
     phase === 'intro' || phase === 'survey' ? 0 : phase === 'payout' ? 1 : 2;
 
+  const nativePostEventSurvey =
+    !!program.feedbackSurveyId && program.feedbackUsesJotform !== true;
+
   return (
     <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
       <h2 className="text-base font-semibold text-gray-900">Post-event steps</h2>
@@ -275,8 +278,9 @@ export default function PostEventParticipantFlow(props: {
           myRegistration={myRegistration}
           hasHonorarium={hasHonorarium}
           surveyReadyForAck={surveySubmitted}
+          manualSurveyAckRequired={!nativePostEventSurvey}
           betweenAckHelpAndButton={
-            surveySubmitted && !myRegistration.postEventSurveyAcknowledgedAt ? null : program.feedbackSurveyId ? (
+            surveySubmitted ? null : program.feedbackSurveyId ? (
               <ProgramSurveyPanel
                 surveyId={program.feedbackSurveyId}
                 userId={userId}
@@ -285,6 +289,11 @@ export default function PostEventParticipantFlow(props: {
                 feedbackUsesJotform={program.feedbackUsesJotform}
                 authenticated
                 userSummary={userSummary}
+                submitLabel="Continue"
+                onSubmitted={() => {
+                  if (hasHonorarium) setPhase('payout');
+                  else setPhase('done');
+                }}
               />
             ) : program.jotformSurveyUrl?.trim() ? (
               <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">

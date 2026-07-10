@@ -1008,6 +1008,19 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.FEEDBACK) {
+      const npiRaw = answers.npi ?? answers.npi_number;
+      const npi =
+        typeof npiRaw === 'string' && npiRaw.trim()
+          ? npiRaw.trim().replace(/\D/g, '').slice(0, 10)
+          : '';
+      if (npi.length === 10) {
+        await this.prisma.user
+          .update({
+            where: { id: userId },
+            data: { npiNumber: npi },
+          })
+          .catch(() => {});
+      }
       await this.prisma.programRegistration
         .updateMany({
           where: { userId, programId: survey.programId },
@@ -1022,6 +1035,23 @@ export class SurveysService {
 
     if (survey.type === SurveyType.INTAKE) {
       const intakeSubmissionId = response.submissionId ?? response.id;
+      const npiRaw = answers.npi ?? answers.npi_number;
+      const npi =
+        typeof npiRaw === 'string' && npiRaw.trim()
+          ? npiRaw.trim().replace(/\D/g, '').slice(0, 10)
+          : '';
+      if (npi.length === 10) {
+        await this.prisma.user
+          .update({
+            where: { id: userId },
+            data: { npiNumber: npi },
+          })
+          .catch((err: unknown) => {
+            this.logger.warn(
+              `Could not sync NPI from intake survey for user ${userId}: ${String(err)}`,
+            );
+          });
+      }
       await this.programRegistrations
         .recordWebinarIntakeSubmission(
           userId,

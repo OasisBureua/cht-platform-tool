@@ -16,6 +16,9 @@ type Props = {
   userSummary?: { firstName?: string; lastName?: string; email?: string };
   disabled?: boolean;
   submitting?: boolean;
+  submitLabel?: string;
+  /** Hide the submit button (parent handles submission). */
+  hideSubmitButton?: boolean;
   onSubmit: (answers: Record<string, unknown>) => void;
   w9ProfileHref?: string;
   /** When true, show W-9 / honorarium payout reminder (post-event surveys only). */
@@ -30,6 +33,8 @@ export function NativeSurveyForm({
   userSummary,
   disabled,
   submitting,
+  submitLabel,
+  hideSubmitButton,
   onSubmit,
   w9ProfileHref = '/app/profile',
   showPayoutNotice = false,
@@ -96,13 +101,15 @@ export function NativeSurveyForm({
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={disabled || submitting}
-        className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-      >
-        {submitting ? 'Submitting…' : `Submit ${title}`}
-      </button>
+      {!hideSubmitButton ? (
+        <button
+          type="submit"
+          disabled={disabled || submitting}
+          className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+        >
+          {submitting ? 'Submitting…' : submitLabel ?? `Submit ${title}`}
+        </button>
+      ) : null}
     </form>
   );
 }

@@ -49,6 +49,8 @@ export function PostEventFeedbackLearnerActions(props: {
   surveyReadyForAck: boolean;
   /** When set, invalidates this survey detail query after acknowledge (Surveys tab). */
   surveyDetailId?: string;
+  /** Jotform flows need a separate acknowledge step; native surveys auto-ack on submit. */
+  manualSurveyAckRequired?: boolean;
   /** e.g. program page: render the Jotform iframe between help text and the Complete survey button. */
   betweenAckHelpAndButton?: ReactNode;
   /** Program page: advance wizard after successful acknowledge (e.g. hide iframe for payout step). */
@@ -62,6 +64,7 @@ export function PostEventFeedbackLearnerActions(props: {
     myRegistration,
     hasHonorarium,
     surveyReadyForAck,
+    manualSurveyAckRequired = true,
     surveyDetailId,
     betweenAckHelpAndButton,
     onSurveyAcknowledged,
@@ -78,7 +81,8 @@ export function PostEventFeedbackLearnerActions(props: {
 
   const showPayoutBlock = surveyAcked && hasHonorarium && !honorariumDone && attendanceOk && approved;
   const showDoneBlock = surveyAcked && (!hasHonorarium || honorariumDone) && attendanceOk && approved;
-  const showAckBlock = !surveyAcked && attendanceOk && approved;
+  const showAckBlock =
+    manualSurveyAckRequired && !surveyAcked && attendanceOk && approved;
 
   const { data: preview, isError: previewError } = useQuery({
     queryKey: ['programs', programId, 'honorarium-preview'],

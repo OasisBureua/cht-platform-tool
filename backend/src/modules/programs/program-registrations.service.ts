@@ -577,6 +577,49 @@ export class ProgramRegistrationsService {
       `Registration ${reg.id} for program ${programId} user ${userId} status=${status}`,
     );
 
+    if (
+      user?.email &&
+      (program.zoomSessionType === ProgramZoomSessionType.WEBINAR ||
+        program.zoomSessionType === ProgramZoomSessionType.MEETING)
+    ) {
+      void (async () => {
+        if (requiresApproval && status === ProgramRegistrationStatus.PENDING) {
+          await this.sesEmail.sendLiveSessionRegistrationSubmittedEmail({
+            to: user.email,
+            firstName: user.firstName || 'there',
+            program: { id: program.id, title: program.title },
+            sessionKind: program.zoomSessionType,
+            requiresApproval: true,
+          });
+          return;
+        }
+        if (
+          status === ProgramRegistrationStatus.APPROVED &&
+          becomesApproved
+        ) {
+          const joinUrlForLearner = learnerWebinarJoinUrl(program.zoomJoinUrl);
+          await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
+            to: user.email,
+            firstName: user.firstName || 'there',
+            program: {
+              id: program.id,
+              title: program.title,
+              description: program.description,
+              startDate: program.startDate,
+              duration: program.duration,
+              honorariumAmount: program.honorariumAmount,
+              hostDisplayName: program.hostDisplayName,
+              sponsorName: program.sponsorName,
+              zoomJoinUrl: joinUrlForLearner,
+            },
+            sessionKind: program.zoomSessionType,
+          });
+        }
+      })().catch((e: Error) =>
+        this.logger.warn(`Registration email side effect: ${e.message}`),
+      );
+    }
+
     return {
       id: reg.id,
       status: reg.status,

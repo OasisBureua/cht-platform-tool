@@ -354,6 +354,11 @@ export const adminApi = {
       jotformIntakeSubmissionViewUrl?: string | null;
       postEventSurveySubmitted?: boolean;
       postEventSurveyResponseId?: string | null;
+      postEventSurveyAnswers?: Record<string, unknown> | null;
+      postEventSurveySubmittedAt?: string | null;
+      intakeSurveyResponseId?: string | null;
+      intakeSurveyAnswers?: Record<string, unknown> | null;
+      intakeSurveySubmittedAt?: string | null;
       postEventJotformSubmissionId?: string | null;
       jotformPostEventSubmissionViewUrl?: string | null;
       postEventSurveyAcknowledgedAt?: string | null;

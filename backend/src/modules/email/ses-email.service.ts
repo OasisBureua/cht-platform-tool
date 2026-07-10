@@ -17,6 +17,7 @@ import { buildPostWebinarSurveyEmail } from './templates/post-webinar-survey-ema
 import { buildWebinarAccessEmail } from './templates/webinar-access-email';
 import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
 import { buildRegistrationInviteEmail } from './templates/registration-invite-email';
+import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
 
 /**
  * Transactional email via [Amazon SES](https://docs.aws.amazon.com/ses/) (SESv2 `SendEmail` with Simple content).
@@ -176,6 +177,49 @@ export class SesEmailService {
     } catch (err) {
       this.logger.warn(
         `Failed to send registration-approved email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /** Learner completed the registration wizard (pending review or auto-approved). */
+  async sendLiveSessionRegistrationSubmittedEmail(opts: {
+    to: string;
+    firstName: string;
+    program: { id: string; title: string };
+    sessionKind: ProgramZoomSessionType;
+    requiresApproval: boolean;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip registration-submitted email');
+      return;
+    }
+    const { to, firstName, program, sessionKind, requiresApproval } = opts;
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const appSessionUrl =
+      sessionKind === ProgramZoomSessionType.MEETING
+        ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
+        : `${base}/app/live/${encodeURIComponent(program.id)}`;
+    const { subject, text, html } = buildRegistrationSubmittedEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        requiresApproval,
+        sessionKind,
+        appSessionUrl,
+        supportEmail: this.from,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(
+        `Sent registration-submitted email to ${to} for program ${program.id}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to send registration-submitted email to ${to} for program ${program.id}: ${(err as Error).message}`,
       );
     }
   }

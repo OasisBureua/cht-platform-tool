@@ -6,6 +6,12 @@ import RejectRegistrationModal, { type RejectEmailReason } from '../../component
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { Check, ChevronLeft, Copy, Download, ExternalLink, Loader2, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import {
+  attendanceStatusLabel,
+  registrationStatusClass,
+  registrationStatusLabel,
+  surveyAnswersToRows,
+} from '../../utils/admin-survey-display';
 
 export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
@@ -17,6 +23,7 @@ export default function AdminProgramHub() {
   const [formLabel, setFormLabel] = useState('');
   const [formUrl, setFormUrl] = useState('');
   const [webinarHubTab, setWebinarHubTab] = useState<'approvals' | 'enrolled' | 'surveys'>('approvals');
+  const [expandedSurveyRow, setExpandedSurveyRow] = useState<string | null>(null);
 
   const { data: program, isLoading: pLoading } = useQuery({
     queryKey: ['admin', 'program', programId],
@@ -594,12 +601,16 @@ export default function AdminProgramHub() {
                             ) : null}
                           </th>
                           <th className="py-2 pr-4">User</th>
-                          <th className="py-2 pr-4">Status</th>
+                          <th className="py-2 pr-4">Registration</th>
+                          <th className="py-2 pr-4">Attendance</th>
                           <th className="py-2 pr-4">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {registrations.map((r) => (
+                        {registrations.map((r) => {
+                          const att = r.postEventAttendanceStatus;
+                          const attBusy = attendanceMut.isPending && attendanceMut.variables?.id === r.id;
+                          return (
                           <tr key={r.id}>
                             <td className="py-2 pr-2">
                               {r.status === 'PENDING' ? (
@@ -617,7 +628,56 @@ export default function AdminProgramHub() {
                               {r.user.firstName} {r.user.lastName}
                               <div className="text-xs text-gray-500">{r.user.email}</div>
                             </td>
-                            <td className="py-2 pr-4 font-medium">{r.status}</td>
+                            <td className="py-2 pr-4">
+                              <span
+                                className={[
+                                  'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                  registrationStatusClass(r.status),
+                                ].join(' ')}
+                              >
+                                {registrationStatusLabel(r.status)}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <div className="space-y-1.5">
+                                <span
+                                  className={[
+                                    'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                    att === 'VERIFIED'
+                                      ? 'bg-green-100 text-green-800'
+                                      : att === 'DENIED'
+                                        ? 'bg-red-100 text-red-800'
+                                        : att === 'PENDING_VERIFICATION'
+                                          ? 'bg-amber-50 text-amber-800'
+                                          : 'bg-gray-100 text-gray-500',
+                                  ].join(' ')}
+                                >
+                                  {attendanceStatusLabel(att)}
+                                </span>
+                                {r.status === 'APPROVED' && att !== 'VERIFIED' && att !== 'NOT_REQUIRED' ? (
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={attBusy}
+                                      onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
+                                      className="rounded bg-green-700 px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40 hover:bg-green-800"
+                                    >
+                                      Verify
+                                    </button>
+                                    {att !== 'DENIED' ? (
+                                      <button
+                                        type="button"
+                                        disabled={attBusy}
+                                        onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
+                                        className="rounded border border-gray-300 px-2 py-0.5 text-[11px] font-semibold text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+                                      >
+                                        Deny
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </td>
                             <td className="py-2 pr-4">
                               <div className="flex flex-wrap gap-2">
                                 {r.status === 'PENDING' && (
@@ -652,7 +712,8 @@ export default function AdminProgramHub() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                     {registrations.length === 0 && <p className="text-sm text-gray-500 py-4">No registrations yet.</p>}
@@ -662,129 +723,210 @@ export default function AdminProgramHub() {
             </>
           ) : webinarHubTab === 'surveys' ? (
             <>
-              <h2 className="text-lg font-semibold text-gray-900">Survey submissions</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Survey responses</h2>
               <p className="text-sm text-gray-600">
-                Intake (registration) and post-event Jotform submissions recorded on each learner&apos;s registration.
+                Native intake and post-event responses per learner. Attendance verification remains available here and on Webinar approvals.
               </p>
               {rLoading ? (
                 <p className="text-sm text-gray-500">Loading…</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-left text-gray-600">
-                        <th className="py-2 pr-4">User</th>
-                        <th className="py-2 pr-4">Status</th>
-                        <th className="py-2 pr-4">Intake survey</th>
-                        <th className="py-2 pr-4">Attendance</th>
-                        <th className="py-2 pr-4">Post-event survey</th>
-                        <th className="py-2 pr-4">Survey acknowledged</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {registrations.map((r) => {
-                        const intakeRequired = r.intakeRequired ?? false;
-                        const intakeOk = r.intakeComplete ?? false;
-                        const att = r.postEventAttendanceStatus;
-                        const attBusy = attendanceMut.isPending && attendanceMut.variables?.id === r.id;
-                        return (
-                          <tr key={r.id}>
-                            <td className="py-2 pr-4">
-                              {r.user.firstName} {r.user.lastName}
-                              <div className="text-xs text-gray-500">{r.user.email}</div>
-                            </td>
-                            <td className="py-2 pr-4 font-medium">{r.status}</td>
-                            <td className="py-2 pr-4 text-gray-600">
-                              <div className="space-y-1">
-                                <span>{!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}</span>
-                                {r.jotformIntakeSubmissionViewUrl ? (
-                                  <a
-                                    href={r.jotformIntakeSubmissionViewUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
-                                  >
-                                    View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
-                                  </a>
-                                ) : null}
-                              </div>
-                            </td>
-                            <td className="py-2 pr-4">
-                              <div className="space-y-1.5">
-                                <span
-                                  className={[
-                                    'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                                    att === 'VERIFIED'
-                                      ? 'bg-green-100 text-green-800'
-                                      : att === 'DENIED'
-                                        ? 'bg-red-100 text-red-800'
-                                        : att === 'PENDING_VERIFICATION'
-                                          ? 'bg-amber-50 text-amber-800'
-                                          : 'bg-gray-100 text-gray-500',
-                                  ].join(' ')}
-                                >
-                                  {att === 'VERIFIED'
-                                    ? 'Verified'
-                                    : att === 'DENIED'
-                                      ? 'Denied'
-                                      : att === 'PENDING_VERIFICATION'
-                                        ? 'Pending'
-                                        : '—'}
-                                </span>
-                                {r.status === 'APPROVED' && att !== 'VERIFIED' && (
-                                  <div className="flex gap-1.5">
-                                    <button
-                                      type="button"
-                                      disabled={attBusy}
-                                      onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
-                                      className="rounded bg-green-700 px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40 hover:bg-green-800"
+                <div className="space-y-8">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Registration intake</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-left text-gray-600">
+                            <th className="py-2 pr-4">User</th>
+                            <th className="py-2 pr-4">Registration</th>
+                            <th className="py-2 pr-4">Submitted</th>
+                            <th className="py-2 pr-4">Responses</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {registrations.map((r) => {
+                            const rowKey = `intake-${r.id}`;
+                            const intakeRows = surveyAnswersToRows(r.intakeSurveyAnswers);
+                            const hasIntake = r.intakeComplete || intakeRows.length > 0;
+                            return (
+                              <tr key={rowKey}>
+                                <td className="py-2 pr-4 align-top">
+                                  {r.user.firstName} {r.user.lastName}
+                                  <div className="text-xs text-gray-500">{r.user.email}</div>
+                                </td>
+                                <td className="py-2 pr-4 align-top">
+                                  <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${registrationStatusClass(r.status)}`}>
+                                    {registrationStatusLabel(r.status)}
+                                  </span>
+                                </td>
+                                <td className="py-2 pr-4 align-top text-gray-600">
+                                  {r.intakeSurveySubmittedAt
+                                    ? format(parseISO(r.intakeSurveySubmittedAt), 'MMM d, yyyy h:mm a')
+                                    : hasIntake
+                                      ? 'Recorded'
+                                      : '—'}
+                                  {r.jotformIntakeSubmissionViewUrl ? (
+                                    <a
+                                      href={r.jotformIntakeSubmissionViewUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
                                     >
-                                      Verify
-                                    </button>
-                                    {att !== 'DENIED' && (
+                                      Jotform <ExternalLink className="h-3 w-3 shrink-0" />
+                                    </a>
+                                  ) : null}
+                                </td>
+                                <td className="py-2 pr-4 align-top">
+                                  {intakeRows.length > 0 ? (
+                                    <>
                                       <button
                                         type="button"
-                                        disabled={attBusy}
-                                        onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
-                                        className="rounded border border-gray-300 px-2 py-0.5 text-[11px] font-semibold text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+                                        className="text-xs font-semibold text-gray-900 underline"
+                                        onClick={() => setExpandedSurveyRow(expandedSurveyRow === rowKey ? null : rowKey)}
                                       >
-                                        Deny
+                                        {expandedSurveyRow === rowKey ? 'Hide' : 'View'} ({intakeRows.length})
                                       </button>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="py-2 pr-4 text-gray-600">
-                              <div className="space-y-1">
-                                <span>{r.postEventSurveySubmitted ? 'Recorded' : '—'}</span>
-                                {r.postEventSurveyResponseId ? (
-                                  <code className="block text-xs text-gray-500 break-all max-w-[14rem]">
-                                    {r.postEventSurveyResponseId}
-                                  </code>
-                                ) : null}
-                                {r.jotformPostEventSubmissionViewUrl ? (
-                                  <a
-                                    href={r.jotformPostEventSubmissionViewUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
-                                  >
-                                    View in Jotform <ExternalLink className="h-3 w-3 shrink-0" />
-                                  </a>
-                                ) : null}
-                              </div>
-                            </td>
-                            <td className="py-2 pr-4 text-gray-600">
-                              {r.postEventSurveyAcknowledgedAt
-                                ? format(parseISO(r.postEventSurveyAcknowledgedAt), 'MMM d, yyyy h:mm a')
-                                : '—'}
-                            </td>
+                                      {expandedSurveyRow === rowKey ? (
+                                        <table className="mt-2 w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
+                                          <tbody>
+                                            {intakeRows.map((row) => (
+                                              <tr key={row.label} className="border-b border-gray-50 last:border-0">
+                                                <td className="py-1.5 pr-3 font-medium text-gray-700 align-top w-2/5">{row.label}</td>
+                                                <td className="py-1.5 text-gray-600">{row.value}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      ) : null}
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-500">—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Post-event survey</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200 text-left text-gray-600">
+                            <th className="py-2 pr-4">User</th>
+                            <th className="py-2 pr-4">Attendance</th>
+                            <th className="py-2 pr-4">Submitted</th>
+                            <th className="py-2 pr-4">Responses</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {registrations.map((r) => {
+                            const rowKey = `post-${r.id}`;
+                            const postRows = surveyAnswersToRows(r.postEventSurveyAnswers);
+                            const att = r.postEventAttendanceStatus;
+                            const attBusy = attendanceMut.isPending && attendanceMut.variables?.id === r.id;
+                            return (
+                              <tr key={rowKey}>
+                                <td className="py-2 pr-4 align-top">
+                                  {r.user.firstName} {r.user.lastName}
+                                  <div className="text-xs text-gray-500">{r.user.email}</div>
+                                </td>
+                                <td className="py-2 pr-4 align-top">
+                                  <div className="space-y-1.5">
+                                    <span
+                                      className={[
+                                        'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                        att === 'VERIFIED'
+                                          ? 'bg-green-100 text-green-800'
+                                          : att === 'DENIED'
+                                            ? 'bg-red-100 text-red-800'
+                                            : att === 'PENDING_VERIFICATION'
+                                              ? 'bg-amber-50 text-amber-800'
+                                              : 'bg-gray-100 text-gray-500',
+                                      ].join(' ')}
+                                    >
+                                      {attendanceStatusLabel(att)}
+                                    </span>
+                                    {r.status === 'APPROVED' && att !== 'VERIFIED' && att !== 'NOT_REQUIRED' ? (
+                                      <div className="flex gap-1.5">
+                                        <button
+                                          type="button"
+                                          disabled={attBusy}
+                                          onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
+                                          className="rounded bg-green-700 px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40 hover:bg-green-800"
+                                        >
+                                          Verify
+                                        </button>
+                                        {att !== 'DENIED' ? (
+                                          <button
+                                            type="button"
+                                            disabled={attBusy}
+                                            onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
+                                            className="rounded border border-gray-300 px-2 py-0.5 text-[11px] font-semibold text-gray-700 disabled:opacity-40 hover:bg-gray-50"
+                                          >
+                                            Deny
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </td>
+                                <td className="py-2 pr-4 align-top text-gray-600">
+                                  {r.postEventSurveySubmittedAt
+                                    ? format(parseISO(r.postEventSurveySubmittedAt), 'MMM d, yyyy h:mm a')
+                                    : r.postEventSurveySubmitted
+                                      ? 'Recorded'
+                                      : '—'}
+                                  {r.jotformPostEventSubmissionViewUrl ? (
+                                    <a
+                                      href={r.jotformPostEventSubmissionViewUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="mt-1 flex items-center gap-1 text-xs font-semibold text-blue-700 hover:underline"
+                                    >
+                                      Jotform <ExternalLink className="h-3 w-3 shrink-0" />
+                                    </a>
+                                  ) : null}
+                                </td>
+                                <td className="py-2 pr-4 align-top">
+                                  {postRows.length > 0 ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        className="text-xs font-semibold text-gray-900 underline"
+                                        onClick={() => setExpandedSurveyRow(expandedSurveyRow === rowKey ? null : rowKey)}
+                                      >
+                                        {expandedSurveyRow === rowKey ? 'Hide' : 'View'} ({postRows.length})
+                                      </button>
+                                      {expandedSurveyRow === rowKey ? (
+                                        <table className="mt-2 w-full text-xs border border-gray-100 rounded-lg overflow-hidden">
+                                          <tbody>
+                                            {postRows.map((row) => (
+                                              <tr key={row.label} className="border-b border-gray-50 last:border-0">
+                                                <td className="py-1.5 pr-3 font-medium text-gray-700 align-top w-2/5">{row.label}</td>
+                                                <td className="py-1.5 text-gray-600">{row.value}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      ) : null}
+                                    </>
+                                  ) : (
+                                    <span className="text-gray-500">—</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                   {registrations.length === 0 && (
                     <p className="text-sm text-gray-500 py-4">No registrations yet.</p>
                   )}

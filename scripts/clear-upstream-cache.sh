@@ -36,7 +36,15 @@ case "$SCOPE" in
 esac
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-VAR_FILE="$SCRIPT_DIR/../infrastructure/terraform/environments/variables/${ENV}.tfvars"
+VAR_DIR="$SCRIPT_DIR/../infrastructure/terraform/environments/variables"
+VAR_FILE="$VAR_DIR/${ENV}.tfvars"
+if [ ! -f "$VAR_FILE" ]; then
+  VAR_FILE="$VAR_DIR/${ENV}.github.tfvars"
+fi
+if [ ! -f "$VAR_FILE" ]; then
+  echo "❌ No variable file for $ENV (${ENV}.tfvars or ${ENV}.github.tfvars)"
+  exit 1
+fi
 DOMAIN=$(grep -E '^domain_name[[:space:]]*=' "$VAR_FILE" | head -1 | sed -E 's/^[^"]*"([^"]+)".*/\1/')
 
 if [ -z "${INTERNAL_CACHE_SECRET:-}" ]; then

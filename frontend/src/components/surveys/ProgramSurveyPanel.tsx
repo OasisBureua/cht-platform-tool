@@ -14,6 +14,7 @@ type Props = {
   feedbackUsesJotform?: boolean;
   authenticated: boolean;
   userSummary?: { firstName?: string; lastName?: string; email?: string };
+  submitLabel?: string;
   onSubmitted?: (submissionId: string) => void;
 };
 
@@ -29,6 +30,7 @@ export function ProgramSurveyPanel({
   feedbackUsesJotform,
   authenticated,
   userSummary,
+  submitLabel,
   onSubmitted,
 }: Props) {
   const queryClient = useQueryClient();
@@ -87,6 +89,7 @@ export function ProgramSurveyPanel({
         authenticated={authenticated}
         userSummary={userSummary}
         submitting={submitMut.isPending}
+        submitLabel={submitLabel}
         showPayoutNotice={survey.type === 'FEEDBACK'}
         onSubmit={(answers) => submitMut.mutate(answers)}
       />
