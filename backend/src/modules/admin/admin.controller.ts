@@ -529,6 +529,23 @@ export class AdminController {
     return this.surveysService.listResponsesForAdmin(id);
   }
 
+  @Get('surveys/:id/responses.csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Download survey responses as CSV' })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  async downloadSurveyResponsesCsv(
+    @Param('id') id: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const { filename, body } =
+      await this.surveysService.buildResponsesCsvForAdmin(id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(body);
+  }
+
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)

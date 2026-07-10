@@ -1,10 +1,12 @@
 import { Link, useParams } from 'react-router-dom';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Download } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { downloadBlob } from '../../utils/download-blob';
 import {
   attendanceStatusLabel,
   registrationStatusClass,
@@ -20,6 +22,7 @@ function attendanceBadgeClass(att: string | null | undefined): string {
 
 export default function AdminSurveyResponses() {
   const { id } = useParams<{ id: string }>();
+  const [csvDownloading, setCsvDownloading] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'survey', id, 'responses'],
@@ -47,6 +50,23 @@ export default function AdminSurveyResponses() {
 
   const { survey, responses } = data;
 
+  const downloadCsv = async () => {
+    if (!id) return;
+    setCsvDownloading(true);
+    try {
+      const blob = await adminApi.downloadSurveyResponsesCsv(id);
+      const label =
+        survey.type === 'INTAKE'
+          ? 'registration-intake'
+          : survey.type === 'FEEDBACK'
+            ? 'post-event'
+            : 'survey';
+      downloadBlob(blob, `${label}-responses.csv`);
+    } finally {
+      setCsvDownloading(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
       <Link
@@ -57,23 +77,34 @@ export default function AdminSurveyResponses() {
         Back to surveys
       </Link>
 
-      <header>
-        <h1 className="text-2xl font-semibold text-gray-900">{survey.title}</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          {survey.type} survey
-          {survey.program ? (
-            <>
-              {' '}
-              ·{' '}
-              <Link
-                to={`/admin/programs/${survey.program.id}/hub`}
-                className="font-semibold text-gray-900 underline"
-              >
-                {survey.program.title}
-              </Link>
-            </>
-          ) : null}
-        </p>
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">{survey.title}</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            {survey.type} survey
+            {survey.program ? (
+              <>
+                {' '}
+                ·{' '}
+                <Link
+                  to={`/admin/programs/${survey.program.id}/hub`}
+                  className="font-semibold text-gray-900 underline"
+                >
+                  {survey.program.title}
+                </Link>
+              </>
+            ) : null}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void downloadCsv()}
+          disabled={csvDownloading || responses.length === 0}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          {csvDownloading ? 'Preparing…' : 'Download CSV'}
+        </button>
       </header>
 
       <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">

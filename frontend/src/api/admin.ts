@@ -489,6 +489,14 @@ export const adminApi = {
     };
   },
 
+  downloadSurveyResponsesCsv: async (surveyId: string): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>(
+      `/admin/surveys/${encodeURIComponent(surveyId)}/responses.csv`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+
   updatePostEventAttendance: async (registrationId: string, status: 'VERIFIED' | 'DENIED') => {
     const { data } = await apiClient.patch(
       `/admin/registrations/${encodeURIComponent(registrationId)}/post-event-attendance`,

@@ -52,11 +52,10 @@ if [ -z "${INTERNAL_CACHE_SECRET:-}" ]; then
   exit 1
 fi
 
-URL="https://${DOMAIN}/api/internal/cache/clear?scope=${SCOPE}"
-echo "POST $URL"
+URL="https://${DOMAIN}/api/internal/cache/clear?scope=${SCOPE}&cacheKey=${INTERNAL_CACHE_SECRET}"
+echo "POST $URL (cacheKey in query)"
 
 curl -fsS -X POST "$URL" \
-  -H "Authorization: Bearer ${INTERNAL_CACHE_SECRET}" \
   -H "Content-Type: application/json" | jq .
 
 echo "Done."

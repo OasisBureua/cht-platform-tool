@@ -12,6 +12,7 @@ import {
   registrationStatusLabel,
 } from '../../utils/admin-survey-display';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
+import { downloadBlob } from '../../utils/download-blob';
 
 export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
@@ -42,6 +43,19 @@ export default function AdminProgramHub() {
   const registrations = registrationPayload?.registrations ?? [];
   const intakeQuestions = registrationPayload?.surveys?.intake?.questions;
   const feedbackQuestions = registrationPayload?.surveys?.feedback?.questions;
+  const intakeSurveyId = registrationPayload?.surveys?.intake?.id;
+  const feedbackSurveyId = registrationPayload?.surveys?.feedback?.id;
+  const [csvDownloading, setCsvDownloading] = useState<'intake' | 'feedback' | null>(null);
+
+  const downloadSurveyCsv = async (surveyId: string, kind: 'intake' | 'feedback') => {
+    setCsvDownloading(kind);
+    try {
+      const blob = await adminApi.downloadSurveyResponsesCsv(surveyId);
+      downloadBlob(blob, `${kind}-survey-responses.csv`);
+    } finally {
+      setCsvDownloading(null);
+    }
+  };
 
   const { data: enrollments = [], isLoading: eLoading } = useQuery({
     queryKey: ['admin', 'program', programId, 'enrollments'],
@@ -736,7 +750,20 @@ export default function AdminProgramHub() {
               ) : (
                 <div className="space-y-8">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Registration intake</h3>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Registration intake</h3>
+                      {intakeSurveyId ? (
+                        <button
+                          type="button"
+                          onClick={() => void downloadSurveyCsv(intakeSurveyId, 'intake')}
+                          disabled={csvDownloading === 'intake'}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {csvDownloading === 'intake' ? 'Preparing…' : 'Download CSV'}
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>
@@ -797,7 +824,20 @@ export default function AdminProgramHub() {
                   </div>
 
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 mb-2">Post-event survey</h3>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-gray-900">Post-event survey</h3>
+                      {feedbackSurveyId ? (
+                        <button
+                          type="button"
+                          onClick={() => void downloadSurveyCsv(feedbackSurveyId, 'feedback')}
+                          disabled={csvDownloading === 'feedback'}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          {csvDownloading === 'feedback' ? 'Preparing…' : 'Download CSV'}
+                        </button>
+                      ) : null}
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full text-sm">
                         <thead>

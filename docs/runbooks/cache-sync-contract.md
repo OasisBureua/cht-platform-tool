@@ -47,14 +47,15 @@ Nothing cached here is authoritative data (no sessions, payments, or user record
 ### Internal (sync jobs + ops script)
 
 ```
-POST /api/internal/cache/clear?scope=catalog|contenthub|all
-Authorization: Bearer ${INTERNAL_CACHE_SECRET}
+POST /api/internal/cache/clear?scope=catalog|contenthub|all&cacheKey=${INTERNAL_CACHE_SECRET}
+POST /api/internal/cache/clear/all?cacheKey=${INTERNAL_CACHE_SECRET}
+Authorization: Bearer ${INTERNAL_CACHE_SECRET}   # optional alternative to cacheKey query param
 ```
 
 Legacy alias (clears **all** upstream prefixes — used by MediaHub worker today):
 
 ```
-POST /api/internal/cache/catalog/clear
+POST /api/internal/cache/catalog/clear?cacheKey=${INTERNAL_CACHE_SECRET}
 Authorization: Bearer ${INTERNAL_CACHE_SECRET}
 ```
 
@@ -65,7 +66,8 @@ Response (JSON):
   "scope": "contenthub",
   "enabled": true,
   "deletedByPattern": { "cht:contenthub:*": 12, "cht:kol-network:*": 0 },
-  "total": 12
+  "total": 12,
+  "durationMs": 45
 }
 ```
 

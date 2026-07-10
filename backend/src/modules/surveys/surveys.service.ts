@@ -18,6 +18,10 @@ import {
   defaultWebinarIntakeQuestions,
 } from './native-survey-templates';
 import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
+import {
+  buildSurveyResponsesCsv,
+  surveyResponsesCsvFilename,
+} from '../../utils/survey-responses-csv';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { FormJotformScope } from '../programs/form-jotform-scope';
 import {
@@ -458,6 +462,29 @@ export class SurveysService {
         user: r.user,
         registration: regByUser.get(r.userId) ?? null,
       })),
+    };
+  }
+
+  /** Admin: CSV export for registration (INTAKE) or post-event (FEEDBACK) responses. */
+  async buildResponsesCsvForAdmin(surveyId: string): Promise<{
+    filename: string;
+    body: string;
+  }> {
+    const { survey, responses } = await this.listResponsesForAdmin(surveyId);
+    const body = buildSurveyResponsesCsv({
+      surveyTitle: survey.title,
+      surveyType: survey.type,
+      questionsSchema: survey.questions,
+      responses: responses.map((r) => ({
+        submittedAt: r.submittedAt,
+        answers: (r.answers ?? {}) as Record<string, unknown>,
+        user: r.user,
+        registration: r.registration,
+      })),
+    });
+    return {
+      filename: surveyResponsesCsvFilename(survey.title, survey.type),
+      body,
     };
   }
 
