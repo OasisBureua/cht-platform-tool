@@ -80,10 +80,14 @@ export const catalogApi = {
   },
 
   getWordPressCategories: async (): Promise<WordPressCategoriesResponse> => {
-    const { data } = await apiClient.get<WordPressCategoriesResponse>(
-      '/catalog/wordpress/categories',
-    );
-    return data ?? { items: [], total: 0 };
+    try {
+      const { data } = await apiClient.get<WordPressCategoriesResponse>(
+        '/catalog/wordpress/categories',
+      );
+      return data ?? { items: [], total: 0 };
+    } catch {
+      return { items: [], total: 0 };
+    }
   },
 
   getClips: async (params?: GetClipsParams): Promise<{ items: MediaHubClip[]; total: number }> => {

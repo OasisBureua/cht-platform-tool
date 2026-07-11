@@ -8,7 +8,6 @@ import { webinarsApi } from '../../api/webinars';
 import DISEASE_AREAS from '../../data/disease-areas';
 import { WordPressCategoryNav } from '../../components/content/WordPressCategoryNav';
 import {
-  clipHasWordPressCategory,
   formatWordPressCategoryLabel,
   useWordPressCatalog,
   WORDPRESS_CATALOG_STALE_MS,
@@ -34,7 +33,7 @@ export default function DiseaseDetail() {
   const legacyArea = DISEASE_AREAS.find((a) => a.slug === diseaseSlug);
 
   const isUnknownDisease = wpMode
-    ? !diseaseSlug || !wpCategory
+    ? !diseaseSlug
     : !legacyArea || !legacyArea.clipTags || legacyArea.clipTags.length === 0;
 
   const [clipsOffset, setClipsOffset] = useState(0);
@@ -92,21 +91,14 @@ export default function DiseaseDetail() {
     );
   }
 
-  const clipFilterOpts = wpMode ? { requireWordPress: true } : undefined;
-
   const allClips = useMemo(
     () =>
       loadedClips
         .slice()
         .sort((a, b) => a.offset - b.offset)
         .flatMap((p) => p.items)
-        .filter((c) => shouldSurfaceCatalogClip(c, clipFilterOpts))
-        .filter((c) =>
-          wpMode && diseaseSlug
-            ? clipHasWordPressCategory(c, diseaseSlug)
-            : true,
-        ),
-    [loadedClips, wpMode, diseaseSlug, clipFilterOpts],
+        .filter((c) => shouldSurfaceCatalogClip(c)),
+    [loadedClips],
   );
 
   const totalClips = clipsPage?.total ?? 0;

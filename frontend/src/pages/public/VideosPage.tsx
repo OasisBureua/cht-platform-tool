@@ -129,7 +129,8 @@ export default function VideosPage() {
   const isInApp = location.pathname.startsWith('/app');
   const basePath = isInApp ? '/app' : '';
   const wpMode = useWordPressCatalog();
-  const clipSurfaceOpts = wpMode ? { requireWordPress: true } : undefined;
+  /** Server already filters with has_wordpress=true; do not require inline wordpress blob yet. */
+  const clipSurfaceOpts = undefined;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
@@ -296,6 +297,8 @@ export default function VideosPage() {
     getNextPageParam: (lastPage, allPages) => {
       const lastItems = lastPage?.items ?? [];
       const loaded = allPages.reduce((acc, p) => acc + (p?.items?.length ?? 0), 0);
+      const total = lastPage?.total ?? 0;
+      if (total > 0 && loaded >= total) return undefined;
       return lastItems.length === CLIPS_PAGE_SIZE ? loaded : undefined;
     },
     initialPageParam: 0,
@@ -308,6 +311,15 @@ export default function VideosPage() {
   const clipsPageCount = clipsData?.pages.length ?? 0;
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const userScrolledRef = useRef(false);
+
+  useEffect(() => {
+    const onScroll = () => {
+      if (window.scrollY > 80) userScrolledRef.current = true;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // In-app full library grid only at ?view=clips (“See all in library”). Default /app/catalog = strip home.
   const showClipsGrid =
@@ -316,11 +328,18 @@ export default function VideosPage() {
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      if (
+        target?.isIntersecting &&
+        hasNextPage &&
+        !isFetchingNextPage &&
+        !clipsLoading &&
+        clipsPageCount > 0 &&
+        (clipsPageCount > 1 || userScrolledRef.current)
+      ) {
         fetchNextPage();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage],
+    [hasNextPage, isFetchingNextPage, fetchNextPage, clipsLoading, clipsPageCount],
   );
 
   useEffect(() => {
@@ -328,11 +347,11 @@ export default function VideosPage() {
     if (!el) return;
     const clipsPagerActive =
       effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid);
-    if (!clipsPagerActive) return;
-    const observer = new IntersectionObserver(handleObserver, { rootMargin: '200px', threshold: 0.1 });
+    if (!clipsPagerActive || clipsLoading || clipsPageCount === 0) return;
+    const observer = new IntersectionObserver(handleObserver, { rootMargin: '100px', threshold: 0 });
     observer.observe(el);
     return () => observer.disconnect();
-  }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid]);
+  }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid, clipsLoading, clipsPageCount]);
 
   const mediaHubItems = useMemo(
     () =>

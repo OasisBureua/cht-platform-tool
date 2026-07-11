@@ -257,10 +257,21 @@ export class MediaHubService {
     if (!this.useContentHub) {
       return { items: [], total: 0 };
     }
-    const key = this.cacheKey('wordpress-categories', {});
-    return this.cachedGet(key, () =>
-      this.getPublic<WordPressCategoriesResponse>('/wordpress/categories'),
-    );
+    try {
+      const key = this.cacheKey('wordpress-categories', {});
+      return await this.cachedGet(key, () =>
+        this.getPublic<WordPressCategoriesResponse>('/wordpress/categories'),
+      );
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || status === 401) {
+        this.logger.warn(
+          `ContentHub /wordpress/categories unavailable (${status ?? 'error'}) — returning empty`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
   }
 
   async getPlaylistTags(params?: {

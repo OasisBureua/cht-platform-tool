@@ -128,9 +128,9 @@ export class CatalogController {
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401) {
+      if (status === 401 || status === 404) {
         this.logger.warn(
-          '[Catalog] ContentHub 401 on /wordpress/categories - returning empty.',
+          `[Catalog] ContentHub ${status} on /wordpress/categories - returning empty.`,
         );
         return { items: [], total: 0 };
       }
