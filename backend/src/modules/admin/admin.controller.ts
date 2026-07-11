@@ -519,6 +519,33 @@ export class AdminController {
     return this.surveysService.deleteSurvey(id);
   }
 
+  @Get('surveys/:id/responses')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List all learner responses for a survey' })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  listSurveyResponses(@Param('id') id: string) {
+    return this.surveysService.listResponsesForAdmin(id);
+  }
+
+  @Get('surveys/:id/responses.csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Download survey responses as CSV' })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  async downloadSurveyResponsesCsv(
+    @Param('id') id: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const { filename, body } =
+      await this.surveysService.buildResponsesCsvForAdmin(id);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(body);
+  }
+
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -1411,7 +1438,33 @@ export class AdminController {
       await this.programRegistrations.listPendingPostEventAttendanceForAdmin();
     return rows.map((r) => ({
       id: r.id,
+      status: r.status,
       postEventAttendanceStatus: r.postEventAttendanceStatus,
+      postEventAttendanceReviewedAt:
+        r.postEventAttendanceReviewedAt?.toISOString() ?? null,
+      createdAt: r.createdAt.toISOString(),
+      user: r.user,
+      program: r.program,
+    }));
+  }
+
+  @Get('webinar-registrations/attendance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Post-event attendance records (pending, verified, denied) for published live sessions',
+  })
+  async listPostEventAttendance() {
+    const rows =
+      await this.programRegistrations.listPostEventAttendanceForAdmin();
+    return rows.map((r) => ({
+      id: r.id,
+      status: r.status,
+      postEventAttendanceStatus: r.postEventAttendanceStatus,
+      postEventAttendanceReviewedAt:
+        r.postEventAttendanceReviewedAt?.toISOString() ?? null,
       createdAt: r.createdAt.toISOString(),
       user: r.user,
       program: r.program,
@@ -1462,28 +1515,76 @@ export class AdminController {
     const feedbackSurvey = await this.prisma.survey.findFirst({
       where: { programId: id, type: 'FEEDBACK' },
       orderBy: { createdAt: 'desc' },
-      select: { id: true },
+      select: { id: true, questions: true },
     });
+    const intakeSurvey = await this.prisma.survey.findFirst({
+      where: { programId: id, type: 'INTAKE' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, questions: true },
+    });
+    const userIds = rows.map((r) => r.userId);
     const postEventResponses = feedbackSurvey
       ? await this.prisma.surveyResponse.findMany({
           where: {
             surveyId: feedbackSurvey.id,
-            userId: { in: rows.map((r) => r.userId) },
+            userId: { in: userIds },
           },
-          select: { userId: true, id: true, submissionId: true },
+          select: {
+            userId: true,
+            id: true,
+            submissionId: true,
+            answers: true,
+            submittedAt: true,
+          },
+        })
+      : [];
+    const intakeResponses = intakeSurvey
+      ? await this.prisma.surveyResponse.findMany({
+          where: {
+            surveyId: intakeSurvey.id,
+            userId: { in: userIds },
+          },
+          select: {
+            userId: true,
+            id: true,
+            submissionId: true,
+            answers: true,
+            submittedAt: true,
+          },
         })
       : [];
     const postEventByUser = new Map(
       postEventResponses.map((resp) => [resp.userId, resp]),
     );
-    return rows.map((r) => {
+    const intakeByUser = new Map(
+      intakeResponses.map((resp) => [resp.userId, resp]),
+    );
+    const intakeBySubmissionId = new Map(
+      intakeResponses
+        .filter((resp) => resp.submissionId?.trim())
+        .map((resp) => [resp.submissionId!.trim(), resp]),
+    );
+    const intakeByResponseId = new Map(
+      intakeResponses.map((resp) => [resp.id, resp]),
+    );
+
+    const mapRegistrationRow = (r: (typeof rows)[number]) => {
       const intakeRequired = !!effectiveWebinarIntakeFormUrl(
         r.program.zoomSessionType,
         r.program.jotformIntakeFormUrl,
         defaultIntake,
       );
+      const intakeSubmissionKey = r.intakeSubmissionId?.trim() ?? '';
+      const intakeResponse =
+        intakeByUser.get(r.userId) ??
+        (intakeSubmissionKey
+          ? intakeBySubmissionId.get(intakeSubmissionKey) ??
+            intakeByResponseId.get(intakeSubmissionKey)
+          : undefined);
       const intakeComplete =
-        !intakeRequired || !!r.intakeSubmissionId?.trim();
+        !intakeRequired ||
+        !!intakeSubmissionKey ||
+        !!intakeResponse;
       const postEventResponse = postEventByUser.get(r.userId);
       const postEventJotformSubmissionId =
         postEventResponse?.submissionId?.trim() || null;
@@ -1507,6 +1608,13 @@ export class AdminController {
           : null,
         postEventSurveySubmitted: !!postEventResponse,
         postEventSurveyResponseId: postEventResponse?.id ?? null,
+        postEventSurveyAnswers: postEventResponse?.answers ?? null,
+        postEventSurveySubmittedAt:
+          postEventResponse?.submittedAt?.toISOString() ?? null,
+        intakeSurveyResponseId: intakeResponse?.id ?? null,
+        intakeSurveyAnswers: intakeResponse?.answers ?? null,
+        intakeSurveySubmittedAt:
+          intakeResponse?.submittedAt?.toISOString() ?? null,
         postEventJotformSubmissionId,
         jotformPostEventSubmissionViewUrl:
           r.program.jotformSurveyUrl?.trim() && postEventJotformSubmissionId
@@ -1531,7 +1639,19 @@ export class AdminController {
           r.postEventSurveyAcknowledgedAt?.toISOString(),
         honorariumRequestedAt: r.honorariumRequestedAt?.toISOString(),
       };
-    });
+    };
+
+    return {
+      surveys: {
+        intake: intakeSurvey
+          ? { id: intakeSurvey.id, questions: intakeSurvey.questions }
+          : null,
+        feedback: feedbackSurvey
+          ? { id: feedbackSurvey.id, questions: feedbackSurvey.questions }
+          : null,
+      },
+      registrations: rows.map(mapRegistrationRow),
+    };
   }
 
   @Patch('registrations/:registrationId')

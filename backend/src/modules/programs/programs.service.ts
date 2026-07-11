@@ -9,7 +9,11 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
-import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
+import {
+  loadProgramSurveyMeta,
+  getPostEventSurveyUnlockAt,
+  isPostEventSurveyWithinWindow,
+} from '../../utils/program-survey-config';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
@@ -641,6 +645,7 @@ export class ProgramsService {
         startDate: true,
         duration: true,
         zoomSessionEndedAt: true,
+        zoomSessionType: true,
       },
       orderBy: { startDate: 'desc' },
       take: 50,
@@ -664,11 +669,20 @@ export class ProgramsService {
       }),
       this.prisma.programRegistration.findMany({
         where: { userId, programId: { in: programIds } },
-        select: { programId: true, postEventAttendanceStatus: true },
+        select: {
+          programId: true,
+          postEventAttendanceStatus: true,
+          status: true,
+        },
       }),
     ]);
 
     const enrolledSet = new Set(enrollments.map((e) => e.programId));
+    const approvedRegSet = new Set(
+      liveRegs
+        .filter((r) => r.status === 'APPROVED')
+        .map((r) => r.programId),
+    );
     const attendanceByProgram = new Map(
       liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]),
     );
@@ -694,9 +708,9 @@ export class ProgramsService {
     }> = [];
 
     for (const p of programs) {
-      const enrolled = enrolledSet.has(p.id);
+      const hasAccess = enrolledSet.has(p.id) || approvedRegSet.has(p.id);
 
-      if (!enrolled) {
+      if (!hasAccess) {
         continue;
       }
 
@@ -712,8 +726,13 @@ export class ProgramsService {
         const durationMin = p.duration ?? 60;
         postSurveyAllowed =
           now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
+      } else if (p.zoomSessionType === 'MEETING') {
+        postSurveyAllowed = true;
       }
       if (!postSurveyAllowed) continue;
+
+      const unlockAt = getPostEventSurveyUnlockAt(p);
+      if (!isPostEventSurveyWithinWindow(unlockAt, now.getTime())) continue;
 
       const att = attendanceByProgram.get(p.id);
       if (att !== 'VERIFIED' && att !== 'NOT_REQUIRED') {

@@ -70,6 +70,7 @@ const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminPrograms         = lazy(() => import('./pages/admin/AdminPrograms'));
 const AdminSurveys          = lazy(() => import('./pages/admin/AdminSurveys'));
+const AdminSurveyResponses  = lazy(() => import('./pages/admin/AdminSurveyResponses'));
 const AdminCreateSurvey     = lazy(() => import('./pages/admin/AdminCreateSurvey'));
 const AdminEditSurvey       = lazy(() => import('./pages/admin/AdminEditSurvey'));
 const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarScheduler'));
@@ -254,6 +255,7 @@ function App() {
               <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
               <Route path="office-hours" element={<AdminPrograms />} />
               <Route path="surveys" element={<AdminSurveys />} />
+              <Route path="surveys/:id/responses" element={<AdminSurveyResponses />} />
               <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
               <Route path="create-survey" element={<AdminCreateSurvey />} />
               <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />

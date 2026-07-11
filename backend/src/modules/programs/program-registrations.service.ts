@@ -19,6 +19,7 @@ import { assertProfileCompleteForPayments } from '../../common/profile-payment-e
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import {
   isPostEventSurveyWithinWindow,
+  getPostEventSurveyUnlockAt,
   loadProgramSurveyMeta,
   programHasPostEventSurvey,
   userHasIntakeSurveyResponse,
@@ -146,7 +147,13 @@ export class ProgramRegistrationsService {
       where: { userId_programId: { userId, programId } },
       select: { id: true },
     });
-    if (!enrolled) {
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+      select: { status: true, postEventAttendanceStatus: true },
+    });
+
+    if (!enrolled && (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)) {
       return false;
     }
 
@@ -160,7 +167,8 @@ export class ProgramRegistrationsService {
     }
 
     const now = new Date();
-    if (!isPostEventSurveyWithinWindow(feedbackSurvey.createdAt, now.getTime())) {
+    const unlockAt = getPostEventSurveyUnlockAt(program);
+    if (!isPostEventSurveyWithinWindow(unlockAt, now.getTime())) {
       return false;
     }
 
@@ -177,6 +185,8 @@ export class ProgramRegistrationsService {
       const durationMin = program.duration ?? 60;
       postSurveyAllowed =
         now.getTime() >= program.startDate.getTime() + durationMin * 60_000;
+    } else if (program.zoomSessionType === ProgramZoomSessionType.MEETING) {
+      postSurveyAllowed = true;
     } else {
       return false;
     }
@@ -184,10 +194,6 @@ export class ProgramRegistrationsService {
       return false;
     }
 
-    const reg = await this.prisma.programRegistration.findUnique({
-      where: { userId_programId: { userId, programId } },
-      select: { status: true, postEventAttendanceStatus: true },
-    });
     if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
       return false;
     }
@@ -576,6 +582,49 @@ export class ProgramRegistrationsService {
     this.logger.log(
       `Registration ${reg.id} for program ${programId} user ${userId} status=${status}`,
     );
+
+    if (
+      user?.email &&
+      (program.zoomSessionType === ProgramZoomSessionType.WEBINAR ||
+        program.zoomSessionType === ProgramZoomSessionType.MEETING)
+    ) {
+      void (async () => {
+        if (requiresApproval && status === ProgramRegistrationStatus.PENDING) {
+          await this.sesEmail.sendLiveSessionRegistrationSubmittedEmail({
+            to: user.email,
+            firstName: user.firstName || 'there',
+            program: { id: program.id, title: program.title },
+            sessionKind: program.zoomSessionType,
+            requiresApproval: true,
+          });
+          return;
+        }
+        if (
+          status === ProgramRegistrationStatus.APPROVED &&
+          becomesApproved
+        ) {
+          const joinUrlForLearner = learnerWebinarJoinUrl(program.zoomJoinUrl);
+          await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
+            to: user.email,
+            firstName: user.firstName || 'there',
+            program: {
+              id: program.id,
+              title: program.title,
+              description: program.description,
+              startDate: program.startDate,
+              duration: program.duration,
+              honorariumAmount: program.honorariumAmount,
+              hostDisplayName: program.hostDisplayName,
+              sponsorName: program.sponsorName,
+              zoomJoinUrl: joinUrlForLearner,
+            },
+            sessionKind: program.zoomSessionType,
+          });
+        }
+      })().catch((e: Error) =>
+        this.logger.warn(`Registration email side effect: ${e.message}`),
+      );
+    }
 
     return {
       id: reg.id,
@@ -1625,6 +1674,10 @@ export class ProgramRegistrationsService {
       },
     });
 
+    if (status === 'VERIFIED') {
+      await this.ensureEnrollment(reg.userId, reg.programId);
+    }
+
     if (status === 'VERIFIED' && reg.user?.email) {
       this.sesEmail
         .sendPostWebinarSurveyEmail({
@@ -1672,14 +1725,29 @@ export class ProgramRegistrationsService {
   }
 
   async listPendingPostEventAttendanceForAdmin() {
+    return this.listPostEventAttendanceForAdmin({
+      statuses: [PostEventAttendanceStatus.PENDING_VERIFICATION],
+    });
+  }
+
+  /** All approved learners with attendance tracking (pending, verified, or denied). */
+  async listPostEventAttendanceForAdmin(opts?: {
+    programId?: string;
+    statuses?: PostEventAttendanceStatus[];
+  }) {
+    const statuses = opts?.statuses ?? [
+      PostEventAttendanceStatus.PENDING_VERIFICATION,
+      PostEventAttendanceStatus.VERIFIED,
+      PostEventAttendanceStatus.DENIED,
+    ];
     return this.prisma.programRegistration.findMany({
       where: {
         status: ProgramRegistrationStatus.APPROVED,
-        postEventAttendanceStatus:
-          PostEventAttendanceStatus.PENDING_VERIFICATION,
+        postEventAttendanceStatus: { in: statuses },
         program: {
           zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
           status: 'PUBLISHED',
+          ...(opts?.programId ? { id: opts.programId } : {}),
         },
       },
       include: {
@@ -1704,7 +1772,7 @@ export class ProgramRegistrationsService {
           },
         },
       },
-      orderBy: { updatedAt: 'asc' },
+      orderBy: [{ program: { title: 'asc' } }, { updatedAt: 'desc' }],
     });
   }
 

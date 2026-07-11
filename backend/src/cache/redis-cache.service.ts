@@ -100,6 +100,8 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     if (!this.isEnabled() || !this.client) return 0;
     let cursor = '0';
     let deleted = 0;
+    let batches = 0;
+    const started = Date.now();
     try {
       do {
         const [next, keys] = await this.client.scan(
@@ -111,13 +113,17 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         );
         cursor = next;
         if (keys.length > 0) {
+          batches += 1;
           deleted += await this.client.del(...keys);
         }
       } while (cursor !== '0');
+      this.logger.log(
+        `Redis deleteByPattern pattern=${pattern} deleted=${deleted} batches=${batches} durationMs=${Date.now() - started}`,
+      );
       return deleted;
     } catch (err) {
       this.logger.warn(
-        `Redis SCAN/DEL ${pattern} failed: ${err instanceof Error ? err.message : String(err)}`,
+        `Redis SCAN/DEL ${pattern} failed after ${deleted} keys: ${err instanceof Error ? err.message : String(err)}`,
       );
       return deleted;
     }

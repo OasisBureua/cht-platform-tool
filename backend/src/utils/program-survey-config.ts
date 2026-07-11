@@ -2,14 +2,48 @@ import { ProgramZoomSessionType, SurveyType } from '@prisma/client';
 import { effectiveWebinarIntakeFormUrl } from './webinar-intake-url';
 import { surveyQuestionsAreNative } from './native-survey-questions';
 
-/** Learners may complete post-event FEEDBACK surveys within this window from survey creation. */
+/** Learners may complete post-event FEEDBACK surveys within this window after the session unlocks. */
 export const POST_EVENT_SURVEY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
+type PostEventUnlockProgram = {
+  zoomSessionType?: ProgramZoomSessionType | null;
+  startDate?: Date | null;
+  duration?: number | null;
+  zoomSessionEndedAt?: Date | null;
+};
+
+/**
+ * When the post-event survey becomes available (session ended or scheduled end).
+ * Office-hours MEETING without schedule unlocks immediately (null → treat as epoch).
+ */
+export function getPostEventSurveyUnlockAt(
+  program: PostEventUnlockProgram,
+): Date | null {
+  if (program.zoomSessionEndedAt) {
+    return program.zoomSessionEndedAt;
+  }
+  if (program.zoomSessionType === ProgramZoomSessionType.MEETING) {
+    return new Date(0);
+  }
+  if (!program.startDate) {
+    return null;
+  }
+  const durMin = program.duration ?? 60;
+  return new Date(program.startDate.getTime() + durMin * 60_000);
+}
+
 export function isPostEventSurveyWithinWindow(
-  surveyCreatedAt: Date,
+  unlockAt: Date | null,
   nowMs: number = Date.now(),
 ): boolean {
-  return nowMs < surveyCreatedAt.getTime() + POST_EVENT_SURVEY_WINDOW_MS;
+  if (!unlockAt) {
+    return false;
+  }
+  const unlockMs = unlockAt.getTime();
+  if (nowMs < unlockMs) {
+    return false;
+  }
+  return nowMs < unlockMs + POST_EVENT_SURVEY_WINDOW_MS;
 }
 
 export type ProgramSurveyMeta = {

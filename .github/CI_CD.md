@@ -7,8 +7,8 @@
 | `pr-validation.yml` | Pull requests | Lint, build, Terraform validate |
 | `branch-policy.yml` | PRs → `main` | Require head branch `release/*` (and based on `main`) |
 | `security-monthly.yml` | First Monday monthly | npm audit, Trivy filesystem scan |
-| `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images (`3.0.0`, `3.0.1`, …), Terraform apply dev |
-| `deploy-prod.yml` | Manual (from `v3.0.0`, `v3.0.1`, … tags) | Deploy to platform (prod) |
+| `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images (`1.0.0`, `1.0.1`, …) → `cht-dev-*` ECR, Terraform apply dev |
+| `deploy-prod.yml` | Manual or merged `release/*` → `main` | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …) |
 | `rollback.yml` | Manual | Roll back ECS services |
 
 Dependabot and CodeQL config files are removed for now. Optional: disable GitHub **default CodeQL** under Settings → Code security → Code scanning if PR scans still appear.
@@ -90,7 +90,8 @@ In the `main` ruleset, ensure **Restrict updates** is on so nobody pushes to `ma
 - **Domain:** `devapp.communityhealth.media`
 - **Terraform:** `infrastructure/terraform/environments/us-east-1`
 - **Var file (CI):** `infrastructure/terraform/environments/variables/dev.github.tfvars`
-- **Image tags:** semver `3.0.0`, `3.0.1`, … (auto-increment patch); also pushes `dev-latest`
+- **Image tags:** semver `1.0.0`, `1.0.1`, … (auto-increment patch); also `dev-latest`
+- **ECR repos:** `cht-dev-backend`, `cht-dev-worker`
 
 Sync secrets into the `development` environment:
 
@@ -99,15 +100,27 @@ Sync secrets into the `development` environment:
 ./scripts/verify-github-env-secrets.sh development
 ```
 
-## Platform (production)
+## Platform (production / testapp)
 
 - **Environment:** `platform` (GitHub Environment secrets)
 - **Domain:** `testapp.communityhealth.media`
 - **Var file (CI):** `infrastructure/terraform/environments/variables/platform.github.tfvars`
-- **State backend:** `infrastructure/terraform/environments/backends/us-east-1-platform.hcl`
-- **Image tags:** semver `v3.0.0`, `v3.0.1`, … (auto-increment patch); also pushes `platform-latest`
+- **Infra (local):** `./scripts/deploy-platform-infra-local.sh` — ElastiCache, Content Hub secrets, Cognito, ECR lifecycle, etc.
+- **App (CI):** `deploy-prod.yml` — ECR images, ECS roll, frontend S3/CloudFront (no Terraform apply in CI)
+- **Content Hub:** separate `cht-content-hub` repo; CHT only configures `contenthub_base_url` + `CONTENTHUB_API_KEY`
+- **Image tags:** semver `v1.0.0`, `v1.0.1`, …; also `platform-latest`
+- **ECR repos:** `cht-platform-backend`, `cht-platform-worker`
 
 Configure the `platform` environment with deployment branch rules for `release/**`.
+
+```bash
+cp infrastructure/terraform/environments/variables/platform.tfvars.example \
+   infrastructure/terraform/environments/variables/platform.tfvars
+# fill secrets, then:
+./scripts/deploy-platform-infra-local.sh
+./scripts/sync-github-secrets-from-tfvars.sh platform
+./scripts/verify-github-env-secrets.sh platform
+```
 
 ## Local verification
 

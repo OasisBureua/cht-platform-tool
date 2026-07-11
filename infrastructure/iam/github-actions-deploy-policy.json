@@ -38,9 +38,15 @@
         "ecr:BatchGetImage",
         "ecr:GetDownloadUrlForLayer",
         "ecr:DescribeRepositories",
-        "ecr:ListImages"
+        "ecr:ListImages",
+        "ecr:PutLifecyclePolicy",
+        "ecr:GetLifecyclePolicy",
+        "ecr:DeleteLifecyclePolicy"
       ],
-      "Resource": "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*"
+      "Resource": [
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*",
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-dev-*"
+      ]
     },
     {
       "Sid": "DeployS3",

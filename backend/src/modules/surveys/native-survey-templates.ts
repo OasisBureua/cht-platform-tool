@@ -64,6 +64,7 @@ export function defaultWebinarIntakeQuestions() {
           'We will send your confirmation and join link to the email on your account.',
         ),
         text('phone', 'Phone number', { required: false }),
+        text('npi', 'NPI number', { required: false }),
         text('organization', 'Organization', { required: true }),
         text('address_street', 'Company address — street', { required: false }),
         text('address_line2', 'Street address line 2', { required: false }),
@@ -84,6 +85,7 @@ export function defaultPostEventFeedbackQuestions() {
     version: 1,
     sections: [
       section('demographics', 'About you', [
+        text('npi', 'NPI number', { required: false }),
         single('q1_role', 'Which best describes your primary role?', [
           'Medical Oncologist',
           'Advanced Practice Provider (NP/PA)',

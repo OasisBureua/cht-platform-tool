@@ -258,6 +258,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!cancelled) {
+        // Keep profile from a fresh login when /auth/me is temporarily unavailable
+        // (e.g. DB restore, cold start) — avoids "Signing you in..." hang or logout loop.
+        if (authMode === 'cookie' && profile?.userId) {
+          return;
+        }
         setAuthMode(null);
         setProfile(null);
       }
@@ -270,7 +275,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authMode, devUserId, apiUrl]);
+  }, [authMode, devUserId, apiUrl, profile?.userId]);
 
   const refreshProfile = useCallback(async () => {
     const meUrl = `${apiUrl.replace(/\/$/, '')}/auth/me`;

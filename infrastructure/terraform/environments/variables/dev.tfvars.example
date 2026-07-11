@@ -12,8 +12,8 @@ domain_name             = "devapp.communityhealth.media"
 acm_certificate_arn     = ""
 cloudfront_certificate_arn = ""
 
-backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:dev-latest"
-worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:dev-latest"
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-dev-backend:1.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-dev-worker:1.0.0"
 
 rds_instance_class    = "db.t3.micro"
 rds_engine_version    = "15.17"
