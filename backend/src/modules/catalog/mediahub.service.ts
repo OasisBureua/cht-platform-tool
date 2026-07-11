@@ -82,8 +82,9 @@ export interface MediaHubDoctor {
 @Injectable()
 export class MediaHubService {
   private readonly logger = new Logger(MediaHubService.name);
-  private readonly baseUrl: string;
-  private readonly apiKey: string | null;
+  /** ContentHub (devhub) when WP catalog enabled; otherwise MediaHub. */
+  private readonly publicBaseUrl: string;
+  private readonly publicApiKey: string | null;
   private readonly useContentHub: boolean;
   private readonly wordpressOnlyDefault: boolean;
   private readonly clipsCacheTtlSeconds: number;
@@ -99,44 +100,52 @@ export class MediaHubService {
       this.config.get<number>('catalog.clipsCacheTtlSeconds') ?? 14400;
 
     if (this.useContentHub) {
-      this.baseUrl =
+      this.publicBaseUrl =
         this.config.get<string>('contenthub.baseUrl')?.replace(/\/$/, '') ||
         '';
-      this.apiKey = this.config.get<string>('contenthub.apiKey') || null;
+      this.publicApiKey = this.config.get<string>('contenthub.apiKey') || null;
       this.logger.log(
-        `Catalog upstream: ContentHub (${this.baseUrl || 'missing URL'})`,
+        `Catalog upstream: ContentHub (${this.publicBaseUrl || 'missing URL'})`,
       );
     } else {
-      this.baseUrl =
+      this.publicBaseUrl =
         this.config.get<string>('mediahub.baseUrl') || MEDIAHUB_BASE_URL;
-      this.apiKey = this.config.get<string>('mediahub.apiKey') || null;
+      this.publicApiKey = this.config.get<string>('mediahub.apiKey') || null;
     }
   }
 
   isConfigured(): boolean {
-    return !!this.apiKey && !!this.baseUrl;
+    return !!this.publicApiKey && !!this.publicBaseUrl;
+  }
+
+  isClipsConfigured(): boolean {
+    return this.isConfigured();
   }
 
   usesContentHubCatalog(): boolean {
     return this.useContentHub;
   }
 
-  private getHeaders(): Record<string, string> {
-    if (!this.apiKey) {
+  private getHeaders(apiKey: string | null): Record<string, string> {
+    if (!apiKey) {
       throw new Error('Catalog upstream API key not configured');
     }
     return {
       'Content-Type': 'application/json',
-      'X-API-Key': this.apiKey,
+      'X-API-Key': apiKey,
     };
   }
 
-  private cacheKey(prefix: string, params?: Record<string, unknown>): string {
+  private cacheKey(
+    prefix: string,
+    params?: Record<string, unknown>,
+  ): string {
+    const upstream = this.useContentHub ? 'contenthub' : 'mediahub';
     const hash = createHash('sha256')
       .update(JSON.stringify(params ?? {}))
       .digest('hex')
       .slice(0, 16);
-    return `cht:catalog:${this.useContentHub ? 'contenthub' : 'mediahub'}:${prefix}:${hash}`;
+    return `cht:catalog:${upstream}:${prefix}:${hash}`;
   }
 
   private async cachedGet<T>(
@@ -150,11 +159,13 @@ export class MediaHubService {
     return value;
   }
 
-  private async get<T>(
+  private async getFrom<T>(
+    baseUrl: string,
+    apiKey: string | null,
     path: string,
     params?: Record<string, string | number | undefined>,
   ): Promise<T> {
-    const url = `${this.baseUrl}${path}`;
+    const url = `${baseUrl}${path}`;
     const cleanParams = params
       ? (Object.fromEntries(
           Object.entries(params).filter(([, v]) => v !== undefined && v !== ''),
@@ -163,15 +174,32 @@ export class MediaHubService {
 
     const { data } = await firstValueFrom(
       this.http.get<T>(url, {
-        headers: this.getHeaders(),
+        headers: this.getHeaders(apiKey),
         params: cleanParams,
       }),
     );
     return data;
   }
 
+  private async getPublic<T>(
+    path: string,
+    params?: Record<string, string | number | undefined>,
+  ): Promise<T> {
+    return this.getFrom(this.publicBaseUrl, this.publicApiKey, path, params);
+  }
+
   async getTags(): Promise<MediaHubTag> {
-    return this.get<MediaHubTag>('/tags');
+    try {
+      return await this.getPublic<MediaHubTag>('/tags');
+    } catch (err) {
+      if (this.useContentHub) {
+        this.logger.warn(
+          'ContentHub /tags unavailable — returning empty (WordPress catalog uses /wordpress/categories)',
+        );
+        return {};
+      }
+      throw err;
+    }
   }
 
   async getClips(params?: {
@@ -213,7 +241,7 @@ export class MediaHubService {
     const key = this.cacheKey('clips', cacheParams);
 
     return this.cachedGet(key, async () => {
-      const result = await this.get<MediaHubClipsResponse | MediaHubClip[]>(
+      const result = await this.getPublic<MediaHubClipsResponse | MediaHubClip[]>(
         '/clips',
         Object.keys(searchParams).length > 0 ? searchParams : undefined,
       );
@@ -231,7 +259,7 @@ export class MediaHubService {
     }
     const key = this.cacheKey('wordpress-categories', {});
     return this.cachedGet(key, () =>
-      this.get<WordPressCategoriesResponse>('/wordpress/categories'),
+      this.getPublic<WordPressCategoriesResponse>('/wordpress/categories'),
     );
   }
 
@@ -247,7 +275,7 @@ export class MediaHubService {
     if (params?.limit != null) searchParams.limit = params.limit;
     if (params?.offset != null) searchParams.offset = params.offset;
 
-    return this.get<MediaHubPlaylistTagList>(
+    return this.getPublic<MediaHubPlaylistTagList>(
       '/playlists',
       Object.keys(searchParams).length > 0 ? searchParams : undefined,
     );
@@ -256,31 +284,41 @@ export class MediaHubService {
   async getClip(id: string): Promise<MediaHubClip> {
     const key = this.cacheKey('clip', { id });
     return this.cachedGet(key, () =>
-      this.get<MediaHubClip>(`/clips/${encodeURIComponent(id)}`),
+      this.getPublic<MediaHubClip>(`/clips/${encodeURIComponent(id)}`),
     );
   }
 
   async getDoctors(): Promise<MediaHubDoctor[]> {
-    const result = await this.get<
-      MediaHubDoctor[] | { items?: MediaHubDoctor[] }
-    >('/doctors');
-    if (Array.isArray(result)) return result;
-    return (result as { items?: MediaHubDoctor[] }).items || [];
+    try {
+      const result = await this.getPublic<
+        MediaHubDoctor[] | { items?: MediaHubDoctor[] }
+      >('/doctors');
+      if (Array.isArray(result)) return result;
+      return (result as { items?: MediaHubDoctor[] }).items || [];
+    } catch (err) {
+      if (this.useContentHub) {
+        this.logger.warn(
+          'ContentHub /doctors unavailable — returning empty (doctors are on each clip from /clips)',
+        );
+        return [];
+      }
+      throw err;
+    }
   }
 
   async getDoctor(
     slug: string,
   ): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
-    return this.get(`/doctors/${slug}`);
+    return this.getPublic(`/doctors/${slug}`);
   }
 
   async getShoots(): Promise<unknown[]> {
-    const result = await this.get<unknown[]>('/shoots');
+    const result = await this.getPublic<unknown[]>('/shoots');
     return Array.isArray(result) ? result : [];
   }
 
   async getTranscript(shootId: string): Promise<unknown> {
-    return this.get(`/transcripts/${shootId}`);
+    return this.getPublic(`/transcripts/${shootId}`);
   }
 
   async search(
@@ -305,11 +343,11 @@ export class MediaHubService {
     if (params?.new_only) cleanParams.new_only = 'true';
     if (params?.limit != null) cleanParams.limit = params.limit;
     if (params?.offset != null) cleanParams.offset = params.offset;
-    return this.get<MediaHubKolList>('/kols', cleanParams);
+    return this.getPublic<MediaHubKolList>('/kols', cleanParams);
   }
 
   async getKol(slug: string): Promise<MediaHubKol> {
-    return this.get<MediaHubKol>(`/kols/${encodeURIComponent(slug)}`);
+    return this.getPublic<MediaHubKol>(`/kols/${encodeURIComponent(slug)}`);
   }
 
   async getKolPublications(
@@ -319,7 +357,7 @@ export class MediaHubService {
     const cleanParams: Record<string, string | number | undefined> = {};
     if (params?.limit != null) cleanParams.limit = params.limit;
     if (params?.offset != null) cleanParams.offset = params.offset;
-    return this.get<MediaHubKolPublicationList>(
+    return this.getPublic<MediaHubKolPublicationList>(
       `/kols/${encodeURIComponent(slug)}/publications`,
       cleanParams,
     );

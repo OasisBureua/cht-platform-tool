@@ -230,18 +230,20 @@ export default function VideosPage() {
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
     staleTime: 10 * 60 * 1000,
+    enabled: !wpMode,
   });
 
   const { data: doctors = [], isSuccess: doctorsReady } = useQuery({
     queryKey: ['catalog', 'doctors'],
     queryFn: catalogApi.getDoctors,
     staleTime: 10 * 60 * 1000,
+    enabled: !wpMode,
   });
 
   const tagGroups = useMemo(() => groupTagsByNamespace(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
-  /** Clips/filters load once tags + doctors requests finish — do not block on empty tag list (MediaHub can return {}). */
-  const useMediaHub = tagsReady && doctorsReady;
+  /** WordPress catalog: clips load without waiting on MediaHub tags/doctors. */
+  const useMediaHub = wpMode || (tagsReady && doctorsReady);
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
@@ -432,35 +434,39 @@ export default function VideosPage() {
               />
             </div>
 
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
-            >
-              <option value="">All tags</option>
-              {tagGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={`${group.label}:${opt.value}`} value={opt.value}>
+            {!wpMode ? (
+              <>
+                <select
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                  className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                >
+                  <option value="">All tags</option>
+                  {tagGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((opt) => (
+                        <option key={`${group.label}:${opt.value}`} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+
+                <select
+                  value={doctorFilter}
+                  onChange={(e) => setDoctorFilter(e.target.value)}
+                  className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                >
+                  <option value="">All doctors</option>
+                  {doctorOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
-
-            <select
-              value={doctorFilter}
-              onChange={(e) => setDoctorFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
-            >
-              <option value="">All doctors</option>
-              {doctorOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+                </select>
+              </>
+            ) : null}
 
             <div className="relative">
               <button

@@ -37,9 +37,9 @@ export class CatalogController {
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401) {
+      if (status === 401 || this.mediahub.usesContentHubCatalog()) {
         this.logger.warn(
-          '[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.',
+          '[Catalog] /tags unavailable — returning empty tags.',
         );
         return {};
       }
@@ -78,7 +78,7 @@ export class CatalogController {
     @Query('has_wordpress') hasWordpress?: string,
     @Query('wp_category') wpCategory?: string,
   ) {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.mediahub.isClipsConfigured()) {
       return { items: [], total: 0 };
     }
     try {
@@ -147,7 +147,7 @@ export class CatalogController {
    */
   @Get('clips/:id')
   async getClip(@Param('id') id: string) {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.mediahub.isClipsConfigured()) {
       return null;
     }
     // If id looks like a short YouTube video ID (11 alphanumeric chars, no colons), try official:youtube:{id}
@@ -182,9 +182,9 @@ export class CatalogController {
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401) {
+      if (status === 401 || this.mediahub.usesContentHubCatalog()) {
         this.logger.warn(
-          '[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.',
+          '[Catalog] /doctors unavailable — returning empty doctors.',
         );
         return [];
       }
