@@ -6,6 +6,13 @@ import { catalogApi, type MediaHubClip } from '../../api/catalog';
 import { shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { webinarsApi } from '../../api/webinars';
 import DISEASE_AREAS from '../../data/disease-areas';
+import { WordPressCategoryNav } from '../../components/content/WordPressCategoryNav';
+import {
+  clipHasWordPressCategory,
+  formatWordPressCategoryLabel,
+  useWordPressCatalog,
+  WORDPRESS_CATALOG_STALE_MS,
+} from '../../utils/wordpressCatalog';
 
 const CLIPS_PAGE_SIZE = 24;
 
@@ -14,13 +21,21 @@ export default function DiseaseDetail() {
   const location = useLocation();
   const isApp = location.pathname.startsWith('/app');
   const basePath = isApp ? '/app' : '';
+  const wpMode = useWordPressCatalog();
 
-  const area = DISEASE_AREAS.find((a) => a.slug === diseaseSlug);
+  const { data: wpCategories } = useQuery({
+    queryKey: ['catalog', 'wordpress', 'categories'],
+    queryFn: catalogApi.getWordPressCategories,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+    enabled: wpMode,
+  });
 
-  // 404 state: slug not recognized OR area has no `clipTags` contract yet
-  // (e.g. lung-cancer / weight-loss are still inactive). Falling through
-  // to unfiltered content was the bug the audit flagged.
-  const isUnknownDisease = !area || !area.clipTags || area.clipTags.length === 0;
+  const wpCategory = wpCategories?.items?.find((c) => c.slug === diseaseSlug);
+  const legacyArea = DISEASE_AREAS.find((a) => a.slug === diseaseSlug);
+
+  const isUnknownDisease = wpMode
+    ? !diseaseSlug || !wpCategory
+    : !legacyArea || !legacyArea.clipTags || legacyArea.clipTags.length === 0;
 
   const [clipsOffset, setClipsOffset] = useState(0);
   const [loadedClips, setLoadedClips] = useState<
@@ -28,8 +43,11 @@ export default function DiseaseDetail() {
   >([]);
 
   const tagParam = useMemo(
-    () => (area?.clipTags && area.clipTags.length > 0 ? area.clipTags.join(',') : undefined),
-    [area],
+    () =>
+      !wpMode && legacyArea?.clipTags?.length
+        ? legacyArea.clipTags.join(',')
+        : undefined,
+    [wpMode, legacyArea],
   );
 
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
@@ -44,16 +62,25 @@ export default function DiseaseDetail() {
     isLoading: clipsLoading,
     isFetching: clipsFetching,
   } = useQuery({
-    queryKey: ['catalog', 'clips', 'disease', diseaseSlug, tagParam, clipsOffset],
+    queryKey: [
+      'catalog',
+      'clips',
+      'disease',
+      diseaseSlug,
+      wpMode ? 'wp' : tagParam,
+      clipsOffset,
+    ],
     queryFn: () =>
       catalogApi.getClips({
-        tag: tagParam,
+        ...(wpMode
+          ? { has_wordpress: true, wp_category: diseaseSlug }
+          : { tag: tagParam }),
         sort_by: 'recorded_at',
         limit: CLIPS_PAGE_SIZE,
         offset: clipsOffset,
       }),
-    staleTime: 5 * 60 * 1000,
-    enabled: !isUnknownDisease && !!tagParam,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+    enabled: !isUnknownDisease && (wpMode ? !!diseaseSlug : !!tagParam),
     placeholderData: keepPreviousData,
   });
 
@@ -65,14 +92,21 @@ export default function DiseaseDetail() {
     );
   }
 
+  const clipFilterOpts = wpMode ? { requireWordPress: true } : undefined;
+
   const allClips = useMemo(
     () =>
       loadedClips
         .slice()
         .sort((a, b) => a.offset - b.offset)
         .flatMap((p) => p.items)
-        .filter(shouldSurfaceCatalogClip),
-    [loadedClips],
+        .filter((c) => shouldSurfaceCatalogClip(c, clipFilterOpts))
+        .filter((c) =>
+          wpMode && diseaseSlug
+            ? clipHasWordPressCategory(c, diseaseSlug)
+            : true,
+        ),
+    [loadedClips, wpMode, diseaseSlug, clipFilterOpts],
   );
 
   const totalClips = clipsPage?.total ?? 0;
@@ -86,51 +120,43 @@ export default function DiseaseDetail() {
     enabled: !isUnknownDisease,
   });
 
-  const matchedPlaylists = playlists;
-  const matchedWebinars = webinars;
-
-  const title =
-    area?.title ??
-    (diseaseSlug
-      ? diseaseSlug
-          .split('-')
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(' ')
-      : 'Disease Area');
+  const title = wpMode
+    ? formatWordPressCategoryLabel(diseaseSlug ?? '')
+    : legacyArea?.title ??
+      (diseaseSlug
+        ? diseaseSlug
+            .split('-')
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ')
+        : 'Disease Area');
 
   if (isUnknownDisease) {
     return (
       <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-white min-h-screen'}>
         <div className={isApp ? '' : 'mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-8'}>
+          <WordPressCategoryNav basePath={basePath} />
           <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{title}</h1>
               <p className="text-sm text-gray-600 mt-1">
-                {area
-                  ? 'Content for this disease area is not available yet.'
-                  : 'Disease area not found.'}
+                {wpMode
+                  ? 'Category not found or has no published clips yet.'
+                  : legacyArea
+                    ? 'Content for this disease area is not available yet.'
+                    : 'Disease area not found.'}
               </p>
             </div>
             <Link
               to={`${basePath}/catalog`}
-              className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors w-fit"
+              className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 w-fit"
             >
               All Content
             </Link>
           </header>
-
           <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
-            <p className="font-semibold text-gray-900">
-              {area ? `${title} content is coming soon` : 'Disease area not found'}
-            </p>
-            <p className="mt-1 text-sm text-gray-600">
-              {area
-                ? "We're curating expert-led content for this area. Browse the full library in the meantime."
-                : "We couldn't find that disease area. Browse the full library or pick another area."}
-            </p>
             <Link
               to={`${basePath}/catalog`}
-              className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+              className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
             >
               Browse Library
             </Link>
@@ -145,14 +171,20 @@ export default function DiseaseDetail() {
   return (
     <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-white min-h-screen'}>
       <div className={isApp ? '' : 'mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-8'}>
+        <WordPressCategoryNav basePath={basePath} activeSlug={diseaseSlug} />
+
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{title}</h1>
-            {area && <p className="text-sm text-gray-600 mt-1">{area.description}</p>}
+            <p className="text-sm text-gray-600 mt-1">
+              {wpMode
+                ? `${wpCategory?.post_count ?? allClips.length} editorial clips`
+                : legacyArea?.description}
+            </p>
           </div>
           <Link
             to={`${basePath}/catalog`}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors w-fit"
+            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 w-fit"
           >
             All Content
           </Link>
@@ -166,7 +198,7 @@ export default function DiseaseDetail() {
 
         {!isInitialLoading && (
           <div className="space-y-10">
-            {matchedWebinars.length > 0 && (
+            {webinars.length > 0 && (
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-gray-900">Live Sessions</h2>
@@ -175,43 +207,13 @@ export default function DiseaseDetail() {
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {matchedWebinars.slice(0, 6).map((w) => (
+                  {webinars.slice(0, 6).map((w) => (
                     <Link
                       key={w.id}
                       to={isApp ? `/app/live/${w.id}` : `/live/${w.id}`}
-                      className="rounded-2xl border border-gray-200 bg-white p-5 transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_12px_32px_-14px_rgba(0,0,0,0.1)] active:scale-[0.995]"
+                      className="rounded-2xl border border-gray-200 bg-white p-5 hover:shadow-md"
                     >
                       <p className="font-bold text-gray-900 line-clamp-2">{w.title}</p>
-                      <p className="text-sm text-gray-600 mt-1 line-clamp-2">{w.description}</p>
-                      {w.startTime && (
-                        <p className="mt-2 text-xs text-gray-500 tabular-nums">
-                          {new Date(w.startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          {w.duration ? ` · ${w.duration} min` : ''}
-                        </p>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {matchedPlaylists.length > 0 && (
-              <section className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">Playlists</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {matchedPlaylists.slice(0, 9).map((p) => (
-                    <Link
-                      key={p.id}
-                      to={`${basePath}/catalog/playlist/${p.id}`}
-                      className="rounded-2xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_12px_32px_-14px_rgba(0,0,0,0.1)] active:scale-[0.995]"
-                    >
-                      <div className="aspect-video bg-gray-100">
-                        <img src={p.thumbnailUrl} alt={p.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                      </div>
-                      <div className="p-4">
-                        <p className="font-bold text-gray-900 line-clamp-2">{p.title}</p>
-                        <p className="text-xs text-gray-600 mt-1">{p.videoCount} videos</p>
-                      </div>
                     </Link>
                   ))}
                 </div>
@@ -226,7 +228,7 @@ export default function DiseaseDetail() {
                     <Link
                       key={c.id}
                       to={`${basePath}/catalog/clip/${c.id}`}
-                      className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-10px_rgba(0,0,0,0.08)] active:scale-[0.995] group"
+                      className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-md group"
                     >
                       <div className="aspect-video bg-gray-100 relative">
                         <img src={c.thumbnail_url} alt={c.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
@@ -236,18 +238,22 @@ export default function DiseaseDetail() {
                       </div>
                       <div className="p-2.5">
                         <p className="font-medium text-gray-900 text-xs line-clamp-2">{c.title}</p>
+                        {c.wordpress?.series?.[0] ? (
+                          <p className="mt-1 text-[10px] text-gray-500 line-clamp-1">
+                            {c.wordpress.series[0].replace(/-/g, ' ')}
+                          </p>
+                        ) : null}
                       </div>
                     </Link>
                   ))}
                 </div>
-
                 {hasMoreClips && (
                   <div className="flex justify-center pt-2">
                     <button
                       type="button"
                       disabled={clipsFetching}
                       onClick={() => setClipsOffset(clipsOffset + CLIPS_PAGE_SIZE)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold disabled:opacity-60"
                     >
                       {clipsFetching && <Loader2 className="h-4 w-4 animate-spin" />}
                       Load more
@@ -257,14 +263,10 @@ export default function DiseaseDetail() {
               </section>
             )}
 
-            {matchedWebinars.length === 0 && matchedPlaylists.length === 0 && allClips.length === 0 && (
+            {webinars.length === 0 && allClips.length === 0 && (
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
                 <p className="font-semibold text-gray-900">No content available yet for {title}</p>
-                <p className="mt-1 text-sm text-gray-600">Check back soon or browse the full content library.</p>
-                <Link
-                  to={`${basePath}/catalog`}
-                  className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-                >
+                <Link to={`${basePath}/catalog`} className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
                   Browse Library
                 </Link>
               </div>

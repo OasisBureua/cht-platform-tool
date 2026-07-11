@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { createHash } from 'crypto';
+import { RedisCacheService } from '../../cache/redis-cache.service';
 import type {
   MediaHubKol,
   MediaHubKolList,
@@ -20,13 +22,24 @@ export interface MediaHubTag {
   [category: string]: string[];
 }
 
-/** Mirrors MediaHub public clips list/detail: description + optional ai_summary (snake_case). */
+/** WordPress editorial metadata joined by ContentHub on /api/public/clips. */
+export interface PublicClipWordPress {
+  post_id: number;
+  permalink: string;
+  slug: string;
+  categories: string[];
+  tags: string[];
+  series: string[];
+  featured_media_url: string | null;
+  modified_gmt: string;
+}
+
+/** Mirrors public clips list/detail from MediaHub or ContentHub. */
 export interface MediaHubClip {
   id: string;
   title: string;
   description: string;
   ai_summary?: string;
-  /** Some gateways may emit camelCase; prefer ai_summary from /api/public/clips. */
   aiSummary?: string;
   tags: string[];
   doctors: string[];
@@ -40,11 +53,22 @@ export interface MediaHubClip {
   comment_count: number;
   shoot_id?: string;
   shoot_name?: string;
+  wordpress?: PublicClipWordPress | null;
 }
 
 export interface MediaHubClipsResponse {
   items?: MediaHubClip[];
   total?: number;
+}
+
+export interface WordPressCategoryItem {
+  slug: string;
+  post_count: number;
+}
+
+export interface WordPressCategoriesResponse {
+  items: WordPressCategoryItem[];
+  total: number;
 }
 
 export interface MediaHubDoctor {
@@ -60,28 +84,70 @@ export class MediaHubService {
   private readonly logger = new Logger(MediaHubService.name);
   private readonly baseUrl: string;
   private readonly apiKey: string | null;
+  private readonly useContentHub: boolean;
+  private readonly wordpressOnlyDefault: boolean;
+  private readonly clipsCacheTtlSeconds: number;
 
   constructor(
     private config: ConfigService,
     private http: HttpService,
+    private cache: RedisCacheService,
   ) {
-    this.baseUrl =
-      this.config.get<string>('mediahub.baseUrl') || MEDIAHUB_BASE_URL;
-    this.apiKey = this.config.get<string>('mediahub.apiKey') || null;
+    this.useContentHub = !!this.config.get<boolean>('catalog.useContentHub');
+    this.wordpressOnlyDefault = !!this.config.get<boolean>('catalog.wordpressOnly');
+    this.clipsCacheTtlSeconds =
+      this.config.get<number>('catalog.clipsCacheTtlSeconds') ?? 14400;
+
+    if (this.useContentHub) {
+      this.baseUrl =
+        this.config.get<string>('contenthub.baseUrl')?.replace(/\/$/, '') ||
+        '';
+      this.apiKey = this.config.get<string>('contenthub.apiKey') || null;
+      this.logger.log(
+        `Catalog upstream: ContentHub (${this.baseUrl || 'missing URL'})`,
+      );
+    } else {
+      this.baseUrl =
+        this.config.get<string>('mediahub.baseUrl') || MEDIAHUB_BASE_URL;
+      this.apiKey = this.config.get<string>('mediahub.apiKey') || null;
+    }
   }
 
   isConfigured(): boolean {
-    return !!this.apiKey;
+    return !!this.apiKey && !!this.baseUrl;
+  }
+
+  usesContentHubCatalog(): boolean {
+    return this.useContentHub;
   }
 
   private getHeaders(): Record<string, string> {
     if (!this.apiKey) {
-      throw new Error('MediaHub API key not configured');
+      throw new Error('Catalog upstream API key not configured');
     }
     return {
       'Content-Type': 'application/json',
       'X-API-Key': this.apiKey,
     };
+  }
+
+  private cacheKey(prefix: string, params?: Record<string, unknown>): string {
+    const hash = createHash('sha256')
+      .update(JSON.stringify(params ?? {}))
+      .digest('hex')
+      .slice(0, 16);
+    return `cht:catalog:${this.useContentHub ? 'contenthub' : 'mediahub'}:${prefix}:${hash}`;
+  }
+
+  private async cachedGet<T>(
+    key: string,
+    fetcher: () => Promise<T>,
+  ): Promise<T> {
+    const cached = await this.cache.getJson<T>(key);
+    if (cached != null) return cached;
+    const value = await fetcher();
+    await this.cache.setJson(key, value, this.clipsCacheTtlSeconds);
+    return value;
   }
 
   private async get<T>(
@@ -104,48 +170,28 @@ export class MediaHubService {
     return data;
   }
 
-  /**
-   * GET /tags - All tags grouped by category
-   */
   async getTags(): Promise<MediaHubTag> {
     return this.get<MediaHubTag>('/tags');
   }
 
-  /**
-   * GET /clips - Video catalog with filters
-   *
-   * Defaults to platform=youtube (kills LinkedIn/X duplicates from the
-   * 2026-05-16 video-presentation audit). To include all platforms,
-   * pass `platform: ''` explicitly. To include a specific platform set
-   * other than YouTube, pass `platform: 'youtube,podcast'` (comma-separated).
-   *
-   * Supports MediaHub /api/public/clips's Phase 2 params:
-   * - sort_by=recorded_at (orders by Shoot.shoot_date with posted_at fallback)
-   * - dedup_by=shoot (one canonical clip per shoot_id)
-   * - per_shoot_cap=N (after dedup, cap per shoot for variety)
-   */
   async getClips(params?: {
     q?: string;
     tag?: string;
     doctor?: string;
-    /**
-     * Comma-separated platforms (e.g. 'youtube,podcast'). Defaults to
-     * 'youtube' if undefined. Pass empty string to include all platforms.
-     */
     platform?: string;
     sort_by?: 'views' | 'likes' | 'recent' | 'posted' | 'recorded_at';
     dedup_by?: 'shoot';
     per_shoot_cap?: number;
     limit?: number;
     offset?: number;
+    has_wordpress?: boolean;
+    wp_category?: string;
   }): Promise<MediaHubClipsResponse> {
     const searchParams: Record<string, string | number> = {};
     if (params?.q) searchParams.q = params.q;
     if (params?.tag) searchParams.tag = params.tag;
     if (params?.doctor) searchParams.doctor = params.doctor;
 
-    // Platform default: 'youtube' (audit fix: LinkedIn text-only posts leak into
-    // video carousels). Empty string explicitly opts out.
     const platform =
       params?.platform === undefined ? 'youtube' : params.platform;
     if (platform) searchParams.platform = platform;
@@ -157,27 +203,38 @@ export class MediaHubService {
     if (params?.limit != null) searchParams.limit = params.limit;
     if (params?.offset != null) searchParams.offset = params.offset;
 
-    const result = await this.get<MediaHubClipsResponse | MediaHubClip[]>(
-      '/clips',
-      Object.keys(searchParams).length > 0 ? searchParams : undefined,
-    );
+    const hasWordpress =
+      params?.has_wordpress ??
+      (this.useContentHub && this.wordpressOnlyDefault);
+    if (hasWordpress) searchParams.has_wordpress = 'true';
+    if (params?.wp_category) searchParams.wp_category = params.wp_category;
 
-    if (Array.isArray(result)) {
-      return { items: result, total: result.length };
-    }
-    return result;
+    const cacheParams = { ...searchParams, path: '/clips' };
+    const key = this.cacheKey('clips', cacheParams);
+
+    return this.cachedGet(key, async () => {
+      const result = await this.get<MediaHubClipsResponse | MediaHubClip[]>(
+        '/clips',
+        Object.keys(searchParams).length > 0 ? searchParams : undefined,
+      );
+
+      if (Array.isArray(result)) {
+        return { items: result, total: result.length };
+      }
+      return result;
+    });
   }
 
-  /**
-   * GET /playlists — curator-set YouTube playlist tag/lane overlay.
-   *
-   * Returns rows from MediaHub's `playlist_tags` table. The full YouTube
-   * playlist metadata (title, description, video_count) is NOT returned
-   * here — fetch that separately via the YouTube Data API. This endpoint
-   * exists so CHT can ask "which playlists are tagged biomarker:HER2+"
-   * without scraping playlist titles (fixes the broken
-   * `_generated-catalog-playlists.json` fuzzy-title-match approach).
-   */
+  async getWordPressCategories(): Promise<WordPressCategoriesResponse> {
+    if (!this.useContentHub) {
+      return { items: [], total: 0 };
+    }
+    const key = this.cacheKey('wordpress-categories', {});
+    return this.cachedGet(key, () =>
+      this.get<WordPressCategoriesResponse>('/wordpress/categories'),
+    );
+  }
+
   async getPlaylistTags(params?: {
     tag?: string;
     lane?: 'biomarker' | 'drug' | 'trial' | 'doctor_pair' | 'mixed' | 'archive';
@@ -196,16 +253,13 @@ export class MediaHubService {
     );
   }
 
-  /**
-   * GET /clips/{id} - Single clip detail
-   */
   async getClip(id: string): Promise<MediaHubClip> {
-    return this.get<MediaHubClip>(`/clips/${id}`);
+    const key = this.cacheKey('clip', { id });
+    return this.cachedGet(key, () =>
+      this.get<MediaHubClip>(`/clips/${encodeURIComponent(id)}`),
+    );
   }
 
-  /**
-   * GET /doctors - Doctor profiles
-   */
   async getDoctors(): Promise<MediaHubDoctor[]> {
     const result = await this.get<
       MediaHubDoctor[] | { items?: MediaHubDoctor[] }
@@ -214,33 +268,21 @@ export class MediaHubService {
     return (result as { items?: MediaHubDoctor[] }).items || [];
   }
 
-  /**
-   * GET /doctors/{slug} - Doctor detail with clips
-   */
   async getDoctor(
     slug: string,
   ): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
     return this.get(`/doctors/${slug}`);
   }
 
-  /**
-   * GET /shoots - Shoots with doctors, stats
-   */
   async getShoots(): Promise<unknown[]> {
     const result = await this.get<unknown[]>('/shoots');
     return Array.isArray(result) ? result : [];
   }
 
-  /**
-   * GET /transcripts/{shoot_id} - Full diarized transcript
-   */
   async getTranscript(shootId: string): Promise<unknown> {
     return this.get(`/transcripts/${shootId}`);
   }
 
-  /**
-   * GET /search?q= - Full-text search (alias for clips with query)
-   */
   async search(
     q: string,
     params?: { limit?: number; offset?: number },
@@ -248,10 +290,6 @@ export class MediaHubService {
     return this.getClips({ q, ...params });
   }
 
-  /**
-   * GET /kols - Public KOL directory with region/institution facets.
-   * Powers the /kol-network public page on CHT.
-   */
   async getKols(params?: {
     region?: string;
     institution?: string;
@@ -270,17 +308,10 @@ export class MediaHubService {
     return this.get<MediaHubKolList>('/kols', cleanParams);
   }
 
-  /**
-   * GET /kols/{slug} - Single KOL profile.
-   */
   async getKol(slug: string): Promise<MediaHubKol> {
     return this.get<MediaHubKol>(`/kols/${encodeURIComponent(slug)}`);
   }
 
-  /**
-   * GET /kols/{slug}/publications - Recent OpenAlex-derived publications.
-   * Returns an empty list when the KOL has no linked HCP / no OpenAlex match.
-   */
   async getKolPublications(
     slug: string,
     params?: { limit?: number; offset?: number },
@@ -295,11 +326,6 @@ export class MediaHubService {
   }
 }
 
-/**
- * Curator-set tag overlay for a single YouTube playlist. Returned by
- * GET /api/public/playlists. The full playlist metadata (title, videos,
- * description) is NOT included — fetch that separately from YouTube.
- */
 export interface MediaHubPlaylistTag {
   youtube_playlist_id: string;
   tags: string[];

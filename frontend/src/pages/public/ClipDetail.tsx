@@ -1,11 +1,13 @@
 import { useParams, Link, useLocation, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { ArrowLeft, Clock, Eye, ThumbsUp, MessageCircle, Loader2, Calendar } from 'lucide-react';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { format, isValid } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
 import { clipAiSummaryText } from '../../utils/mediaHubClipText';
+import { formatWordPressSeriesLabel } from '../../utils/wordpressCatalog';
 import { isLinkedinCatalogClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 
 /** Normalize clip from API (handles snake_case and camelCase) */
@@ -81,6 +83,22 @@ export default function ClipDetail() {
     retry: 0,
   });
 
+  const canonicalUrl = clip?.wordpress?.permalink;
+
+  useEffect(() => {
+    if (!canonicalUrl) return;
+    let link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'canonical';
+      document.head.appendChild(link);
+    }
+    link.href = canonicalUrl;
+    return () => {
+      if (link?.parentNode) link.parentNode.removeChild(link);
+    };
+  }, [canonicalUrl]);
+
   if (!id) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -126,6 +144,10 @@ export default function ClipDetail() {
   const meta = normalizeClip(clip as unknown as Record<string, unknown>);
   const aiSummary = clipAiSummaryText(clip);
   const shootIdDisplay = transcriptShootId;
+  const wp = clip.wordpress;
+  const seriesLabel = wp?.series?.[0]
+    ? formatWordPressSeriesLabel(wp.series[0])
+    : null;
 
   return (
     <div className="min-h-screen bg-white min-w-0">
@@ -151,6 +173,9 @@ export default function ClipDetail() {
         {/* Title + meta - all from API, works for public and /app */}
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{clip.title}</h1>
+          {seriesLabel ? (
+            <p className="mt-2 text-sm font-medium text-brand-700">{seriesLabel}</p>
+          ) : null}
           <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500 tabular-nums">
             {meta.doctors.length > 0 && (
               <span>Featuring: {meta.doctors.join(', ')}</span>
@@ -184,8 +209,18 @@ export default function ClipDetail() {
         </div>
 
         {/* Tags — brand: prefixed tags are internal and not shown to users */}
-        {clip.tags?.filter((t) => !String(t).startsWith('brand:')).length > 0 && (
+        {(clip.tags?.filter((t) => !String(t).startsWith('brand:')).length > 0 ||
+          (wp?.categories?.length ?? 0) > 0) && (
           <div className="flex flex-wrap gap-2">
+            {(wp?.categories ?? []).map((cat) => (
+              <Link
+                key={`wp-${cat}`}
+                to={isInApp ? `/app/catalog/${cat}` : `/catalog/${cat}`}
+                className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800 hover:bg-brand-100"
+              >
+                {cat}
+              </Link>
+            ))}
             {clip.tags.filter((t) => !String(t).startsWith('brand:')).map((tag) => (
               <span
                 key={tag}

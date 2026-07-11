@@ -24,6 +24,8 @@ import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
+import { useWordPressCatalog, WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
+import { WordPressCategoryNav } from '../../components/content/WordPressCategoryNav';
 
 /**
  * Sort options surfaced in the catalog "Sort by" dropdown.
@@ -125,6 +127,9 @@ export default function VideosPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const isInApp = location.pathname.startsWith('/app');
+  const basePath = isInApp ? '/app' : '';
+  const wpMode = useWordPressCatalog();
+  const clipSurfaceOpts = wpMode ? { requireWordPress: true } : undefined;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
@@ -275,7 +280,7 @@ export default function VideosPage() {
     readonly [string, string, string, string, string, string],
     number
   >({
-    queryKey: ['catalog', 'clips', debouncedQuery, tagFilter, doctorFilter, sortBy],
+    queryKey: ['catalog', 'clips', debouncedQuery, tagFilter, doctorFilter, sortBy, wpMode ? 'wp' : 'legacy'],
     queryFn: ({ pageParam = 0 }) =>
       catalogApi.getClips({
         q: debouncedQuery || undefined,
@@ -284,6 +289,7 @@ export default function VideosPage() {
         sort_by: sortBy ? (sortBy as SortByParam) : undefined,
         limit: CLIPS_PAGE_SIZE,
         offset: pageParam,
+        ...(wpMode ? { has_wordpress: true } : {}),
       }),
     getNextPageParam: (lastPage, allPages) => {
       const lastItems = lastPage?.items ?? [];
@@ -292,7 +298,7 @@ export default function VideosPage() {
     },
     initialPageParam: 0,
     enabled: useMediaHub && effectiveLibraryView === 'clips',
-    staleTime: 2 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   const clipsData: InfiniteData<ClipsPage, number> | undefined =
@@ -327,14 +333,19 @@ export default function VideosPage() {
   }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid]);
 
   const mediaHubItems = useMemo(
-    () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(shouldSurfaceCatalogClip),
+    () =>
+      (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter((c) =>
+        shouldSurfaceCatalogClip(c, clipSurfaceOpts),
+      ),
     [clipsData?.pages],
   );
 
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
 
-  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter(shouldSurfaceCatalogClip);
+  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter((c) =>
+    shouldSurfaceCatalogClip(c, clipSurfaceOpts),
+  );
   const featuredClip = firstPageItems[0] ?? null;
   const gridItems = useMemo(
     () => (featuredClip ? displayItems.filter((c) => c.id !== featuredClip.id) : displayItems),
@@ -400,6 +411,10 @@ export default function VideosPage() {
 
         {effectiveLibraryView === 'clips' && !isInApp ? (
           <ContentLibraryNavTabs isInApp={isInApp} />
+        ) : null}
+
+        {effectiveLibraryView === 'clips' && wpMode ? (
+          <WordPressCategoryNav basePath={basePath} />
         ) : null}
 
         {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (

@@ -84,10 +84,14 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async setJson(key: string, value: unknown): Promise<void> {
+  async setJson(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
     if (!this.isEnabled() || !this.client) return;
+    const ttl =
+      typeof ttlSeconds === 'number' && ttlSeconds > 0
+        ? ttlSeconds
+        : this.ttlSeconds;
     try {
-      await this.client.set(key, JSON.stringify(value), 'EX', this.ttlSeconds);
+      await this.client.set(key, JSON.stringify(value), 'EX', ttl);
     } catch (err) {
       this.logger.warn(
         `Redis SET ${key} failed: ${err instanceof Error ? err.message : String(err)}`,

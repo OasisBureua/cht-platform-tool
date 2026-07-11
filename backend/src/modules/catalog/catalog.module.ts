@@ -4,6 +4,7 @@ import { CatalogController } from './catalog.controller';
 import { CatalogService } from './catalog.service';
 import { MediaHubService } from './mediahub.service';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { CacheModule } from '../../cache/cache.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
       maxRedirects: 5,
     }),
     PrismaModule,
+    CacheModule,
   ],
   controllers: [CatalogController],
   providers: [CatalogService, MediaHubService],

@@ -280,6 +280,19 @@ export default () => ({
       process.env.MAILCHIMP_SERVER || process.env.MAILCHIMP_SERVER_PREFIX,
   },
 
+  catalog: {
+    useContentHub:
+      process.env.CATALOG_USE_CONTENTHUB?.trim().toLowerCase() === 'true' ||
+      (process.env.CHT_ENVIRONMENT === 'dev' &&
+        !!process.env.CONTENTHUB_BASE_URL?.trim()),
+    wordpressOnly:
+      process.env.CATALOG_WORDPRESS_ONLY?.trim().toLowerCase() !== 'false',
+    clipsCacheTtlSeconds: parseInt(
+      process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '14400',
+      10,
+    ),
+  },
+
   redis: {
     url: process.env.REDIS_URL?.trim() || '',
     ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '86400', 10),

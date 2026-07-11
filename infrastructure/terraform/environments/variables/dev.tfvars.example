@@ -1,6 +1,8 @@
 # CHT Platform — dev.tfvars.example
 # Copy to dev.tfvars for local applies:
 #   cp dev.tfvars.example dev.tfvars
+# Then add secrets (or regenerate from AWS):
+#   ./scripts/sync-tfvars-from-secrets-manager.sh dev
 #
 # Non-secret infra values mirror dev.github.tfvars; secrets are left blank
 # and should be provided via TF_VAR_* or a non-committed dev.tfvars file.
@@ -38,12 +40,29 @@ enable_ecr_replication    = false
 secondary_api_origin_domain = ""
 route_api_to_secondary    = false
 
+# Non-secret app configuration (mirrors dev.github.tfvars)
+supabase_url         = "https://mediahub.communityhealth.media"
+mediahub_base_url    = "https://mediahub.communityhealth.media/api/public"
+contenthub_base_url  = "https://devhub.communityhealth.media/api/public"
+youtube_playlist_ids = "PL2Hl5AUWjkcgx53RC-gosoVkylHK2gFxM,PL2Hl5AUWjkcjk3q6xz7EBRPnAWWrcfktZ,PL2Hl5AUWjkch8F7LYwrK7ZSkeuIu1uZ1v,PL2Hl5AUWjkcjkeCwnexDW5A35YW6dCpz8,PL2Hl5AUWjkcj4cuPQAXMyHtcPgcDRhWiq,PL2Hl5AUWjkch0BhbecHExDoFI-BIOCuvp,PL2Hl5AUWjkchqQepKWLujRJqTzWBq7ga3,PL2Hl5AUWjkcj1AMFtfkKNxWru-8oqXiE_,PL2Hl5AUWjkcgctNi0rmnc_UcGhfgVBQ5w,PL2Hl5AUWjkchY4CKaO-YFbzZ85bmIrDLA,PL2Hl5AUWjkci_7ihXb_CxYRx44m5advu4,PL2Hl5AUWjkcgiwYUMn1xZE0OcJ7kkFgC_,PL2Hl5AUWjkchaSnGOSPayrLvVI5VZw-Xr,PL2Hl5AUWjkchKrBR4U7qR34jnrxJ-cFnd,PL2Hl5AUWjkciT76SNZ8KF8YuUBA-J5Zmj,PL2Hl5AUWjkcjmsRaEGRABoVIGpFDB-mKX,PL2Hl5AUWjkcgHOME-3DuV__2NGIqieLbR,PL2Hl5AUWjkciojcG6OcXr53j6CVbUCKaH,PL2Hl5AUWjkchgKKgSKqSsmFsXAIzti2eh,PL2Hl5AUWjkcg9IswomQR5PAFwEE7GeR0q,PL2Hl5AUWjkci9phIT_iBNkmaUp4hv2IId,PL2Hl5AUWjkcjQ1qYVwjWWcwaJNnp3b6OA,PL2Hl5AUWjkcjDYB2OkFzYrBiZV8r9-RPm,PL2Hl5AUWjkchGE0Ih3iTYgA0QGrGeIyuZ,PL2Hl5AUWjkcj56vpMhTrmzyiw86r-CAvt,PL2Hl5AUWjkcijhM_JbPRxMWvRdMW3ceuD,PL2Hl5AUWjkciIjpJ6mSA9uGjfPFL4Hn0P"
+worker_ses_from_email = "info@communityhealth.media"
+session_reminders_schedule_expression = "cron(0 0/12 * * ? *)"
+enable_cognito_pools                  = true
+cognito_domain_prefix                 = "chm-dev"
+cognito_user_pool_tier                = "ESSENTIALS"
+cognito_mfa_configuration             = "OPTIONAL"
+cognito_email_sending_account         = "DEVELOPER"
+cognito_email_from                    = "noreply@communityhealth.media"
+cognito_email_reply_to                = "info@communityhealth.media"
+enable_cognito_waf                    = true
+enable_cognito_mrr                    = true
+cognito_mrr_replica_region            = "us-east-2"
+cognito_mrr_associate_waf_replica     = false
+
 # ── Secrets (do NOT commit in dev.tfvars.example) ───────────
-# supabase_url         = ""
 # supabase_anon_key    = ""
 # gotrue_jwt_secret    = ""
-# mediahub_base_url    = ""
 # mediahub_api_key     = ""
+# contenthub_api_key   = ""   # required for WordPress catalog on devapp
 # youtube_api_key      = ""
-# youtube_playlist_ids = ""
-
+# zoom_* / jotform_* / bill_* / hubspot_* / recaptcha_* / internal_cache_secret

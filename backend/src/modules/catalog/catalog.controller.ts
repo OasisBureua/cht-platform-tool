@@ -75,12 +75,19 @@ export class CatalogController {
     @Query('per_shoot_cap') perShootCap?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('has_wordpress') hasWordpress?: string,
+    @Query('wp_category') wpCategory?: string,
   ) {
     if (!this.mediahub.isConfigured()) {
       return { items: [], total: 0 };
     }
     try {
-      // MediaHub supports dedicated `doctor` and `tag` query params; pass both through (do not fold doctor into tag only).
+      const hasWordpressFlag =
+        hasWordpress === 'true'
+          ? true
+          : hasWordpress === 'false'
+            ? false
+            : undefined;
       return await this.mediahub.getClips({
         q,
         tag,
@@ -91,6 +98,8 @@ export class CatalogController {
         per_shoot_cap: perShootCap ? parseInt(perShootCap, 10) : undefined,
         limit: limit ? parseInt(limit, 10) : undefined,
         offset: offset ? parseInt(offset, 10) : undefined,
+        has_wordpress: hasWordpressFlag,
+        wp_category: wpCategory,
       });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
@@ -98,6 +107,30 @@ export class CatalogController {
       if (status === 401) {
         this.logger.warn(
           '[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.',
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * GET /api/catalog/wordpress/categories
+   * ContentHub: WordPress category slugs for biomarker/disease landing nav.
+   */
+  @Get('wordpress/categories')
+  async getWordPressCategories() {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getWordPressCategories();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401) {
+        this.logger.warn(
+          '[Catalog] ContentHub 401 on /wordpress/categories - returning empty.',
         );
         return { items: [], total: 0 };
       }

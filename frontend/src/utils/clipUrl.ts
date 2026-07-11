@@ -54,12 +54,17 @@ export function hasRealThumbnail(clip: { thumbnail_url?: string; youtube_url?: s
  * Show in grids / search only if the in-app clip page can play the video (YouTube embed) and the id is not a known-bad source.
  * Clips with only a third-party thumb or non-YouTube URLs used to link to a blank / empty player.
  */
-export function shouldSurfaceCatalogClip(clip: {
-  id: string;
-  thumbnail_url?: string;
-  youtube_url?: string;
-  youtubeUrl?: string;
-}): boolean {
+export function shouldSurfaceCatalogClip(
+  clip: {
+    id: string;
+    thumbnail_url?: string;
+    youtube_url?: string;
+    youtubeUrl?: string;
+    wordpress?: { post_id?: number } | null;
+  },
+  options?: { requireWordPress?: boolean },
+): boolean {
   if (isLinkedinCatalogClipId(clip.id)) return false;
+  if (options?.requireWordPress && !clip.wordpress) return false;
   return extractYoutubeVideoIdFromUrl(catalogYoutubeUrlString(clip)) != null;
 }
