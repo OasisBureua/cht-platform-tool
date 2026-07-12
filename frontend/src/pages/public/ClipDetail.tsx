@@ -6,9 +6,14 @@ import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { format, isValid } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
+import type { MediaHubClip } from '../../api/catalog';
 import { clipAiSummaryText } from '../../utils/mediaHubClipText';
 import { formatWordPressSeriesLabel } from '../../utils/wordpressCatalog';
-import { isLinkedinCatalogClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
+import {
+  getShortClipId,
+  isLinkedinCatalogClipId,
+  extractYoutubeVideoIdFromUrl,
+} from '../../utils/clipUrl';
 
 /** Normalize clip from API (handles snake_case and camelCase) */
 function normalizeClip(raw: Record<string, unknown>): {
@@ -65,12 +70,24 @@ export default function ClipDetail() {
   const isInApp = location.pathname.startsWith('/app');
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${location.pathname}` : '';
   const skipLinkedInClip = !!id && isLinkedinCatalogClipId(id);
+  const stateClip = (location.state as { clip?: MediaHubClip } | null)?.clip;
+  const stateClipMatches =
+    !!stateClip &&
+    !!id &&
+    (stateClip.id === id || getShortClipId(stateClip.id) === id);
 
   const { data: clip, isLoading, isError, error } = useQuery({
     queryKey: ['catalog', 'clip', id],
-    queryFn: () => catalogApi.getClip(id!),
+    queryFn: async () => {
+      const fromApi = await catalogApi.getClip(id!);
+      if (fromApi) return fromApi;
+      // ContentHub detail may 404; keep navigated clip so the player still works.
+      if (stateClipMatches) return stateClip!;
+      return null;
+    },
     enabled: !!id && !skipLinkedInClip,
     retry: 0, // 404s from MediaHub are expected; don't retry
+    placeholderData: stateClipMatches ? stateClip : undefined,
   });
 
   const clipRecord = clip && typeof clip === 'object' ? (clip as unknown as Record<string, unknown>) : undefined;

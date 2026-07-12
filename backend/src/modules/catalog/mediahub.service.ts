@@ -159,6 +159,56 @@ export class MediaHubService {
     return value;
   }
 
+  private isDevEnvironment(): boolean {
+    const env = this.config.get<string>('app.environment') ?? '';
+    return env === 'dev' || env === 'development';
+  }
+
+  private normalizeClipsResponse(
+    result: MediaHubClipsResponse | MediaHubClip[],
+  ): MediaHubClipsResponse {
+    if (Array.isArray(result)) {
+      return { items: result, total: result.length };
+    }
+    return {
+      items: result?.items ?? [],
+      total: result?.total ?? result?.items?.length ?? 0,
+    };
+  }
+
+  /** Devhub can expose WP categories before the clip↔WP join returns has_wordpress rows. */
+  private async fetchClipsFromUpstream(
+    searchParams: Record<string, string | number>,
+  ): Promise<MediaHubClipsResponse> {
+    let result = this.normalizeClipsResponse(
+      await this.getPublic<MediaHubClipsResponse | MediaHubClip[]>(
+        '/clips',
+        Object.keys(searchParams).length > 0 ? searchParams : undefined,
+      ),
+    );
+
+    if (
+      this.useContentHub &&
+      searchParams.has_wordpress === 'true' &&
+      (result.items?.length ?? 0) === 0 &&
+      this.isDevEnvironment()
+    ) {
+      this.logger.warn(
+        'ContentHub returned 0 clips with has_wordpress=true; retrying without WP filter (dev only until clip join ships)',
+      );
+      const relaxed = { ...searchParams };
+      delete relaxed.has_wordpress;
+      result = this.normalizeClipsResponse(
+        await this.getPublic<MediaHubClipsResponse | MediaHubClip[]>(
+          '/clips',
+          Object.keys(relaxed).length > 0 ? relaxed : undefined,
+        ),
+      );
+    }
+
+    return result;
+  }
+
   private async getFrom<T>(
     baseUrl: string,
     apiKey: string | null,
@@ -240,17 +290,78 @@ export class MediaHubService {
     const cacheParams = { ...searchParams, path: '/clips' };
     const key = this.cacheKey('clips', cacheParams);
 
-    return this.cachedGet(key, async () => {
-      const result = await this.getPublic<MediaHubClipsResponse | MediaHubClip[]>(
-        '/clips',
-        Object.keys(searchParams).length > 0 ? searchParams : undefined,
-      );
+    const cached = await this.cache.getJson<MediaHubClipsResponse>(key);
+    const cachedEmptyWpFilter =
+      this.useContentHub &&
+      searchParams.has_wordpress === 'true' &&
+      (cached?.items?.length ?? 0) === 0 &&
+      this.isDevEnvironment();
+    if (cached != null && !cachedEmptyWpFilter) {
+      return cached;
+    }
 
-      if (Array.isArray(result)) {
-        return { items: result, total: result.length };
-      }
-      return result;
-    });
+    const value = await this.fetchClipsFromUpstream(searchParams);
+    if ((value.items?.length ?? 0) > 0 || searchParams.has_wordpress !== 'true') {
+      await this.cache.setJson(key, value, this.clipsCacheTtlSeconds);
+    }
+    if (value.items?.length) {
+      await this.seedClipCache(value.items);
+    }
+    return value;
+  }
+
+  /** Index list results so /clips/:id works when ContentHub detail is missing. */
+  private async seedClipCache(clips: MediaHubClip[]): Promise<void> {
+    await Promise.all(
+      clips.flatMap((clip) => {
+        const ids = this.clipIdVariants(clip.id);
+        return ids.map((id) =>
+          this.cache.setJson(
+            this.cacheKey('clip', { id }),
+            clip,
+            this.clipsCacheTtlSeconds,
+          ),
+        );
+      }),
+    );
+  }
+
+  private clipIdVariants(id: string): string[] {
+    const ids = new Set<string>([id]);
+    const shortMatch = id.match(/:([a-zA-Z0-9_-]{11})$/);
+    if (shortMatch) {
+      ids.add(shortMatch[1]);
+    } else if (/^[a-zA-Z0-9_-]{11}$/.test(id)) {
+      ids.add(`official:youtube:${id}`);
+    }
+    return [...ids];
+  }
+
+  private clipIdsMatch(clipId: string, requested: string): boolean {
+    const left = this.clipIdVariants(clipId);
+    const right = new Set(this.clipIdVariants(requested));
+    return left.some((id) => right.has(id));
+  }
+
+  /** ContentHub /clips/:id may 404 while list works — scan list as a bridge. */
+  private async findClipInList(id: string): Promise<MediaHubClip | null> {
+    const pageSize = 50;
+    const maxPages = 20;
+    for (let page = 0; page < maxPages; page++) {
+      const result = await this.getClips({
+        limit: pageSize,
+        offset: page * pageSize,
+        has_wordpress: false,
+        sort_by: 'recorded_at',
+      });
+      const items = result.items ?? [];
+      const match = items.find((c) => this.clipIdsMatch(c.id, id));
+      if (match) return match;
+      if (items.length < pageSize) break;
+      const total = result.total ?? 0;
+      if (total > pageSize && page * pageSize + items.length >= total) break;
+    }
+    return null;
   }
 
   async getWordPressCategories(): Promise<WordPressCategoriesResponse> {
@@ -293,10 +404,35 @@ export class MediaHubService {
   }
 
   async getClip(id: string): Promise<MediaHubClip> {
-    const key = this.cacheKey('clip', { id });
-    return this.cachedGet(key, () =>
-      this.getPublic<MediaHubClip>(`/clips/${encodeURIComponent(id)}`),
-    );
+    for (const candidate of this.clipIdVariants(id)) {
+      const cached = await this.cache.getJson<MediaHubClip>(
+        this.cacheKey('clip', { id: candidate }),
+      );
+      if (cached) return cached;
+    }
+
+    for (const candidate of this.clipIdVariants(id)) {
+      try {
+        const clip = await this.getPublic<MediaHubClip>(
+          `/clips/${encodeURIComponent(candidate)}`,
+        );
+        await this.seedClipCache([clip]);
+        return clip;
+      } catch {
+        // try next variant / list fallback
+      }
+    }
+
+    const found = await this.findClipInList(id);
+    if (found) {
+      this.logger.warn(
+        `ContentHub /clips/:id miss for ${id}; resolved via clips list`,
+      );
+      await this.seedClipCache([found]);
+      return found;
+    }
+
+    throw new Error(`Clip not found: ${id}`);
   }
 
   async getDoctors(): Promise<MediaHubDoctor[]> {

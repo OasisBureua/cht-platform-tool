@@ -66,6 +66,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
           <div className="flex flex-wrap gap-3">
             <Link
               to={playHref}
+              state={{ clip }}
               className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
             >
               <Play className="h-4 w-4 shrink-0" aria-hidden fill="currentColor" />
@@ -73,6 +74,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             </Link>
             <Link
               to={playHref}
+              state={{ clip }}
               className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md border border-white/20 bg-white/10 px-5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/20 active:scale-[0.96]"
             >
               <Info className="h-4 w-4 shrink-0" aria-hidden />

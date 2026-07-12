@@ -25,7 +25,6 @@ import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVide
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
 import { useWordPressCatalog, WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
-import { WordPressCategoryNav } from '../../components/content/WordPressCategoryNav';
 
 /**
  * Sort options surfaced in the catalog "Sort by" dropdown.
@@ -296,10 +295,13 @@ export default function VideosPage() {
       }),
     getNextPageParam: (lastPage, allPages) => {
       const lastItems = lastPage?.items ?? [];
+      // Full page ⇒ assume more exist. Do not trust `total` when it equals
+      // the page size (ContentHub currently returns total === items.length).
+      if (lastItems.length < CLIPS_PAGE_SIZE) return undefined;
       const loaded = allPages.reduce((acc, p) => acc + (p?.items?.length ?? 0), 0);
       const total = lastPage?.total ?? 0;
-      if (total > 0 && loaded >= total) return undefined;
-      return lastItems.length === CLIPS_PAGE_SIZE ? loaded : undefined;
+      if (total > CLIPS_PAGE_SIZE && loaded >= total) return undefined;
+      return loaded;
     },
     initialPageParam: 0,
     enabled: useMediaHub && effectiveLibraryView === 'clips',
@@ -311,15 +313,6 @@ export default function VideosPage() {
   const clipsPageCount = clipsData?.pages.length ?? 0;
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  const userScrolledRef = useRef(false);
-
-  useEffect(() => {
-    const onScroll = () => {
-      if (window.scrollY > 80) userScrolledRef.current = true;
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   // In-app full library grid only at ?view=clips (“See all in library”). Default /app/catalog = strip home.
   const showClipsGrid =
@@ -333,8 +326,7 @@ export default function VideosPage() {
         hasNextPage &&
         !isFetchingNextPage &&
         !clipsLoading &&
-        clipsPageCount > 0 &&
-        (clipsPageCount > 1 || userScrolledRef.current)
+        clipsPageCount > 0
       ) {
         fetchNextPage();
       }
@@ -347,10 +339,20 @@ export default function VideosPage() {
     if (!el) return;
     const clipsPagerActive =
       effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid);
+    // Wait until the first page is on screen before observing, so an empty
+    // first paint can't chain-load every offset.
     if (!clipsPagerActive || clipsLoading || clipsPageCount === 0) return;
-    const observer = new IntersectionObserver(handleObserver, { rootMargin: '100px', threshold: 0 });
-    observer.observe(el);
-    return () => observer.disconnect();
+    const observer = new IntersectionObserver(handleObserver, {
+      rootMargin: '200px',
+      threshold: 0,
+    });
+    // Defer observe one frame so the sentinel isn't treated as "already
+    // intersecting" during the initial layout of page 1.
+    const raf = requestAnimationFrame(() => observer.observe(el));
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
   }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid, clipsLoading, clipsPageCount]);
 
   const mediaHubItems = useMemo(
@@ -432,10 +434,6 @@ export default function VideosPage() {
 
         {effectiveLibraryView === 'clips' && !isInApp ? (
           <ContentLibraryNavTabs isInApp={isInApp} />
-        ) : null}
-
-        {effectiveLibraryView === 'clips' && wpMode ? (
-          <WordPressCategoryNav basePath={basePath} />
         ) : null}
 
         {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (
