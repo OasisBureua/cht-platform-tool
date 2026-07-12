@@ -8,7 +8,7 @@
 | `branch-policy.yml` | PRs → `main` | Require head branch `release/*` (and based on `main`) |
 | `security-monthly.yml` | First Monday monthly | npm audit, Trivy filesystem scan |
 | `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images (`1.0.0`, `1.0.1`, …) → `cht-dev-*` ECR, Terraform apply dev |
-| `deploy-prod.yml` | Manual or merged `release/*` → `main` | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …) |
+| `deploy-prod.yml` | Manual or merged `release/*` → `main` | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …), Terraform apply platform, frontend |
 | `rollback.yml` | Manual | Roll back ECS services |
 
 Dependabot and CodeQL config files are removed for now. Optional: disable GitHub **default CodeQL** under Settings → Code security → Code scanning if PR scans still appear.
@@ -105,8 +105,8 @@ Sync secrets into the `development` environment:
 - **Environment:** `platform` (GitHub Environment secrets)
 - **Domain:** `testapp.communityhealth.media`
 - **Var file (CI):** `infrastructure/terraform/environments/variables/platform.github.tfvars`
-- **Infra (local):** `./scripts/deploy-platform-infra-local.sh` — ElastiCache, Content Hub secrets, Cognito, ECR lifecycle, etc.
-- **App (CI):** `deploy-prod.yml` — ECR images, ECS roll, frontend S3/CloudFront (no Terraform apply in CI)
+- **Infra + app (CI):** `deploy-prod.yml` — ECR images, Terraform plan/apply (manual approval), frontend S3/CloudFront
+- **Infra (local fallback):** `./scripts/deploy-platform-infra-local.sh` when applying outside CI
 - **Content Hub:** separate `cht-content-hub` repo; CHT only configures `contenthub_base_url` + `CONTENTHUB_API_KEY`
 - **Image tags:** semver `v1.0.0`, `v1.0.1`, …; also `platform-latest`
 - **ECR repos:** `cht-platform-backend`, `cht-platform-worker`
@@ -114,12 +114,10 @@ Sync secrets into the `development` environment:
 Configure the `platform` environment with deployment branch rules for `release/**`.
 
 ```bash
-cp infrastructure/terraform/environments/variables/platform.tfvars.example \
-   infrastructure/terraform/environments/variables/platform.tfvars
-# fill secrets, then:
-./scripts/deploy-platform-infra-local.sh
-./scripts/sync-github-secrets-from-tfvars.sh platform
 ./scripts/verify-github-env-secrets.sh platform
+# Optional local infra:
+# ./scripts/deploy-platform-infra-local.sh
+# ./scripts/sync-github-secrets-from-tfvars.sh platform
 ```
 
 ## Local verification

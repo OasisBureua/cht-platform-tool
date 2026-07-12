@@ -36,7 +36,8 @@ Does **not** deploy on push to `main`. Use a release branch or tag when promotin
 
 1. Same build/test/terraform/migrate/frontend flow as staging
 2. Uses `platform` GitHub Environment (configure branch protection for `release/`**)
-3. Health gate: `/health/ready`, `/health`, `/` on `APP_URL`
+3. Terraform plan → manual approval issue → apply (same pattern as deploy-dev)
+4. Health gate: `/health/ready`, `/health`, `/` on `APP_URL`
 
 Concurrency group `deploy-platform` — overlapping prod deploys are queued, not cancelled.
 
