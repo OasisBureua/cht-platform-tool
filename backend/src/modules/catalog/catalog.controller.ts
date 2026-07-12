@@ -37,9 +37,9 @@ export class CatalogController {
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401) {
+      if (status === 401 || this.mediahub.usesContentHubCatalog()) {
         this.logger.warn(
-          '[Catalog] MediaHub 401 Invalid API key - returning empty tags. Update mediahub_api_key in Secrets Manager.',
+          '[Catalog] /tags unavailable — returning empty tags.',
         );
         return {};
       }
@@ -75,12 +75,19 @@ export class CatalogController {
     @Query('per_shoot_cap') perShootCap?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('has_wordpress') hasWordpress?: string,
+    @Query('wp_category') wpCategory?: string,
   ) {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.mediahub.isClipsConfigured()) {
       return { items: [], total: 0 };
     }
     try {
-      // MediaHub supports dedicated `doctor` and `tag` query params; pass both through (do not fold doctor into tag only).
+      const hasWordpressFlag =
+        hasWordpress === 'true'
+          ? true
+          : hasWordpress === 'false'
+            ? false
+            : undefined;
       return await this.mediahub.getClips({
         q,
         tag,
@@ -91,6 +98,8 @@ export class CatalogController {
         per_shoot_cap: perShootCap ? parseInt(perShootCap, 10) : undefined,
         limit: limit ? parseInt(limit, 10) : undefined,
         offset: offset ? parseInt(offset, 10) : undefined,
+        has_wordpress: hasWordpressFlag,
+        wp_category: wpCategory,
       });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
@@ -98,6 +107,65 @@ export class CatalogController {
       if (status === 401) {
         this.logger.warn(
           '[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.',
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * GET /api/catalog/wordpress/categories
+   * ContentHub: WordPress category slugs for biomarker/disease landing nav.
+   * Declared before GET wordpress so the more specific path is unambiguous.
+   */
+  @Get('wordpress/categories')
+  async getWordPressCategories() {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getWordPressCategories();
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 404) {
+        this.logger.warn(
+          `[Catalog] ContentHub ${status} on /wordpress/categories - returning empty.`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * GET /api/catalog/wordpress
+   * ContentHub: latest WordPress editorial posts (view-only for admin Content tab).
+   */
+  @Get('wordpress')
+  async getWordPressPosts(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('q') q?: string,
+    @Query('category') category?: string,
+  ) {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getWordPressPosts({
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+        q,
+        category,
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 404) {
+        this.logger.warn(
+          `[Catalog] ContentHub ${status} on /wordpress - returning empty.`,
         );
         return { items: [], total: 0 };
       }
@@ -114,7 +182,7 @@ export class CatalogController {
    */
   @Get('clips/:id')
   async getClip(@Param('id') id: string) {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.mediahub.isClipsConfigured()) {
       return null;
     }
     // If id looks like a short YouTube video ID (11 alphanumeric chars, no colons), try official:youtube:{id}
@@ -149,9 +217,9 @@ export class CatalogController {
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401) {
+      if (status === 401 || this.mediahub.usesContentHubCatalog()) {
         this.logger.warn(
-          '[Catalog] MediaHub 401 Invalid API key - returning empty doctors. Update mediahub_api_key in Secrets Manager.',
+          '[Catalog] /doctors unavailable — returning empty doctors.',
         );
         return [];
       }

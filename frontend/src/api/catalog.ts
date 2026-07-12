@@ -9,16 +9,22 @@ export interface CatalogItem {
   playUrl?: string;
 }
 
-/**
- * MediaHub clip from GET /api/catalog/clips and GET /api/catalog/clips/:id
- * (proxied from MediaHub /api/public/clips list + detail; includes description + ai_summary).
- */
+export interface PublicClipWordPress {
+  post_id: number;
+  permalink: string;
+  slug: string;
+  categories: string[];
+  tags: string[];
+  series: string[];
+  featured_media_url: string | null;
+  modified_gmt: string;
+}
+
 export interface MediaHubClip {
   id: string;
   title: string;
   description: string;
   ai_summary?: string;
-  /** Same as ai_summary when API returns camelCase */
   aiSummary?: string;
   tags: string[];
   doctors: string[];
@@ -33,23 +39,40 @@ export interface MediaHubClip {
   shoot_id?: string;
   shootId?: string;
   shoot_name?: string;
+  wordpress?: PublicClipWordPress | null;
 }
 
-/** Tags grouped by category (doctor, biomarker, drug, trial, stage, topic, brand) */
+export interface WordPressCategoryItem {
+  slug: string;
+  post_count: number;
+}
+
+export interface WordPressCategoriesResponse {
+  items: WordPressCategoryItem[];
+  total: number;
+}
+
+/** Latest WordPress editorial state per post (ContentHub GET /wordpress). */
+export interface WordPressPostItem {
+  post_id: number;
+  slug: string;
+  title: string;
+  permalink: string;
+  categories: string[];
+  tags: string[];
+  series?: string[];
+  youtube_video_id: string | null;
+  featured_media_url: string | null;
+  modified_gmt: string;
+}
+
+export interface WordPressPostsResponse {
+  items: WordPressPostItem[];
+  total: number;
+}
+
 export type MediaHubTags = Record<string, string[]>;
 
-/**
- * Params for GET /api/catalog/clips.
- *
- * Mirrors MediaHub's /api/public/clips contract (Phase 2, 2026-05-17):
- *   - `tag` is comma-separated namespaced tags. AND across namespaces,
- *     OR within the same namespace.
- *   - `sort_by='recorded_at'` orders by Shoot.shoot_date with posted_at fallback.
- *   - `dedup_by='shoot'` collapses multi-platform versions of the same shoot.
- *   - `per_shoot_cap=N` caps each shoot to N entries after dedup.
- *   - `platform` defaults to 'youtube' server-side (kills LinkedIn duplicates).
- *     Pass undefined to leave the default in place.
- */
 export interface GetClipsParams {
   q?: string;
   tag?: string;
@@ -60,6 +83,8 @@ export interface GetClipsParams {
   per_shoot_cap?: number;
   limit?: number;
   offset?: number;
+  has_wordpress?: boolean;
+  wp_category?: string;
 }
 
 export const catalogApi = {
@@ -73,8 +98,45 @@ export const catalogApi = {
     return data || {};
   },
 
+  getWordPressCategories: async (): Promise<WordPressCategoriesResponse> => {
+    try {
+      const { data } = await apiClient.get<WordPressCategoriesResponse>(
+        '/catalog/wordpress/categories',
+      );
+      return data ?? { items: [], total: 0 };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  },
+
+  getWordPressPosts: async (params?: {
+    limit?: number;
+    offset?: number;
+    q?: string;
+    category?: string;
+  }): Promise<WordPressPostsResponse> => {
+    const { data } = await apiClient.get<WordPressPostsResponse>('/catalog/wordpress', {
+      params,
+    });
+    return { items: data?.items ?? [], total: data?.total ?? 0 };
+  },
+
   getClips: async (params?: GetClipsParams): Promise<{ items: MediaHubClip[]; total: number }> => {
-    const { data } = await apiClient.get<{ items?: MediaHubClip[]; total?: number }>('/catalog/clips', { params });
+    const query = params
+      ? {
+          ...params,
+          has_wordpress:
+            params.has_wordpress === true
+              ? 'true'
+              : params.has_wordpress === false
+                ? 'false'
+                : undefined,
+        }
+      : undefined;
+    const { data } = await apiClient.get<{ items?: MediaHubClip[]; total?: number }>(
+      '/catalog/clips',
+      { params: query },
+    );
     return { items: data?.items || [], total: data?.total ?? 0 };
   },
 

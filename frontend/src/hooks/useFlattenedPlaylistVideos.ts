@@ -39,7 +39,7 @@ export function useFlattenedPlaylistVideos(playlistIds: string[], enabled: boole
       return out;
     },
     enabled: enabled && playlistIds.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 4 * 60 * 60 * 1000,
     placeholderData: keepPreviousData,
   });
 

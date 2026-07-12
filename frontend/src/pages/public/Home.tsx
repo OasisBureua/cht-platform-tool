@@ -14,6 +14,7 @@ import {
   VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
+import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 
 const resourceImages: Record<string, string> = {
   webinars: '/images/resource-webinars.png',
@@ -67,7 +68,7 @@ function catalogToTreatment(p: CatalogItem): Treatment {
   };
 }
 
-function playlistRowSubtitle(focus: 'her2' | 'hr', treatments: Treatment[], usingFallback: boolean): string {
+function playlistRowSubtitle(focus: 'her2', treatments: Treatment[], usingFallback: boolean): string {
   if (!usingFallback && treatments.length > 0) {
     const total = treatments.reduce((s, t) => s + Math.max(0, t.videoCount), 0);
     if (total > 0) return `${total} video${total === 1 ? '' : 's'}`;
@@ -76,7 +77,7 @@ function playlistRowSubtitle(focus: 'her2' | 'hr', treatments: Treatment[], usin
   const section = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
   if (!section) return '';
 
-  /** HR-style rows often have "9 videos · …" on each strip item — sum those for a static fallback total. */
+  /** Static section rows often have "9 videos · …" on each strip item — sum those for a fallback total. */
   let hintedSum = 0;
   let hintedCount = 0;
   for (const item of section.items) {
@@ -129,39 +130,6 @@ const FALLBACK_HER2: Treatment[] = [
     videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
     videoCount: 4,
     playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
-  },
-];
-
-const FALLBACK_HR: Treatment[] = [
-  {
-    id: 'hr1',
-    title: 'HR+ Big Picture & Practice Change',
-    slug: 'hr-big-picture',
-    imageUrl:
-      'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80',
-    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
-    videoCount: 4,
-    playlistUrl: '/catalog?view=playlists&playlistFocus=hr',
-  },
-  {
-    id: 'hr2',
-    title: 'First-Line & Sequencing Decisions',
-    slug: 'hr-first-line-sequencing',
-    imageUrl:
-      'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80',
-    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
-    videoCount: 4,
-    playlistUrl: '/catalog?view=playlists&playlistFocus=hr',
-  },
-  {
-    id: 'hr3',
-    title: 'High-Risk & CNS Disease',
-    slug: 'hr-high-risk-cns',
-    imageUrl:
-      'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80',
-    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
-    videoCount: 4,
-    playlistUrl: '/catalog?view=playlists&playlistFocus=hr',
   },
 ];
 
@@ -222,14 +190,14 @@ export default function Home() {
   const { data: playlistsData, isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const playlists = Array.isArray(playlistsData) ? playlistsData : [];
 
   const { data: randomVideosData, isLoading: randomVideosLoading } = useQuery({
     queryKey: ['catalog', 'random-videos'],
     queryFn: () => catalogApi.getRandomVideos(6),
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
 
@@ -241,14 +209,7 @@ export default function Home() {
       : { treatments: FALLBACK_HER2, fallback: true };
   }, [playlists]);
 
-  const hrPlaylistStrip = useMemo(() => {
-    if (playlists.length === 0) return { treatments: FALLBACK_HR, fallback: true };
-    const hr = filterPlaylistsByFocus(playlists, 'hr');
-    return hr.length > 0 ? { treatments: hr.map(catalogToTreatment), fallback: false } : { treatments: FALLBACK_HR, fallback: true };
-  }, [playlists]);
-
   const biomarkerPlaylists = her2PlaylistStrip.treatments;
-  const hrPlusPlaylists = hrPlaylistStrip.treatments;
 
   const her2StripSubtitle = useMemo(
     () =>
@@ -256,23 +217,13 @@ export default function Home() {
     [her2PlaylistStrip],
   );
 
-  const hrStripSubtitle = useMemo(
-    () => playlistRowSubtitle('hr', hrPlaylistStrip.treatments, hrPlaylistStrip.fallback),
-    [hrPlaylistStrip],
-  );
-
   /** YouTube playlist ids for stripping — used to hydrate individual videos on the carousel. */
   const her2PlaylistIds = useMemo(
     () => (her2PlaylistStrip.fallback ? [] : her2PlaylistStrip.treatments.map((t) => t.id)),
     [her2PlaylistStrip],
   );
-  const hrPlaylistIds = useMemo(
-    () => (hrPlaylistStrip.fallback ? [] : hrPlaylistStrip.treatments.map((t) => t.id)),
-    [hrPlaylistStrip],
-  );
 
   const her2FlattenedVideos = useFlattenedPlaylistVideos(her2PlaylistIds, her2PlaylistIds.length > 0);
-  const hrFlattenedVideos = useFlattenedPlaylistVideos(hrPlaylistIds, hrPlaylistIds.length > 0);
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
     const mapped = randomVideos
@@ -438,45 +389,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section
-            className="home-enter py-6 sm:py-8"
-            style={{ animationDelay: `${HOME_STAGGER_MS.hrBody}ms` }}
-          >
-            <div className="mx-auto max-w-7xl px-4 sm:px-6">
-              <ConversationRow
-                title="HR+"
-                subtitle={hrStripSubtitle}
-                seeAllHref={buildCatalogSectionPlaylistsHref(false, 'HR+ · CDK4/6 · Endocrine')}
-                seeAllLabel={VIEW_PLAYLIST_LABEL}
-              >
-                {hrFlattenedVideos.isLoading ? (
-                  <StripRowLoadingThumbnails />
-                ) : hrFlattenedVideos.entries.length > 0 ? (
-                  hrFlattenedVideos.entries.slice(0, HOME_STRIP_VIDEO_CAP).map((e) => (
-                    <StripCard
-                      key={`${e.playlistId}-${e.video.id}`}
-                      to={`/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`}
-                      title={e.video.title}
-                      imageUrl={e.video.thumbnailUrl || `https://img.youtube.com/vi/${e.video.id}/hqdefault.jpg`}
-                      description={e.playlistTitle}
-                    />
-                  ))
-                ) : (
-                  hrPlusPlaylists.map((t) => (
-                    <StripCard
-                      key={t.id}
-                      to={t.playlistUrl}
-                      title={t.title}
-                      imageUrl={t.imageUrl}
-                      meta={playlistMetaLabel(t.videoCount, t.videoNames.length)}
-                    />
-                  ))
-                )}
-              </ConversationRow>
-            </div>
-          </section>
-
-          {/* View treatment specific content — below HR+ playlists */}
+          {/* View treatment specific content — below HER2+ playlists */}
           <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
         </>
       )}

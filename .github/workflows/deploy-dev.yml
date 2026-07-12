@@ -383,6 +383,7 @@ jobs:
           VITE_USE_DEV_AUTH: 'false'
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
           VITE_GOOGLE_OAUTH_ENABLED: 'true'
+          VITE_CATALOG_WORDPRESS_ONLY: 'true'
           VITE_SUPABASE_URL: https://mediahub.communityhealth.media
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
