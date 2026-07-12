@@ -14,7 +14,7 @@ Defines Redis caching on **chm-backend only** and cache invalidation when MediaH
 ## Principles
 
 - **CHT-only cache** — no HTTP cache in mediahub-api; no FastAPI middleware
-- **24h TTL** — safety net for populated keys
+- **4h TTL** — safety net for populated keys (`EX 14400`)
 - **Refresh on sync** — clear catalog keys after successful worker sync (no version counters)
 - **Never cache** — auth, payments, admin writes, HCP upsert responses
 
@@ -26,7 +26,7 @@ Defines Redis caching on **chm-backend only** and cache invalidation when MediaH
 | ---- | ----- |
 | Cluster | **One** shared ElastiCache Redis per environment (cost + ops simplicity) |
 | Isolation | **Logical key prefixes** — not separate clusters or durable DB storage |
-| TTL | `EX 86400` |
+| TTL | `EX 14400` (4 hours; override via `REDIS_CACHE_TTL_SECONDS` / `CATALOG_CLIPS_CACHE_TTL_SECONDS`) |
 
 Nothing cached here is authoritative data (no sessions, payments, or user records). MediaHub catalog reads, Content Hub KOL/intel reads, and YouTube fallbacks are ephemeral upstream caches only.
 
@@ -97,7 +97,7 @@ mediahub-worker completes successful sync
     → POST https://<chm-backend>/api/internal/cache/catalog/clear
     → Header: Authorization: Bearer <INTERNAL_CACHE_SECRET>
     → chm-backend deletes keys matching cht:catalog:*, cht:contenthub:*, cht:kol-network:*
-    → Next user request = cache miss → fetch upstream → store 24h
+    → Next user request = cache miss → fetch upstream → store 4h
 ```
 
 Content Hub ingest (KOL intel / AI brief):
@@ -137,7 +137,7 @@ Call CHT clear endpoint **only after** sync transaction commits successfully. Do
 
 | Scenario | Expected |
 | -------- | -------- |
-| Cache miss | Hub called; key set with 24h TTL |
+| Cache miss | Hub called; key set with 4h TTL |
 | Cache hit | Hub not called |
 | After sync clear | Next request cache miss; new clips visible |
 | Failed sync | Cache **not** cleared |

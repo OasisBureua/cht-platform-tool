@@ -258,7 +258,9 @@ export class MediaHubService {
 
   async getTags(): Promise<MediaHubTag> {
     try {
-      return await this.getPublic<MediaHubTag>('/tags');
+      return await this.cachedGet(this.cacheKey('tags', {}), () =>
+        this.getPublic<MediaHubTag>('/tags'),
+      );
     } catch (err) {
       if (this.useContentHub) {
         this.logger.warn(
@@ -480,9 +482,13 @@ export class MediaHubService {
     if (params?.limit != null) searchParams.limit = params.limit;
     if (params?.offset != null) searchParams.offset = params.offset;
 
-    return this.getPublic<MediaHubPlaylistTagList>(
-      '/playlists',
-      Object.keys(searchParams).length > 0 ? searchParams : undefined,
+    return this.cachedGet(
+      this.cacheKey('playlists', searchParams),
+      () =>
+        this.getPublic<MediaHubPlaylistTagList>(
+          '/playlists',
+          Object.keys(searchParams).length > 0 ? searchParams : undefined,
+        ),
     );
   }
 
@@ -520,11 +526,13 @@ export class MediaHubService {
 
   async getDoctors(): Promise<MediaHubDoctor[]> {
     try {
-      const result = await this.getPublic<
-        MediaHubDoctor[] | { items?: MediaHubDoctor[] }
-      >('/doctors');
-      if (Array.isArray(result)) return result;
-      return (result as { items?: MediaHubDoctor[] }).items || [];
+      return await this.cachedGet(this.cacheKey('doctors', {}), async () => {
+        const result = await this.getPublic<
+          MediaHubDoctor[] | { items?: MediaHubDoctor[] }
+        >('/doctors');
+        if (Array.isArray(result)) return result;
+        return (result as { items?: MediaHubDoctor[] }).items || [];
+      });
     } catch (err) {
       if (this.useContentHub) {
         this.logger.warn(
@@ -539,16 +547,22 @@ export class MediaHubService {
   async getDoctor(
     slug: string,
   ): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
-    return this.getPublic(`/doctors/${slug}`);
+    return this.cachedGet(this.cacheKey('doctor', { slug }), () =>
+      this.getPublic(`/doctors/${slug}`),
+    );
   }
 
   async getShoots(): Promise<unknown[]> {
-    const result = await this.getPublic<unknown[]>('/shoots');
-    return Array.isArray(result) ? result : [];
+    return this.cachedGet(this.cacheKey('shoots', {}), async () => {
+      const result = await this.getPublic<unknown[]>('/shoots');
+      return Array.isArray(result) ? result : [];
+    });
   }
 
   async getTranscript(shootId: string): Promise<unknown> {
-    return this.getPublic(`/transcripts/${shootId}`);
+    return this.cachedGet(this.cacheKey('transcript', { shootId }), () =>
+      this.getPublic(`/transcripts/${shootId}`),
+    );
   }
 
   async search(
@@ -573,11 +587,15 @@ export class MediaHubService {
     if (params?.new_only) cleanParams.new_only = 'true';
     if (params?.limit != null) cleanParams.limit = params.limit;
     if (params?.offset != null) cleanParams.offset = params.offset;
-    return this.getPublic<MediaHubKolList>('/kols', cleanParams);
+    return this.cachedGet(this.cacheKey('kols', cleanParams), () =>
+      this.getPublic<MediaHubKolList>('/kols', cleanParams),
+    );
   }
 
   async getKol(slug: string): Promise<MediaHubKol> {
-    return this.getPublic<MediaHubKol>(`/kols/${encodeURIComponent(slug)}`);
+    return this.cachedGet(this.cacheKey('kol', { slug }), () =>
+      this.getPublic<MediaHubKol>(`/kols/${encodeURIComponent(slug)}`),
+    );
   }
 
   async getKolPublications(
@@ -587,9 +605,13 @@ export class MediaHubService {
     const cleanParams: Record<string, string | number | undefined> = {};
     if (params?.limit != null) cleanParams.limit = params.limit;
     if (params?.offset != null) cleanParams.offset = params.offset;
-    return this.getPublic<MediaHubKolPublicationList>(
-      `/kols/${encodeURIComponent(slug)}/publications`,
-      cleanParams,
+    return this.cachedGet(
+      this.cacheKey('kol-publications', { slug, ...cleanParams }),
+      () =>
+        this.getPublic<MediaHubKolPublicationList>(
+          `/kols/${encodeURIComponent(slug)}/publications`,
+          cleanParams,
+        ),
     );
   }
 }

@@ -113,6 +113,9 @@ export class CatalogService implements OnModuleInit {
     private cache: RedisCacheService,
   ) {}
 
+  /** Catalog YouTube upstream cache — 4h (matches MediaHub / Redis defaults). */
+  private readonly youtubeCacheTtlSeconds = 14_400;
+
   private async cachedYouTube<T>(
     key: string,
     loader: () => Promise<T>,
@@ -120,7 +123,7 @@ export class CatalogService implements OnModuleInit {
     const hit = await this.cache.getJson<T>(key);
     if (hit != null) return hit;
     const value = await loader();
-    await this.cache.setJson(key, value);
+    await this.cache.setJson(key, value, this.youtubeCacheTtlSeconds);
     return value;
   }
 
@@ -132,7 +135,7 @@ export class CatalogService implements OnModuleInit {
     if (hit != null) return hit;
     const value = await loader();
     if (value != null) {
-      await this.cache.setJson(key, value);
+      await this.cache.setJson(key, value, this.youtubeCacheTtlSeconds);
     }
     return value;
   }

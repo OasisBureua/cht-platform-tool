@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, Loader2, Search, Youtube } from 'lucide-react';
 import { catalogApi, type WordPressPostItem } from '../../api/catalog';
-import { formatWordPressCategoryLabel } from '../../utils/wordpressCatalog';
+import {
+  formatWordPressCategoryLabel,
+  WORDPRESS_CATALOG_STALE_MS,
+} from '../../utils/wordpressCatalog';
 
 const PAGE_SIZE = 24;
 const FETCH_PAGE = 100;
@@ -93,13 +96,13 @@ export default function AdminContent() {
   const { data: categoriesData } = useQuery({
     queryKey: ['catalog', 'wordpress', 'categories'],
     queryFn: catalogApi.getWordPressCategories,
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   const { data: allPosts = [], isLoading, isError, isFetching } = useQuery({
     queryKey: ['catalog', 'wordpress', 'posts', 'all'],
     queryFn: fetchAllWordPressPosts,
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   const filteredPosts = useMemo(() => {

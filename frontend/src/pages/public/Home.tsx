@@ -14,6 +14,7 @@ import {
   VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
+import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 
 const resourceImages: Record<string, string> = {
   webinars: '/images/resource-webinars.png',
@@ -189,14 +190,14 @@ export default function Home() {
   const { data: playlistsData, isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const playlists = Array.isArray(playlistsData) ? playlistsData : [];
 
   const { data: randomVideosData, isLoading: randomVideosLoading } = useQuery({
     queryKey: ['catalog', 'random-videos'],
     queryFn: () => catalogApi.getRandomVideos(6),
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
 

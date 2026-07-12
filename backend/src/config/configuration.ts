@@ -290,12 +290,12 @@ export default () => ({
     clipsCacheTtlSeconds: parseInt(
       process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '14400',
       10,
-    ),
+    ), // 4 hours
   },
 
   redis: {
     url: process.env.REDIS_URL?.trim() || '',
-    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '86400', 10),
+    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '14400', 10), // 4 hours
   },
 
   internalCache: {

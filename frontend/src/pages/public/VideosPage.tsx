@@ -229,14 +229,14 @@ export default function VideosPage() {
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
     enabled: !wpMode,
   });
 
   const { data: doctors = [], isSuccess: doctorsReady } = useQuery({
     queryKey: ['catalog', 'doctors'],
     queryFn: catalogApi.getDoctors,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
     enabled: !wpMode,
   });
 
@@ -248,7 +248,7 @@ export default function VideosPage() {
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   const playlistFocus = useMemo(() => parsePlaylistFocus(location.search || ''), [location.search]);

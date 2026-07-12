@@ -7,6 +7,7 @@ import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNavItems';
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -19,7 +20,7 @@ export default function PlaylistDetail() {
     queryKey: ['catalog', 'playlist', playlistId],
     queryFn: () => catalogApi.getPlaylist(playlistId!),
     enabled: !!playlistId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   // Sync selected video from URL ?v=videoId
@@ -43,7 +44,7 @@ export default function PlaylistDetail() {
     queryKey: ['catalog', 'clip', selectedVideo?.id],
     queryFn: () => catalogApi.getClip(selectedVideo!.id),
     enabled: !!selectedVideo?.id,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
     retry: 0, // 404s from MediaHub are expected; don't retry
   });
 
@@ -54,7 +55,7 @@ export default function PlaylistDetail() {
     queryKey: ['catalog', 'transcript', shootId],
     queryFn: () => catalogApi.getTranscript(shootId!),
     enabled: !!shootId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
     retry: 0,
   });
 

@@ -7,8 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
-/** Default TTL for catalog / KOL / Content Hub upstream reads (24h). */
-export const CACHE_TTL_SECONDS = 86_400;
+/** Default TTL for catalog / KOL / Content Hub upstream reads (4h). */
+export const CACHE_TTL_SECONDS = 14_400;
 
 @Injectable()
 export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
