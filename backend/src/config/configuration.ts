@@ -283,8 +283,7 @@ export default () => ({
   catalog: {
     useContentHub:
       process.env.CATALOG_USE_CONTENTHUB?.trim().toLowerCase() === 'true' ||
-      (process.env.CHT_ENVIRONMENT === 'dev' &&
-        !!process.env.CONTENTHUB_BASE_URL?.trim()),
+      !!process.env.CONTENTHUB_BASE_URL?.trim(),
     wordpressOnly:
       process.env.CATALOG_WORDPRESS_ONLY?.trim().toLowerCase() !== 'false',
     clipsCacheTtlSeconds: parseInt(

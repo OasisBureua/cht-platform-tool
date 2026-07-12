@@ -66,9 +66,9 @@ enable_cognito_mrr                  = true
 cognito_mrr_replica_region          = "us-east-2"
 cognito_mrr_associate_waf_replica   = true
 
-# Content Hub (separate repo/service — CHT only stores URL + API key in Secrets Manager)
+# Non-secret app configuration (same pattern as dev.github.tfvars)
 contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 
-# Redis cache for upstream Content Hub / MediaHub reads (optional but recommended at platform scale)
+# Redis cache for upstream ContentHub / MediaHub reads (4h TTL in app)
 enable_elasticache    = true
-elasticache_node_type = "cache.t3.small"
+elasticache_node_type = "cache.t3.medium"

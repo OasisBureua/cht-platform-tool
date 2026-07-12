@@ -337,6 +337,7 @@ jobs:
           VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_hosted_ui_base_url }}
           VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
           VITE_MEDIAHUB_AUTH_DECOMMISSIONED: 'true'
+          VITE_CATALOG_WORDPRESS_ONLY: 'true'
           VITE_DISABLE_AUTH: 'false'
           VITE_USE_DEV_AUTH: 'false'
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
