@@ -1,6 +1,6 @@
 name: Deploy to Platform
 
-# Platform (prod): manual dispatch, or auto when a release/* PR merges into main.
+# Platform (testapp): app deploy only — infra is applied locally via scripts/deploy-platform-infra-local.sh
 on:
   workflow_dispatch:
   pull_request:
@@ -15,6 +15,8 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
+  ECR_BACKEND_REPO: cht-platform-backend
+  ECR_WORKER_REPO: cht-platform-worker
   TERRAFORM_VERSION: 1.10.5
   APP_URL: https://testapp.communityhealth.media
   API_URL: https://testapp.communityhealth.media/api
@@ -177,7 +179,6 @@ jobs:
         run: |
           terraform init -backend=false
           terraform validate
-          # GuardDuty + AWS Config are account-level singletons — managed here (platform) only.
 
   deploy:
     name: Deploy to Platform
@@ -188,7 +189,6 @@ jobs:
         needs.changes.outputs.deploy_backend == 'true' ||
         needs.changes.outputs.deploy_frontend == 'true'
       )
-    # GitHub Environment "platform" — allow deployment branches: main, release/**.
     environment: platform
 
     steps:
@@ -203,8 +203,10 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Lane | Run |" >> "$GITHUB_STEP_SUMMARY"
           echo "|------|-----|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend (images + Terraform + ECS) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend (ECR images + ECS roll) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Frontend (build + S3 + CloudFront) | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "ℹ️ Platform **infrastructure** is applied locally (\`./scripts/deploy-platform-infra-local.sh\`). This workflow deploys app artifacts only." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6
@@ -214,7 +216,6 @@ jobs:
 
       - name: Login to Amazon ECR
         if: needs.changes.outputs.deploy_backend == 'true'
-        id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Generate image tag
@@ -222,7 +223,7 @@ jobs:
         id: meta
         run: |
           chmod +x scripts/next-prod-image-tag.sh
-          IMAGE_TAG="$(./scripts/next-prod-image-tag.sh cht-platform-backend "$AWS_REGION")"
+          IMAGE_TAG="$(./scripts/next-prod-image-tag.sh ${{ env.ECR_BACKEND_REPO }} "$AWS_REGION")"
           echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           echo "Building with tag: ${IMAGE_TAG}"
 
@@ -237,8 +238,8 @@ jobs:
           context: ./backend
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}
-            ${{ env.ECR_REGISTRY }}/cht-platform-backend:platform-latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:platform-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -249,8 +250,8 @@ jobs:
           context: ./worker
           push: true
           tags: |
-            ${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}
-            ${{ env.ECR_REGISTRY }}/cht-platform-worker:platform-latest
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:platform-latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -267,7 +268,7 @@ jobs:
         run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
 
       - name: Verify GitHub Environment secrets (platform)
-        if: needs.changes.outputs.deploy_backend == 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
@@ -287,42 +288,21 @@ jobs:
           BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
           BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
           HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          COGNITO_GOOGLE_CLIENT_ID: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
+          COGNITO_GOOGLE_CLIENT_SECRET: ${{ secrets.COGNITO_GOOGLE_CLIENT_SECRET }}
+          RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          CONTENTHUB_API_KEY: ${{ secrets.CONTENTHUB_API_KEY }}
+          INTERNAL_CACHE_SECRET: ${{ secrets.INTERNAL_CACHE_SECRET }}
         run: ./scripts/verify-github-env-secrets.sh platform
 
-      - name: Terraform Apply
+      - name: Update ECS services
         if: needs.changes.outputs.deploy_backend == 'true'
-        working-directory: ${{ env.TF_ENV_DIR }}
         run: |
-          terraform apply \
-            -var-file="${{ env.TF_VAR_FILE }}" \
-            -var="backend_image=${{ env.ECR_REGISTRY }}/cht-platform-backend:${{ steps.meta.outputs.image_tag }}" \
-            -var="worker_image=${{ env.ECR_REGISTRY }}/cht-platform-worker:${{ steps.meta.outputs.image_tag }}" \
-            -auto-approve
-        env:
-          TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
-          TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
-          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
-          TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
-          TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
-          TF_VAR_youtube_api_key: ${{ secrets.YOUTUBE_API_KEY }}
-          TF_VAR_youtube_playlist_ids: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
-          TF_VAR_zoom_account_id: ${{ secrets.ZOOM_ACCOUNT_ID }}
-          TF_VAR_zoom_client_id: ${{ secrets.ZOOM_CLIENT_ID }}
-          TF_VAR_zoom_client_secret: ${{ secrets.ZOOM_CLIENT_SECRET }}
-          TF_VAR_zoom_webhook_secret: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
-          TF_VAR_zoom_sdk_key: ${{ secrets.ZOOM_SDK_KEY }}
-          TF_VAR_zoom_sdk_secret: ${{ secrets.ZOOM_SDK_SECRET }}
-          TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
-          TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
-          TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
-          TF_VAR_bill_password: ${{ secrets.BILL_PASSWORD }}
-          TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
-          TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
-          TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
-          TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
-          TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
-          TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
-          TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          chmod +x scripts/ecs-update-service-images.sh
+          BACKEND_IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}" \
+          WORKER_IMAGE="${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}" \
+            ./scripts/ecs-update-service-images.sh platform
 
       - name: Get Terraform outputs
         if: needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_backend == 'true'
@@ -331,6 +311,9 @@ jobs:
         run: |
           echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=$(terraform output -raw cognito_client_id)" >> $GITHUB_OUTPUT
+          echo "cognito_hosted_ui_base_url=$(terraform output -raw cognito_hosted_ui_base_url)" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js
         if: needs.changes.outputs.deploy_frontend == 'true'
@@ -349,6 +332,16 @@ jobs:
         env:
           VITE_API_URL: ${{ env.API_URL }}
           VITE_APP_URL: ${{ env.APP_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ steps.outputs.outputs.cognito_user_pool_id }}
+          VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.cognito_client_id }}
+          VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_hosted_ui_base_url }}
+          VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
+          VITE_MEDIAHUB_AUTH_DECOMMISSIONED: 'true'
+          VITE_CATALOG_WORDPRESS_ONLY: 'true'
+          VITE_DISABLE_AUTH: 'false'
+          VITE_USE_DEV_AUTH: 'false'
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          VITE_GOOGLE_OAUTH_ENABLED: 'true'
           VITE_SUPABASE_URL: https://mediahub.communityhealth.media
           VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
@@ -385,86 +378,24 @@ jobs:
       - name: Diagnostics — ECS task statuses
         if: always() && needs.changes.outputs.deploy_backend == 'true'
         run: |
-          echo "================================================================"
-          echo "  ECS SERVICES"
-          echo "================================================================"
           aws ecs describe-services \
             --cluster "${{ env.ECS_CLUSTER }}" \
             --services "${{ env.ECS_BACKEND_SERVICE }}" "${{ env.ECS_WORKER_SERVICE }}" \
             --query 'services[*].[serviceName,status,desiredCount,runningCount,pendingCount,events[0:3].message]' \
             --output text 2>&1 || echo "describe-services failed"
 
-          echo ""
-          echo "================================================================"
-          echo "  RUNNING / STOPPED TASKS"
-          echo "================================================================"
-          aws ecs list-tasks --cluster "${{ env.ECS_CLUSTER }}" --desired-status RUNNING --output text 2>&1 || true
-          aws ecs list-tasks --cluster "${{ env.ECS_CLUSTER }}" --desired-status STOPPED --output text 2>&1 | head -10 || true
-
-          echo ""
-          echo "================================================================"
-          echo "  STOPPED TASK DETAILS (most recent)"
-          echo "================================================================"
-          STOPPED=$(aws ecs list-tasks --cluster "${{ env.ECS_CLUSTER }}" --desired-status STOPPED --query 'taskArns[0]' --output text 2>/dev/null || echo "")
-          if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
-            aws ecs describe-tasks --cluster "${{ env.ECS_CLUSTER }}" --tasks "$STOPPED" \
-              --query 'tasks[*].[lastStatus,stoppedReason,containers[*].[name,exitCode,reason]]' \
-              --output text 2>&1 || true
-          else
-            echo "(no stopped tasks)"
-          fi
-
-      - name: Diagnostics — recent ECS logs
-        if: always() && needs.changes.outputs.deploy_backend == 'true'
-        run: |
-          echo "================================================================"
-          echo "  AVAILABLE LOG GROUPS (/ecs/cht-platform*)"
-          echo "================================================================"
-          aws logs describe-log-groups --log-group-name-prefix "/ecs/cht-platform" \
-            --query 'logGroups[*].[logGroupName,storedBytes]' --output text 2>&1 | head -10
-
-          echo ""
-          echo "================================================================"
-          echo "  RECENT LOGS — ${{ env.ECS_LOG_GROUP }} (last 5 min)"
-          echo "================================================================"
-          aws logs filter-log-events \
-            --log-group-name "${{ env.ECS_LOG_GROUP }}" \
-            --start-time $(( $(date +%s) * 1000 - 300000 )) \
-            --max-items 60 \
-            --query 'events[*].[timestamp,message]' \
-            --output text 2>&1 | tail -80 || echo "(no logs in ${{ env.ECS_LOG_GROUP }})"
-
-          echo ""
-          echo "================================================================"
-          echo "  LOG STREAMS in ${{ env.ECS_LOG_GROUP }} (most recent 10)"
-          echo "================================================================"
-          aws logs describe-log-streams --log-group-name "${{ env.ECS_LOG_GROUP }}" \
-            --order-by LastEventTime --descending --max-items 10 \
-            --query 'logStreams[*].[logStreamName,lastEventTimestamp]' --output text 2>&1 | head -15 || true
-
       - name: Final health gate
         if: (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true') && steps.healthcheck.outcome == 'failure'
         run: |
-          echo "Health check failed — diagnostics above. Marking workflow failed."
+          echo "Health check failed — see diagnostics above."
           exit 1
 
       - name: Deployment Summary
         if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
         run: |
-          echo "🎉 Platform Deployment Complete!"
-          echo ""
-          echo "Trigger:    ${{ github.event_name }} (${{ github.ref_name }})"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "Release PR: ${{ github.event.pull_request.head.ref }} → main"
-          fi
-          echo "Backend lane:  ${{ needs.changes.outputs.deploy_backend }}"
-          echo "Frontend lane: ${{ needs.changes.outputs.deploy_frontend }}"
+          echo "🎉 Platform app deployment complete!"
           echo "Frontend:   ${{ env.APP_URL }}"
           echo "API:        ${{ env.API_URL }}"
           if [ "${{ needs.changes.outputs.deploy_backend }}" = "true" ]; then
             echo "Image Tag:  ${{ steps.meta.outputs.image_tag }}"
           fi
-          echo ""
-          echo "Manual deploy equivalent:"
-          echo "  ./scripts/deploy-primary.sh platform"
-          echo "  ./scripts/deploy-frontend.sh platform"

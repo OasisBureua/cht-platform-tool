@@ -59,15 +59,21 @@ describe('loadProgramSurveyMeta', () => {
 });
 
 describe('isPostEventSurveyWithinWindow', () => {
-  it('allows access within 7 days of survey creation', () => {
-    const created = new Date('2026-06-01T12:00:00Z');
-    const now = created.getTime() + POST_EVENT_SURVEY_WINDOW_MS - 60_000;
-    expect(isPostEventSurveyWithinWindow(created, now)).toBe(true);
+  it('allows access within 7 days of session unlock', () => {
+    const unlock = new Date('2026-06-10T12:00:00Z');
+    const now = unlock.getTime() + POST_EVENT_SURVEY_WINDOW_MS - 60_000;
+    expect(isPostEventSurveyWithinWindow(unlock, now)).toBe(true);
   });
 
-  it('denies access after 7 days from survey creation', () => {
-    const created = new Date('2026-06-01T12:00:00Z');
-    const now = created.getTime() + POST_EVENT_SURVEY_WINDOW_MS + 1;
-    expect(isPostEventSurveyWithinWindow(created, now)).toBe(false);
+  it('denies access after 7 days from session unlock', () => {
+    const unlock = new Date('2026-06-10T12:00:00Z');
+    const now = unlock.getTime() + POST_EVENT_SURVEY_WINDOW_MS + 1;
+    expect(isPostEventSurveyWithinWindow(unlock, now)).toBe(false);
+  });
+
+  it('denies access before session unlock', () => {
+    const unlock = new Date('2026-06-10T12:00:00Z');
+    const now = unlock.getTime() - 60_000;
+    expect(isPostEventSurveyWithinWindow(unlock, now)).toBe(false);
   });
 });

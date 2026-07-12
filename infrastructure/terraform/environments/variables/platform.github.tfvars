@@ -9,8 +9,8 @@ environment = "platform"
 domain_name = "testapp.communityhealth.media"
 
 # Images overridden per deploy by workflow (-var backend_image / worker_image)
-backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v3.0.0"
-worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v3.0.0"
+backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
+worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.0"
 
 rds_instance_class    = "db.t3.small"
 rds_engine_version    = "15.17"
@@ -65,3 +65,10 @@ enable_cognito_waf                  = true
 enable_cognito_mrr                  = true
 cognito_mrr_replica_region          = "us-east-2"
 cognito_mrr_associate_waf_replica   = true
+
+# Non-secret app configuration (same pattern as dev.github.tfvars)
+contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
+
+# Redis cache for upstream ContentHub / MediaHub reads (4h TTL in app)
+enable_elasticache    = true
+elasticache_node_type = "cache.t3.medium"

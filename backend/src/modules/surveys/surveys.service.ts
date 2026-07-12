@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { UserRole, SurveyType } from '@prisma/client';
+import { UserRole, SurveyType, ProgramRegistrationStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
@@ -18,6 +18,10 @@ import {
   defaultWebinarIntakeQuestions,
 } from './native-survey-templates';
 import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
+import {
+  buildSurveyResponsesCsv,
+  surveyResponsesCsvFilename,
+} from '../../utils/survey-responses-csv';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { FormJotformScope } from '../programs/form-jotform-scope';
 import {
@@ -104,6 +108,8 @@ export class SurveysService {
             creditAmount: true,
             zoomSessionType: true,
             startDate: true,
+            duration: true,
+            zoomSessionEndedAt: true,
           },
         },
       },
@@ -136,24 +142,31 @@ export class SurveysService {
         continue;
       }
 
-      const enrolled = await this.prisma.programEnrollment.findUnique({
-        where: { userId_programId: { userId, programId: s.programId } },
-        select: { id: true },
-      });
-      if (!enrolled) {
-        continue;
-      }
-
-      const [existing, reg] = await Promise.all([
-        this.prisma.surveyResponse.findUnique({
-          where: { userId_surveyId: { userId, surveyId: s.id } },
-          select: { id: true, submittedAt: true },
+      const [enrollment, reg] = await Promise.all([
+        this.prisma.programEnrollment.findUnique({
+          where: { userId_programId: { userId, programId: s.programId } },
+          select: { id: true },
         }),
         this.prisma.programRegistration.findUnique({
           where: { userId_programId: { userId, programId: s.programId } },
-          select: { postEventSurveyAcknowledgedAt: true },
+          select: {
+            status: true,
+            postEventSurveyAcknowledgedAt: true,
+          },
         }),
       ]);
+
+      if (
+        !enrollment &&
+        (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)
+      ) {
+        continue;
+      }
+
+      const existing = await this.prisma.surveyResponse.findUnique({
+        where: { userId_surveyId: { userId, surveyId: s.id } },
+        select: { id: true, submittedAt: true },
+      });
 
       const isCompleted =
         !!existing ||
@@ -197,6 +210,8 @@ export class SurveysService {
             creditAmount: true,
             zoomSessionType: true,
             startDate: true,
+            duration: true,
+            zoomSessionEndedAt: true,
           },
         },
       },
@@ -381,6 +396,99 @@ export class SurveysService {
     await this.prisma.survey.delete({ where: { id } });
     this.logger.log(`Survey deleted: ${id} - ${survey.title}`);
     return { deleted: true, id };
+  }
+
+  /** Admin: all submitted responses for a survey with learner identity. */
+  async listResponsesForAdmin(surveyId: string) {
+    const survey = await this.prisma.survey.findUnique({
+      where: { id: surveyId },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        questions: true,
+        programId: true,
+        program: { select: { id: true, title: true } },
+      },
+    });
+    if (!survey) throw new NotFoundException('Survey not found');
+
+    const responses = await this.prisma.surveyResponse.findMany({
+      where: { surveyId },
+      orderBy: { submittedAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+          },
+        },
+      },
+    });
+
+    const userIds = responses.map((r) => r.userId);
+    const registrations =
+      survey.programId && userIds.length > 0
+        ? await this.prisma.programRegistration.findMany({
+            where: {
+              programId: survey.programId,
+              userId: { in: userIds },
+            },
+            select: {
+              userId: true,
+              status: true,
+              postEventAttendanceStatus: true,
+            },
+          })
+        : [];
+    const regByUser = new Map(registrations.map((r) => [r.userId, r]));
+
+    return {
+      survey: {
+        id: survey.id,
+        title: survey.title,
+        type: survey.type,
+        questions: survey.questions,
+        program: survey.program,
+      },
+      responses: responses.map((r) => ({
+        id: r.id,
+        submissionId: r.submissionId,
+        submittedAt: r.submittedAt.toISOString(),
+        answers: r.answers,
+        user: r.user,
+        registration: regByUser.get(r.userId) ?? null,
+      })),
+    };
+  }
+
+  /** Admin: CSV export for registration (INTAKE) or post-event (FEEDBACK) responses. */
+  async buildResponsesCsvForAdmin(surveyId: string): Promise<{
+    filename: string;
+    body: string;
+  }> {
+    const { survey, responses } = await this.listResponsesForAdmin(surveyId);
+    const body = buildSurveyResponsesCsv({
+      surveyTitle: survey.title,
+      surveyType: survey.type,
+      questionsSchema: survey.questions,
+      responses: responses.map((r) => ({
+        submittedAt: r.submittedAt,
+        answers: (r.answers ?? {}) as Record<string, unknown>,
+        user: r.user,
+        registration: r.registration,
+      })),
+    });
+    return {
+      filename: surveyResponsesCsvFilename(
+        survey.program?.title ?? '',
+        survey.type,
+      ),
+      body,
+    };
   }
 
   /**
@@ -1008,6 +1116,19 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.FEEDBACK) {
+      const npiRaw = answers.npi ?? answers.npi_number;
+      const npi =
+        typeof npiRaw === 'string' && npiRaw.trim()
+          ? npiRaw.trim().replace(/\D/g, '').slice(0, 10)
+          : '';
+      if (npi.length === 10) {
+        await this.prisma.user
+          .update({
+            where: { id: userId },
+            data: { npiNumber: npi },
+          })
+          .catch(() => {});
+      }
       await this.prisma.programRegistration
         .updateMany({
           where: { userId, programId: survey.programId },
@@ -1022,6 +1143,23 @@ export class SurveysService {
 
     if (survey.type === SurveyType.INTAKE) {
       const intakeSubmissionId = response.submissionId ?? response.id;
+      const npiRaw = answers.npi ?? answers.npi_number;
+      const npi =
+        typeof npiRaw === 'string' && npiRaw.trim()
+          ? npiRaw.trim().replace(/\D/g, '').slice(0, 10)
+          : '';
+      if (npi.length === 10) {
+        await this.prisma.user
+          .update({
+            where: { id: userId },
+            data: { npiNumber: npi },
+          })
+          .catch((err: unknown) => {
+            this.logger.warn(
+              `Could not sync NPI from intake survey for user ${userId}: ${String(err)}`,
+            );
+          });
+      }
       await this.programRegistrations
         .recordWebinarIntakeSubmission(
           userId,

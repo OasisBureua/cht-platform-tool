@@ -51,6 +51,14 @@ locals {
   log_retention_days       = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
   manage_account_resources = var.environment == "platform"
   elasticache_enabled      = var.enable_elasticache != null ? var.enable_elasticache : var.environment == "dev"
+  ecr_repository_names = var.environment == "dev" ? [
+    "cht-dev-backend",
+    "cht-dev-worker",
+  ] : [
+    "cht-platform-backend",
+    "cht-platform-worker",
+  ]
+  ecr_replication_repository_names = ["cht-platform-backend", "cht-platform-worker"]
 }
 
 # ============================================
@@ -607,8 +615,18 @@ module "cognito" {
 }
 
 # ============================================
+# Compute - ECR lifecycle (existing repos; dev vs platform policies)
+# ============================================
+module "ecr_lifecycle" {
+  count  = contains(["platform", "dev"], var.environment) ? 1 : 0
+  source = "../../modules/compute/ecr-lifecycle"
+
+  repository_names = local.ecr_repository_names
+}
+
+# ============================================
 # Compute - ECR cross-region replication (account-level)
-# Replicates cht-platform-* images from us-east-1 → us-east-2 for all environments.
+# Replicates cht-platform-* images from us-east-1 → us-east-2 (platform only).
 # ============================================
 module "ecr_replication" {
   count  = var.enable_ecr_replication ? 1 : 0
@@ -616,7 +634,7 @@ module "ecr_replication" {
 
   destination_region = var.ecr_replication_destination_region
   repository_prefix  = var.ecr_repository_prefix
-  repository_names   = var.ecr_repository_names
+  repository_names   = local.ecr_replication_repository_names
 }
 
 # ============================================

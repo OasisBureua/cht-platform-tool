@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-# Compute the next semver ECR tag for CHT Platform images.
-# Dev uses plain semver (3.0.0, 3.0.1, …); prod uses v-prefixed (v3.0.0, v3.0.1, …).
-# Ignores other tags (dev-latest, platform-latest, sha tags, etc.).
+# Compute the next semver ECR tag for CHT images.
+# Dev: 1.0.0, 1.0.1, … (cht-dev-* repos)
+# Platform: v1.0.0, v1.0.1, … (cht-platform-* repos)
+# Ignores floating tags (dev-latest, platform-latest, sha tags, etc.).
+#
+# When ECR is empty (or only has floating tags), falls back to the semver tag on the
+# live ECS task definition so clearing ECR does not reuse a tag Terraform already has.
 #
 # Usage:
-#   ./scripts/next-image-tag.sh [ECR_REPO] [AWS_REGION] [PREFIX]
-#   ./scripts/next-image-tag.sh cht-platform-backend us-east-1      # → 3.0.0
-#   ./scripts/next-image-tag.sh cht-platform-backend us-east-1 v    # → v3.0.0
+#   ./scripts/next-image-tag.sh [ECR_REPO] [AWS_REGION] [PREFIX] [ECS_TASK_FAMILY]
+#   ./scripts/next-image-tag.sh cht-dev-backend us-east-1 '' cht-dev-backend
+#   ./scripts/next-image-tag.sh cht-platform-backend us-east-1 v cht-platform-backend
 
 set -euo pipefail
 
 REPO="${1:-cht-platform-backend}"
 REGION="${2:-us-east-1}"
 PREFIX="${3:-}"
+TASK_DEF_FAMILY="${4:-}"
 
 if ! command -v aws >/dev/null 2>&1; then
   echo "::error::aws CLI required" >&2
@@ -28,22 +33,38 @@ else
   TAG_PATTERN='^[0-9]+\.[0-9]+\.[0-9]+$'
 fi
 
+collect_semver_tag() {
+  local tag="$1"
+  if [[ "$tag" =~ $TAG_PATTERN ]]; then
+    echo "$tag" >> "$TAGS_FILE"
+  fi
+}
+
 aws ecr describe-images \
   --repository-name "$REPO" \
   --region "$REGION" \
   --query 'imageDetails[*].imageTags[]' \
   --output text 2>/dev/null \
 | tr '\t' '\n' \
-| grep -E "$TAG_PATTERN" \
-| sort -V \
-| uniq > "$TAGS_FILE" || true
+| grep -E "$TAG_PATTERN" >> "$TAGS_FILE" || true
+
+if [ -n "$TASK_DEF_FAMILY" ]; then
+  DEPLOYED_IMAGE="$(aws ecs describe-task-definition \
+    --task-definition "$TASK_DEF_FAMILY" \
+    --region "$REGION" \
+    --query 'taskDefinition.containerDefinitions[0].image' \
+    --output text 2>/dev/null || true)"
+  if [ -n "$DEPLOYED_IMAGE" ] && [ "$DEPLOYED_IMAGE" != "None" ]; then
+    collect_semver_tag "${DEPLOYED_IMAGE##*:}"
+  fi
+fi
 
 if [ ! -s "$TAGS_FILE" ]; then
-  echo "${PREFIX}3.0.0"
+  echo "${PREFIX}1.0.0"
   exit 0
 fi
 
-LATEST="$(tail -1 "$TAGS_FILE")"
+LATEST="$(sort -V "$TAGS_FILE" | uniq | tail -1)"
 VERSION="${LATEST#"$PREFIX"}"
 IFS=. read -r major minor patch <<< "$VERSION"
 echo "${PREFIX}${major}.${minor}.$((patch + 1))"

@@ -6,6 +6,11 @@ import { adminApi } from '../../api/admin';
 import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { HCP_PROFESSIONS } from '../../data/profession-options';
+import {
+  attendanceStatusLabel,
+  registrationStatusClass,
+  registrationStatusLabel,
+} from '../../utils/admin-survey-display';
 
 type AdminApprovalsTab = 'registrations' | 'attendance';
 
@@ -86,8 +91,8 @@ export default function AdminWebinarApprovals() {
     isLoading: attendanceLoading,
     isError: attendanceError,
   } = useQuery({
-    queryKey: ['admin', 'webinar-registrations', 'pending-attendance'],
-    queryFn: () => adminApi.listPendingPostEventAttendance(),
+    queryKey: ['admin', 'webinar-registrations', 'attendance'],
+    queryFn: () => adminApi.listPostEventAttendance(),
     enabled: tab === 'attendance',
   });
 
@@ -168,6 +173,7 @@ export default function AdminWebinarApprovals() {
     queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
     queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'recently-approved'] });
     queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending-attendance'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'attendance'] });
     queryClient.invalidateQueries({ queryKey: ['admin', 'program'] });
   };
 
@@ -276,8 +282,8 @@ export default function AdminWebinarApprovals() {
         </div>
         {tab === 'attendance' ? (
           <p className="mt-3 text-sm text-gray-600">
-            After you approve someone for the event, verify they attended so their post-event survey and honorarium steps
-            can unlock.
+            Verify attendance after the live session. Verified and denied learners stay in this list with their status
+            so you can audit who was marked.
           </p>
         ) : null}
 
@@ -371,14 +377,17 @@ export default function AdminWebinarApprovals() {
                 <th className="py-3 px-4">Program</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">User</th>
-                <th className="py-3 px-4">HCP</th>
-                <th className="py-3 px-4">Hospital</th>
-                <th className="py-3 px-4">City</th>
+                <th className="py-3 px-4">Registration</th>
+                <th className="py-3 px-4">Attendance</th>
+                <th className="py-3 px-4">Reviewed</th>
                 <th className="py-3 px-4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredAttendanceRows.map((r) => (
+              {filteredAttendanceRows.map((r) => {
+                const att = r.postEventAttendanceStatus;
+                const isPending = att === 'PENDING_VERIFICATION';
+                return (
                 <tr key={r.id}>
                   <td className="py-3 px-4">
                     <span className="font-medium text-gray-900">{r.program.title}</span>
@@ -400,39 +409,70 @@ export default function AdminWebinarApprovals() {
                     {r.user.specialty && <div className="text-xs text-gray-400">{r.user.specialty}</div>}
                   </td>
                   <td className="py-3 px-4">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${hcpBadgeClass(r.user.specialty)}`}>
-                      {hcpLabel(r.user.specialty)}
+                    <span
+                      className={[
+                        'inline-block rounded-full px-2 py-0.5 text-xs font-semibold',
+                        registrationStatusClass(r.status),
+                      ].join(' ')}
+                    >
+                      {registrationStatusLabel(r.status)}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.institution)}</td>
-                  <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.city)}</td>
                   <td className="py-3 px-4">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
-                        className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                      >
-                        Verify attendance
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
-                        className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
-                      >
-                        Did not attend
-                      </button>
-                    </div>
+                    <span
+                      className={[
+                        'inline-block rounded-full px-2 py-0.5 text-xs font-semibold',
+                        att === 'VERIFIED'
+                          ? 'bg-green-100 text-green-800'
+                          : att === 'DENIED'
+                            ? 'bg-red-100 text-red-800'
+                            : att === 'PENDING_VERIFICATION'
+                              ? 'bg-amber-50 text-amber-800'
+                              : 'bg-gray-100 text-gray-500',
+                      ].join(' ')}
+                    >
+                      {attendanceStatusLabel(att)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-gray-600 whitespace-nowrap text-xs">
+                    {r.postEventAttendanceReviewedAt
+                      ? format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, yyyy h:mm a')
+                      : '—'}
+                  </td>
+                  <td className="py-3 px-4">
+                    {isPending ? (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
+                          className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
+                        >
+                          Verify attendance
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
+                          className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                        >
+                          Did not attend
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">No action needed</span>
+                    )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           {filteredAttendanceRows.length === 0 && (
             <p className="text-sm text-gray-500 px-4 py-8 text-center">
-              {programFilter !== 'all' ? 'No attendance records for the selected program.' : 'No registrations waiting for attendance verification.'}
+              {programFilter !== 'all'
+                ? 'No attendance records for the selected program.'
+                : 'No attendance records yet. Approved learners appear here when post-event verification is required.'}
             </p>
           )}
         </div>

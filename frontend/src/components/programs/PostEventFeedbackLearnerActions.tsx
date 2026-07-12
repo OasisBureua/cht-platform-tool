@@ -49,6 +49,13 @@ export function PostEventFeedbackLearnerActions(props: {
   surveyReadyForAck: boolean;
   /** When set, invalidates this survey detail query after acknowledge (Surveys tab). */
   surveyDetailId?: string;
+  /** Jotform flows need a separate acknowledge step after embed submit. */
+  manualSurveyAckRequired?: boolean;
+  /** Native in-app survey: Complete survey submits the form (no orange Submit on the form). */
+  nativeSurveyMode?: boolean;
+  surveyFormSubmitting?: boolean;
+  surveySubmitError?: string | null;
+  onCompleteSurveyNative?: () => void;
   /** e.g. program page: render the Jotform iframe between help text and the Complete survey button. */
   betweenAckHelpAndButton?: ReactNode;
   /** Program page: advance wizard after successful acknowledge (e.g. hide iframe for payout step). */
@@ -62,6 +69,11 @@ export function PostEventFeedbackLearnerActions(props: {
     myRegistration,
     hasHonorarium,
     surveyReadyForAck,
+    manualSurveyAckRequired = true,
+    nativeSurveyMode = false,
+    surveyFormSubmitting = false,
+    surveySubmitError,
+    onCompleteSurveyNative,
     surveyDetailId,
     betweenAckHelpAndButton,
     onSurveyAcknowledged,
@@ -78,14 +90,8 @@ export function PostEventFeedbackLearnerActions(props: {
 
   const showPayoutBlock = surveyAcked && hasHonorarium && !honorariumDone && attendanceOk && approved;
   const showDoneBlock = surveyAcked && (!hasHonorarium || honorariumDone) && attendanceOk && approved;
-  const showAckBlock = !surveyAcked && attendanceOk && approved;
-
-  const { data: preview, isError: previewError } = useQuery({
-    queryKey: ['programs', programId, 'honorarium-preview'],
-    queryFn: () => programsApi.getHonorariumPreview(programId),
-    enabled: showPayoutBlock,
-    retry: false,
-  });
+  const showAckBlock =
+    !surveyAcked && attendanceOk && approved && (manualSurveyAckRequired || nativeSurveyMode);
 
   const ackMut = useMutation({
     mutationFn: () => programsApi.acknowledgePostEventSurvey(programId),
@@ -115,6 +121,28 @@ export function PostEventFeedbackLearnerActions(props: {
     },
   });
 
+  const { data: preview, isError: previewError } = useQuery({
+    queryKey: ['programs', programId, 'honorarium-preview'],
+    queryFn: () => programsApi.getHonorariumPreview(programId),
+    enabled: showPayoutBlock,
+    retry: false,
+  });
+
+  const completeSurveyDisabled = nativeSurveyMode
+    ? surveyFormSubmitting || ackMut.isPending || surveyAcked || ackMut.isSuccess
+    : !surveyReadyForAck ||
+      ackMut.isPending ||
+      !!myRegistration?.postEventSurveyAcknowledgedAt ||
+      ackMut.isSuccess;
+
+  const handleCompleteSurvey = () => {
+    if (nativeSurveyMode) {
+      onCompleteSurveyNative?.();
+      return;
+    }
+    ackMut.mutateAsync().catch(() => {});
+  };
+
   if (!myRegistration || !approved) {
     return null;
   }
@@ -123,7 +151,12 @@ export function PostEventFeedbackLearnerActions(props: {
     <div className="space-y-4">
       {showAckBlock ? (
         <div className="space-y-3">
-          {surveyReadyForAck ? (
+          {nativeSurveyMode ? (
+            <p className="text-sm text-gray-600">
+              Complete all questions below, then tap <strong>Complete survey</strong> to save your responses
+              {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+            </p>
+          ) : surveyReadyForAck ? (
             <p className="text-sm text-gray-600">
               {betweenAckHelpAndButton ? (
                 <>
@@ -155,23 +188,24 @@ export function PostEventFeedbackLearnerActions(props: {
             </p>
           )}
           {betweenAckHelpAndButton}
+          {surveySubmitError ? (
+            <p className="text-sm text-red-700">{surveySubmitError}</p>
+          ) : null}
           <button
             type="button"
-            disabled={
-              !surveyReadyForAck || ackMut.isPending || !!myRegistration.postEventSurveyAcknowledgedAt || ackMut.isSuccess
-            }
-            onClick={() => {
-              ackMut.mutateAsync().catch(() => {});
-            }}
+            disabled={completeSurveyDisabled}
+            onClick={handleCompleteSurvey}
             className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
-            {ackMut.isPending
+            {nativeSurveyMode && surveyFormSubmitting
+              ? 'Saving…'
+              : ackMut.isPending
               ? 'Saving…'
               : myRegistration.postEventSurveyAcknowledgedAt || ackMut.isSuccess
                 ? 'Survey recorded'
                 : 'Complete survey'}
           </button>
-          {ackMut.isError ? (
+          {!nativeSurveyMode && ackMut.isError ? (
             <p className="text-sm text-red-700">Could not save progress. Check your connection and try again.</p>
           ) : null}
         </div>

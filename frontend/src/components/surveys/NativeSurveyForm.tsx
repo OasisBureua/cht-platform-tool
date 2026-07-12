@@ -16,6 +16,11 @@ type Props = {
   userSummary?: { firstName?: string; lastName?: string; email?: string };
   disabled?: boolean;
   submitting?: boolean;
+  submitLabel?: string;
+  /** Hide the submit button (parent handles submission). */
+  hideSubmitButton?: boolean;
+  /** Lets a parent trigger HTML5 validation + submit (e.g. wizard Continue). */
+  formId?: string;
   onSubmit: (answers: Record<string, unknown>) => void;
   w9ProfileHref?: string;
   /** When true, show W-9 / honorarium payout reminder (post-event surveys only). */
@@ -30,6 +35,9 @@ export function NativeSurveyForm({
   userSummary,
   disabled,
   submitting,
+  submitLabel,
+  hideSubmitButton,
+  formId,
   onSubmit,
   w9ProfileHref = '/app/profile',
   showPayoutNotice = false,
@@ -60,7 +68,12 @@ export function NativeSurveyForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5" data-survey-id={surveyId}>
+    <form
+      id={formId}
+      onSubmit={handleSubmit}
+      className="space-y-5"
+      data-survey-id={surveyId}
+    >
       {authenticated && userSummary ? (
         <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
           Submitting as{' '}
@@ -96,13 +109,15 @@ export function NativeSurveyForm({
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={disabled || submitting}
-        className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-      >
-        {submitting ? 'Submitting…' : `Submit ${title}`}
-      </button>
+      {!hideSubmitButton ? (
+        <button
+          type="submit"
+          disabled={disabled || submitting}
+          className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+        >
+          {submitting ? 'Submitting…' : submitLabel ?? `Submit ${title}`}
+        </button>
+      ) : null}
     </form>
   );
 }

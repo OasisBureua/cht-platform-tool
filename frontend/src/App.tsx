@@ -70,6 +70,7 @@ const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminPrograms         = lazy(() => import('./pages/admin/AdminPrograms'));
 const AdminSurveys          = lazy(() => import('./pages/admin/AdminSurveys'));
+const AdminSurveyResponses  = lazy(() => import('./pages/admin/AdminSurveyResponses'));
 const AdminCreateSurvey     = lazy(() => import('./pages/admin/AdminCreateSurvey'));
 const AdminEditSurvey       = lazy(() => import('./pages/admin/AdminEditSurvey'));
 const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarScheduler'));
@@ -78,6 +79,7 @@ const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'
 const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
 const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminContent          = lazy(() => import('./pages/admin/AdminContent'));
 const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
 const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
 const AdminKolDirectory     = lazy(() => import('./pages/admin/kol-network/AdminKolDirectory'));
@@ -254,6 +256,7 @@ function App() {
               <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
               <Route path="office-hours" element={<AdminPrograms />} />
               <Route path="surveys" element={<AdminSurveys />} />
+              <Route path="surveys/:id/responses" element={<AdminSurveyResponses />} />
               <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
               <Route path="create-survey" element={<AdminCreateSurvey />} />
               <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
@@ -267,6 +270,7 @@ function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
               <Route path="users" element={<AdminUsers />} />
+              <Route path="content" element={<AdminContent />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
 
               {/* KOL Network — internal HCP intelligence (ported from MediaHub) */}

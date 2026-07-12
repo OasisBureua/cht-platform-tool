@@ -7,8 +7,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
-/** Default TTL for catalog / KOL / Content Hub upstream reads (24h). */
-export const CACHE_TTL_SECONDS = 86_400;
+/** Default TTL for catalog / KOL / Content Hub upstream reads (4h). */
+export const CACHE_TTL_SECONDS = 14_400;
 
 @Injectable()
 export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
@@ -84,10 +84,14 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async setJson(key: string, value: unknown): Promise<void> {
+  async setJson(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
     if (!this.isEnabled() || !this.client) return;
+    const ttl =
+      typeof ttlSeconds === 'number' && ttlSeconds > 0
+        ? ttlSeconds
+        : this.ttlSeconds;
     try {
-      await this.client.set(key, JSON.stringify(value), 'EX', this.ttlSeconds);
+      await this.client.set(key, JSON.stringify(value), 'EX', ttl);
     } catch (err) {
       this.logger.warn(
         `Redis SET ${key} failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -100,6 +104,8 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     if (!this.isEnabled() || !this.client) return 0;
     let cursor = '0';
     let deleted = 0;
+    let batches = 0;
+    const started = Date.now();
     try {
       do {
         const [next, keys] = await this.client.scan(
@@ -111,13 +117,17 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
         );
         cursor = next;
         if (keys.length > 0) {
+          batches += 1;
           deleted += await this.client.del(...keys);
         }
       } while (cursor !== '0');
+      this.logger.log(
+        `Redis deleteByPattern pattern=${pattern} deleted=${deleted} batches=${batches} durationMs=${Date.now() - started}`,
+      );
       return deleted;
     } catch (err) {
       this.logger.warn(
-        `Redis SCAN/DEL ${pattern} failed: ${err instanceof Error ? err.message : String(err)}`,
+        `Redis SCAN/DEL ${pattern} failed after ${deleted} keys: ${err instanceof Error ? err.message : String(err)}`,
       );
       return deleted;
     }
