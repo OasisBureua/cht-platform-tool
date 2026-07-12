@@ -29,12 +29,20 @@ async function fetchAllWordPressPosts(): Promise<WordPressPostItem[]> {
       offset,
     });
     const batch = res.items ?? [];
+    // Empty page ⇒ done. Do not treat a short page as EOF: the backend strips
+    // probe/smoke posts per page, so the first page can be e.g. 85 of 100.
+    if (batch.length === 0) break;
     all.push(...batch);
-    offset += batch.length;
-    if (batch.length < FETCH_PAGE) break;
-    if (res.total != null && offset >= res.total) break;
+    // Advance by the requested page size (ContentHub offset), not filtered length.
+    offset += FETCH_PAGE;
+    if (res.total != null && res.total > FETCH_PAGE && offset >= res.total) break;
   }
-  return withoutProbePosts(all);
+  const seen = new Set<number>();
+  return withoutProbePosts(all).filter((p) => {
+    if (seen.has(p.post_id)) return false;
+    seen.add(p.post_id);
+    return true;
+  });
 }
 
 function withoutProbePosts(items: WordPressPostItem[]): WordPressPostItem[] {
