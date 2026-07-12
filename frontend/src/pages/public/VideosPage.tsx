@@ -7,7 +7,7 @@ import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '
 import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
-import { PlaylistGrid } from '../../components/content/PlaylistGrid';
+import { PlaylistSections } from '../../components/content/PlaylistSections';
 import { PlaylistVideosFlattenGrid } from '../../components/content/PlaylistVideosFlattenGrid';
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
@@ -557,7 +557,9 @@ export default function VideosPage() {
                             : 'Videos from playlists in this category'}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">Browse playlists by category</p>
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">
+                      Browse KOL playlists and ASCO 2026 series
+                    </p>
                   )}
                 </div>
                 {!isInApp ? (
@@ -589,7 +591,7 @@ export default function VideosPage() {
               )
             ) : (
               <>
-                <PlaylistGrid playlists={playlistsForPlaylistView} isInApp={isInApp} descriptionForItem={playlistDescription} />
+                <PlaylistSections playlists={playlistsForPlaylistView} isInApp={isInApp} />
                 {playlists.length === 0 ? (
                   <p className="text-sm text-gray-600 dark:text-zinc-400">
                     No playlists configured. Add YouTube playlist IDs on the server.

@@ -52,6 +52,25 @@ export interface WordPressCategoriesResponse {
   total: number;
 }
 
+/** Latest WordPress editorial state per post (ContentHub GET /wordpress). */
+export interface WordPressPostItem {
+  post_id: number;
+  slug: string;
+  title: string;
+  permalink: string;
+  categories: string[];
+  tags: string[];
+  series?: string[];
+  youtube_video_id: string | null;
+  featured_media_url: string | null;
+  modified_gmt: string;
+}
+
+export interface WordPressPostsResponse {
+  items: WordPressPostItem[];
+  total: number;
+}
+
 export type MediaHubTags = Record<string, string[]>;
 
 export interface GetClipsParams {
@@ -88,6 +107,18 @@ export const catalogApi = {
     } catch {
       return { items: [], total: 0 };
     }
+  },
+
+  getWordPressPosts: async (params?: {
+    limit?: number;
+    offset?: number;
+    q?: string;
+    category?: string;
+  }): Promise<WordPressPostsResponse> => {
+    const { data } = await apiClient.get<WordPressPostsResponse>('/catalog/wordpress', {
+      params,
+    });
+    return { items: data?.items ?? [], total: data?.total ?? 0 };
   },
 
   getClips: async (params?: GetClipsParams): Promise<{ items: MediaHubClip[]; total: number }> => {

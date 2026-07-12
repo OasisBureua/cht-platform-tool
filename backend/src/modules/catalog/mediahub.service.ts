@@ -71,6 +71,24 @@ export interface WordPressCategoriesResponse {
   total: number;
 }
 
+export interface WordPressPostItem {
+  post_id: number;
+  slug: string;
+  title: string;
+  permalink: string;
+  categories: string[];
+  tags: string[];
+  series?: string[];
+  youtube_video_id: string | null;
+  featured_media_url: string | null;
+  modified_gmt: string;
+}
+
+export interface WordPressPostsResponse {
+  items: WordPressPostItem[];
+  total: number;
+}
+
 export interface MediaHubDoctor {
   slug: string;
   shoot_count?: number;
@@ -378,6 +396,54 @@ export class MediaHubService {
       if (status === 404 || status === 401) {
         this.logger.warn(
           `ContentHub /wordpress/categories unavailable (${status ?? 'error'}) — returning empty`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Latest WordPress editorial posts (ContentHub GET /wordpress).
+   * Used by admin Content tab — view-only mirror of WP, not authoring.
+   */
+  async getWordPressPosts(params?: {
+    limit?: number;
+    offset?: number;
+    q?: string;
+    category?: string;
+  }): Promise<WordPressPostsResponse> {
+    if (!this.useContentHub) {
+      return { items: [], total: 0 };
+    }
+    const searchParams: Record<string, string | number> = {};
+    if (params?.limit != null) searchParams.limit = params.limit;
+    if (params?.offset != null) searchParams.offset = params.offset;
+    if (params?.q) searchParams.q = params.q;
+    if (params?.category) searchParams.category = params.category;
+
+    const key = this.cacheKey('wordpress-posts', searchParams);
+    try {
+      return await this.cachedGet(key, async () => {
+        const result = await this.getPublic<
+          WordPressPostsResponse | WordPressPostItem[]
+        >(
+          '/wordpress',
+          Object.keys(searchParams).length > 0 ? searchParams : undefined,
+        );
+        if (Array.isArray(result)) {
+          return { items: result, total: result.length };
+        }
+        return {
+          items: result?.items ?? [],
+          total: result?.total ?? result?.items?.length ?? 0,
+        };
+      });
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404 || status === 401) {
+        this.logger.warn(
+          `ContentHub /wordpress unavailable (${status ?? 'error'}) — returning empty`,
         );
         return { items: [], total: 0 };
       }

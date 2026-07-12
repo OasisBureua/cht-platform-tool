@@ -117,6 +117,7 @@ export class CatalogController {
   /**
    * GET /api/catalog/wordpress/categories
    * ContentHub: WordPress category slugs for biomarker/disease landing nav.
+   * Declared before GET wordpress so the more specific path is unambiguous.
    */
   @Get('wordpress/categories')
   async getWordPressCategories() {
@@ -131,6 +132,40 @@ export class CatalogController {
       if (status === 401 || status === 404) {
         this.logger.warn(
           `[Catalog] ContentHub ${status} on /wordpress/categories - returning empty.`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * GET /api/catalog/wordpress
+   * ContentHub: latest WordPress editorial posts (view-only for admin Content tab).
+   */
+  @Get('wordpress')
+  async getWordPressPosts(
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('q') q?: string,
+    @Query('category') category?: string,
+  ) {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getWordPressPosts({
+        limit: limit ? parseInt(limit, 10) : undefined,
+        offset: offset ? parseInt(offset, 10) : undefined,
+        q,
+        category,
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 404) {
+        this.logger.warn(
+          `[Catalog] ContentHub ${status} on /wordpress - returning empty.`,
         );
         return { items: [], total: 0 };
       }
