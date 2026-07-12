@@ -77,7 +77,10 @@ echo ""
 
 cd "$REPO_ROOT/infrastructure/terraform/environments/us-east-1"
 
-"$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-1 "$ENV"
+# Legacy RDS teardown helper — not needed for platform (Aurora-only; RDS already gone).
+if [ "$ENV" != "platform" ]; then
+  "$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-1 "$ENV"
+fi
 
 echo "🔧 Initializing Terraform..."
 terraform init -reconfigure -backend-config="$BACKEND_CONFIG"
@@ -133,8 +136,13 @@ terraform output > ~/cht-us-east-1-${ENV}-outputs.txt
 echo ""
 echo "📋 Next steps:"
 echo "1. Add Route53 NS records to your DNS provider (if not already delegated)"
-echo "2. Deploy DR standby: ./scripts/deploy-secondary.sh $ENV"
-echo "3. Deploy frontend: ./scripts/deploy-frontend.sh $ENV both"
+if [ "$ENV" = "platform" ]; then
+  echo "2. Skip us-east-2 ECS for now (do not run ./scripts/deploy-secondary.sh platform)"
+  echo "3. Deploy frontend: ./scripts/deploy-frontend.sh $ENV"
+else
+  echo "2. Deploy DR standby: ./scripts/deploy-secondary.sh $ENV"
+  echo "3. Deploy frontend: ./scripts/deploy-frontend.sh $ENV both"
+fi
 echo "4. Run database migrations: ./scripts/run-migrations.sh $ENV"
 if [ -n "$DOMAIN" ]; then
   echo "5. Test: curl https://${DOMAIN}/health/ready"

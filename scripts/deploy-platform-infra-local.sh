@@ -47,7 +47,6 @@ echo "   Backend image (baseline): $BACKEND_IMAGE"
 echo ""
 
 cd "$TF_DIR"
-"$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-1 platform
 
 terraform init -reconfigure -backend-config="$BACKEND_CONFIG"
 terraform validate
