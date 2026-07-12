@@ -5,6 +5,7 @@ import { catalogApi, type WordPressPostItem } from '../../api/catalog';
 import { formatWordPressCategoryLabel } from '../../utils/wordpressCatalog';
 
 const PAGE_SIZE = 24;
+const FETCH_PAGE = 100;
 
 /** ContentHub seed/test rows — hide probe/smoke posts from admin Content. */
 function isProbeWordPressPost(post: WordPressPostItem): boolean {
@@ -16,6 +17,24 @@ function isProbeWordPressPost(post: WordPressPostItem): boolean {
     slug.includes('smoke') ||
     title.includes('smoke')
   );
+}
+
+async function fetchAllWordPressPosts(): Promise<WordPressPostItem[]> {
+  const all: WordPressPostItem[] = [];
+  let offset = 0;
+  // Cap pages so a bad upstream total can't loop forever.
+  for (let page = 0; page < 30; page++) {
+    const res = await catalogApi.getWordPressPosts({
+      limit: FETCH_PAGE,
+      offset,
+    });
+    const batch = res.items ?? [];
+    all.push(...batch);
+    offset += batch.length;
+    if (batch.length < FETCH_PAGE) break;
+    if (res.total != null && offset >= res.total) break;
+  }
+  return withoutProbePosts(all);
 }
 
 function withoutProbePosts(items: WordPressPostItem[]): WordPressPostItem[] {
@@ -69,49 +88,37 @@ export default function AdminContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data, isLoading, isError, isFetching } = useQuery({
-    queryKey: ['catalog', 'wordpress', 'posts', debouncedQuery, category, offset],
-    queryFn: async () => {
-      // ContentHub supports `category` today; `q` is not reliable yet — filter client-side.
-      if (debouncedQuery) {
-        const res = await catalogApi.getWordPressPosts({
-          limit: 200,
-          offset: 0,
-          category: category || undefined,
-        });
-        const q = debouncedQuery.toLowerCase();
-        const filtered = withoutProbePosts(res.items).filter((p) => {
-          const title = (p.title || '').toLowerCase();
-          const slug = (p.slug || '').toLowerCase();
-          return (
-            title.includes(q) ||
-            slug.includes(q) ||
-            String(p.post_id).includes(q) ||
-            (p.youtube_video_id || '').toLowerCase().includes(q)
-          );
-        });
-        return {
-          items: filtered.slice(offset, offset + PAGE_SIZE),
-          total: filtered.length,
-        };
-      }
-      const res = await catalogApi.getWordPressPosts({
-        limit: PAGE_SIZE,
-        offset,
-        category: category || undefined,
-      });
-      const items = withoutProbePosts(res.items);
-      return {
-        items,
-        // Approximate: drop probe rows from this page's contribution to total
-        total: Math.max(0, (res.total ?? 0) - (res.items.length - items.length)),
-      };
-    },
-    staleTime: 60 * 1000,
+  const { data: allPosts = [], isLoading, isError, isFetching } = useQuery({
+    queryKey: ['catalog', 'wordpress', 'posts', 'all'],
+    queryFn: fetchAllWordPressPosts,
+    staleTime: 5 * 60 * 1000,
   });
 
-  const items = data?.items ?? [];
-  const total = data?.total ?? 0;
+  const filteredPosts = useMemo(() => {
+    const q = debouncedQuery.toLowerCase();
+    return allPosts.filter((p) => {
+      if (category && !(p.categories ?? []).includes(category)) return false;
+      if (!q) return true;
+      const title = (p.title || '').toLowerCase();
+      const slug = (p.slug || '').toLowerCase();
+      return (
+        title.includes(q) ||
+        slug.includes(q) ||
+        String(p.post_id).includes(q) ||
+        (p.youtube_video_id || '').toLowerCase().includes(q)
+      );
+    });
+  }, [allPosts, debouncedQuery, category]);
+
+  const total = filteredPosts.length;
+  const items = filteredPosts.slice(offset, offset + PAGE_SIZE);
+
+  useEffect(() => {
+    if (offset > 0 && offset >= total) {
+      setOffset(Math.max(0, Math.floor(Math.max(0, total - 1) / PAGE_SIZE) * PAGE_SIZE));
+    }
+  }, [offset, total]);
+
   const categories = useMemo(
     () =>
       [...(categoriesData?.items ?? [])]
