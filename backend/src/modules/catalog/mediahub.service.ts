@@ -422,7 +422,7 @@ export class MediaHubService {
     if (params?.q) searchParams.q = params.q;
     if (params?.category) searchParams.category = params.category;
 
-    const key = this.cacheKey('wordpress-posts', searchParams);
+    const key = this.cacheKey('wordpress-posts', { ...searchParams, hideProbe: true });
     try {
       return await this.cachedGet(key, async () => {
         const result = await this.getPublic<
@@ -431,12 +431,17 @@ export class MediaHubService {
           '/wordpress',
           Object.keys(searchParams).length > 0 ? searchParams : undefined,
         );
-        if (Array.isArray(result)) {
-          return { items: result, total: result.length };
-        }
+        const raw = Array.isArray(result)
+          ? { items: result, total: result.length }
+          : {
+              items: result?.items ?? [],
+              total: result?.total ?? result?.items?.length ?? 0,
+            };
+        const items = raw.items.filter((p) => !this.isProbeWordPressPost(p));
+        const removed = raw.items.length - items.length;
         return {
-          items: result?.items ?? [],
-          total: result?.total ?? result?.items?.length ?? 0,
+          items,
+          total: Math.max(0, (raw.total ?? 0) - removed),
         };
       });
     } catch (err) {
@@ -449,6 +454,18 @@ export class MediaHubService {
       }
       throw err;
     }
+  }
+
+  /** Hide ContentHub seed/test posts (probe, smoke, logging tests). */
+  private isProbeWordPressPost(post: WordPressPostItem): boolean {
+    const slug = (post.slug || '').toLowerCase();
+    const title = (post.title || '').toLowerCase();
+    return (
+      slug.includes('probe') ||
+      title.includes('probe') ||
+      slug.includes('smoke') ||
+      title.includes('smoke')
+    );
   }
 
   async getPlaylistTags(params?: {

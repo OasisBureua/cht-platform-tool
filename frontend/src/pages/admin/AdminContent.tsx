@@ -6,6 +6,22 @@ import { formatWordPressCategoryLabel } from '../../utils/wordpressCatalog';
 
 const PAGE_SIZE = 24;
 
+/** ContentHub seed/test rows — hide probe/smoke posts from admin Content. */
+function isProbeWordPressPost(post: WordPressPostItem): boolean {
+  const slug = (post.slug || '').toLowerCase();
+  const title = (post.title || '').toLowerCase();
+  return (
+    slug.includes('probe') ||
+    title.includes('probe') ||
+    slug.includes('smoke') ||
+    title.includes('smoke')
+  );
+}
+
+function withoutProbePosts(items: WordPressPostItem[]): WordPressPostItem[] {
+  return items.filter((p) => !isProbeWordPressPost(p));
+}
+
 function decodeHtmlEntities(text: string): string {
   if (typeof document === 'undefined') {
     return text
@@ -64,7 +80,7 @@ export default function AdminContent() {
           category: category || undefined,
         });
         const q = debouncedQuery.toLowerCase();
-        const filtered = res.items.filter((p) => {
+        const filtered = withoutProbePosts(res.items).filter((p) => {
           const title = (p.title || '').toLowerCase();
           const slug = (p.slug || '').toLowerCase();
           return (
@@ -79,11 +95,17 @@ export default function AdminContent() {
           total: filtered.length,
         };
       }
-      return catalogApi.getWordPressPosts({
+      const res = await catalogApi.getWordPressPosts({
         limit: PAGE_SIZE,
         offset,
         category: category || undefined,
       });
+      const items = withoutProbePosts(res.items);
+      return {
+        items,
+        // Approximate: drop probe rows from this page's contribution to total
+        total: Math.max(0, (res.total ?? 0) - (res.items.length - items.length)),
+      };
     },
     staleTime: 60 * 1000,
   });
@@ -108,7 +130,7 @@ export default function AdminContent() {
           Content
         </h1>
         <p className="text-sm text-gray-600 dark:text-zinc-400">
-          Read-only view of what is currently live on WordPress. Authoring stays in wp-admin.
+          Read-only view of what is currently live on WordPress. Authoring stays in WordPress Admin.
         </p>
       </div>
 
@@ -194,20 +216,27 @@ function PostRow({ post }: { post: WordPressPostItem }) {
   const title = decodeHtmlEntities(post.title || post.slug || `Post ${post.post_id}`);
   const cats = post.categories ?? [];
   const tags = post.tags ?? [];
+  const thumbUrl =
+    post.featured_media_url?.trim() ||
+    (post.youtube_video_id
+      ? `https://i.ytimg.com/vi/${post.youtube_video_id}/hqdefault.jpg`
+      : null);
 
   return (
-    <li className="flex gap-4 p-4 sm:p-5">
-      <div className="hidden h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:block dark:bg-zinc-800">
-        {post.featured_media_url ? (
+    <li className="flex gap-3 p-4 sm:gap-4 sm:p-5">
+      <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-20 sm:w-32 dark:bg-zinc-800">
+        {thumbUrl ? (
           <img
-            src={post.featured_media_url}
+            src={thumbUrl}
             alt=""
             className="h-full w-full object-cover"
             loading="lazy"
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-gray-400">No image</div>
+          <div className="flex h-full items-center justify-center text-[10px] text-gray-400 sm:text-xs">
+            No image
+          </div>
         )}
       </div>
       <div className="min-w-0 flex-1 space-y-2">
