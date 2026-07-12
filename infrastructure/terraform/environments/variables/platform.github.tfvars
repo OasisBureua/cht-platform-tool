@@ -43,7 +43,9 @@ dr_acm_certificate_arn     = "arn:aws:acm:us-east-2:233636046512:certificate/e99
 secrets_replica_regions     = ["us-east-2"]
 enable_ecr_replication        = true
 secondary_api_origin_domain   = "cht-platform-dr-use2-alb-455710402.us-east-2.elb.amazonaws.com"
-dr_rds_instance_class         = "db.t3.small"
+# deploy-prod.yml mirrors deploy-dev (us-east-1 ECS only). Secondary ECS later via deploy-secondary.sh.
+route_api_to_secondary      = false
+dr_rds_instance_class       = "db.t3.small"
 
 # Non-secret app configuration required by Terraform
 supabase_url         = "https://mediahub.communityhealth.media"

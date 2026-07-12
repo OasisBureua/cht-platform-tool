@@ -23,6 +23,14 @@ case "$ENV" in
     ;;
 esac
 
+# Platform us-east-2 ECS is intentionally paused — Deploy to Platform / us-east-1 only.
+if [ "$ENV" = "platform" ] && [ "${FORCE_SECONDARY_ECS:-}" != "1" ]; then
+  echo "⏸️  Skipping platform us-east-2 ECS deploy."
+  echo "   App deploys (deploy-prod.yml) only update ECS in us-east-1."
+  echo "   To force DR ECS anyway: FORCE_SECONDARY_ECS=1 ./scripts/deploy-secondary.sh platform"
+  exit 0
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/${ENV}.tfvars"
@@ -99,7 +107,9 @@ echo ""
 
 cd "$TF_DIR"
 
-"$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-2 "$ENV"
+if [ "$ENV" != "platform" ]; then
+  "$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-2 "$ENV"
+fi
 
 echo "🔧 Initializing Terraform..."
 terraform init -reconfigure -backend-config="$BACKEND_CONFIG"
