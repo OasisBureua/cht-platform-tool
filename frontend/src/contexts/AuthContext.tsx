@@ -206,41 +206,54 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     }
   }, [devUserId]);
 
+  // Bootstrap session once on mount / API URL change only.
+  // Login responses already include the profile — do not re-fetch /auth/me
+  // (that used to flip isLoading and show "Signing you in...").
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
 
     const loadProfile = async () => {
       const meUrl = `${apiUrl.replace(/\/$/, '')}/auth/me`;
-
-      if (authMode !== 'dev') {
+      const storedDevId = (() => {
         try {
-          const res = await authFetch(meUrl, { cache: 'no-store' });
-          const data = res.ok ? await res.json().catch(() => null) : null;
-          if (!cancelled && data?.userId) {
-            setAuthMode('cookie');
-            setProfile({
-              userId: data.userId,
-              email: data.email,
-              name: data.name,
-              firstName: data.firstName,
-              lastName: data.lastName,
-              role: data.role,
-              profileComplete: data.profileComplete ?? true,
-            });
-            return;
-          }
+          return typeof localStorage?.getItem === 'function'
+            ? localStorage.getItem(DEV_USER_KEY) || ''
+            : '';
         } catch {
-          /* fall through */
+          return '';
         }
+      })();
+
+      try {
+        const res = await authFetch(meUrl, { cache: 'no-store' });
+        const data = res.ok ? await res.json().catch(() => null) : null;
+        if (!cancelled && data?.userId) {
+          setAuthMode('cookie');
+          setProfile({
+            userId: data.userId,
+            email: data.email,
+            name: data.name,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            role: data.role,
+            profileComplete: data.profileComplete ?? true,
+          });
+          return;
+        }
+      } catch {
+        /* fall through */
       }
 
-      if (devUserId) {
+      if (storedDevId) {
         try {
-          const res = await fetch(meUrl, { headers: { 'X-Dev-User-Id': devUserId } });
+          const res = await fetch(meUrl, {
+            headers: { 'X-Dev-User-Id': storedDevId },
+          });
           const data = res.ok ? await res.json().catch(() => null) : null;
           if (!cancelled && data?.userId) {
             setAuthMode('dev');
+            setDevUserId(storedDevId);
             setProfile({
               userId: data.userId,
               email: data.email,
@@ -258,11 +271,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (!cancelled) {
-        // Keep profile from a fresh login when /auth/me is temporarily unavailable
-        // (e.g. DB restore, cold start) — avoids "Signing you in..." hang or logout loop.
-        if (authMode === 'cookie' && profile?.userId) {
-          return;
-        }
         setAuthMode(null);
         setProfile(null);
       }
@@ -275,7 +283,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [authMode, devUserId, apiUrl, profile?.userId]);
+  }, [apiUrl]);
 
   const refreshProfile = useCallback(async () => {
     const meUrl = `${apiUrl.replace(/\/$/, '')}/auth/me`;

@@ -42,8 +42,8 @@ export default function Login() {
     }
   };
 
-  // Only navigate after session is validated (isLoading=false) - prevents flash/redirect loop
-  // where app renders before authHeaderGetter is updated, causing 401 on first API call
+  // Navigate once bootstrap finishes, or immediately after login sets the profile
+  // (login no longer re-triggers /auth/me + isLoading).
   if (isAuthenticated && !isLoading) {
     return <Navigate to={getPostLoginPath(user?.role, from)} replace />;
   }

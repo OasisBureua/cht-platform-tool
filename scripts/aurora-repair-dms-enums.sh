@@ -3,6 +3,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SQL_FILE="$SCRIPT_DIR/aurora-repair-dms-enums.sql"
+MIGRATIONS_SQL_FILE="$SCRIPT_DIR/aurora-repair-prisma-migrations.sql"
+UNIQUES_SQL_FILE="$SCRIPT_DIR/aurora-repair-missing-uniques.sql"
 ENV=${1:-platform}
 AWS_REGION=${AWS_REGION:-us-east-1}
 
@@ -25,10 +27,20 @@ if [ ! -f "$SQL_FILE" ]; then
   echo "❌ Missing $SQL_FILE"
   exit 1
 fi
+if [ ! -f "$MIGRATIONS_SQL_FILE" ]; then
+  echo "❌ Missing $MIGRATIONS_SQL_FILE"
+  exit 1
+fi
+if [ ! -f "$UNIQUES_SQL_FILE" ]; then
+  echo "❌ Missing $UNIQUES_SQL_FILE"
+  exit 1
+fi
 
-echo "🔧 Aurora DMS enum repair ($ENV)"
+echo "🔧 Aurora DMS schema repair ($ENV)"
 echo "================================"
 echo ""
+echo "Step 0: Fix _prisma_migrations defaults / unique (migrate deploy inserts)"
+echo "Step 0b: Restore unique indexes lost in DMS (ProgramRegistration upserts)"
 echo "Step 1: Create missing PostgreSQL ENUM types"
 echo "Step 2: Convert DMS varchar columns to those enum types"
 echo ""
@@ -47,6 +59,34 @@ if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "None" ]; then
 fi
 
 echo "📦 Task: $TASK_ARN"
+echo "🚀 Step 0/2: _prisma_migrations table..."
+echo ""
+
+MIG_B64=$(base64 < "$MIGRATIONS_SQL_FILE" | tr -d '\n')
+
+aws ecs execute-command \
+  --cluster "$CLUSTER" \
+  --task "$TASK_ARN" \
+  --container backend \
+  --region "$AWS_REGION" \
+  --interactive \
+  --command "sh -c 'echo ${MIG_B64} | base64 -d | npx prisma db execute --stdin'"
+
+echo ""
+echo "🚀 Step 0b: missing unique indexes..."
+echo ""
+
+UNIQ_B64=$(base64 < "$UNIQUES_SQL_FILE" | tr -d '\n')
+
+aws ecs execute-command \
+  --cluster "$CLUSTER" \
+  --task "$TASK_ARN" \
+  --container backend \
+  --region "$AWS_REGION" \
+  --interactive \
+  --command "sh -c 'echo ${UNIQ_B64} | base64 -d | npx prisma db execute --stdin'"
+
+echo ""
 echo "🚀 Step 1/2: enum types..."
 echo ""
 
@@ -79,5 +119,5 @@ aws ecs execute-command \
   --command "sh -c 'echo ${COL_B64} | base64 -d | npx prisma db execute --stdin'"
 
 echo ""
-echo "✅ DMS schema repair complete (enum types + column casts)."
+echo "✅ DMS schema repair complete (_prisma_migrations + uniques + enum types + column casts)."
 echo "   Refresh admin dashboard — user counts and payments should load."

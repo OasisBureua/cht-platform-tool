@@ -435,6 +435,8 @@ module "ecs_backend" {
   cognito_region                 = "us-east-1"
   recaptcha_min_score            = var.recaptcha_min_score
   redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
+  # Always apply Prisma migrations on backend boot (primary/writer).
+  run_db_migrations              = true
 }
 
 resource "aws_security_group_rule" "elasticache_from_backend" {
