@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -155,62 +156,64 @@ export default function AdminPrograms() {
         </div>
       ) : null}
 
-      {/* Delete confirmation overlay */}
-      {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="font-semibold text-gray-900">
-                  Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  This will permanently remove the session. This action cannot be undone.
-                </p>
+      {/* Delete confirmation — portal so fixed centering is viewport-relative */}
+      {deleteConfirmId &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="font-semibold text-gray-900">
+                    Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    This will permanently remove the session. This action cannot be undone.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="ml-4 shrink-0 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="ml-4 shrink-0 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setDeleteConfirmId(null)}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => deleteMutation.mutate(deleteConfirmId)}
+                  disabled={deleteMutation.isPending}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  Delete
+                </button>
+              </div>
             </div>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setDeleteConfirmId(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deleteMutation.mutate(deleteConfirmId)}
-                disabled={deleteMutation.isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
-              >
-                {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       {/* Edit modal */}
-      {editingId && (
-        <EditWebinarModal
-          key={editingId}
-          webinar={items.find((w) => w.id === editingId)!}
-          onClose={() => setEditingId(null)}
-          onSaved={(updatedId?: string) => {
-            // Invalidate admin list and all user-facing caches so speaker/panelist
-            // name changes are immediately reflected in the program hub and session pages.
-            queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
-            queryClient.invalidateQueries({ queryKey: ['webinars'] });
-            if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
-            setEditingId(null);
-          }}
-        />
-      )}
+      {editingId &&
+        createPortal(
+          <EditWebinarModal
+            key={editingId}
+            webinar={items.find((w) => w.id === editingId)!}
+            onClose={() => setEditingId(null)}
+            onSaved={(updatedId?: string) => {
+              queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+              queryClient.invalidateQueries({ queryKey: ['webinars'] });
+              if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
+              setEditingId(null);
+            }}
+          />,
+          document.body,
+        )}
 
       {/* Table */}
       {items.length === 0 ? (
@@ -285,9 +288,16 @@ function WebinarRow({
   const openMenu = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      // position:fixed is viewport-relative — do not add scrollY
+      const menuHeight = 140;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const top =
+        spaceBelow < menuHeight && rect.top > menuHeight
+          ? Math.max(8, rect.top - menuHeight - 4)
+          : rect.bottom + 4;
       setMenuPos({
-        top: rect.bottom + window.scrollY + 4,
-        right: window.innerWidth - rect.right,
+        top,
+        right: Math.max(8, window.innerWidth - rect.right),
       });
     }
     setMenuOpen(true);
@@ -488,33 +498,41 @@ function WebinarRow({
           <MoreVertical className="h-4 w-4" />
         </button>
 
-        {menuOpen && (
-          <div
-            ref={menuRef}
-            style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
-            className="w-36 rounded-xl border border-gray-200 bg-white shadow-lg py-1"
-          >
-            <Link
-              to={`/admin/programs/${webinar.id}/hub`}
-              onClick={() => setMenuOpen(false)}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        {menuOpen &&
+          createPortal(
+            <div
+              ref={menuRef}
+              style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+              className="w-36 rounded-xl border border-gray-200 bg-white shadow-lg py-1"
             >
-              Program hub
-            </Link>
-            <button
-              onClick={() => { setMenuOpen(false); onEdit(); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              <Pencil className="h-3.5 w-3.5" /> Edit
-            </button>
-            <button
-              onClick={() => { setMenuOpen(false); onDelete(); }}
-              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" /> Delete
-            </button>
-          </div>
-        )}
+              <Link
+                to={`/admin/programs/${webinar.id}/hub`}
+                onClick={() => setMenuOpen(false)}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Program hub
+              </Link>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEdit();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete();
+                }}
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </div>,
+            document.body,
+          )}
       </td>
     </tr>
   );
