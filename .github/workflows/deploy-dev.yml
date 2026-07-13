@@ -414,7 +414,7 @@ jobs:
           done
 
           aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
-            --cache-control "public, max-age=0, must-revalidate" \
+            --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
 
       - name: Invalidate CloudFront
@@ -444,7 +444,7 @@ jobs:
               --cache-control "public, max-age=300, must-revalidate"
           fi
           aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
-            --cache-control "public, max-age=0, must-revalidate" \
+            --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"
 
       - name: Wait for ECS services stable

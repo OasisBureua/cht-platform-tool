@@ -287,14 +287,18 @@ export default () => ({
     wordpressOnly:
       process.env.CATALOG_WORDPRESS_ONLY?.trim().toLowerCase() !== 'false',
     clipsCacheTtlSeconds: parseInt(
-      process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '14400',
+      process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '1800',
       10,
-    ), // 4 hours
+    ), // 30 minutes — public clips / catalog
+    wordpressCacheTtlSeconds: parseInt(
+      process.env.CATALOG_WORDPRESS_CACHE_TTL_SECONDS || '300',
+      10,
+    ), // 5 minutes — admin Content + WP editorial
   },
 
   redis: {
     url: process.env.REDIS_URL?.trim() || '',
-    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '14400', 10), // 4 hours
+    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '1800', 10), // 30 minutes
   },
 
   internalCache: {

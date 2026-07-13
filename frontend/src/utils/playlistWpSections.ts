@@ -1,16 +1,40 @@
 import type { CatalogItem } from '../api/catalog';
 
 /**
- * Option A: organize YouTube playlists into WordPress-style browse sections
- * (KOL Playlists / ASCO 2026) until ContentHub ships `wordpress.series`.
+ * Organize YouTube playlists into browse sections by topic (title heuristics)
+ * until ContentHub ships richer series metadata.
  */
 
-export type PlaylistWpSectionId = 'kol' | 'asco-2026';
+export type PlaylistWpSectionId =
+  | 'her2'
+  | 'her2-low'
+  | 'hr'
+  | 'tnbc-adc'
+  | 'asco-2026'
+  | 'more';
 
 export type PlaylistWpSection = {
   id: PlaylistWpSectionId;
   label: string;
   items: CatalogItem[];
+};
+
+const SECTION_ORDER: readonly PlaylistWpSectionId[] = [
+  'her2',
+  'her2-low',
+  'hr',
+  'tnbc-adc',
+  'asco-2026',
+  'more',
+];
+
+const SECTION_LABELS: Record<PlaylistWpSectionId, string> = {
+  her2: 'HER2+ Conversations',
+  'her2-low': 'HER2-Low / Ultra-Low',
+  hr: 'HR+ · CDK4/6 · Endocrine',
+  'tnbc-adc': 'TNBC & ADCs',
+  'asco-2026': 'ASCO 2026',
+  more: 'More playlists',
 };
 
 /** Doctor-name sets that identify ASCO 2026 series on communityhealth.media. */
@@ -70,7 +94,6 @@ function titleDoctorTokens(title: string): Set<string> {
     const t = normalizeDoctorToken(m[1]);
     if (t.length >= 3) tokens.add(t);
   }
-  // Also pick surnames after "&" / "," without Dr. prefix in compact titles
   const afterWith = title.match(/\bwith\s+(.+)$/i)?.[1] ?? '';
   for (const part of afterWith.split(/[,&]| and /i)) {
     const words = part.trim().split(/\s+/);
@@ -96,6 +119,37 @@ export function isAsco2026Playlist(playlist: CatalogItem): boolean {
       return [...tokens].some((t) => t === needle || t.includes(needle) || needle.includes(t));
     }),
   );
+}
+
+/** Classify a playlist into a browse section from its title. */
+export function classifyPlaylistSection(playlist: CatalogItem): PlaylistWpSectionId {
+  if (isAsco2026Playlist(playlist)) return 'asco-2026';
+
+  const t = playlist.title ?? '';
+
+  if (/HER2-?[Ll]ow|ultra-?low|DB-?04|DB-?06|Destiny-Breast0[46]/i.test(t)) {
+    return 'her2-low';
+  }
+  if (
+    /TNBC|triple.?negative|mTNBC|Datopotamab|Dato-?DXd|Sacituzumab|Govitecan|Trop-?2/i.test(t) &&
+    !/HER2\+|HER2 positive|DESTINY-Breast09|DB09|DB-?09/i.test(t)
+  ) {
+    return 'tnbc-adc';
+  }
+  if (
+    /HR\+|CDK4|endocrine|ESR1|SERD|capivasertib|AKT|ER\+|estrogen/i.test(t) &&
+    !/HER2|DESTINY-Breast|T-DXd/i.test(t)
+  ) {
+    return 'hr';
+  }
+  if (
+    /HER2|DESTINY-Breast|T-DXd|Enhertu|Pertuzumab|Cleopatra|DB09|DB-?09|DB11|DB-?11|first-?line/i.test(
+      t,
+    )
+  ) {
+    return 'her2';
+  }
+  return 'more';
 }
 
 /**
@@ -139,26 +193,23 @@ export function playlistDisplayTitle(title: string): string {
 export function groupPlaylistsIntoWpSections(
   playlists: CatalogItem[],
 ): PlaylistWpSection[] {
-  const asco: CatalogItem[] = [];
-  const kol: CatalogItem[] = [];
+  const buckets = new Map<PlaylistWpSectionId, CatalogItem[]>();
+  for (const id of SECTION_ORDER) buckets.set(id, []);
 
   for (const p of playlists) {
-    if (isAsco2026Playlist(p)) asco.push(p);
-    else kol.push(p);
+    const section = classifyPlaylistSection(p);
+    buckets.get(section)!.push(p);
   }
 
   const byTitle = (a: CatalogItem, b: CatalogItem) =>
     (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' });
 
-  kol.sort(byTitle);
-  asco.sort(byTitle);
-
   const sections: PlaylistWpSection[] = [];
-  if (kol.length > 0) {
-    sections.push({ id: 'kol', label: 'KOL Playlists', items: kol });
-  }
-  if (asco.length > 0) {
-    sections.push({ id: 'asco-2026', label: 'ASCO 2026', items: asco });
+  for (const id of SECTION_ORDER) {
+    const items = buckets.get(id) ?? [];
+    if (items.length === 0) continue;
+    items.sort(byTitle);
+    sections.push({ id, label: SECTION_LABELS[id], items });
   }
   return sections;
 }

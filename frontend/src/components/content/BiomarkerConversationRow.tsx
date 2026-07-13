@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { catalogApi, type MediaHubClip } from '../../api/catalog';
-import { shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import {
   type CarouselConfig,
   HCP_CAROUSELS,
@@ -107,18 +107,14 @@ export function BiomarkerConversationRow({
       {clips.map((c) => (
         <StripCard
           key={c.id}
-          hideThumbnailOnError={hideBrokenCatalogThumbnails}
+          hideThumbnailOnError
           to={
-            isInApp ? `/app/catalog/clip/${c.id}` : `/catalog/clip/${c.id}`
+            isInApp
+              ? `/app/clip/${getShortClipId(c.id)}`
+              : `/catalog/clip/${getShortClipId(c.id)}`
           }
           title={c.title}
-          imageUrl={
-            c.thumbnail_url ||
-            // ID is `official:youtube:<videoId>`; extract the YouTube ID for the fallback poster.
-            (c.id.startsWith('official:youtube:')
-              ? `https://img.youtube.com/vi/${c.id.split(':').slice(2).join(':')}/hqdefault.jpg`
-              : '')
-          }
+          imageUrl={getMediaHubThumbnail(c)}
           description={
             c.doctors && c.doctors.length > 0
               ? c.doctors.slice(0, 2).join(' · ')

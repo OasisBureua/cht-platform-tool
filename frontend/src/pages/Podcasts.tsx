@@ -7,7 +7,7 @@ import {
   type PodcastEpisode,
   type PodcastShow,
 } from '../data/podcastsCatalog';
-import { SeriesSection, useShowLatestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { useShowLatestEpisode } from '../components/podcasts/PodcastSeriesSection';
 import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
 function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
@@ -130,9 +130,9 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
   return (
     <div className="flex items-start gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {shows.map((show) => (
-        <a
+        <Link
           key={`top-${show.id}`}
-          href={`#${show.id}`}
+          to={`/app/podcasts/${show.id}`}
           className="group shrink-0 w-[5.5rem] text-center"
         >
           <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-white shadow-[0_8px_28px_-18px_rgba(0,0,0,0.12),0_2px_10px_-4px_rgba(0,0,0,0.06)] ring-1 ring-zinc-200/80 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.14),0_4px_14px_-4px_rgba(0,0,0,0.08)] dark:bg-white dark:ring-zinc-700 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
@@ -147,9 +147,45 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
           <p className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-tight text-zinc-800 dark:text-zinc-200">
             {show.title}
           </p>
-        </a>
+        </Link>
       ))}
     </div>
+  );
+}
+
+function CatalogShowCard({ show }: { show: PodcastShow }) {
+  return (
+    <Link
+      to={`/app/podcasts/${show.id}`}
+      className="group flex gap-4 overflow-hidden rounded-2xl bg-white p-4 shadow-[0_10px_36px_-24px_rgba(15,23,42,0.14)] ring-1 ring-zinc-200/90 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-22px_rgba(15,23,42,0.16)] active:scale-[0.995] dark:bg-zinc-950 dark:ring-zinc-800 sm:gap-5 sm:p-5"
+    >
+      <img
+        src={show.logo ?? show.image}
+        alt=""
+        className={[
+          'h-20 w-20 shrink-0 rounded-xl shadow-md ring-1 ring-zinc-200/90 sm:h-24 sm:w-24 dark:ring-zinc-700',
+          show.logo
+            ? 'object-contain bg-white p-2 dark:bg-white'
+            : 'bg-white object-cover dark:bg-white',
+        ].join(' ')}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel-700 dark:text-steel-300">
+          {show.category}
+        </p>
+        <h3 className="mt-1 text-balance text-lg font-extrabold tracking-tight text-zinc-900 group-hover:underline dark:text-zinc-100 sm:text-xl">
+          {show.title}
+        </h3>
+        <p className="mt-1 line-clamp-2 text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          {show.tagline}
+        </p>
+        <p className="mt-2 text-xs font-semibold text-steel-700 dark:text-steel-400">
+          Open series →
+        </p>
+      </div>
+    </Link>
   );
 }
 
@@ -249,7 +285,7 @@ export default function Podcasts() {
         </div>
       </section>
 
-      {/* Compact thumb row + view all */}
+      {/* Compact thumb row */}
       <section aria-labelledby="podcasts-top" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="podcasts-top" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -265,17 +301,19 @@ export default function Podcasts() {
         <TopShowsRow shows={shows} />
       </section>
 
-      {/* Full catalog */}
-      <div id="podcast-catalog" className="scroll-mt-24 space-y-8 md:space-y-10">
-        <div className="pt-10 shadow-[0_-24px_48px_-36px_rgba(15,23,42,0.07)] dark:shadow-[0_-24px_48px_-36px_rgba(0,0,0,0.35)]">
+      {/* Full catalog — cards open dedicated show pages */}
+      <div id="podcast-catalog" className="scroll-mt-24 space-y-4 md:space-y-5">
+        <div className="pt-6">
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">All series</h2>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Every CHM podcast with full episode lists and listen links.
+            Open a show for its full episode list and listen links.
           </p>
         </div>
-        {shows.map((show) => (
-          <SeriesSection key={show.id} show={show} />
-        ))}
+        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+          {shows.map((show) => (
+            <CatalogShowCard key={show.id} show={show} />
+          ))}
+        </div>
       </div>
 
       <section

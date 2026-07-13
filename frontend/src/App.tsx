@@ -215,6 +215,8 @@ function App() {
               <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
 
               <Route path="clip/:id" element={<ClipDetail />} />
+              {/* Legacy in-app links used /app/catalog/clip/:id — keep working */}
+              <Route path="catalog/clip/:id" element={<ClipDetail />} />
 
               <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
               <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
