@@ -151,10 +151,11 @@ export default function Layout() {
           ref={mobileFrontRef}
           data-drawer-front
           className={[
-            'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-gray-50 transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none md:min-h-0 md:translate-x-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
+            // Avoid translate-x-0 when closed — it breaks position:fixed descendants.
+            'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-gray-50 motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
             mobileDrawerOpen
-              ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)]'
-              : 'translate-x-0 shadow-none',
+              ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]'
+              : 'shadow-none',
           ].join(' ')}
           onClick={(e) => e.stopPropagation()}
         >

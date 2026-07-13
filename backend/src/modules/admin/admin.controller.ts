@@ -2088,7 +2088,16 @@ export class AdminController {
       }
     }
 
-    await this.prisma.program.delete({ where: { id } });
+    // Explicitly remove dependent rows before Program delete so orphans cannot remain
+    // if DB FKs are missing (e.g. DMS). Schema FKs also use ON DELETE CASCADE for Survey/Payment.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.surveyResponse.deleteMany({
+        where: { survey: { programId: id } },
+      });
+      await tx.survey.deleteMany({ where: { programId: id } });
+      await tx.payment.deleteMany({ where: { programId: id } });
+      await tx.program.delete({ where: { id } });
+    });
     return { deleted: true, id };
   }
 }
