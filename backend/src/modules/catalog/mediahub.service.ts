@@ -256,20 +256,24 @@ export class MediaHubService {
     return this.getFrom(this.publicBaseUrl, this.publicApiKey, path, params);
   }
 
+  /**
+   * MediaHub exposes namespaced `/tags`. ContentHub does not — map WordPress
+   * categories into the `topic` namespace so legacy catalog filters still work.
+   */
   async getTags(): Promise<MediaHubTag> {
-    try {
-      return await this.cachedGet(this.cacheKey('tags', {}), () =>
-        this.getPublic<MediaHubTag>('/tags'),
-      );
-    } catch (err) {
-      if (this.useContentHub) {
-        this.logger.warn(
-          'ContentHub /tags unavailable — returning empty (WordPress catalog uses /wordpress/categories)',
-        );
-        return {};
-      }
-      throw err;
+    if (this.useContentHub) {
+      return this.cachedGet(this.cacheKey('tags', { source: 'wordpress' }), async () => {
+        const cats = await this.getWordPressCategories();
+        const topics = (cats.items ?? [])
+          .map((c) => c.slug?.trim())
+          .filter((s): s is string => !!s);
+        if (!topics.length) return {} as MediaHubTag;
+        return { topic: topics } satisfies MediaHubTag;
+      });
     }
+    return this.cachedGet(this.cacheKey('tags', {}), () =>
+      this.getPublic<MediaHubTag>('/tags'),
+    );
   }
 
   async getClips(params?: {
@@ -524,29 +528,69 @@ export class MediaHubService {
     throw new Error(`Clip not found: ${id}`);
   }
 
+  /**
+   * MediaHub `/doctors`. ContentHub has no such route — use KOL directory
+   * slugs (same identifiers the catalog doctor filter expects).
+   */
   async getDoctors(): Promise<MediaHubDoctor[]> {
-    try {
-      return await this.cachedGet(this.cacheKey('doctors', {}), async () => {
-        const result = await this.getPublic<
-          MediaHubDoctor[] | { items?: MediaHubDoctor[] }
-        >('/doctors');
-        if (Array.isArray(result)) return result;
-        return (result as { items?: MediaHubDoctor[] }).items || [];
-      });
-    } catch (err) {
-      if (this.useContentHub) {
-        this.logger.warn(
-          'ContentHub /doctors unavailable — returning empty (doctors are on each clip from /clips)',
-        );
-        return [];
-      }
-      throw err;
+    if (this.useContentHub) {
+      return this.cachedGet(
+        this.cacheKey('doctors', { source: 'kols' }),
+        () => this.doctorsFromContentHubKols(),
+      );
     }
+    return this.cachedGet(this.cacheKey('doctors', {}), async () => {
+      const result = await this.getPublic<
+        MediaHubDoctor[] | { items?: MediaHubDoctor[] }
+      >('/doctors');
+      if (Array.isArray(result)) return result;
+      return (result as { items?: MediaHubDoctor[] }).items || [];
+    });
+  }
+
+  private async doctorsFromContentHubKols(): Promise<MediaHubDoctor[]> {
+    const pageSize = 100;
+    const doctors: MediaHubDoctor[] = [];
+    const seen = new Set<string>();
+    let offset = 0;
+    for (let page = 0; page < 50; page++) {
+      const result = await this.getKols({ limit: pageSize, offset });
+      const items = result.items ?? [];
+      for (const kol of items) {
+        const slug = kol.slug?.trim();
+        if (!slug || seen.has(slug)) continue;
+        seen.add(slug);
+        doctors.push({
+          slug,
+          shoot_count: kol.shoot_count,
+        });
+      }
+      if (items.length < pageSize) break;
+      offset += pageSize;
+      const total = result.total ?? 0;
+      if (total > 0 && offset >= total) break;
+    }
+    return doctors;
   }
 
   async getDoctor(
     slug: string,
   ): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
+    if (this.useContentHub) {
+      return this.cachedGet(this.cacheKey('doctor', { slug, source: 'kol' }), async () => {
+        const kol = await this.getKol(slug);
+        const clips = await this.getClips({
+          doctor: slug,
+          limit: 50,
+          has_wordpress: false,
+        });
+        return {
+          slug: kol.slug,
+          shoot_count: kol.shoot_count,
+          clips: clips.items ?? [],
+        };
+      });
+    }
     return this.cachedGet(this.cacheKey('doctor', { slug }), () =>
       this.getPublic(`/doctors/${slug}`),
     );

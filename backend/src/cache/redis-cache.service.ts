@@ -99,6 +99,17 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async del(key: string): Promise<void> {
+    if (!this.isEnabled() || !this.client) return;
+    try {
+      await this.client.del(key);
+    } catch (err) {
+      this.logger.warn(
+        `Redis DEL ${key} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
   /** Delete keys matching a glob pattern (e.g. `cht:catalog:*`). */
   async deleteByPattern(pattern: string): Promise<number> {
     if (!this.isEnabled() || !this.client) return 0;

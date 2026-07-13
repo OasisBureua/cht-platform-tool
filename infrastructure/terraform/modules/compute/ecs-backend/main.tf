@@ -270,11 +270,18 @@ resource "aws_ecs_task_definition" "backend" {
           interval    = 30
           timeout     = 5
           retries     = 3
-          startPeriod = 90
+          # Allow time for prisma migrate deploy before health checks count
+          startPeriod = 120
         }
       },
-      var.run_db_migrations ? {} : {
-        command = ["sh", "-c", "node dist/src/main.js"]
+      # Explicit start command: always migrate when enabled (do not rely only on image CMD).
+      # DR standby sets run_db_migrations=false to skip writes on a read replica.
+      {
+        command = var.run_db_migrations ? [
+          "sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"
+          ] : [
+          "sh", "-c", "node dist/src/main.js"
+        ]
       }
     )
   ])
