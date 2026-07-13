@@ -35,9 +35,20 @@ export default function PlaylistDetail() {
   }, [data?.videos, videoIdFromUrl]);
 
   // Derive selected video safely — may be undefined before data loads
-  const videos = data?.videos ?? [];
+  const [hiddenVideoIds, setHiddenVideoIds] = useState<Set<string>>(() => new Set());
+  const videos = (data?.videos ?? []).filter((v) => v.id && !hiddenVideoIds.has(v.id));
   const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));
   const selectedVideo = videos[safeIndex];
+
+  useEffect(() => {
+    setHiddenVideoIds(new Set());
+  }, [playlistId]);
+
+  useEffect(() => {
+    if (selectedVideoIndex > 0 && selectedVideoIndex >= videos.length) {
+      setSelectedVideoIndex(Math.max(0, videos.length - 1));
+    }
+  }, [videos.length, selectedVideoIndex]);
 
   // All hooks must come before any early returns (Rules of Hooks)
   const { data: clipDetail } = useQuery({
@@ -195,6 +206,14 @@ export default function PlaylistDetail() {
                               className="w-full h-full object-cover"
                               loading="lazy"
                               referrerPolicy="no-referrer"
+                              onError={() => {
+                                setHiddenVideoIds((prev) => {
+                                  if (prev.has(video.id)) return prev;
+                                  const next = new Set(prev);
+                                  next.add(video.id);
+                                  return next;
+                                });
+                              }}
                             />
                           </div>
                           <div className="flex-1 min-w-0 py-1">

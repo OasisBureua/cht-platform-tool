@@ -3,7 +3,7 @@ import { Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Loader2, Play, ArrowRight } from 'lucide-react';
 import { catalogApi, type MediaHubClip } from '../../api/catalog';
-import { shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { shouldSurfaceCatalogClip, getShortClipId } from '../../utils/clipUrl';
 import { webinarsApi } from '../../api/webinars';
 import DISEASE_AREAS from '../../data/disease-areas';
 import { WordPressCategoryNav } from '../../components/content/WordPressCategoryNav';
@@ -219,7 +219,11 @@ export default function DiseaseDetail() {
                   {allClips.map((c) => (
                     <Link
                       key={c.id}
-                      to={`${basePath}/catalog/clip/${c.id}`}
+                      to={
+                        isApp
+                          ? `/app/clip/${getShortClipId(c.id)}`
+                          : `/catalog/clip/${getShortClipId(c.id)}`
+                      }
                       className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-md group"
                     >
                       <div className="aspect-video bg-gray-100 relative">
