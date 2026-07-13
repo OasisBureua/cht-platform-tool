@@ -1,10 +1,11 @@
-import { Children, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Children, useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, List } from 'lucide-react';
 import {
   catalogConversationBrowseFingerFromHref,
   catalogConversationBrowseFingerFromLocation,
 } from '../../utils/catalogBrowseLocation';
+import { nextCatalogThumbnailFallback } from '../../utils/clipUrl';
 
 export type ConversationRowProps = {
   title: string;
@@ -178,6 +179,10 @@ const thumbnailOnlyShell =
 const thumbnailOnlyShellHomepage =
   'group/card relative block w-[311px] shrink-0 overflow-hidden rounded-xl bg-zinc-100 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[356px] aspect-[16/13.5] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:bg-zinc-800 dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
 
+function isYoutubeMissingPoster(img: HTMLImageElement): boolean {
+  return img.naturalWidth > 0 && img.naturalWidth <= 120 && img.naturalHeight <= 90;
+}
+
 function StripCardInner({
   variant,
   homepage,
@@ -194,6 +199,11 @@ function StripCardInner({
   const line1 = description ?? meta;
   const v = variant ?? 'compact';
   const home = homepage === true;
+  const onLoadCheck = onThumbnailError
+    ? (e: SyntheticEvent<HTMLImageElement>) => {
+        if (isYoutubeMissingPoster(e.currentTarget)) onThumbnailError();
+      }
+    : undefined;
 
   if (v === 'thumbnailOnly') {
     return (
@@ -206,6 +216,7 @@ function StripCardInner({
           referrerPolicy="no-referrer"
           draggable={false}
           onError={onThumbnailError}
+          onLoad={onLoadCheck}
         />
         <span className="sr-only">{title}</span>
       </>
@@ -229,6 +240,7 @@ function StripCardInner({
           referrerPolicy="no-referrer"
           draggable={false}
           onError={onThumbnailError}
+          onLoad={onLoadCheck}
         />
       </div>
       <div className={home ? 'flex min-w-0 flex-col px-2.5 pb-2.5 pt-2' : 'flex min-w-0 flex-col px-2 pb-2 pt-1.5'}>
@@ -282,8 +294,10 @@ export function StripCard({
   hideThumbnailOnError,
   onThumbnailError,
 }: StripCardProps) {
+  const [thumbSrc, setThumbSrc] = useState(imageUrl);
   const [thumbFailed, setThumbFailed] = useState(false);
   useEffect(() => {
+    setThumbSrc(imageUrl);
     setThumbFailed(false);
   }, [imageUrl]);
 
@@ -294,12 +308,20 @@ export function StripCard({
 
   if (thumbFailed) return null;
 
-  const bubbleError = hideThumbnailOnError
-    ? () => {
-        onThumbnailError?.();
-        setThumbFailed(true);
+  const handleThumbError = () => {
+    if (hideThumbnailOnError) {
+      const videoId = thumbSrc.match(/\/vi\/([a-zA-Z0-9_-]{11})\//)?.[1] ?? null;
+      const next = nextCatalogThumbnailFallback(thumbSrc, videoId);
+      if (next) {
+        setThumbSrc(next);
+        return;
       }
-    : onThumbnailError;
+      onThumbnailError?.();
+      setThumbFailed(true);
+      return;
+    }
+    onThumbnailError?.();
+  };
 
   if (v === 'thumbnailOnly') {
     return (
@@ -310,11 +332,11 @@ export function StripCard({
               variant="thumbnailOnly"
               homepage={homepage}
               title={title}
-              imageUrl={imageUrl}
+              imageUrl={thumbSrc}
               description={description}
               meta={meta}
               videoLabel={videoLabel}
-              onThumbnailError={bubbleError}
+              onThumbnailError={handleThumbError}
             />
           </a>
         ) : (
@@ -323,11 +345,11 @@ export function StripCard({
               variant="thumbnailOnly"
               homepage={homepage}
               title={title}
-              imageUrl={imageUrl}
+              imageUrl={thumbSrc}
               description={description}
               meta={meta}
               videoLabel={videoLabel}
-              onThumbnailError={bubbleError}
+              onThumbnailError={handleThumbError}
             />
           </Link>
         )}
@@ -343,11 +365,11 @@ export function StripCard({
             variant="compact"
             homepage={homepage}
             title={title}
-            imageUrl={imageUrl}
+            imageUrl={thumbSrc}
             description={description}
             meta={meta}
             videoLabel={videoLabel}
-            onThumbnailError={bubbleError}
+            onThumbnailError={handleThumbError}
           />
         </a>
       ) : (
@@ -356,11 +378,11 @@ export function StripCard({
             variant="compact"
             homepage={homepage}
             title={title}
-            imageUrl={imageUrl}
+            imageUrl={thumbSrc}
             description={description}
             meta={meta}
             videoLabel={videoLabel}
-            onThumbnailError={bubbleError}
+            onThumbnailError={handleThumbError}
           />
         </Link>
       )}

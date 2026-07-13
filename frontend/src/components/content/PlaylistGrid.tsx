@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { ListVideo } from 'lucide-react';
 import type { CatalogItem } from '../../api/catalog';
 
@@ -10,6 +11,69 @@ type PlaylistGridProps = {
   /** Shown under the title on each card (e.g. speakers + video count). */
   descriptionForItem?: (item: CatalogItem) => string;
 };
+
+function PlaylistCard({
+  item,
+  isInApp,
+  title,
+  desc,
+}: {
+  item: CatalogItem;
+  isInApp: boolean;
+  title: string;
+  desc: string;
+}) {
+  const [hidden, setHidden] = useState(false);
+  const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
+  const thumb = item.thumbnailUrl || '/images/placeholder-playlist.svg';
+
+  useEffect(() => {
+    setHidden(false);
+  }, [thumb]);
+
+  if (hidden) return null;
+
+  return (
+    <div className="flex h-full min-h-[280px] min-w-0 flex-col rounded-2xl border border-gray-200 bg-white transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="relative aspect-video shrink-0 overflow-hidden rounded-t-2xl bg-gray-100 dark:bg-zinc-800">
+        <Link to={playlistUrl} className="block h-full">
+          <img
+            src={thumb}
+            alt=""
+            className="h-full w-full object-cover"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={() => setHidden(true)}
+          />
+        </Link>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 sm:p-5">
+        <Link to={playlistUrl} className="block min-w-0">
+          <h3
+            className="line-clamp-3 break-words font-bold text-gray-900 [overflow-wrap:anywhere] hover:underline sm:line-clamp-2 dark:text-zinc-100"
+            title={item.title}
+          >
+            {title}
+          </h3>
+        </Link>
+        {desc ? (
+          <p className="line-clamp-4 whitespace-pre-line break-words text-sm leading-relaxed text-gray-600 [overflow-wrap:anywhere] sm:line-clamp-3 dark:text-zinc-400">
+            {desc}
+          </p>
+        ) : null}
+        <div className="mt-auto flex shrink-0 justify-end border-t border-gray-100 pt-4 dark:border-zinc-800">
+          <Link
+            to={playlistUrl}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            <ListVideo className="h-4 w-4 shrink-0" />
+            View playlist
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function PlaylistGrid({
   playlists,
@@ -26,53 +90,15 @@ export function PlaylistGrid({
 
   return (
     <div className="grid min-w-0 grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {playlists.map((item) => {
-        const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
-        const desc = lineFor(item);
-        const title = titleFor(item);
-        return (
-          <div
-            key={item.id}
-            className="flex h-full min-h-[280px] min-w-0 flex-col rounded-2xl border border-gray-200 bg-white transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-          >
-            <div className="relative aspect-video shrink-0 overflow-hidden rounded-t-2xl bg-gray-100 dark:bg-zinc-800">
-              <Link to={playlistUrl} className="block h-full">
-                <img
-                  src={item.thumbnailUrl || '/images/placeholder-playlist.svg'}
-                  alt=""
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-              </Link>
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 sm:p-5">
-              <Link to={playlistUrl} className="block min-w-0">
-                <h3
-                  className="line-clamp-3 break-words font-bold text-gray-900 [overflow-wrap:anywhere] hover:underline sm:line-clamp-2 dark:text-zinc-100"
-                  title={item.title}
-                >
-                  {title}
-                </h3>
-              </Link>
-              {desc ? (
-                <p className="line-clamp-4 whitespace-pre-line break-words text-sm leading-relaxed text-gray-600 [overflow-wrap:anywhere] sm:line-clamp-3 dark:text-zinc-400">
-                  {desc}
-                </p>
-              ) : null}
-              <div className="mt-auto flex shrink-0 justify-end border-t border-gray-100 pt-4 dark:border-zinc-800">
-                <Link
-                  to={playlistUrl}
-                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-                >
-                  <ListVideo className="h-4 w-4 shrink-0" />
-                  View playlist
-                </Link>
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {playlists.map((item) => (
+        <PlaylistCard
+          key={item.id}
+          item={item}
+          isInApp={isInApp}
+          title={titleFor(item)}
+          desc={lineFor(item)}
+        />
+      ))}
     </div>
   );
 }

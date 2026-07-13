@@ -8,20 +8,17 @@ import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
 import { PlaylistSections } from '../../components/content/PlaylistSections';
-import { PlaylistVideosFlattenGrid } from '../../components/content/PlaylistVideosFlattenGrid';
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
 import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../../components/content/BiomarkerConversationRow';
 import {
-  filterPlaylistsByFocus,
   parsePlaylistFocus,
   playlistBrowseHeading as playlistBrowseHeadingText,
+  PLAYLIST_FOCUS_TO_TAG,
   PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS,
-  VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
 import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
-import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
 import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
 import { useWordPressCatalog, WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
@@ -252,21 +249,28 @@ export default function VideosPage() {
   });
 
   const playlistFocus = useMemo(() => parsePlaylistFocus(location.search || ''), [location.search]);
+  const focusTag = playlistFocus ? PLAYLIST_FOCUS_TO_TAG[playlistFocus] : null;
 
-  const playlistsForPlaylistView = useMemo(() => {
-    if (effectiveLibraryView !== 'playlists') return playlists;
-    if (!playlistFocus) return playlists;
-    return filterPlaylistsByFocus(playlists, playlistFocus);
-  }, [playlists, effectiveLibraryView, playlistFocus]);
+  const {
+    data: focusClipsData,
+    isLoading: focusClipsLoading,
+    isError: focusClipsError,
+  } = useQuery({
+    queryKey: ['catalog', 'clips', 'playlist-focus', playlistFocus, focusTag],
+    queryFn: () =>
+      catalogApi.getClips({
+        tag: focusTag!,
+        sort_by: 'recorded_at',
+        limit: 48,
+        ...(wpMode ? { has_wordpress: true } : {}),
+      }),
+    enabled: !!playlistFocus && !!focusTag && effectiveLibraryView === 'playlists' && useMediaHub,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+  });
 
-  const focusPlaylistIds = useMemo(
-    () => playlistsForPlaylistView.map((p) => p.id),
-    [playlistsForPlaylistView],
-  );
-
-  const focusPlaylistVideosFetch = useFlattenedPlaylistVideos(
-    focusPlaylistIds,
-    !!(playlistFocus && effectiveLibraryView === 'playlists' && focusPlaylistIds.length > 0),
+  const focusClips = useMemo(
+    () => (focusClipsData?.items ?? []).filter((c) => shouldSurfaceCatalogClip(c, clipSurfaceOpts)),
+    [focusClipsData?.items],
   );
 
   const {
@@ -546,15 +550,11 @@ export default function VideosPage() {
                   </h2>
                   {playlistFocus ? (
                     <p className="text-sm text-gray-600 dark:text-zinc-400">
-                      {focusPlaylistVideosFetch.isLoading
-                        ? 'Loading videos…'
-                        : focusPlaylistVideosFetch.entries.length > 0
-                          ? `${focusPlaylistVideosFetch.entries.length} videos from ${playlistsForPlaylistView.length} playlist${
-                              playlistsForPlaylistView.length !== 1 ? 's' : ''
-                            }`
-                          : playlistsForPlaylistView.length === 0
-                            ? ''
-                            : 'Videos from playlists in this category'}
+                      {focusClipsLoading
+                        ? 'Loading conversations…'
+                        : focusClips.length > 0
+                          ? `${focusClips.length} conversation${focusClips.length !== 1 ? 's' : ''}`
+                          : 'No conversations in this category yet'}
                     </p>
                   ) : (
                     <p className="text-sm text-gray-600 dark:text-zinc-400">
@@ -572,26 +572,34 @@ export default function VideosPage() {
                 ) : null}
               </div>
             {playlistFocus ? (
-              focusPlaylistVideosFetch.isLoading ? (
+              focusClipsLoading ? (
                 <div className="flex justify-center py-16" aria-busy="true">
                   <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
                 </div>
-              ) : focusPlaylistVideosFetch.isError ? (
-                <p className="text-sm text-red-600">Could not load playlist videos. Try again later.</p>
-              ) : focusPlaylistVideosFetch.entries.length > 0 ? (
-                <PlaylistVideosFlattenGrid
-                  entries={focusPlaylistVideosFetch.entries}
-                  isInApp={isInApp}
-                  showPlaylistTitles
-                />
-              ) : playlistsForPlaylistView.length === 0 ? (
-                <p className="text-sm text-gray-600 dark:text-zinc-400">No playlists match this category yet.</p>
+              ) : focusClipsError ? (
+                <p className="text-sm text-red-600">Could not load conversations. Try again later.</p>
+              ) : focusClips.length > 0 ? (
+                <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {focusClips.map((item) => (
+                    <ConversationsClipCard
+                      key={item.id}
+                      item={item}
+                      href={
+                        isInApp
+                          ? `/app/clip/${getShortClipId(item.id)}`
+                          : `/catalog/clip/${getShortClipId(item.id)}`
+                      }
+                    />
+                  ))}
+                </div>
               ) : (
-                <p className="text-sm text-gray-600 dark:text-zinc-400">No videos found in these playlists.</p>
+                <p className="text-sm text-gray-600 dark:text-zinc-400">
+                  No conversations match this category yet.
+                </p>
               )
             ) : (
               <>
-                <PlaylistSections playlists={playlistsForPlaylistView} isInApp={isInApp} />
+                <PlaylistSections playlists={playlists} isInApp={isInApp} />
                 {playlists.length === 0 ? (
                   <p className="text-sm text-gray-600 dark:text-zinc-400">
                     No playlists configured. Add YouTube playlist IDs on the server.

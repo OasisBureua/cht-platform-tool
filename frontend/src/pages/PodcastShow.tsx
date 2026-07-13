@@ -28,6 +28,9 @@ export default function PodcastShow() {
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           Back to podcasts
         </Link>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          {show.updateNote}
+        </p>
       </div>
 
       <SeriesSection show={show} />

@@ -15,6 +15,18 @@ export const CATALOG_SECTION_TO_FOCUS: Record<string, PlaylistFocus> = {
   'High Risk Breast Cancer': 'high-risk',
 };
 
+/**
+ * ContentHub / MediaHub clip tags for each cohort chip.
+ * Playlist focus browse loads clips by these tags (not by fuzzy YouTube playlist title match).
+ */
+export const PLAYLIST_FOCUS_TO_TAG: Record<PlaylistFocus, string> = {
+  her2: 'biomarker:HER2+',
+  'her2-low': 'biomarker:HER2-low,biomarker:HER2-ultralow',
+  hr: 'biomarker:HR+',
+  tnbc: 'biomarker:TNBC',
+  'high-risk': 'biomarker:High-Risk / CNS',
+};
+
 export function buildCatalogSectionPlaylistsHref(isInApp: boolean, sectionLabel: string): string {
   const focus = CATALOG_SECTION_TO_FOCUS[sectionLabel];
   const base = isInApp ? '/app/catalog' : '/catalog';
@@ -40,8 +52,8 @@ export function parsePlaylistFocus(search: string): PlaylistFocus | null {
 export function playlistBrowseHeading(focus: PlaylistFocus | null): string {
   if (!focus) return 'Playlists';
   const map: Record<PlaylistFocus, string> = {
-    her2: 'HER2+',
-    hr: 'HR+',
+    her2: 'HER2+ Conversations',
+    hr: 'HR+ · CDK4/6 · Endocrine',
     'her2-low': 'HER2-Low / Ultra-Low',
     tnbc: 'TNBC & Triple Negative',
     'high-risk': 'High Risk Breast Cancer',
@@ -50,7 +62,7 @@ export function playlistBrowseHeading(focus: PlaylistFocus | null): string {
 }
 
 function titleMatchesStrip(playlistTitle: string, stripTitle: string): boolean {
-  const norm = (s: string) => s.replace(/[\u2018\u2019]/g, "'").trim().toLowerCase();
+  const norm = (s: string) => s.replace(/[\u2018\u2019']/g, "'").trim().toLowerCase();
   const a = norm(playlistTitle);
   const b = norm(stripTitle);
   if (a === b) return true;
@@ -68,27 +80,32 @@ function stripTitlesForFocus(focus: PlaylistFocus): string[] | null {
 
 /**
  * Narrow MediaHub playlist rows to those listed in `APP_CATALOG_PLAYLIST_SECTIONS` for this cohort.
+ * Prefer clip-tag browsing via `PLAYLIST_FOCUS_TO_TAG` for focus chips; this remains for
+ * optional playlist-title matching when needed.
  */
 export function filterPlaylistsByFocus(playlists: CatalogItem[], focus: PlaylistFocus): CatalogItem[] {
   const stripTitles = stripTitlesForFocus(focus);
   if (stripTitles?.length) {
-    return playlists.filter((p) => stripTitles.some((st) => titleMatchesStrip(p.title, st)));
+    const matched = playlists.filter((p) => stripTitles.some((st) => titleMatchesStrip(p.title, st)));
+    if (matched.length > 0) return matched;
   }
 
   const t = (p: CatalogItem) => p.title ?? '';
   switch (focus) {
     case 'her2':
-      return playlists.filter((p) => /HER2|DESTINY-Breast|HER2\+|first-line/i.test(t(p)));
+      return playlists.filter((p) => /HER2(?!-?[Ll]ow)|DESTINY-Breast|HER2\+|first-line/i.test(t(p)));
     case 'hr':
       return playlists.filter(
         (p) =>
-          /HR\+|TNBC|mTNBC|CDK4|endocrine|triple.?negative|PARP/i.test(t(p)) &&
-          !/HER2|DESTINY-Breast(?:02|06|07|03)/i.test(t(p)),
+          /HR\+|CDK4|endocrine/i.test(t(p)) &&
+          !/HER2|DESTINY-Breast|TNBC|triple.?negative/i.test(t(p)),
       );
     case 'her2-low':
+      return playlists.filter((p) => /HER2-?[Ll]ow|ultra-?low|DB-?04|DB-?06/i.test(t(p)));
     case 'tnbc':
+      return playlists.filter((p) => /TNBC|triple.?negative|mTNBC/i.test(t(p)));
     case 'high-risk':
-      return [];
+      return playlists.filter((p) => /high.?risk|CNS|brain.?met/i.test(t(p)));
     default:
       return playlists;
   }

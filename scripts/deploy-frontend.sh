@@ -237,7 +237,7 @@ upload_frontend_bucket() {
 
   aws s3 cp dist/index.html "s3://${target_bucket}/index.html" \
     "${region_flag[@]}" \
-    --cache-control "public, max-age=0, must-revalidate" \
+    --cache-control "no-cache, no-store, must-revalidate" \
     --content-type "text/html"
 }
 

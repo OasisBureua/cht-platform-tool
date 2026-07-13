@@ -238,9 +238,13 @@ export default function Home() {
     return randomVideosLoading ? [] : FALLBACK_FEATURED;
   }, [randomVideos, randomVideosLoading]);
 
-  useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, []);
+  // Keep the hero at the top when async playlist/video strips finish mounting.
+  useLayoutEffect(() => {
+    if (playlistsLoading || her2FlattenedVideos.isLoading) return;
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [playlistsLoading, her2FlattenedVideos.isLoading, her2FlattenedVideos.entries.length]);
 
   const resources: Resource[] = [
     { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
@@ -625,8 +629,12 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
     const el = scrollRef.current;
     if (!el) return;
     const mid = Math.floor(DISEASE_AREAS.length / 2);
-    const cards = el.querySelectorAll('[data-disease-card]');
-    cards[mid]?.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+    const card = el.querySelectorAll('[data-disease-card]')[mid] as HTMLElement | undefined;
+    if (card) {
+      // Scroll only the horizontal strip — never use scrollIntoView (it can jump the page).
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      el.scrollLeft = Math.max(0, cardCenter - el.clientWidth / 2);
+    }
     setActiveIdx(mid);
   }, []);
 
@@ -652,10 +660,13 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
 
   const scrollTo = useCallback((idx: number) => {
     setActiveIdx(idx);
-    scrollRef.current?.querySelectorAll('[data-disease-card]')[idx]?.scrollIntoView({
+    const el = scrollRef.current;
+    const card = el?.querySelectorAll('[data-disease-card]')[idx] as HTMLElement | undefined;
+    if (!el || !card) return;
+    const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+    el.scrollTo({
+      left: Math.max(0, cardCenter - el.clientWidth / 2),
       behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center',
     });
   }, []);
 
