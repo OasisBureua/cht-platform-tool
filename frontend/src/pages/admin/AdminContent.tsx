@@ -4,7 +4,7 @@ import { ExternalLink, Loader2, Search, Youtube } from 'lucide-react';
 import { catalogApi, type WordPressPostItem } from '../../api/catalog';
 import {
   formatWordPressCategoryLabel,
-  WORDPRESS_CATALOG_STALE_MS,
+  ADMIN_WORDPRESS_CATALOG_STALE_MS,
 } from '../../utils/wordpressCatalog';
 
 const PAGE_SIZE = 24;
@@ -96,13 +96,13 @@ export default function AdminContent() {
   const { data: categoriesData } = useQuery({
     queryKey: ['catalog', 'wordpress', 'categories'],
     queryFn: catalogApi.getWordPressCategories,
-    staleTime: WORDPRESS_CATALOG_STALE_MS,
+    staleTime: ADMIN_WORDPRESS_CATALOG_STALE_MS,
   });
 
   const { data: allPosts = [], isLoading, isError, isFetching } = useQuery({
     queryKey: ['catalog', 'wordpress', 'posts', 'all'],
     queryFn: fetchAllWordPressPosts,
-    staleTime: WORDPRESS_CATALOG_STALE_MS,
+    staleTime: ADMIN_WORDPRESS_CATALOG_STALE_MS,
   });
 
   const filteredPosts = useMemo(() => {

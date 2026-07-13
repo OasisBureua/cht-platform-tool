@@ -106,6 +106,7 @@ export class MediaHubService {
   private readonly useContentHub: boolean;
   private readonly wordpressOnlyDefault: boolean;
   private readonly clipsCacheTtlSeconds: number;
+  private readonly wordpressCacheTtlSeconds: number;
 
   constructor(
     private config: ConfigService,
@@ -115,7 +116,9 @@ export class MediaHubService {
     this.useContentHub = !!this.config.get<boolean>('catalog.useContentHub');
     this.wordpressOnlyDefault = !!this.config.get<boolean>('catalog.wordpressOnly');
     this.clipsCacheTtlSeconds =
-      this.config.get<number>('catalog.clipsCacheTtlSeconds') ?? 14400;
+      this.config.get<number>('catalog.clipsCacheTtlSeconds') ?? 1800;
+    this.wordpressCacheTtlSeconds =
+      this.config.get<number>('catalog.wordpressCacheTtlSeconds') ?? 300;
 
     if (this.useContentHub) {
       this.publicBaseUrl =
@@ -169,11 +172,16 @@ export class MediaHubService {
   private async cachedGet<T>(
     key: string,
     fetcher: () => Promise<T>,
+    ttlSeconds?: number,
   ): Promise<T> {
     const cached = await this.cache.getJson<T>(key);
     if (cached != null) return cached;
     const value = await fetcher();
-    await this.cache.setJson(key, value, this.clipsCacheTtlSeconds);
+    await this.cache.setJson(
+      key,
+      value,
+      ttlSeconds ?? this.clipsCacheTtlSeconds,
+    );
     return value;
   }
 
@@ -394,8 +402,11 @@ export class MediaHubService {
     }
     try {
       const key = this.cacheKey('wordpress-categories', {});
-      return await this.cachedGet(key, () =>
-        this.getPublic<WordPressCategoriesResponse>('/wordpress/categories'),
+      return await this.cachedGet(
+        key,
+        () =>
+          this.getPublic<WordPressCategoriesResponse>('/wordpress/categories'),
+        this.wordpressCacheTtlSeconds,
       );
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -430,26 +441,30 @@ export class MediaHubService {
 
     const key = this.cacheKey('wordpress-posts', { ...searchParams, hideProbe: true });
     try {
-      return await this.cachedGet(key, async () => {
-        const result = await this.getPublic<
-          WordPressPostsResponse | WordPressPostItem[]
-        >(
-          '/wordpress',
-          Object.keys(searchParams).length > 0 ? searchParams : undefined,
-        );
-        const raw = Array.isArray(result)
-          ? { items: result, total: result.length }
-          : {
-              items: result?.items ?? [],
-              total: result?.total ?? result?.items?.length ?? 0,
-            };
-        const items = raw.items.filter((p) => !this.isProbeWordPressPost(p));
-        const removed = raw.items.length - items.length;
-        return {
-          items,
-          total: Math.max(0, (raw.total ?? 0) - removed),
-        };
-      });
+      return await this.cachedGet(
+        key,
+        async () => {
+          const result = await this.getPublic<
+            WordPressPostsResponse | WordPressPostItem[]
+          >(
+            '/wordpress',
+            Object.keys(searchParams).length > 0 ? searchParams : undefined,
+          );
+          const raw = Array.isArray(result)
+            ? { items: result, total: result.length }
+            : {
+                items: result?.items ?? [],
+                total: result?.total ?? result?.items?.length ?? 0,
+              };
+          const items = raw.items.filter((p) => !this.isProbeWordPressPost(p));
+          const removed = raw.items.length - items.length;
+          return {
+            items,
+            total: Math.max(0, (raw.total ?? 0) - removed),
+          };
+        },
+        this.wordpressCacheTtlSeconds,
+      );
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404 || status === 401) {

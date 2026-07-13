@@ -113,8 +113,8 @@ export class CatalogService implements OnModuleInit {
     private cache: RedisCacheService,
   ) {}
 
-  /** Catalog YouTube upstream cache — 4h (matches MediaHub / Redis defaults). */
-  private readonly youtubeCacheTtlSeconds = 14_400;
+  /** Catalog YouTube upstream cache — 30m (matches MediaHub / Redis defaults). */
+  private readonly youtubeCacheTtlSeconds = 1_800;
 
   private async cachedYouTube<T>(
     key: string,
