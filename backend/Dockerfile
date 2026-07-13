@@ -3,6 +3,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Prisma needs OpenSSL present at generate time (Alpine otherwise warns and
+# may default to openssl-1.1.x; we target linux-musl-openssl-3.0.x).
+RUN apk add --no-cache openssl
+
 COPY package*.json ./
 COPY prisma ./prisma/
 

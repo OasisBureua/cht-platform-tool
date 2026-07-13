@@ -197,14 +197,58 @@ npx update-browserslist-db@latest --update-db 2>/dev/null || true
 
 npm run build -- --mode "$VITE_BUILD_MODE"
 
+# Hashed Vite assets: long-cache. index.html + unhashed public/*: short/no-cache.
+# Upload without --delete first so old chunks remain while CloudFront invalidates.
+upload_frontend_bucket() {
+  local target_bucket="$1"
+  local region_flag=()
+  local delete_flag=()
+  if [ -n "${2:-}" ]; then
+    region_flag=(--region "$2")
+  fi
+  if [ "${3:-}" = "--delete" ]; then
+    delete_flag=(--delete)
+  fi
+
+  aws s3 sync dist/ "s3://${target_bucket}/" \
+    "${region_flag[@]}" \
+    "${delete_flag[@]}" \
+    --cache-control "public, max-age=31536000, immutable" \
+    --exclude "index.html" \
+    --exclude "*.html" \
+    --exclude "logo.svg" \
+    --exclude "vite.svg" \
+    --exclude "robots.txt" \
+    --exclude "images/*"
+
+  if [ -d dist/images ]; then
+    aws s3 sync dist/images/ "s3://${target_bucket}/images/" \
+      "${region_flag[@]}" \
+      "${delete_flag[@]}" \
+      --cache-control "public, max-age=300, must-revalidate"
+  fi
+  for static_file in logo.svg vite.svg robots.txt; do
+    if [ -f "dist/${static_file}" ]; then
+      aws s3 cp "dist/${static_file}" "s3://${target_bucket}/${static_file}" \
+        "${region_flag[@]}" \
+        --cache-control "public, max-age=300, must-revalidate"
+    fi
+  done
+
+  aws s3 cp dist/index.html "s3://${target_bucket}/index.html" \
+    "${region_flag[@]}" \
+    --cache-control "public, max-age=0, must-revalidate" \
+    --content-type "text/html"
+}
+
 echo ""
 echo "📤 Uploading to primary S3 ($BUCKET)..."
-aws s3 sync dist/ "s3://${BUCKET}/" --delete
+upload_frontend_bucket "$BUCKET"
 
 if [ "$SYNC_SECONDARY" = true ]; then
   echo ""
   echo "📤 Uploading to DR S3 ($DR_BUCKET, us-east-2)..."
-  aws s3 sync dist/ "s3://${DR_BUCKET}/" --delete
+  upload_frontend_bucket "$DR_BUCKET" "us-east-2"
 fi
 
 echo ""
@@ -212,6 +256,13 @@ echo "🔄 Invalidating CloudFront cache..."
 aws cloudfront create-invalidation \
   --distribution-id "$DIST_ID" \
   --paths "/*"
+
+echo ""
+echo "🧹 Pruning removed assets from S3..."
+upload_frontend_bucket "$BUCKET" "" --delete
+if [ "$SYNC_SECONDARY" = true ]; then
+  upload_frontend_bucket "$DR_BUCKET" "us-east-2" --delete
+fi
 
 cd "$REPO_ROOT"
 

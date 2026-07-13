@@ -391,13 +391,31 @@ jobs:
         if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
         working-directory: ./frontend
         run: |
-          aws s3 sync dist/ s3://${{ steps.outputs.outputs.frontend_bucket }}/ \
-            --delete \
-            --cache-control "public, max-age=31536000, immutable" \
-            --exclude "index.html"
+          BUCKET="${{ steps.outputs.outputs.frontend_bucket }}"
 
-          aws s3 cp dist/index.html s3://${{ steps.outputs.outputs.frontend_bucket }}/index.html \
-            --cache-control "public, max-age=0, must-revalidate"
+          # Phase 1: upload new build WITHOUT --delete so old hashed chunks stay available
+          # while CloudFront invalidation propagates (avoids ChunkLoadError).
+          aws s3 sync dist/ "s3://${BUCKET}/" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.html" \
+            --exclude "logo.svg" \
+            --exclude "vite.svg" \
+            --exclude "robots.txt" \
+            --exclude "images/*"
+
+          if [ -d dist/images ]; then
+            aws s3 sync dist/images/ "s3://${BUCKET}/images/" \
+              --cache-control "public, max-age=300, must-revalidate"
+          fi
+          for f in logo.svg vite.svg robots.txt; do
+            [ -f "dist/$f" ] && aws s3 cp "dist/$f" "s3://${BUCKET}/$f" \
+              --cache-control "public, max-age=300, must-revalidate"
+          done
+
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --content-type "text/html"
 
       - name: Invalidate CloudFront
         if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
@@ -405,6 +423,29 @@ jobs:
           aws cloudfront create-invalidation \
             --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
             --paths "/*"
+
+      - name: Prune removed frontend assets
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
+        working-directory: ./frontend
+        run: |
+          BUCKET="${{ steps.outputs.outputs.frontend_bucket }}"
+          aws s3 sync dist/ "s3://${BUCKET}/" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.html" \
+            --exclude "logo.svg" \
+            --exclude "vite.svg" \
+            --exclude "robots.txt" \
+            --exclude "images/*"
+          if [ -d dist/images ]; then
+            aws s3 sync dist/images/ "s3://${BUCKET}/images/" \
+              --delete \
+              --cache-control "public, max-age=300, must-revalidate"
+          fi
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "public, max-age=0, must-revalidate" \
+            --content-type "text/html"
 
       - name: Wait for ECS services stable
         if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'

@@ -98,6 +98,11 @@ export class SurveysService {
     }>;
   }> {
     const surveys = await this.prisma.survey.findMany({
+      // INNER JOIN semantics: drop orphan Survey rows whose programId has no Program
+      // (DMS / manual deletes can leave broken FKs; required include would throw).
+      where: {
+        program: { id: { not: '' } },
+      },
       include: {
         program: {
           select: {
@@ -218,6 +223,9 @@ export class SurveysService {
     });
     if (!survey) {
       throw new NotFoundException('Survey not found');
+    }
+    if (!survey.program) {
+      throw new NotFoundException('Survey program no longer exists');
     }
     if (role !== UserRole.ADMIN) {
       await this.assertUserCanAccessFeedbackSurvey(
@@ -1014,6 +1022,9 @@ export class SurveysService {
 
     if (!survey) {
       throw new NotFoundException('Survey not found');
+    }
+    if (!survey.program) {
+      throw new NotFoundException('Survey program no longer exists');
     }
 
     const existing = await this.prisma.surveyResponse.findUnique({
