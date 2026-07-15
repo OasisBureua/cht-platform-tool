@@ -245,6 +245,131 @@ export interface PostEventAttendanceAdminRow {
   };
 }
 
+// ── Survey response analytics (mirrors backend survey-analytics.dto.ts) ──────
+// See docs/engineering/survey-response-analytics-api.md for the full contract.
+
+export type SurveyAnalyticsQuestionKind = 'choice' | 'rating' | 'text';
+export type SurveySegmentDimension = 'specialty' | 'status' | 'attendance';
+
+export interface SurveyChoiceOptionCount {
+  label: string;
+  count: number;
+  /** Share of respondents who answered (0–100). Multi-select can sum above 100. */
+  percentage: number;
+}
+
+export interface SurveyHistogramBucket {
+  value: number;
+  count: number;
+}
+
+export interface SurveyNumericStats {
+  count: number;
+  mean: number | null;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  histogram: SurveyHistogramBucket[];
+}
+
+interface SurveyQuestionAnalyticsBase {
+  id: string;
+  prompt: string;
+  /** Native schema type, or 'unknown' for inferred keys. */
+  type: string;
+  kind: SurveyAnalyticsQuestionKind;
+  /** True when inferred from data (no native schema type). */
+  inferred?: boolean;
+}
+
+export interface SurveyChoiceQuestionAnalytics
+  extends SurveyQuestionAnalyticsBase {
+  kind: 'choice';
+  multiSelect: boolean;
+  maxSelections?: number;
+  totalAnswered: number;
+  options: SurveyChoiceOptionCount[];
+}
+
+export interface SurveyRatingQuestionAnalytics
+  extends SurveyQuestionAnalyticsBase,
+    SurveyNumericStats {
+  kind: 'rating';
+}
+
+export interface SurveyTextQuestionAnalytics
+  extends SurveyQuestionAnalyticsBase {
+  kind: 'text';
+  responseCount: number;
+  /** Empty unless the request opted into redacted samples. */
+  samples: string[];
+}
+
+export type SurveyQuestionAnalytics =
+  | SurveyChoiceQuestionAnalytics
+  | SurveyRatingQuestionAnalytics
+  | SurveyTextQuestionAnalytics;
+
+export interface SurveyAnalyticsCompletionRate {
+  eligible: number;
+  completed: number;
+  rate: number;
+}
+
+export interface SurveyAnalyticsTotals {
+  totalResponses: number;
+  uniqueRespondents: number;
+  firstResponseAt: string | null;
+  lastResponseAt: string | null;
+  /** Null for INTAKE and program-less surveys. */
+  completionRate: SurveyAnalyticsCompletionRate | null;
+  /** Response-level score summary (test surveys); null when no numeric scores. */
+  score: SurveyNumericStats | null;
+}
+
+export interface SurveyAnalyticsTimeSeriesPoint {
+  /** UTC day, YYYY-MM-DD. Only days with responses appear. */
+  date: string;
+  count: number;
+}
+
+export interface SurveyAnalyticsSegmentGroup {
+  /** Raw segment value ('unknown' when missing/empty). */
+  key: string;
+  /** Display label ('Unknown' for the missing bucket). */
+  label: string;
+  totalResponses: number;
+  /** Counts-only aggregates for this segment (no free-text samples). */
+  questions: SurveyQuestionAnalytics[];
+}
+
+export interface SurveyAnalyticsSegmentBreakdown {
+  dimension: SurveySegmentDimension;
+  groups: SurveyAnalyticsSegmentGroup[];
+}
+
+export interface SurveyResponseAnalytics {
+  surveyType: string;
+  hasNativeSchema: boolean;
+  totals: SurveyAnalyticsTotals;
+  timeSeries: SurveyAnalyticsTimeSeriesPoint[];
+  questions: SurveyQuestionAnalytics[];
+  /** Present when segmentBy was provided; otherwise null. */
+  segments: SurveyAnalyticsSegmentBreakdown | null;
+}
+
+export interface SurveyAnalyticsSummary {
+  id: string;
+  title: string;
+  type: string;
+  program: { id: string; title: string } | null;
+}
+
+export interface SurveyAnalytics {
+  survey: SurveyAnalyticsSummary;
+  analytics: SurveyResponseAnalytics;
+}
+
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     try {
@@ -493,6 +618,20 @@ export const adminApi = {
     const { data } = await apiClient.get<Blob>(
       `/admin/surveys/${encodeURIComponent(surveyId)}/responses.csv`,
       { responseType: 'blob' },
+    );
+    return data;
+  },
+
+  getSurveyAnalytics: async (
+    surveyId: string,
+    opts: { segmentBy?: SurveySegmentDimension; includeSamples?: boolean } = {},
+  ): Promise<SurveyAnalytics> => {
+    const params: Record<string, string> = {};
+    if (opts.segmentBy) params.segmentBy = opts.segmentBy;
+    if (opts.includeSamples) params.includeSamples = '1';
+    const { data } = await apiClient.get<SurveyAnalytics>(
+      `/admin/surveys/${encodeURIComponent(surveyId)}/analytics`,
+      { params: Object.keys(params).length ? params : undefined },
     );
     return data;
   },
