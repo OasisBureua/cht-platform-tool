@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Loader2, Search, Youtube } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ExternalLink, Loader2, RefreshCw, Search, Youtube } from 'lucide-react';
 import { catalogApi, type WordPressPostItem } from '../../api/catalog';
 import {
   formatWordPressCategoryLabel,
@@ -9,6 +9,8 @@ import {
 
 const PAGE_SIZE = 24;
 const FETCH_PAGE = 100;
+/** Enough for 10k+ posts (ContentHub pages; page size max is 500 upstream). */
+const MAX_FETCH_PAGES = 100;
 
 /** ContentHub seed/test rows — hide probe/smoke posts from admin Content. */
 function isProbeWordPressPost(post: WordPressPostItem): boolean {
@@ -22,15 +24,20 @@ function isProbeWordPressPost(post: WordPressPostItem): boolean {
   );
 }
 
-async function fetchAllWordPressPosts(): Promise<WordPressPostItem[]> {
+async function fetchAllWordPressPosts(fresh: boolean): Promise<{
+  posts: WordPressPostItem[];
+  upstreamTotal: number | null;
+}> {
   const all: WordPressPostItem[] = [];
   let offset = 0;
-  // Cap pages so a bad upstream total can't loop forever.
-  for (let page = 0; page < 30; page++) {
+  let upstreamTotal: number | null = null;
+  for (let page = 0; page < MAX_FETCH_PAGES; page++) {
     const res = await catalogApi.getWordPressPosts({
       limit: FETCH_PAGE,
       offset,
+      fresh,
     });
+    if (typeof res.total === 'number') upstreamTotal = res.total;
     const batch = res.items ?? [];
     // Empty page ⇒ done. Do not treat a short page as EOF: the backend strips
     // probe/smoke posts per page, so the first page can be e.g. 85 of 100.
@@ -38,14 +45,15 @@ async function fetchAllWordPressPosts(): Promise<WordPressPostItem[]> {
     all.push(...batch);
     // Advance by the requested page size (ContentHub offset), not filtered length.
     offset += FETCH_PAGE;
-    if (res.total != null && res.total > FETCH_PAGE && offset >= res.total) break;
+    if (res.total != null && offset >= res.total) break;
   }
   const seen = new Set<number>();
-  return withoutProbePosts(all).filter((p) => {
+  const posts = withoutProbePosts(all).filter((p) => {
     if (seen.has(p.post_id)) return false;
     seen.add(p.post_id);
     return true;
   });
+  return { posts, upstreamTotal };
 }
 
 function withoutProbePosts(items: WordPressPostItem[]): WordPressPostItem[] {
@@ -79,10 +87,13 @@ function formatModified(iso: string): string {
 }
 
 export default function AdminContent() {
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [category, setCategory] = useState('');
   const [offset, setOffset] = useState(0);
+  /** Bump to force ContentHub round-trip (skip CHT Redis). */
+  const [freshNonce, setFreshNonce] = useState(0);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQuery(query.trim()), 300);
@@ -93,17 +104,24 @@ export default function AdminContent() {
     setOffset(0);
   }, [debouncedQuery, category]);
 
+  const fresh = freshNonce > 0;
+
   const { data: categoriesData } = useQuery({
-    queryKey: ['catalog', 'wordpress', 'categories'],
-    queryFn: catalogApi.getWordPressCategories,
+    queryKey: ['catalog', 'wordpress', 'categories', freshNonce],
+    queryFn: () => catalogApi.getWordPressCategories({ fresh }),
     staleTime: ADMIN_WORDPRESS_CATALOG_STALE_MS,
+    refetchOnMount: 'always',
   });
 
-  const { data: allPosts = [], isLoading, isError, isFetching } = useQuery({
-    queryKey: ['catalog', 'wordpress', 'posts', 'all'],
-    queryFn: fetchAllWordPressPosts,
+  const { data, isLoading, isError, isFetching, dataUpdatedAt } = useQuery({
+    queryKey: ['catalog', 'wordpress', 'posts', 'all', freshNonce],
+    queryFn: () => fetchAllWordPressPosts(fresh),
     staleTime: ADMIN_WORDPRESS_CATALOG_STALE_MS,
+    refetchOnMount: 'always',
   });
+
+  const allPosts = data?.posts ?? [];
+  const upstreamTotal = data?.upstreamTotal ?? null;
 
   const filteredPosts = useMemo(() => {
     const q = debouncedQuery.toLowerCase();
@@ -141,15 +159,40 @@ export default function AdminContent() {
   const canPrev = offset > 0;
   const canNext = offset + items.length < total;
 
+  const onRefresh = () => {
+    setFreshNonce((n) => n + 1);
+    void queryClient.invalidateQueries({ queryKey: ['catalog', 'wordpress'] });
+  };
+
+  const updatedLabel =
+    dataUpdatedAt > 0
+      ? new Date(dataUpdatedAt).toLocaleTimeString(undefined, {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        })
+      : null;
+
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100">
-          Content
-        </h1>
-        <p className="text-sm text-gray-600 dark:text-zinc-400">
-          Read-only view of what is currently live on WordPress. Authoring stays in WordPress Admin.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100">
+            Content
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-zinc-400">
+            Read-only view of what is currently live on WordPress. Authoring stays in WordPress Admin.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onRefresh}
+          disabled={isFetching}
+          className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        >
+          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+          Refresh from WordPress
+        </button>
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -184,7 +227,17 @@ export default function AdminContent() {
 
       <div className="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-zinc-400">
         <span>
-          {isLoading ? 'Loading…' : `${total.toLocaleString()} post${total === 1 ? '' : 's'}`}
+          {isLoading
+            ? 'Loading…'
+            : `${total.toLocaleString()} post${total === 1 ? '' : 's'}${
+                upstreamTotal != null &&
+                !debouncedQuery &&
+                !category &&
+                upstreamTotal !== total
+                  ? ` (ContentHub total ${upstreamTotal.toLocaleString()})`
+                  : ''
+              }`}
+          {updatedLabel ? ` · updated ${updatedLabel}` : ''}
           {isFetching && !isLoading ? ' · refreshing' : ''}
         </span>
         <div className="flex items-center gap-2">

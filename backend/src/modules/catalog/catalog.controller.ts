@@ -120,12 +120,14 @@ export class CatalogController {
    * Declared before GET wordpress so the more specific path is unambiguous.
    */
   @Get('wordpress/categories')
-  async getWordPressCategories() {
+  async getWordPressCategories(@Query('fresh') fresh?: string) {
     if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
       return { items: [], total: 0 };
     }
     try {
-      return await this.mediahub.getWordPressCategories();
+      return await this.mediahub.getWordPressCategories({
+        skipCache: fresh === '1' || fresh === 'true',
+      });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
@@ -149,6 +151,7 @@ export class CatalogController {
     @Query('offset') offset?: string,
     @Query('q') q?: string,
     @Query('category') category?: string,
+    @Query('fresh') fresh?: string,
   ) {
     if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
       return { items: [], total: 0 };
@@ -159,6 +162,7 @@ export class CatalogController {
         offset: offset ? parseInt(offset, 10) : undefined,
         q,
         category,
+        skipCache: fresh === '1' || fresh === 'true',
       });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response

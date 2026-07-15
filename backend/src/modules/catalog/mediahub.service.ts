@@ -173,9 +173,12 @@ export class MediaHubService {
     key: string,
     fetcher: () => Promise<T>,
     ttlSeconds?: number,
+    skipCache?: boolean,
   ): Promise<T> {
-    const cached = await this.cache.getJson<T>(key);
-    if (cached != null) return cached;
+    if (!skipCache) {
+      const cached = await this.cache.getJson<T>(key);
+      if (cached != null) return cached;
+    }
     const value = await fetcher();
     await this.cache.setJson(
       key,
@@ -396,7 +399,9 @@ export class MediaHubService {
     return null;
   }
 
-  async getWordPressCategories(): Promise<WordPressCategoriesResponse> {
+  async getWordPressCategories(params?: {
+    skipCache?: boolean;
+  }): Promise<WordPressCategoriesResponse> {
     if (!this.useContentHub) {
       return { items: [], total: 0 };
     }
@@ -407,6 +412,7 @@ export class MediaHubService {
         () =>
           this.getPublic<WordPressCategoriesResponse>('/wordpress/categories'),
         this.wordpressCacheTtlSeconds,
+        params?.skipCache,
       );
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;
@@ -423,12 +429,14 @@ export class MediaHubService {
   /**
    * Latest WordPress editorial posts (ContentHub GET /wordpress).
    * Used by admin Content tab — view-only mirror of WP, not authoring.
+   * `total` is ContentHub's full corpus count (not capped); `limit` only pages.
    */
   async getWordPressPosts(params?: {
     limit?: number;
     offset?: number;
     q?: string;
     category?: string;
+    skipCache?: boolean;
   }): Promise<WordPressPostsResponse> {
     if (!this.useContentHub) {
       return { items: [], total: 0 };
@@ -460,10 +468,12 @@ export class MediaHubService {
           const removed = raw.items.length - items.length;
           return {
             items,
+            // Preserve upstream total; only adjust for probes on this page.
             total: Math.max(0, (raw.total ?? 0) - removed),
           };
         },
         this.wordpressCacheTtlSeconds,
+        params?.skipCache,
       );
     } catch (err) {
       const status = (err as { response?: { status?: number } })?.response?.status;

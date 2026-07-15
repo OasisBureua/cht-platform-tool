@@ -98,12 +98,18 @@ export const catalogApi = {
     return data || {};
   },
 
-  getWordPressCategories: async (): Promise<WordPressCategoriesResponse> => {
+  getWordPressCategories: async (params?: {
+    fresh?: boolean;
+  }): Promise<WordPressCategoriesResponse> => {
     try {
       const { data } = await apiClient.get<WordPressCategoriesResponse>(
         '/catalog/wordpress/categories',
+        { params: params?.fresh ? { fresh: '1' } : undefined },
       );
-      return data ?? { items: [], total: 0 };
+      return {
+        items: data?.items ?? [],
+        total: data?.total ?? data?.items?.length ?? 0,
+      };
     } catch {
       return { items: [], total: 0 };
     }
@@ -114,9 +120,15 @@ export const catalogApi = {
     offset?: number;
     q?: string;
     category?: string;
+    /** Bypass CHT Redis and hit ContentHub (admin refresh). */
+    fresh?: boolean;
   }): Promise<WordPressPostsResponse> => {
+    const { fresh, ...rest } = params ?? {};
     const { data } = await apiClient.get<WordPressPostsResponse>('/catalog/wordpress', {
-      params,
+      params: {
+        ...rest,
+        ...(fresh ? { fresh: '1' } : {}),
+      },
     });
     return { items: data?.items ?? [], total: data?.total ?? 0 };
   },
