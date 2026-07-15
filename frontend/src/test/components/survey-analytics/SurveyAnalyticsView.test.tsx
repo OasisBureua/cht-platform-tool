@@ -4,6 +4,19 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { SurveyAnalyticsView } from '../../../components/admin/survey-analytics/SurveyAnalyticsView';
 import type { SurveyAnalytics } from '../../../api/admin';
 
+// jsdom has no layout, so recharts' ResponsiveContainer measures 0x0 and spams
+// "width/height should be greater than 0" warnings. Give the child chart fixed
+// dimensions so it renders quietly.
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('recharts')>();
+  const React = await import('react');
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactElement }) =>
+      React.cloneElement(children, { width: 800, height: 300 }),
+  };
+});
+
 function baseAnalytics(overrides: Partial<SurveyAnalytics['analytics']> = {}): SurveyAnalytics {
   return {
     survey: { id: 'sv1', title: 'Post-event feedback', type: 'FEEDBACK', program: null },
@@ -81,9 +94,10 @@ describe('SurveyAnalyticsView', () => {
     expect(screen.getByText('Completion rate')).toBeInTheDocument();
     expect(screen.getByText('60%')).toBeInTheDocument();
 
-    // Choice distribution legend
+    // Choice distribution legend ("Very satisfied" also appears as a chart axis
+    // tick, so assert on the count/percentage line which is legend-only).
     expect(screen.getByText('How satisfied were you?')).toBeInTheDocument();
-    expect(screen.getByText('Very satisfied')).toBeInTheDocument();
+    expect(screen.getAllByText('Very satisfied').length).toBeGreaterThan(0);
     expect(screen.getByText('2 · 67%')).toBeInTheDocument();
 
     // Rating stats
