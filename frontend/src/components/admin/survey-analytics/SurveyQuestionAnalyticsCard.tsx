@@ -1,13 +1,18 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { BarChart3, ChevronDown, ChevronRight, PieChart } from 'lucide-react';
 
 import type {
+  SurveyChoiceQuestionAnalytics,
   SurveyQuestionAnalytics,
   SurveyRatingQuestionAnalytics,
   SurveyTextQuestionAnalytics,
 } from '../../../api/admin';
 import { ChoiceDistributionChart } from './ChoiceDistributionChart';
+import { ChoicePieChart } from './ChoicePieChart';
 import { RatingHistogram } from './RatingHistogram';
+import { seriesColor, TEAL } from './chartTheme';
+
+type ChoiceChartType = 'pie' | 'bar';
 
 function CardShell({
   prompt,
@@ -33,6 +38,91 @@ function CardShell({
       <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+function ChartTypeToggle({
+  value,
+  onChange,
+}: {
+  value: ChoiceChartType;
+  onChange: (value: ChoiceChartType) => void;
+}) {
+  const options: Array<{ key: ChoiceChartType; label: string; Icon: typeof PieChart }> = [
+    { key: 'pie', label: 'Pie', Icon: PieChart },
+    { key: 'bar', label: 'Bar', Icon: BarChart3 },
+  ];
+  return (
+    <div
+      className="inline-flex rounded-lg border border-gray-200 p-0.5"
+      role="group"
+      aria-label="Chart type"
+    >
+      {options.map((o) => {
+        const active = value === o.key;
+        return (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => onChange(o.key)}
+            aria-pressed={active}
+            className={[
+              'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors',
+              active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700',
+            ].join(' ')}
+          >
+            <o.Icon className="h-3.5 w-3.5" />
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalytics }) {
+  // Pie only reads correctly for single-select (parts of a whole); multi-select
+  // percentages can exceed 100%, so it stays on bars.
+  const canPie = !question.multiSelect;
+  const [chartType, setChartType] = useState<ChoiceChartType>(canPie ? 'pie' : 'bar');
+  const showPie = canPie && chartType === 'pie';
+
+  return (
+    <CardShell
+      prompt={question.prompt}
+      subtitle={`${question.totalAnswered.toLocaleString()} answered`}
+      badge={question.multiSelect ? 'Multi-select' : 'Single-select'}
+    >
+      {canPie ? (
+        <div className="mb-2 flex justify-end">
+          <ChartTypeToggle value={chartType} onChange={setChartType} />
+        </div>
+      ) : null}
+
+      {showPie ? (
+        <ChoicePieChart options={question.options} />
+      ) : (
+        <ChoiceDistributionChart options={question.options} multiSelect={question.multiSelect} />
+      )}
+
+      <ul className="mt-2 space-y-1">
+        {question.options.map((o, i) => (
+          <li key={o.label} className="flex items-center justify-between text-xs text-gray-600">
+            <span className="flex min-w-0 items-center gap-2 pr-2">
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ backgroundColor: showPie ? seriesColor(i) : TEAL }}
+                aria-hidden
+              />
+              <span className="truncate">{o.label}</span>
+            </span>
+            <span className="shrink-0 font-mono tabular-nums text-gray-500">
+              {o.count.toLocaleString()} · {o.percentage.toFixed(0)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </CardShell>
   );
 }
 
@@ -101,26 +191,7 @@ export function SurveyQuestionAnalyticsCard({
   question: SurveyQuestionAnalytics;
 }) {
   if (question.kind === 'choice') {
-    const badge = question.multiSelect ? 'Multi-select' : 'Single-select';
-    return (
-      <CardShell
-        prompt={question.prompt}
-        subtitle={`${question.totalAnswered.toLocaleString()} answered`}
-        badge={badge}
-      >
-        <ChoiceDistributionChart options={question.options} multiSelect={question.multiSelect} />
-        <ul className="mt-2 space-y-1">
-          {question.options.map((o) => (
-            <li key={o.label} className="flex items-center justify-between text-xs text-gray-600">
-              <span className="truncate pr-2">{o.label}</span>
-              <span className="shrink-0 font-mono tabular-nums text-gray-500">
-                {o.count.toLocaleString()} · {o.percentage.toFixed(0)}%
-              </span>
-            </li>
-          ))}
-        </ul>
-      </CardShell>
-    );
+    return <ChoiceQuestionCard question={question} />;
   }
 
   if (question.kind === 'rating') {

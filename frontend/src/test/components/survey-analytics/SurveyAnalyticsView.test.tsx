@@ -106,6 +106,25 @@ describe('SurveyAnalyticsView', () => {
     expect(screen.getByText('4.3')).toBeInTheDocument();
   });
 
+  it('defaults single-select choice to a pie chart and can toggle to bar', () => {
+    render(
+      <SurveyAnalyticsView
+        data={baseAnalytics()}
+        segmentBy={null}
+        onSegmentChange={vi.fn()}
+      />,
+    );
+
+    // Single-select question renders the donut by default
+    expect(screen.getByTestId('choice-pie-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('choice-distribution-chart')).not.toBeInTheDocument();
+
+    // Toggle to the bar view
+    fireEvent.click(screen.getByRole('button', { name: /bar/i }));
+    expect(screen.getByTestId('choice-distribution-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('choice-pie-chart')).not.toBeInTheDocument();
+  });
+
   it('reveals PII-safe free-text samples only when expanded', () => {
     render(
       <SurveyAnalyticsView
