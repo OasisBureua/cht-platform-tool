@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { ConfigService } from '@nestjs/config';
-import { UserRole, SurveyType, ProgramRegistrationStatus } from '@prisma/client';
+import {
+  UserRole,
+  SurveyType,
+  ProgramRegistrationStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
@@ -22,6 +26,11 @@ import {
   buildSurveyResponsesCsv,
   surveyResponsesCsvFilename,
 } from '../../utils/survey-responses-csv';
+import {
+  buildSurveyResponseAnalytics,
+  type SurveyResponseAnalytics,
+  type SurveySegmentDimension,
+} from '../../utils/survey-analytics';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { FormJotformScope } from '../programs/form-jotform-scope';
 import {
@@ -173,9 +182,7 @@ export class SurveysService {
         select: { id: true, submittedAt: true },
       });
 
-      const isCompleted =
-        !!existing ||
-        !!reg?.postEventSurveyAcknowledgedAt;
+      const isCompleted = !!existing || !!reg?.postEventSurveyAcknowledgedAt;
 
       if (isCompleted) {
         const completedAt =
@@ -466,10 +473,81 @@ export class SurveysService {
         id: r.id,
         submissionId: r.submissionId,
         submittedAt: r.submittedAt.toISOString(),
+        score: r.score,
         answers: r.answers,
         user: r.user,
         registration: regByUser.get(r.userId) ?? null,
       })),
+    };
+  }
+
+  /**
+   * Admin: chart-ready analytics for a survey's responses.
+   *
+   * Reuses {@link listResponsesForAdmin} for the response/identity/registration
+   * data, then delegates all aggregation to the pure `buildSurveyResponseAnalytics`
+   * util. Completion rate is computed against APPROVED program registrations for
+   * post-event surveys (FEEDBACK/PRE_TEST/POST_TEST); INTAKE and program-less
+   * surveys report a null completion rate.
+   *
+   * Free-text samples are omitted by default (counts only). Pass
+   * `includeTextSamples: true` to emit redacted samples for author-declared
+   * text questions. Pass `segmentBy` to also emit a per-segment breakdown by
+   * respondent specialty, registration status, or attendance status.
+   */
+  async getResponseAnalyticsForAdmin(
+    surveyId: string,
+    opts: {
+      includeTextSamples?: boolean;
+      segmentBy?: SurveySegmentDimension | null;
+    } = {},
+  ): Promise<{
+    survey: {
+      id: string;
+      title: string;
+      type: SurveyType;
+      program: { id: string; title: string } | null;
+    };
+    analytics: SurveyResponseAnalytics;
+  }> {
+    const { survey, responses } = await this.listResponsesForAdmin(surveyId);
+
+    const programId = survey.program?.id;
+
+    const eligibleCount =
+      programId && survey.type !== SurveyType.INTAKE
+        ? await this.prisma.programRegistration.count({
+            where: { programId, status: ProgramRegistrationStatus.APPROVED },
+          })
+        : null;
+
+    const analytics = buildSurveyResponseAnalytics({
+      surveyType: survey.type,
+      questionsSchema: survey.questions,
+      eligibleCount,
+      includeTextSamples: opts.includeTextSamples ?? false,
+      segmentBy: opts.segmentBy ?? null,
+      responses: responses.map((r) => ({
+        submittedAt: r.submittedAt,
+        userId: r.user?.id ?? null,
+        score: r.score,
+        answers: (r.answers ?? {}) as Record<string, unknown>,
+        segment: {
+          specialty: r.user?.specialty ?? null,
+          status: r.registration?.status ?? null,
+          attendance: r.registration?.postEventAttendanceStatus ?? null,
+        },
+      })),
+    });
+
+    return {
+      survey: {
+        id: survey.id,
+        title: survey.title,
+        type: survey.type,
+        program: survey.program,
+      },
+      analytics,
     };
   }
 
@@ -682,7 +760,9 @@ export class SurveysService {
    * When true, legacy Jotform clone paths are used instead of native surveys (platform rollback only).
    */
   useLegacyJotformForms(): boolean {
-    return this.configService.get<boolean>('surveys.useLegacyJotformForms') === true;
+    return (
+      this.configService.get<boolean>('surveys.useLegacyJotformForms') === true
+    );
   }
 
   /** @deprecated Prefer attachSurveysForNewWebinar; native is default unless legacy flag set. */
@@ -747,7 +827,12 @@ export class SurveysService {
 
   /** Convert all published webinars to native surveys (dev / admin bulk). */
   async ensureNativeSurveysForPublishedWebinars(): Promise<
-    Array<{ programId: string; title: string; intakeSurveyId: string; feedbackSurveyId: string }>
+    Array<{
+      programId: string;
+      title: string;
+      intakeSurveyId: string;
+      feedbackSurveyId: string;
+    }>
   > {
     const programs = await this.prisma.program.findMany({
       where: {
