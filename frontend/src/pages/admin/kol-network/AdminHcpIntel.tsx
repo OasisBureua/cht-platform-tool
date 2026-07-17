@@ -1054,7 +1054,6 @@ function EngagementSection({
             <CalendarCheck className="h-3.5 w-3.5" />
             Engagement detail
           </Eyebrow>
-          <DemoBadge />
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <EngagementPillButton
@@ -1355,7 +1354,6 @@ function OpenPaymentsCard({ payments }: { payments: OpenPaymentsResponse | null 
             <DollarSign className="h-3.5 w-3.5" />
             Open Payments (CMS Sunshine Act)
           </Eyebrow>
-          <DemoBadge />
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Disclosed pharma→physician payments: speaker fees, meals, consulting, research. Public
@@ -1467,7 +1465,6 @@ function NewsSection({ news, moreHref }: { news: NewsArticle[]; moreHref?: strin
             News &amp; media mentions {news.length > 0 && `(${news.length})`}
           </Eyebrow>
           <span className="text-[11px] text-muted-foreground">Google News</span>
-          <DemoBadge />
           {moreHref && (
             <a
               href={moreHref}

@@ -1,14 +1,14 @@
-// TODO(kol-intel): swap demo data for CHT backend proxy of MediaHub intel endpoints; this interface is the seam.
+// SCRUM-68: intelApi swap. The 5 SCRUM-65 endpoints (engagement, trials,
+// open-payments, news, publications) are live via CHT admin proxy; the
+// remaining methods (AI brief, RX volumes/shifts/trend, NIH grants, engagement
+// timeline) still return demo data and continue to render a <DemoBadge/>.
+// See LIVE_INTEL_METHODS below.
 //
-// Type shapes below are copied 1:1 from MediaHub `frontend/src/lib/api.ts`
-// (AIBrief / EngagementSignals / HCPSignal / NewsArticle / OpenPaymentsResponse /
-// NIHGrantsResponse / RxVolumesByDrug / ShiftsResponse). When the CHT backend
-// grows `/kol-network/:slug/*` intel proxies, only the function bodies in
-// `intelApi` should change — every consumer types against these interfaces.
-//
-// Everything returned from this file is REPRESENTATIVE DEMO DATA. Sections
-// rendered from it carry a <DemoBadge /> in the UI.
+// Every consumer types against the interfaces in this file — the live-swap
+// changes function bodies only, plus a couple of adapters to shape backend
+// envelopes into the frontend types.
 
+import apiClient from '../../../../api/client';
 import type {
   KolListParams,
   PublicKol,
@@ -756,6 +756,117 @@ function demoBrief(slug: string, name: string): AIBrief {
 // Same call surface the page will keep when these become real HTTP calls.
 // Each function is async so swapping in axios later is a body-only change.
 
+// ─── Adapters: normalize backend admin API shape → frontend interface ───
+//
+// The 5 live endpoints (SCRUM-65) return response envelopes and use a subset
+// of the HCPSignal fields (backend doesn't ship hcp_npi/signal_type/drugs on
+// per-signal reads — those are inferred from the endpoint URL).
+
+interface AdminTrialSignal {
+  id: string;
+  observed_at: string;
+  title: string | null;
+  url: string | null;
+  summary: string | null;
+  source: string;
+  entities: Record<string, unknown> | null;
+}
+
+interface AdminNewsArticle {
+  id: string;
+  observed_at: string;
+  title: string | null;
+  url: string | null;
+  summary: string | null;
+  source: string;
+  source_name: string | null;
+}
+
+interface AdminOpenPayments {
+  summary: {
+    total_records: number;
+    total_amount_usd: number;
+    year_range: string | null;
+    top_company: string | null;
+    top_company_amount_usd: number;
+  };
+  records: OpenPaymentRecord[];
+}
+
+function adminTrialToHcpSignal(t: AdminTrialSignal): HCPSignal {
+  return {
+    id: t.id,
+    hcp_npi: '',
+    signal_type: 'trial',
+    observed_at: t.observed_at,
+    source: t.source,
+    title: t.title,
+    url: t.url,
+    summary: t.summary,
+    entities_json: t.entities,
+    drugs: [],
+    created_at: t.observed_at,
+  };
+}
+
+function adminNewsToNewsArticle(n: AdminNewsArticle): NewsArticle {
+  return {
+    id: n.id,
+    observed_at: n.observed_at,
+    title: n.title,
+    url: n.url,
+    summary: n.summary,
+    source_name: n.source_name,
+  };
+}
+
+function parseYearRange(range: string | null): [number, number] | null {
+  if (!range) return null;
+  const [a, b] = range.split('-').map((s) => Number(s.trim()));
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return [a, b];
+}
+
+function adminOpenPaymentsToResponse(p: AdminOpenPayments): OpenPaymentsResponse {
+  return {
+    summary: {
+      total_usd: p.summary.total_amount_usd,
+      record_count: p.summary.total_records,
+      year_range: parseYearRange(p.summary.year_range),
+      by_company: p.summary.top_company
+        ? [
+            {
+              company: p.summary.top_company,
+              total_usd: p.summary.top_company_amount_usd,
+              count: 0,
+            },
+          ]
+        : [],
+      by_drug: [],
+      by_nature: [],
+    },
+    records: p.records,
+  };
+}
+
+// ─── intelApi: live for the 5 SCRUM-65 endpoints; demo for the rest ───
+//
+// Live: getEngagement, getTrialSignals, getOpenPayments, getNews.
+// Demo (no backend endpoint yet): getAIBrief, regenerateAIBrief,
+//   getEngagementTimeline, getRxHistory, getShifts, getRxTrend, getNihGrants.
+// `usingDemo`/`liveMethods` let the UI know which sections to un-badge.
+
+export const LIVE_INTEL_METHODS = new Set<keyof typeof intelApi>([
+  'getEngagement',
+  'getTrialSignals',
+  'getOpenPayments',
+  'getNews',
+]);
+
+function adminBase(slug: string): string {
+  return `/admin/kol-network/${encodeURIComponent(slug)}`;
+}
+
 export const intelApi = {
   getAIBrief: async (slug: string, name: string): Promise<AIBrief> => demoBrief(slug, name),
 
@@ -765,11 +876,19 @@ export const intelApi = {
     return demoBrief(slug, name);
   },
 
-  getEngagement: async (_slug: string): Promise<EngagementSignals> => DEMO_ENGAGEMENT,
+  getEngagement: async (slug: string): Promise<EngagementSignals> => {
+    const { data } = await apiClient.get<EngagementSignals>(`${adminBase(slug)}/engagement`);
+    return data;
+  },
 
   getEngagementTimeline: async (slug: string): Promise<HCPSignal[]> => demoTimeline(slug),
 
-  getTrialSignals: async (slug: string): Promise<HCPSignal[]> => demoTrials(slug),
+  getTrialSignals: async (slug: string): Promise<HCPSignal[]> => {
+    const { data } = await apiClient.get<{ items: AdminTrialSignal[]; total: number }>(
+      `${adminBase(slug)}/trials`,
+    );
+    return data.items.map(adminTrialToHcpSignal);
+  },
 
   getRxHistory: async (_slug: string): Promise<RxVolumesByDrug[]> => DEMO_RX,
 
@@ -777,9 +896,17 @@ export const intelApi = {
 
   getRxTrend: async (_slug: string): Promise<RxTrendResponse> => DEMO_RX_TREND,
 
-  getOpenPayments: async (_slug: string): Promise<OpenPaymentsResponse> => DEMO_PAYMENTS,
+  getOpenPayments: async (slug: string): Promise<OpenPaymentsResponse> => {
+    const { data } = await apiClient.get<AdminOpenPayments>(`${adminBase(slug)}/open-payments`);
+    return adminOpenPaymentsToResponse(data);
+  },
 
   getNihGrants: async (_slug: string): Promise<NIHGrantsResponse> => DEMO_NIH,
 
-  getNews: async (_slug: string, name: string): Promise<NewsArticle[]> => demoNews(name),
+  getNews: async (slug: string, _name: string): Promise<NewsArticle[]> => {
+    const { data } = await apiClient.get<{ items: AdminNewsArticle[]; total: number }>(
+      `${adminBase(slug)}/news`,
+    );
+    return data.items.map(adminNewsToNewsArticle);
+  },
 };
