@@ -24,9 +24,17 @@ import { UserRole } from '@prisma/client';
 import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import { ContentHubKolService } from './content-hub-kol.service';
 import { MediaHubService } from '../catalog/mediahub.service';
+import { KolIntelService } from './kol-intel.service';
 import { KolVisibilityService } from './kol-visibility.service';
 import { UpdateKolVisibilityDto } from './dto/update-kol-visibility.dto';
 import type { PublicKol, PublicKolList } from './kol-network.types';
+import type {
+  EngagementSignals,
+  AdminKolPublicationList,
+  OpenPayments,
+  Trials,
+  News,
+} from './kol-intel.types';
 
 export type AdminKolNetworkItem = PublicKol & {
   visibility: {
@@ -54,6 +62,7 @@ export class AdminKolNetworkController {
     private readonly contentHub: ContentHubKolService,
     private readonly mediahub: MediaHubService,
     private readonly visibility: KolVisibilityService,
+    private readonly intel: KolIntelService,
   ) {}
 
   private async fetchAllKols(q?: string): Promise<PublicKolList> {
@@ -122,5 +131,66 @@ export class AdminKolNetworkController {
       user.userId,
     );
     return { slug: slug.trim(), visibility: next };
+  }
+
+  @Get(':slug/engagement')
+  @ApiOperation({ summary: 'KOL engagement signals (webinars, questions, surveys)' })
+  @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
+  async engagement(@Param('slug') slug: string): Promise<EngagementSignals> {
+    return this.intel.getEngagement(slug.trim());
+  }
+
+  @Get(':slug/publications')
+  @ApiOperation({ summary: 'KOL publications (paginated)' })
+  @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
+  async publications(
+    @Param('slug') slug: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<AdminKolPublicationList> {
+    return this.intel.getPublications(slug.trim(), {
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
+
+  @Get(':slug/open-payments')
+  @ApiOperation({ summary: 'KOL Open Payments records + summary' })
+  @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
+  async openPayments(
+    @Param('slug') slug: string,
+    @Query('limit') limit?: string,
+  ): Promise<OpenPayments> {
+    return this.intel.getOpenPayments(slug.trim(), {
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get(':slug/trials')
+  @ApiOperation({ summary: 'KOL clinical trial signals' })
+  @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
+  async trials(
+    @Param('slug') slug: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<Trials> {
+    return this.intel.getTrials(slug.trim(), {
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
+
+  @Get(':slug/news')
+  @ApiOperation({ summary: 'KOL news article signals' })
+  @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
+  async news(
+    @Param('slug') slug: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ): Promise<News> {
+    return this.intel.getNews(slug.trim(), {
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
   }
 }
