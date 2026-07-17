@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   ArrowLeft,
@@ -43,6 +43,9 @@ import { Badge, DemoBadge } from './components/Badge';
 import { Button, buttonVariants } from './components/Button';
 import { InitialsAvatar } from './components/InitialsAvatar';
 import { RxTrendChart } from './components/RxTrendChart';
+import { EditKolModal } from './components/EditKolModal';
+import { adminKolApi } from '../../../api/admin-kol';
+import { getApiErrorMessage } from '../../../api/client';
 
 // ─── helpers (ported from MediaHub hcps/[npi]/page.tsx) ─────────────────────
 
@@ -260,6 +263,45 @@ export default function AdminHcpIntel() {
     toastTimer.current = window.setTimeout(() => setToast(null), 3500);
   }
 
+  // SCRUM-69: KOL edit + refresh. Only enabled when the live profile loaded
+  // (demo mode = backend unreachable, edits would 404).
+  const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<{
+    at: number;
+    status: 'enqueued' | 'no_op' | 'cooldown';
+    reason?: string | null;
+  } | null>(null);
+
+  async function handleRefresh() {
+    if (!kol || usingDemoProfile) return;
+    setRefreshing(true);
+    try {
+      const result = await adminKolApi.refresh(kol.slug || id);
+      setLastRefresh({ at: Date.now(), status: result.status, reason: result.reason });
+      if (result.status === 'enqueued') {
+        showToast(`Intel refresh enqueued for ${kol.name}.`);
+      } else if (result.status === 'cooldown') {
+        showToast(
+          `Refresh cooldown active — retry in ${result.cooldown_remaining_seconds ?? '?'}s.`,
+        );
+      } else {
+        showToast(result.reason || 'Refresh skipped.');
+      }
+    } catch (err: unknown) {
+      showToast(getApiErrorMessage(err, 'Refresh failed.'));
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  function handleSaved() {
+    queryClient.invalidateQueries({ queryKey: ['admin', 'kol-network'] });
+    queryClient.invalidateQueries({ queryKey: ['admin', 'kol-intel', id] });
+    showToast('Saved.');
+  }
+
   if (isLoading) {
     return (
       <div className="flex min-h-[30vh] items-center justify-center">
@@ -405,6 +447,29 @@ export default function AdminHcpIntel() {
             ))}
             <Button
               size="sm"
+              variant="outline"
+              onClick={() => setEditOpen(true)}
+              disabled={usingDemoProfile}
+              title={usingDemoProfile ? 'Backend unreachable — edits disabled' : undefined}
+            >
+              Edit
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRefresh}
+              disabled={usingDemoProfile || refreshing}
+              title={usingDemoProfile ? 'Backend unreachable' : 'Enqueue an HCP intel refresh'}
+            >
+              {refreshing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Refresh data
+            </Button>
+            <Button
+              size="sm"
               onClick={() =>
                 showToast(
                   `Outreach logging for ${kol.name} is a stub — it will create a CRM touchpoint once wired to the backend.`,
@@ -415,7 +480,29 @@ export default function AdminHcpIntel() {
             </Button>
           </div>
         </CardContent>
+        {lastRefresh && (
+          <div className="border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
+            Last refresh {new Date(lastRefresh.at).toLocaleTimeString()} · {lastRefresh.status}
+            {lastRefresh.reason ? ` — ${lastRefresh.reason}` : ''}
+          </div>
+        )}
       </Card>
+      {editOpen && (
+        <EditKolModal
+          slug={kol.slug || id}
+          kol={{
+            name: kol.name,
+            title: kol.title,
+            specialty: kol.specialty,
+            institution: kol.institution,
+            bio: kol.bio,
+            photo_url: kol.photo_url,
+            region: kol.region,
+          }}
+          onClose={() => setEditOpen(false)}
+          onSaved={handleSaved}
+        />
+      )}
 
       {/* 2 · KPI stat tiles */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
