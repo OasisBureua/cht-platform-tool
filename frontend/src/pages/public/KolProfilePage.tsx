@@ -175,7 +175,17 @@ export default function KolProfilePage() {
 
           <div className="mt-3 space-y-3">
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{vm.displayName}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{vm.displayName}</h1>
+                {entry.featured ? (
+                  <span
+                    className="rounded bg-brand-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+                    title="Curator-featured KOL"
+                  >
+                    ★ Featured
+                  </span>
+                ) : null}
+              </div>
               {vm.rosterOnly ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="rounded bg-teal-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-teal-900 dark:bg-teal-950/60 dark:text-teal-200">

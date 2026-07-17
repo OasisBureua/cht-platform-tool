@@ -97,9 +97,17 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
         return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
       });
     } else {
+      // Default 'state' mode: within each state, featured KOLs pin to the
+      // top, then curator display_order (nulls last), then name (SCRUM-70).
       out.sort((a, b) => {
         const st = a.stateTitle.localeCompare(b.stateTitle, undefined, { sensitivity: 'base' });
         if (st !== 0) return st;
+        const aFeat = a.featured ? 1 : 0;
+        const bFeat = b.featured ? 1 : 0;
+        if (aFeat !== bFeat) return bFeat - aFeat;
+        const aOrd = a.displayOrder ?? Number.POSITIVE_INFINITY;
+        const bOrd = b.displayOrder ?? Number.POSITIVE_INFINITY;
+        if (aOrd !== bOrd) return aOrd - bOrd;
         return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
       });
     }
@@ -345,7 +353,14 @@ function KolCard({ k }: { k: FlatKol }) {
               loading="lazy"
               referrerPolicy="no-referrer"
             />
-            {k.isNew ? (
+            {k.featured ? (
+              <span
+                className="absolute -right-0.5 -top-0.5 rounded-full bg-brand-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm"
+                title="Curator-featured KOL"
+              >
+                ★
+              </span>
+            ) : k.isNew ? (
               <span className="absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm">
                 New
               </span>
