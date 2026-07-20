@@ -10,9 +10,9 @@ import {
 export type PostWebinarSurveyTemplateInput = {
   firstName: string;
   programTitle: string;
-  /** Direct URL to the post-event Jotform survey. Omit to fall back to the app session page CTA. */
+  /** Direct URL to the post-event survey (Jotform or in-app /app/surveys/:id). Omit to fall back to the app session page CTA. */
   surveyUrl?: string | null;
-  /** Link to the session page in the app. Used as fallback CTA when surveyUrl is absent. */
+  /** Link to the session page in the app. Used as secondary link and fallback CTA when surveyUrl is absent. */
   appSessionUrl: string;
   supportEmail: string;
   sponsorName: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
 import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
@@ -15,8 +15,16 @@ import {
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 
+type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys';
+
+function parseHubTab(raw: string | null): WebinarHubTab {
+  if (raw === 'surveys' || raw === 'enrolled' || raw === 'approvals') return raw;
+  return 'approvals';
+}
+
 export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const [slotStart, setSlotStart] = useState('');
   const [slotEnd, setSlotEnd] = useState('');
@@ -24,7 +32,19 @@ export default function AdminProgramHub() {
   const [formKind, setFormKind] = useState<'INTAKE' | 'PRE_EVENT' | 'POST_EVENT' | 'CUSTOM'>('CUSTOM');
   const [formLabel, setFormLabel] = useState('');
   const [formUrl, setFormUrl] = useState('');
-  const [webinarHubTab, setWebinarHubTab] = useState<'approvals' | 'enrolled' | 'surveys'>('approvals');
+  const webinarHubTab = parseHubTab(searchParams.get('tab'));
+
+  const setWebinarHubTab = (tab: WebinarHubTab) => {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (tab === 'approvals') next.delete('tab');
+        else next.set('tab', tab);
+        return next;
+      },
+      { replace: true },
+    );
+  };
 
   const { data: program, isLoading: pLoading } = useQuery({
     queryKey: ['admin', 'program', programId],

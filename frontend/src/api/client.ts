@@ -42,7 +42,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      onUnauthorized?.();
+      const url = String(error.config?.url ?? '');
+      // Never force-logout from auth bootstrap / login endpoints — that causes
+      // gray-screen / bounce loops during Cognito Google callback races.
+      const isAuthEndpoint =
+        /\/auth\/(me|login|logout|cognito|login-oauth|signup|password|mfa)/i.test(url);
+      if (!isAuthEndpoint) {
+        onUnauthorized?.();
+      }
     }
     return Promise.reject(error);
   },

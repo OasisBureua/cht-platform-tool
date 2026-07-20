@@ -2,6 +2,15 @@ import { resolveAppBaseUrl } from '../config/app-urls';
 
 const PKCE_STORAGE_PREFIX = 'cognito-oauth-';
 
+export interface CognitoOAuthState {
+  verifier: string;
+  redirectUri: string;
+  from?: string;
+}
+
+/** Survives Strict Mode double-mount so AuthCallback can reuse the same PKCE verifier. */
+let lastConsumedOAuth: { state: string; data: CognitoOAuthState } | null = null;
+
 function base64UrlEncode(bytes: Uint8Array): string {
   let binary = '';
   bytes.forEach((b) => {
@@ -31,19 +40,20 @@ export function getCognitoCallbackUrl(fromPath?: string): string {
   return callbackBase;
 }
 
-export interface CognitoOAuthState {
-  verifier: string;
-  redirectUri: string;
-  from?: string;
-}
-
 export function consumeCognitoOAuthState(state: string | null): CognitoOAuthState | null {
   if (!state) return null;
+  // React Strict Mode remounts AuthCallback and re-runs the effect; keep the last
+  // consumed PKCE payload in memory so the second pass does not lose the verifier.
+  if (lastConsumedOAuth?.state === state) {
+    return lastConsumedOAuth.data;
+  }
   try {
     const raw = sessionStorage.getItem(`${PKCE_STORAGE_PREFIX}${state}`);
     sessionStorage.removeItem(`${PKCE_STORAGE_PREFIX}${state}`);
     if (!raw) return null;
-    return JSON.parse(raw) as CognitoOAuthState;
+    const data = JSON.parse(raw) as CognitoOAuthState;
+    lastConsumedOAuth = { state, data };
+    return data;
   } catch {
     return null;
   }

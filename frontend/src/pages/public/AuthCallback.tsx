@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 import { cognitoAuthEnabled } from '../../lib/auth-config';
@@ -21,8 +21,13 @@ export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const { completeCognitoCallback, loginOAuth } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  /** Prevent Strict Mode / dep churn from starting the exchange twice. */
+  const startedRef = useRef(false);
 
   useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+
     const errorDesc = searchParams.get('error_description');
     if (errorDesc) {
       setError(decodeURIComponent(errorDesc));
@@ -84,28 +89,32 @@ export default function AuthCallback() {
     return () => {
       cancelled = true;
     };
-  }, [completeCognitoCallback, loginOAuth, navigate, searchParams]);
+    // Intentionally omit callback fn deps — startedRef guards a single exchange per code.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, searchParams]);
 
   if (error) {
     return (
-      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 py-8">
-        <div className="max-w-md text-center">
-          <p className="text-red-600 font-medium">{error}</p>
-          <a
-            href="/login"
-            className="mt-4 inline-block text-sm font-medium text-gray-900 hover:underline"
+      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-white px-4 py-8">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center shadow-sm">
+          <p className="text-lg font-semibold text-red-800">Sign-in didn’t finish</p>
+          <p className="mt-2 text-sm text-red-700">{error}</p>
+          <Link
+            to="/login"
+            className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
           >
             Back to Login
-          </a>
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 py-8">
+    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-white px-4 py-8">
       <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mb-4" />
-      <p className="text-gray-600">Completing sign-in...</p>
+      <p className="text-gray-700 font-medium">Completing sign-in…</p>
+      <p className="mt-1 text-sm text-gray-500">You’ll be redirected in a moment.</p>
     </div>
   );
 }
