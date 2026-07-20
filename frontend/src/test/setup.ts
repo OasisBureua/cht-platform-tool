@@ -1,5 +1,14 @@
 import '@testing-library/jest-dom';
 
+// recharts' ResponsiveContainer relies on ResizeObserver, absent in jsdom.
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
+
 // Ensure localStorage is available for AuthContext tests
 if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.getItem !== 'function') {
   const store: Record<string, string> = {};

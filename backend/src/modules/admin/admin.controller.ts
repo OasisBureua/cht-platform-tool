@@ -22,6 +22,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiResponse,
+  ApiOkResponse,
   ApiBody,
   ApiParam,
   ApiQuery,
@@ -52,6 +53,8 @@ import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
 import { SendRegistrationInvitesDto } from '../programs/dto/send-registration-invites.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
+import { SurveyAnalyticsDto } from './dto/survey-analytics.dto';
+import type { SurveySegmentDimension } from '../../utils/survey-analytics';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
@@ -196,7 +199,8 @@ export class AdminController {
       this.config.get<string>('supabase.anonKey')?.trim() || '';
     const gotrueJwtSecret =
       this.config.get<string>('gotrue.jwtSecret')?.trim() || '';
-    const mediahubApiKey = this.config.get<string>('mediahub.apiKey')?.trim() || '';
+    const mediahubApiKey =
+      this.config.get<string>('mediahub.apiKey')?.trim() || '';
     const mediahubBaseUrl =
       this.config.get<string>('mediahub.baseUrl')?.trim() ||
       'https://mediahub.communityhealth.media/api/public';
@@ -527,6 +531,45 @@ export class AdminController {
   @ApiParam({ name: 'id', description: 'Survey ID' })
   listSurveyResponses(@Param('id') id: string) {
     return this.surveysService.listResponsesForAdmin(id);
+  }
+
+  @Get('surveys/:id/analytics')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Aggregated analytics for a survey\u2019s responses',
+  })
+  @ApiParam({ name: 'id', description: 'Survey ID' })
+  @ApiQuery({
+    name: 'includeSamples',
+    required: false,
+    description:
+      'When "1"/"true", include redacted free-text sample answers (identity stripped, email/phone redacted). Defaults to counts only.',
+  })
+  @ApiQuery({
+    name: 'segmentBy',
+    required: false,
+    enum: ['specialty', 'status', 'attendance'],
+    description:
+      'When set, also return a per-segment breakdown grouped by respondent specialty, registration status, or attendance status.',
+  })
+  @ApiOkResponse({ type: SurveyAnalyticsDto })
+  getSurveyAnalytics(
+    @Param('id') id: string,
+    @Query('includeSamples') includeSamples?: string,
+    @Query('segmentBy') segmentBy?: string,
+  ): Promise<SurveyAnalyticsDto> {
+    const allowedSegments: SurveySegmentDimension[] = [
+      'specialty',
+      'status',
+      'attendance',
+    ];
+    const segment = allowedSegments.find((s) => s === segmentBy) ?? null;
+    return this.surveysService.getResponseAnalyticsForAdmin(id, {
+      includeTextSamples: includeSamples === '1' || includeSamples === 'true',
+      segmentBy: segment,
+    });
   }
 
   @Get('surveys/:id/responses.csv')
@@ -1322,8 +1365,7 @@ export class AdminController {
         r.program.jotformIntakeFormUrl,
         defaultIntake,
       );
-      const intakeComplete =
-        !intakeRequired || !!r.intakeSubmissionId?.trim();
+      const intakeComplete = !intakeRequired || !!r.intakeSubmissionId?.trim();
       return {
         id: r.id,
         status: r.status,
@@ -1578,13 +1620,11 @@ export class AdminController {
       const intakeResponse =
         intakeByUser.get(r.userId) ??
         (intakeSubmissionKey
-          ? intakeBySubmissionId.get(intakeSubmissionKey) ??
-            intakeByResponseId.get(intakeSubmissionKey)
+          ? (intakeBySubmissionId.get(intakeSubmissionKey) ??
+            intakeByResponseId.get(intakeSubmissionKey))
           : undefined);
       const intakeComplete =
-        !intakeRequired ||
-        !!intakeSubmissionKey ||
-        !!intakeResponse;
+        !intakeRequired || !!intakeSubmissionKey || !!intakeResponse;
       const postEventResponse = postEventByUser.get(r.userId);
       const postEventJotformSubmissionId =
         postEventResponse?.submissionId?.trim() || null;
