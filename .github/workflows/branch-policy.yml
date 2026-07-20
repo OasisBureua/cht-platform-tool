@@ -1,7 +1,5 @@
-# Enforce: pull requests targeting main must come from release/* branches.
+# Enforce: pull requests targeting main must come from release/* or hotfix/* branches.
 # Pair with a ruleset on main that requires this check to pass before merge.
-#
-# Optional hotfix path: allow hotfix/* → main by uncommenting the second pattern check.
 
 name: Branch policy
 
@@ -27,12 +25,11 @@ jobs:
             echo "✓ PR from release branch: $HEAD_REF"
             exit 0
           fi
-          # Uncomment to allow emergency hotfixes:
-          # if [[ "$HEAD_REF" =~ ^hotfix/ ]]; then
-          #   echo "✓ PR from hotfix branch: $HEAD_REF"
-          #   exit 0
-          # fi
-          echo "::error::Pull requests to main must come from a release/* branch (e.g. release/v1.0.0). Head branch: ${HEAD_REF:-<unknown>}"
+          if [[ "$HEAD_REF" =~ ^hotfix/ ]]; then
+            echo "✓ PR from hotfix branch: $HEAD_REF"
+            exit 0
+          fi
+          echo "::error::Pull requests to main must come from a release/* or hotfix/* branch (e.g. release/v1.0.0, hotfix/test-fixes). Head branch: ${HEAD_REF:-<unknown>}"
           exit 1
 
   release-contains-develop:

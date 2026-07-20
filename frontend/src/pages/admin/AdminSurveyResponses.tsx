@@ -91,7 +91,7 @@ export default function AdminSurveyResponses() {
                 {' '}
                 ·{' '}
                 <Link
-                  to={`/admin/programs/${survey.program.id}/hub`}
+                  to={`/admin/programs/${survey.program.id}/hub?tab=surveys`}
                   className="font-semibold text-gray-900 underline"
                 >
                   {survey.program.title}

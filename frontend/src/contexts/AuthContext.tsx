@@ -738,9 +738,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   }, [getAuthHeaders]);
 
   const handleUnauthorized = useCallback(() => {
+    // Only hard-logout when we believed we had a session; avoids racey redirects
+    // during OAuth callback / cold bootstrap when a parallel request 401s.
+    if (!profile && authMode !== 'cookie' && authMode !== 'dev') {
+      return;
+    }
     logout();
     window.location.href = '/login';
-  }, [logout]);
+  }, [logout, profile, authMode]);
 
   useEffect(() => {
     setUnauthorizedHandler(handleUnauthorized);
