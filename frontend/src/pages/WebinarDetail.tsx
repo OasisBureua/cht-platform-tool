@@ -120,7 +120,13 @@ export default function WebinarDetail() {
       | undefined,
   ): number | false => {
     if (registration?.status === 'PENDING') return 4000;
-    const enrolledHere = id ? enrolledProgramIds.has(id) : false;
+    const enrolledHere =
+      (id ? enrolledProgramIds.has(id) : false) ||
+      registration?.status === 'APPROVED';
+    // Enrollment row may lag briefly after admin approval — keep polling until both agree.
+    if (registration?.status === 'APPROVED' && id && !enrolledProgramIds.has(id)) {
+      return 4000;
+    }
     if (
       enrolledHere &&
       (program?.hasPostEventSurvey || program?.jotformSurveyUrl?.trim()) &&
@@ -253,7 +259,16 @@ export default function WebinarDetail() {
     );
   }
 
-  const enrolled = enrolledProgramIds.has(program.id);
+  const enrolled =
+    enrolledProgramIds.has(program.id) || myRegistration?.status === 'APPROVED';
+
+  // After admin approval, registration flips to APPROVED before enrollments list refreshes.
+  // Keep enrollments in sync so the requirements "dots" leave "pending" promptly.
+  useEffect(() => {
+    if (myRegistration?.status === 'APPROVED' && userId) {
+      void queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
+    }
+  }, [myRegistration?.status, userId, queryClient]);
 
   const myEnrollment = enrollments?.find((e) => e.programId === program.id);
   const videoCount = program.videos?.length ?? 0;

@@ -1,21 +1,4 @@
-type SurveyQuestion = {
-  id?: string;
-  prompt?: string;
-};
-
-function listNativeSurveyQuestions(questions: unknown): SurveyQuestion[] {
-  if (!questions || typeof questions !== 'object') return [];
-  const q = questions as Record<string, unknown>;
-  if (Array.isArray(q.sections)) {
-    return (q.sections as Array<{ questions?: SurveyQuestion[] }>).flatMap(
-      (section) => section.questions ?? [],
-    );
-  }
-  if (Array.isArray(questions)) {
-    return questions as SurveyQuestion[];
-  }
-  return [];
-}
+import { listNativeSurveyQuestions } from './survey-schema';
 
 function formatAnswerValue(value: unknown): string {
   if (value == null || value === '') return '';

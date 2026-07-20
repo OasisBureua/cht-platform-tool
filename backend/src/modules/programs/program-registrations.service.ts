@@ -13,6 +13,7 @@ import {
   ProgramRegistrationStatus,
   ProgramStatus,
   ProgramZoomSessionType,
+  SurveyType,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
@@ -1679,6 +1680,12 @@ export class ProgramRegistrationsService {
     }
 
     if (status === 'VERIFIED' && reg.user?.email) {
+      const feedbackSurvey = await this.prisma.survey.findFirst({
+        where: { programId: reg.programId, type: SurveyType.FEEDBACK },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
       this.sesEmail
         .sendPostWebinarSurveyEmail({
           to: reg.user.email,
@@ -1691,8 +1698,9 @@ export class ProgramRegistrationsService {
             zoomSessionType:
               reg.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
           },
-          // No Jotform URL — CTA falls back to the app session page
+          // Native in-app survey only — CTA opens /app/surveys/:id (Surveys tab).
           surveyUrl: null,
+          feedbackSurveyId: feedbackSurvey?.id ?? null,
         })
         .catch((err: Error) =>
           this.logger.warn(

@@ -59,14 +59,14 @@ jobs:
               echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
               ;;
             pull_request)
-              if [ "$PR_MERGED" = "true" ] && [[ "$HEAD_REF" == release/* ]]; then
+              if [ "$PR_MERGED" = "true" ] && { [[ "$HEAD_REF" == release/* ]] || [[ "$HEAD_REF" == hotfix/* ]]; }; then
                 echo "should_deploy=true" >> "$GITHUB_OUTPUT"
                 echo "checkout_ref=${MERGE_SHA}" >> "$GITHUB_OUTPUT"
-                echo "Trigger: merged release PR ($HEAD_REF) → main"
+                echo "Trigger: merged ${HEAD_REF} PR → main"
               else
                 echo "should_deploy=false" >> "$GITHUB_OUTPUT"
                 echo "checkout_ref=" >> "$GITHUB_OUTPUT"
-                echo "Skipped: not a merged release/* pull request to main"
+                echo "Skipped: not a merged release/* or hotfix/* pull request to main"
               fi
               ;;
             *)

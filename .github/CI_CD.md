@@ -5,17 +5,17 @@
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `pr-validation.yml` | Pull requests | Lint, build, Terraform validate |
-| `branch-policy.yml` | PRs → `main` | Require head branch `release/*` (and based on `main`) |
+| `branch-policy.yml` | PRs → `main` | Require head branch `release/*` or `hotfix/*` |
 | `security-monthly.yml` | First Monday monthly | npm audit, Trivy filesystem scan |
 | `deploy-dev.yml` | Push to `develop` or `feature/**` (app/infra paths), manual | Build images (`1.0.0`, `1.0.1`, …) → `cht-dev-*` ECR, Terraform apply dev |
-| `deploy-prod.yml` | Manual or merged `release/*` → `main` | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …), Terraform apply platform, frontend |
+| `deploy-prod.yml` | Manual or merged `release/*` or `hotfix/*` → `main` | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …), Terraform apply platform, frontend |
 | `rollback.yml` | Manual | Roll back ECS services |
 
 Dependabot and CodeQL config files are removed for now. Optional: disable GitHub **default CodeQL** under Settings → Code security → Code scanning if PR scans still appear.
 
 Docs-only changes under `docs/**` do not trigger dev deploy.
 
-## Branch flow (main ← release only)
+## Branch flow (main ← release or hotfix)
 
 GitHub **rulesets alone cannot** restrict which source branch merges into `main`. Use **rulesets + required status check**:
 
@@ -31,10 +31,12 @@ Repo → **Settings → Rules → Rulesets → New branch ruleset**
 | Restrict deletions | ✓ |
 | Block force pushes | ✓ |
 | Require a pull request | ✓ (1 approval, optional code owners) |
-| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-develop`** (after first workflow run) |
+| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-develop`** (after first workflow run; `release-contains-develop` only runs for `release/*`) |
 | Require branches up to date | ✓ (recommended) |
 
 Do **not** allow broad bypass on this ruleset.
+
+**Hotfixes:** PRs from `hotfix/*` → `main` are allowed by `branch-policy.yml` and trigger `deploy-prod.yml` the same way as `release/*`. Hotfixes do **not** need to contain `develop`.
 
 **Status checks (important):** GitHub only lets you pick checks that have **run at least once** on the repo. Until then:
 
@@ -71,7 +73,7 @@ New ruleset:
 ```text
 feature/*  →  dev  (integrate + deploy dev via deploy-dev.yml)
        ↓
-    main     (stable integration — PRs only from release/*)
+    main     (stable — PRs from release/* or hotfix/*)
        ↓
 release/vX.Y.Z  (cut from main → platform deploy)
        ↓

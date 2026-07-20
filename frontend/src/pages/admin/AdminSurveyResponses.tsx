@@ -5,6 +5,7 @@ import { format, parseISO } from 'date-fns';
 import { ChevronLeft, Download } from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
+import { SurveyAnalyticsPanel } from '../../components/admin/survey-analytics/SurveyAnalyticsPanel';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 import {
@@ -21,9 +22,12 @@ function attendanceBadgeClass(att: string | null | undefined): string {
   return 'bg-gray-100 text-gray-500';
 }
 
+type SurveyResponsesTab = 'responses' | 'analytics';
+
 export default function AdminSurveyResponses() {
   const { id } = useParams<{ id: string }>();
   const [csvDownloading, setCsvDownloading] = useState(false);
+  const [tab, setTab] = useState<SurveyResponsesTab>('responses');
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'survey', id, 'responses'],
@@ -87,7 +91,7 @@ export default function AdminSurveyResponses() {
                 {' '}
                 ·{' '}
                 <Link
-                  to={`/admin/programs/${survey.program.id}/hub`}
+                  to={`/admin/programs/${survey.program.id}/hub?tab=surveys`}
                   className="font-semibold text-gray-900 underline"
                 >
                   {survey.program.title}
@@ -107,8 +111,37 @@ export default function AdminSurveyResponses() {
         </button>
       </header>
 
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-        <table className="min-w-full text-sm">
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex gap-6" aria-label="Survey responses views">
+          {(
+            [
+              { key: 'responses', label: 'Responses' },
+              { key: 'analytics', label: 'Analytics' },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              aria-current={tab === t.key ? 'page' : undefined}
+              className={[
+                'border-b-2 px-1 pb-3 text-sm font-semibold transition-colors',
+                tab === t.key
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+              ].join(' ')}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      {tab === 'analytics' ? (
+        <SurveyAnalyticsPanel surveyId={id} enabled={tab === 'analytics'} />
+      ) : (
+        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+          <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200 text-left text-gray-600">
               <th className="py-3 px-4">User</th>
@@ -166,10 +199,13 @@ export default function AdminSurveyResponses() {
             ))}
           </tbody>
         </table>
-        {responses.length === 0 ? (
-          <p className="text-sm text-gray-500 px-4 py-8 text-center">No responses submitted yet.</p>
-        ) : null}
-      </div>
+          {responses.length === 0 ? (
+            <p className="text-sm text-gray-500 px-4 py-8 text-center">
+              No responses submitted yet.
+            </p>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 }
