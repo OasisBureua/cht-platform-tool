@@ -52,6 +52,40 @@ describe('survey-schema', () => {
       expect(result[2].type).toBe('long_text');
     });
 
+    it('expands followUp sub-questions after their parent', () => {
+      const result = listNativeSurveyQuestions({
+        sections: [
+          {
+            id: 'clinical',
+            questions: [
+              {
+                id: 'q6',
+                type: 'single_choice',
+                prompt: 'Initial regimen?',
+                options: ['THP', 'Other'],
+                followUp: {
+                  whenOption: 'Other',
+                  question: {
+                    id: 'q6_other',
+                    type: 'text',
+                    prompt: 'Briefly describe:',
+                    required: false,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.map((q) => q.id)).toEqual(['q6', 'q6_other']);
+      expect(result[1]).toMatchObject({
+        type: 'text',
+        prompt: 'Briefly describe:',
+        required: false,
+      });
+    });
+
     it('supports a top-level questions array', () => {
       const result = listNativeSurveyQuestions([
         { id: 'a', prompt: 'A' },

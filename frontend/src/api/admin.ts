@@ -122,8 +122,8 @@ export interface CreateSurveyPayload {
   programId: string;
   title: string;
   description?: string;
-  questions: Record<string, unknown>[];
-  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+  questions: Record<string, unknown>[] | Record<string, unknown>;
+  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
   required?: boolean;
   /** Link to an existing Jotform form. When set, the survey will embed this form and receive webhook submissions. */
   jotformFormId?: string;

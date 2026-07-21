@@ -239,10 +239,24 @@ export function findUnsafeAnsweredQuestionChanges(
   return changes;
 }
 
+function flattenQuestionWithFollowUps(
+  question: NativeSurveyQuestion,
+): NativeSurveyQuestion[] {
+  const followUp = question.followUp;
+  if (!followUp || typeof followUp !== 'object' || Array.isArray(followUp)) {
+    return [question];
+  }
+  const nested = (followUp as { question?: NativeSurveyQuestion }).question;
+  if (!nested || typeof nested !== 'object' || Array.isArray(nested)) {
+    return [question];
+  }
+  return [question, ...flattenQuestionWithFollowUps(nested)];
+}
+
 /**
  * Flatten a stored survey `questions` blob into an ordered question list,
- * preserving type/options/maxSelections. Returns `[]` for Jotform-sourced or
- * malformed schemas.
+ * preserving type/options/maxSelections and expanding followUp sub-questions.
+ * Returns `[]` for Jotform-sourced or malformed schemas.
  */
 export function listNativeSurveyQuestions(
   questions: unknown,
@@ -252,10 +266,14 @@ export function listNativeSurveyQuestions(
   if (Array.isArray(q.sections)) {
     return (
       q.sections as Array<{ questions?: NativeSurveyQuestion[] }>
-    ).flatMap((section) => section.questions ?? []);
+    ).flatMap((section) =>
+      (section.questions ?? []).flatMap(flattenQuestionWithFollowUps),
+    );
   }
   if (Array.isArray(questions)) {
-    return questions as NativeSurveyQuestion[];
+    return (questions as NativeSurveyQuestion[]).flatMap(
+      flattenQuestionWithFollowUps,
+    );
   }
   return [];
 }

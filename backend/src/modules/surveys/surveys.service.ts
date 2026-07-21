@@ -146,9 +146,7 @@ export class SurveysService {
       type: s.type,
       required: s.required,
       isCustomized: s.isCustomized,
-      ...(role === UserRole.ADMIN
-        ? { responseCount: s._count.responses }
-        : {}),
+      ...(role === UserRole.ADMIN ? { responseCount: s._count.responses } : {}),
       jotformFormId: s.jotformFormId,
       jotformFormUrl: s.jotformFormId
         ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}`
@@ -360,8 +358,8 @@ export class SurveysService {
     programId: string;
     title: string;
     description?: string;
-    questions: Record<string, unknown>[];
-    type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+    questions: Record<string, unknown>[] | Record<string, unknown>;
+    type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
     required?: boolean;
     jotformFormId?: string;
   }) {
@@ -372,15 +370,37 @@ export class SurveysService {
       throw new BadRequestException('Program not found');
     }
 
+    let questions: object = dto.questions as object;
+    const jotformFormId = dto.jotformFormId?.trim() || null;
+    if (
+      !jotformFormId &&
+      dto.questions &&
+      typeof dto.questions === 'object' &&
+      !Array.isArray(dto.questions) &&
+      Array.isArray((dto.questions as { sections?: unknown }).sections)
+    ) {
+      try {
+        questions = validateNativeSurveySchema(
+          dto.questions,
+        ) as unknown as object;
+      } catch (error) {
+        throw new BadRequestException(
+          error instanceof Error
+            ? error.message
+            : 'Invalid native survey schema',
+        );
+      }
+    }
+
     const survey = await this.prisma.survey.create({
       data: {
         programId: dto.programId,
         title: dto.title,
         description: dto.description,
-        questions: dto.questions as object,
+        questions,
         type: dto.type ?? 'POST_TEST',
         required: dto.required ?? true,
-        jotformFormId: dto.jotformFormId?.trim() || null,
+        jotformFormId,
         isCustomized: true,
       },
     });

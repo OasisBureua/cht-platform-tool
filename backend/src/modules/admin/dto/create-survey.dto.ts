@@ -4,7 +4,6 @@ import {
   IsArray,
   IsEnum,
   IsBoolean,
-  IsObject,
 } from 'class-validator';
 
 export class CreateSurveyDto {
@@ -22,8 +21,8 @@ export class CreateSurveyDto {
   questions: Record<string, unknown>[];
 
   @IsOptional()
-  @IsEnum(['PRE_TEST', 'POST_TEST', 'FEEDBACK'])
-  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+  @IsEnum(['PRE_TEST', 'POST_TEST', 'FEEDBACK', 'INTAKE'])
+  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
 
   @IsOptional()
   @IsBoolean()
