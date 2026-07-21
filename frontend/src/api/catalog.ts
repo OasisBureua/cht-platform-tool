@@ -206,4 +206,44 @@ export const catalogApi = {
     const { data } = await apiClient.get(`/catalog/playlists/${playlistId}`);
     return data;
   },
+
+  /**
+   * SCRUM-79: curator-set tag/lane overlay for YouTube playlists.
+   * Proxies ContentHub /api/public/playlists via CHT /api/catalog/playlists-tags.
+   * Frontend joins this with `getPlaylists()` on youtube_playlist_id.
+   *
+   * Semantics:
+   *   - `tag`: comma-separated. AND across namespaces, OR within a namespace
+   *     (matches SCRUM-77 filter semantics on the backend).
+   *   - `lane`: single value from biomarker/drug/trial/doctor_pair/mixed/archive.
+   */
+  getPlaylistsTags: async (params?: {
+    tag?: string;
+    lane?: 'biomarker' | 'drug' | 'trial' | 'doctor_pair' | 'mixed' | 'archive';
+    limit?: number;
+    offset?: number;
+  }): Promise<PlaylistTagOverlayList> => {
+    const searchParams: Record<string, string | number> = {};
+    if (params?.tag) searchParams.tag = params.tag;
+    if (params?.lane) searchParams.lane = params.lane;
+    if (params?.limit != null) searchParams.limit = params.limit;
+    if (params?.offset != null) searchParams.offset = params.offset;
+    const { data } = await apiClient.get<PlaylistTagOverlayList>(
+      '/catalog/playlists-tags',
+      { params: searchParams },
+    );
+    if (!data || !Array.isArray(data.items)) return { items: [], total: 0 };
+    return data;
+  },
 };
+
+export interface PlaylistTagOverlay {
+  youtube_playlist_id: string;
+  tags: string[];
+  lane: string | null;
+}
+
+export interface PlaylistTagOverlayList {
+  items: PlaylistTagOverlay[];
+  total: number;
+}

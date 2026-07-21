@@ -1,9 +1,11 @@
-import type { CatalogItem } from '../../api/catalog';
+import { useQuery } from '@tanstack/react-query';
+import { catalogApi, type CatalogItem } from '../../api/catalog';
 import {
   groupPlaylistsIntoWpSections,
   playlistCardDescription,
   playlistDisplayTitle,
 } from '../../utils/playlistWpSections';
+import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 import { PlaylistGrid } from './PlaylistGrid';
 
 type PlaylistSectionsProps = {
@@ -13,9 +15,18 @@ type PlaylistSectionsProps = {
 
 /**
  * WordPress-style browse sections by topic (HER2+, HR+, TNBC/ADC, ASCO, …).
+ *
+ * SCRUM-81: prefers the curator-set tag overlay for classification;
+ * title-regex classifier is the fallback for untagged playlists.
  */
 export function PlaylistSections({ playlists, isInApp }: PlaylistSectionsProps) {
-  const sections = groupPlaylistsIntoWpSections(playlists);
+  const { data: overlayData } = useQuery({
+    queryKey: ['catalog', 'playlists-tags', 'all-for-sections'],
+    queryFn: () => catalogApi.getPlaylistsTags({ limit: 200 }),
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+  });
+
+  const sections = groupPlaylistsIntoWpSections(playlists, overlayData?.items);
 
   if (sections.length === 0) return null;
 

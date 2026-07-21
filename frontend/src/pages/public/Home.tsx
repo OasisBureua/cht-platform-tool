@@ -9,8 +9,8 @@ import DISEASE_AREAS from '../../data/disease-areas';
 import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
 import {
   buildCatalogSectionPlaylistsHref,
-  filterPlaylistsByFocus,
   CATALOG_SECTION_TO_FOCUS,
+  PLAYLIST_FOCUS_TO_TAG,
   VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
@@ -69,27 +69,22 @@ function catalogToTreatment(p: CatalogItem): Treatment {
 }
 
 function playlistRowSubtitle(focus: 'her2', treatments: Treatment[], usingFallback: boolean): string {
-  if (!usingFallback && treatments.length > 0) {
-    const total = treatments.reduce((s, t) => s + Math.max(0, t.videoCount), 0);
-    if (total > 0) return `${total} video${total === 1 ? '' : 's'}`;
+  // SCRUM-80: NEVER quote video counts derived from the static section
+  // (APP_CATALOG_PLAYLIST_SECTIONS speaker-hint parser) when we're in
+  // fallback mode — that produced the "N videos from 0 playlists"
+  // mismatch the ticket calls out. Real counts only, or nothing.
+  if (usingFallback || treatments.length === 0) {
+    return '';
   }
+  const total = treatments.reduce((s, t) => s + Math.max(0, t.videoCount), 0);
+  if (total > 0) return `${total} video${total === 1 ? '' : 's'}`;
 
-  const section = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
-  if (!section) return '';
-
-  /** Static section rows often have "9 videos · …" on each strip item — sum those for a fallback total. */
-  let hintedSum = 0;
-  let hintedCount = 0;
-  for (const item of section.items) {
-    const m = item.speakers?.match(/^(\d+)\s*videos?\b/i);
-    if (m) {
-      hintedSum += parseInt(m[1], 10);
-      hintedCount += 1;
-    }
-  }
-  if (hintedCount > 0) return `${hintedSum} video${hintedSum === 1 ? '' : 's'}`;
-
-  return section.subtitle?.trim() ?? '';
+  // Real treatments loaded but none has a videoCount hint — fall back to
+  // the static section subtitle text (which is prose, not a count).
+  const section = APP_CATALOG_PLAYLIST_SECTIONS.find(
+    (s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus,
+  );
+  return section?.subtitle?.trim() ?? '';
 }
 
 function playlistMetaLabel(videoCount: number, videoNamesSample: number): string {
@@ -201,13 +196,35 @@ export default function Home() {
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
 
+  /**
+   * SCRUM-79: her2 strip is now tag-driven. Query the curator-set playlist
+   * tag overlay (/api/catalog/playlists-tags) for playlists tagged with the
+   * her2 focus tag, then intersect with the YouTube playlist metadata list
+   * (which supplies title/thumbnail/video count).
+   */
+  const { data: her2TagOverlay } = useQuery({
+    queryKey: ['catalog', 'playlists-tags', PLAYLIST_FOCUS_TO_TAG.her2],
+    queryFn: () =>
+      catalogApi.getPlaylistsTags({
+        tag: PLAYLIST_FOCUS_TO_TAG.her2,
+        lane: 'biomarker',
+        limit: 100,
+      }),
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+  });
+
   const her2PlaylistStrip = useMemo(() => {
-    if (playlists.length === 0) return { treatments: FALLBACK_HER2, fallback: true };
-    const her2 = filterPlaylistsByFocus(playlists, 'her2');
+    if (playlists.length === 0 || !her2TagOverlay) {
+      return { treatments: FALLBACK_HER2, fallback: true };
+    }
+    const taggedIds = new Set(
+      (her2TagOverlay.items ?? []).map((r) => r.youtube_playlist_id),
+    );
+    const her2 = playlists.filter((p) => taggedIds.has(p.id));
     return her2.length > 0
       ? { treatments: her2.map(catalogToTreatment), fallback: false }
       : { treatments: FALLBACK_HER2, fallback: true };
-  }, [playlists]);
+  }, [playlists, her2TagOverlay]);
 
   const biomarkerPlaylists = her2PlaylistStrip.treatments;
 

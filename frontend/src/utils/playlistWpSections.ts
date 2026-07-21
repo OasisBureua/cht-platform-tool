@@ -1,8 +1,14 @@
-import type { CatalogItem } from '../api/catalog';
+import type { CatalogItem, PlaylistTagOverlay } from '../api/catalog';
 
 /**
- * Organize YouTube playlists into browse sections by topic (title heuristics)
- * until ContentHub ships richer series metadata.
+ * Organize YouTube playlists into browse sections by topic.
+ *
+ * SCRUM-81 (2026-07-21): now prefers the curator-set tag overlay
+ * (`PlaylistTagOverlay`) from ContentHub `/api/public/playlists`. The
+ * title-heuristic regexes below (`classifyPlaylistSection`) are kept
+ * ONLY as a fallback for playlists a curator hasn't tagged yet. Once
+ * every live playlist has a tag overlay row, the regex path becomes
+ * dead code and can be deleted.
  */
 
 export type PlaylistWpSectionId =
@@ -12,6 +18,60 @@ export type PlaylistWpSectionId =
   | 'tnbc-adc'
   | 'asco-2026'
   | 'more';
+
+/**
+ * Curator tag→section mapping. Each entry is a match predicate against
+ * the overlay's `tags` array + optional `lane`. First-match wins. If no
+ * predicate matches, fall through to the title-regex classifier.
+ *
+ * The predicate looks at freeform tag values (e.g. `biomarker:HER2+`,
+ * `biomarker:HER2-low`, `conference:ASCO 2026`). Namespace-agnostic
+ * substring check since curator values are freeform per SCRUM-73.
+ */
+const TAG_TO_SECTION: readonly {
+  id: PlaylistWpSectionId;
+  match: (overlay: PlaylistTagOverlay) => boolean;
+}[] = [
+  {
+    id: 'asco-2026',
+    match: (o) =>
+      (o.lane ?? '').toLowerCase() === 'archive'
+        ? false
+        : o.tags.some((t) => /conference:\s*asco\s*2026/i.test(t)),
+  },
+  {
+    id: 'her2-low',
+    match: (o) => o.tags.some((t) => /biomarker:\s*her2[-\s]?(low|ultralow|ultra-low)/i.test(t)),
+  },
+  {
+    id: 'her2',
+    match: (o) =>
+      o.tags.some((t) => /biomarker:\s*her2\+/i.test(t)) ||
+      o.tags.some((t) => /biomarker:\s*her2\s*positive/i.test(t)),
+  },
+  {
+    id: 'tnbc-adc',
+    match: (o) =>
+      o.tags.some((t) =>
+        /biomarker:\s*(triple[-\s]?negative|tnbc)/i.test(t),
+      ),
+  },
+  {
+    id: 'hr',
+    match: (o) =>
+      o.tags.some((t) => /biomarker:\s*hr\+/i.test(t)) ||
+      o.tags.some((t) => /biomarker:\s*hr\s*positive/i.test(t)),
+  },
+];
+
+function classifyFromOverlay(
+  overlay: PlaylistTagOverlay,
+): PlaylistWpSectionId | null {
+  for (const rule of TAG_TO_SECTION) {
+    if (rule.match(overlay)) return rule.id;
+  }
+  return null;
+}
 
 export type PlaylistWpSection = {
   id: PlaylistWpSectionId;
@@ -192,12 +252,22 @@ export function playlistDisplayTitle(title: string): string {
 
 export function groupPlaylistsIntoWpSections(
   playlists: CatalogItem[],
+  tagOverlay?: PlaylistTagOverlay[],
 ): PlaylistWpSection[] {
   const buckets = new Map<PlaylistWpSectionId, CatalogItem[]>();
   for (const id of SECTION_ORDER) buckets.set(id, []);
 
+  // SCRUM-81: curator tag overlay wins over title regex. Index overlay
+  // by youtube_playlist_id so we can lookup per-playlist O(1).
+  const overlayById = new Map<string, PlaylistTagOverlay>();
+  for (const o of tagOverlay ?? []) {
+    if (o.youtube_playlist_id) overlayById.set(o.youtube_playlist_id, o);
+  }
+
   for (const p of playlists) {
-    const section = classifyPlaylistSection(p);
+    const overlay = overlayById.get(p.id);
+    const fromOverlay = overlay ? classifyFromOverlay(overlay) : null;
+    const section = fromOverlay ?? classifyPlaylistSection(p);
     buckets.get(section)!.push(p);
   }
 
