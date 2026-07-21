@@ -418,6 +418,8 @@ model Survey {
   questions   Json     // Survey questions in JSON format
   type        SurveyType
   required    Boolean  @default(true)
+  /// Set on any admin edit so template ensure/regeneration never overwrites this row.
+  isCustomized Boolean @default(false)
   
   // Jotform integration
   jotformFormId     String?

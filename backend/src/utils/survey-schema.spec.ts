@@ -1,6 +1,8 @@
 import {
+  findUnsafeAnsweredQuestionChanges,
   hasNativeSurveySchema,
   listNativeSurveyQuestions,
+  validateNativeSurveySchema,
 } from './survey-schema';
 
 describe('survey-schema', () => {
@@ -66,7 +68,9 @@ describe('survey-schema', () => {
     });
 
     it('returns [] for Jotform-sourced, empty, or malformed schemas', () => {
-      expect(listNativeSurveyQuestions({ source: 'jotform', formId: '123' })).toEqual([]);
+      expect(
+        listNativeSurveyQuestions({ source: 'jotform', formId: '123' }),
+      ).toEqual([]);
       expect(listNativeSurveyQuestions(null)).toEqual([]);
       expect(listNativeSurveyQuestions(undefined)).toEqual([]);
       expect(listNativeSurveyQuestions('nope')).toEqual([]);
@@ -82,9 +86,136 @@ describe('survey-schema', () => {
     });
 
     it('is false for Jotform-sourced or empty schemas', () => {
-      expect(hasNativeSurveySchema({ source: 'jotform', formId: '123' })).toBe(false);
+      expect(hasNativeSurveySchema({ source: 'jotform', formId: '123' })).toBe(
+        false,
+      );
       expect(hasNativeSurveySchema({ sections: [] })).toBe(false);
       expect(hasNativeSurveySchema(null)).toBe(false);
+    });
+  });
+
+  describe('validateNativeSurveySchema', () => {
+    it('accepts the editable question types and preserves stable ids', () => {
+      const schema = validateNativeSurveySchema({
+        version: 2,
+        sections: [
+          {
+            id: 'main',
+            title: 'Main',
+            questions: [
+              {
+                id: 'rating',
+                type: 'rating',
+                prompt: 'Rate this',
+                scaleMin: 1,
+                scaleMax: 5,
+              },
+              {
+                id: 'choice',
+                type: 'single_choice',
+                prompt: 'Choose',
+                options: ['A', 'B'],
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(schema.version).toBe(2);
+      expect(schema.sections[0].questions.map((q) => q.id)).toEqual([
+        'rating',
+        'choice',
+      ]);
+    });
+
+    it('rejects duplicate ids and invalid choice options', () => {
+      expect(() =>
+        validateNativeSurveySchema({
+          sections: [
+            {
+              id: 'main',
+              questions: [
+                { id: 'same', type: 'text', prompt: 'One' },
+                { id: 'same', type: 'text', prompt: 'Two' },
+              ],
+            },
+          ],
+        }),
+      ).toThrow('Duplicate question id');
+
+      expect(() =>
+        validateNativeSurveySchema({
+          sections: [
+            {
+              id: 'main',
+              questions: [
+                {
+                  id: 'choice',
+                  type: 'single_choice',
+                  prompt: 'Choose',
+                  options: [],
+                },
+              ],
+            },
+          ],
+        }),
+      ).toThrow('requires non-empty options');
+    });
+  });
+
+  describe('findUnsafeAnsweredQuestionChanges', () => {
+    const current = {
+      sections: [
+        {
+          id: 'main',
+          questions: [
+            {
+              id: 'q1',
+              type: 'single_choice',
+              prompt: 'Original',
+              options: ['A', 'B'],
+            },
+          ],
+        },
+      ],
+    };
+
+    it('allows additions while preserving existing mappings', () => {
+      const next = {
+        sections: [
+          {
+            id: 'main',
+            questions: [
+              ...current.sections[0].questions,
+              { id: 'q2', type: 'text', prompt: 'New' },
+            ],
+          },
+        ],
+      };
+      expect(findUnsafeAnsweredQuestionChanges(current, next)).toEqual([]);
+    });
+
+    it('detects removal and reinterpretation', () => {
+      expect(
+        findUnsafeAnsweredQuestionChanges(current, {
+          sections: [{ id: 'main', questions: [] }],
+        }),
+      ).toContain('q1: removing an existing question');
+      expect(
+        findUnsafeAnsweredQuestionChanges(current, {
+          sections: [
+            {
+              id: 'main',
+              questions: [
+                {
+                  ...current.sections[0].questions[0],
+                  type: 'multi_choice',
+                },
+              ],
+            },
+          ],
+        }),
+      ).toContain('q1: changing question type');
     });
   });
 });

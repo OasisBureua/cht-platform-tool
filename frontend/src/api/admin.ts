@@ -410,8 +410,25 @@ export const adminApi = {
     return data;
   },
 
-  updateSurvey: async (id: string, payload: { jotformFormId?: string }) => {
+  updateSurvey: async (
+    id: string,
+    payload: {
+      title?: string;
+      description?: string;
+      questions?: Record<string, unknown>;
+      required?: boolean;
+      jotformFormId?: string;
+    },
+  ) => {
     const { data } = await apiClient.patch(`/admin/surveys/${id}`, payload);
+    return data;
+  },
+
+  ensureNativeSurveysForProgram: async (programId: string) => {
+    const { data } = await apiClient.post<{
+      intakeSurveyId: string;
+      feedbackSurveyId: string;
+    }>(`/admin/programs/${encodeURIComponent(programId)}/native-surveys`);
     return data;
   },
 
