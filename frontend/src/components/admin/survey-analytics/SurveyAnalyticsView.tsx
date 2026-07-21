@@ -88,7 +88,10 @@ export function SurveyAnalyticsView({
 
   return (
     <div className="space-y-6" data-testid="survey-analytics-view">
-      <div className="flex items-center justify-between gap-3">
+      <div
+        className="flex items-center justify-between gap-3"
+        data-print-hide="true"
+      >
         <p className="text-xs text-gray-400">{isFetching ? 'Updating\u2026' : '\u00a0'}</p>
         <SegmentFilter value={segmentBy} onChange={onSegmentChange} disabled={!hasResponses} />
       </div>
