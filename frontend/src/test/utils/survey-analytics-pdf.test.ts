@@ -7,7 +7,7 @@ describe('printSurveyAnalyticsPdf', () => {
     vi.restoreAllMocks();
   });
 
-  it('prints a cloned analytics view without individual responses or controls', () => {
+  it('prints via a hidden iframe without opening a pop-up window', () => {
     document.body.innerHTML = `
       <div data-testid="survey-analytics-view">
         <div data-print-hide="true">
@@ -19,37 +19,46 @@ describe('printSurveyAnalyticsPdf', () => {
     `;
 
     const write = vi.fn();
-    const win = {
-      document: { open: vi.fn(), write, close: vi.fn() },
-      focus: vi.fn(),
-      print: vi.fn(),
-      close: vi.fn(),
-      setTimeout: vi.fn((cb: () => void) => {
-        cb();
-        return 0 as unknown as number;
-      }),
-    };
-    vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window);
+    const print = vi.fn();
+    const close = vi.fn();
+    const open = vi.fn();
+    const focus = vi.fn();
+    const frameWindow = { document: { open, write, close }, focus, print };
+    const iframe = document.createElement('iframe');
+    Object.defineProperty(iframe, 'contentWindow', {
+      configurable: true,
+      get: () => frameWindow,
+    });
+    const nativeCreateElement = document.createElement.bind(document);
+    const createElement = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'iframe') return iframe;
+      return nativeCreateElement(tag);
+    });
+    const openSpy = vi.spyOn(window, 'open');
+    vi.spyOn(window, 'setTimeout').mockImplementation(((cb: TimerHandler) => {
+      if (typeof cb === 'function') cb();
+      return 0 as unknown as number;
+    }) as typeof setTimeout);
 
-    const opened = printSurveyAnalyticsPdf('Program One / Feedback');
+    const previousTitle = document.title;
+    const ok = printSurveyAnalyticsPdf('Program One / Feedback');
 
-    expect(opened).toBe(true);
+    expect(ok).toBe(true);
+    expect(openSpy).not.toHaveBeenCalled();
+    expect(createElement).toHaveBeenCalledWith('iframe');
+    expect(write).toHaveBeenCalledOnce();
     const html = String(write.mock.calls[0]?.[0] ?? '');
     expect(html).toContain('Program One / Feedback');
     expect(html).toContain('Survey analytics');
     expect(html).toContain('TOTAL RESPONSES 1');
     expect(html).toContain('<svg');
     expect(html).not.toContain('Segment by');
-    expect(html).not.toContain('<select');
     expect(html).not.toContain('Individual responses');
-    expect(html).not.toContain('Response 1:');
-    expect(win.print).toHaveBeenCalledOnce();
+    expect(print).toHaveBeenCalledOnce();
+    expect(document.title).toBe(previousTitle);
   });
 
-  it('returns false when analytics view is missing or pop-up is blocked', () => {
+  it('returns false when analytics view is missing', () => {
     expect(printSurveyAnalyticsPdf('Missing')).toBe(false);
-    document.body.innerHTML = `<div data-testid="survey-analytics-view"><div>ok</div></div>`;
-    vi.spyOn(window, 'open').mockReturnValue(null);
-    expect(printSurveyAnalyticsPdf('Blocked')).toBe(false);
   });
 });

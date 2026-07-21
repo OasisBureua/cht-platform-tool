@@ -76,12 +76,7 @@ export default function AdminSurveyResponses() {
   };
 
   const downloadAnalyticsPdf = () => {
-    const opened = printSurveyAnalyticsPdf(displayTitle);
-    if (!opened) {
-      window.alert(
-        'Pop-up blocked. Allow pop-ups for this site to download the analytics PDF.',
-      );
-    }
+    printSurveyAnalyticsPdf(displayTitle);
   };
 
   return (

@@ -15,34 +15,9 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-/**
- * Opens a dedicated print window with the live analytics visualizations
- * (summary cards + charts). Does not include individual response rows.
- */
-export function printSurveyAnalyticsPdf(title: string): boolean {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
-
-  const view = document.querySelector<HTMLElement>('[data-testid="survey-analytics-view"]');
-  if (!view) return false;
-
-  const clone = view.cloneNode(true) as HTMLElement;
-  // Drop interactive chrome; keep the rendered chart SVGs/HTML.
-  clone.querySelectorAll('[data-print-hide], button, select, label').forEach((el) => {
-    el.remove();
-  });
-
-  const styles = Array.from(
-    document.querySelectorAll('link[rel="stylesheet"], style'),
-  )
-    .map((node) => node.outerHTML)
-    .join('\n');
-
+function buildAnalyticsPrintHtml(title: string, analyticsHtml: string, styles: string): string {
   const filename = safeFilenamePart(title) || 'survey-analytics';
-  const win = window.open('', '_blank', 'noopener,noreferrer,width=1200,height=900');
-  if (!win) return false;
-
-  win.document.open();
-  win.document.write(`<!doctype html>
+  return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -73,21 +48,81 @@ export function printSurveyAnalyticsPdf(title: string): boolean {
 <body>
   <h1>${escapeHtml(title)}</h1>
   <p class="subtitle">Survey analytics</p>
-  ${clone.outerHTML}
+  ${analyticsHtml}
 </body>
-</html>`);
-  win.document.close();
+</html>`;
+}
 
-  win.focus();
-  win.setTimeout(() => {
-    win.print();
-    win.close();
-  }, 300);
+/**
+ * Prints the live analytics visualizations (summary cards + charts) via a
+ * same-document hidden iframe — no pop-up window, so browsers won't block it.
+ */
+export function printSurveyAnalyticsPdf(title: string): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  const view = document.querySelector<HTMLElement>('[data-testid="survey-analytics-view"]');
+  if (!view) return false;
+
+  const clone = view.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('[data-print-hide], button, select, label').forEach((el) => {
+    el.remove();
+  });
+
+  const styles = Array.from(
+    document.querySelectorAll('link[rel="stylesheet"], style'),
+  )
+    .map((node) => node.outerHTML)
+    .join('\n');
+
+  const html = buildAnalyticsPrintHtml(title, clone.outerHTML, styles);
+  const previousTitle = document.title;
+  const filename = safeFilenamePart(title) || 'survey-analytics';
+  document.title = `${filename}-analytics`;
+
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  iframe.style.pointerEvents = 'none';
+  document.body.appendChild(iframe);
+
+  const frameWindow = iframe.contentWindow;
+  const frameDocument = frameWindow?.document;
+  if (!frameWindow || !frameDocument) {
+    iframe.remove();
+    document.title = previousTitle;
+    return false;
+  }
+
+  frameDocument.open();
+  frameDocument.write(html);
+  frameDocument.close();
+
+  const cleanup = () => {
+    document.title = previousTitle;
+    iframe.remove();
+  };
+
+  // Let layout/styles settle, then print from the iframe (same user gesture chain).
+  window.setTimeout(() => {
+    try {
+      frameWindow.focus();
+      frameWindow.print();
+    } finally {
+      // Delay removal so the print dialog can snapshot the iframe contents.
+      window.setTimeout(cleanup, 1000);
+    }
+  }, 250);
 
   return true;
 }
 
-/** @deprecated Prefer printSurveyAnalyticsPdf — kept for older call sites. */
+/** @deprecated Prefer printSurveyAnalyticsPdf */
 export function printSurveyResponsesPdf(titleOrInput: string | { title: string }): boolean {
   const title = typeof titleOrInput === 'string' ? titleOrInput : titleOrInput.title;
   return printSurveyAnalyticsPdf(title);
