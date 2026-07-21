@@ -54,7 +54,7 @@ locals {
   ecr_repository_names = var.environment == "dev" ? [
     "cht-dev-backend",
     "cht-dev-worker",
-  ] : [
+    ] : [
     "cht-platform-backend",
     "cht-platform-worker",
   ]
@@ -436,7 +436,7 @@ module "ecs_backend" {
   recaptcha_min_score            = var.recaptcha_min_score
   redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
   # Always apply Prisma migrations on backend boot (primary/writer).
-  run_db_migrations              = true
+  run_db_migrations = true
 }
 
 resource "aws_security_group_rule" "elasticache_from_backend" {
@@ -496,6 +496,10 @@ module "scheduled_eventbridge" {
   scheduled_jobs_queue_arn   = module.sqs.scheduled_jobs_queue_arn
   scheduled_jobs_queue_url   = module.sqs.scheduled_jobs_queue_url
   session_reminders_schedule = var.session_reminders_schedule_expression
+
+  enable_bill_mfa_reminder   = var.enable_bill_mfa_reminder
+  alerts_topic_arn           = module.sns_alerts.topic_arn
+  bill_mfa_reminder_schedule = var.bill_mfa_reminder_schedule
 }
 
 # ============================================
