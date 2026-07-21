@@ -25,6 +25,7 @@ interface Props {
 }
 
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const MAX_HEADSHOT_BYTES = 5 * 1024 * 1024; // 5 MB — CloudFront-served, keep small.
 
 /**
  * SCRUM-69: admin edit form for one KOL. All fields optional (Content Hub's
@@ -33,7 +34,7 @@ const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
  * the parent can invalidate its KOL query.
  */
 export function EditKolModal({ slug, kol, onClose, onSaved }: Props) {
-  const [form, setForm] = useState<AdminKolUpdate>({
+  const initialForm: AdminKolUpdate = {
     title: kol.title,
     specialty: kol.specialty,
     institution: kol.institution,
@@ -42,7 +43,17 @@ export function EditKolModal({ slug, kol, onClose, onSaved }: Props) {
     region: kol.region,
     display_order: kol.display_order ?? null,
     featured: kol.featured ?? false,
-  });
+  };
+  const [form, setForm] = useState<AdminKolUpdate>(initialForm);
+  const dirty =
+    form.title !== initialForm.title ||
+    form.specialty !== initialForm.specialty ||
+    form.institution !== initialForm.institution ||
+    form.bio !== initialForm.bio ||
+    form.photo_url !== initialForm.photo_url ||
+    form.region !== initialForm.region ||
+    form.display_order !== initialForm.display_order ||
+    form.featured !== initialForm.featured;
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +78,11 @@ export function EditKolModal({ slug, kol, onClose, onSaved }: Props) {
     if (!file) return;
     if (!IMAGE_TYPES.has(file.type)) {
       setError('Photo must be JPEG, PNG, or WebP.');
+      return;
+    }
+    if (file.size > MAX_HEADSHOT_BYTES) {
+      const sizeMb = (file.size / 1024 / 1024).toFixed(1);
+      setError(`Photo is ${sizeMb} MB — max 5 MB. Please resize before uploading.`);
       return;
     }
     setUploading(true);
@@ -219,7 +235,12 @@ export function EditKolModal({ slug, kol, onClose, onSaved }: Props) {
             <Button variant="outline" size="sm" onClick={onClose} disabled={busy}>
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={busy}>
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={busy || !dirty}
+              title={!dirty ? 'No changes to save' : undefined}
+            >
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Save
             </Button>

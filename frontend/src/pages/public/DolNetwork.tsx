@@ -360,8 +360,15 @@ function KolCard({ k }: { k: FlatKol }) {
               >
                 ★
               </span>
-            ) : k.isNew ? (
-              <span className="absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm">
+            ) : null}
+            {k.isNew ? (
+              <span
+                className={
+                  k.featured
+                    ? 'absolute -left-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm'
+                    : 'absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm'
+                }
+              >
                 New
               </span>
             ) : null}
