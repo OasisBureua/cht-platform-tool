@@ -452,9 +452,9 @@ variable "session_reminders_schedule_expression" {
 }
 
 variable "enable_bill_mfa_reminder" {
-  description = "Enable the EventBridge -> SNS reminder to refresh the Bill.com MFA rememberMeId before its 30-day expiry."
+  description = "Enable the EventBridge -> SNS reminder to refresh the Bill.com MFA rememberMeId before its 30-day expiry. Prefer platform-only."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "bill_mfa_reminder_schedule" {

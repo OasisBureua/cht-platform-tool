@@ -60,6 +60,7 @@ alarm_notification_emails = [
   "sebastien@communityhealth.media",
 ]
 session_reminders_schedule_expression = "cron(0 0/6 * * ? *)"
+enable_bill_mfa_reminder              = true
 enable_cognito_pools                = true
 cognito_domain_prefix               = "chm-platform"
 cognito_user_pool_tier              = "ESSENTIALS"

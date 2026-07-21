@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { printSurveyAnalyticsPdf } from '../../utils/survey-analytics-pdf';
+import { printSurveyResponsesPdf } from '../../utils/survey-analytics-pdf';
 
-describe('printSurveyAnalyticsPdf', () => {
+describe('printSurveyResponsesPdf', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -13,10 +13,10 @@ describe('printSurveyAnalyticsPdf', () => {
       titleDuringPrint = document.title;
     });
 
-    printSurveyAnalyticsPdf('Program One / Feedback');
+    printSurveyResponsesPdf('Program One / Feedback');
 
     expect(print).toHaveBeenCalledOnce();
-    expect(titleDuringPrint).toBe('Program-One-Feedback-analytics');
+    expect(titleDuringPrint).toBe('Program-One-Feedback-survey-responses');
     expect(document.title).toBe(originalTitle);
   });
 });

@@ -7,13 +7,14 @@ function safeFilenamePart(value: string): string {
 }
 
 /**
- * Opens the browser print dialog with a PDF-friendly analytics-only layout.
- * Browser "Save as PDF" preserves SVG charts more reliably than screenshotting.
+ * Opens the browser print dialog with a PDF-friendly report containing analytics
+ * and the complete individual-response appendix. Browser "Save as PDF" preserves
+ * SVG charts more reliably than screenshotting.
  */
-export function printSurveyAnalyticsPdf(title: string): void {
+export function printSurveyResponsesPdf(title: string): void {
   const previousTitle = document.title;
-  const filename = safeFilenamePart(title) || 'survey-analytics';
-  document.title = `${filename}-analytics`;
+  const filename = safeFilenamePart(title) || 'survey-responses';
+  document.title = `${filename}-survey-responses`;
   try {
     window.print();
   } finally {

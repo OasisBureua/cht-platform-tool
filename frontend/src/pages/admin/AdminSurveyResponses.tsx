@@ -8,7 +8,7 @@ import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { SurveyAnalyticsPanel } from '../../components/admin/survey-analytics/SurveyAnalyticsPanel';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
-import { printSurveyAnalyticsPdf } from '../../utils/survey-analytics-pdf';
+import { printSurveyResponsesPdf } from '../../utils/survey-analytics-pdf';
 import {
   adminSurveyDisplayTitle,
   attendanceStatusLabel,
@@ -107,12 +107,12 @@ export default function AdminSurveyResponses() {
         {tab === 'analytics' ? (
           <button
             type="button"
-            onClick={() => printSurveyAnalyticsPdf(displayTitle)}
+            onClick={() => printSurveyResponsesPdf(displayTitle)}
             disabled={responses.length === 0}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
-            Download PDF
+            Download full PDF
           </button>
         ) : (
           <button
@@ -154,29 +154,84 @@ export default function AdminSurveyResponses() {
       </div>
 
       {tab === 'analytics' ? (
-        <div id="survey-analytics-print">
+        <div id="survey-responses-print">
           <div className="hidden print:block print:mb-6">
             <h1 className="text-2xl font-semibold">{displayTitle}</h1>
-            <p className="text-sm text-gray-600">Survey analytics</p>
+            <p className="text-sm text-gray-600">
+              Survey analytics and complete responses · {responses.length}{' '}
+              {responses.length === 1 ? 'response' : 'responses'}
+            </p>
           </div>
           <SurveyAnalyticsPanel surveyId={id} enabled={tab === 'analytics'} />
+          <section className="hidden print:mt-8 print:block">
+            <h2 className="mb-4 border-b border-gray-300 pb-2 text-xl font-semibold text-gray-900">
+              Individual responses ({responses.length})
+            </h2>
+            <div className="space-y-5">
+              {responses.map((response, index) => (
+                <article
+                  key={response.id}
+                  className="survey-response-print-card rounded-lg border border-gray-300 p-4"
+                >
+                  <div className="mb-3 flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
+                        Response {index + 1}: {response.user.firstName}{' '}
+                        {response.user.lastName}
+                      </h3>
+                      <p className="text-xs text-gray-600">{response.user.email}</p>
+                      {response.user.specialty ? (
+                        <p className="text-xs text-gray-500">
+                          {response.user.specialty}
+                        </p>
+                      ) : null}
+                    </div>
+                    <p className="whitespace-nowrap text-xs text-gray-600">
+                      Submitted{' '}
+                      {format(parseISO(response.submittedAt), 'MMM d, yyyy h:mm a')}
+                    </p>
+                  </div>
+                  <p className="mb-3 text-xs text-gray-600">
+                    Registration:{' '}
+                    {response.registration
+                      ? registrationStatusLabel(response.registration.status)
+                      : 'Not available'}
+                    {' · '}Attendance:{' '}
+                    {response.registration?.postEventAttendanceStatus
+                      ? attendanceStatusLabel(
+                          response.registration.postEventAttendanceStatus,
+                        )
+                      : 'Not available'}
+                  </p>
+                  <SurveyAnswersTable
+                    answers={response.answers}
+                    questionsSchema={survey.questions}
+                  />
+                </article>
+              ))}
+            </div>
+          </section>
           <style>{`
             @media print {
               @page { size: landscape; margin: 12mm; }
               body * { visibility: hidden !important; }
-              #survey-analytics-print,
-              #survey-analytics-print * { visibility: visible !important; }
-              #survey-analytics-print {
+              #survey-responses-print,
+              #survey-responses-print * { visibility: visible !important; }
+              #survey-responses-print {
                 position: absolute;
                 inset: 0;
                 width: 100%;
                 background: white;
               }
-              #survey-analytics-print [data-testid="survey-analytics-view"] > * {
+              #survey-responses-print [data-testid="survey-analytics-view"] > *,
+              #survey-responses-print .survey-response-print-card {
                 break-inside: avoid;
+                page-break-inside: avoid;
               }
-              #survey-analytics-print button,
-              #survey-analytics-print select { display: none !important; }
+              #survey-responses-print button,
+              #survey-responses-print select { display: none !important; }
+              #survey-responses-print a { display: none !important; }
+              #survey-responses-print a::after { content: none !important; }
             }
           `}</style>
         </div>
