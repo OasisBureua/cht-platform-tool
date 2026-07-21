@@ -16,6 +16,7 @@ export class UpdateSurveyDto {
     description:
       'Native schema: { version, sections: [{ id, title, questions: [{ id, type, prompt, required, options? }] }] }',
     type: 'object',
+    additionalProperties: true,
   })
   @IsOptional()
   @IsObject()
