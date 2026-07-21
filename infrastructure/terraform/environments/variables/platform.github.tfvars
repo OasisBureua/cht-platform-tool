@@ -55,6 +55,10 @@ sqs_email_queue_url                 = "https://sqs.us-east-1.amazonaws.com/23363
 sqs_payment_queue_url               = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-payment-queue"
 sqs_cme_queue_url                   = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-cme-queue"
 worker_ses_from_email               = "info@communityhealth.media"
+alarm_notification_emails = [
+  "uchenna@communityhealth.media",
+  "sebastien@communityhealth.media",
+]
 session_reminders_schedule_expression = "cron(0 0/6 * * ? *)"
 enable_cognito_pools                = true
 cognito_domain_prefix               = "chm-platform"

@@ -75,24 +75,21 @@ resource "aws_cloudwatch_event_target" "bill_mfa_reminder" {
   target_id = "BillMfaReminderSns"
   arn       = var.alerts_topic_arn
 
-  # Plain-text SNS email body. A quoted input_template makes EventBridge deliver
-  # the message as readable text instead of a raw JSON blob. Avoid double quotes
-  # inside the body (they must be escaped in the JSON-string template).
-  input_transformer {
-    input_template = <<-EOT
-      "[${local.prefix}] Refresh Bill.com MFA rememberMeId before its 30-day expiry.
-
-      This reminder fires every 20 days so you always have ~10 days of buffer before the
-      rememberMeId expires. Bill.com cannot refresh it automatically because the MFA
-      challenge sends a one-time code to a human device.
-
-      Action required - regenerate a trusted session and update the secret:
-        1. POST /v3/mfa/challenge (send a body, e.g. useBackup=false) and read the OTP sent to the device.
-        2. POST /v3/mfa/challenge/validate with challengeId, token, device, rememberMe=true, then copy the returned mfaId (this is the rememberMeId).
-        3. Update Secrets Manager key bill_mfa_remember_me_id for ${local.prefix} with the new value; leave bill_mfa_device_name unchanged.
-        4. Restart / redeploy the backend so it picks up the refreshed BILL_MFA_REMEMBER_ME_ID.
-
-      Verify: GET /v3/login/session should report mfaStatus=COMPLETE, and pay-now should succeed with no BDC_1361 error."
-    EOT
-  }
+  # Constant JSON string payload (jsonencode escapes newlines). EventBridge rejects
+  # multi-line InputTemplate strings with raw newlines (ValidationException).
+  input = jsonencode(join("\n", [
+    "[${local.prefix}] Refresh Bill.com MFA rememberMeId before its 30-day expiry.",
+    "",
+    "This reminder fires every 20 days so you always have ~10 days of buffer before the",
+    "rememberMeId expires. Bill.com cannot refresh it automatically because the MFA",
+    "challenge sends a one-time code to a human device.",
+    "",
+    "Action required - regenerate a trusted session and update the secret:",
+    "  1. POST /v3/mfa/challenge (send a body, e.g. useBackup=false) and read the OTP sent to the device.",
+    "  2. POST /v3/mfa/challenge/validate with challengeId, token, device, rememberMe=true, then copy the returned mfaId (this is the rememberMeId).",
+    "  3. Update Secrets Manager key bill_mfa_remember_me_id for ${local.prefix} with the new value; leave bill_mfa_device_name unchanged.",
+    "  4. Restart / redeploy the backend so it picks up the refreshed BILL_MFA_REMEMBER_ME_ID.",
+    "",
+    "Verify: GET /v3/login/session should report mfaStatus=COMPLETE, and pay-now should succeed with no BDC_1361 error.",
+  ]))
 }
