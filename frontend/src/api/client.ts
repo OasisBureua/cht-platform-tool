@@ -55,12 +55,23 @@ apiClient.interceptors.response.use(
   },
 );
 
-/** NestJS often returns `{ message: string | string[] }` on 4xx; axios uses generic `Error` otherwise. */
+/** NestJS often returns `{ message: string | string[] }` on 4xx; axios uses generic `Error` otherwise.
+ *
+ * On 5xx or network errors the server-side `message` is usually missing; falling through
+ * to axios's own `err.message` leaks strings like "Request failed with status code 502"
+ * into curator-facing toasts. Prefer the caller-supplied `fallback` for that case.
+ */
 export function getApiErrorMessage(err: unknown, fallback = 'Something went wrong.'): string {
-  const ax = err as { response?: { data?: { message?: string | string[] } } };
+  const ax = err as {
+    response?: { status?: number; data?: { message?: string | string[] } };
+  };
   const m = ax.response?.data?.message;
   if (Array.isArray(m)) return m.filter(Boolean).join('; ');
   if (typeof m === 'string' && m.trim()) return m;
+  const status = ax.response?.status;
+  // 5xx (and no-response network errors, which have no status) => use fallback
+  // instead of leaking axios's generic "Request failed with status code N" text.
+  if (status === undefined || status >= 500) return fallback;
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }
