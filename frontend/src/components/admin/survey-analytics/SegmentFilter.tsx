@@ -15,7 +15,7 @@ const OPTIONS: Array<{ value: '' | SurveySegmentDimension; label: string }> = [
 
 export function SegmentFilter({ value, onChange, disabled }: SegmentFilterProps) {
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-600">
+    <label className="flex items-center gap-2 text-sm text-gray-600 print:hidden">
       <span className="font-medium">Segment by</span>
       <select
         value={value ?? ''}

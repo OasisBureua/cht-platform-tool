@@ -28,7 +28,7 @@ function baseAnalytics(overrides: Partial<SurveyAnalytics['analytics']> = {}): S
         uniqueRespondents: 3,
         firstResponseAt: '2026-07-10T00:00:00.000Z',
         lastResponseAt: '2026-07-11T00:00:00.000Z',
-        completionRate: { eligible: 5, completed: 3, rate: 0.6 },
+        completionRate: { eligible: 5, completed: 3, rate: 60 },
         score: null,
       },
       timeSeries: [

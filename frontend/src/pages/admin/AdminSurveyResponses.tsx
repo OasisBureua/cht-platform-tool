@@ -214,24 +214,31 @@ export default function AdminSurveyResponses() {
           <style>{`
             @media print {
               @page { size: landscape; margin: 12mm; }
+              /* Hide chrome; keep print root visible and free to paginate.
+                 Do NOT use inset:0 — that clamps height to one viewport and clips the report. */
               body * { visibility: hidden !important; }
               #survey-responses-print,
               #survey-responses-print * { visibility: visible !important; }
               #survey-responses-print {
                 position: absolute;
-                inset: 0;
+                left: 0;
+                top: 0;
                 width: 100%;
                 background: white;
               }
-              #survey-responses-print [data-testid="survey-analytics-view"] > *,
               #survey-responses-print .survey-response-print-card {
                 break-inside: avoid;
                 page-break-inside: avoid;
               }
               #survey-responses-print button,
-              #survey-responses-print select { display: none !important; }
-              #survey-responses-print a { display: none !important; }
-              #survey-responses-print a::after { content: none !important; }
+              #survey-responses-print select,
+              #survey-responses-print label { display: none !important; }
+              #survey-responses-print a {
+                color: inherit !important;
+                text-decoration: none !important;
+                pointer-events: none !important;
+              }
+              #survey-responses-print a[href]::after { content: none !important; }
             }
           `}</style>
         </div>
