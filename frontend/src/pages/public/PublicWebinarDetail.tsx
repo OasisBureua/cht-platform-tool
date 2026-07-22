@@ -66,7 +66,7 @@ export default function PublicWebinarDetail() {
 
   if (isAuthenticated && user && isProgram) {
     navigate(`/app/live/${webinar.id}`, { replace: true });
-    return null;
+    return <LoadingSpinner />;
   }
 
   const showLoginPrompt = !isAuthenticated || !user;
