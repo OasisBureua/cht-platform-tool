@@ -1,16 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Loader2, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 import { useAuth } from '../contexts/AuthContext';
-import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
-import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
 import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
 import { surveysApi } from '../api/surveys';
-import { BillComMark } from '../components/branding/BillComMark';
 import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 
@@ -20,7 +17,7 @@ const REGISTRATION_INTAKE_FORM_ID = 'registration-intake-survey';
 
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
-  if (p.hasIntakeSurvey || p.intakeSurveyId || p.jotformIntakeFormUrl?.trim()) {
+  if (p.hasIntakeSurvey || p.intakeSurveyId) {
     steps.push('intake');
   }
   if (hasSlots) steps.push('slot');
@@ -32,18 +29,16 @@ export default function ProgramRegisterWizard() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId;
   const [intakeSubmissionId, setIntakeSubmissionId] = useState<string | undefined>();
-  const isOfficeHours = location.pathname.includes('/office-hours/') || location.pathname.includes('/chm-office-hours/');
-  const backHref = isOfficeHours ? `/app/chm-office-hours/${id}` : `/app/live/${id}`;
-
-  /** Jotform must redirect here (with submission id) so this page can read it — not the session detail URL. */
-  const registerHref = id ? buildProgramRegisterHref(id, location.pathname) : '';
-  const returnUrl =
-    typeof window !== 'undefined' && registerHref ? `${window.location.origin}${registerHref}` : '';
+  const isOfficeHours =
+    location.pathname.includes('/office-hours/') ||
+    location.pathname.includes('/chm-office-hours/');
+  const backHref = isOfficeHours
+    ? `/app/chm-office-hours/${id}`
+    : `/app/live/${id}`;
 
   const { data: program, isLoading, isError } = useQuery({
     queryKey: ['program', id],
@@ -51,54 +46,6 @@ export default function ProgramRegisterWizard() {
     enabled: !!id,
     retry: false,
   });
-
-  useEffect(() => {
-    const fromUrl = readIntakeSubmissionIdFromSearch(location.search);
-    if (fromUrl) setIntakeSubmissionId(fromUrl);
-  }, [location.search]);
-
-  const intakeFromUrl = !!readIntakeSubmissionIdFromSearch(location.search);
-  const pollRegistration =
-    !!userId &&
-    !!id &&
-    !!program?.jotformIntakeFormUrl?.trim() &&
-    !intakeSubmissionId &&
-    !intakeFromUrl;
-
-  const { data: intakeJotformResume } = useQuery({
-    queryKey: ['program', id, 'jotform-resume'],
-    queryFn: () => programsApi.getJotformResume(id!),
-    enabled: pollRegistration,
-  });
-
-  useEffect(() => {
-    const sid = searchParams.get('session') || searchParams.get('jotform_session');
-    if (!sid?.trim() || !userId || !id || !program?.jotformIntakeFormUrl?.trim()) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await programsApi.putJotformResume(id, sid.trim());
-        if (!cancelled) {
-          queryClient.invalidateQueries({ queryKey: ['program', id, 'jotform-resume'] });
-          const next = new URLSearchParams(searchParams);
-          next.delete('session');
-          next.delete('jotform_session');
-          setSearchParams(next, { replace: true });
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams, userId, id, program?.jotformIntakeFormUrl, queryClient, setSearchParams]);
-
-  useEffect(() => {
-    if (intakeSubmissionId) {
-      queryClient.invalidateQueries({ queryKey: ['program', id, 'jotform-resume'] });
-    }
-  }, [intakeSubmissionId, id, queryClient]);
 
   const { data: myRegistration } = useQuery({
     queryKey: ['program', id, 'registration'],
@@ -129,13 +76,10 @@ export default function ProgramRegisterWizard() {
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
   const [intakeSubmitError, setIntakeSubmitError] = useState<string | null>(null);
 
-  const isNativeIntake =
-    !!program?.intakeSurveyId && program?.intakeUsesJotform !== true;
-
   const { data: intakeMyResponse } = useQuery({
     queryKey: ['survey', program?.intakeSurveyId, 'my-response'],
     queryFn: () => surveysApi.getMyResponse(program!.intakeSurveyId!),
-    enabled: !!userId && !!program?.intakeSurveyId && isNativeIntake,
+    enabled: !!userId && !!program?.intakeSurveyId,
   });
 
   useEffect(() => {
@@ -163,22 +107,15 @@ export default function ProgramRegisterWizard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
-      queryClient.invalidateQueries({ queryKey: ['programs', 'me', 'live-session-status'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'webinar-registrations', 'pending'] });
+      queryClient.invalidateQueries({
+        queryKey: ['programs', 'me', 'live-session-status'],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'webinar-registrations', 'pending'],
+      });
       navigate(`${backHref}?registered=1`);
     },
   });
-
-  const intakeFormSrc = useMemo(() => {
-    if (!program?.jotformIntakeFormUrl?.trim()) return '';
-    return buildIntakeFormUrl(program.jotformIntakeFormUrl, {
-      returnRedirect: returnUrl || undefined,
-      jotformSessionId: intakeJotformResume?.sessionId,
-      legacyAttribution: true,
-      userId: userId || undefined,
-      programId: program.id,
-    });
-  }, [program, returnUrl, userId, intakeJotformResume?.sessionId]);
 
   if (isLoading || !id) return <LoadingSpinner />;
 
@@ -186,7 +123,10 @@ export default function ProgramRegisterWizard() {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
         <p className="font-semibold text-gray-900">Program not found</p>
-        <Link to="/app/webinars" className="mt-4 inline-block text-sm font-semibold text-gray-900 underline">
+        <Link
+          to="/app/webinars"
+          className="mt-4 inline-block text-sm font-semibold text-gray-900 underline"
+        >
           Back
         </Link>
       </div>
@@ -199,16 +139,20 @@ export default function ProgramRegisterWizard() {
     !!intakeSubmissionId?.trim() || !!intakeMyResponse?.submitted;
 
   const goNext = () => {
-    if (current === 'intake' && isNativeIntake) {
+    if (current === 'intake') {
       setIntakeSubmitError(null);
       if (intakeRecorded) {
         setStepIndex((i) => Math.min(i + 1, steps.length - 1));
         return;
       }
-      const form = document.getElementById(REGISTRATION_INTAKE_FORM_ID) as HTMLFormElement | null;
+      const form = document.getElementById(
+        REGISTRATION_INTAKE_FORM_ID,
+      ) as HTMLFormElement | null;
       if (form) {
         if (!form.reportValidity()) {
-          setIntakeSubmitError('Complete the required intake fields before continuing.');
+          setIntakeSubmitError(
+            'Complete the required intake fields before continuing.',
+          );
           return;
         }
         form.requestSubmit();
@@ -248,46 +192,54 @@ export default function ProgramRegisterWizard() {
           </div>
         ) : null}
         <div className="p-6 md:p-8 space-y-6">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'} registration
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
-        <p className="mt-2 text-sm text-gray-600">
-          Complete intake if this step appears, then pick a time slot when offered. Submit to send your registration for
-          review when required. Post-event feedback lives under <strong>Surveys</strong>.
-        </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            {program.zoomSessionType === 'MEETING'
+              ? 'Office Hours'
+              : 'Live webinar'}{' '}
+            registration
+          </p>
+          <h1 className="mt-1 text-2xl font-semibold text-gray-900">
+            {program.title}
+          </h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Complete intake if this step appears, then pick a time slot when
+            offered. Submit to send your registration for review when required.
+            Post-event feedback lives under <strong>Surveys</strong>.
+          </p>
 
-        {program.sessionDisclaimer?.trim() ? (
-          <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
-        ) : null}
+          {program.sessionDisclaimer?.trim() ? (
+            <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
+          ) : null}
 
-        <ol className="flex flex-wrap gap-2 text-xs">
-          {steps.map((s, i) => (
-            <li
-              key={`${s}-${i}`}
-              className={[
-                'rounded-full px-3 py-1 font-semibold',
-                i === stepIndex ? 'bg-brand-600 text-white' : i < stepIndex ? 'bg-green-100 text-green-900' : 'bg-gray-100 text-gray-600',
-              ].join(' ')}
-            >
-              {i + 1}.{' '}
-              {s === 'intake' ? 'Intake' : s === 'slot' ? 'Pick a time' : 'Submit'}
-            </li>
-          ))}
-        </ol>
+          <ol className="flex flex-wrap gap-2 text-xs">
+            {steps.map((s, i) => (
+              <li
+                key={`${s}-${i}`}
+                className={[
+                  'rounded-full px-3 py-1 font-semibold',
+                  i === stepIndex
+                    ? 'bg-brand-600 text-white'
+                    : i < stepIndex
+                      ? 'bg-green-100 text-green-900'
+                      : 'bg-gray-100 text-gray-600',
+                ].join(' ')}
+              >
+                {i + 1}.{' '}
+                {s === 'intake' ? 'Intake' : s === 'slot' ? 'Pick a time' : 'Submit'}
+              </li>
+            ))}
+          </ol>
 
-        <div className="mt-8 space-y-4">
-          {current === 'intake' &&
-          (program.intakeSurveyId || program.jotformIntakeFormUrl) ? (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Your information</p>
-              {program.intakeSurveyId && !program.intakeUsesJotform ? (
+          <div className="mt-8 space-y-4">
+            {current === 'intake' && program.intakeSurveyId ? (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-gray-900">
+                  Your information
+                </p>
                 <ProgramSurveyPanel
                   surveyId={program.intakeSurveyId}
                   userId={userId ?? ''}
                   programId={program.id}
-                  legacyJotformUrl={program.jotformIntakeFormUrl}
-                  feedbackUsesJotform={program.intakeUsesJotform}
                   authenticated={!!userId}
                   userSummary={{
                     firstName: user?.firstName,
@@ -299,166 +251,125 @@ export default function ProgramRegisterWizard() {
                   onSubmittingChange={setIntakeSubmitting}
                   onSubmitError={() => {
                     setIntakeSubmitting(false);
-                    setIntakeSubmitError('Could not save intake. Check your connection and try again.');
+                    setIntakeSubmitError(
+                      'Could not save intake. Check your connection and try again.',
+                    );
                   }}
                   onSubmitted={(submissionId) => {
                     setIntakeSubmitting(false);
                     setIntakeSubmitError(null);
-                    queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
+                    queryClient.invalidateQueries({
+                      queryKey: ['program', id, 'registration'],
+                    });
                     setIntakeSubmissionId(submissionId);
                     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
                   }}
                 />
-              ) : (
-                <>
-                  <p className="text-xs text-gray-600">
-                    Submit the form below, or{' '}
-                    <a
-                      href={intakeFormSrc}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-semibold text-gray-900 underline"
-                    >
-                      open it in a new tab
-                    </a>
-                    .
+                {intakeSubmitError ? (
+                  <p className="text-sm text-red-700">{intakeSubmitError}</p>
+                ) : null}
+                {intakeRecorded ? (
+                  <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                    Intake saved. Tap <strong>Continue</strong> for the next
+                    step.
                   </p>
-                  <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                    <iframe
-                      title="Intake form"
-                      src={intakeFormSrc}
-                      className="h-[480px] w-full"
-                      allow="camera; microphone"
-                    />
-                  </div>
-                </>
-              )}
-              {intakeSubmitError ? (
-                <p className="text-sm text-red-700">{intakeSubmitError}</p>
-              ) : null}
-              {intakeRecorded ? (
-                <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  Intake saved. Tap <strong>Continue</strong> for the next step.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
+                ) : null}
+              </div>
+            ) : null}
 
-          {current === 'pre' && program.jotformPreEventUrl && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Pre-event survey</p>
-              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                <iframe
-                  title="Pre-event survey"
-                  src={jotformAppendReturn(program.jotformPreEventUrl)}
-                  className="h-[480px] w-full"
-                  allow="camera; microphone; payment"
+            {current === 'intake' && !program.intakeSurveyId ? (
+              <p className="text-sm text-gray-600">
+                No native intake survey is configured for this session yet.
+              </p>
+            ) : null}
+
+            {current === 'slot' && (
+              <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
+                <OfficeHoursSlotPicker
+                  slots={slots}
+                  selectedId={selectedSlotId}
+                  onSelect={setSelectedSlotId}
+                  subtitle="The session is split into 10-minute windows (six per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
                 />
               </div>
-            </div>
-          )}
-
-          {current === 'bill' && (
-            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-sm font-semibold text-gray-900 inline-flex flex-wrap items-center gap-2">
-                Vendor & payouts <BillComMark size="sm" />
-              </p>
-              <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
-                If this program requires payment setup, open{' '}
-                <BillComMark size="xs" className="translate-y-px" /> in a new tab, complete onboarding, then return here
-                and continue. This keeps Jotform and{' '}
-                <BillComMark size="xs" className="translate-y-px" /> in one guided flow without mixing iframes.
-              </p>
-              <a
-                href="/app/payments"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-              >
-                Open payout setup
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </div>
-          )}
-
-          {current === 'slot' && (
-            <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
-              <OfficeHoursSlotPicker
-                slots={slots}
-                selectedId={selectedSlotId}
-                onSelect={setSelectedSlotId}
-                subtitle="The session is split into 10-minute windows (six per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
-              />
-            </div>
-          )}
-
-          {current === 'submit' && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
-              {program.registrationRequiresApproval ? (
-                <>
-                  <p className="font-semibold text-amber-950">Submit registration for approval</p>
-                  <p>
-                    Tap <strong>Submit registration</strong> below to send your request to the host. An administrator
-                    must approve you before you can join the session or unlock Conversations and surveys for this
-                    activity.
-                  </p>
-                  <p className="text-xs text-amber-900">
-                    You are <strong>not</strong> enrolled until approval—expect a pending state on the session page
-                    until then.
-                  </p>
-                </>
-              ) : (
-                <p>
-                  <strong>Almost done:</strong> Submit to complete registration
-                  {program.zoomSessionType === 'MEETING' ? ' and reserve your slot' : ''}.
-                </p>
-              )}
-              {(program.hasIntakeSurvey || program.jotformIntakeFormUrl?.trim()) &&
-              !intakeSubmissionId?.trim() ? (
-                <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
-                  Intake is optional before you submit. Complete the form when you can so we can keep your answers on
-                  file (return from Jotform or wait for the automatic save).
-                </p>
-              ) : null}
-            </div>
-          )}
-
-          {submitMut.isError && (
-            <p className="text-sm text-red-700">
-              {(submitMut.error as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-                'Something went wrong. Try again.'}
-            </p>
-          )}
-        </div>
-
-        <div className="mt-8 flex flex-wrap justify-end gap-3">
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={
-              submitMut.isPending ||
-              (current === 'intake' && intakeSubmitting) ||
-              (current === 'slot' && slots.length > 0 && !selectedSlotId)
-            }
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
-          >
-            {submitMut.isPending && isLastStep ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Submitting…
-              </>
-            ) : intakeSubmitting && current === 'intake' ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving…
-              </>
-            ) : isLastStep ? (
-              'Submit registration'
-            ) : (
-              'Continue'
             )}
-          </button>
-        </div>
+
+            {current === 'submit' && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
+                {program.registrationRequiresApproval ? (
+                  <>
+                    <p className="font-semibold text-amber-950">
+                      Submit registration for approval
+                    </p>
+                    <p>
+                      Tap <strong>Submit registration</strong> below to send
+                      your request to the host. An administrator must approve
+                      you before you can join the session or unlock Conversations
+                      and surveys for this activity.
+                    </p>
+                    <p className="text-xs text-amber-900">
+                      You are <strong>not</strong> enrolled until
+                      approval—expect a pending state on the session page until
+                      then.
+                    </p>
+                  </>
+                ) : (
+                  <p>
+                    <strong>Almost done:</strong> Submit to complete registration
+                    {program.zoomSessionType === 'MEETING'
+                      ? ' and reserve your slot'
+                      : ''}
+                    .
+                  </p>
+                )}
+                {program.intakeSurveyId && !intakeSubmissionId?.trim() ? (
+                  <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
+                    Intake is optional before you submit. Complete the survey
+                    when you can so we can keep your answers on file.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
+            {submitMut.isError && (
+              <p className="text-sm text-red-700">
+                {(
+                  submitMut.error as {
+                    response?: { data?: { message?: string } };
+                  }
+                )?.response?.data?.message || 'Something went wrong. Try again.'}
+              </p>
+            )}
+          </div>
+
+          <div className="mt-8 flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={
+                submitMut.isPending ||
+                (current === 'intake' && intakeSubmitting) ||
+                (current === 'slot' && slots.length > 0 && !selectedSlotId)
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
+            >
+              {submitMut.isPending && isLastStep ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Submitting…
+                </>
+              ) : intakeSubmitting && current === 'intake' ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : isLastStep ? (
+                'Submit registration'
+              ) : (
+                'Continue'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

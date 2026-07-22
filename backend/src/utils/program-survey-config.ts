@@ -1,5 +1,4 @@
 import { ProgramZoomSessionType, SurveyType } from '@prisma/client';
-import { effectiveWebinarIntakeFormUrl } from './webinar-intake-url';
 import { surveyQuestionsAreNative } from './native-survey-questions';
 
 /** Learners may complete post-event FEEDBACK surveys within this window after the session unlocks. */
@@ -97,7 +96,7 @@ export async function loadProgramSurveyMeta(
     jotformIntakeFormUrl?: string | null;
     zoomSessionType: ProgramZoomSessionType;
   },
-  defaultIntakeUrl?: string,
+  _defaultIntakeUrl?: string,
 ): Promise<ProgramSurveyMeta> {
   const [feedback, intake] = await Promise.all([
     prisma.survey.findFirst({
@@ -114,26 +113,21 @@ export async function loadProgramSurveyMeta(
 
   const hasJotformPostEventUrl = !!program.jotformSurveyUrl?.trim();
   const hasFeedbackSurvey = !!feedback;
-  const intakeJotformUrl = effectiveWebinarIntakeFormUrl(
-    program.zoomSessionType,
-    program.jotformIntakeFormUrl,
-    defaultIntakeUrl,
-  );
 
   const feedbackNative =
     hasFeedbackSurvey && surveyQuestionsAreNative(feedback?.questions);
-  const intakeNative = !!intake && surveyQuestionsAreNative(intake.questions);
 
   return {
     hasPostEventSurvey: hasJotformPostEventUrl || hasFeedbackSurvey,
-    hasIntakeSurvey: !!intakeJotformUrl || !!intake,
+    // Registration / learner intake is native-survey only (no Jotform).
+    hasIntakeSurvey: !!intake,
     feedbackSurveyId: feedback?.id,
     intakeSurveyId: intake?.id,
     feedbackUsesJotform:
       hasFeedbackSurvey &&
       !!feedback?.jotformFormId?.trim() &&
       !feedbackNative,
-    intakeUsesJotform: !!intakeJotformUrl && !intakeNative,
+    intakeUsesJotform: false,
   };
 }
 
