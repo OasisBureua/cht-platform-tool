@@ -56,7 +56,9 @@ jobs:
           fetch-depth: 0
 
       - name: Detect changed paths
-        uses: dorny/paths-filter@v3
+        # workflow_dispatch has no event.before; scope script already deploys both sides.
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
         id: filter
         with:
           filters: |
@@ -77,9 +79,9 @@ jobs:
           chmod +x scripts/ci-detect-deploy-scope.sh
           ./scripts/ci-detect-deploy-scope.sh \
             "${{ github.event_name }}" \
-            "${{ steps.filter.outputs.backend }}" \
-            "${{ steps.filter.outputs.frontend }}" \
-            "${{ steps.filter.outputs.infra }}"
+            "${{ steps.filter.outputs.backend || 'false' }}" \
+            "${{ steps.filter.outputs.frontend || 'false' }}" \
+            "${{ steps.filter.outputs.infra || 'false' }}"
 
   test:
     name: Run tests
