@@ -326,62 +326,141 @@ export class CatalogService implements OnModuleInit {
   }
 
   /**
-   * Get random videos from YouTube playlists (for Home page carousel).
-   * Picks random playlists, fetches their first page of videos, returns a shuffled sample.
+   * Home carousel videos. Prefer ContentHub/MediaHub clips tagged biomarker:HER2+
+   * (WordPress-backed when available). Fall back to YouTube playlist sampling only
+   * when the catalog is empty/unavailable — avoids 404 spam from stale playlist IDs.
    */
   async getRandomVideos(count = 6): Promise<PlaylistVideo[]> {
+    const n = Number.isFinite(count) && count > 0 ? Math.min(count, 24) : 6;
+
+    if (this.mediahub.isConfigured()) {
+      try {
+        const fromCatalog = await this.getRandomVideosFromHer2Catalog(n);
+        if (fromCatalog.length > 0) return fromCatalog;
+        this.logger.warn(
+          'Random videos: no HER2+ catalog clips returned; falling back to YouTube playlists',
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Random videos: HER2+ catalog fetch failed (${msg}); falling back to YouTube playlists`,
+        );
+      }
+    }
+
+    return this.getRandomVideosFromYouTubePlaylists(n);
+  }
+
+  /** Map a MediaHub/ContentHub clip into the home-carousel video shape. */
+  private mapMediaHubClipToPlaylistVideo(clip: MediaHubClip): PlaylistVideo | null {
+    const youtubeUrl = (clip.youtube_url || '').trim();
+    if (!youtubeUrl) return null;
+    const vidMatch = youtubeUrl.match(
+      /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    );
+    const id =
+      vidMatch?.[1] ||
+      (clip.id.match(/:([a-zA-Z0-9_-]{11})$/)?.[1] ?? clip.id);
+    const thumb =
+      clip.thumbnail_url ||
+      (vidMatch
+        ? `https://img.youtube.com/vi/${vidMatch[1]}/hqdefault.jpg`
+        : '');
+    return {
+      id,
+      title: clip.title || 'Video',
+      thumbnailUrl: thumb,
+      youtubeUrl,
+    };
+  }
+
+  private async getRandomVideosFromHer2Catalog(
+    count: number,
+  ): Promise<PlaylistVideo[]> {
+    // Fetch a larger pool, then shuffle per request so the carousel rotates.
+    // getClips already Redis-caches the upstream list.
+    const poolLimit = Math.max(count * 8, 48);
+    const { items } = await this.mediahub.getClips({
+      tag: 'biomarker:HER2+',
+      sort_by: 'recorded_at',
+      limit: poolLimit,
+      has_wordpress: true,
+    });
+    const mapped = (items || [])
+      .map((c) => this.mapMediaHubClipToPlaylistVideo(c))
+      .filter((v): v is PlaylistVideo => v != null);
+
+    if (mapped.length === 0) {
+      // Retry without WP filter (same pattern as other catalog paths on empty join).
+      const retry = await this.mediahub.getClips({
+        tag: 'biomarker:HER2+',
+        sort_by: 'recorded_at',
+        limit: poolLimit,
+        has_wordpress: false,
+      });
+      const retryMapped = (retry.items || [])
+        .map((c) => this.mapMediaHubClipToPlaylistVideo(c))
+        .filter((v): v is PlaylistVideo => v != null);
+      return [...retryMapped].sort(() => Math.random() - 0.5).slice(0, count);
+    }
+
+    return [...mapped].sort(() => Math.random() - 0.5).slice(0, count);
+  }
+
+  private async getRandomVideosFromYouTubePlaylists(
+    count: number,
+  ): Promise<PlaylistVideo[]> {
     const apiKey = this.config.get<string>('youtube.apiKey');
     const playlistIds = this.config.get<string[]>('youtube.playlistIds') || [];
     if (!apiKey || playlistIds.length === 0) return [];
 
-    return this.cachedYouTube(`cht:catalog:youtube:random:${count}`, async () => {
-      // Shuffle playlist IDs and try up to 5 random ones
-      const shuffled = [...playlistIds]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 5);
-      const allVideos: PlaylistVideo[] = [];
+    // Do not cache the shuffled sample — only the per-playlist fetch path is noisy;
+    // keep behavior as a last-resort fallback for misconfigured catalog.
+    const shuffled = [...playlistIds]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 5);
+    const allVideos: PlaylistVideo[] = [];
 
-      for (const playlistId of shuffled) {
-        if (allVideos.length >= count * 3) break;
-        try {
-          const { data } = await firstValueFrom(
-            this.http.get<YouTubePlaylistItemsResponse>(
-              `${this.youtubeBase}/playlistItems`,
-              {
-                params: {
-                  part: 'snippet',
-                  playlistId,
-                  maxResults: 20,
-                  key: apiKey,
-                },
+    for (const playlistId of shuffled) {
+      if (allVideos.length >= count * 3) break;
+      try {
+        const { data } = await firstValueFrom(
+          this.http.get<YouTubePlaylistItemsResponse>(
+            `${this.youtubeBase}/playlistItems`,
+            {
+              params: {
+                part: 'snippet',
+                playlistId,
+                maxResults: 20,
+                key: apiKey,
               },
-            ),
-          );
-          for (const item of data?.items || []) {
-            const videoId = item.snippet?.resourceId?.videoId;
-            if (!videoId) continue;
-            const thumb =
-              item.snippet?.thumbnails?.high ||
-              item.snippet?.thumbnails?.medium ||
-              item.snippet?.thumbnails?.default;
-            allVideos.push({
-              id: videoId,
-              title: item.snippet?.title || 'Video',
-              thumbnailUrl:
-                thumb?.url ||
-                `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-              youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-            });
-          }
-        } catch (err) {
-          this.logger.warn(
-            `Random videos: failed to fetch playlist ${playlistId}: ${err}`,
-          );
+            },
+          ),
+        );
+        for (const item of data?.items || []) {
+          const videoId = item.snippet?.resourceId?.videoId;
+          if (!videoId) continue;
+          const thumb =
+            item.snippet?.thumbnails?.high ||
+            item.snippet?.thumbnails?.medium ||
+            item.snippet?.thumbnails?.default;
+          allVideos.push({
+            id: videoId,
+            title: item.snippet?.title || 'Video',
+            thumbnailUrl:
+              thumb?.url ||
+              `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+            youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+          });
         }
+      } catch (err) {
+        this.logger.warn(
+          `Random videos: failed to fetch playlist ${playlistId}: ${err}`,
+        );
       }
+    }
 
-      return allVideos.sort(() => Math.random() - 0.5).slice(0, count);
-    });
+    return allVideos.sort(() => Math.random() - 0.5).slice(0, count);
   }
 
   /**

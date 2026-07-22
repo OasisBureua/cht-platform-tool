@@ -281,7 +281,7 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/random-videos?count=6
-   * YouTube: Random videos from playlists for the Home page carousel.
+   * Home carousel: HER2+ catalog clips (ContentHub/MediaHub), with YouTube playlist fallback.
    */
   @Get('random-videos')
   async getRandomVideos(@Query('count') count?: string) {

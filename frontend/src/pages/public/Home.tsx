@@ -1,19 +1,15 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, LayoutGrid, Loader2 } from 'lucide-react';
-import { catalogApi, type CatalogItem } from '../../api/catalog';
+import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, LayoutGrid } from 'lucide-react';
+import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
-import DISEASE_AREAS from '../../data/disease-areas';
-import { APP_CATALOG_PLAYLIST_SECTIONS } from '../../data/catalogPlaylistRows';
 import {
-  buildCatalogSectionPlaylistsHref,
-  CATALOG_SECTION_TO_FOCUS,
-  PLAYLIST_FOCUS_TO_TAG,
-  VIEW_PLAYLIST_LABEL,
-} from '../../utils/playlistFocusFilters';
-import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
+  ANON_HOME_BIOMARKER_CAROUSEL_IDS,
+  BiomarkerConversationRow,
+} from '../../components/content/BiomarkerConversationRow';
+import DISEASE_AREAS from '../../data/disease-areas';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 
 const resourceImages: Record<string, string> = {
@@ -26,23 +22,11 @@ const resourceImages: Record<string, string> = {
   search: '/images/resource-search.png',
 };
 
-
 type FeaturedVideo = {
   id: string;
   title: string;
   imageUrl: string;
   youtubeUrl?: string;
-};
-
-type Treatment = {
-  id: string;
-  title: string;
-  imageUrl: string;
-  slug: string;
-  videoNames: string[];
-  /** From YouTube `itemCount`; may exceed length of `videoNames` preview. */
-  videoCount: number;
-  playlistUrl: string;
 };
 
 type Resource = {
@@ -53,82 +37,7 @@ type Resource = {
   imageUrl: string;
 };
 
-function catalogToTreatment(p: CatalogItem): Treatment {
-  const thumb = p.thumbnailUrl || 'https://via.placeholder.com/400x225?text=Playlist';
-  const previewNames = p.videoNames || [];
-  const count = p.videoCount ?? previewNames.length;
-  return {
-    id: p.id,
-    title: p.title,
-    imageUrl: thumb,
-    slug: p.id,
-    videoNames: previewNames,
-    videoCount: count > 0 ? count : previewNames.length,
-    playlistUrl: `/catalog/playlist/${p.id}`,
-  };
-}
-
-function playlistRowSubtitle(focus: 'her2', treatments: Treatment[], usingFallback: boolean): string {
-  // SCRUM-80: NEVER quote video counts derived from the static section
-  // (APP_CATALOG_PLAYLIST_SECTIONS speaker-hint parser) when we're in
-  // fallback mode — that produced the "N videos from 0 playlists"
-  // mismatch the ticket calls out. Real counts only, or nothing.
-  if (usingFallback || treatments.length === 0) {
-    return '';
-  }
-  const total = treatments.reduce((s, t) => s + Math.max(0, t.videoCount), 0);
-  if (total > 0) return `${total} video${total === 1 ? '' : 's'}`;
-
-  // Real treatments loaded but none has a videoCount hint — fall back to
-  // the static section subtitle text (which is prose, not a count).
-  const section = APP_CATALOG_PLAYLIST_SECTIONS.find(
-    (s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus,
-  );
-  return section?.subtitle?.trim() ?? '';
-}
-
-function playlistMetaLabel(videoCount: number, videoNamesSample: number): string {
-  if (videoCount > 0) {
-    const n = videoCount;
-    return `${n} video${n === 1 ? '' : 's'}`;
-  }
-  if (videoNamesSample > 0) return `${videoNamesSample} video${videoNamesSample === 1 ? '' : 's'}`;
-  return 'Playlist';
-}
-
-const FALLBACK_HER2: Treatment[] = [
-  {
-    id: 'bp1',
-    title: 'HER2+ Big Picture & Practice Change',
-    slug: 'her2-big-picture',
-    imageUrl:
-      'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80',
-    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
-    videoCount: 4,
-    playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
-  },
-  {
-    id: 'bp2',
-    title: 'First-Line & Sequencing Decisions',
-    slug: 'first-line-sequencing',
-    imageUrl:
-      'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=800&q=80',
-    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
-    videoCount: 4,
-    playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
-  },
-  {
-    id: 'bp3',
-    title: 'High-Risk & CNS Disease',
-    slug: 'high-risk-cns',
-    imageUrl: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=800&q=80',
-    videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'],
-    videoCount: 4,
-    playlistUrl: '/catalog?view=playlists&playlistFocus=her2',
-  },
-];
-
-/** Shown when `/catalog/random-videos` returns [] (e.g. YouTube not configured) so the carousel is never blank */
+/** Shown when `/catalog/random-videos` returns [] so the carousel is never blank */
 const FALLBACK_FEATURED: FeaturedVideo[] = [
   {
     id: 'home-placeholder-1',
@@ -172,9 +81,6 @@ const HOME_STAGGER_MS = {
   closingCta: 1400,
 } as const;
 
-/** Max horizontally scrolled video tiles per biomarker strip (full list lives on catalogue). */
-const HOME_STRIP_VIDEO_CAP = 40;
-
 export default function Home() {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
@@ -182,65 +88,12 @@ export default function Home() {
     document.body.scrollTop = 0;
   }, []);
 
-  const { data: playlistsData, isLoading: playlistsLoading } = useQuery({
-    queryKey: ['catalog', 'playlists'],
-    queryFn: catalogApi.getPlaylists,
-    staleTime: WORDPRESS_CATALOG_STALE_MS,
-  });
-  const playlists = Array.isArray(playlistsData) ? playlistsData : [];
-
   const { data: randomVideosData, isLoading: randomVideosLoading } = useQuery({
     queryKey: ['catalog', 'random-videos'],
     queryFn: () => catalogApi.getRandomVideos(6),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
-
-  /**
-   * SCRUM-79: her2 strip is now tag-driven. Query the curator-set playlist
-   * tag overlay (/api/catalog/playlists-tags) for playlists tagged with the
-   * her2 focus tag, then intersect with the YouTube playlist metadata list
-   * (which supplies title/thumbnail/video count).
-   */
-  const { data: her2TagOverlay } = useQuery({
-    queryKey: ['catalog', 'playlists-tags', PLAYLIST_FOCUS_TO_TAG.her2],
-    queryFn: () =>
-      catalogApi.getPlaylistsTags({
-        tag: PLAYLIST_FOCUS_TO_TAG.her2,
-        lane: 'biomarker',
-        limit: 100,
-      }),
-    staleTime: WORDPRESS_CATALOG_STALE_MS,
-  });
-
-  const her2PlaylistStrip = useMemo(() => {
-    if (playlists.length === 0 || !her2TagOverlay) {
-      return { treatments: FALLBACK_HER2, fallback: true };
-    }
-    const taggedIds = new Set(
-      (her2TagOverlay.items ?? []).map((r) => r.youtube_playlist_id),
-    );
-    const her2 = playlists.filter((p) => taggedIds.has(p.id));
-    return her2.length > 0
-      ? { treatments: her2.map(catalogToTreatment), fallback: false }
-      : { treatments: FALLBACK_HER2, fallback: true };
-  }, [playlists, her2TagOverlay]);
-
-  const biomarkerPlaylists = her2PlaylistStrip.treatments;
-
-  const her2StripSubtitle = useMemo(
-    () =>
-      playlistRowSubtitle('her2', her2PlaylistStrip.treatments, her2PlaylistStrip.fallback),
-    [her2PlaylistStrip],
-  );
-
-  /** YouTube playlist ids for stripping — used to hydrate individual videos on the carousel. */
-  const her2PlaylistIds = useMemo(
-    () => (her2PlaylistStrip.fallback ? [] : her2PlaylistStrip.treatments.map((t) => t.id)),
-    [her2PlaylistStrip],
-  );
-
-  const her2FlattenedVideos = useFlattenedPlaylistVideos(her2PlaylistIds, her2PlaylistIds.length > 0);
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
     const mapped = randomVideos
@@ -254,14 +107,6 @@ export default function Home() {
     if (mapped.length > 0) return mapped;
     return randomVideosLoading ? [] : FALLBACK_FEATURED;
   }, [randomVideos, randomVideosLoading]);
-
-  // Keep the hero at the top when async playlist/video strips finish mounting.
-  useLayoutEffect(() => {
-    if (playlistsLoading || her2FlattenedVideos.isLoading) return;
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, [playlistsLoading, her2FlattenedVideos.isLoading, her2FlattenedVideos.entries.length]);
 
   const resources: Resource[] = [
     { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
@@ -363,57 +208,26 @@ export default function Home() {
         )}
       </section>
 
-      {playlistsLoading && playlists.length === 0 ? (
-        <section className="py-10 sm:py-12" aria-live="polite" aria-busy="true">
-          <div className="flex flex-col items-center justify-center gap-2 py-8">
-            <Loader2 className="h-10 w-10 animate-spin text-gray-400 dark:text-zinc-500" aria-hidden />
-            <span className="text-sm text-gray-600 dark:text-zinc-400">Loading playlists</span>
-          </div>
-        </section>
-      ) : (
-        <>
-          <section
-            className="home-enter py-6 sm:py-8"
-            style={{ animationDelay: `${HOME_STAGGER_MS.biomarkerBody}ms` }}
+      {/* Biomarker strips: catalog clips by tag (HER2+ / HR+), not YouTube playlists */}
+      <section className="space-y-6 py-6 sm:space-y-8 sm:py-8">
+        {ANON_HOME_BIOMARKER_CAROUSEL_IDS.map((carouselId, index) => (
+          <div
+            key={carouselId}
+            className="home-enter mx-auto max-w-7xl px-4 sm:px-6"
+            style={{
+              animationDelay: `${
+                carouselId === 'anon-home-hr'
+                  ? HOME_STAGGER_MS.hrBody
+                  : HOME_STAGGER_MS.biomarkerBody + index * 40
+              }ms`,
+            }}
           >
-            <div className="mx-auto max-w-7xl px-4 sm:px-6">
-              <ConversationRow
-                title="HER2+"
-                subtitle={her2StripSubtitle}
-                seeAllHref={buildCatalogSectionPlaylistsHref(false, 'HER2+ Conversations')}
-                seeAllLabel={VIEW_PLAYLIST_LABEL}
-              >
-                {her2FlattenedVideos.isLoading ? (
-                  <StripRowLoadingThumbnails />
-                ) : her2FlattenedVideos.entries.length > 0 ? (
-                  her2FlattenedVideos.entries.slice(0, HOME_STRIP_VIDEO_CAP).map((e) => (
-                    <StripCard
-                      key={`${e.playlistId}-${e.video.id}`}
-                      to={`/catalog/playlist/${encodeURIComponent(e.playlistId)}?v=${encodeURIComponent(e.video.id)}`}
-                      title={e.video.title}
-                      imageUrl={e.video.thumbnailUrl || `https://img.youtube.com/vi/${e.video.id}/hqdefault.jpg`}
-                      description={e.playlistTitle}
-                    />
-                  ))
-                ) : (
-                  biomarkerPlaylists.map((t) => (
-                    <StripCard
-                      key={t.id}
-                      to={t.playlistUrl}
-                      title={t.title}
-                      imageUrl={t.imageUrl}
-                      meta={playlistMetaLabel(t.videoCount, t.videoNames.length)}
-                    />
-                  ))
-                )}
-              </ConversationRow>
-            </div>
-          </section>
+            <BiomarkerConversationRow carouselId={carouselId} isInApp={false} />
+          </div>
+        ))}
+      </section>
 
-          {/* View treatment specific content — below HER2+ playlists */}
-          <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
-        </>
-      )}
+      <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
 
       {/* About Us teaser */}
       <section className="py-10 sm:py-14">
