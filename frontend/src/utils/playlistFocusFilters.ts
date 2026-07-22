@@ -37,8 +37,8 @@ export function buildCatalogSectionPlaylistsHref(isInApp: boolean, sectionLabel:
 /** Row CTA; opens in-app / public playlist focus (`?playlistFocus=`). */
 export const VIEW_PLAYLIST_LABEL = 'View playlist';
 
-/** Playlist chips on **public** `/catalog?view=playlists` only (HER2; HR+ hidden until we decide display). */
-export const PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS: readonly PlaylistFocus[] = ['her2'];
+/** Playlist chips on **public** `/catalog?view=playlists` (HER2+ and HR+). */
+export const PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS: readonly PlaylistFocus[] = ['her2', 'hr'];
 
 /** Parse `playlistFocus` from a location search string. */
 export function parsePlaylistFocus(search: string): PlaylistFocus | null {
