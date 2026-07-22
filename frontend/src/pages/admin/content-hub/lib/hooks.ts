@@ -4,6 +4,8 @@
 // 'content-hub' so they never collide with the rest of the admin app.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '../../../../api/admin';
+import { surveysApi, type Survey } from '../../../../api/surveys';
 import * as store from './store';
 import type {
   Campaign,
@@ -27,6 +29,7 @@ export const qk = {
   integrationsConnection: () => [KEY, 'integrations-connection'] as const,
   hubspotStatus: () => [KEY, 'hubspot-status'] as const,
   contentHubHealth: () => [KEY, 'health'] as const,
+  feedbackSurveys: () => [KEY, 'feedback-surveys'] as const,
 };
 
 const n = (id: string | number) => Number(id);
@@ -84,6 +87,49 @@ export function useUploadCsv(id: string | number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.csvData(id) });
       qc.invalidateQueries({ queryKey: qk.validation(id) });
+    },
+  });
+}
+
+export function useFeedbackSurveys(enabled = true) {
+  return useQuery({
+    queryKey: qk.feedbackSurveys(),
+    queryFn: async (): Promise<Survey[]> => {
+      const data = await surveysApi.getAll();
+      const byId = new Map(
+        [...data.active, ...data.completed]
+          .filter((survey) => survey.type === 'FEEDBACK' && survey.program)
+          .map((survey) => [survey.id, survey]),
+      );
+      return [...byId.values()].sort((a, b) =>
+        (a.program?.title ?? a.title).localeCompare(
+          b.program?.title ?? b.title,
+        ),
+      );
+    },
+    enabled,
+  });
+}
+
+export function useConnectFeedbackSurvey(id: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (survey: Survey) => {
+      const data = await adminApi.getSurveyAnalytics(survey.id, {
+        includeSamples: true,
+      });
+      return store.connectFeedbackSurvey(n(id), {
+        surveyId: survey.id,
+        programId: survey.program?.id ?? null,
+        label: `${survey.program?.title ?? 'Program'} — ${survey.title}`,
+        totalResponses: data.analytics.totals.totalResponses,
+        analytics: data.analytics,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.csvData(id) });
+      qc.invalidateQueries({ queryKey: qk.validation(id) });
+      qc.invalidateQueries({ queryKey: qk.campaign(id) });
     },
   });
 }

@@ -451,6 +451,18 @@ variable "session_reminders_schedule_expression" {
   default     = "cron(0 0/3 * * ? *)"
 }
 
+variable "enable_bill_mfa_reminder" {
+  description = "Enable the EventBridge -> SNS reminder to refresh the Bill.com MFA rememberMeId before its 30-day expiry. Prefer platform-only."
+  type        = bool
+  default     = false
+}
+
+variable "bill_mfa_reminder_schedule" {
+  description = "Schedule for the Bill.com MFA rememberMeId refresh reminder. Fire before the 30-day expiry (default: every 20 days)."
+  type        = string
+  default     = "rate(20 days)"
+}
+
 # Cognito
 variable "enable_cognito_pools" {
   description = "Create a Cognito User Pool for this environment. Set true in platform.tfvars and dev.tfvars."

@@ -38,6 +38,10 @@ import {
   stripIdentityFieldsFromSurveyAnswers,
 } from '../../utils/survey-answer-sanitizer';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
+import {
+  findUnsafeAnsweredQuestionChanges,
+  validateNativeSurveySchema,
+} from '../../utils/survey-schema';
 
 @Injectable()
 export class SurveysService {
@@ -68,6 +72,8 @@ export class SurveysService {
       description: string | null;
       type: string;
       required: boolean;
+      isCustomized: boolean;
+      responseCount?: number;
       jotformFormId: string | null;
       jotformFormUrl: string | null;
       createdAt: string;
@@ -90,6 +96,8 @@ export class SurveysService {
       description: string | null;
       type: string;
       required: boolean;
+      isCustomized: boolean;
+      responseCount?: number;
       jotformFormId: string | null;
       jotformFormUrl: string | null;
       createdAt: string;
@@ -126,6 +134,7 @@ export class SurveysService {
             zoomSessionEndedAt: true,
           },
         },
+        _count: { select: { responses: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -136,6 +145,8 @@ export class SurveysService {
       description: s.description,
       type: s.type,
       required: s.required,
+      isCustomized: s.isCustomized,
+      ...(role === UserRole.ADMIN ? { responseCount: s._count.responses } : {}),
       jotformFormId: s.jotformFormId,
       jotformFormUrl: s.jotformFormId
         ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}`
@@ -226,6 +237,7 @@ export class SurveysService {
             zoomSessionEndedAt: true,
           },
         },
+        _count: { select: { responses: true } },
       },
     });
     if (!survey) {
@@ -252,10 +264,14 @@ export class SurveysService {
       questions: survey.questions,
       type: survey.type,
       required: survey.required,
+      isCustomized: survey.isCustomized,
       jotformFormId: survey.jotformFormId,
       jotformFormUrl,
       createdAt: survey.createdAt.toISOString(),
       updatedAt: survey.updatedAt.toISOString(),
+      ...(role === UserRole.ADMIN
+        ? { responseCount: survey._count.responses }
+        : {}),
       program: survey.program,
     };
   }
@@ -342,8 +358,8 @@ export class SurveysService {
     programId: string;
     title: string;
     description?: string;
-    questions: Record<string, unknown>[];
-    type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+    questions: Record<string, unknown>[] | Record<string, unknown>;
+    type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
     required?: boolean;
     jotformFormId?: string;
   }) {
@@ -354,38 +370,124 @@ export class SurveysService {
       throw new BadRequestException('Program not found');
     }
 
+    let questions: object = dto.questions as object;
+    const jotformFormId = dto.jotformFormId?.trim() || null;
+    if (
+      !jotformFormId &&
+      dto.questions &&
+      typeof dto.questions === 'object' &&
+      !Array.isArray(dto.questions) &&
+      Array.isArray((dto.questions as { sections?: unknown }).sections)
+    ) {
+      try {
+        questions = validateNativeSurveySchema(
+          dto.questions,
+        ) as unknown as object;
+      } catch (error) {
+        throw new BadRequestException(
+          error instanceof Error
+            ? error.message
+            : 'Invalid native survey schema',
+        );
+      }
+    }
+
     const survey = await this.prisma.survey.create({
       data: {
         programId: dto.programId,
         title: dto.title,
         description: dto.description,
-        questions: dto.questions as object,
+        questions,
         type: dto.type ?? 'POST_TEST',
         required: dto.required ?? true,
-        jotformFormId: dto.jotformFormId?.trim() || null,
+        jotformFormId,
+        isCustomized: true,
       },
     });
     this.logger.log(`Survey created: ${survey.id} - ${survey.title}`);
     return survey;
   }
 
-  /**
-   * Update survey (admin). Only jotformFormId is updatable for now.
-   */
-  async updateSurvey(id: string, dto: { jotformFormId?: string }) {
-    const survey = await this.prisma.survey.findUnique({ where: { id } });
+  /** Update an admin survey and mark it customized. */
+  async updateSurvey(
+    id: string,
+    dto: {
+      title?: string;
+      description?: string;
+      questions?: Record<string, unknown>;
+      required?: boolean;
+      jotformFormId?: string;
+    },
+  ) {
+    const survey = await this.prisma.survey.findUnique({
+      where: { id },
+      include: { _count: { select: { responses: true } } },
+    });
     if (!survey) throw new NotFoundException('Survey not found');
+
+    let questions: Record<string, unknown> | undefined;
+    if (dto.questions !== undefined) {
+      if (dto.jotformFormId?.trim()) {
+        throw new BadRequestException(
+          'A survey cannot use native questions and a Jotform form at the same time.',
+        );
+      }
+      try {
+        questions = validateNativeSurveySchema(
+          dto.questions,
+        ) as unknown as Record<string, unknown>;
+      } catch (error) {
+        throw new BadRequestException(
+          error instanceof Error
+            ? error.message
+            : 'Invalid native survey schema',
+        );
+      }
+
+      if (survey._count.responses > 0) {
+        const unsafe = findUnsafeAnsweredQuestionChanges(
+          survey.questions,
+          questions,
+        );
+        if (unsafe.length > 0) {
+          throw new BadRequestException(
+            `This survey has ${survey._count.responses} response(s). Existing question mappings cannot be changed: ${unsafe.join(
+              '; ',
+            )}. You may add new questions with new IDs.`,
+          );
+        }
+      }
+    }
+
+    const title = dto.title?.trim();
+    if (dto.title !== undefined && !title) {
+      throw new BadRequestException('Survey title is required');
+    }
 
     const updated = await this.prisma.survey.update({
       where: { id },
       data: {
+        ...(title !== undefined && { title }),
+        ...(dto.description !== undefined && {
+          description: dto.description.trim() || null,
+        }),
+        ...(questions !== undefined && {
+          questions: questions as object,
+          jotformFormId: null,
+        }),
+        ...(dto.required !== undefined && { required: dto.required }),
         ...(dto.jotformFormId !== undefined && {
           jotformFormId: dto.jotformFormId?.trim() || null,
         }),
+        isCustomized: true,
       },
     });
-    if (survey.type === 'FEEDBACK' && dto.jotformFormId !== undefined) {
-      const fid = dto.jotformFormId?.trim();
+    if (
+      survey.type === 'FEEDBACK' &&
+      (dto.jotformFormId !== undefined || questions !== undefined)
+    ) {
+      const fid =
+        questions !== undefined ? undefined : dto.jotformFormId?.trim();
       await this.prisma.program.update({
         where: { id: survey.programId },
         data: {
@@ -395,18 +497,24 @@ export class SurveysService {
         },
       });
     }
-    this.logger.log(
-      `Survey ${id} updated (jotformFormId: ${updated.jotformFormId ?? 'null'})`,
-    );
+    this.logger.log(`Survey ${id} updated and marked customized`);
     return updated;
   }
 
   /**
-   * Delete survey (admin). Cascades to SurveyResponse records.
+   * Delete survey (admin), but never cascade-delete collected responses.
    */
   async deleteSurvey(id: string) {
-    const survey = await this.prisma.survey.findUnique({ where: { id } });
+    const survey = await this.prisma.survey.findUnique({
+      where: { id },
+      include: { _count: { select: { responses: true } } },
+    });
     if (!survey) throw new NotFoundException('Survey not found');
+    if (survey._count.responses > 0) {
+      throw new BadRequestException(
+        `Survey cannot be deleted because it has ${survey._count.responses} response(s).`,
+      );
+    }
 
     await this.prisma.survey.delete({ where: { id } });
     this.logger.log(`Survey deleted: ${id} - ${survey.title}`);
@@ -671,8 +779,8 @@ export class SurveysService {
   }
 
   /**
-   * Link an existing Jotform as the program post-event (FEEDBACK) survey; replaces any FEEDBACK rows for this program.
-   * Ensures the survey appears in GET /surveys and learners see it after the session.
+   * Legacy: link an existing Jotform as the program FEEDBACK survey without
+   * replacing the Survey row. Refuses conversion once responses exist.
    */
   async applyManualPostEventJotform(
     programId: string,
@@ -697,20 +805,39 @@ export class SurveysService {
 
     const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
 
-    await this.prisma.survey.deleteMany({
+    const existing = await this.prisma.survey.findFirst({
       where: { programId, type: 'FEEDBACK' },
+      include: { _count: { select: { responses: true } } },
+      orderBy: { createdAt: 'asc' },
     });
+    if (existing?._count.responses) {
+      throw new BadRequestException(
+        'The post-event survey already has responses and cannot be converted to Jotform.',
+      );
+    }
 
-    await this.prisma.survey.create({
-      data: {
-        programId,
-        title: `${programTitle} - Post Event Survey`,
-        jotformFormId: formId,
-        questions: { source: 'jotform', formId, manualPostEvent: true },
-        type: 'FEEDBACK',
-        required: true,
-      },
-    });
+    if (existing) {
+      await this.prisma.survey.update({
+        where: { id: existing.id },
+        data: {
+          jotformFormId: formId,
+          questions: { source: 'jotform', formId, manualPostEvent: true },
+          isCustomized: true,
+        },
+      });
+    } else {
+      await this.prisma.survey.create({
+        data: {
+          programId,
+          title: `${programTitle} - Post Event Survey`,
+          jotformFormId: formId,
+          questions: { source: 'jotform', formId, manualPostEvent: true },
+          type: 'FEEDBACK',
+          required: true,
+          isCustomized: true,
+        },
+      });
+    }
 
     await this.prisma.program.update({
       where: { id: programId },
@@ -771,7 +898,8 @@ export class SurveysService {
   }
 
   /**
-   * Replace Jotform intake/post-event with native Survey rows (dev cutover / admin action).
+   * Ensure native INTAKE + FEEDBACK rows exist. Existing rows are returned
+   * unchanged (including customized/Jotform rows); only missing types are created.
    */
   async ensureNativeSurveyPairForProgram(
     programId: string,
@@ -782,44 +910,57 @@ export class SurveysService {
     });
     if (!program) throw new BadRequestException('Program not found');
 
-    await this.prisma.survey.deleteMany({
+    const existing = await this.prisma.survey.findMany({
       where: { programId, type: { in: ['INTAKE', 'FEEDBACK'] } },
+      orderBy: { createdAt: 'asc' },
     });
+    let intake = existing.find((survey) => survey.type === 'INTAKE');
+    let feedback = existing.find((survey) => survey.type === 'FEEDBACK');
+    const createIntake = !intake;
+    const createFeedback = !feedback;
 
-    const intake = await this.prisma.survey.create({
-      data: {
-        programId,
-        title: `${programTitle} - Registration`,
-        description: 'Webinar registration intake',
-        questions: defaultWebinarIntakeQuestions() as object,
-        type: 'INTAKE',
-        required: true,
-        jotformFormId: null,
-      },
-    });
+    if (!intake) {
+      intake = await this.prisma.survey.create({
+        data: {
+          programId,
+          title: `${programTitle} - Registration`,
+          description: 'Webinar registration intake',
+          questions: defaultWebinarIntakeQuestions() as object,
+          type: 'INTAKE',
+          required: true,
+          jotformFormId: null,
+          isCustomized: false,
+        },
+      });
+    }
 
-    const feedback = await this.prisma.survey.create({
-      data: {
-        programId,
-        title: `${programTitle} - Post Event Survey`,
-        description: 'Post-webinar feedback',
-        questions: defaultPostEventFeedbackQuestions() as object,
-        type: 'FEEDBACK',
-        required: true,
-        jotformFormId: null,
-      },
-    });
+    if (!feedback) {
+      feedback = await this.prisma.survey.create({
+        data: {
+          programId,
+          title: `${programTitle} - Post Event Survey`,
+          description: 'Post-webinar feedback',
+          questions: defaultPostEventFeedbackQuestions() as object,
+          type: 'FEEDBACK',
+          required: true,
+          jotformFormId: null,
+          isCustomized: false,
+        },
+      });
+    }
 
-    await this.prisma.program.update({
-      where: { id: programId },
-      data: {
-        jotformIntakeFormUrl: null,
-        jotformSurveyUrl: null,
-      },
-    });
+    if (createIntake || createFeedback) {
+      await this.prisma.program.update({
+        where: { id: programId },
+        data: {
+          ...(createIntake && { jotformIntakeFormUrl: null }),
+          ...(createFeedback && { jotformSurveyUrl: null }),
+        },
+      });
+    }
 
     this.logger.log(
-      `Native surveys for program ${programId}: intake=${intake.id} feedback=${feedback.id}`,
+      `Ensured surveys for program ${programId}: intake=${intake.id} feedback=${feedback.id}`,
     );
 
     return { intakeSurveyId: intake.id, feedbackSurveyId: feedback.id };

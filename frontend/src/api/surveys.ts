@@ -8,6 +8,7 @@ export interface SurveyQuestion {
   type?: string;
   prompt?: string;
   options?: string[];
+  maxSelections?: number;
   scaleMin?: number;
   scaleMax?: number;
   required?: boolean;
@@ -19,9 +20,12 @@ export interface Survey {
   programId: string;
   title: string;
   description?: string | null;
-  questions: any;
+  questions: unknown;
   type: SurveyType;
   required: boolean;
+  isCustomized?: boolean;
+  /** Admin-only count used to explain response-safe editing constraints. */
+  responseCount?: number;
 
   jotformFormId?: string | null;
   jotformFormUrl?: string | null;

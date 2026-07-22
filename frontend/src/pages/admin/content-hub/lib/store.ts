@@ -16,7 +16,6 @@ import type {
   DataValidation,
   ExecutiveReport,
   HubspotStatus,
-  IntegrationConnectionStatus,
   IntegrationsConnectionMap,
   IntegrationSettings,
   Platform,
@@ -50,7 +49,7 @@ const SEED_INTEGRATIONS: IntegrationSettings = {
   meta: { enabled: false, note: 'Upload CSV exports from Meta Ads Manager.' },
   youtube: { enabled: false, note: 'Upload CSV exports from YouTube Studio analytics.' },
   livestream: { enabled: false, note: 'Upload attendance/engagement CSV from your livestream platform.' },
-  survey: { enabled: false, note: 'Upload survey results CSV from your survey platform.' },
+  survey: { enabled: true, note: 'Select native CHT post-event feedback responses by program.' },
 };
 
 function seed(): DbShape {
@@ -176,6 +175,62 @@ export function uploadCsv(id: number, platform: Platform, filename: string, cont
   campaign.updatedAt = now();
   save(db);
   return { id: upload.id, campaignId: id, platform, filename: upload.filename, rowCount: rows.length, uploadedAt: upload.uploadedAt };
+}
+
+export function connectFeedbackSurvey(
+  id: number,
+  input: {
+    surveyId: string;
+    programId: string | null;
+    label: string;
+    totalResponses: number;
+    analytics: unknown;
+  },
+): CsvUpload {
+  const db = load();
+  const campaign = db.campaigns.find((item) => item.id === id);
+  if (!campaign) throw new Error('Campaign not found');
+
+  db.csvUploads = db.csvUploads.filter(
+    (upload) => !(upload.campaignId === id && upload.platform === 'survey'),
+  );
+  const uploadedAt = now();
+  const upload: StoredCsvUpload = {
+    id: db.nextUploadId++,
+    campaignId: id,
+    platform: 'survey',
+    filename: input.label,
+    // Reports currently use row count for the survey KPI. Detailed, PII-safe
+    // aggregates are retained in metadata for report sections to consume.
+    rows: Array.from({ length: input.totalResponses }, (_, index) => ({
+      response: String(index + 1),
+    })),
+    uploadedAt,
+    metadata: {
+      source: 'cht-feedback-survey',
+      surveyId: input.surveyId,
+      programId: input.programId,
+      analytics: input.analytics,
+    },
+  };
+  db.csvUploads.push(upload);
+  campaign.surveySourceId = input.surveyId;
+  campaign.surveySourceProgramId = input.programId;
+  campaign.surveySourceLabel = input.label;
+  if (!campaign.platforms.includes('survey')) {
+    campaign.platforms = [...campaign.platforms, 'survey'];
+  }
+  campaign.updatedAt = uploadedAt;
+  save(db);
+
+  return {
+    id: upload.id,
+    campaignId: id,
+    platform: 'survey',
+    filename: upload.filename,
+    rowCount: upload.rows.length,
+    uploadedAt,
+  };
 }
 
 export function getCsvData(id: number): CsvUpload[] {
