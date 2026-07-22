@@ -13,7 +13,10 @@ export interface WebinarItem {
   hostDisplayName?: string;
   hostBio?: string;
   speakers?: string[];
+  /** @deprecated Intake is native-only. */
   jotformIntakeFormUrl?: string;
+  intakeSurveyId?: string;
+  hasIntakeSurvey?: boolean;
   registrationRequiresApproval?: boolean;
   /** Whole dollars from API (converted from DB cents on the server). */
   honorariumAmount?: number;

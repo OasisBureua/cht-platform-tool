@@ -310,7 +310,7 @@ export default function WebinarDetail() {
       (program.zoomSessionType === 'MEETING' &&
         (slots.length > 0 ||
           program.hasIntakeSurvey ||
-          !!program.jotformIntakeFormUrl?.trim() ||
+          !!program.intakeSurveyId ||
           !!program.registrationRequiresApproval)));
 
   const ctaLabel = enrolled

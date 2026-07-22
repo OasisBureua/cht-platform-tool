@@ -37,7 +37,32 @@ describe('loadProgramSurveyMeta', () => {
     expect(meta.feedbackUsesJotform).toBe(true);
   });
 
-  it('detects intake from env default URL', async () => {
+  it('detects intake only from native INTAKE survey row', async () => {
+    prisma.survey.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'intake-1',
+        jotformFormId: null,
+        questions: [{ id: 'q1', type: 'text', label: 'Name' }],
+      });
+
+    const meta = await loadProgramSurveyMeta(
+      prisma,
+      {
+        id: 'p1',
+        jotformSurveyUrl: null,
+        jotformIntakeFormUrl: 'https://communityhealthmedia.jotform.com/old',
+        zoomSessionType: ProgramZoomSessionType.WEBINAR,
+      },
+      'https://communityhealthmedia.jotform.com/261116295463861',
+    );
+
+    expect(meta.hasIntakeSurvey).toBe(true);
+    expect(meta.intakeSurveyId).toBe('intake-1');
+    expect(meta.intakeUsesJotform).toBe(false);
+  });
+
+  it('ignores jotform-only intake defaults when no native survey exists', async () => {
     prisma.survey.findFirst
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
@@ -53,8 +78,8 @@ describe('loadProgramSurveyMeta', () => {
       'https://communityhealthmedia.jotform.com/261116295463861',
     );
 
-    expect(meta.hasIntakeSurvey).toBe(true);
-    expect(meta.intakeUsesJotform).toBe(true);
+    expect(meta.hasIntakeSurvey).toBe(false);
+    expect(meta.intakeUsesJotform).toBe(false);
   });
 });
 
