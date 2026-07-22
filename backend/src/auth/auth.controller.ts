@@ -130,7 +130,11 @@ export class AuthController {
     if (!user) return { error: 'User not found.' };
 
     void this.cognitoService
-      .syncGroupsForRole(user.email, user.role)
+      .syncGroupsForRole(
+        user.email,
+        user.role,
+        claims['cognito:username'] || claims.sub,
+      )
       .catch((err) =>
         this.logger.warn(
           `[Auth] Cognito group sync on login failed for ${user.email}: ${err}`,
