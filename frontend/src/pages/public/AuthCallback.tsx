@@ -6,6 +6,7 @@ import { cognitoAuthEnabled } from '../../lib/auth-config';
 import {
   consumeCognitoOAuthState,
   getCognitoCallbackUrl,
+  normalizeCognitoRedirectUri,
 } from '../../lib/cognito-oauth';
 
 /**
@@ -41,7 +42,9 @@ export default function AuthCallback() {
 
     if (code && cognitoAuthEnabled) {
       const oauthState = consumeCognitoOAuthState(state);
-      const redirectUri = oauthState?.redirectUri || getCognitoCallbackUrl(oauthState?.from);
+      const redirectUri = normalizeCognitoRedirectUri(
+        oauthState?.redirectUri || getCognitoCallbackUrl(),
+      );
       const codeVerifier = oauthState?.verifier;
 
       if (!codeVerifier) {
