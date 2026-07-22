@@ -8,6 +8,7 @@ import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { SurveyAnalyticsPanel } from '../../components/admin/survey-analytics/SurveyAnalyticsPanel';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
+import { printSurveyAnalyticsPdf } from '../../utils/survey-analytics-pdf';
 import {
   adminSurveyDisplayTitle,
   attendanceStatusLabel,
@@ -54,6 +55,11 @@ export default function AdminSurveyResponses() {
   }
 
   const { survey, responses } = data;
+  const displayTitle = adminSurveyDisplayTitle(
+    survey.program?.title,
+    survey.type,
+    survey.title,
+  );
 
   const downloadCsv = async () => {
     if (!id) return;
@@ -69,6 +75,10 @@ export default function AdminSurveyResponses() {
     }
   };
 
+  const downloadAnalyticsPdf = () => {
+    printSurveyAnalyticsPdf(displayTitle);
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
       <Link
@@ -81,9 +91,7 @@ export default function AdminSurveyResponses() {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {adminSurveyDisplayTitle(survey.program?.title, survey.type, survey.title)}
-          </h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{displayTitle}</h1>
           <p className="mt-1 text-sm text-gray-600">
             {survey.type} survey
             {survey.program ? (
@@ -100,15 +108,27 @@ export default function AdminSurveyResponses() {
             ) : null}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void downloadCsv()}
-          disabled={csvDownloading || responses.length === 0}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
-        >
-          <Download className="h-4 w-4" />
-          {csvDownloading ? 'Preparing…' : 'Download CSV'}
-        </button>
+        {tab === 'analytics' ? (
+          <button
+            type="button"
+            onClick={downloadAnalyticsPdf}
+            disabled={responses.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Download PDF
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => void downloadCsv()}
+            disabled={csvDownloading || responses.length === 0}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            {csvDownloading ? 'Preparing…' : 'Download CSV'}
+          </button>
+        )}
       </header>
 
       <div className="border-b border-gray-200">

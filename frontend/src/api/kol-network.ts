@@ -32,6 +32,9 @@ export interface PublicKol {
   bio: string | null;
   photo_url: string | null;
   region: string | null;
+  /** SCRUM-70: curator ordering fields — optional for backwards compat. */
+  featured?: boolean;
+  display_order?: number | null;
   region_label: string | null;
   shoot_count: number;
   first_appeared_at: string | null;

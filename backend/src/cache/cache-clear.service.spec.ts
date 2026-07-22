@@ -53,12 +53,15 @@ describe('CacheClearService', () => {
     );
 
     const result = await service.clear('contenthub', { authMethod: 'query' });
+    // SCRUM-82 (2026-07-21): contenthub scope now ALSO clears catalog,
+    // because CHT catalog reads (getTags, getPlaylistsTags, etc.) proxy
+    // from ContentHub. See cache-keys.ts cachePatternsForScope('contenthub').
     expect(result.total).toBe(3);
     expect(result.deletedByPattern['cht:contenthub:*']).toBe(3);
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
     expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:contenthub:*');
     expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:kol-network:*');
-    expect(cache.deleteByPattern).not.toHaveBeenCalledWith('cht:catalog:*');
+    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:catalog:*');
   });
 
   it('clears all namespace patterns for scope=all', async () => {

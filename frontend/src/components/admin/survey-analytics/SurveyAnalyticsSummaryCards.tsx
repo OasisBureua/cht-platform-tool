@@ -18,8 +18,9 @@ function SummaryCard({ label, value, hint }: SummaryCardProps) {
 
 export function SurveyAnalyticsSummaryCards({ totals }: { totals: SurveyAnalyticsTotals }) {
   const completion = totals.completionRate;
+  // API already returns rate as 0–100 (completed/eligible * 100); do not scale again.
   const completionValue =
-    completion && completion.eligible > 0 ? `${Math.round(completion.rate * 100)}%` : '—';
+    completion && completion.eligible > 0 ? `${Math.round(completion.rate)}%` : '—';
   const completionHint = completion
     ? `${completion.completed.toLocaleString()} of ${completion.eligible.toLocaleString()} eligible`
     : 'Not applicable';

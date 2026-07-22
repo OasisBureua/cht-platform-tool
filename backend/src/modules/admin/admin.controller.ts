@@ -506,7 +506,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Update survey (Jotform form ID); FEEDBACK surveys also update program post-event URL',
+      'Update survey metadata/native questions; marks the survey customized',
   })
   @ApiParam({ name: 'id', description: 'Survey ID' })
   updateSurvey(@Param('id') id: string, @Body() dto: UpdateSurveyDto) {
@@ -1319,7 +1319,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Replace Jotform intake/post-event with native Survey rows for one program (dev cutover)',
+      'Ensure missing native intake/post-event Survey rows for one program (non-destructive)',
   })
   async ensureNativeSurveysForProgram(@Param('id') id: string) {
     const program = await this.prisma.program.findUnique({
@@ -1339,7 +1339,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Replace Jotform intake/post-event with native surveys for all published webinars',
+      'Ensure missing native surveys for all published webinars (non-destructive)',
   })
   async ensureNativeSurveysForAllWebinars() {
     return this.surveysService.ensureNativeSurveysForPublishedWebinars();
@@ -2120,6 +2120,15 @@ export class AdminController {
     const existing = await this.prisma.program.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Webinar not found');
 
+    const surveyResponseCount = await this.prisma.surveyResponse.count({
+      where: { survey: { programId: id } },
+    });
+    if (surveyResponseCount > 0) {
+      throw new BadRequestException(
+        `Webinar cannot be deleted because its surveys have ${surveyResponseCount} collected response(s). Archive or unpublish it instead.`,
+      );
+    }
+
     if (existing.zoomMeetingId && this.zoom.isConfigured()) {
       if (existing.zoomSessionType === 'MEETING') {
         await this.zoom.deleteMeeting(existing.zoomMeetingId);
@@ -2128,12 +2137,9 @@ export class AdminController {
       }
     }
 
-    // Explicitly remove dependent rows before Program delete so orphans cannot remain
-    // if DB FKs are missing (e.g. DMS). Schema FKs also use ON DELETE CASCADE for Survey/Payment.
+    // Safe after the response guard above. Explicitly remove dependent rows so
+    // orphans cannot remain if DB FKs are missing (e.g. DMS).
     await this.prisma.$transaction(async (tx) => {
-      await tx.surveyResponse.deleteMany({
-        where: { survey: { programId: id } },
-      });
       await tx.survey.deleteMany({ where: { programId: id } });
       await tx.payment.deleteMany({ where: { programId: id } });
       await tx.program.delete({ where: { id } });

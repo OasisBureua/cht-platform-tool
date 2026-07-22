@@ -34,6 +34,9 @@ export interface Campaign {
   createdAt: string;
   updatedAt: string;
   aiInsights?: string | null;
+  surveySourceId?: string | null;
+  surveySourceProgramId?: string | null;
+  surveySourceLabel?: string | null;
 }
 
 export interface Template {
@@ -245,4 +248,10 @@ export interface StoredCsvUpload {
   filename: string;
   rows: Array<Record<string, string>>;
   uploadedAt: string;
+  metadata?: {
+    source: 'cht-feedback-survey';
+    surveyId: string;
+    programId: string | null;
+    analytics: unknown;
+  };
 }

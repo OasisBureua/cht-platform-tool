@@ -268,20 +268,22 @@ export class MediaHubService {
   }
 
   /**
-   * MediaHub exposes namespaced `/tags`. ContentHub does not — map WordPress
-   * categories into the `topic` namespace so legacy catalog filters still work.
+   * ContentHub /api/public/tags returns the full namespaced tag universe:
+   *   - Clip.tags + Post.tags on chm-official (namespaced: biomarker:*, drug:*,
+   *     doctor:*, trial:*, stage:*, topic:*, yt:*, conference:*, other:*)
+   *   - wordpress_events.categories → topic:*  (freeform)
+   *   - wordpress_events.tags       → wp:*     (freeform)
+   *
+   * Frontend consumers pick namespaces per audience (admin sees all;
+   * public/HCP surface filters to editorially-appropriate subset).
+   *
+   * Historical note: before ContentHub /api/public/tags projected
+   * WordPress events (2026-07-21), this method returned only
+   * `{topic: [wp category slugs]}` derived from a separate WP-categories
+   * endpoint. That workaround is retired now that ContentHub exposes
+   * the full union directly.
    */
   async getTags(): Promise<MediaHubTag> {
-    if (this.useContentHub) {
-      return this.cachedGet(this.cacheKey('tags', { source: 'wordpress' }), async () => {
-        const cats = await this.getWordPressCategories();
-        const topics = (cats.items ?? [])
-          .map((c) => c.slug?.trim())
-          .filter((s): s is string => !!s);
-        if (!topics.length) return {} as MediaHubTag;
-        return { topic: topics } satisfies MediaHubTag;
-      });
-    }
     return this.cachedGet(this.cacheKey('tags', {}), () =>
       this.getPublic<MediaHubTag>('/tags'),
     );

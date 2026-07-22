@@ -1,6 +1,3 @@
-import type { CatalogItem } from '../api/catalog';
-import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
-
 /** URL `?playlistFocus=` — cohort strips + catalogue browse (`hr` matches home + HR strip.) */
 export type PlaylistFocus = 'her2' | 'hr' | 'her2-low' | 'tnbc' | 'high-risk';
 
@@ -37,8 +34,8 @@ export function buildCatalogSectionPlaylistsHref(isInApp: boolean, sectionLabel:
 /** Row CTA; opens in-app / public playlist focus (`?playlistFocus=`). */
 export const VIEW_PLAYLIST_LABEL = 'View playlist';
 
-/** Playlist chips on **public** `/catalog?view=playlists` only (HER2; HR+ hidden until we decide display). */
-export const PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS: readonly PlaylistFocus[] = ['her2'];
+/** Playlist chips on **public** `/catalog?view=playlists` (HER2+ and HR+). */
+export const PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS: readonly PlaylistFocus[] = ['her2', 'hr'];
 
 /** Parse `playlistFocus` from a location search string. */
 export function parsePlaylistFocus(search: string): PlaylistFocus | null {
@@ -61,52 +58,14 @@ export function playlistBrowseHeading(focus: PlaylistFocus | null): string {
   return map[focus] ?? 'Playlists';
 }
 
-function titleMatchesStrip(playlistTitle: string, stripTitle: string): boolean {
-  const norm = (s: string) => s.replace(/[\u2018\u2019']/g, "'").trim().toLowerCase();
-  const a = norm(playlistTitle);
-  const b = norm(stripTitle);
-  if (a === b) return true;
-  if (a.includes(b) || b.includes(a)) return true;
-  const n = Math.min(32, Math.min(a.length, b.length));
-  if (n >= 14) return a.slice(0, n) === b.slice(0, n);
-  return false;
-}
-
-function stripTitlesForFocus(focus: PlaylistFocus): string[] | null {
-  const entry = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
-  if (!entry) return null;
-  return entry.items.map((i) => i.title);
-}
-
 /**
- * Narrow MediaHub playlist rows to those listed in `APP_CATALOG_PLAYLIST_SECTIONS` for this cohort.
- * Prefer clip-tag browsing via `PLAYLIST_FOCUS_TO_TAG` for focus chips; this remains for
- * optional playlist-title matching when needed.
+ * SCRUM-79 (2026-07-21): `filterPlaylistsByFocus` + `titleMatchesStrip`
+ * removed. The regex playlist-title-match fallback caused the "10/27
+ * resolvable" incident where playlist strips were populated from best-
+ * guess title heuristics rather than curator intent.
+ *
+ * Callers are now tag-driven: fetch `/api/catalog/playlists-tags?tag=<X>`
+ * (via `catalogApi.getPlaylistsTags`) and intersect the returned playlist
+ * IDs against the YT metadata list from `catalogApi.getPlaylists()`.
+ * See `Home.tsx her2PlaylistStrip` for the reference implementation.
  */
-export function filterPlaylistsByFocus(playlists: CatalogItem[], focus: PlaylistFocus): CatalogItem[] {
-  const stripTitles = stripTitlesForFocus(focus);
-  if (stripTitles?.length) {
-    const matched = playlists.filter((p) => stripTitles.some((st) => titleMatchesStrip(p.title, st)));
-    if (matched.length > 0) return matched;
-  }
-
-  const t = (p: CatalogItem) => p.title ?? '';
-  switch (focus) {
-    case 'her2':
-      return playlists.filter((p) => /HER2(?!-?[Ll]ow)|DESTINY-Breast|HER2\+|first-line/i.test(t(p)));
-    case 'hr':
-      return playlists.filter(
-        (p) =>
-          /HR\+|CDK4|endocrine/i.test(t(p)) &&
-          !/HER2|DESTINY-Breast|TNBC|triple.?negative/i.test(t(p)),
-      );
-    case 'her2-low':
-      return playlists.filter((p) => /HER2-?[Ll]ow|ultra-?low|DB-?04|DB-?06/i.test(t(p)));
-    case 'tnbc':
-      return playlists.filter((p) => /TNBC|triple.?negative|mTNBC/i.test(t(p)));
-    case 'high-risk':
-      return playlists.filter((p) => /high.?risk|CNS|brain.?met/i.test(t(p)));
-    default:
-      return playlists;
-  }
-}

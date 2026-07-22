@@ -122,8 +122,8 @@ export interface CreateSurveyPayload {
   programId: string;
   title: string;
   description?: string;
-  questions: Record<string, unknown>[];
-  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+  questions: Record<string, unknown>[] | Record<string, unknown>;
+  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
   required?: boolean;
   /** Link to an existing Jotform form. When set, the survey will embed this form and receive webhook submissions. */
   jotformFormId?: string;
@@ -410,8 +410,25 @@ export const adminApi = {
     return data;
   },
 
-  updateSurvey: async (id: string, payload: { jotformFormId?: string }) => {
+  updateSurvey: async (
+    id: string,
+    payload: {
+      title?: string;
+      description?: string;
+      questions?: Record<string, unknown>;
+      required?: boolean;
+      jotformFormId?: string;
+    },
+  ) => {
     const { data } = await apiClient.patch(`/admin/surveys/${id}`, payload);
+    return data;
+  },
+
+  ensureNativeSurveysForProgram: async (programId: string) => {
+    const { data } = await apiClient.post<{
+      intakeSurveyId: string;
+      feedbackSurveyId: string;
+    }>(`/admin/programs/${encodeURIComponent(programId)}/native-surveys`);
     return data;
   },
 

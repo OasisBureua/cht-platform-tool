@@ -195,6 +195,39 @@ function NativeQuestionField(props: {
     );
   }
 
+  if (question.type === 'rating') {
+    const min = typeof question.scaleMin === 'number' ? question.scaleMin : 1;
+    const max = typeof question.scaleMax === 'number' ? question.scaleMax : 5;
+    return (
+      <fieldset className="space-y-2 text-sm" disabled={disabled}>
+        <legend className="font-medium text-gray-900">
+          {prompt}
+          {required ? ' *' : ''}
+        </legend>
+        <div className="flex flex-wrap gap-2">
+          {Array.from({ length: max - min + 1 }, (_, index) => min + index).map(
+            (rating) => (
+              <label
+                key={rating}
+                className="inline-flex min-w-10 cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50"
+              >
+                <input
+                  type="radio"
+                  className="sr-only"
+                  name={id}
+                  required={required}
+                  checked={value === rating}
+                  onChange={() => onChange(rating)}
+                />
+                {rating}
+              </label>
+            ),
+          )}
+        </div>
+      </fieldset>
+    );
+  }
+
   if (question.type === 'multi_choice' && Array.isArray(question.options)) {
     const selected = Array.isArray(value) ? (value as string[]) : [];
     const max = typeof question.maxSelections === 'number' ? question.maxSelections : undefined;

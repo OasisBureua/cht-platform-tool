@@ -10,6 +10,7 @@ import type {
   ExecutiveReport,
   StoredCsvUpload,
 } from './types';
+import type { SurveyResponseAnalytics } from '../../../../api/admin';
 
 const PLATFORM_LABEL: Record<string, string> = {
   linkedin: 'LinkedIn',
@@ -69,6 +70,40 @@ function sumColumn(rows: Array<Record<string, string>>, candidates: string[]): n
   return rows.reduce((acc, r) => acc + num(r[key]), 0);
 }
 
+function buildSurveyHighlights(upload: StoredCsvUpload | undefined): string[] {
+  if (
+    upload?.metadata?.source !== 'cht-feedback-survey' ||
+    !upload.metadata.analytics ||
+    typeof upload.metadata.analytics !== 'object'
+  ) {
+    return [];
+  }
+  const analytics = upload.metadata.analytics as SurveyResponseAnalytics;
+  const highlights = [
+    `${analytics.totals.totalResponses.toLocaleString()} post-event feedback responses were collected.`,
+  ];
+
+  for (const question of analytics.questions.slice(0, 4)) {
+    if (question.kind === 'choice') {
+      const top = [...question.options].sort((a, b) => b.count - a.count)[0];
+      if (top) {
+        highlights.push(
+          `${question.prompt}: ${top.label} was the leading response (${top.percentage.toFixed(0)}%).`,
+        );
+      }
+    } else if (question.kind === 'rating' && question.mean !== null) {
+      highlights.push(
+        `${question.prompt}: average rating ${question.mean.toFixed(1)} across ${question.count} responses.`,
+      );
+    } else if (question.kind === 'text' && question.responseCount > 0) {
+      highlights.push(
+        `${question.prompt}: ${question.responseCount} qualitative responses were submitted.`,
+      );
+    }
+  }
+  return highlights;
+}
+
 export function buildDataValidation(
   campaign: Campaign,
   uploads: StoredCsvUpload[],
@@ -115,6 +150,7 @@ export function buildAnalyticsReport(
   const yt = byPlatform('youtube');
   const ls = byPlatform('livestream');
   const sv = byPlatform('survey');
+  const surveyHighlights = buildSurveyHighlights(sv);
 
   const liImpr = li ? sumColumn(li.rows, ['impression']) : 0;
   const meImpr = me ? sumColumn(me.rows, ['impression']) : 0;
@@ -133,7 +169,7 @@ export function buildAnalyticsReport(
     { label: 'YouTube Total Views', value: yt ? fmt(ytViews) : '—', source: yt ? 'csv' : 'unavailable', note: yt ? yt.filename : 'Upload YouTube CSV' },
     { label: 'YouTube Watch Time', value: yt ? fmt(sumColumn(yt.rows, ['watch'])) : '—', source: yt ? 'csv' : 'unavailable', note: yt ? yt.filename : 'Upload YouTube CSV' },
     { label: 'Live Attendees', value: ls ? fmt(sumColumn(ls.rows, ['attend'])) : '—', source: ls ? 'csv' : 'unavailable', note: ls ? ls.filename : 'Upload Livestream CSV' },
-    { label: 'Survey Responses', value: sv ? fmt(sv.rows?.length ?? 0) : '—', source: sv ? 'csv' : 'unavailable', note: sv ? sv.filename : 'Upload Survey CSV' },
+    { label: 'Survey Responses', value: sv ? fmt(sv.rows?.length ?? 0) : '—', source: sv ? 'cht survey' : 'unavailable', note: sv ? sv.filename : 'Select CHT feedback survey' },
   ];
 
   const dataGaps: string[] = [];
@@ -142,7 +178,7 @@ export function buildAnalyticsReport(
   if (!me) dataGaps.push('Meta performance data not uploaded — regional breakdowns, audience demographics, and CTR benchmarking are unavailable.');
   if (!yt) dataGaps.push('YouTube performance data not uploaded — video-level views, engaged views, and watch time are unavailable.');
   if (!ls) dataGaps.push('Livestream/event attendance data not uploaded — registrations, live attendance, HCP verification rate are unavailable.');
-  if (!sv) dataGaps.push('Post-event survey data not uploaded — practice-change intent, confidence lift, and qualitative HCP insights are unavailable.');
+  if (!sv) dataGaps.push('No CHT post-event feedback survey selected — practice-change intent, confidence lift, and qualitative HCP insights are unavailable.');
 
   const executiveSummary = hasAnyData
     ? `The ${campaign.name} campaign delivered across ${(campaign.platforms ?? []).join(', ')} during the reporting period ${campaign.reportingPeriodStart} – ${campaign.reportingPeriodEnd}. This report summarizes aggregate performance, channel breakdowns, and strategic recommendations based on the connected data sources.`
@@ -166,13 +202,21 @@ export function buildAnalyticsReport(
       metaData: me ? { filename: me.filename, rowCount: me.rows?.length ?? 0 } : null,
       youtubeData: yt ? { filename: yt.filename, rowCount: yt.rows?.length ?? 0 } : null,
       livestreamData: ls ? { filename: ls.filename, rowCount: ls.rows?.length ?? 0 } : null,
-      surveyData: sv ? { filename: sv.filename, rowCount: sv.rows?.length ?? 0 } : null,
+      surveyData: sv
+        ? {
+            source: sv.metadata?.source ?? 'upload',
+            label: sv.filename,
+            rowCount: sv.rows?.length ?? 0,
+            surveyId: sv.metadata?.surveyId ?? null,
+            analytics: sv.metadata?.analytics ?? null,
+          }
+        : null,
       topContent: [],
-      keyHighlights: [],
+      keyHighlights: surveyHighlights,
       recommendations: [
         'Replicate highest-performing content formats and physician pairings in future campaign flights.',
         'Allocate additional budget to regions and audience segments demonstrating above-average CTR.',
-        'Implement post-event surveys to capture HCP practice-change intent and content impact.',
+        'Review the selected post-event feedback survey for practice-change intent and content impact.',
         'Ensure all HubSpot forms are tagged with campaign identifiers for accurate attribution.',
         'Connect HubSpot to enable contact-level tracking, form attribution, and email performance analytics.',
         'Export LinkedIn Campaign Manager data after each flight for dwell time and completion rate analysis.',
@@ -195,6 +239,7 @@ export function buildExecutiveReport(
   const yt = byPlatform('youtube');
   const li = byPlatform('linkedin');
   const me = byPlatform('meta');
+  const sv = byPlatform('survey');
 
   const ytViews = yt ? sumColumn(yt.rows, ['view']) : 0;
   const liViews = li ? sumColumn(li.rows, ['video view', 'views']) : 0;
@@ -221,7 +266,13 @@ export function buildExecutiveReport(
       linkedin: li ? { views: liViews, impressions: liImpr } : null,
       meta: me ? { views: meViews, impressions: meImpr } : null,
       livestream: null,
-      survey: null,
+      survey: sv
+        ? {
+            responses: sv.rows?.length ?? 0,
+            label: sv.filename,
+            analytics: sv.metadata?.analytics ?? null,
+          }
+        : null,
     },
     platformBreakdown: [
       { platform: 'YouTube', totalViews: ytViews, totalImpressions: ytImpr, hasData: Boolean(yt) },
