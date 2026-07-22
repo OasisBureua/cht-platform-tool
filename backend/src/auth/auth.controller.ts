@@ -175,20 +175,30 @@ export class AuthController {
     | { error: string }
     | { challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
   > {
+    const loginStart = Date.now();
+    const emailStr = (email || '').trim();
+    this.logger.log(
+      `[Auth] Cognito login attempt for ${emailStr || '(empty)'} captcha=${recaptchaToken ? 'present' : 'missing'}`,
+    );
+
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Cognito login is not configured.' };
     }
 
+    const captchaStart = Date.now();
     const captchaError = await this.verifyRecaptchaOrError(
       recaptchaToken,
       'login',
       req,
     );
+    this.logger.log(
+      `[Auth] Cognito login captcha check for ${emailStr} in ${Date.now() - captchaStart}ms` +
+        (captchaError ? ` failed: ${captchaError}` : ''),
+    );
     if (captchaError) {
       return { error: captchaError };
     }
 
-    const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)) {
       return { error: 'Please enter a valid email address.' };
@@ -196,9 +206,13 @@ export class AuthController {
     if (!password) return { error: 'Password is required.' };
 
     try {
+      const cognitoStart = Date.now();
       const result = await this.cognitoService.loginWithPassword(
         emailStr,
         password,
+      );
+      this.logger.log(
+        `[Auth] Cognito InitiateAuth for ${emailStr} in ${Date.now() - cognitoStart}ms kind=${result.kind}`,
       );
       if (result.kind === 'mfa') {
         return {
@@ -206,20 +220,31 @@ export class AuthController {
           session: result.session,
         };
       }
+      const sessionStart = Date.now();
       const loginResult = await this.sessionFromCognitoTokens(
         result.tokens,
         res,
       );
+      this.logger.log(
+        `[Auth] Cognito session create for ${emailStr} in ${Date.now() - sessionStart}ms`,
+      );
       if ('error' in loginResult) return loginResult;
       this.logger.log(
-        `[Auth] Cognito login success: userId=${loginResult.userId} email=${loginResult.email}`,
+        `[Auth] Cognito login success: userId=${loginResult.userId} email=${loginResult.email} total=${Date.now() - loginStart}ms`,
       );
       return loginResult;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed.';
-      this.logger.warn(`[Auth] Cognito login failed for ${emailStr}: ${msg}`);
+      this.logger.warn(
+        `[Auth] Cognito login failed for ${emailStr} after ${Date.now() - loginStart}ms: ${msg}`,
+      );
       if (/not authorized|incorrect username or password/i.test(msg)) {
         return { error: 'Invalid email or password.' };
+      }
+      if (/aborted|timeout|TimeoutError/i.test(msg)) {
+        return {
+          error: 'Login timed out. Please try again.',
+        };
       }
       return { error: msg };
     }
@@ -948,18 +973,22 @@ export class AuthController {
     }
 
     if (this.cognitoService.isConfigured()) {
+      const confirmStart = Date.now();
+      this.logger.log(`[Auth] Cognito recover confirm attempt for ${emailStr}`);
       try {
         await this.cognitoService.confirmForgotPassword(
           emailStr,
           codeStr,
           passwordStr,
         );
-        this.logger.log(`[Auth] Cognito password reset confirmed for ${emailStr}`);
+        this.logger.log(
+          `[Auth] Cognito password reset confirmed for ${emailStr} in ${Date.now() - confirmStart}ms`,
+        );
         return {};
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Password reset failed.';
         this.logger.warn(
-          `[Auth] Cognito recover confirm failed for ${emailStr}: ${msg}`,
+          `[Auth] Cognito recover confirm failed for ${emailStr} after ${Date.now() - confirmStart}ms: ${msg}`,
         );
         if (/CodeMismatchException/i.test(msg)) {
           return { error: 'Invalid reset code.' };

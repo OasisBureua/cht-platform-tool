@@ -48,17 +48,32 @@ export class RecaptchaService {
       body.set('remoteip', remoteIp);
     }
 
+    const verifyStart = Date.now();
+    this.logger.log(`[Recaptcha] siteverify start action=${action}`);
     let data: SiteverifyResponse;
     try {
-      const res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body,
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8_000);
+      let res: Response;
+      try {
+        res = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeout);
+      }
       data = (await res.json()) as SiteverifyResponse;
+      this.logger.log(
+        `[Recaptcha] siteverify done action=${action} in ${Date.now() - verifyStart}ms success=${!!data.success}`,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`[Recaptcha] siteverify request failed: ${msg}`);
+      this.logger.warn(
+        `[Recaptcha] siteverify request failed after ${Date.now() - verifyStart}ms: ${msg}`,
+      );
       return { error: 'Captcha verification failed. Please try again.' };
     }
 

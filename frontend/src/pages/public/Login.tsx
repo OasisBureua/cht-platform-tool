@@ -64,6 +64,7 @@ export default function Login() {
     try {
       let recaptchaToken: string | undefined;
       if (recaptchaEnabled) {
+        // Runs in the browser before any API call — if this hangs, backend logs stay empty.
         recaptchaToken = await executeRecaptcha('login');
       }
       const { error: err, mfa } = await login(email, password, recaptchaToken);
