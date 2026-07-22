@@ -12,6 +12,7 @@ import {
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminGetUserCommand,
+  ListUsersCommand,
   type AuthenticationResultType,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { UserRole } from '@prisma/client';
@@ -32,6 +33,8 @@ export interface CognitoIdTokenClaims {
   given_name?: string;
   family_name?: string;
   name?: string;
+  /** Pool username — for Google IdP this is often `Google_<sub>`, not the email. */
+  'cognito:username'?: string;
   'cognito:groups'?: string[];
 }
 
@@ -237,12 +240,25 @@ export class CognitoService {
 
   /**
    * Keep Cognito groups aligned with Postgres User.role (HCP/KOL → cht-hcp, ADMIN → cht-admin).
+   * @param preferredUsername Optional pool Username from the ID token (`cognito:username`).
    */
-  async syncGroupsForRole(email: string, role: UserRole): Promise<void> {
+  async syncGroupsForRole(
+    email: string,
+    role: UserRole,
+    preferredUsername?: string | null,
+  ): Promise<void> {
     if (!this.isConfigured()) return;
 
+    const preferred = preferredUsername?.trim();
     const username =
-      (await this.resolveUsername(email)) ?? email.trim().toLowerCase();
+      (preferred && preferred.length > 0 ? preferred : null) ??
+      (await this.resolveUsername(email));
+    if (!username) {
+      this.logger.warn(
+        `[Cognito] Skipping group sync — no pool username for ${email.trim().toLowerCase()}`,
+      );
+      return;
+    }
 
     const addGroup =
       role === UserRole.ADMIN ? COGNITO_GROUP_ADMIN : COGNITO_GROUP_HCP;
@@ -253,7 +269,10 @@ export class CognitoService {
     await this.removeUserFromGroup(username, removeGroup);
   }
 
-  /** Resolve pool Username (may differ from email alias for older accounts). */
+  /**
+   * Resolve pool Username. Native users often match email; Google/federated users
+   * use `Google_<id>` — look them up via ListUsers email filter.
+   */
   async resolveUsername(email: string): Promise<string | null> {
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes('@')) return null;
@@ -264,19 +283,42 @@ export class CognitoService {
           UserPoolId: this.userPoolId,
           Username: normalized,
         }),
+        { abortSignal: this.cognitoAbortSignal() },
       );
       return response.Username ?? normalized;
     } catch (err) {
       const name = err instanceof Error ? err.name : '';
       const msg = err instanceof Error ? err.message : String(err);
-      if (/UserNotFoundException/i.test(name) || /user does not exist/i.test(msg)) {
+      if (
+        !/UserNotFoundException/i.test(name) &&
+        !/user does not exist/i.test(msg)
+      ) {
         this.logger.warn(
-          `[Cognito] Cannot sync groups: ${normalized} not found in pool`,
+          `[Cognito] resolveUsername AdminGetUser failed for ${normalized}: ${name || msg}`,
         );
-        return null;
       }
+    }
+
+    try {
+      const listed = await this.client.send(
+        new ListUsersCommand({
+          UserPoolId: this.userPoolId,
+          Filter: `email = "${normalized.replace(/"/g, '')}"`,
+          Limit: 5,
+        }),
+        { abortSignal: this.cognitoAbortSignal() },
+      );
+      const match = listed.Users?.find((u) => u.Username)?.Username;
+      if (match) return match;
       this.logger.warn(
-        `[Cognito] resolveUsername failed for ${normalized}: ${name || msg}`,
+        `[Cognito] Cannot sync groups: ${normalized} not found in pool`,
+      );
+      return null;
+    } catch (err) {
+      const name = err instanceof Error ? err.name : '';
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `[Cognito] resolveUsername ListUsers failed for ${normalized}: ${name || msg}`,
       );
       return null;
     }
