@@ -52,6 +52,11 @@ export class CognitoService {
     this.client = new CognitoIdentityProviderClient({ region });
   }
 
+  /** Bound Cognito API calls so login cannot hang until the frontend 30s abort. */
+  private cognitoAbortSignal(): AbortSignal {
+    return AbortSignal.timeout(10_000);
+  }
+
   isConfigured(): boolean {
     return !!(
       this.configService.get<string>('cognito.userPoolId') &&
@@ -103,6 +108,7 @@ export class CognitoService {
           PASSWORD: password,
         },
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
 
     if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
@@ -138,6 +144,7 @@ export class CognitoService {
           SOFTWARE_TOKEN_MFA_CODE: code.trim(),
         },
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
 
     const tokens = this.toTokens(response.AuthenticationResult);
@@ -168,6 +175,7 @@ export class CognitoService {
             : []),
         ],
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
 
     if (!response.UserSub) {
@@ -187,6 +195,7 @@ export class CognitoService {
         Username: email.trim().toLowerCase(),
         ConfirmationCode: code.trim(),
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
   }
 
@@ -196,6 +205,7 @@ export class CognitoService {
         ClientId: this.clientId,
         Username: email.trim().toLowerCase(),
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
   }
 
@@ -205,6 +215,7 @@ export class CognitoService {
         ClientId: this.clientId,
         Username: email.trim().toLowerCase(),
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
   }
 
@@ -220,6 +231,7 @@ export class CognitoService {
         ConfirmationCode: code.trim(),
         Password: password,
       }),
+      { abortSignal: this.cognitoAbortSignal() },
     );
   }
 

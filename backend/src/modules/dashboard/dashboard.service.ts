@@ -69,13 +69,26 @@ export class DashboardService {
   async getStats(userId: string): Promise<StatsResponseDto> {
     this.logger.log(`Fetching stats from database for user: ${userId}`);
 
-    // Get enrollments
-    const enrollments = await this.prisma.programEnrollment.findMany({
+    // Two-step load: orphan ProgramEnrollment rows (program deleted, FK not cascaded)
+    // make `include: { program: true }` throw "Field program is required … got null".
+    const enrollmentRows = await this.prisma.programEnrollment.findMany({
       where: { userId },
-      include: {
-        program: true,
+      select: {
+        id: true,
+        completed: true,
+        programId: true,
       },
     });
+    const programIds = [...new Set(enrollmentRows.map((e) => e.programId))];
+    const programs =
+      programIds.length === 0
+        ? []
+        : await this.prisma.program.findMany({
+            where: { id: { in: programIds } },
+            select: { id: true, creditAmount: true },
+          });
+    const programById = new Map(programs.map((p) => [p.id, p]));
+    const enrollments = enrollmentRows.filter((e) => programById.has(e.programId));
 
     const activitiesCompleted = enrollments.filter(
       (e) => e.completed === true,
@@ -90,13 +103,12 @@ export class DashboardService {
     });
 
     // Calculate CME credits earned
-    const completedEnrollments = enrollments.filter(
-      (e) => e.completed === true,
-    );
-    const cmeCreditsEarned = completedEnrollments.reduce(
-      (sum, e) => sum + (e.program.creditAmount || 0),
-      0,
-    );
+    const cmeCreditsEarned = enrollments
+      .filter((e) => e.completed === true)
+      .reduce(
+        (sum, e) => sum + (programById.get(e.programId)?.creditAmount || 0),
+        0,
+      );
 
     // Calculate completion rate
     const completionRate =
