@@ -133,6 +133,7 @@ resource "aws_ecs_service" "worker" {
   }
 }
 
+
 # Auto Scaling
 resource "aws_appautoscaling_target" "worker" {
   max_capacity       = var.max_capacity

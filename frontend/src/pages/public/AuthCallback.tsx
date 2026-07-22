@@ -6,6 +6,7 @@ import { cognitoAuthEnabled } from '../../lib/auth-config';
 import {
   consumeCognitoOAuthState,
   getCognitoCallbackUrl,
+  normalizeCognitoRedirectUri,
 } from '../../lib/cognito-oauth';
 
 /**
@@ -40,31 +41,32 @@ export default function AuthCallback() {
     const fromPath = fromParam && fromParam !== 'undefined' ? fromParam : undefined;
 
     if (code && cognitoAuthEnabled) {
-      let cancelled = false;
       const oauthState = consumeCognitoOAuthState(state);
-      const redirectUri = oauthState?.redirectUri || getCognitoCallbackUrl(oauthState?.from);
+      const redirectUri = normalizeCognitoRedirectUri(
+        oauthState?.redirectUri || getCognitoCallbackUrl(),
+      );
       const codeVerifier = oauthState?.verifier;
 
       if (!codeVerifier) {
         setError('Missing PKCE verifier. Please try signing in again.');
+        startedRef.current = false;
         return;
       }
 
-      completeCognitoCallback(code, redirectUri, codeVerifier).then((result) => {
-        if (cancelled) return;
+      void completeCognitoCallback(code, redirectUri, codeVerifier).then((result) => {
         if (result.error) {
           setError(result.error.message || 'Sign-in failed.');
+          startedRef.current = false;
           return;
         }
+        // Navigate even if React Strict Mode cleaned up the effect — auth already succeeded.
         navigate(
           getPostLoginPath(result.role, oauthState?.from || fromPath),
           { replace: true },
         );
       });
 
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
 
     const hash = INITIAL_HASH || window.location.hash?.slice(1);
@@ -73,22 +75,18 @@ export default function AuthCallback() {
 
     if (!accessToken?.trim()) {
       setError('Missing authorization response. Please try signing in again.');
+      startedRef.current = false;
       return;
     }
 
-    let cancelled = false;
-    loginOAuth(accessToken.trim()).then((result) => {
-      if (cancelled) return;
+    void loginOAuth(accessToken.trim()).then((result) => {
       if (result.error) {
         setError(result.error.message || 'Sign-in failed.');
+        startedRef.current = false;
         return;
       }
       navigate(getPostLoginPath(result.role, fromPath), { replace: true });
     });
-
-    return () => {
-      cancelled = true;
-    };
     // Intentionally omit callback fn deps — startedRef guards a single exchange per code.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, searchParams]);

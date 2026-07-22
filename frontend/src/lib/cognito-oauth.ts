@@ -31,13 +31,31 @@ async function sha256Base64Url(input: string): Promise<string> {
   return base64UrlEncode(new Uint8Array(hash));
 }
 
-export function getCognitoCallbackUrl(fromPath?: string): string {
-  const base = resolveAppBaseUrl().replace(/\/$/, '');
-  const callbackBase = `${base}/auth/callback`;
-  if (fromPath && fromPath !== '/' && fromPath !== 'undefined') {
-    return `${callbackBase}?from=${encodeURIComponent(fromPath)}`;
+/**
+ * Cognito callback / logout URLs must match the app client allowlist exactly.
+ * Strip query/hash so stale sessionStorage values with ?from= cannot break token exchange.
+ */
+export function normalizeCognitoRedirectUri(uri: string): string {
+  const trimmed = uri.trim();
+  if (!trimmed) return trimmed;
+  try {
+    const u = new URL(trimmed);
+    u.search = '';
+    u.hash = '';
+    const path = u.pathname.replace(/\/$/, '') || '';
+    return path ? `${u.origin}${path}` : u.origin;
+  } catch {
+    return trimmed.split('#')[0].split('?')[0].replace(/\/$/, '');
   }
-  return callbackBase;
+}
+
+/**
+ * Cognito callback URL. Must match callback_urls exactly (no query string).
+ * Return path is stored in PKCE sessionStorage via `state`, not on redirect_uri.
+ */
+export function getCognitoCallbackUrl(_fromPath?: string): string {
+  const base = resolveAppBaseUrl().replace(/\/$/, '');
+  return normalizeCognitoRedirectUri(`${base}/auth/callback`);
 }
 
 export function consumeCognitoOAuthState(state: string | null): CognitoOAuthState | null {
@@ -52,6 +70,7 @@ export function consumeCognitoOAuthState(state: string | null): CognitoOAuthStat
     sessionStorage.removeItem(`${PKCE_STORAGE_PREFIX}${state}`);
     if (!raw) return null;
     const data = JSON.parse(raw) as CognitoOAuthState;
+    data.redirectUri = normalizeCognitoRedirectUri(data.redirectUri);
     lastConsumedOAuth = { state, data };
     return data;
   } catch {
@@ -66,7 +85,8 @@ export function consumeCognitoOAuthState(state: string | null): CognitoOAuthStat
 export function buildCognitoLogoutUrl(): string {
   const domain = import.meta.env.VITE_COGNITO_DOMAIN?.replace(/\/$/, '');
   const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID?.trim();
-  const logoutUri = resolveAppBaseUrl().replace(/\/$/, '');
+  // Must match Cognito logout_urls exactly (Terraform: https://{domain_name}).
+  const logoutUri = normalizeCognitoRedirectUri(resolveAppBaseUrl());
 
   if (!domain || !clientId) {
     throw new Error('Cognito logout is not configured.');
@@ -91,7 +111,7 @@ export async function buildCognitoAuthorizeUrl(
     throw new Error('Cognito OAuth is not configured.');
   }
 
-  const redirectUri = getCognitoCallbackUrl(fromPath);
+  const redirectUri = getCognitoCallbackUrl();
   const verifier = randomBase64Url(32);
   const challenge = await sha256Base64Url(verifier);
   const state = randomBase64Url(16);
