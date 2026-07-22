@@ -54,7 +54,7 @@ export function buildRegistrationInviteEmail(
       <ul style="margin:0 0 20px;padding-left:20px;color:${E.BODY_TEXT};font-size:14px;line-height:1.5">
         ${listHtml}
       </ul>
-      ${emailButton('Open registration page', p.registerUrl)}
+      ${emailButton(url, 'Open registration page')}
       <p style="margin:20px 0 0;color:${E.MUTED};font-size:13px;line-height:1.5">
         Or copy this link: <a href="${url}" style="color:${E.LINK}">${url}</a>
       </p>
