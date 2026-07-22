@@ -386,6 +386,20 @@ export class CognitoService {
     }
   }
 
+  private normalizeOAuthRedirectUri(uri: string): string {
+    const trimmed = uri.trim();
+    if (!trimmed) return trimmed;
+    try {
+      const u = new URL(trimmed);
+      u.search = '';
+      u.hash = '';
+      const path = u.pathname.replace(/\/$/, '') || '';
+      return path ? `${u.origin}${path}` : u.origin;
+    } catch {
+      return trimmed.split('#')[0].split('?')[0].replace(/\/$/, '');
+    }
+  }
+
   async exchangeAuthorizationCode(
     code: string,
     redirectUri: string,
@@ -400,7 +414,8 @@ export class CognitoService {
       grant_type: 'authorization_code',
       client_id: this.clientId,
       code: code.trim(),
-      redirect_uri: redirectUri.trim(),
+      // Cognito requires exact allowlist match — never forward ?from= / hash.
+      redirect_uri: this.normalizeOAuthRedirectUri(redirectUri),
       code_verifier: codeVerifier.trim(),
     });
 
