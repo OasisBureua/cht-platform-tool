@@ -1,5 +1,8 @@
 const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY?.trim();
 
+/** Cap client-side captcha so login cannot hang forever with no backend request. */
+const RECAPTCHA_TIMEOUT_MS = 10_000;
+
 declare global {
   interface Window {
     grecaptcha?: {
@@ -16,6 +19,22 @@ export function recaptchaConfigured(): boolean {
 }
 
 let scriptLoadPromise: Promise<void> | null = null;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 function loadRecaptchaScript(): Promise<void> {
   if (!siteKey) {
@@ -60,18 +79,26 @@ export async function executeRecaptcha(action: RecaptchaAction): Promise<string>
     throw new Error('reCAPTCHA is not configured.');
   }
 
-  await loadRecaptchaScript();
+  return withTimeout(
+    (async () => {
+      await loadRecaptchaScript();
 
-  return new Promise((resolve, reject) => {
-    window.grecaptcha!.ready(() => {
-      window
-        .grecaptcha!.execute(siteKey, { action })
-        .then(resolve)
-        .catch((err: unknown) => {
-          reject(
-            err instanceof Error ? err : new Error('Captcha verification failed.'),
-          );
+      return new Promise<string>((resolve, reject) => {
+        window.grecaptcha!.ready(() => {
+          window
+            .grecaptcha!.execute(siteKey, { action })
+            .then(resolve)
+            .catch((err: unknown) => {
+              reject(
+                err instanceof Error
+                  ? err
+                  : new Error('Captcha verification failed.'),
+              );
+            });
         });
-    });
-  });
+      });
+    })(),
+    RECAPTCHA_TIMEOUT_MS,
+    'Captcha timed out. Please refresh and try again.',
+  );
 }

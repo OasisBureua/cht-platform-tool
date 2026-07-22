@@ -383,38 +383,57 @@ export class ProgramsService {
    * Get user's enrollments
    */
   async getUserEnrollments(userId: string) {
-    const enrollments = await this.prisma.programEnrollment.findMany({
+    // Two-step load avoids Prisma throwing when orphan enrollments point at a
+    // deleted Program ("Field program is required … got null").
+    const enrollmentRows = await this.prisma.programEnrollment.findMany({
       where: { userId },
-      include: {
-        program: {
-          include: {
-            videos: true,
-          },
-        },
+      select: {
+        id: true,
+        userId: true,
+        programId: true,
+        overallProgress: true,
+        completed: true,
+        enrolledAt: true,
+        completedAt: true,
       },
       orderBy: { enrolledAt: 'desc' },
     });
 
-    return enrollments.map((e) => ({
-      id: e.id,
-      userId: e.userId,
-      programId: e.programId,
-      overallProgress: e.overallProgress,
-      completed: e.completed,
-      enrolledAt: e.enrolledAt.toISOString(),
-      completedAt: e.completedAt?.toISOString(),
-      program: {
-        id: e.program.id,
-        title: e.program.title,
-        description: e.program.description,
-        thumbnailUrl: e.program.thumbnailUrl || undefined,
-        creditAmount: e.program.creditAmount,
-        honorariumAmount: e.program.honorariumAmount
-          ? e.program.honorariumAmount / 100
-          : undefined,
-        videosCount: e.program.videos.length,
-      },
-    }));
+    const programIds = [...new Set(enrollmentRows.map((e) => e.programId))];
+    const programs =
+      programIds.length === 0
+        ? []
+        : await this.prisma.program.findMany({
+            where: { id: { in: programIds } },
+            include: { videos: true },
+          });
+    const programById = new Map(programs.map((p) => [p.id, p]));
+
+    return enrollmentRows
+      .filter((e) => programById.has(e.programId))
+      .map((e) => {
+        const program = programById.get(e.programId)!;
+        return {
+          id: e.id,
+          userId: e.userId,
+          programId: e.programId,
+          overallProgress: e.overallProgress,
+          completed: e.completed,
+          enrolledAt: e.enrolledAt.toISOString(),
+          completedAt: e.completedAt?.toISOString(),
+          program: {
+            id: program.id,
+            title: program.title,
+            description: program.description,
+            thumbnailUrl: program.thumbnailUrl || undefined,
+            creditAmount: program.creditAmount,
+            honorariumAmount: program.honorariumAmount
+              ? program.honorariumAmount / 100
+              : undefined,
+            videosCount: program.videos.length,
+          },
+        };
+      });
   }
 
   /**
