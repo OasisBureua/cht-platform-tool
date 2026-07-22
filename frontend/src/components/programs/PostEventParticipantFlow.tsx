@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Program, ProgramRegistrationState } from '../../api/programs';
-import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
+import { isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
 import { BillComMark } from '../branding/BillComMark';
 import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
@@ -201,8 +201,7 @@ export default function PostEventParticipantFlow(props: {
   const activeStep =
     phase === 'intro' || phase === 'survey' ? 0 : phase === 'payout' ? 1 : 2;
 
-  const nativePostEventSurvey =
-    !!program.feedbackSurveyId && program.feedbackUsesJotform !== true;
+  const nativePostEventSurvey = !!program.feedbackSurveyId;
 
   useEffect(() => {
     if (phase !== 'survey') {
@@ -324,8 +323,6 @@ export default function PostEventParticipantFlow(props: {
                 surveyId={program.feedbackSurveyId}
                 userId={userId}
                 programId={program.id}
-                legacyJotformUrl={program.jotformSurveyUrl}
-                feedbackUsesJotform={program.feedbackUsesJotform}
                 authenticated
                 userSummary={userSummary}
                 hideSubmitButton={nativePostEventSurvey}
@@ -343,20 +340,11 @@ export default function PostEventParticipantFlow(props: {
                   advanceAfterSurvey();
                 }}
               />
-            ) : program.jotformSurveyUrl?.trim() ? (
-              <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-                <iframe
-                  title="Post-event survey"
-                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl, {
-                    legacyAttribution: true,
-                    userId,
-                    programId: program.id,
-                  })}
-                  className="w-full h-[480px]"
-                  allow="camera; microphone"
-                />
-              </div>
-            ) : null
+            ) : (
+              <p className="text-sm text-gray-600">
+                No native post-event survey is configured for this session yet.
+              </p>
+            )
           }
           onSurveyAcknowledged={({ hasHonorarium: h }) => {
             if (h) setPhase('payout');

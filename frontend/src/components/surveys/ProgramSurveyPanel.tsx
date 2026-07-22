@@ -4,14 +4,14 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import { surveysApi } from '../../api/surveys';
 import { NativeSurveyForm } from './NativeSurveyForm';
 import { surveyHasNativeQuestions } from '../../utils/survey-questions';
-import { buildPostEventSurveyEmbedSrc } from '../../utils/post-event-survey';
 
 type Props = {
   surveyId: string;
   userId: string;
   programId: string;
-  /** Fallback Jotform URL when survey row is Jotform-backed. */
+  /** @deprecated Ignored — registration/feedback panels are native-only. */
   legacyJotformUrl?: string;
+  /** @deprecated Ignored — Jotform embeds are no longer used. */
   feedbackUsesJotform?: boolean;
   authenticated: boolean;
   userSummary?: { firstName?: string; lastName?: string; email?: string };
@@ -24,15 +24,13 @@ type Props = {
 };
 
 /**
- * Renders native survey when questions are available; otherwise legacy Jotform iframe.
+ * Renders the program's native survey form.
  * Identity is never passed via URL query params (session-bound native submit).
  */
 export function ProgramSurveyPanel({
   surveyId,
   userId,
   programId,
-  legacyJotformUrl,
-  feedbackUsesJotform,
   authenticated,
   userSummary,
   submitLabel,
@@ -91,52 +89,27 @@ export function ProgramSurveyPanel({
     );
   }
 
-  const useNative = surveyHasNativeQuestions(survey.questions);
-  const jotformUrl =
-    survey.jotformFormUrl ??
-    (survey.jotformFormId
-      ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}`
-      : legacyJotformUrl);
-
-  if (useNative) {
+  if (!surveyHasNativeQuestions(survey.questions)) {
     return (
-      <NativeSurveyForm
-        surveyId={survey.id}
-        title={survey.title}
-        questions={survey.questions}
-        authenticated={authenticated}
-        userSummary={userSummary}
-        submitting={submitMut.isPending}
-        submitLabel={submitLabel}
-        hideSubmitButton={hideSubmitButton}
-        formId={formId}
-        showPayoutNotice={survey.type === 'FEEDBACK'}
-        onSubmit={(answers) => submitMut.mutate(answers)}
-      />
-    );
-  }
-
-  if (jotformUrl && feedbackUsesJotform !== false) {
-    const embedSrc = buildPostEventSurveyEmbedSrc(jotformUrl, {
-      legacyAttribution: true,
-      userId,
-      programId,
-    });
-    return (
-      <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-        <iframe
-          title={survey.title}
-          src={embedSrc}
-          className="w-full h-[480px]"
-          allow="camera; microphone"
-        />
-      </div>
+      <p className="text-sm text-gray-600">
+        No survey form is configured for this program yet.
+      </p>
     );
   }
 
   return (
-    <p className="text-sm text-gray-600">
-      No survey form is configured for this program yet.
-    </p>
+    <NativeSurveyForm
+      surveyId={survey.id}
+      title={survey.title}
+      questions={survey.questions}
+      authenticated={authenticated}
+      userSummary={userSummary}
+      submitting={submitMut.isPending}
+      submitLabel={submitLabel}
+      hideSubmitButton={hideSubmitButton}
+      formId={formId}
+      showPayoutNotice={survey.type === 'FEEDBACK'}
+      onSubmit={(answers) => submitMut.mutate(answers)}
+    />
   );
 }
