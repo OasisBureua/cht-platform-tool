@@ -13,7 +13,6 @@ import {
   AssociateSoftwareTokenCommand,
   VerifySoftwareTokenCommand,
   SetUserMFAPreferenceCommand,
-  GetUserCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminGetUserCommand,
@@ -494,13 +493,9 @@ export class CognitoService {
   }
 
   /**
-   * Whether the Cognito user has software-token MFA enabled.
-   * Uses AdminGetUser (IAM) so Hosted UI / Google sessions without
-   * `aws.cognito.signin.user.admin` on the access token still work for /me.
+   * Whether a pool user has software-token MFA enabled (IAM AdminGetUser).
    */
-  async isSoftwareTokenMfaEnabledForEmail(email: string): Promise<boolean> {
-    const username = await this.resolveUsername(email);
-    if (!username) return false;
+  private async adminUserHasSoftwareMfa(username: string): Promise<boolean> {
     try {
       const user = await this.client.send(
         new AdminGetUserCommand({
@@ -513,20 +508,70 @@ export class CognitoService {
       return settings.includes('SOFTWARE_TOKEN_MFA');
     } catch (err) {
       this.logger.warn(
-        `[Cognito] AdminGetUser MFA status failed for ${email.trim().toLowerCase()}: ${err instanceof Error ? err.message : String(err)}`,
+        `[Cognito] AdminGetUser MFA status failed for ${username}: ${err instanceof Error ? err.message : String(err)}`,
       );
       return false;
     }
   }
 
-  /** @deprecated Prefer isSoftwareTokenMfaEnabledForEmail — GetUser needs admin scope. */
+  /**
+   * MFA status for the identity that owns this access token.
+   * Prefers JWT `username` (e.g. `google_…`) so we do not confuse a native
+   * email user with a federated user that shares the same email.
+   */
+  async isSoftwareTokenMfaEnabledFromAccessToken(
+    accessToken: string,
+  ): Promise<boolean> {
+    const decoded = jwt.decode(accessToken);
+    if (!decoded || typeof decoded === 'string') return false;
+    const username =
+      typeof (decoded as { username?: unknown }).username === 'string'
+        ? (decoded as { username: string }).username.trim()
+        : '';
+    if (!username) return false;
+    return this.adminUserHasSoftwareMfa(username);
+  }
+
+  /**
+   * MFA status by email. If multiple Cognito users share the email (native +
+   * Google), returns true when any has software MFA — callers with a session
+   * should prefer isSoftwareTokenMfaEnabledFromAccessToken.
+   */
+  async isSoftwareTokenMfaEnabledForEmail(email: string): Promise<boolean> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return false;
+
+    try {
+      const listed = await this.client.send(
+        new ListUsersCommand({
+          UserPoolId: this.userPoolId,
+          Filter: `email = "${normalized.replace(/"/g, '')}"`,
+          Limit: 10,
+        }),
+        { abortSignal: this.cognitoAbortSignal() },
+      );
+      const usernames = (listed.Users ?? [])
+        .map((u) => u.Username)
+        .filter((u): u is string => !!u?.trim());
+      if (usernames.length === 0) {
+        // Fall back to email-as-username (native pools).
+        return this.adminUserHasSoftwareMfa(normalized);
+      }
+      for (const username of usernames) {
+        if (await this.adminUserHasSoftwareMfa(username)) return true;
+      }
+      return false;
+    } catch (err) {
+      this.logger.warn(
+        `[Cognito] MFA status by email failed for ${normalized}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return false;
+    }
+  }
+
+  /** @deprecated Prefer access-token or email helpers — GetUser needs admin scope. */
   async isSoftwareTokenMfaEnabled(accessToken: string): Promise<boolean> {
-    const user = await this.client.send(
-      new GetUserCommand({ AccessToken: accessToken }),
-      { abortSignal: this.cognitoAbortSignal() },
-    );
-    const settings = user.UserMFASettingList ?? [];
-    return settings.includes('SOFTWARE_TOKEN_MFA');
+    return this.isSoftwareTokenMfaEnabledFromAccessToken(accessToken);
   }
 
   buildOtpauthUri(secretCode: string, email: string): string {

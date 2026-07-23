@@ -175,9 +175,10 @@ export class AuthController {
 
     let mfaEnabled = false;
     try {
-      mfaEnabled = await this.cognitoService.isSoftwareTokenMfaEnabledForEmail(
-        user.email,
-      );
+      mfaEnabled =
+        await this.cognitoService.isSoftwareTokenMfaEnabledFromAccessToken(
+          tokens.accessToken,
+        );
     } catch (err) {
       this.logger.warn(
         `[Auth] MFA status on login failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
@@ -1418,7 +1419,7 @@ export class AuthController {
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getMe(@CurrentUser() user: AuthUser) {
+  async getMe(@CurrentUser() user: AuthUser, @Req() req: Request) {
     const dbUser = await this.authService.getUserById(user.userId);
     const nameParts = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
     const dbFirst = dbUser?.firstName?.trim();
@@ -1434,11 +1435,22 @@ export class AuthController {
 
     let mfaEnabled = false;
     if (this.cognitoService.isConfigured()) {
+      const sessionToken = getSessionTokenFromRequest(req);
+      const accessToken = sessionToken
+        ? await this.authService.getSessionAccessToken(sessionToken)
+        : null;
       try {
-        mfaEnabled =
-          await this.cognitoService.isSoftwareTokenMfaEnabledForEmail(
-            user.email,
-          );
+        if (accessToken) {
+          mfaEnabled =
+            await this.cognitoService.isSoftwareTokenMfaEnabledFromAccessToken(
+              accessToken,
+            );
+        } else {
+          mfaEnabled =
+            await this.cognitoService.isSoftwareTokenMfaEnabledForEmail(
+              user.email,
+            );
+        }
       } catch (err) {
         this.logger.warn(
           `[Auth] MFA status check failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
