@@ -186,6 +186,36 @@ export function validateNativeSurveySchema(value: unknown): NativeSurveySchema {
 }
 
 /**
+ * Next monotonic schema revision for a survey. Prefer the greater of
+ * Survey.schemaVersion and questions.version, then +1 when questions change.
+ */
+export function nextNativeSchemaVersion(
+  currentSchemaVersion: number,
+  questionsBlob?: unknown,
+): number {
+  const fromColumn =
+    Number.isInteger(currentSchemaVersion) && currentSchemaVersion > 0
+      ? currentSchemaVersion
+      : 1;
+  let fromJson = 1;
+  if (questionsBlob && typeof questionsBlob === 'object' && !Array.isArray(questionsBlob)) {
+    const v = (questionsBlob as { version?: unknown }).version;
+    if (typeof v === 'number' && Number.isInteger(v) && v > 0) fromJson = v;
+  }
+  return Math.max(fromColumn, fromJson) + 1;
+}
+
+/**
+ * Stamp `questions.version` to match the survey's schemaVersion column.
+ */
+export function withNativeSchemaVersion(
+  schema: NativeSurveySchema,
+  schemaVersion: number,
+): NativeSurveySchema {
+  return { ...schema, version: schemaVersion };
+}
+
+/**
  * Once responses exist, additions are safe, but existing answer keys cannot be
  * removed or reinterpreted. This keeps historical CSV/analytics mappings valid.
  */

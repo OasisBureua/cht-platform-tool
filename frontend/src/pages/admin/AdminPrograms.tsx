@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
+import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
 import SendRegistrationInvitesModal from '../../components/admin/SendRegistrationInvitesModal';
@@ -35,6 +36,7 @@ export default function AdminPrograms() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [sendInvitesOpen, setSendInvitesOpen] = useState(false);
 
   const { data: webinars, isLoading, error } = useQuery({
@@ -47,7 +49,12 @@ export default function AdminPrograms() {
     mutationFn: adminApi.deleteWebinar,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
+      queryClient.invalidateQueries({ queryKey: ['webinars'] });
       setDeleteConfirmId(null);
+      setDeleteError(null);
+    },
+    onError: (err: unknown) => {
+      setDeleteError(getApiErrorMessage(err, 'Could not delete webinar. Please try again.'));
     },
   });
 
@@ -167,25 +174,42 @@ export default function AdminPrograms() {
                     Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
                   </h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    This will permanently remove the session. This action cannot be undone.
+                    This permanently removes the session and its survey responses. This cannot be undone.
                   </p>
                 </div>
                 <button
-                  onClick={() => setDeleteConfirmId(null)}
+                  type="button"
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setDeleteError(null);
+                  }}
                   className="ml-4 shrink-0 text-gray-400 hover:text-gray-600"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
+              {deleteError ? (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {deleteError}
+                </p>
+              ) : null}
               <div className="flex gap-3 justify-end">
                 <button
-                  onClick={() => setDeleteConfirmId(null)}
+                  type="button"
+                  onClick={() => {
+                    setDeleteConfirmId(null);
+                    setDeleteError(null);
+                  }}
                   className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={() => deleteMutation.mutate(deleteConfirmId)}
+                  type="button"
+                  onClick={() => {
+                    setDeleteError(null);
+                    deleteMutation.mutate(deleteConfirmId);
+                  }}
                   disabled={deleteMutation.isPending}
                   className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
                 >
@@ -255,7 +279,10 @@ export default function AdminPrograms() {
                   key={w.id}
                   webinar={w}
                   onEdit={() => setEditingId(w.id)}
-                  onDelete={() => setDeleteConfirmId(w.id)}
+                  onDelete={() => {
+                    setDeleteError(null);
+                    setDeleteConfirmId(w.id);
+                  }}
                 />
               ))}
             </tbody>

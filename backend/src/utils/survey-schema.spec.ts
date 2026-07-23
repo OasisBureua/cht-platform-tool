@@ -2,7 +2,9 @@ import {
   findUnsafeAnsweredQuestionChanges,
   hasNativeSurveySchema,
   listNativeSurveyQuestions,
+  nextNativeSchemaVersion,
   validateNativeSurveySchema,
+  withNativeSchemaVersion,
 } from './survey-schema';
 
 describe('survey-schema', () => {
@@ -250,6 +252,33 @@ describe('survey-schema', () => {
           ],
         }),
       ).toContain('q1: changing question type');
+    });
+  });
+
+  describe('nextNativeSchemaVersion / withNativeSchemaVersion', () => {
+    it('bumps from the greater of column and JSON version', () => {
+      expect(nextNativeSchemaVersion(1, { version: 1 })).toBe(2);
+      expect(nextNativeSchemaVersion(3, { version: 1 })).toBe(4);
+      expect(nextNativeSchemaVersion(1, { version: 5 })).toBe(6);
+      expect(nextNativeSchemaVersion(0, null)).toBe(2);
+    });
+
+    it('stamps questions.version to match the column', () => {
+      const stamped = withNativeSchemaVersion(
+        validateNativeSurveySchema({
+          version: 1,
+          sections: [
+            {
+              id: 'main',
+              questions: [
+                { id: 'q1', type: 'text', prompt: 'Name', required: true },
+              ],
+            },
+          ],
+        }),
+        4,
+      );
+      expect(stamped.version).toBe(4);
     });
   });
 });

@@ -41,6 +41,12 @@ export default function AdminPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+    },
+    onError: () => {
+      // Bill.com failures mark the row FAILED server-side — refresh both lists.
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
   });
 
@@ -50,6 +56,10 @@ export default function AdminPayments() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
+    },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
     },
   });
 
@@ -130,6 +140,20 @@ export default function AdminPayments() {
 
       {/* Pending table */}
       <section id="pending-table" className="rounded-3xl border border-gray-200 bg-white overflow-hidden">
+        {(payNowMutation.isError || deleteMutation.isError) && (
+          <div className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold">Pay now failed</p>
+              <p>
+                {getApiErrorMessage(
+                  payNowMutation.isError ? payNowMutation.error : deleteMutation.error,
+                  'Request failed.',
+                )}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -151,6 +175,11 @@ export default function AdminPayments() {
                   onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
                   isPaying={payNowMutation.isPending && payNowMutation.variables === p.id}
                   isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
+                  payError={
+                    payNowMutation.isError && payNowMutation.variables === p.id
+                      ? getApiErrorMessage(payNowMutation.error, 'Pay now failed.')
+                      : null
+                  }
                 />
               ))}
             </tbody>
@@ -385,16 +414,6 @@ export default function AdminPayments() {
           </div>
         </div>
       )}
-
-      {(payNowMutation.isError || deleteMutation.isError) && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          {getApiErrorMessage(
-            payNowMutation.isError ? payNowMutation.error : deleteMutation.error,
-            'Request failed.',
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -410,6 +429,11 @@ function ManualPaymentForm() {
     'HONORARIUM' | 'CME_COMPLETION' | 'SURVEY_BONUS' | 'REFERRAL'
   >('HONORARIUM');
   const [formError, setFormError] = useState<string | null>(null);
+  const [eligibilityConfirm, setEligibilityConfirm] = useState<{
+    warnings: string[];
+    programTitle: string;
+  } | null>(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
 
   const { data: users = [], isFetching: usersLoading } = useQuery({
     queryKey: ['admin', 'users', 'manual-payment', userQuery],
@@ -451,16 +475,55 @@ function ManualPaymentForm() {
       setDescription('');
       setPaymentType('HONORARIUM');
       setFormError(null);
+      setEligibilityConfirm(null);
     },
     onError: (err) => {
       setFormError(getApiErrorMessage(err, 'Could not create payment.'));
+      setEligibilityConfirm(null);
     },
   });
 
-  const onSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitPayment = () => {
     setFormError(null);
     createMut.mutate();
+  };
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    setEligibilityConfirm(null);
+
+    // Warn only for honorarium + program when Pay-now eligibility is incomplete.
+    if (paymentType === 'HONORARIUM' && programId && selectedUserId) {
+      setCheckingEligibility(true);
+      try {
+        const eligibility = await adminApi.getManualPaymentEligibility({
+          userId: selectedUserId,
+          programId,
+        });
+        if (!eligibility.payNowReady) {
+          setEligibilityConfirm({
+            warnings:
+              eligibility.warnings.length > 0
+                ? eligibility.warnings
+                : [
+                    'Attendance, survey, Bill.com vendor, or W-9 requirements are not complete yet.',
+                  ],
+            programTitle: eligibility.programTitle,
+          });
+          return;
+        }
+      } catch (err) {
+        setFormError(
+          getApiErrorMessage(err, 'Could not check attendance / survey status.'),
+        );
+        return;
+      } finally {
+        setCheckingEligibility(false);
+      }
+    }
+
+    submitPayment();
   };
 
   return (
@@ -471,7 +534,8 @@ function ManualPaymentForm() {
           <h2 className="text-base font-semibold text-gray-900">Add manual payment</h2>
           <p className="mt-0.5 text-sm text-gray-600">
             Queue a pending payout for a specific user and program. It appears in the table below for{' '}
-            <strong>Pay now</strong> when you are ready.
+            <strong>Pay now</strong> when you are ready. Honorarium + program still requires attendance
+            verified and survey ack before Pay now succeeds.
           </p>
         </div>
       </div>
@@ -579,15 +643,68 @@ function ManualPaymentForm() {
         <div className="lg:col-span-2 flex flex-wrap items-center gap-3">
           <button
             type="submit"
-            disabled={createMut.isPending || !selectedUserId}
+            disabled={createMut.isPending || checkingEligibility || !selectedUserId}
             className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
           >
-            {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Add to pending queue
+            {createMut.isPending || checkingEligibility ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            {checkingEligibility ? 'Checking eligibility…' : 'Add to pending queue'}
           </button>
           {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
         </div>
       </form>
+
+      {eligibilityConfirm ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="manual-pay-eligibility-title"
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4"
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
+              <div>
+                <h3 id="manual-pay-eligibility-title" className="font-semibold text-gray-900">
+                  Eligibility incomplete — add anyway?
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  This person is not fully ready for Pay now on{' '}
+                  <strong>{eligibilityConfirm.programTitle}</strong>. You can still queue the
+                  payment, but Pay now will fail until attendance, survey, Bill.com vendor, and W-9
+                  requirements are met.
+                </p>
+                <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-amber-900">
+                  {eligibilityConfirm.warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEligibilityConfirm(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={submitPayment}
+                disabled={createMut.isPending}
+                className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {createMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Add to pending anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -720,14 +837,23 @@ function PendingRow({
   onRequestDelete,
   isPaying,
   isDeleting,
+  payError,
 }: {
   payment: PendingPayment;
   onPayNow: () => void;
   onRequestDelete: () => void;
   isPaying: boolean;
   isDeleting: boolean;
+  payError?: string | null;
 }) {
-  const canPay = !!payment.user.billVendorId;
+  const hasVendor = !!payment.user.billVendorId;
+  const hasW9 = payment.user.w9Submitted !== false;
+  const canPay = hasVendor && hasW9;
+  const blockReason = !hasVendor
+    ? 'No Bill.com vendor — HCP must add bank details'
+    : !hasW9
+      ? 'W-9 not submitted — HCP must complete W-9 first'
+      : null;
 
   return (
     <tr className="hover:bg-gray-50">
@@ -747,6 +873,7 @@ function PendingRow({
             type="button"
             onClick={onPayNow}
             disabled={!canPay || isPaying}
+            title={blockReason ?? 'Send payout via Bill.com'}
             className={[
               'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
               canPay && !isPaying
@@ -767,11 +894,12 @@ function PendingRow({
             <Trash2 className="h-4 w-4" aria-hidden />
           </button>
         </div>
-        {!canPay && (
-          <p className="mt-1 text-xs text-amber-600 flex flex-wrap items-center gap-1">
-            No <BillComMark size="xs" /> vendor
-          </p>
-        )}
+        {blockReason ? (
+          <p className="mt-1 text-xs text-amber-600 text-right">{blockReason}</p>
+        ) : null}
+        {payError ? (
+          <p className="mt-1 text-xs text-red-600 text-right max-w-xs ml-auto">{payError}</p>
+        ) : null}
       </td>
     </tr>
   );

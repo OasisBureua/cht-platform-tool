@@ -2120,15 +2120,6 @@ export class AdminController {
     const existing = await this.prisma.program.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Webinar not found');
 
-    const surveyResponseCount = await this.prisma.surveyResponse.count({
-      where: { survey: { programId: id } },
-    });
-    if (surveyResponseCount > 0) {
-      throw new BadRequestException(
-        `Webinar cannot be deleted because its surveys have ${surveyResponseCount} collected response(s). Archive or unpublish it instead.`,
-      );
-    }
-
     if (existing.zoomMeetingId && this.zoom.isConfigured()) {
       if (existing.zoomSessionType === 'MEETING') {
         await this.zoom.deleteMeeting(existing.zoomMeetingId);
@@ -2137,9 +2128,12 @@ export class AdminController {
       }
     }
 
-    // Safe after the response guard above. Explicitly remove dependent rows so
-    // orphans cannot remain if DB FKs are missing (e.g. DMS).
+    // Explicitly remove dependent rows before Program delete so orphans cannot remain
+    // if DB FKs are missing (e.g. DMS). Schema FKs also use ON DELETE CASCADE for Survey/Payment.
     await this.prisma.$transaction(async (tx) => {
+      await tx.surveyResponse.deleteMany({
+        where: { survey: { programId: id } },
+      });
       await tx.survey.deleteMany({ where: { programId: id } });
       await tx.payment.deleteMany({ where: { programId: id } });
       await tx.program.delete({ where: { id } });

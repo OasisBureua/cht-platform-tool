@@ -21,6 +21,7 @@ describe('survey-responses-csv', () => {
       responses: [
         {
           submittedAt: '2026-07-10T12:00:00.000Z',
+          schemaVersion: 2,
           answers: { npi: '1234567890', rating: 'Excellent' },
           user: {
             email: 'doc@example.com',
@@ -37,10 +38,10 @@ describe('survey-responses-csv', () => {
     });
 
     expect(csv).toContain(
-      'first_name,last_name,email,specialty,registration_status,attendance_status,submitted_at,NPI number,Overall rating',
+      'first_name,last_name,email,specialty,registration_status,attendance_status,submitted_at,schema_version,NPI number,Overall rating',
     );
     expect(csv).toContain(
-      'Jane,Doe,doc@example.com,Cardiology,APPROVED,VERIFIED,2026-07-10T12:00:00.000Z,1234567890,Excellent',
+      'Jane,Doe,doc@example.com,Cardiology,APPROVED,VERIFIED,2026-07-10T12:00:00.000Z,2,1234567890,Excellent',
     );
   });
 

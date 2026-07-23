@@ -447,6 +447,7 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             billVendorId: true,
+            w9Submitted: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -454,6 +455,112 @@ export class PaymentsService {
       orderBy: { createdAt: 'desc' },
     });
     return payments;
+  }
+
+  /**
+   * Preview Pay-now eligibility for an admin manual honorarium tied to a program.
+   * Used to warn before queueing when attendance / survey ack are incomplete.
+   */
+  async getManualHonorariumEligibility(userId: string, programId: string) {
+    const uid = userId.trim();
+    const pid = programId.trim();
+    if (!uid || !pid) {
+      throw new BadRequestException('userId and programId are required.');
+    }
+
+    const program = await this.prisma.program.findUnique({
+      where: { id: pid },
+      select: { id: true, title: true, jotformSurveyUrl: true },
+    });
+    if (!program) {
+      throw new NotFoundException('Program not found');
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: uid },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        billVendorId: true,
+        w9Submitted: true,
+      },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId: uid, programId: pid } },
+      select: {
+        postEventAttendanceStatus: true,
+        postEventSurveyAcknowledgedAt: true,
+      },
+    });
+
+    const warnings: string[] = [];
+    if (!reg) {
+      warnings.push('No registration found for this user on the selected program.');
+    }
+
+    const attendanceStatus = reg?.postEventAttendanceStatus ?? null;
+    const attendanceOk =
+      !!reg &&
+      (reg.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED ||
+        reg.postEventAttendanceStatus ===
+          PostEventAttendanceStatus.NOT_REQUIRED);
+
+    if (reg?.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
+      warnings.push('Attendance was denied for this registration.');
+    } else if (reg && !attendanceOk) {
+      warnings.push(
+        `Attendance is not verified yet (status: ${reg.postEventAttendanceStatus}).`,
+      );
+    }
+
+    const surveyRequired = await programHasPostEventSurvey(
+      this.prisma,
+      pid,
+      program.jotformSurveyUrl,
+    );
+    const surveyAcknowledged = !!reg?.postEventSurveyAcknowledgedAt;
+    if (surveyRequired && !surveyAcknowledged) {
+      warnings.push('Post-event survey has not been acknowledged yet.');
+    }
+
+    const hasBillVendor = !!user.billVendorId;
+    const w9Submitted = !!user.w9Submitted;
+    if (!hasBillVendor) {
+      warnings.push('HCP has not added Bill.com bank details yet.');
+    }
+    if (!w9Submitted) {
+      warnings.push('W-9 has not been submitted yet.');
+    }
+
+    const programEligibilityOk =
+      !!reg &&
+      attendanceOk &&
+      (!surveyRequired || surveyAcknowledged) &&
+      reg.postEventAttendanceStatus !== PostEventAttendanceStatus.DENIED;
+
+    const payNowReady = programEligibilityOk && hasBillVendor && w9Submitted;
+
+    return {
+      userId: user.id,
+      programId: program.id,
+      programTitle: program.title,
+      registrationFound: !!reg,
+      attendanceStatus,
+      attendanceOk,
+      surveyRequired,
+      surveyAcknowledged,
+      hasBillVendor,
+      w9Submitted,
+      programEligibilityOk,
+      payNowReady,
+      warnings,
+    };
   }
 
   /**
@@ -502,6 +609,7 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             billVendorId: true,
+            w9Submitted: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -520,6 +628,7 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             billVendorId: true,
+            w9Submitted: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -544,6 +653,7 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             billVendorId: true,
+            w9Submitted: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -583,7 +693,8 @@ export class PaymentsService {
 
   /**
    * Pay a specific PENDING payment via Bill.com (admin only). "Pay now" button flow.
-   * Checks W9 before paying; sends email notification if HCP must complete setup.
+   * Checks Bill.com vendor + W9 before paying. Honoraria linked to a program also require
+   * verified attendance / survey ack (including admin-queued manual rows).
    */
   async payNow(paymentId: string): Promise<PayoutResponseDto> {
     const payment = await this.prisma.payment.findUnique({
@@ -613,6 +724,7 @@ export class PaymentsService {
 
     // For honorarium payments tied to a program, enforce the eligibility contract:
     // attendance must be VERIFIED (or NOT_REQUIRED) AND the survey must be acknowledged.
+    // (Includes admin-queued manual rows — Pay now still requires eligibility.)
     if (payment.type === 'HONORARIUM' && payment.programId) {
       const reg = await this.prisma.programRegistration.findUnique({
         where: {
@@ -665,14 +777,14 @@ export class PaymentsService {
         `Pay now blocked: user ${user.id} has no Bill.com vendor`,
       );
       throw new BadRequestException(
-        'HCP has not added bank details. Notification sent to complete setup before getting paid.',
+        'HCP has not added bank details in Bill.com. Ask them to complete payment setup, then try Pay now again.',
       );
     }
 
     if (!user.w9Submitted) {
       this.logger.warn(`Pay now blocked: user ${user.id} has not completed W9`);
       throw new BadRequestException(
-        'HCP has not completed W-9. Notification sent to complete before getting paid.',
+        'HCP has not completed W-9. Ask them to submit W-9, then try Pay now again.',
       );
     }
 
