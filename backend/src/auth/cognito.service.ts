@@ -493,7 +493,33 @@ export class CognitoService {
     );
   }
 
-  /** Whether the Cognito user has software-token MFA enabled. */
+  /**
+   * Whether the Cognito user has software-token MFA enabled.
+   * Uses AdminGetUser (IAM) so Hosted UI / Google sessions without
+   * `aws.cognito.signin.user.admin` on the access token still work for /me.
+   */
+  async isSoftwareTokenMfaEnabledForEmail(email: string): Promise<boolean> {
+    const username = await this.resolveUsername(email);
+    if (!username) return false;
+    try {
+      const user = await this.client.send(
+        new AdminGetUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: username,
+        }),
+        { abortSignal: this.cognitoAbortSignal() },
+      );
+      const settings = user.UserMFASettingList ?? [];
+      return settings.includes('SOFTWARE_TOKEN_MFA');
+    } catch (err) {
+      this.logger.warn(
+        `[Cognito] AdminGetUser MFA status failed for ${email.trim().toLowerCase()}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return false;
+    }
+  }
+
+  /** @deprecated Prefer isSoftwareTokenMfaEnabledForEmail — GetUser needs admin scope. */
   async isSoftwareTokenMfaEnabled(accessToken: string): Promise<boolean> {
     const user = await this.client.send(
       new GetUserCommand({ AccessToken: accessToken }),

@@ -175,8 +175,8 @@ export class AuthController {
 
     let mfaEnabled = false;
     try {
-      mfaEnabled = await this.cognitoService.isSoftwareTokenMfaEnabled(
-        tokens.accessToken,
+      mfaEnabled = await this.cognitoService.isSoftwareTokenMfaEnabledForEmail(
+        user.email,
       );
     } catch (err) {
       this.logger.warn(
@@ -1311,6 +1311,12 @@ export class AuthController {
       const msg =
         err instanceof Error ? err.message : 'Could not start MFA setup.';
       this.logger.warn(`[Auth] MFA setup failed for ${user.email}: ${msg}`);
+      if (/required scopes|NotAuthorizedException/i.test(msg)) {
+        return {
+          error:
+            'Your sign-in session cannot set up MFA yet. Sign out completely, sign back in with Google (or email), then try again.',
+        };
+      }
       return { error: msg };
     }
   }
@@ -1412,7 +1418,7 @@ export class AuthController {
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getMe(@CurrentUser() user: AuthUser, @Req() req: Request) {
+  async getMe(@CurrentUser() user: AuthUser) {
     const dbUser = await this.authService.getUserById(user.userId);
     const nameParts = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
     const dbFirst = dbUser?.firstName?.trim();
@@ -1428,19 +1434,15 @@ export class AuthController {
 
     let mfaEnabled = false;
     if (this.cognitoService.isConfigured()) {
-      const sessionToken = getSessionTokenFromRequest(req);
-      const accessToken = sessionToken
-        ? await this.authService.getSessionAccessToken(sessionToken)
-        : null;
-      if (accessToken) {
-        try {
-          mfaEnabled =
-            await this.cognitoService.isSoftwareTokenMfaEnabled(accessToken);
-        } catch (err) {
-          this.logger.warn(
-            `[Auth] MFA status check failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+      try {
+        mfaEnabled =
+          await this.cognitoService.isSoftwareTokenMfaEnabledForEmail(
+            user.email,
           );
-        }
+      } catch (err) {
+        this.logger.warn(
+          `[Auth] MFA status check failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
 

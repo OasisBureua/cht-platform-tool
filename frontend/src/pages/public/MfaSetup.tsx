@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
 
@@ -18,6 +19,7 @@ export default function MfaSetup() {
   const [success, setSuccess] = useState(false);
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [showManualKey, setShowManualKey] = useState(false);
 
   const handleStartSetup = async () => {
     setError(null);
@@ -31,6 +33,7 @@ export default function MfaSetup() {
     }
     setSecretCode(result.secretCode || null);
     setOtpauthUri(result.otpauthUri || null);
+    setShowManualKey(false);
   };
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -92,14 +95,36 @@ export default function MfaSetup() {
         {secretCode && !success && (
           <>
             <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <p className="font-medium text-gray-900">Step 1: Add to authenticator app</p>
-              <p className="mt-2">Use this secret key:</p>
-              <p className="mt-1 break-all rounded bg-white px-2 py-1 font-mono text-xs">{secretCode}</p>
-              {otpauthUri && (
-                <p className="mt-2 text-xs text-gray-600 break-all">
-                  If your app supports OTP URI, paste this: {otpauthUri}
-                </p>
-              )}
+              <p className="font-medium text-gray-900">Step 1: Scan with your authenticator app</p>
+              <p className="mt-1 text-xs text-gray-600">
+                Open Google Authenticator, 1Password, Authy, or similar and scan this code.
+              </p>
+              {otpauthUri ? (
+                <div className="mt-4 flex justify-center rounded-lg bg-white p-4">
+                  <QRCodeSVG
+                    value={otpauthUri}
+                    size={180}
+                    level="M"
+                    marginSize={1}
+                    title="MFA setup QR code"
+                  />
+                </div>
+              ) : null}
+
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowManualKey((v) => !v)}
+                  className="text-xs font-medium text-gray-900 underline hover:no-underline"
+                >
+                  {showManualKey ? 'Hide manual key' : 'Can’t scan? Enter key manually'}
+                </button>
+                {showManualKey && (
+                  <p className="mt-2 break-all rounded bg-white px-2 py-1.5 font-mono text-xs text-gray-800">
+                    {secretCode}
+                  </p>
+                )}
+              </div>
             </div>
 
             <form className="space-y-3" onSubmit={handleVerify}>

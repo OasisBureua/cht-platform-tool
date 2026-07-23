@@ -24,9 +24,11 @@ Terraform sets `cognito_mfa_configuration = "OPTIONAL"` and enables `software_to
 
 ## OAuth scope for enrollment
 
-Hosted UI / Google access tokens must include `aws.cognito.signin.user.admin` or Cognito returns *Access Token does not have required scopes* on AssociateSoftwareToken. Email/password (`USER_PASSWORD_AUTH`) tokens already include it.
+Hosted UI / Google access tokens must include `aws.cognito.signin.user.admin` or Cognito returns *Access Token does not have required scopes* on AssociateSoftwareToken / VerifySoftwareToken. Email/password (`USER_PASSWORD_AUTH`) tokens already include it.
 
-Configured on the Cognito app client and requested in `buildCognitoAuthorizeUrl`. After changing scopes, users must **sign out and sign in again** to get a new access token.
+Configured on the Cognito app client and requested in `buildCognitoAuthorizeUrl`. After changing scopes, users must **sign out and sign in again** so `Session.accessToken` is replaced — an old cookie keeps the previous token without the scope.
+
+`/auth/me` MFA status uses AdminGetUser (IAM) and does not need that scope.
 
 ## When to set Require MFA on platform
 
