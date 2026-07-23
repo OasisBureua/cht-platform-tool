@@ -420,6 +420,8 @@ model Survey {
   required    Boolean  @default(true)
   /// Set on any admin edit so template ensure/regeneration never overwrites this row.
   isCustomized Boolean @default(false)
+  /// Monotonic schema revision for native questions; stamped onto SurveyResponse at submit.
+  schemaVersion Int @default(1)
   
   // Jotform integration
   jotformFormId     String?
@@ -456,6 +458,8 @@ model SurveyResponse {
   // Response data
   answers     Json     // Survey answers in JSON format
   score       Float?   // Score if applicable
+  /// Survey.schemaVersion at the time this response was submitted (answer-key snapshot).
+  schemaVersion Int @default(1)
   
   // External submission id (UUID for native submit; Jotform id for legacy webhooks)
   submissionId String? @unique
@@ -470,6 +474,7 @@ model SurveyResponse {
   @@unique([userId, surveyId])
   @@index([userId])
   @@index([surveyId])
+  @@index([surveyId, schemaVersion])
   @@map("SurveyResponse")
 }
 

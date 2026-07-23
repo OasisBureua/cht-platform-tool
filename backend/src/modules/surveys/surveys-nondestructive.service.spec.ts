@@ -107,17 +107,23 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
     });
     expect(prisma.survey.create).toHaveBeenCalledTimes(1);
     expect(prisma.survey.create).toHaveBeenCalledWith({
-      data: {
+      data: expect.objectContaining({
         programId: 'program-1',
         title: 'Program One - Post Event Survey',
         description: 'Post-webinar feedback',
-        questions: defaultPostEventFeedbackQuestions() as object,
         type: 'FEEDBACK',
         required: true,
         jotformFormId: null,
         isCustomized: false,
-      },
+        schemaVersion: 1,
+      }),
     });
+    const createdQuestions = (
+      prisma.survey.create.mock.calls[0][0] as {
+        data: { questions: { version: number } };
+      }
+    ).data.questions;
+    expect(createdQuestions.version).toBe(1);
     expect(prisma.survey.deleteMany).not.toHaveBeenCalled();
     expect(prisma.survey.update).not.toHaveBeenCalled();
     expect(prisma.program.update).toHaveBeenCalledWith({
@@ -149,6 +155,7 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       type: 'INTAKE',
       programId: 'program-1',
       questions: existingSchema,
+      schemaVersion: 1,
       _count: { responses: 2 },
     });
     prisma.survey.update.mockImplementation(
@@ -181,8 +188,12 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
     expect(prisma.survey.update).toHaveBeenCalledWith({
       where: { id: 'survey-1' },
       data: {
-        questions: next as object,
+        questions: {
+          ...next,
+          version: 2,
+        },
         jotformFormId: null,
+        schemaVersion: 2,
         required: true,
         isCustomized: true,
       },
@@ -195,6 +206,7 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       type: 'INTAKE',
       programId: 'program-1',
       questions: existingSchema,
+      schemaVersion: 1,
       _count: { responses: 1 },
     });
     const changed = {
