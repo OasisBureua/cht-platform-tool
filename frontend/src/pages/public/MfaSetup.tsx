@@ -96,8 +96,18 @@ export default function MfaSetup() {
           <>
             <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
               <p className="font-medium text-gray-900">Step 1: Scan with your authenticator app</p>
-              <p className="mt-1 text-xs text-gray-600">
-                Open Google Authenticator, 1Password, Authy, or similar and scan this code.
+              <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm text-gray-700">
+                <li>Open an authenticator app on your phone.</li>
+                <li>Choose add account / scan QR code.</li>
+                <li>Point your camera at the QR code below.</li>
+              </ol>
+              <p className="mt-3 text-xs text-gray-600">
+                Works with apps such as{' '}
+                <span className="font-medium text-gray-800">Google Authenticator</span>,{' '}
+                <span className="font-medium text-gray-800">Microsoft Authenticator</span>,{' '}
+                <span className="font-medium text-gray-800">Authy</span>,{' '}
+                <span className="font-medium text-gray-800">1Password</span>, or{' '}
+                <span className="font-medium text-gray-800">Apple Passwords</span>.
               </p>
               {otpauthUri ? (
                 <div className="mt-4 flex justify-center rounded-lg bg-white p-4">
