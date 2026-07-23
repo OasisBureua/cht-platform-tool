@@ -260,9 +260,19 @@ jobs:
         run: |
           EXTRA_VARS=()
           if [ "${{ needs.changes.outputs.deploy_backend }}" = "true" ]; then
+            # New images built in this run — pin ECS to those tags.
             EXTRA_VARS+=(
               -var="backend_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}"
               -var="worker_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}"
+            )
+          else
+            # Infra-only: keep currently applied image tags from state so we do not
+            # roll ECS back to placeholder tags in *.github.tfvars.
+            chmod +x "${{ github.workspace }}/scripts/ci-resolve-ecs-images-from-state.sh"
+            eval "$("${{ github.workspace }}/scripts/ci-resolve-ecs-images-from-state.sh")"
+            EXTRA_VARS+=(
+              -var="backend_image=${BACKEND_IMAGE}"
+              -var="worker_image=${WORKER_IMAGE}"
             )
           fi
           terraform plan \
