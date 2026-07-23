@@ -29,5 +29,5 @@ terraform apply dr.plan
 - Public DNS still points to the single CloudFront distribution.
 - CloudFront handles API failover between primary and secondary ALB origins.
 - Frontend static assets should be deployed to both regional S3 buckets via CI.
-- **ECR:** `cht-platform-*` images replicate us-east-1 → us-east-2 (configured on any us-east-1 apply with `enable_ecr_replication = true`). Dev and platform share the same repos/tags.
+- **ECR:** `contenthub-*` and `cht-platform-*` images replicate us-east-1 → us-east-2 via the account-level replication ruleset (configured on any us-east-1 apply with `enable_ecr_replication = true`). Both prefixes must stay in Terraform or ContentHub DR waits break.
 - **GuardDuty:** A detector is enabled in us-east-2; findings route to the regional SNS alerts topic.

@@ -198,7 +198,7 @@ variable "secrets_replica_regions" {
 }
 
 variable "enable_ecr_replication" {
-  description = "Replicate cht-platform-* ECR images from us-east-1 to the DR region (account-level; applies on platform or dev apply)."
+  description = "Replicate ECR images from us-east-1 to the DR region (account-level singleton ruleset; include ContentHub + platform prefixes)."
   type        = bool
   default     = true
 }
@@ -209,10 +209,10 @@ variable "ecr_replication_destination_region" {
   default     = "us-east-2"
 }
 
-variable "ecr_repository_prefix" {
-  description = "ECR repository name prefix to replicate."
-  type        = string
-  default     = "cht-platform-"
+variable "ecr_repository_prefixes" {
+  description = "PREFIX_MATCH filters for the account ECR replication ruleset (must include contenthub- and cht-platform-)."
+  type        = list(string)
+  default     = ["contenthub-", "cht-platform-"]
 }
 
 variable "ecr_repository_names" {
