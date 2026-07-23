@@ -24,6 +24,8 @@ export interface Survey {
   type: SurveyType;
   required: boolean;
   isCustomized?: boolean;
+  /** Monotonic native schema revision; stamped onto each response at submit. */
+  schemaVersion?: number;
   /** Admin-only count used to explain response-safe editing constraints. */
   responseCount?: number;
 

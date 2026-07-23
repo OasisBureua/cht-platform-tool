@@ -25,6 +25,7 @@ function slugifyFilenamePart(value: string): string {
 
 export type SurveyResponseCsvRow = {
   submittedAt: string;
+  schemaVersion?: number;
   answers: Record<string, unknown>;
   user: {
     email: string;
@@ -70,6 +71,7 @@ export function buildSurveyResponsesCsv(input: {
     'registration_status',
     ...(includeAttendance ? ['attendance_status'] : []),
     'submitted_at',
+    'schema_version',
     ...questionIds.map((id) => labelById.get(id) ?? id),
   ];
 
@@ -86,6 +88,7 @@ export function buildSurveyResponsesCsv(input: {
         ? [row.registration?.postEventAttendanceStatus ?? '']
         : []),
       row.submittedAt,
+      String(row.schemaVersion ?? ''),
       ...questionIds.map((id) => formatAnswerValue(row.answers?.[id])),
     ];
     lines.push(cells.map((c) => csvEscape(String(c))).join(','));

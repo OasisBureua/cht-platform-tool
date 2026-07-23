@@ -102,7 +102,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
     if (
       survey.responseCount &&
       !window.confirm(
-        `This survey has ${survey.responseCount} response(s). Existing question IDs and answer mappings will be preserved; only new questions and safe settings can be changed. Continue?`,
+        `This survey has ${survey.responseCount} response(s) (schema v${survey.schemaVersion ?? 1}). Existing question IDs and answer mappings will be preserved; only new questions and safe settings can be changed. Continue?`,
       )
     ) {
       return;
@@ -126,6 +126,15 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
           {survey.type === 'INTAKE' ? 'registration intake' : 'post-event'}{' '}
           survey. Saving marks it customized, so template regeneration will
           leave it untouched.
+          {typeof survey.schemaVersion === 'number' ? (
+            <>
+              {' '}
+              Current schema version: <strong>v{survey.schemaVersion}</strong>
+              {survey.responseCount
+                ? ' — saving question changes bumps the version; new responses are stamped with it.'
+                : null}
+            </>
+          ) : null}
         </p>
       </div>
 

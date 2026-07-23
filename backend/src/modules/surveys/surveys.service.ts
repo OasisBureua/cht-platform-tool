@@ -40,7 +40,9 @@ import {
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 import {
   findUnsafeAnsweredQuestionChanges,
+  nextNativeSchemaVersion,
   validateNativeSurveySchema,
+  withNativeSchemaVersion,
 } from '../../utils/survey-schema';
 
 @Injectable()
@@ -146,6 +148,7 @@ export class SurveysService {
       type: s.type,
       required: s.required,
       isCustomized: s.isCustomized,
+      schemaVersion: s.schemaVersion,
       ...(role === UserRole.ADMIN ? { responseCount: s._count.responses } : {}),
       jotformFormId: s.jotformFormId,
       jotformFormUrl: s.jotformFormId
@@ -265,6 +268,7 @@ export class SurveysService {
       type: survey.type,
       required: survey.required,
       isCustomized: survey.isCustomized,
+      schemaVersion: survey.schemaVersion,
       jotformFormId: survey.jotformFormId,
       jotformFormUrl,
       createdAt: survey.createdAt.toISOString(),
@@ -371,6 +375,7 @@ export class SurveysService {
     }
 
     let questions: object = dto.questions as object;
+    let schemaVersion = 1;
     const jotformFormId = dto.jotformFormId?.trim() || null;
     if (
       !jotformFormId &&
@@ -380,9 +385,12 @@ export class SurveysService {
       Array.isArray((dto.questions as { sections?: unknown }).sections)
     ) {
       try {
-        questions = validateNativeSurveySchema(
-          dto.questions,
-        ) as unknown as object;
+        const validated = validateNativeSurveySchema(dto.questions);
+        schemaVersion =
+          Number.isInteger(validated.version) && validated.version > 0
+            ? validated.version
+            : 1;
+        questions = withNativeSchemaVersion(validated, schemaVersion) as object;
       } catch (error) {
         throw new BadRequestException(
           error instanceof Error
@@ -402,6 +410,7 @@ export class SurveysService {
         required: dto.required ?? true,
         jotformFormId,
         isCustomized: true,
+        schemaVersion,
       },
     });
     this.logger.log(`Survey created: ${survey.id} - ${survey.title}`);
@@ -426,6 +435,7 @@ export class SurveysService {
     if (!survey) throw new NotFoundException('Survey not found');
 
     let questions: Record<string, unknown> | undefined;
+    let schemaVersion: number | undefined;
     if (dto.questions !== undefined) {
       if (dto.jotformFormId?.trim()) {
         throw new BadRequestException(
@@ -433,29 +443,35 @@ export class SurveysService {
         );
       }
       try {
-        questions = validateNativeSurveySchema(
-          dto.questions,
+        const validated = validateNativeSurveySchema(dto.questions);
+        if (survey._count.responses > 0) {
+          const unsafe = findUnsafeAnsweredQuestionChanges(
+            survey.questions,
+            validated,
+          );
+          if (unsafe.length > 0) {
+            throw new BadRequestException(
+              `This survey has ${survey._count.responses} response(s). Existing question mappings cannot be changed: ${unsafe.join(
+                '; ',
+              )}. You may add new questions with new IDs.`,
+            );
+          }
+        }
+        schemaVersion = nextNativeSchemaVersion(
+          survey.schemaVersion,
+          survey.questions,
+        );
+        questions = withNativeSchemaVersion(
+          validated,
+          schemaVersion,
         ) as unknown as Record<string, unknown>;
       } catch (error) {
+        if (error instanceof BadRequestException) throw error;
         throw new BadRequestException(
           error instanceof Error
             ? error.message
             : 'Invalid native survey schema',
         );
-      }
-
-      if (survey._count.responses > 0) {
-        const unsafe = findUnsafeAnsweredQuestionChanges(
-          survey.questions,
-          questions,
-        );
-        if (unsafe.length > 0) {
-          throw new BadRequestException(
-            `This survey has ${survey._count.responses} response(s). Existing question mappings cannot be changed: ${unsafe.join(
-              '; ',
-            )}. You may add new questions with new IDs.`,
-          );
-        }
       }
     }
 
@@ -474,6 +490,7 @@ export class SurveysService {
         ...(questions !== undefined && {
           questions: questions as object,
           jotformFormId: null,
+          schemaVersion,
         }),
         ...(dto.required !== undefined && { required: dto.required }),
         ...(dto.jotformFormId !== undefined && {
@@ -497,7 +514,10 @@ export class SurveysService {
         },
       });
     }
-    this.logger.log(`Survey ${id} updated and marked customized`);
+    this.logger.log(
+      `Survey ${id} updated and marked customized` +
+        (schemaVersion != null ? ` (schemaVersion=${schemaVersion})` : ''),
+    );
     return updated;
   }
 
@@ -530,6 +550,7 @@ export class SurveysService {
         title: true,
         type: true,
         questions: true,
+        schemaVersion: true,
         programId: true,
         program: { select: { id: true, title: true } },
       },
@@ -575,6 +596,7 @@ export class SurveysService {
         title: survey.title,
         type: survey.type,
         questions: survey.questions,
+        schemaVersion: survey.schemaVersion,
         program: survey.program,
       },
       responses: responses.map((r) => ({
@@ -582,6 +604,7 @@ export class SurveysService {
         submissionId: r.submissionId,
         submittedAt: r.submittedAt.toISOString(),
         score: r.score,
+        schemaVersion: r.schemaVersion,
         answers: r.answers,
         user: r.user,
         registration: regByUser.get(r.userId) ?? null,
@@ -671,6 +694,7 @@ export class SurveysService {
       questionsSchema: survey.questions,
       responses: responses.map((r) => ({
         submittedAt: r.submittedAt,
+        schemaVersion: r.schemaVersion,
         answers: (r.answers ?? {}) as Record<string, unknown>,
         user: r.user,
         registration: r.registration,
@@ -920,31 +944,41 @@ export class SurveysService {
     const createFeedback = !feedback;
 
     if (!intake) {
+      const intakeQuestions = withNativeSchemaVersion(
+        validateNativeSurveySchema(defaultWebinarIntakeQuestions()),
+        1,
+      );
       intake = await this.prisma.survey.create({
         data: {
           programId,
           title: `${programTitle} - Registration`,
           description: 'Webinar registration intake',
-          questions: defaultWebinarIntakeQuestions() as object,
+          questions: intakeQuestions as object,
           type: 'INTAKE',
           required: true,
           jotformFormId: null,
           isCustomized: false,
+          schemaVersion: 1,
         },
       });
     }
 
     if (!feedback) {
+      const feedbackQuestions = withNativeSchemaVersion(
+        validateNativeSurveySchema(defaultPostEventFeedbackQuestions()),
+        1,
+      );
       feedback = await this.prisma.survey.create({
         data: {
           programId,
           title: `${programTitle} - Post Event Survey`,
           description: 'Post-webinar feedback',
-          questions: defaultPostEventFeedbackQuestions() as object,
+          questions: feedbackQuestions as object,
           type: 'FEEDBACK',
           required: true,
           jotformFormId: null,
           isCustomized: false,
+          schemaVersion: 1,
         },
       });
     }
@@ -1274,6 +1308,7 @@ export class SurveysService {
         data: {
           answers: answers as object,
           score: dto.score,
+          schemaVersion: survey.schemaVersion,
           submittedAt: new Date(),
           ...(!existing.submissionId ? { submissionId: randomUUID() } : {}),
         },
@@ -1282,7 +1317,7 @@ export class SurveysService {
         .clear(userId, FormJotformScope.SURVEY, surveyId)
         .catch(() => {});
       this.logger.log(
-        `Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt`,
+        `Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt schemaVersion=${survey.schemaVersion}`,
       );
     } else {
       response = await this.prisma.surveyResponse.create({
@@ -1291,6 +1326,7 @@ export class SurveysService {
           surveyId,
           answers: answers as object,
           score: dto.score,
+          schemaVersion: survey.schemaVersion,
           submittedAt: new Date(),
           submissionId: randomUUID(),
         },
