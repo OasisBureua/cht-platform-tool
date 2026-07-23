@@ -79,11 +79,11 @@ model Session {
   email       String
   name        String
   role        UserRole
-  /** Idle expiry — slid forward on authenticated activity via getSession. */
+  /// Idle expiry — slid forward on authenticated activity via getSession.
   expiresAt   DateTime
-  /** Absolute lifetime anchor — session cannot outlive createdAt + SESSION_ABSOLUTE_TTL_SECONDS. */
+  /// Absolute lifetime anchor — session cannot outlive createdAt + SESSION_ABSOLUTE_TTL_SECONDS.
   createdAt   DateTime @default(now())
-  accessToken String?  // Cognito/legacy access token for MFA/password/chatbot
+  accessToken String? // Cognito/legacy access token for MFA/password/chatbot
 
   @@index([userId])
   @@index([expiresAt])
