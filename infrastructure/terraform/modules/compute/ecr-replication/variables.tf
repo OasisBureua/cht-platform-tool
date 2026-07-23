@@ -4,14 +4,18 @@ variable "destination_region" {
   default     = "us-east-2"
 }
 
-variable "repository_prefix" {
-  description = "Replicate repositories whose names start with this prefix."
-  type        = string
-  default     = "cht-platform-"
+variable "repository_prefixes" {
+  description = <<-EOT
+    PREFIX_MATCH filters for the account-level ECR replication ruleset.
+    Must include every repo family in this AWS account that relies on
+    us-east-1 → destination replication (ContentHub and platform share one ruleset).
+  EOT
+  type        = list(string)
+  default     = ["contenthub-", "cht-platform-"]
 }
 
 variable "repository_names" {
-  description = "Known repository names (used for data sources and outputs)."
+  description = "Known platform repository names (used for data sources and outputs)."
   type        = list(string)
   default     = ["cht-platform-backend", "cht-platform-worker"]
 }

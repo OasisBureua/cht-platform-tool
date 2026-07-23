@@ -56,10 +56,10 @@ variable "ecr_replication_destination_region" {
   default     = "us-east-2"
 }
 
-variable "ecr_repository_prefix" {
-  description = "Primary only: ECR repository name prefix to replicate."
-  type        = string
-  default     = "cht-platform-"
+variable "ecr_repository_prefixes" {
+  description = "Primary only: PREFIX_MATCH filters for account ECR replication (contenthub- + cht-platform-)."
+  type        = list(string)
+  default     = ["contenthub-", "cht-platform-"]
 }
 
 variable "ecr_repository_names" {
