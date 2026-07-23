@@ -127,7 +127,7 @@ export async function buildCognitoAuthorizeUrl(
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: 'email openid profile',
+    scope: 'email openid profile aws.cognito.signin.user.admin',
     code_challenge: challenge,
     code_challenge_method: 'S256',
     state,

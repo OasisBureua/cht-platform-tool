@@ -22,6 +22,12 @@ Terraform sets `cognito_mfa_configuration = "OPTIONAL"` and enables `software_to
 3. **Soft admin gate** — While the pool is Optional, `/auth/me` and Cognito login responses include `mfaEnabled` and `mfaEnrollmentRequired` (`true` for `ADMIN` without MFA). Admin routes redirect to `/mfa/setup` until enrolled.
 4. **Settings** — Security tab links to `/mfa/setup` when MFA is not yet enabled.
 
+## OAuth scope for enrollment
+
+Hosted UI / Google access tokens must include `aws.cognito.signin.user.admin` or Cognito returns *Access Token does not have required scopes* on AssociateSoftwareToken. Email/password (`USER_PASSWORD_AUTH`) tokens already include it.
+
+Configured on the Cognito app client and requested in `buildCognitoAuthorizeUrl`. After changing scopes, users must **sign out and sign in again** to get a new access token.
+
 ## When to set Require MFA on platform
 
 1. Deploy enrollment APIs + admin gate.
