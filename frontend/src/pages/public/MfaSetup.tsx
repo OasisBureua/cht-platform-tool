@@ -1,10 +1,15 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
 
 export default function MfaSetup() {
-  const { beginMfaSetup, verifyMfaSetup } = useAuth();
+  const { beginMfaSetup, verifyMfaSetup, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
+    (user?.role === 'ADMIN' ? '/admin' : '/app/settings');
 
   const [secretCode, setSecretCode] = useState<string | null>(null);
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
@@ -59,8 +64,17 @@ export default function MfaSetup() {
           </div>
         )}
         {success && (
-          <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-            MFA is now enabled for your account.
+          <div className="space-y-3">
+            <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+              MFA is now enabled for your account.
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(from, { replace: true })}
+              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
+            >
+              Continue
+            </button>
           </div>
         )}
 
@@ -116,18 +130,20 @@ export default function MfaSetup() {
           </>
         )}
 
-        <div className="pt-2 space-y-2">
-          <p className="text-center text-sm text-gray-600">
-            <Link to="/app/settings" className="font-medium text-gray-900 hover:underline">
-              Back to Settings
-            </Link>
-          </p>
-          <p className="text-center text-sm text-gray-600">
-            <Link to="/login" className="font-medium text-gray-900 hover:underline">
-              Back to Login
-            </Link>
-          </p>
-        </div>
+        {!success && (
+          <div className="pt-2 space-y-2">
+            <p className="text-center text-sm text-gray-600">
+              <Link to="/app/settings" className="font-medium text-gray-900 hover:underline">
+                Back to Settings
+              </Link>
+            </p>
+            <p className="text-center text-sm text-gray-600">
+              <Link to="/login" className="font-medium text-gray-900 hover:underline">
+                Back to Login
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
     </AuthFormCard>
   );

@@ -31,22 +31,31 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
 
   const cognitoService = {} as never;
   const recaptchaService = {} as never;
+  const lockout = {
+    assertAllowed: jest.fn().mockResolvedValue({ locked: false }),
+    recordFailure: jest.fn().mockResolvedValue({ locked: false }),
+    recordSuccess: jest.fn().mockResolvedValue(undefined),
+  };
 
   const expressRes = {
     cookie: jest.fn(),
     clearCookie: jest.fn(),
   } as unknown as ExpressResponse;
 
+  const req = { ip: '127.0.0.1' } as never;
+
   const buildController = () =>
     new AuthController(
       authService as never,
       cognitoService,
       recaptchaService,
+      lockout as never,
       configService as never,
     );
 
   beforeEach(() => {
     jest.clearAllMocks();
+    lockout.assertAllowed.mockResolvedValue({ locked: false });
   });
 
   afterEach(() => {
@@ -60,6 +69,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     const result = await controller.login(
       'attacker@example.com',
       'anything',
+      req,
       expressRes,
     );
 
@@ -92,6 +102,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     const result = await controller.login(
       'dev@example.com',
       'ignored-password',
+      req,
       expressRes,
     );
 
@@ -108,8 +119,29 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     process.env.NODE_ENV = 'production';
     const controller = buildController();
 
-    const result = await controller.login('', 'anything', expressRes);
+    const result = await controller.login('', 'anything', req, expressRes);
     expect(result).toEqual({ error: 'Email is required.' });
+    expect(authService.findByEmail).not.toHaveBeenCalled();
+  });
+
+  it('blocks login when lockout is active', async () => {
+    process.env.NODE_ENV = 'production';
+    lockout.assertAllowed.mockResolvedValue({
+      locked: true,
+      message: 'Too many attempts. Please try again in 15 minute(s).',
+    });
+    const controller = buildController();
+
+    const result = await controller.login(
+      'attacker@example.com',
+      'anything',
+      req,
+      expressRes,
+    );
+
+    expect(result).toEqual({
+      error: 'Too many attempts. Please try again in 15 minute(s).',
+    });
     expect(authService.findByEmail).not.toHaveBeenCalled();
   });
 });

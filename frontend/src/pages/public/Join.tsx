@@ -165,12 +165,25 @@ export default function Join() {
           <p className="text-pretty mt-2 text-sm text-gray-600">
             {cognitoAuthEnabled ? (
               <>
-                We sent a 6-digit verification code to <strong>{email}</strong> from{' '}
-                <strong>noreply@communityhealth.media</strong>. Enter the code on the next screen, then sign in.
+                If this email can be registered, you&apos;ll receive a 6-digit verification code from{' '}
+                <strong>noreply@communityhealth.media</strong>. Already have an account?{' '}
+                <Link to="/login" className="font-medium text-gray-900 underline">
+                  Sign in
+                </Link>
+                {' '}or{' '}
+                <Link to="/forgot-password" className="font-medium text-gray-900 underline">
+                  reset your password
+                </Link>
+                .
               </>
             ) : (
               <>
-                We&apos;ve sent a verification link to <strong>{email}</strong>. Click the link to verify your account, then you can sign in.
+                If this email can be registered, you&apos;ll receive a verification link.
+                Already have an account?{' '}
+                <Link to="/login" className="font-medium text-gray-900 underline">
+                  Sign in
+                </Link>
+                .
               </>
             )}
           </p>

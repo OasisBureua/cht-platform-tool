@@ -59,8 +59,13 @@ export default () => ({
           process.env.SUPABASE_AUTH_DECOMMISSIONED === '1',
   },
 
-  // Session TTL in seconds (default 30 min). Sessions stored in Postgres.
+  // Idle session TTL in seconds (default 30 min). Slid on getSession activity.
   sessionTtlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '1800', 10),
+  // Absolute session TTL from create (default 8h). Not extended by activity.
+  sessionAbsoluteTtlSeconds: parseInt(
+    process.env.SESSION_ABSOLUTE_TTL_SECONDS || '28800',
+    10,
+  ),
 
   recaptcha: {
     secretKey: process.env.RECAPTCHA_SECRET_KEY?.trim() || '',

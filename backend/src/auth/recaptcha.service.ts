@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isProductionEnv } from '../utils/is-production-env';
 
 interface SiteverifyResponse {
   success: boolean;
@@ -31,7 +32,16 @@ export class RecaptchaService {
     action: RecaptchaAction,
     remoteIp?: string,
   ): Promise<{ ok: true } | { error: string }> {
+    // Fail-closed in production: missing secret must block login/signup.
     if (!this.isEnabled()) {
+      if (isProductionEnv(this.configService.get<string>('nodeEnv'))) {
+        this.logger.error(
+          `[Recaptcha] RECAPTCHA_SECRET_KEY missing in production — blocking ${action}`,
+        );
+        return {
+          error: 'Captcha is not configured. Please contact support.',
+        };
+      }
       return { ok: true };
     }
 

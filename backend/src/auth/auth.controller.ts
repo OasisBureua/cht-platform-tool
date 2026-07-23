@@ -10,12 +10,13 @@ import {
 } from '@nestjs/common';
 import type { Request, Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
-import * as jwt from 'jsonwebtoken';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
 import { RecaptchaService } from './recaptcha.service';
+import { AuthLockoutService } from './auth-lockout.service';
 import { UserRole } from '@prisma/client';
 import {
   clearSessionCookie,
@@ -44,8 +45,8 @@ async function fetchWithTimeout(
 
 interface LoginSuccess {
   session_token: string;
+  /** Cognito/legacy access token for server-side use cases; not a refresh credential. */
   access_token?: string;
-  refresh_token?: string;
   userId: string;
   email: string;
   name: string;
@@ -53,6 +54,8 @@ interface LoginSuccess {
   lastName?: string;
   role: string;
   profileComplete?: boolean;
+  mfaEnabled?: boolean;
+  mfaEnrollmentRequired?: boolean;
 }
 
 @Controller('auth')
@@ -64,17 +67,35 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly cognitoService: CognitoService,
     private readonly recaptchaService: RecaptchaService,
+    private readonly lockout: AuthLockoutService,
     private readonly configService: ConfigService,
   ) {
     this.supabaseAuthDecommissioned =
       this.configService.get<boolean>('supabase.authDecommissioned') ?? true;
   }
 
+  private clientIp(req: Request): string {
+    return (req.ip || '').trim() || 'unknown';
+  }
+
+  private async rejectIfLocked(
+    action: 'login' | 'mfa' | 'signup' | 'recover',
+    email: string,
+    ip: string,
+  ): Promise<{ error: string } | null> {
+    const check = await this.lockout.assertAllowed(action, email, ip);
+    if (!check.locked) return null;
+    return { error: check.message || 'Too many attempts. Please try again later.' };
+  }
+
   private attachSessionCookie(
     res: ExpressResponse,
     sessionToken: string,
   ): void {
-    const ttl = this.configService.get<number>('sessionTtlSeconds') ?? 1800;
+    // Cookie Max-Age tracks absolute lifetime; idle expiry is enforced server-side
+    // and slid on getSession. Using idle TTL here would drop active users at 30m.
+    const ttl =
+      this.configService.get<number>('sessionAbsoluteTtlSeconds') ?? 28800;
     const nodeEnv = this.configService.get<string>('nodeEnv');
     setSessionCookie(res, sessionToken, ttl, nodeEnv);
   }
@@ -108,8 +129,11 @@ export class AuthController {
   ): Promise<LoginSuccess | { error: string }> {
     let claims;
     try {
-      claims = this.cognitoService.parseIdTokenClaims(tokens.idToken);
-    } catch {
+      claims = await this.cognitoService.verifyTokenPair(tokens);
+    } catch (err) {
+      this.logger.warn(
+        `[Auth] Cognito token verification failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return { error: 'Invalid token.' };
     }
 
@@ -149,11 +173,23 @@ export class AuthController {
     const dbUser = await this.authService.getUserById(user.userId);
     const profileComplete = this.authService.isProfileComplete(dbUser);
 
+    let mfaEnabled = false;
+    try {
+      mfaEnabled = await this.cognitoService.isSoftwareTokenMfaEnabled(
+        tokens.accessToken,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[Auth] MFA status on login failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+    const mfaEnrollmentRequired =
+      user.role === UserRole.ADMIN && !mfaEnabled;
+
     this.attachSessionCookie(res, sessionToken);
     return {
       session_token: sessionToken,
       access_token: tokens.accessToken,
-      refresh_token: tokens.refreshToken,
       userId: user.userId,
       email: user.email,
       name: user.name,
@@ -161,6 +197,8 @@ export class AuthController {
       lastName: dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
       role: user.role,
       profileComplete,
+      mfaEnabled,
+      mfaEnrollmentRequired,
     };
   }
 
@@ -168,6 +206,8 @@ export class AuthController {
    * POST /api/auth/cognito/login
    * Email/password via Cognito USER_PASSWORD_AUTH → Postgres session cookie.
    */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('cognito/login')
   async cognitoLogin(
     @Body('email') email: string,
@@ -182,6 +222,7 @@ export class AuthController {
   > {
     const loginStart = Date.now();
     const emailStr = (email || '').trim();
+    const ip = this.clientIp(req);
     this.logger.log(
       `[Auth] Cognito login attempt for ${emailStr || '(empty)'} captcha=${recaptchaToken ? 'present' : 'missing'}`,
     );
@@ -189,6 +230,9 @@ export class AuthController {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Cognito login is not configured.' };
     }
+
+    const locked = await this.rejectIfLocked('login', emailStr, ip);
+    if (locked) return locked;
 
     const captchaStart = Date.now();
     const captchaError = await this.verifyRecaptchaOrError(
@@ -220,6 +264,7 @@ export class AuthController {
         `[Auth] Cognito InitiateAuth for ${emailStr} in ${Date.now() - cognitoStart}ms kind=${result.kind}`,
       );
       if (result.kind === 'mfa') {
+        await this.lockout.recordSuccess('login', emailStr, ip);
         return {
           challenge: result.challenge,
           session: result.session,
@@ -233,7 +278,11 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito session create for ${emailStr} in ${Date.now() - sessionStart}ms`,
       );
-      if ('error' in loginResult) return loginResult;
+      if ('error' in loginResult) {
+        await this.lockout.recordFailure('login', emailStr, ip);
+        return loginResult;
+      }
+      await this.lockout.recordSuccess('login', emailStr, ip);
       this.logger.log(
         `[Auth] Cognito login success: userId=${loginResult.userId} email=${loginResult.email} total=${Date.now() - loginStart}ms`,
       );
@@ -243,6 +292,10 @@ export class AuthController {
       this.logger.warn(
         `[Auth] Cognito login failed for ${emailStr} after ${Date.now() - loginStart}ms: ${msg}`,
       );
+      const lock = await this.lockout.recordFailure('login', emailStr, ip);
+      if (lock.locked) {
+        return { error: lock.message || 'Too many attempts. Please try again later.' };
+      }
       if (/not authorized|incorrect username or password/i.test(msg)) {
         return { error: 'Invalid email or password.' };
       }
@@ -259,11 +312,14 @@ export class AuthController {
    * POST /api/auth/cognito/mfa
    * Complete SOFTWARE_TOKEN_MFA challenge after cognito/login.
    */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
   @Post('cognito/mfa')
   async cognitoMfa(
     @Body('email') email: string,
     @Body('session') session: string,
     @Body('code') code: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
     if (!this.cognitoService.isConfigured()) {
@@ -273,9 +329,13 @@ export class AuthController {
     const emailStr = (email || '').trim();
     const sessionStr = (session || '').trim();
     const codeStr = (code || '').trim();
+    const ip = this.clientIp(req);
     if (!emailStr) return { error: 'Email is required.' };
     if (!sessionStr) return { error: 'MFA session is required.' };
     if (!codeStr) return { error: 'MFA code is required.' };
+
+    const locked = await this.rejectIfLocked('mfa', emailStr, ip);
+    if (locked) return locked;
 
     try {
       const tokens = await this.cognitoService.respondToMfaChallenge(
@@ -284,7 +344,11 @@ export class AuthController {
         emailStr,
       );
       const loginResult = await this.sessionFromCognitoTokens(tokens, res);
-      if ('error' in loginResult) return loginResult;
+      if ('error' in loginResult) {
+        await this.lockout.recordFailure('mfa', emailStr, ip);
+        return loginResult;
+      }
+      await this.lockout.recordSuccess('mfa', emailStr, ip);
       this.logger.log(
         `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email}`,
       );
@@ -293,6 +357,10 @@ export class AuthController {
       const msg =
         err instanceof Error ? err.message : 'MFA verification failed.';
       this.logger.warn(`[Auth] Cognito MFA failed for ${emailStr}: ${msg}`);
+      const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
+      if (lock.locked) {
+        return { error: lock.message || 'Too many attempts. Please try again later.' };
+      }
       return { error: msg };
     }
   }
@@ -429,8 +497,19 @@ export class AuthController {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Sign up failed.';
       this.logger.warn(`[Auth] Cognito signup failed for ${emailStr}: ${msg}`);
+      // Do not reveal whether the email is already registered (align with /recover).
       if (/usernameexists|already exists/i.test(msg)) {
-        return { error: 'An account with this email already exists.' };
+        this.logger.log(
+          `[Auth] Cognito signup username exists for ${emailStr} — returning generic success`,
+        );
+        try {
+          await this.cognitoService.resendConfirmationCode(emailStr);
+        } catch (resendErr) {
+          this.logger.debug(
+            `[Auth] Cognito resend after duplicate signup skipped for ${emailStr}: ${resendErr instanceof Error ? resendErr.message : String(resendErr)}`,
+          );
+        }
+        return { userConfirmed: false };
       }
       return { error: msg };
     }
@@ -500,8 +579,11 @@ export class AuthController {
    * POST /api/auth/signup
    * Proxies to GoTrue signup (avoids CORS when frontend calls from localhost).
    */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('signup')
   async signup(
+    @Req() req: Request,
     @Body('email') email: string,
     @Body('password') password: string,
     @Body('firstName') firstName?: string,
@@ -521,6 +603,9 @@ export class AuthController {
     }
 
     const emailStr = (email || '').trim();
+    const ip = this.clientIp(req);
+    const locked = await this.rejectIfLocked('signup', emailStr, ip);
+    if (locked) return locked;
     if (!emailStr) return { error: 'Email is required.' };
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
       return { error: 'Please enter a valid email address.' };
@@ -598,6 +683,7 @@ export class AuthController {
         `[Auth] Signup error for ${emailStr} after ${Date.now() - signupStart}ms:`,
         err,
       );
+      await this.lockout.recordFailure('signup', emailStr, ip);
       return { error: msg };
     }
     this.logger.log(
@@ -616,12 +702,27 @@ export class AuthController {
         this.logger.log(
           `[Auth] Signup likely succeeded for ${emailStr} (email send failed)`,
         );
+        await this.lockout.recordSuccess('signup', emailStr, ip);
         return {};
+      }
+      // GoTrue often returns "User already registered" — do not leak that to clients.
+      if (
+        /already\s+(registered|exists)|user.*exist|email.*exist/i.test(
+          String(msg),
+        )
+      ) {
+        await this.lockout.recordSuccess('signup', emailStr, ip);
+        return {};
+      }
+      const lock = await this.lockout.recordFailure('signup', emailStr, ip);
+      if (lock.locked) {
+        return { error: lock.message || 'Too many attempts. Please try again later.' };
       }
       return { error: msg };
     }
 
     this.logger.log(`[Auth] Signup success for ${emailStr}`);
+    await this.lockout.recordSuccess('signup', emailStr, ip);
     return {};
   }
 
@@ -743,17 +844,24 @@ export class AuthController {
    * ignored — for local development against a seeded DB. Production refuses
    * the DB-fallback path outright (SCRUM-101).
    */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('login')
   async login(
     @Body('email') email: string,
     @Body('password') password: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) expressRes: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
     const emailStr = (email || '').trim();
+    const ip = this.clientIp(req);
     if (!emailStr) return { error: 'Email is required.' };
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
       return { error: 'Please enter a valid email address.' };
     if (!password) return { error: 'Password is required.' };
+
+    const locked = await this.rejectIfLocked('login', emailStr, ip);
+    if (locked) return locked;
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
@@ -790,6 +898,7 @@ export class AuthController {
           `[Auth] Supabase login error for ${emailStr} after ${Date.now() - loginStart}ms:`,
           err,
         );
+        await this.lockout.recordFailure('login', emailStr, ip);
         return { error: msg };
       }
       const data = await res.json().catch(() => ({}));
@@ -800,11 +909,21 @@ export class AuthController {
         this.logger.warn(
           `[Auth] Supabase login failed for ${emailStr}: ${msg}`,
         );
+        const lock = await this.lockout.recordFailure('login', emailStr, ip);
+        if (lock.locked) {
+          return {
+            error:
+              lock.message || 'Too many attempts. Please try again later.',
+          };
+        }
         return { error: msg };
       }
 
       const authId = data?.user?.id;
-      if (!authId) return { error: 'Login failed.' };
+      if (!authId) {
+        await this.lockout.recordFailure('login', emailStr, ip);
+        return { error: 'Login failed.' };
+      }
 
       const metadata = data.user?.user_metadata || {};
       const firstName = metadata.first_name || 'User';
@@ -829,7 +948,10 @@ export class AuthController {
         `[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`,
       );
 
-      if (!user) return { error: 'User not found.' };
+      if (!user) {
+        await this.lockout.recordFailure('login', emailStr, ip);
+        return { error: 'User not found.' };
+      }
 
       const sessionStart = Date.now();
       const sessionToken = await this.authService.createSession(
@@ -845,11 +967,11 @@ export class AuthController {
       this.logger.log(
         `[Auth] Supabase login success: userId=${user.userId} email=${user.email} total=${Date.now() - loginStart}ms`,
       );
+      await this.lockout.recordSuccess('login', emailStr, ip);
       this.attachSessionCookie(expressRes, sessionToken);
       return {
         session_token: sessionToken,
         access_token: data.access_token,
-        refresh_token: data.refresh_token,
         userId: user.userId,
         email: user.email,
         name: user.name,
@@ -880,6 +1002,7 @@ export class AuthController {
       this.logger.warn(
         `[Auth] Dev login failed: user not found for ${emailStr}`,
       );
+      await this.lockout.recordFailure('login', emailStr, ip);
       return { error: 'User not found. Run: cd backend && npx prisma db seed' };
     }
     const sessionToken = await this.authService.createSession(user);
@@ -888,6 +1011,7 @@ export class AuthController {
     this.logger.log(
       `[Auth] Dev login success: userId=${user.userId} email=${user.email}`,
     );
+    await this.lockout.recordSuccess('login', emailStr, ip);
     this.attachSessionCookie(expressRes, sessionToken);
     return {
       session_token: sessionToken,
@@ -903,21 +1027,40 @@ export class AuthController {
    * POST /api/auth/recover
    * Proxies to GoTrue password reset (avoids CORS).
    */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('recover')
-  async recover(@Body('email') email: string): Promise<{ error?: string }> {
+  async recover(
+    @Body('email') email: string,
+    @Req() req: Request,
+  ): Promise<{ error?: string }> {
     const emailStr = (email || '').trim();
     if (!emailStr) return { error: 'Email is required.' };
+    const ip = this.clientIp(req);
+
+    const locked = await this.rejectIfLocked('recover', emailStr, ip);
+    if (locked) return locked;
 
     if (this.cognitoService.isConfigured()) {
       try {
         await this.cognitoService.forgotPassword(emailStr);
         this.logger.log(`[Auth] Cognito recover email sent to ${emailStr}`);
+        // Count every recover attempt (success or fail) to limit email bombing.
+        await this.lockout.recordFailure('recover', emailStr, ip);
         return {};
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : 'Password reset failed.';
         this.logger.warn(`[Auth] Cognito recover failed for ${emailStr}: ${msg}`);
-        return { error: msg };
+        const lock = await this.lockout.recordFailure('recover', emailStr, ip);
+        if (lock.locked) {
+          return {
+            error:
+              lock.message || 'Too many attempts. Please try again later.',
+          };
+        }
+        // Always return success-shaped response so clients cannot probe for accounts.
+        return {};
       }
     }
 
@@ -953,6 +1096,7 @@ export class AuthController {
         `[Auth] Recover error for ${emailStr} after ${Date.now() - recoverStart}ms:`,
         err,
       );
+      await this.lockout.recordFailure('recover', emailStr, ip);
       return { error: msg };
     }
     this.logger.log(
@@ -964,10 +1108,17 @@ export class AuthController {
       const msg =
         data?.msg || data?.error_description || 'Password reset failed.';
       this.logger.warn(`[Auth] Recover failed for ${emailStr}: ${msg}`);
+      const lock = await this.lockout.recordFailure('recover', emailStr, ip);
+      if (lock.locked) {
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
+      }
       return { error: msg };
     }
 
     this.logger.log(`[Auth] Recover email sent to ${emailStr}`);
+    await this.lockout.recordFailure('recover', emailStr, ip);
     return {};
   }
 
@@ -1000,9 +1151,20 @@ export class AuthController {
           codeStr,
           passwordStr,
         );
-        this.logger.log(
-          `[Auth] Cognito password reset confirmed for ${emailStr} in ${Date.now() - confirmStart}ms`,
-        );
+        // Password reset → revoke all existing Postgres + Redis sessions.
+        const user = await this.authService.findByEmail(emailStr);
+        if (user) {
+          const revoked = await this.authService.revokeAllUserSessions(
+            user.userId,
+          );
+          this.logger.log(
+            `[Auth] Cognito password reset confirmed for ${emailStr} in ${Date.now() - confirmStart}ms; revokedSessions=${revoked}`,
+          );
+        } else {
+          this.logger.log(
+            `[Auth] Cognito password reset confirmed for ${emailStr} in ${Date.now() - confirmStart}ms (no CHT user row yet)`,
+          );
+        }
         return {};
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Password reset failed.';
@@ -1028,6 +1190,192 @@ export class AuthController {
     }
 
     return { error: 'Password reset is not configured.' };
+  }
+
+  /**
+   * POST /api/auth/cognito/change-password
+   * Authenticated Cognito password change. Revokes all sessions after success
+   * so stolen cookies cannot keep working with the old password.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 10, ttl: 900_000 } })
+  @Post('cognito/change-password')
+  @UseGuards(JwtAuthGuard)
+  async cognitoChangePassword(
+    @CurrentUser() user: AuthUser,
+    @Body('oldPassword') oldPassword: string,
+    @Body('newPassword') newPassword: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<{ error?: string } | { ok: true }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Password change is not configured.' };
+    }
+
+    const previous = (oldPassword || '').trim();
+    const proposed = newPassword || '';
+    if (!previous) return { error: 'Current password is required.' };
+    if (!proposed || proposed.length < 8) {
+      return { error: 'New password must be at least 8 characters.' };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) {
+      return { error: 'Session required.' };
+    }
+
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'Password change requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    try {
+      await this.cognitoService.changePassword(
+        accessToken,
+        previous,
+        proposed,
+      );
+      const revoked = await this.authService.revokeAllUserSessions(user.userId);
+      clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
+      this.logger.log(
+        `[Auth] Cognito password changed for ${user.email}; revokedSessions=${revoked}`,
+      );
+      return { ok: true };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Password change failed.';
+      this.logger.warn(
+        `[Auth] Cognito change-password failed for ${user.email}: ${msg}`,
+      );
+      if (/NotAuthorizedException|Incorrect username or password/i.test(msg)) {
+        return { error: 'Current password is incorrect.' };
+      }
+      if (/InvalidPasswordException/i.test(msg)) {
+        return {
+          error:
+            'Password does not meet requirements. Use at least 8 characters with upper, lower, number, and symbol.',
+        };
+      }
+      if (/LimitExceededException/i.test(msg)) {
+        return { error: 'Too many attempts. Please try again later.' };
+      }
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/mfa/setup
+   * Start TOTP enrollment (AssociateSoftwareToken). Requires Cognito access token on session.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 10, ttl: 900_000 } })
+  @Post('mfa/setup')
+  @UseGuards(JwtAuthGuard)
+  async mfaSetup(
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+  ): Promise<
+    | { secretCode: string; otpauthUri: string }
+    | { error: string }
+  > {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'MFA is not configured.' };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { error: 'Session required.' };
+
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'MFA setup requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    try {
+      const { secretCode } =
+        await this.cognitoService.associateSoftwareToken(accessToken);
+      const otpauthUri = this.cognitoService.buildOtpauthUri(
+        secretCode,
+        user.email,
+      );
+      this.logger.log(`[Auth] MFA setup started for ${user.email}`);
+      return { secretCode, otpauthUri };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Could not start MFA setup.';
+      this.logger.warn(`[Auth] MFA setup failed for ${user.email}: ${msg}`);
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/mfa/verify
+   * Confirm TOTP (VerifySoftwareToken) and enable preferred software-token MFA.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('mfa/verify')
+  @UseGuards(JwtAuthGuard)
+  async mfaVerify(
+    @CurrentUser() user: AuthUser,
+    @Body('code') code: string,
+    @Req() req: Request,
+  ): Promise<{ ok?: true; error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'MFA is not configured.' };
+    }
+
+    const codeStr = (code || '').trim();
+    if (!/^\d{6}$/.test(codeStr)) {
+      return { error: 'Enter the 6-digit code from your authenticator app.' };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { error: 'Session required.' };
+
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'MFA verification requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    const ip = this.clientIp(req);
+    const locked = await this.rejectIfLocked('mfa', user.email, ip);
+    if (locked) return locked;
+
+    try {
+      await this.cognitoService.verifySoftwareTokenAndEnable(
+        accessToken,
+        codeStr,
+      );
+      await this.lockout.recordSuccess('mfa', user.email, ip);
+      this.logger.log(`[Auth] MFA enabled for ${user.email}`);
+      return { ok: true };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'MFA verification failed.';
+      this.logger.warn(`[Auth] MFA verify failed for ${user.email}: ${msg}`);
+      const lock = await this.lockout.recordFailure('mfa', user.email, ip);
+      if (lock.locked) {
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
+      }
+      if (/CodeMismatchException|EnableSoftwareTokenMFAException/i.test(msg)) {
+        return { error: 'Invalid authentication code. Please try again.' };
+      }
+      return { error: msg };
+    }
   }
 
   @Post('logout')
@@ -1064,7 +1412,7 @@ export class AuthController {
    */
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getMe(@CurrentUser() user: AuthUser) {
+  async getMe(@CurrentUser() user: AuthUser, @Req() req: Request) {
     const dbUser = await this.authService.getUserById(user.userId);
     const nameParts = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
     const dbFirst = dbUser?.firstName?.trim();
@@ -1077,8 +1425,34 @@ export class AuthController {
       ? dbLast
       : nameParts.slice(1).join(' ') || dbLast || '';
     const profileComplete = this.authService.isProfileComplete(dbUser);
+
+    let mfaEnabled = false;
+    if (this.cognitoService.isConfigured()) {
+      const sessionToken = getSessionTokenFromRequest(req);
+      const accessToken = sessionToken
+        ? await this.authService.getSessionAccessToken(sessionToken)
+        : null;
+      if (accessToken) {
+        try {
+          mfaEnabled =
+            await this.cognitoService.isSoftwareTokenMfaEnabled(accessToken);
+        } catch (err) {
+          this.logger.warn(
+            `[Auth] MFA status check failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+    }
+
+    // Soft enforce for admins while pool MFA is OPTIONAL: require enrollment
+    // before using admin surfaces. Flip pool to ON later for all users.
+    const mfaEnrollmentRequired =
+      user.role === UserRole.ADMIN &&
+      this.cognitoService.isConfigured() &&
+      !mfaEnabled;
+
     this.logger.debug(
-      `[Auth] /me OK: userId=${user.userId} email=${user.email}`,
+      `[Auth] /me OK: userId=${user.userId} email=${user.email} mfaEnabled=${mfaEnabled}`,
     );
     return {
       userId: user.userId,
@@ -1089,6 +1463,8 @@ export class AuthController {
       lastName,
       role: user.role,
       profileComplete,
+      mfaEnabled,
+      mfaEnrollmentRequired,
     };
   }
 }

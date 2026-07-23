@@ -13,10 +13,12 @@ export class CognitoStrategy extends PassportStrategy(Strategy, 'jwt') {
     private authService: AuthService,
   ) {
     const userPoolId = configService.get<string>('cognito.userPoolId');
+    const clientId = configService.get<string>('cognito.clientId');
     const region =
       configService.get<string>('cognito.region') ||
       configService.get<string>('aws.region') ||
       'us-east-1';
+    const jwksOverride = configService.get<string>('cognito.jwksUri')?.trim();
 
     if (!userPoolId) {
       throw new Error(
@@ -29,17 +31,22 @@ export class CognitoStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       issuer,
+      audience: clientId || undefined,
       algorithms: ['RS256'],
       secretOrKeyProvider: passportJwtSecret({
         cache: true,
         rateLimit: true,
         jwksRequestsPerMinute: 5,
-        jwksUri: `${issuer}/.well-known/jwks.json`,
+        jwksUri: jwksOverride || `${issuer}/.well-known/jwks.json`,
       }),
     });
   }
 
   async validate(payload: CognitoIdTokenClaims) {
+    if (payload.token_use && payload.token_use !== 'id') {
+      throw new UnauthorizedException('Invalid token_use');
+    }
+
     const authId = payload.sub;
     if (!authId) throw new UnauthorizedException('Invalid token');
 

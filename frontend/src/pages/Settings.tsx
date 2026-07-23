@@ -363,17 +363,35 @@ export default function Settings() {
               </div>
             </div>
             ) : settingsTab === 'security' ? (
-              <div className="mt-6 space-y-3 text-sm text-gray-600">
-                <p>
-                  To change your password, sign out and use <strong>Forgot password</strong> on the login page, or
-                  contact your administrator.
-                </p>
-                <Link
-                  to="/forgot-password"
-                  className="inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-                >
-                  Open password reset
-                </Link>
+              <div className="mt-6 space-y-4 text-sm text-gray-600">
+                <div>
+                  <p>
+                    To change your password, sign out and use <strong>Forgot password</strong> on the login page, or
+                    contact your administrator.
+                  </p>
+                  <Link
+                    to="/forgot-password"
+                    className="mt-2 inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    Open password reset
+                  </Link>
+                </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="font-medium text-gray-900">Authenticator app (MFA)</p>
+                  <p className="mt-1">
+                    {user?.mfaEnabled
+                      ? 'Multi-factor authentication is enabled on your account.'
+                      : 'Add an authenticator app for an extra sign-in step.'}
+                  </p>
+                  {!user?.mfaEnabled && (
+                    <Link
+                      to="/mfa/setup"
+                      className="mt-2 inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      Set up MFA
+                    </Link>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="mt-6">

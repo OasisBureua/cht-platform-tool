@@ -9,6 +9,11 @@ import {
   ResendConfirmationCodeCommand,
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
+  ChangePasswordCommand,
+  AssociateSoftwareTokenCommand,
+  VerifySoftwareTokenCommand,
+  SetUserMFAPreferenceCommand,
+  GetUserCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminGetUserCommand,
@@ -16,6 +21,8 @@ import {
   type AuthenticationResultType,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { UserRole } from '@prisma/client';
+import * as jwt from 'jsonwebtoken';
+import type { JwksClient, SigningKey } from 'jwks-rsa';
 
 /** Cognito groups defined in infrastructure/terraform/modules/security/cognito/main.tf */
 export const COGNITO_GROUP_HCP = 'cht-hcp';
@@ -24,6 +31,10 @@ export const COGNITO_GROUP_ADMIN = 'cht-admin';
 export interface CognitoTokens {
   idToken: string;
   accessToken: string;
+  /**
+   * Cognito refresh token from the IdP response. Kept for a possible future
+   * server-side refresh path — never returned in login API JSON bodies.
+   */
   refreshToken?: string;
 }
 
@@ -33,9 +44,23 @@ export interface CognitoIdTokenClaims {
   given_name?: string;
   family_name?: string;
   name?: string;
+  token_use?: 'id' | 'access' | string;
+  aud?: string | string[];
+  iss?: string;
+  exp?: number;
   /** Pool username — for Google IdP this is often `Google_<sub>`, not the email. */
   'cognito:username'?: string;
   'cognito:groups'?: string[];
+}
+
+export interface CognitoAccessTokenClaims {
+  sub: string;
+  client_id?: string;
+  token_use?: 'id' | 'access' | string;
+  iss?: string;
+  exp?: number;
+  username?: string;
+  scope?: string;
 }
 
 export type CognitoLoginResult =
@@ -46,6 +71,7 @@ export type CognitoLoginResult =
 export class CognitoService {
   private readonly logger = new Logger(CognitoService.name);
   private readonly client: CognitoIdentityProviderClient;
+  private jwks: JwksClient | null = null;
 
   constructor(private readonly configService: ConfigService) {
     const region =
@@ -75,27 +101,163 @@ export class CognitoService {
     return this.configService.get<string>('cognito.userPoolId') || '';
   }
 
+  private get region(): string {
+    return (
+      this.configService.get<string>('cognito.region') ||
+      this.configService.get<string>('aws.region') ||
+      'us-east-1'
+    );
+  }
+
+  /** Expected Cognito issuer for this pool. */
+  getIssuer(): string {
+    return `https://cognito-idp.${this.region}.amazonaws.com/${this.userPoolId}`;
+  }
+
+  private get jwksUri(): string {
+    const override = this.configService.get<string>('cognito.jwksUri')?.trim();
+    if (override) return override;
+    return `${this.getIssuer()}/.well-known/jwks.json`;
+  }
+
+  private getJwksClient(): JwksClient {
+    if (!this.jwks) {
+      // Lazy require: jwks-rsa → jose is ESM and breaks Jest when imported at module load.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const mod = require('jwks-rsa') as
+        | ((options: {
+            jwksUri: string;
+            cache?: boolean;
+            rateLimit?: boolean;
+            jwksRequestsPerMinute?: number;
+          }) => JwksClient)
+        | {
+            default: (options: {
+              jwksUri: string;
+              cache?: boolean;
+              rateLimit?: boolean;
+              jwksRequestsPerMinute?: number;
+            }) => JwksClient;
+          };
+      const createClient = typeof mod === 'function' ? mod : mod.default;
+      this.jwks = createClient({
+        jwksUri: this.jwksUri,
+        cache: true,
+        rateLimit: true,
+        jwksRequestsPerMinute: 10,
+      });
+    }
+    return this.jwks;
+  }
+
+  private async getSigningKey(kid: string): Promise<string> {
+    const key: SigningKey = await this.getJwksClient().getSigningKey(kid);
+    return key.getPublicKey();
+  }
+
   private get hostedUiBaseUrl(): string {
     const configured = this.configService.get<string>('cognito.hostedUiBaseUrl');
     if (configured) return configured.replace(/\/$/, '');
     const domain = this.configService.get<string>('cognito.domainPrefix');
-    const region =
-      this.configService.get<string>('cognito.region') ||
-      this.configService.get<string>('aws.region') ||
-      'us-east-1';
+    const region = this.region;
     if (domain) {
       return `https://${domain}.auth.${region}.amazoncognito.com`;
     }
     return '';
   }
 
-  parseIdTokenClaims(idToken: string): CognitoIdTokenClaims {
-    const parts = idToken.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid ID token');
+  /**
+   * Verify a Cognito ID token (JWKS RS256 + iss/aud/exp/token_use=id).
+   * Used by login / MFA / PKCE callback before creating a Postgres session.
+   */
+  async parseIdTokenClaims(idToken: string): Promise<CognitoIdTokenClaims> {
+    const claims = await this.verifyJwt(idToken, {
+      expectedTokenUse: 'id',
+      audience: this.clientId,
+    });
+    return claims as CognitoIdTokenClaims;
+  }
+
+  /**
+   * Verify a Cognito access token (JWKS RS256 + iss/exp/token_use=access + client_id).
+   */
+  async verifyAccessToken(
+    accessToken: string,
+  ): Promise<CognitoAccessTokenClaims> {
+    const claims = await this.verifyJwt(accessToken, {
+      expectedTokenUse: 'access',
+    });
+    const accessClaims = claims as CognitoAccessTokenClaims;
+    if (accessClaims.client_id !== this.clientId) {
+      throw new Error('Invalid access token client_id');
     }
-    const payload = Buffer.from(parts[1], 'base64url').toString('utf8');
-    return JSON.parse(payload) as CognitoIdTokenClaims;
+    return accessClaims;
+  }
+
+  /**
+   * Verify both tokens returned by Cognito before session creation.
+   */
+  async verifyTokenPair(tokens: CognitoTokens): Promise<CognitoIdTokenClaims> {
+    const [idClaims, accessClaims] = await Promise.all([
+      this.parseIdTokenClaims(tokens.idToken),
+      this.verifyAccessToken(tokens.accessToken),
+    ]);
+    if (idClaims.sub !== accessClaims.sub) {
+      throw new Error('ID and access token subject mismatch');
+    }
+    return idClaims;
+  }
+
+  private async verifyJwt(
+    token: string,
+    opts: {
+      expectedTokenUse: 'id' | 'access';
+      audience?: string;
+    },
+  ): Promise<jwt.JwtPayload> {
+    if (!this.userPoolId || !this.clientId) {
+      throw new Error('Cognito is not configured');
+    }
+
+    const decoded = jwt.decode(token, { complete: true });
+    if (!decoded || typeof decoded === 'string' || !decoded.header?.kid) {
+      throw new Error('Invalid token');
+    }
+
+    let publicKey: string;
+    try {
+      publicKey = await this.getSigningKey(decoded.header.kid);
+    } catch (err) {
+      this.logger.warn(
+        `[Cognito] JWKS lookup failed for kid=${decoded.header.kid}: ${err}`,
+      );
+      throw new Error('Unable to verify token signature');
+    }
+
+    let payload: jwt.JwtPayload;
+    try {
+      payload = jwt.verify(token, publicKey, {
+        algorithms: ['RS256'],
+        issuer: this.getIssuer(),
+        audience: opts.audience,
+        clockTolerance: 60,
+      }) as jwt.JwtPayload;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`Token verification failed: ${message}`);
+    }
+
+    if (payload.token_use !== opts.expectedTokenUse) {
+      throw new Error(
+        `Invalid token_use (expected ${opts.expectedTokenUse}, got ${String(payload.token_use)})`,
+      );
+    }
+
+    if (!payload.sub || typeof payload.sub !== 'string') {
+      throw new Error('Token missing sub');
+    }
+
+    return payload;
   }
 
   async loginWithPassword(
@@ -236,6 +398,86 @@ export class CognitoService {
       }),
       { abortSignal: this.cognitoAbortSignal() },
     );
+  }
+
+  /**
+   * Change password for a signed-in Cognito user (requires a valid access token).
+   */
+  async changePassword(
+    accessToken: string,
+    previousPassword: string,
+    proposedPassword: string,
+  ): Promise<void> {
+    await this.client.send(
+      new ChangePasswordCommand({
+        AccessToken: accessToken,
+        PreviousPassword: previousPassword,
+        ProposedPassword: proposedPassword,
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+  }
+
+  /**
+   * Start TOTP enrollment. Returns the shared secret for an authenticator app.
+   */
+  async associateSoftwareToken(accessToken: string): Promise<{ secretCode: string }> {
+    const response = await this.client.send(
+      new AssociateSoftwareTokenCommand({ AccessToken: accessToken }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+    if (!response.SecretCode) {
+      throw new Error('Cognito did not return an MFA secret');
+    }
+    return { secretCode: response.SecretCode };
+  }
+
+  /**
+   * Confirm TOTP enrollment and prefer software-token MFA for the user.
+   */
+  async verifySoftwareTokenAndEnable(
+    accessToken: string,
+    code: string,
+    friendlyDeviceName = 'Authenticator app',
+  ): Promise<void> {
+    const verify = await this.client.send(
+      new VerifySoftwareTokenCommand({
+        AccessToken: accessToken,
+        UserCode: code.trim(),
+        FriendlyDeviceName: friendlyDeviceName,
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+    if (verify.Status && verify.Status !== 'SUCCESS') {
+      throw new Error('MFA code verification failed');
+    }
+
+    await this.client.send(
+      new SetUserMFAPreferenceCommand({
+        AccessToken: accessToken,
+        SoftwareTokenMfaSettings: {
+          Enabled: true,
+          PreferredMfa: true,
+        },
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+  }
+
+  /** Whether the Cognito user has software-token MFA enabled. */
+  async isSoftwareTokenMfaEnabled(accessToken: string): Promise<boolean> {
+    const user = await this.client.send(
+      new GetUserCommand({ AccessToken: accessToken }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+    const settings = user.UserMFASettingList ?? [];
+    return settings.includes('SOFTWARE_TOKEN_MFA');
+  }
+
+  buildOtpauthUri(secretCode: string, email: string): string {
+    const label = encodeURIComponent(`CHT:${email.trim().toLowerCase()}`);
+    const issuer = encodeURIComponent('Community Health');
+    return `otpauth://totp/${label}?secret=${encodeURIComponent(secretCode)}&issuer=${issuer}`;
   }
 
   /**
