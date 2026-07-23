@@ -118,7 +118,7 @@ export class CognitoService {
    * Cognito MRR / updated OIDC issuer can put a different `iss` on tokens while
    * still signing with keys served from the primary JWKS. Accept known variants.
    */
-  private getValidIssuers(): string[] {
+  private getValidIssuers(): [string, ...string[]] {
     const poolId = this.userPoolId;
     const primary = this.region;
     const replica =
@@ -133,7 +133,10 @@ export class CognitoService {
         `https://issuer-cognito-idp.${region}.amazonaws.com/${poolId}`,
       );
     }
-    return issuers;
+    if (issuers.length === 0) {
+      return [this.getIssuer()];
+    }
+    return issuers as [string, ...string[]];
   }
 
   private get jwksUri(): string {
