@@ -83,6 +83,7 @@ jobs:
     outputs:
       deploy_backend: ${{ steps.scope.outputs.deploy_backend }}
       deploy_frontend: ${{ steps.scope.outputs.deploy_frontend }}
+      deploy_infra: ${{ steps.scope.outputs.deploy_infra }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -91,7 +92,7 @@ jobs:
           ref: ${{ needs.gate.outputs.checkout_ref }}
 
       - name: Detect changed paths
-        # workflow_dispatch has no event.before; scope script already deploys both sides.
+        # workflow_dispatch has no event.before; scope script deploys all lanes.
         if: github.event_name != 'workflow_dispatch'
         uses: dorny/paths-filter@v4
         id: filter
@@ -127,7 +128,8 @@ jobs:
     if: |
       needs.gate.outputs.should_deploy == 'true' && (
         needs.changes.outputs.deploy_backend == 'true' ||
-        needs.changes.outputs.deploy_frontend == 'true'
+        needs.changes.outputs.deploy_frontend == 'true' ||
+        needs.changes.outputs.deploy_infra == 'true'
       )
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
@@ -173,13 +175,13 @@ jobs:
         run: npm test
 
       - name: Setup Terraform
-        if: needs.changes.outputs.deploy_backend == 'true'
+        if: needs.changes.outputs.deploy_infra == 'true'
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform validate
-        if: needs.changes.outputs.deploy_backend == 'true'
+        if: needs.changes.outputs.deploy_infra == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
           terraform init -backend=false
@@ -192,7 +194,8 @@ jobs:
     if: |
       needs.gate.outputs.should_deploy == 'true' && (
         needs.changes.outputs.deploy_backend == 'true' ||
-        needs.changes.outputs.deploy_frontend == 'true'
+        needs.changes.outputs.deploy_frontend == 'true' ||
+        needs.changes.outputs.deploy_infra == 'true'
       )
     environment: platform
 
@@ -208,7 +211,8 @@ jobs:
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Lane | Run |" >> "$GITHUB_STEP_SUMMARY"
           echo "|------|-----|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend (images + Terraform + ECS) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend (images + ECS image roll) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Infra (Terraform plan/apply) | ${{ needs.changes.outputs.deploy_infra }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Frontend (build + S3 + CloudFront) | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure AWS credentials (OIDC)
@@ -259,14 +263,14 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Setup Terraform
-        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
           terraform_wrapper: false
 
       - name: Verify GitHub Environment secrets
-        if: needs.changes.outputs.deploy_backend == 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         env:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
@@ -295,18 +299,24 @@ jobs:
         run: ./scripts/verify-github-env-secrets.sh platform
 
       - name: Terraform Init
-        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
 
       - name: Terraform Plan
-        if: needs.changes.outputs.deploy_backend == 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
+          EXTRA_VARS=()
+          if [ "${{ needs.changes.outputs.deploy_backend }}" = "true" ]; then
+            EXTRA_VARS+=(
+              -var="backend_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}"
+              -var="worker_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}"
+            )
+          fi
           terraform plan \
             -var-file="${{ env.TF_VAR_FILE }}" \
-            -var="backend_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}" \
-            -var="worker_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}" \
+            "${EXTRA_VARS[@]}" \
             -out=tfplan
         env:
           TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -340,7 +350,7 @@ jobs:
           TF_VAR_internal_cache_secret: ${{ secrets.INTERNAL_CACHE_SECRET }}
 
       - name: Plan summary
-        if: needs.changes.outputs.deploy_backend == 'true'
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: |
           echo "## Terraform plan summary" >> "$GITHUB_STEP_SUMMARY"
@@ -369,7 +379,7 @@ jobs:
           fi
 
       - name: Approve Terraform apply
-        if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'
+        if: (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true') && github.event.inputs.plan_only != 'true'
         uses: trstringer/manual-approval@v1
         timeout-minutes: 120
         with:
@@ -386,7 +396,7 @@ jobs:
             Comment **deny** to cancel the apply (the workflow will fail).
 
       - name: Terraform Apply
-        if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'
+        if: (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true') && github.event.inputs.plan_only != 'true'
         working-directory: ${{ env.TF_ENV_DIR }}
         run: terraform apply tfplan
 
@@ -394,7 +404,8 @@ jobs:
         if: |
           github.event.inputs.plan_only != 'true' && (
             needs.changes.outputs.deploy_frontend == 'true' ||
-            needs.changes.outputs.deploy_backend == 'true'
+            needs.changes.outputs.deploy_backend == 'true' ||
+            needs.changes.outputs.deploy_infra == 'true'
           )
         id: outputs
         working-directory: ${{ env.TF_ENV_DIR }}
@@ -524,12 +535,15 @@ jobs:
           exit 1
 
       - name: Deployment Summary
-        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true')
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true')
         run: |
           echo "## CHT Platform deploy (us-east-1)" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend lane | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Infra lane | ${{ needs.changes.outputs.deploy_infra }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend lane | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Image tag | \`${{ needs.changes.outputs.deploy_backend == 'true' && steps.meta.outputs.image_tag || 'n/a' }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Frontend | ${{ env.APP_URL }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| API | ${{ env.API_URL }} |" >> "$GITHUB_STEP_SUMMARY"
