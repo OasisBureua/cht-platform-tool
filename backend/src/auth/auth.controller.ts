@@ -22,6 +22,7 @@ import {
   getSessionTokenFromRequest,
   setSessionCookie,
 } from './session-cookie';
+import { isProductionEnv } from '../utils/is-production-env';
 
 /** Supabase/GoTrue external call timeout (ms). Prevents login hanging on slow/unreachable auth. */
 const SUPABASE_FETCH_TIMEOUT_MS = 15000;
@@ -738,7 +739,9 @@ export class AuthController {
   /**
    * POST /api/auth/login
    * Validates email/password against Supabase when configured.
-   * When Supabase not configured (dev): lookup by email in DB (password ignored).
+   * When Supabase not configured (dev only): lookup by email in DB, password
+   * ignored — for local development against a seeded DB. Production refuses
+   * the DB-fallback path outright (SCRUM-101).
    */
   @Post('login')
   async login(
@@ -855,6 +858,18 @@ export class AuthController {
         role: user.role,
         profileComplete,
       };
+    }
+
+    // SCRUM-101: fail-closed in production. The dev-fallback path below logs
+    // a user in by email with the password IGNORED — a critical vulnerability
+    // if SUPABASE_URL/SUPABASE_ANON_KEY are ever missing in prod (config
+    // drift, secret rotation, misdeploy). Never allow this path outside of
+    // local/test environments.
+    if (isProductionEnv()) {
+      this.logger.warn(
+        `[Auth] Login refused: Supabase env not configured in production for ${emailStr}`,
+      );
+      return { error: 'Login is not available. Please contact support.' };
     }
 
     this.logger.log(

@@ -4,14 +4,40 @@ import { Logger } from 'nestjs-pino';
 import multer from 'multer';
 import cookieParser from 'cookie-parser';
 import * as express from 'express';
+import helmet from 'helmet';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AuthService } from './auth/auth.service';
 import { getSessionTokenFromRequest } from './auth/session-cookie';
+import { isProductionEnv } from './utils/is-production-env';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+
+  // SCRUM-108: standard security headers via helmet.
+  // - HSTS enabled in production so browsers refuse http:// downgrades (2yr max-age,
+  //   subdomains included, ready for HSTS preload if we opt in later).
+  // - contentSecurityPolicy: disabled — CHT serves the SPA from S3/CloudFront (not
+  //   through this backend), so CSP belongs at the edge. Enabling here would only
+  //   affect /api/* JSON responses where CSP has no effect anyway.
+  // - crossOriginResourcePolicy: 'cross-origin' so testapp SPA + admin surfaces on
+  //   different hostnames can consume API responses without CORP-mismatch blocks.
+  // - referrerPolicy: 'no-referrer' — API responses never need to leak the referring
+  //   URL to other origins.
+  // Other defaults kept: X-Content-Type-Options, X-Frame-Options: SAMEORIGIN,
+  // X-DNS-Prefetch-Control, X-Download-Options, X-Permitted-Cross-Domain-Policies.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      referrerPolicy: { policy: 'no-referrer' },
+      strictTransportSecurity: isProductionEnv()
+        ? { maxAge: 63072000, includeSubDomains: true, preload: false }
+        : false,
+    }),
+  );
+
   app.use(cookieParser());
 
   // Zoom webhook MUST run first to capture raw body before any other parser consumes the stream.
