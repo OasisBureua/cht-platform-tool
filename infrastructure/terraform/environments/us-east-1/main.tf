@@ -631,16 +631,17 @@ module "ecr_lifecycle" {
 }
 
 # ============================================
-# Compute - ECR cross-region replication (account-level)
-# Replicates cht-platform-* images from us-east-1 → us-east-2 (platform only).
+# Compute - ECR cross-region replication (account-level singleton)
+# Replicates contenthub-* and cht-platform-* from us-east-1 → us-east-2.
+# Both prefixes are required: this resource replaces the whole account ruleset.
 # ============================================
 module "ecr_replication" {
   count  = var.enable_ecr_replication ? 1 : 0
   source = "../../modules/compute/ecr-replication"
 
-  destination_region = var.ecr_replication_destination_region
-  repository_prefix  = var.ecr_repository_prefix
-  repository_names   = local.ecr_replication_repository_names
+  destination_region  = var.ecr_replication_destination_region
+  repository_prefixes = var.ecr_repository_prefixes
+  repository_names    = local.ecr_replication_repository_names
 }
 
 # ============================================
