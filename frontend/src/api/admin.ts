@@ -167,6 +167,7 @@ export interface PendingPayment {
     firstName: string;
     lastName: string;
     billVendorId: string | null;
+    w9Submitted?: boolean;
   };
   program: { id: string; title: string } | null;
 }
@@ -903,6 +904,28 @@ export const adminApi = {
   }) => {
     const { data } = await apiClient.post('/payments/manual', body);
     return data as PendingPayment;
+  },
+
+  getManualPaymentEligibility: async (params: {
+    userId: string;
+    programId: string;
+  }) => {
+    const { data } = await apiClient.get<{
+      userId: string;
+      programId: string;
+      programTitle: string;
+      registrationFound: boolean;
+      attendanceStatus: string | null;
+      attendanceOk: boolean;
+      surveyRequired: boolean;
+      surveyAcknowledged: boolean;
+      hasBillVendor: boolean;
+      w9Submitted: boolean;
+      programEligibilityOk: boolean;
+      payNowReady: boolean;
+      warnings: string[];
+    }>('/payments/manual-eligibility', { params });
+    return data;
   },
 
   getWebhookImports: async (): Promise<WebhookImportedProgram[]> => {
