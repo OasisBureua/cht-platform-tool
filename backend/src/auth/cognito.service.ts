@@ -109,9 +109,31 @@ export class CognitoService {
     );
   }
 
-  /** Expected Cognito issuer for this pool. */
+  /** Expected Cognito issuer for this pool (primary region). */
   getIssuer(): string {
     return `https://cognito-idp.${this.region}.amazonaws.com/${this.userPoolId}`;
+  }
+
+  /**
+   * Cognito MRR / updated OIDC issuer can put a different `iss` on tokens while
+   * still signing with keys served from the primary JWKS. Accept known variants.
+   */
+  private getValidIssuers(): string[] {
+    const poolId = this.userPoolId;
+    const primary = this.region;
+    const replica =
+      this.configService.get<string>('cognito.replicaRegion')?.trim() ||
+      'us-east-2';
+    const regions = Array.from(new Set([primary, replica].filter(Boolean)));
+    const issuers: string[] = [];
+    for (const region of regions) {
+      issuers.push(`https://cognito-idp.${region}.amazonaws.com/${poolId}`);
+      // Multi-region "Updated" OIDC issuer (console Issuer URL change).
+      issuers.push(
+        `https://issuer-cognito-idp.${region}.amazonaws.com/${poolId}`,
+      );
+    }
+    return issuers;
   }
 
   private get jwksUri(): string {
@@ -238,12 +260,16 @@ export class CognitoService {
     try {
       payload = jwt.verify(token, publicKey, {
         algorithms: ['RS256'],
-        issuer: this.getIssuer(),
+        issuer: this.getValidIssuers(),
         audience: opts.audience,
         clockTolerance: 60,
       }) as jwt.JwtPayload;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      const unverified = decoded.payload as jwt.JwtPayload;
+      this.logger.warn(
+        `[Cognito] JWT verify failed token_use=${String(unverified?.token_use)} iss=${String(unverified?.iss)} expectedIssuers=${this.getValidIssuers().join('|')}: ${message}`,
+      );
       throw new Error(`Token verification failed: ${message}`);
     }
 

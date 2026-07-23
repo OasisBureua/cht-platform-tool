@@ -104,13 +104,24 @@ describe('CognitoService token verification', () => {
     );
   });
 
+  it('accepts MRR replica-region issuer for the same pool id', async () => {
+    const replicaIssuer = `https://cognito-idp.us-east-2.amazonaws.com/${userPoolId}`;
+    const token = signIdToken({
+      sub: 'user-sub-1',
+      iss: replicaIssuer,
+    });
+    const claims = await service.parseIdTokenClaims(token);
+    expect(claims.sub).toBe('user-sub-1');
+    expect(claims.iss).toBe(replicaIssuer);
+  });
+
   it('rejects ID token with wrong issuer', async () => {
     const token = signIdToken({
       sub: 'user-sub-1',
       iss: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_Other',
     });
     await expect(service.parseIdTokenClaims(token)).rejects.toThrow(
-      /Token verification failed|issuer/i,
+      /Token verification failed|audience|issuer/i,
     );
   });
 
