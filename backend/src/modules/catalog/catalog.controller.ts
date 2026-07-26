@@ -39,7 +39,7 @@ export class CatalogController {
         ?.status;
       if (status === 401 || this.mediahub.usesContentHubCatalog()) {
         this.logger.warn(
-          '[Catalog] /tags unavailable — returning empty tags.',
+          '[Catalog] /tags unavailable: returning empty tags.',
         );
         return {};
       }
@@ -201,7 +201,7 @@ export class CatalogController {
     try {
       return await this.mediahub.getClip(id);
     } catch {
-      // Clip not found in MediaHub — return null so frontend shows "not available"
+      // Clip not found in MediaHub: return null so frontend shows "not available"
       return null;
     }
   }
@@ -223,7 +223,7 @@ export class CatalogController {
         ?.status;
       if (status === 401 || this.mediahub.usesContentHubCatalog()) {
         this.logger.warn(
-          '[Catalog] /doctors unavailable — returning empty doctors.',
+          '[Catalog] /doctors unavailable: returning empty doctors.',
         );
         return [];
       }

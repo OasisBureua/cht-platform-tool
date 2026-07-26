@@ -20,11 +20,11 @@ interface PlatformConfig {
 }
 
 const PLATFORMS: PlatformConfig[] = [
-  { id: 'linkedin', label: 'LinkedIn', color: '#0077B5', description: 'Campaign Manager export — impressions, video views, dwell time, completions' },
-  { id: 'meta', label: 'Meta', color: '#7B5EA7', description: 'Ads Manager export — impressions, reach, link clicks, CTR, demographics' },
-  { id: 'youtube', label: 'YouTube', color: '#FF0000', description: 'Studio Analytics export — views, watch time, CTR, engaged views' },
-  { id: 'livestream', label: 'Livestream', color: '#3da4c0', description: 'Event platform export — registrations, attendees, HCP verification rate' },
-  { id: 'survey', label: 'Survey', color: '#2E7D32', description: 'CHT post-event feedback — responses, practice-change intent, confidence lift' },
+  { id: 'linkedin', label: 'LinkedIn', color: '#0077B5', description: 'Campaign Manager export: impressions, video views, dwell time, completions' },
+  { id: 'meta', label: 'Meta', color: '#7B5EA7', description: 'Ads Manager export: impressions, reach, link clicks, CTR, demographics' },
+  { id: 'youtube', label: 'YouTube', color: '#FF0000', description: 'Studio Analytics export: views, watch time, CTR, engaged views' },
+  { id: 'livestream', label: 'Livestream', color: '#3da4c0', description: 'Event platform export: registrations, attendees, HCP verification rate' },
+  { id: 'survey', label: 'Survey', color: '#2E7D32', description: 'CHT post-event feedback: responses, practice-change intent, confidence lift' },
 ];
 
 export default function UploadData() {
@@ -153,7 +153,7 @@ export default function UploadData() {
                 </option>
                 {feedbackSurveys.map((survey) => (
                   <option key={survey.id} value={survey.id}>
-                    {survey.program?.title ?? 'Program'} — {survey.title} (
+                    {survey.program?.title ?? 'Program'}: {survey.title} (
                     {survey.responseCount ?? 0} responses)
                   </option>
                 ))}

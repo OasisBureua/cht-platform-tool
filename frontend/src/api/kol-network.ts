@@ -19,7 +19,7 @@ export interface PublicKolIntel {
 }
 
 /**
- * Public KOL — proxied from Content Hub via CHT GET /api/kol-network/*.
+ * Public KOL: proxied from Content Hub via CHT GET /api/kol-network/*.
  * Source of truth for roster; static dol-network.ts fills education/social only.
  */
 export interface PublicKol {
@@ -32,7 +32,7 @@ export interface PublicKol {
   bio: string | null;
   photo_url: string | null;
   region: string | null;
-  /** SCRUM-70: curator ordering fields — optional for backwards compat. */
+  /** SCRUM-70: curator ordering fields: optional for backwards compat. */
   featured?: boolean;
   display_order?: number | null;
   region_label: string | null;

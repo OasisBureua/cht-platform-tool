@@ -48,7 +48,7 @@ const QUICK_START_ACTIONS = [
   },
   {
     title: 'CHM Office Hours',
-    desc: 'Drop in for live Q&A with experts—book a slot and join.',
+    desc: 'Drop in for live Q&A with experts. Book a slot and join.',
     icon: CalendarClock,
     to: '/app/chm-office-hours',
   },
@@ -244,7 +244,7 @@ export default function Dashboard() {
   const requiredSurveysPending = useMemo(() => surveys.filter((s) => s.required), [surveys]);
   const recentItems = recentData?.items ?? [];
   const topicItems = topicData?.items ?? [];
-  /** Catalog clips that have a usable thumb URL — omit placeholder-only rows on the dashboard. */
+  /** Catalog clips that have a usable thumb URL, omit placeholder-only rows on the dashboard. */
   const recentCatalogClips = useMemo(() => recentItems.filter(shouldSurfaceCatalogClip), [recentItems]);
   const topicCatalogClips = useMemo(() => topicItems.filter(shouldSurfaceCatalogClip), [topicItems]);
 

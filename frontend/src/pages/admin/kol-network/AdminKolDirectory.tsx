@@ -13,14 +13,14 @@ const SELECT_CLASS =
   'h-10 rounded-input border border-input bg-card px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent';
 
 /**
- * Internal KOL directory — admin intel entry point. Lists the public KOL
+ * Internal KOL directory: admin intel entry point. Lists the public KOL
  * roster (live, proxied from MediaHub via the CHT backend) and links each
  * row into the HCP intel detail view.
  *
  * When the backend is unreachable (network error OR a malformed non-API
  * response on the port), the page falls back to the seeded demo roster in
  * lib/intel.ts so it stays reviewable frontend-only. Live behavior is
- * unchanged whenever the API returns a valid payload — including a valid
+ * unchanged whenever the API returns a valid payload, including a valid
  * empty list.
  */
 export default function AdminKolDirectory() {
@@ -39,7 +39,7 @@ export default function AdminKolDirectory() {
     // 'always' + no retry: attempt the request even when react-query's
     // onlineManager thinks the browser is offline, and reject on the FIRST
     // failure. With the app default (retry: 1) a failed attempt parks the
-    // query in fetchStatus 'paused' whenever the tab is unfocused/offline —
+    // query in fetchStatus 'paused' whenever the tab is unfocused/offline, 
     // it never reaches error state and the demo fallback can't kick in.
     networkMode: 'always',
     retry: false,
@@ -63,7 +63,7 @@ export default function AdminKolDirectory() {
   // Facets (region + institution dropdowns) are populated from an UNFILTERED
   // list call so the dropdown options don't shrink after a selection. Prior
   // behavior: dropdown options came from `data.regions`/`data.institutions`,
-  // which are the facets of the CURRENT filter — selecting one region made
+  // which are the facets of the CURRENT filter, selecting one region made
   // the dropdown collapse to only that region. Observed 2026-07-21 on devapp.
   //
   // Stale-time set high; the roster doesn't churn on the timescale a user
@@ -82,7 +82,7 @@ export default function AdminKolDirectory() {
     },
   });
 
-  // Fallback ONLY on error — a valid empty list still renders the live
+  // Fallback ONLY on error: a valid empty list still renders the live
   // empty state. Filters are applied client-side against the demo roster.
   const usingDemo = isError;
   const list: PublicKolList | undefined = usingDemo
@@ -208,16 +208,16 @@ export default function AdminKolDirectory() {
                       </Link>
                     </td>
                     <td className="max-w-[240px] px-4 py-3 text-muted-foreground">
-                      <p className="truncate">{k.title ?? '—'}</p>
+                      <p className="truncate">{k.title ?? '-'}</p>
                       {k.specialty && (
                         <p className="truncate text-xs text-muted-foreground/80">{k.specialty}</p>
                       )}
                     </td>
                     <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
-                      {k.institution ?? '—'}
+                      {k.institution ?? '-'}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {k.region_label ?? k.region ?? '—'}
+                      {k.region_label ?? k.region ?? '-'}
                     </td>
                     <td className="px-4 py-3 text-right font-mono tabular-nums text-foreground">
                       {k.shoot_count}

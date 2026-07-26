@@ -17,8 +17,8 @@ function isValidRoutingNumber(digits: string): boolean {
 function validateAccountNumber(raw: string): string | null {
   const digits = raw.replace(/\D/g, '');
   if (digits.length === 0) return 'Account number is required.';
-  if (digits.length < 4) return `Too short — must be at least 4 digits (${digits.length}/4).`;
-  if (digits.length > 17) return `Too long — must be at most 17 digits.`;
+  if (digits.length < 4) return `Too short: must be at least 4 digits (${digits.length}/4).`;
+  if (digits.length > 17) return `Too long: must be at most 17 digits.`;
   return null;
 }
 
@@ -55,8 +55,8 @@ export function BillVendorSetupForm(props: {
 
   const accountHint =
     accountDigits.length === 0 ? null
-    : accountDigits.length < 4 ? `${accountDigits.length} digit${accountDigits.length === 1 ? '' : 's'} — minimum 4`
-    : accountDigits.length > 17 ? `${accountDigits.length} digits — maximum 17`
+    : accountDigits.length < 4 ? `${accountDigits.length} digit${accountDigits.length === 1 ? '' : 's'}: minimum 4`
+    : accountDigits.length > 17 ? `${accountDigits.length} digits: maximum 17`
     : `${accountDigits.length} digit${accountDigits.length === 1 ? '' : 's'} ✓`;
 
   const mutation = useMutation({
@@ -101,7 +101,7 @@ export function BillVendorSetupForm(props: {
     if (zipDigits.length !== 5 && zipDigits.length !== 9) return setError('Enter a valid ZIP code (5 or 9 digits).');
     if (!form.nameOnAccount.trim()) return setError('Name on account is required.');
     if (routingDigits.length !== 9) return setError('Routing number must be exactly 9 digits.');
-    if (!isValidRoutingNumber(routingDigits)) return setError('Invalid routing number — please double-check the 9-digit ABA number on your check.');
+    if (!isValidRoutingNumber(routingDigits)) return setError('Invalid routing number: please double-check the 9-digit ABA number on your check.');
     const accountErr = validateAccountNumber(form.accountNumber);
     if (accountErr) return setError(accountErr);
     mutation.mutate();
@@ -241,7 +241,7 @@ export function BillVendorSetupForm(props: {
               {accountHint}
             </p>
           )}
-          <p className="text-xs text-gray-400">4–17 digits. Numbers only — no spaces or dashes.</p>
+          <p className="text-xs text-gray-400">4–17 digits. Numbers only: no spaces or dashes.</p>
         </div>
       </fieldset>
 

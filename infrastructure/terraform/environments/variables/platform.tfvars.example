@@ -17,7 +17,7 @@ domain_name  = "testapp.communityhealth.media"
 backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
 worker_image  = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-worker:v1.0.0"
 
-# Core database shape (example values — adjust for prod)
+# Core database shape (example values: adjust for prod)
 rds_instance_class     = "db.t3.medium"
 rds_allocated_storage  = 50
 rds_multi_az           = true
@@ -27,14 +27,14 @@ rds_backup_retention   = 7
 enable_elasticache    = true
 elasticache_node_type = "cache.t3.micro"
 
-# Aurora / migration flags (platform production — see platform.github.tfvars)
+# Aurora / migration flags (platform production: see platform.github.tfvars)
 enable_aurora_global  = true
 aurora_instance_class   = "db.r6g.large"
 aurora_engine_version   = "15.17"
 aurora_use_for_app      = true
 decommission_rds        = true
 
-# Content Hub (separate repo — URL here like dev; API key in GitHub platform secrets / platform.tfvars)
+# Content Hub (separate repo: URL here like dev; API key in GitHub platform secrets / platform.tfvars)
 contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 # contenthub_api_key = ""   # required for WordPress catalog on testapp
 

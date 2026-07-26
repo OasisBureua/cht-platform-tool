@@ -192,7 +192,7 @@ export default function AdminSurveyResponses() {
                       {registrationStatusLabel(r.registration.status)}
                     </span>
                   ) : (
-                    <span className="text-gray-500">—</span>
+                    <span className="text-gray-500">, </span>
                   )}
                 </td>
                 <td className="py-3 px-4 align-top">
@@ -206,7 +206,7 @@ export default function AdminSurveyResponses() {
                       {attendanceStatusLabel(r.registration.postEventAttendanceStatus)}
                     </span>
                   ) : (
-                    <span className="text-gray-500">—</span>
+                    <span className="text-gray-500">, </span>
                   )}
                 </td>
                 <td className="py-3 px-4 align-top text-gray-600 whitespace-nowrap">

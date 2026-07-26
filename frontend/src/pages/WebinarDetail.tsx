@@ -123,7 +123,7 @@ export default function WebinarDetail() {
     const enrolledHere =
       (id ? enrolledProgramIds.has(id) : false) ||
       registration?.status === 'APPROVED';
-    // Enrollment row may lag briefly after admin approval — keep polling until both agree.
+    // Enrollment row may lag briefly after admin approval, keep polling until both agree.
     if (registration?.status === 'APPROVED' && id && !enrolledProgramIds.has(id)) {
       return 4000;
     }
@@ -172,7 +172,7 @@ export default function WebinarDetail() {
 
   // After admin approval, registration flips to APPROVED before enrollments list refreshes.
   // Keep enrollments in sync so the requirements "dots" leave "pending" promptly.
-  // Must stay above early returns (Rules of Hooks) — otherwise this page white-screens
+  // Must stay above early returns (Rules of Hooks): otherwise this page white-screens
   // when program data finishes loading / when navigating to Register.
   useEffect(() => {
     if (myRegistration?.status === 'APPROVED' && userId) {
@@ -378,7 +378,7 @@ export default function WebinarDetail() {
         </div>
       ) : null}
 
-      {/* Header / Overview — Variation B: register left, full-height cover rail right */}
+      {/* Header / Overview: Variation B: register left, full-height cover rail right */}
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <div className="p-4 sm:p-6">
           <div className="flex min-h-[17.5rem] flex-row items-stretch gap-3 min-[480px]:gap-4 sm:min-h-[20rem] sm:gap-6 md:gap-10">
@@ -516,7 +516,7 @@ export default function WebinarDetail() {
             ) : null}
             </div>
 
-            {/* Session cover — right rail, stretches with card height */}
+            {/* Session cover: right rail, stretches with card height */}
             <div className="flex w-[6.5rem] shrink-0 self-stretch min-[400px]:w-[7.25rem] min-[480px]:w-[8.5rem] sm:w-36 md:w-[11.5rem]">
               <div className="relative min-h-[8rem] w-full flex-1 overflow-hidden rounded-xl border border-gray-200 bg-gradient-to-br from-sky-100/90 via-zinc-50 to-teal-100/70 shadow-sm">
                 {sessionCoverUrl ? (
@@ -547,7 +547,7 @@ export default function WebinarDetail() {
                   <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-amber-900">Registration submitted — pending approval</p>
+                  <p className="text-sm font-semibold text-amber-900">Registration submitted, pending approval</p>
                   <p className="mt-0.5 text-sm text-amber-800">
                     Your request has been received. An administrator will review it shortly. Your join link will activate here automatically after approval.
                   </p>
@@ -560,7 +560,7 @@ export default function WebinarDetail() {
                 <svg className="h-5 w-5 shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm font-semibold text-green-900">You&apos;re registered and approved — use <strong>Join session</strong> when it&apos;s time.</p>
+                <p className="text-sm font-semibold text-green-900">You&apos;re registered and approved. Use <strong>Join session</strong> when it&apos;s time.</p>
               </div>
             </div>
           ) : null}
@@ -597,7 +597,7 @@ export default function WebinarDetail() {
           )}
           {isAdmin && program.zoomStartUrl?.trim() ? (
             <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
-              <p className="text-xs font-semibold text-violet-900">Admin — start as Zoom host</p>
+              <p className="text-xs font-semibold text-violet-900">Admin: start as Zoom host</p>
               <p className="text-xs text-violet-800">
                 Learners use <strong>Join session</strong> above. This link opens Zoom as the webinar host (use the host
                 Zoom account).
@@ -619,7 +619,7 @@ export default function WebinarDetail() {
 
       {enrolled && program.honorariumAmount ? (
         <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-3">
-          <h2 className="text-base font-semibold text-gray-900">Payments — honorarium</h2>
+          <h2 className="text-base font-semibold text-gray-900">Payments and honorarium</h2>
           <p className="text-sm text-gray-600">
             Complete your <strong>W-9</strong> and payout profile under Payments so admins can send your honorarium after
             you finish the activity.
@@ -664,7 +664,7 @@ export default function WebinarDetail() {
           {!enrolled && registrationPendingApproval ? (
             <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-3">
               <p className="text-xs text-amber-900">
-                You&apos;re registered—waiting for admin approval. Conversations and surveys unlock after approval.
+                You&apos;re registered, waiting for admin approval. Conversations and surveys unlock after approval.
               </p>
             </div>
           ) : null}

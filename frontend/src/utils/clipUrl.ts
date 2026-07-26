@@ -20,7 +20,7 @@ export function getShortClipId(id: string | undefined | null): string {
   return encodeURIComponent(id);
 }
 
-/** LinkedIn-hosted catalog clips are not supported in our player — omit from listings and deep links. */
+/** LinkedIn-hosted catalog clips are not supported in our player, omit from listings and deep links. */
 export function isLinkedinCatalogClipId(id: string | undefined | null): boolean {
   if (id == null || typeof id !== 'string') return false;
   let decoded = id;
@@ -54,7 +54,7 @@ export function youtubeThumbUrl(
 }
 
 /**
- * Prefer hqdefault over maxresdefault — YouTube often 404s maxres even for valid videos.
+ * Prefer hqdefault over maxresdefault: YouTube often 404s maxres even for valid videos.
  */
 export function normalizeCatalogThumbnailUrl(url: string | undefined | null, videoId?: string | null): string {
   const id =

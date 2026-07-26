@@ -147,7 +147,7 @@ resource "aws_iam_role_policy" "backend_task" {
   })
 }
 
-# ECS Exec (SSM session into running tasks — e.g. run-migrations.sh)
+# ECS Exec (SSM session into running tasks: e.g. run-migrations.sh)
 resource "aws_iam_role_policy" "ecs_task_exec" {
   name = "${local.prefix}-ecs-exec-policy"
   role = aws_iam_role.ecs_task.id

@@ -76,7 +76,7 @@ export default function Layout() {
           setMobileDrawerOpen(false);
         }}
       >
-        {/* Slide-reveal drawer — visible layer behind front pane on small screens */}
+        {/* Slide-reveal drawer: visible layer behind front pane on small screens */}
         <nav
           id="app-slide-drawer-nav"
           className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[220px] flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-zinc-50 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-8px_0_24px_-16px_rgba(0,0,0,0.06)] md:hidden dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-8px_0_28px_-18px_rgba(0,0,0,0.5)]"
@@ -146,12 +146,12 @@ export default function Layout() {
           </div>
         </nav>
 
-        {/* Front pane — slides aside when drawer opens */}
+        {/* Front pane: slides aside when drawer opens */}
         <div
           ref={mobileFrontRef}
           data-drawer-front
           className={[
-            // Avoid translate-x-0 when closed — it breaks position:fixed descendants.
+            // Avoid translate-x-0 when closed: it breaks position:fixed descendants.
             'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-gray-50 motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
             mobileDrawerOpen
               ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]'

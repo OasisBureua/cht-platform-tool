@@ -1,4 +1,4 @@
-// Scoped toast system for Content Hub — ported from the report generator's Toaster,
+// Scoped toast system for Content Hub: ported from the report generator's Toaster,
 // restyled to platform tokens (bg-card / border-border / text-foreground). Kept local
 // so it never conflicts with any platform-wide toaster added later.
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';

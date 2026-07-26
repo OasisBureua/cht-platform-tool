@@ -134,10 +134,10 @@ export class ZoomWebhookService {
         'WEBINAR',
       );
     } else if (eventNorm === 'meeting.created') {
-      // Office Hours use Zoom Meetings — do not auto-import as programs (wrong list + wrong API shape).
+      // Office Hours use Zoom Meetings, do not auto-import as programs (wrong list + wrong API shape).
       // Create meetings only via Admin → Office Hours scheduler so zoomSessionType stays correct.
       this.logger.log(
-        '[Zoom webhook] meeting.created received — ignoring (draft auto-import is webinars only). ' +
+        '[Zoom webhook] meeting.created received, ignoring (draft auto-import is webinars only). ' +
           'Schedule office hours meetings from the admin app.',
       );
     } else if (
@@ -153,7 +153,7 @@ export class ZoomWebhookService {
   }
 
   /**
-   * meeting.ended / webinar.ended — store actual end time for in-app post-event survey gating.
+   * meeting.ended / webinar.ended: store actual end time for in-app post-event survey gating.
    */
   private async handleSessionEnded(
     obj: ZoomSessionEndedObject | undefined,
@@ -206,7 +206,7 @@ export class ZoomWebhookService {
   }
 
   /**
-   * webinar.created — auto-create a DRAFT Program from the Zoom webinar.
+   * webinar.created: auto-create a DRAFT Program from the Zoom webinar.
    * meeting.created is not handled here (meetings belong to Office Hours only, created via admin).
    * Skips if a program with this Zoom ID already exists (idempotent).
    * Admin must fill in sponsor, honorarium, Jotform forms, and host bio via Program Hub.
@@ -237,7 +237,7 @@ export class ZoomWebhookService {
 
     if (existing) {
       this.logger.debug(
-        `[Zoom webhook] ${sessionType.toLowerCase()}.created: program ${existing.id} already exists for Zoom id ${zoomMeetingId} — skipping`,
+        `[Zoom webhook] ${sessionType.toLowerCase()}.created: program ${existing.id} already exists for Zoom id ${zoomMeetingId}, skipping`,
       );
       return;
     }
@@ -266,7 +266,7 @@ export class ZoomWebhookService {
         if (detail?.startUrl) startUrl = detail.startUrl;
         if (detail?.joinUrl) joinUrl = detail.joinUrl;
         this.logger.log(
-          `[Zoom webhook] Fetched session detail for ${zoomMeetingId} — startUrl=${startUrl ? 'present' : 'missing'}`,
+          `[Zoom webhook] Fetched session detail for ${zoomMeetingId}: startUrl=${startUrl ? 'present' : 'missing'}`,
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -294,7 +294,7 @@ export class ZoomWebhookService {
     });
 
     this.logger.log(
-      `[Zoom webhook] ${sessionType.toLowerCase()}.created → auto-created DRAFT program ${program.id} ("${title}") — admin review required`,
+      `[Zoom webhook] ${sessionType.toLowerCase()}.created → auto-created DRAFT program ${program.id} ("${title}"): admin review required`,
     );
 
     if (sessionType === 'WEBINAR') {

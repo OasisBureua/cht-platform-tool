@@ -55,7 +55,7 @@ function buildAnalyticsPrintHtml(title: string, analyticsHtml: string, styles: s
 
 /**
  * Prints the live analytics visualizations (summary cards + charts) via a
- * same-document hidden iframe — no pop-up window, so browsers won't block it.
+ * same-document hidden iframe: no pop-up window, so browsers won't block it.
  */
 export function printSurveyAnalyticsPdf(title: string): boolean {
   if (typeof window === 'undefined' || typeof document === 'undefined') return false;

@@ -21,7 +21,7 @@ if [[ -f "$VAR_FILE" ]]; then
   TF_VAR_ARGS=(-var-file="${VAR_FILE}")
   echo "📎 Using var file: ${VAR_FILE}"
 else
-  echo "⚠️  No ${VAR_FILE} — set variables via other *.tfvars, -var, or TF_VAR_* (init/plan may fail if required vars are missing)."
+  echo "⚠️  No ${VAR_FILE}: set variables via other *.tfvars, -var, or TF_VAR_* (init/plan may fail if required vars are missing)."
 fi
 echo ""
 

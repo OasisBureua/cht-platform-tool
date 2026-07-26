@@ -441,7 +441,7 @@ export default function ExecutiveReport() {
           </div>
         </Slide>
 
-        {/* ---- 9. Key Learnings & Recommendations ---- */}
+        {/* ---- 9. Key Takeaways & Recommendations ---- */}
         <Slide id="slide-learnings">
           <div className="px-14 py-10">
             <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">What We Learned</div>

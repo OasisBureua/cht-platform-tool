@@ -39,7 +39,7 @@ export function buildMissedWebinarEmail(
     ? sanitizePlainDescription(p.programDescription).slice(0, 400)
     : null;
 
-  const subject = `We missed you — ${p.programTitle}`;
+  const subject = `We missed you: ${p.programTitle}`;
 
   // ── Plain text ───────────────────────────────────────────────────────────────
   const text = [
@@ -49,7 +49,7 @@ export function buildMissedWebinarEmail(
     '',
     descPlain ? `About the session: ${descPlain}` : null,
     descPlain ? '' : null,
-    'We understand schedules can be unpredictable. Keep an eye out for future CHM programming — we would love to see you at the next session.',
+    'We understand schedules can be unpredictable. Keep an eye out for future CHM programming. We would love to see you at the next session.',
     '',
     'Visit the platform to see upcoming webinars and office hours:',
     p.appHomeUrl,

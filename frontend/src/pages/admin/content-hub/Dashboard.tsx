@@ -266,7 +266,7 @@ function CampaignCard({
     metaItems.push(
       <span key="period" className="flex items-center gap-1">
         <Calendar className="h-3 w-3" aria-hidden="true" />
-        {campaign.reportingPeriodStart} — {campaign.reportingPeriodEnd}
+        {campaign.reportingPeriodStart}: {campaign.reportingPeriodEnd}
       </span>,
     );
   }

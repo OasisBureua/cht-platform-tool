@@ -1,6 +1,6 @@
 import { parsePlaylistFocus } from './playlistFocusFilters';
 
-/** Public `/catalog` `?view=` — must stay aligned with VideosPage.effectiveLibraryView. */
+/** Public `/catalog` `?view=`: must stay aligned with VideosPage.effectiveLibraryView. */
 export function getPublicLibraryViewFromSearch(search: string): 'clips' | 'playlists' {
   const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
   const view = p.get('view');

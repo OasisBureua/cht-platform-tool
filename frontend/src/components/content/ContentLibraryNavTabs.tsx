@@ -14,7 +14,7 @@ type ContentLibraryNavTabsProps = {
   isInApp: boolean;
 };
 
-/** Clips vs playlists for tab highlighting — matches VideosPage URL rules (in-app defaults to clips). */
+/** Clips vs playlists for tab highlighting: matches VideosPage URL rules (in-app defaults to clips). */
 function effectiveContentView(search: string, isInApp: boolean): 'clips' | 'playlists' {
   const p = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
   const v = p.get('view');

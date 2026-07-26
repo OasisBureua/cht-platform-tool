@@ -19,7 +19,7 @@ function roleLead(role: string): string {
   return role.split(/[.;]/)[0]?.trim() ?? role.trim();
 }
 
-/** Intel card content for directory cards and profile overview — always populated when name/role/bio exist. */
+/** Intel card content for directory cards and profile overview, always populated when name/role/bio exist. */
 export function resolveKolDisplayBrief(
   entry: Pick<DolEntry, 'name' | 'role' | 'bio' | 'intel'>,
 ): KolDisplayBrief | null {
@@ -58,7 +58,7 @@ export function resolveKolDisplayBrief(
   }
   if (role) {
     return {
-      whoTheyAre: `${entry.name} — ${roleLead(role)}`,
+      whoTheyAre: `${entry.name}: ${roleLead(role)}`,
       isAiGenerated: false,
     };
   }

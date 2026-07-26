@@ -284,7 +284,7 @@ export default function AdminHcpIntel() {
         showToast(`Intel refresh enqueued for ${kol.name}.`);
       } else if (result.status === 'cooldown') {
         showToast(
-          `Refresh cooldown active — retry in ${result.cooldown_remaining_seconds ?? '?'}s.`,
+          `Refresh cooldown active: retry in ${result.cooldown_remaining_seconds ?? '?'}s.`,
         );
       } else {
         showToast(result.reason || 'Refresh skipped.');
@@ -450,7 +450,7 @@ export default function AdminHcpIntel() {
               variant="outline"
               onClick={() => setEditOpen(true)}
               disabled={usingDemoProfile}
-              title={usingDemoProfile ? 'Backend unreachable — edits disabled' : undefined}
+              title={usingDemoProfile ? 'Backend unreachable: edits disabled' : undefined}
             >
               Edit
             </Button>
@@ -483,7 +483,7 @@ export default function AdminHcpIntel() {
         {lastRefresh && (
           <div className="border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
             Last refresh {new Date(lastRefresh.at).toLocaleTimeString()} · {lastRefresh.status}
-            {lastRefresh.reason ? ` — ${lastRefresh.reason}` : ''}
+            {lastRefresh.reason ? `: ${lastRefresh.reason}` : ''}
           </div>
         )}
       </Card>

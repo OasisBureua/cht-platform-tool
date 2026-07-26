@@ -89,7 +89,7 @@ export class KolNetworkController {
         return empty;
       }
     } else {
-      this.logger.warn('KOL producer not configured — /kol-network returning empty');
+      this.logger.warn('KOL producer not configured, /kol-network returning empty');
       return empty;
     }
 

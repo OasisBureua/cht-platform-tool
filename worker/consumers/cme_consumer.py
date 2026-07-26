@@ -1,4 +1,4 @@
-"""CME consumer — not yet implemented."""
+"""CME consumer: not yet implemented."""
 from utils.sqs_base import PermanentFailure, SQSBaseConsumer  # noqa: F401
 
 

@@ -42,7 +42,7 @@ resource "aws_cloudfront_function" "spa_rewrite" {
       if (uri.indexOf('/assets/') === 0) return request;
       var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
       if (lastSegment.indexOf('.') !== -1) return request;
-      // SPA route — let React Router handle it.
+      // SPA route: let React Router handle it.
       request.uri = '/index.html';
       return request;
     }
@@ -159,7 +159,7 @@ resource "aws_cloudfront_distribution" "frontend" {
       }
     }
 
-    # SPA deep-link rewrite — runs ONLY on the S3 behavior. /api/* and /health*
+    # SPA deep-link rewrite: runs ONLY on the S3 behavior. /api/* and /health*
     # behaviors below don't get this function, so the ALB owns its own 404s.
     function_association {
       event_type   = "viewer-request"

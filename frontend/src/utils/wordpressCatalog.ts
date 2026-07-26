@@ -3,7 +3,7 @@ import type { MediaHubClip, WordPressCategoryItem } from '../api/catalog';
 /** Public catalog client cache (matches backend ~30m Redis clips/WP cache). */
 export const WORDPRESS_CATALOG_STALE_MS = 30 * 60 * 1000;
 
-/** Admin Content page — shorter so newly published WP posts show up quickly. */
+/** Admin Content page: shorter so newly published WP posts show up quickly. */
 export const ADMIN_WORDPRESS_CATALOG_STALE_MS = 5 * 60 * 1000;
 
 export function useWordPressCatalog(): boolean {

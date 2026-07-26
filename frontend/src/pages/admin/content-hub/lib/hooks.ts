@@ -1,5 +1,5 @@
 // react-query hooks for Content Hub. Thin wrappers over store.ts (localStorage today,
-// real NestJS endpoints later — see the seam comment in store.ts). Using the platform's
+// real NestJS endpoints later: see the seam comment in store.ts). Using the platform's
 // shared QueryClient (from App.tsx) is fine: these query keys are namespaced under
 // 'content-hub' so they never collide with the rest of the admin app.
 
@@ -121,7 +121,7 @@ export function useConnectFeedbackSurvey(id: string | number) {
       return store.connectFeedbackSurvey(n(id), {
         surveyId: survey.id,
         programId: survey.program?.id ?? null,
-        label: `${survey.program?.title ?? 'Program'} — ${survey.title}`,
+        label: `${survey.program?.title ?? 'Program'}: ${survey.title}`,
         totalResponses: data.analytics.totals.totalResponses,
         analytics: data.analytics,
       });

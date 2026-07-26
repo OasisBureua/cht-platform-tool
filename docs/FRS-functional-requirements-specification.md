@@ -1,11 +1,11 @@
 # Functional Requirements Specification (FRS)
 
-**Product:** CHM Platform (cht-platform-tool) — public site, authenticated member app, and admin console.  
+**Product:** CHM Platform (cht-platform-tool): public site, authenticated member app, and admin console.  
 **Document type:** Draft FRS for whole-platform scope.  
-**Companion design (Figma):** [CHM Platform — Screens & FRS Scope](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr/) — mixed content: legacy placeholder frames (pages `01`–`03`) plus **live HTML captures** pushed via Figma “HTML → Design” while `npm run dev` runs with `[frontend/index.html](../frontend/index.html)` capture script loaded. Prefer the **capture frames** (see page `05 — Captures from code (1:1)` or latest nodes appended to the file) for **pixel-faithful** screenshots of the SPA; placeholders are scaffolding only.
+**Companion design (Figma):** [CHM Platform, Screens & FRS Scope](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr/) holds mixed content: legacy placeholder frames (pages `01`–`03`) plus **live HTML captures** pushed via Figma “HTML → Design” while `npm run dev` runs with `[frontend/index.html](../frontend/index.html)` capture script loaded. Prefer the **capture frames** (see page `05`, titled “Captures from code (1:1)”, or the latest nodes appended to the file) for **pixel-faithful** screenshots of the SPA; placeholders are scaffolding only.
 
 **Captured examples in-file (URLs when running locally):** `/app/home` ([22-2](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=22-2)), `/app/catalog` ([25-2](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=25-2)), `/app/surveys` ([26-2](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=26-2)), `/app/podcasts` ([27-2](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=27-2)), `/app/earnings` ([28-2](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr?node-id=28-2)). Run `VITE_DISABLE_AUTH=true npm run dev` plus Figma MCP capture hashes to append more routes the same way.  
-**Revision:** Draft — verify against current implementation and compliance policies before sign-off.
+**Revision:** Draft: verify against current implementation and compliance policies before sign-off.
 
 ---
 
@@ -39,13 +39,13 @@ This FRS describes **functional behavior** the platform shall provide: user-visi
 
 - Responsive web application; keyboard-accessible interactive controls where applicable.  
 - **Auth:** Protected areas require valid session; session expiry behaves per auth provider/session policy.  
-- **Feature flags / env:** `VITE_DISABLE_AUTH` may bypass certain checks for local development only — behavior in production MUST NOT rely on bypass.
+- **Feature flags / env:** `VITE_DISABLE_AUTH` may bypass certain checks for local development only, behavior in production MUST NOT rely on bypass.
 
 ---
 
 ## 2. Cross-cutting requirements
 
-### FRS-GLOBAL-001 — Navigation & deep links
+### FRS-GLOBAL-001: Navigation & deep links
 
 
 | Field          | Specification                                                                                                                             |
@@ -57,7 +57,7 @@ This FRS describes **functional behavior** the platform shall provide: user-visi
 | **Edge cases** | Bookmarked stale IDs (deleted clip/program/survey): show not-found / friendly empty state; avoid infinite redirect loops.                 |
 
 
-### FRS-GLOBAL-002 — Authentication state
+### FRS-GLOBAL-002: Authentication state
 
 
 | Field          | Specification                                                                                                                                                    |
@@ -69,7 +69,7 @@ This FRS describes **functional behavior** the platform shall provide: user-visi
 | **Edge cases** | Callback with missing/expired params; user closes OAuth window mid-flight; concurrent tabs logout.                                                               |
 
 
-### FRS-GLOBAL-003 — Authorization (role-based)
+### FRS-GLOBAL-003: Authorization (role-based)
 
 
 | Field        | Specification                                                                                              |
@@ -79,7 +79,7 @@ This FRS describes **functional behavior** the platform shall provide: user-visi
 | **Errors**   | 403-style experience in UI when API denies; redirect or “not authorized” screen for admin-only pages.      |
 
 
-### FRS-GLOBAL-004 — Loading & empty states
+### FRS-GLOBAL-004: Loading & empty states
 
 
 | Field        | Specification                                                                                                           |
@@ -89,7 +89,7 @@ This FRS describes **functional behavior** the platform shall provide: user-visi
 | **Errors**   | Network/server errors: surfaced with retry affordance where implemented.                                                |
 
 
-### FRS-GLOBAL-005 — Forms & submissions
+### FRS-GLOBAL-005: Forms & submissions
 
 
 | Field          | Specification                                                                                                  |
@@ -106,26 +106,26 @@ This FRS describes **functional behavior** the platform shall provide: user-visi
 
 Routes (representative): `/home`, `/about`, `/services`, `/portfolios`, `/contact`, `/join`, `/for-hcps`, `/what-we-do`, `/privacy`, `/terms`.
 
-### FRS-PUB-001 — Home
+### FRS-PUB-001: Home
 
 **Actors:** Visitor.  
 **Triggers:** Navigate to `/home`.  
 **Main flow:** Display primary marketing content and entry points into catalog/search/programs.  
 **Errors / edge:** Hero/media assets fail → graceful degradation (alt text / static fallback).
 
-### FRS-PUB-002 — About / Services / Portfolios / What we do / For HCPs
+### FRS-PUB-002: About / Services / Portfolios / What we do / For HCPs
 
 **Actors:** Visitor.  
 **Behavior:** Present static/edited content sections; outbound links open in sensible targets (same tab vs new) per UX policy.  
 **Edge:** Broken external links minimized via CMS/process (out of runtime scope).
 
-### FRS-PUB-003 — Contact
+### FRS-PUB-003: Contact
 
 **Actors:** Visitor.  
 **Behavior:** Capture enquiry or display contact modalities per implementation; confirm submission success.  
 **Errors:** SMTP/API failure shows retry; rate limiting yields friendly messaging.
 
-### FRS-PUB-004 — Join (interest / onboarding entry)
+### FRS-PUB-004: Join (interest / onboarding entry)
 
 **Actors:** Visitor.  
 **Behavior:** Multi-step or single form per implementation; success confirmation.  
@@ -137,27 +137,27 @@ Routes (representative): `/home`, `/about`, `/services`, `/portfolios`, `/contac
 
 Routes: `/catalog`, `/catalog/:diseaseSlug`, `/catalog/clip/:id`, `/catalog/playlist/:playlistId`, `/watch/:videoId` (compat redirect).
 
-### FRS-PUB-CAT-001 — Catalog hub (videos)
+### FRS-PUB-CAT-001: Catalog hub (videos)
 
 **Actors:** Visitor, Member (public layout).  
 **Behavior:** Lists browsable curriculum (playlists, tags, hubs) per content model; navigation to clips and playlists.  
 **Errors:** Fetch failure banner; retry.  
 **Edge:** Extremely long lists pagination/virtualization expectation.
 
-### FRS-PUB-CAT-002 — Disease detail
+### FRS-PUB-CAT-002: Disease detail
 
 **Actors:** Visitor.  
 **Behavior:** Disease-scoped grouping of clips/resources; playable or deep-link behavior per media type.  
 **Errors:** Unknown `diseaseSlug` → not found state.
 
-### FRS-PUB-CAT-003 — Clip detail
+### FRS-PUB-CAT-003: Clip detail
 
 **Actors:** Visitor.  
 **Behavior:** Video or audio player shell, metadata, share controls if present, related clips.  
 **Errors:** Missing clip ID or media unavailable → explanatory state.  
 **Edge:** Playback errors (drm/network) surface player-level message.
 
-### FRS-PUB-CAT-004 — Playlist detail
+### FRS-PUB-CAT-004: Playlist detail
 
 **Actors:** Visitor.  
 **Behavior:** Ordered list of items with progress/jump semantics as implemented.  
@@ -169,26 +169,26 @@ Routes: `/catalog`, `/catalog/:diseaseSlug`, `/catalog/clip/:id`, `/catalog/play
 
 Routes: `/search`, `/login`, `/forgot-password`, `/auth/callback`, `/complete-profile`.
 
-### FRS-PUB-AUTH-001 — Search
+### FRS-PUB-AUTH-001: Search
 
 **Actors:** Visitor.  
 **Behavior:** Query content/sessions/surveys per backend capabilities; navigates to entities on select.  
 **Errors:** Empty results copy; timeouts with retry.
 
-### FRS-PUB-AUTH-002 — Login
+### FRS-PUB-AUTH-002: Login
 
 **Actors:** Visitor.  
 **Behavior:** Email/password or OAuth per configuration; redirects post-login via `postLoginRedirect` rules.  
 **Errors:** Locked account/expired invitation if applicable; generic failure for ambiguous cases.  
 **Edge:** Already logged-in user hits `/login` → redirect into app/catalog.
 
-### FRS-PUB-AUTH-003 — Forgot password
+### FRS-PUB-AUTH-003: Forgot password
 
 **Actors:** Visitor.  
 **Behavior:** Initiate reset workflow; acknowledge email sent without confirming address existence where security requires.  
 **Errors:** Rate limit exceeded.
 
-### FRS-PUB-AUTH-004 — Auth callback & profile completion
+### FRS-PUB-AUTH-004: Auth callback & profile completion
 
 **Actors:** Visitor → Member.  
 **Behavior:** Establish session after IdP handshake; funnel incomplete mandatory profile fields via `/complete-profile`.  
@@ -200,20 +200,20 @@ Routes: `/search`, `/login`, `/forgot-password`, `/auth/callback`, `/complete-pr
 
 Routes: `/live`, `/live/:id`, redirects from `/webinars`*, `/chm-office-hours`, `/chm-office-hours/:id`, `/surveys` (listing).
 
-### FRS-PUB-PROG-001 — Live / webinars listing & detail
+### FRS-PUB-PROG-001: Live / webinars listing & detail
 
 **Actors:** Visitor.  
 **Behavior:** Upcoming/live/replay states; ICS or external links where applicable; CTA toward registration or replay.  
 **Errors:** Deleted program → not found.  
 **Edge:** Timezone display consistency.
 
-### FRS-PUB-PROG-002 — Office hours listing & detail
+### FRS-PUB-PROG-002: Office hours listing & detail
 
 **Actors:** Visitor.  
 **Behavior:** Same pattern as programs with office-hours branding; registration CTA if required.  
 **Errors:** Session full / closed registration states if implemented.
 
-### FRS-PUB-PROG-003 — Public surveys listing
+### FRS-PUB-PROG-003: Public surveys listing
 
 **Actors:** Visitor.  
 **Behavior:** Shows available surveys; deep link to survey experience (see member surveys for logged-in completion).  
@@ -225,13 +225,13 @@ Routes: `/live`, `/live/:id`, redirects from `/webinars`*, `/chm-office-hours`, 
 
 Routes: `/kol-network`, `/kol-network/:regionSlug`, `/kol-network/profile/:kolId`.
 
-### FRS-PUB-KOL-001 — Network hub & region
+### FRS-PUB-KOL-001: Network hub & region
 
 **Actors:** Visitor.  
 **Behavior:** Explore directory by region; filter/list patterns per UI.  
 **Errors:** Unknown region slug.
 
-### FRS-PUB-KOL-002 — KOL profile
+### FRS-PUB-KOL-002: KOL profile
 
 **Actors:** Visitor.  
 **Behavior:** Profile fields, links, associated content if any.  
@@ -243,82 +243,82 @@ Routes: `/kol-network`, `/kol-network/:regionSlug`, `/kol-network/profile/:kolId
 
 Global: layout with app navigation; requires Member session.
 
-### FRS-APP-001 — Dashboard (`/app/home`)
+### FRS-APP-001: Dashboard (`/app/home`)
 
 **Actors:** Member.  
 **Behavior:** Summary of prioritized actions (programs, surveys, payouts, highlights).  
 **Errors:** Partial widget failure does not blank entire dashboard when isolated error boundaries exist.
 
-### FRS-APP-002 — Explore opportunities / in-app search (`/app/search`)
+### FRS-APP-002: Explore opportunities / in-app search (`/app/search`)
 
 **Actors:** Member.  
 **Behavior:** Search/register affordances tuned to authenticated user (eligibility nuances per API).  
 **Errors:** Unauthorized opportunities hidden or messaged appropriately.
 
-### FRS-APP-003 — Programs — live webinars (`/app/live`, `/app/live/:id`, register)
+### FRS-APP-003: Programs: live webinars (`/app/live`, `/app/live/:id`, register)
 
 **Actors:** Member.  
 **Behavior:** List, filters, detail, join/register flow; integrates `ProgramRegisterWizard` for qualifying paths.  
 **Errors:** Registration closed; capacity exceeded; prerequisite profile incomplete redirects to Settings/Complete Profile.  
 **Edge cases:** Double registration attempt; cancelling registration if supported.
 
-### FRS-APP-004 — Office hours (`/app/chm-office-hours`…)
+### FRS-APP-004: Office hours (`/app/chm-office-hours`…)
 
 **Actors:** Member.  
 **Behavior:** Mirrors webinars pattern within office-hours context.  
 **Errors:** Same class as webinars.
 
-### FRS-APP-005 — Surveys (`/app/surveys`, `/app/surveys/:id`)
+### FRS-APP-005: Surveys (`/app/surveys`, `/app/surveys/:id`)
 
 **Actors:** Member.  
 **Behavior:** Assigned/available surveys; capture responses; autosave/interstitial behavior per survey engine.  
 **Errors:** Submission API failure with retry and draft retention if implemented.  
 **Edge:** Survey retracted mid-session.
 
-### FRS-APP-006 — Catalog in app (`/app/catalog`…)
+### FRS-APP-006: Catalog in app (`/app/catalog`…)
 
 **Actors:** Member.  
 **Behavior:** Authenticated playback context; entitlement checks if gated content exists server-side.  
 **Errors:** 403 with explanation for gated items.
 
-### FRS-APP-007 — Watch deep link (`/app/watch/:videoId`)
+### FRS-APP-007: Watch deep link (`/app/watch/:videoId`)
 
 **Actors:** Member.  
 **Behavior:** Dedicated player shell / redirect into clip page per routing.  
 **Errors:** Missing media → not found.
 
-### FRS-APP-008 — Playlists (`/app/catalog/playlist/:playlistId`)
+### FRS-APP-008: Playlists (`/app/catalog/playlist/:playlistId`)
 
 **Actors:** Member.  
 **Behavior:** Continue watching, ordered navigation.  
 **Errors:** Playlist removed.
 
-### FRS-APP-009 — Podcasts (`/app/podcasts`, show routes if present)
+### FRS-APP-009: Podcasts (`/app/podcasts`, show routes if present)
 
 **Actors:** Member.  
 **Behavior:** Listing, series/detail, playback or external integrations per implementation.  
 **Errors:** Feed failures.
 
-### FRS-APP-010 — Earnings (`/app/earnings`)
+### FRS-APP-010: Earnings (`/app/earnings`)
 
 **Actors:** Member.  
 **Behavior:** Summaries of honoraria/earnings, statuses, explanatory copy.  
 **Errors:** Payroll/payout vendor errors surfaced with reference/support path.  
 **Edge:** Negative adjustments or clawbacks communicated clearly.
 
-### FRS-APP-011 — Payments (`/app/payments`)
+### FRS-APP-011: Payments (`/app/payments`)
 
 **Actors:** Member.  
 **Behavior:** Payment profile, tax/eligibility widgets, payout method onboarding per integrations.  
 **Errors:** Verification failures from vendor; remediation steps.
 
-### FRS-APP-012 — Settings (`/app/settings`)
+### FRS-APP-012: Settings (`/app/settings`)
 
 **Actors:** Member.  
 **Behavior:** Profile, notifications, preferences, security actions allowed by backend.  
 **Errors:** Conflict on save.
 
-### FRS-APP-013 — Chatbot (`/app/chatbot`)
+### FRS-APP-013: Chatbot (`/app/chatbot`)
 
 **Actors:** Member.  
 **Behavior:** Guided assistance; disclaimers when model/advisory limits apply per policy.  
@@ -330,7 +330,7 @@ Global: layout with app navigation; requires Member session.
 
 Routes: `/app/live/:id/register`, `/app/chm-office-hours/:id/register` (and webinar alias redirects).
 
-### FRS-APP-REG-001 — Multi-step registration
+### FRS-APP-REG-001: Multi-step registration
 
 **Actors:** Member.  
 **Preconditions:** Eligible session; prerequisites satisfied.  
@@ -346,53 +346,53 @@ Routes: `/app/live/:id/register`, `/app/chm-office-hours/:id/register` (and webi
 
 **Actor:** Admin only.
 
-### FRS-ADM-001 — Dashboard
+### FRS-ADM-001: Dashboard
 
 **Behavior:** Operational snapshot; shortcuts to approvals, schedules, surveys.  
 **Errors:** Aggregated widgets fail independently.
 
-### FRS-ADM-002 — Programs administration
+### FRS-ADM-002: Programs administration
 
 Routes include program list/hub contexts (`/admin/programs`, `:programId/hub`).  
 **Behavior:** Manage program metadata, statuses, linkage to webinars/office hours as implemented.  
 **Errors:** Conflict on edits; concurrency messaging.
 
-### FRS-ADM-003 — Webinar approvals (`/admin/webinar-approvals`)
+### FRS-ADM-003: Webinar approvals (`/admin/webinar-approvals`)
 
 **Behavior:** Review queue with approve/reject/comments per workflow.  
 **Errors:** Already processed items; stale state refreshes after action.
 
-### FRS-ADM-004 — Schedulers (`/admin/webinar-scheduler`, `/admin/office-hours-scheduler`)
+### FRS-ADM-004: Schedulers (`/admin/webinar-scheduler`, `/admin/office-hours-scheduler`)
 
 **Behavior:** Configure Zoom/session types defaults; scheduling UI with validations (time zone, recurrence if any).  
 **Errors:** Zoom/API quota; invalid host settings.
 
-### FRS-ADM-005 — Surveys CMS (`/admin/surveys`, create, edit)
+### FRS-ADM-005: Surveys CMS (`/admin/surveys`, create, edit)
 
 **Behavior:** Authoring, versioning if applicable; publish/unpublish semantics.  
 **Errors:** Broken question schema save blocked with detail.
 
-### FRS-ADM-006 — Admin payments (`/admin/payments`)
+### FRS-ADM-006: Admin payments (`/admin/payments`)
 
 **Behavior:** Operational payment views / actions scoped to admins.  
 **Errors:** Sensitive actions audited; confirmations on irreversible ops.
 
-### FRS-ADM-007 — Users (`/admin/users`)
+### FRS-ADM-007: Users (`/admin/users`)
 
 **Behavior:** Search, suspend, invite, role tweaks per policy; PII safeguards.  
 **Errors:** Duplicate invite; conflicting role transitions.
 
-### FRS-ADM-008 — HCP explorer (`/admin/hcp-explorer`)
+### FRS-ADM-008: HCP explorer (`/admin/hcp-explorer`)
 
 **Behavior:** Search/drill-down for clinicians with permission checks.  
 **Errors:** Unauthorized export attempted → blocked UX.
 
-### FRS-ADM-009 — Rx analytics (`/admin/rx-analytics`)
+### FRS-ADM-009: Rx analytics (`/admin/rx-analytics`)
 
 **Behavior:** Charts/tables respecting data governance; anonymization thresholds if required.  
 **Errors:** Incomplete data periods labeled.
 
-### FRS-ADM-010 — Settings (`/admin/settings`)
+### FRS-ADM-010: Settings (`/admin/settings`)
 
 **Behavior:** Tenant-level knobs as implemented.  
 **Errors:** Validation failures; revert model if supported.

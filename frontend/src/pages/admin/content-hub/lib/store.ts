@@ -1,4 +1,4 @@
-// Content Hub data layer — localStorage for campaigns/reports (dev UI).
+// Content Hub data layer: localStorage for campaigns/reports (dev UI).
 // Integration health: GET /api/admin/content-hub/health (CHT probes Hub + HubSpot).
 // TODO(content-hub): swap campaign CRUD to NestJS proxy when Hub admin API is live.
 
@@ -346,7 +346,7 @@ export function getHubspotStatus(): HubspotStatus {
   return { connected: true, accountName: db.integrations.hubspot.accountName || 'HubSpot Account', portalId: null };
 }
 
-/** Content Hub dependency health — reachability only (not integration credentials). */
+/** Content Hub dependency health: reachability only (not integration credentials). */
 export async function getContentHubHealth(): Promise<ContentHubHealth> {
   try {
     const { data } = await apiClient.get<ContentHubHealth>('/admin/content-hub/health');

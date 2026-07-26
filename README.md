@@ -1,8 +1,8 @@
 # CHT Platform
 
-**Community Health Technologies — healthcare education and honorarium platform** connecting medical professionals with CME programs, live webinars, office hours, podcast content, and honorarium payments.
+**Community Health Technologies**: healthcare education and honorarium platform connecting medical professionals with CME programs, live webinars, office hours, podcast content, and honorarium payments.
 
-The platform is used by oncology KOLs, HCPs, and pharma partners. It delivers live CME sessions (via Zoom), post-event surveys, honorarium payouts (via Bill.com), a content catalog of clinical conversations (via MediaHub), and a podcast library — all in one place.
+The platform is used by oncology KOLs, HCPs, and pharma partners. It delivers live CME sessions (via Zoom), post-event surveys, honorarium payouts (via Bill.com), a content catalog of clinical conversations (via MediaHub), and a podcast library, all in one place.
 
 ---
 
@@ -45,26 +45,26 @@ cht-platform/
 
 ### Backend (NestJS)
 - **PostgreSQL** + Prisma ORM
-- **Supabase / GoTrue** — authentication (hosted by MediaHub)
-- **AWS SQS** — job queuing (email, payments, CME certificates)
-- **Zoom** — webinar and meeting creation + webhook handling
-- **JotForm** — survey intake and webhook processing
-- **Bill.com** — honorarium payouts (ACH / check)
-- **Amazon SES** — transactional email (reminders, access links, missed-session notifications)
+- **Supabase / GoTrue**: authentication (hosted by MediaHub)
+- **AWS SQS**: job queuing (email, payments, CME certificates)
+- **Zoom**: webinar and meeting creation + webhook handling
+- **JotForm**: survey intake and webhook processing
+- **Bill.com**: honorarium payouts (ACH / check)
+- **Amazon SES**: transactional email (reminders, access links, missed-session notifications)
 
 ### Worker (Python 3.11)
-- **Boto3** / AWS SDK — SQS consumer base
-- **Amazon SES** — email delivery
-- **ReportLab** — CME certificate PDF generation
+- **Boto3** / AWS SDK: SQS consumer base
+- **Amazon SES**: email delivery
+- **ReportLab**: CME certificate PDF generation
 - SQS consumers: `email_consumer`, `payment_consumer`, `cme_consumer`
 
 ### Infrastructure (AWS)
-- **ECS Fargate** — backend + worker containers
-- **RDS (PostgreSQL)** — primary database
-- **SQS + DLQ** — async job processing with retry / dead-letter
-- **S3 + CloudFront** — frontend static hosting + CDN
-- **ALB** — backend load balancer
-- **Terraform** — all infrastructure as code
+- **ECS Fargate**: backend + worker containers
+- **RDS (PostgreSQL)**: primary database
+- **SQS + DLQ**: async job processing with retry / dead-letter
+- **S3 + CloudFront**: frontend static hosting + CDN
+- **ALB**: backend load balancer
+- **Terraform**: all infrastructure as code
 
 ---
 
@@ -120,7 +120,7 @@ npm run dev
 
 ```bash
 cd backend && npx prisma db seed
-# Prints a user ID — paste into VITE_DEV_USER_ID
+# Prints a user ID; paste into VITE_DEV_USER_ID
 ```
 
 Access points once running:
@@ -204,11 +204,11 @@ Two optional scripts catch issues before CI:
 ./smoke.sh https://testapp.communityhealth.media  # explicit target
 ```
 
-`verify.sh` mirrors the checks in `.github/workflows/pr-validation.yml` — find failures locally in ~60 seconds instead of waiting for CI.
+`verify.sh` mirrors the checks in `.github/workflows/pr-validation.yml`: find failures locally in ~60 seconds instead of waiting for CI.
 
 `smoke.sh` hits health endpoints and critical public pages post-deploy to confirm nothing obvious is broken.
 
-Both scripts are optional — GitHub Actions remain the source of truth.
+Both scripts are optional. GitHub Actions remain the source of truth.
 
 ---
 

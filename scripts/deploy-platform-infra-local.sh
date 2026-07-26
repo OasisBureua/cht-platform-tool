@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply platform (testapp) infrastructure locally — one-time / infra changes only.
+# Apply platform (testapp) infrastructure locally: one-time / infra changes only.
 # App images + frontend are deployed via deploy-prod.yml (CI) after infra is in place.
 #
 # Prerequisites:
@@ -38,7 +38,7 @@ if [ -f "$VAR_FILE_SECRETS" ]; then
   VAR_FILES+=(-var-file="../variables/platform.tfvars")
   echo "📄 Using secrets from platform.tfvars"
 else
-  echo "⚠️  No platform.tfvars — relying on TF_VAR_* environment variables for secrets"
+  echo "⚠️  No platform.tfvars: relying on TF_VAR_* environment variables for secrets"
 fi
 
 echo "🚀 Platform infra deploy (local Terraform)"
@@ -67,7 +67,7 @@ terraform show -json tfplan | jq -r '
 
 if [ "$PLAN_ONLY" = "plan-only" ]; then
   echo ""
-  echo "Plan only — not applying."
+  echo "Plan only: not applying."
   exit 0
 fi
 

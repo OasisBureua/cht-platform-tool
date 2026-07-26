@@ -111,7 +111,7 @@ export function NotificationBell() {
           {isAdmin && webhookImports.length > 0 ? (
             <>
               <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 dark:border-zinc-800 dark:text-zinc-400">
-                Admin — Zoom imports need review
+                Admin: Zoom imports need review
               </p>
               <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
                 {webhookImports.map((prog) => (
@@ -145,7 +145,7 @@ export function NotificationBell() {
           </p>
           {items.length === 0 ? (
             <p className="px-4 py-4 text-sm text-gray-600 dark:text-zinc-400">
-              All caught up. Live session reminders (e.g. post-event surveys) appear here after you enroll—or after
+              All caught up. Live session reminders (e.g. post-event surveys) appear here after you enroll, or after
               approval, if required.
             </p>
           ) : (

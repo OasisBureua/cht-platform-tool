@@ -358,7 +358,7 @@ export default function Home() {
                 </span>
               </summary>
               <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
-                Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
+                Engage KOLs, HCPs, patients, and caregivers through one connected content system.
               </p>
             </details>
             <details className="group home-faq-item">
@@ -372,7 +372,7 @@ export default function Home() {
                 </span>
               </summary>
               <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
-                Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
+                Use podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
             <details className="group home-faq-item">
@@ -400,7 +400,7 @@ export default function Home() {
                 </span>
               </summary>
               <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
-                Move beyond impressions. Track who watched, who shared, and who took meaningful action.
+                Move beyond impressions. Track who watched, who shared, and who acted on it.
               </p>
             </details>
           </div>
@@ -462,7 +462,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
     const mid = Math.floor(DISEASE_AREAS.length / 2);
     const card = el.querySelectorAll('[data-disease-card]')[mid] as HTMLElement | undefined;
     if (card) {
-      // Scroll only the horizontal strip — never use scrollIntoView (it can jump the page).
+      // Scroll only the horizontal strip: never use scrollIntoView (it can jump the page).
       const cardCenter = card.offsetLeft + card.offsetWidth / 2;
       el.scrollLeft = Math.max(0, cardCenter - el.clientWidth / 2);
     }

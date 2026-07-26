@@ -2,16 +2,16 @@
 
 Deploy the **full hosted dev stack on AWS** (ECS, RDS, ALB, CI/CD) after Cognito **production** is stable.
 
-**Cognito dev pool is not Phase 3 work** — provision `cht-platform-dev` in **Phase 2** together with prod (see [cognito-migration-spec.md](./cognito-migration-spec.md)). Phase 3 connects that existing pool to the hosted dev app.
+**Cognito dev pool is not Phase 3 work**, provision `cht-platform-dev` in **Phase 2** together with prod (see [cognito-migration-spec.md](./cognito-migration-spec.md)). Phase 3 connects that existing pool to the hosted dev app.
 
-**When to run:** Phase 3 kickoff — **not before** [cognito-prod-cutover.md](./cognito-prod-cutover.md) exit criteria (≥ 1–2 weeks stable prod auth).
+**When to run:** Phase 3 kickoff, **not before** [cognito-prod-cutover.md](./cognito-prod-cutover.md) exit criteria (≥ 1–2 weeks stable prod auth).
 
 **Scope:** ECS/RDS/domain/CI **deferred** until Phase 3 planning. Does not block Phase 2.
 
 **Owner:** Uche Aduakaa  
 **Reviewer:** Adaze Oviawe  
 **Approved:** June 16, 2026 at 08:28 PM EDT  
-**Status:** Outline — full stack spec TBD at Phase 3 kickoff
+**Status:** Outline: full stack spec TBD at Phase 3 kickoff
 
 ---
 
@@ -19,7 +19,7 @@ Deploy the **full hosted dev stack on AWS** (ECS, RDS, ALB, CI/CD) after Cognito
 
 | Work | Phase | What |
 | ---- | ----- | ---- |
-| **Cognito prod + dev pools** | **Phase 2** | Terraform: pools, app clients, groups, secrets — prod and dev **at the same time** |
+| **Cognito prod + dev pools** | **Phase 2** | Terraform: pools, app clients, groups, secrets: prod and dev **at the same time** |
 | **Full AWS dev deploy** | **Phase 3** | ECS, RDS, ALB, S3, GitHub deploy workflow, dev domain |
 
 ---
@@ -29,7 +29,7 @@ Deploy the **full hosted dev stack on AWS** (ECS, RDS, ALB, CI/CD) after Cognito
 | Environment | Purpose | When |
 | ----------- | ------- | ---- |
 | **Local + dev Cognito pool** | Auth development, pre-cutover testing | Phase 2+ |
-| **Hosted dev (AWS)** | Branch deploys, integration testing | **Phase 3** — after prod Cognito stable |
+| **Hosted dev (AWS)** | Branch deploys, integration testing | **Phase 3**: after prod Cognito stable |
 | **Prod** | Customer-facing | Phase 2 cutover |
 
 ---
@@ -46,7 +46,7 @@ Deploy the **full hosted dev stack on AWS** (ECS, RDS, ALB, CI/CD) after Cognito
 
 | Topic | Status |
 | ----- | ------ |
-| Cognito dev pool | ✅ Phase 2 — wire ECS to existing `cht-platform-dev` |
+| Cognito dev pool | ✅ Phase 2: wire ECS to existing `cht-platform-dev` |
 | Domain | _TBD_ |
 | Terraform (`us-east-1-dev`) | _TBD_ |
 | GitHub `dev` + deploy workflow | _TBD_ |

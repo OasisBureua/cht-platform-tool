@@ -3,7 +3,7 @@
 Set up active-passive disaster recovery for CHT with primary in `us-east-1` and standby in `us-east-2`.
 
 **Topology:** Active-passive  
-**Failover mode:** Automatic for `/health*` only (CloudFront origin group). `/api*` stays on primary ALB — AWS origin groups do not support POST/PUT/PATCH/DELETE. Full API DR requires manual origin swap or Route53 failover (see runbook).  
+**Failover mode:** Automatic for `/health*` only (CloudFront origin group). `/api*` stays on primary ALB: AWS origin groups do not support POST/PUT/PATCH/DELETE. Full API DR requires manual origin swap or Route53 failover (see runbook).  
 **RTO/RPO target:** 60 min / 15 min  
 **Standby capacity:** 50% of primary  
 **Queue strategy:** Regional queues + replay/rebuild during failover

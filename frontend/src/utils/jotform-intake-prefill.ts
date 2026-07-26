@@ -1,5 +1,5 @@
 /**
- * Intake form open/embed URL. Native intake uses session auth — do not pass user_id/program_id unless legacy Jotform webhooks require it.
+ * Intake form open/embed URL. Native intake uses session auth, do not pass user_id/program_id unless legacy Jotform webhooks require it.
  */
 export function buildIntakeFormUrl(
   formUrl: string,

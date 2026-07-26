@@ -1,8 +1,8 @@
-# CHT Platform — Combined Assessment Report
+# CHT Platform: Combined Assessment Report
 
 **Community Health Technologies (CHT) Platform Tool**  
 **Report date:** May 22, 2026  
-**Prepared for:** Internal stakeholders — compliance, engineering, and product leadership  
+**Prepared for:** Internal stakeholders: compliance, engineering, and product leadership  
 **Scope:** Leadership summary, use cases, external dependencies, SOC 2 readiness, codebase quality, MVP vs enterprise-grade assessment
 
 ---
@@ -39,14 +39,14 @@ The unresolved MediaHub risks are:
 
 | Area                          | Current State                                   | Risk     |
 | ----------------------------- | ----------------------------------------------- | -------- |
-| Authentication                | MediaHub GoTrue/Supabase — CHT users are MH auth users | **Critical** |
+| Authentication                | MediaHub GoTrue/Supabase: CHT users are MH auth users | **Critical** |
 | End-user MediaHub exposure    | OAuth redirect through MediaHub hostname        | **High** |
 | Conversation playlists        | Still dependent on MediaHub API                 | High     |
 | KOL/content/catalog structure | Still tied to MediaHub workflows                | High     |
 | Podcasts                      | Direct YouTube API integration and working well | Low      |
 
 
-**Approved auth strategy (June 2026):** **CHT owns the IdP** — migrate to **Amazon Cognito** with required TOTP MFA. **KOL, HCP, and industry users must never authenticate through or access MediaHub.** MediaHub **decommissions GoTrue for all non-admin users** and stops receiving CHT auth users. **Only CHT admins** may access MediaHub UI. Server-to-server integration with MediaHub **continues via API key** (catalog, HCP sync) — not user auth. See [CHT-Auth-Decoupling-Next-Steps-Report.md](./CHT-Auth-Decoupling-Next-Steps-Report.md).
+**Approved auth strategy (June 2026):** **CHT owns the IdP**: migrate to **Amazon Cognito** with required TOTP MFA. **KOL, HCP, and industry users must never authenticate through or access MediaHub.** MediaHub **decommissions GoTrue for all non-admin users** and stops receiving CHT auth users. **Only CHT admins** may access MediaHub UI. Server-to-server integration with MediaHub **continues via API key** (catalog, HCP sync): not user auth. See [CHT-Auth-Decoupling-Next-Steps-Report.md](./CHT-Auth-Decoupling-Next-Steps-Report.md).
 
 Authentication on shared MediaHub GoTrue is the **highest-risk dependency** until Cognito cutover. CHT cannot fully control access governance, MFA, or SOC 2 IdP evidence while end users remain GoTrue auth users on MediaHub.
 
@@ -81,7 +81,7 @@ This would move CHT from a production MVP with dependency risk to a **strong gro
 ### Highest-Priority Gaps
 
 1. Migrate authentication from MediaHub GoTrue to **Amazon Cognito (CHT-owned IdP + MFA)**; MediaHub decommissions GoTrue for non-admin users.
-2. End users (KOL/HCP/industry) must not see or access MediaHub — CHT domain and APIs only.
+2. End users (KOL/HCP/industry) must not see or access MediaHub: CHT domain and APIs only.
 3. Conversation playlists still depend on the MediaHub API.
 4. KOL/content/catalog ownership is still too fragmented.
 5. Automated test coverage is too low, with roughly **8% backend module coverage** and **5% frontend page coverage**.
@@ -125,7 +125,7 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 | ---------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Business use cases** | **Production-ready**                    | Core flows (sessions, surveys, payments, catalog, admin) are implemented and deployed                                                         |
 | **Dependency posture** | **Moderate risk**                       | Heavy reliance on 7+ third-party services; auth currently delegated to MediaHub GoTrue                                                        |
-| **SOC 2 readiness**    | **Partial — Phase 1 controls in place** | Strong infrastructure logging/encryption; policy gaps and no formal audit                                                                     |
+| **SOC 2 readiness**    | **Partial: Phase 1 controls in place** | Strong infrastructure logging/encryption; policy gaps and no formal audit                                                                     |
 | **Codebase quality**   | **MVP+ / pre-enterprise**               | Solid architecture and CI foundations; low automated test coverage                                                                            |
 | **Overall grade**      | **MVP ready for controlled production** | Suitable for live users with known gaps; **not yet enterprise-grade** without test coverage, MFA, DR hardening, and formal compliance program |
 
@@ -224,14 +224,14 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 
 | Service                          | Purpose                   | Auth method                       | Criticality  | Single point of failure?            | Planned change                            |
 | -------------------------------- | ------------------------- | --------------------------------- | ------------ | ----------------------------------- | ----------------------------------------- |
-| **GoTrue / Supabase (MediaHub)** | User auth, OAuth, JWT     | Shared JWT secret; CHT users = MH auth users | **Critical** | Yes — CHT does not own IdP          | **Migrate to Amazon Cognito (CHT-owned)**; MediaHub decommissions GoTrue for non-admins |
+| **GoTrue / Supabase (MediaHub)** | User auth, OAuth, JWT     | Shared JWT secret; CHT users = MH auth users | **Critical** | Yes: CHT does not own IdP          | **Migrate to Amazon Cognito (CHT-owned)**; MediaHub decommissions GoTrue for non-admins |
 | **Zoom**                         | Live sessions, attendance | Server-to-Server OAuth + webhooks | **Critical** | Yes for live features               | Monitor; vendor SLA                       |
 | **JotForm**                      | Post-event surveys        | API key + webhooks                | **High**     | Yes for payment eligibility         | Template clone dependency                 |
 | **Bill.com**                     | Honorarium payouts        | Login + MFA-trusted session       | **Critical** | Yes for payments                    | Remember-me rotation runbook              |
 | **MediaHub**                     | Video catalog, HCP sync   | API key (server-to-server only)   | **High**     | Yes for catalog                     | **Keep API key**; no user auth; admin-only UI; CHT APIs to end users |
-| **Amazon SES**                   | Transactional email       | IAM (ECS task role)               | **High**     | No (AWS native)                     | —                                         |
-| **YouTube Data API**             | Podcast episodes          | API key                           | **Medium**   | Degrades podcast UX only            | —                                         |
-| **HubSpot / Mailchimp**          | Marketing sync on signup  | API keys                          | **Low**      | Fire-and-forget; signup not blocked | —                                         |
+| **Amazon SES**                   | Transactional email       | IAM (ECS task role)               | **High**     | No (AWS native)                     |:                                         |
+| **YouTube Data API**             | Podcast episodes          | API key                           | **Medium**   | Degrades podcast UX only            |:                                         |
+| **HubSpot / Mailchimp**          | Marketing sync on signup  | API keys                          | **Low**      | Fire-and-forget; signup not blocked |:                                         |
 | **Chatbot (chmbot)**             | AI assistant widget       | GoTrue JWT (today)                | **Medium**   | Degrades chatbot auth               | Cognito JWT via CHT backend post-migration |
 
 
@@ -240,11 +240,11 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 
 | Layer              | Technology                                  | Coupling                          | Maintainability |
 | ------------------ | ------------------------------------------- | --------------------------------- | --------------- |
-| Frontend → Backend | REST over HTTPS, cookie sessions            | Low — API client abstraction      | Good            |
-| Backend → Worker   | SQS async messages                          | Low — queue contract              | Good            |
-| Backend → RDS      | Prisma ORM, 28 migrations                   | Medium — schema evolution managed | Good            |
-| Infra              | Terraform modules (VPC, ECS, RDS, KMS, WAF) | Low — modular                     | Good            |
-| CI/CD              | GitHub Actions + OIDC to AWS                | Low — no long-lived keys          | Good            |
+| Frontend → Backend | REST over HTTPS, cookie sessions            | Low: API client abstraction      | Good            |
+| Backend → Worker   | SQS async messages                          | Low: queue contract              | Good            |
+| Backend → RDS      | Prisma ORM, 28 migrations                   | Medium: schema evolution managed | Good            |
+| Infra              | Terraform modules (VPC, ECS, RDS, KMS, WAF) | Low: modular                     | Good            |
+| CI/CD              | GitHub Actions + OIDC to AWS                | Low: no long-lived keys          | Good            |
 
 
 ### 3.4 Dependency risks and mitigations
@@ -287,10 +287,10 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 | ----------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
 | Encryption at rest      | KMS on RDS, S3, SQS, Secrets, CloudTrail, CloudWatch            | `infrastructure/terraform/modules/security/kms/` |
 | Encryption in transit   | HTTPS (CloudFront, ALB), TLS to RDS in VPC                      | Terraform networking                             |
-| Identity & access — app | JWT/session guards, `@Roles(ADMIN)`, dev bypass blocked in prod | `backend/src/auth/`                              |
-| Identity & access — CI  | GitHub OIDC, scoped IAM deny on access key creation             | `infrastructure/iam/`                            |
-| Audit logging — infra   | CloudTrail multi-region, 365-day retention, log validation      | `modules/monitoring/cloudtrail/`                 |
-| Audit logging — app     | `AdminAuditLog` for admin mutations                             | `admin-audit.interceptor.ts`                     |
+| Identity & access: app | JWT/session guards, `@Roles(ADMIN)`, dev bypass blocked in prod | `backend/src/auth/`                              |
+| Identity & access: CI  | GitHub OIDC, scoped IAM deny on access key creation             | `infrastructure/iam/`                            |
+| Audit logging: infra   | CloudTrail multi-region, 365-day retention, log validation      | `modules/monitoring/cloudtrail/`                 |
+| Audit logging: app     | `AdminAuditLog` for admin mutations                             | `admin-audit.interceptor.ts`                     |
 | Network segmentation    | Private subnets for ECS/RDS, WAF on CloudFront                  | VPC + WAF modules                                |
 | Threat detection        | GuardDuty → SNS alerts                                          | `modules/monitoring/guardduty/`                  |
 | Config compliance       | AWS Config rules (CloudTrail, S3 public, encryption)            | `modules/monitoring/aws-config/`                 |
@@ -309,7 +309,7 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 | Evidence & monitoring       | **65**        | CloudTrail/Config/alarms good; no SIEM or formal log review cadence                          |
 | Change management           | **70**        | PR validation, manual prod deploy with health gates                                          |
 | Vendor management           | **40**        | Integrations documented; no formal subprocessor register                                     |
-| **Overall SOC 2 readiness** | **~58/100**   | **Not audit-ready** — estimated 3–6 months of policy + evidence work plus auditor engagement |
+| **Overall SOC 2 readiness** | **~58/100**   | **Not audit-ready**: estimated 3–6 months of policy + evidence work plus auditor engagement |
 
 
 ### 4.5 Path to SOC 2 Type II (recommended)
@@ -344,7 +344,7 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 | Test files                    | 11 specs + 1 e2e         | 8 tests          | 4 test files     |
 | Approx. test surface coverage | **~8%** of modules       | **~5%** of pages | Good for stubs   |
 | CI test gate on PR            | **No** (lint/build only) | **No**           | Trivy only       |
-| CI test gate on deploy        | **Yes**                  | **Yes**          | —                |
+| CI test gate on deploy        | **Yes**                  | **Yes**          |:                |
 
 
 ### 5.3 Strengths
@@ -395,7 +395,7 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 | Level                | Definition                                               | CHT Platform today         |
 | -------------------- | -------------------------------------------------------- | -------------------------- |
 | **Prototype**        | Local-only, no prod                                      | ❌ Exceeded                 |
-| **MVP**              | Core flows in production, manual ops acceptable          | ✅ **Yes — production MVP** |
+| **MVP**              | Core flows in production, manual ops acceptable          | ✅ **Yes: production MVP** |
 | **Growth**           | Test coverage, CHT-owned IdP (Cognito), monitoring, DR drills         | ⚠️ **In progress (~60%)**  |
 | **Enterprise-grade** | SOC 2, high availability, full observability, pen tested | ❌ **Not yet (~40%)**       |
 
@@ -467,4 +467,4 @@ This report was produced by static analysis of the `cht-platform-tool` repositor
 
 ---
 
-*End of report — CHT Platform Combined Assessment, May 2026*
+*End of report: CHT Platform Combined Assessment, May 2026*

@@ -1,6 +1,6 @@
-/** In-app podcast catalog — static show metadata; episodes may load from YouTube. */
+/** In-app podcast catalog: static show metadata; episodes may load from YouTube. */
 
-/** CHM umbrella show — shared “Listen on” destinations under each series. */
+/** CHM umbrella show, shared “Listen on” destinations under each series. */
 export const CHM_PODCAST_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: string }> = [
   { label: 'Apple Podcasts', href: 'https://podcasts.apple.com/us/podcast/community-health-media/id1837428248' },
   { label: 'Spotify', href: 'https://open.spotify.com/show/7e6ZVY93ogJny9AJJpANq4' },
@@ -18,7 +18,7 @@ export const CHM_PODCAST_PLATFORM_LINKS: ReadonlyArray<{ label: string; href: st
   { label: 'Goodpods', href: 'https://goodpods.com/profile/chm-111066' },
 ] as const;
 
-/** Series Linkin.bio hub + shared CHM listen destinations — use for each new show in `PODCAST_SHOWS`. */
+/** Series Linkin.bio hub + shared CHM listen destinations: use for each new show in `PODCAST_SHOWS`. */
 export function podcastSeriesPlatformLinks(
   seriesLabel: string,
   linkInBioHref: string,
@@ -98,7 +98,7 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     id: 'cancer-unfiltered',
     title: 'Cancer Unfiltered',
     tagline:
-      'Candid conversations with leading oncologists on the realities of cancer care—honest perspectives, real-world insights, and what it means for patients and clinicians.',
+      'Candid conversations with leading oncologists on the realities of cancer care, honest perspectives, real-world insights, and what it means for patients and clinicians.',
     image: '/images/podcasts/cancer-unfiltered/cover.png',
     logo: '/images/podcasts/cancer-unfiltered/logo.png',
     category: 'Clinical · Oncology',
