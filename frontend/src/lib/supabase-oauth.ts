@@ -7,13 +7,13 @@ export function getOAuthRedirectBase(): string {
   return resolveAppBaseUrl();
 }
 
-export function buildOAuthAuthorizeUrl(provider: 'google', fromPath?: string): string {
-  const base = getOAuthRedirectBase();
-  const callbackBase = `${base}/auth/callback`;
-  const redirectTo =
-    fromPath && fromPath !== '/' && fromPath !== 'undefined'
-      ? `${callbackBase}?from=${encodeURIComponent(fromPath)}`
-      : callbackBase;
+/**
+ * GoTrue redirect_to must stay allowlist-safe: no query string on the callback.
+ * Post-login return path is not embedded in redirect_to (same pattern as Cognito).
+ */
+export function buildOAuthAuthorizeUrl(provider: 'google', _fromPath?: string): string {
+  const base = getOAuthRedirectBase().replace(/\/$/, '');
+  const redirectTo = `${base}/auth/callback`;
   const params = new URLSearchParams({ provider, redirect_to: redirectTo });
   return `${supabaseUrl}/auth/v1/authorize?${params.toString()}`;
 }

@@ -8,10 +8,9 @@ import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getApiErrorMessage } from '../api/client';
-import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
+import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
 
 import {
-  buildMultiRegisterHref,
   clearMultiRegisterState,
   loadMultiRegisterState,
   readIntakeSubmissionIdFromSearch,
@@ -22,6 +21,8 @@ import {
 } from '../utils/intake-return';
 
 type WizardPhase = 'select' | 'intake' | 'review' | 'result';
+
+const MULTI_REGISTER_INTAKE_FORM_ID = 'multi-register-intake-survey';
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
@@ -42,7 +43,7 @@ function canBulkRegister(
 }
 
 function hasIntakeForm(w: WebinarItem): boolean {
-  return !!w.jotformIntakeFormUrl?.trim();
+  return !!(w.intakeSurveyId?.trim() || w.hasIntakeSurvey);
 }
 
 export default function LiveMultiRegister() {
@@ -61,6 +62,8 @@ export default function LiveMultiRegister() {
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof programsApi.submitBatchRegistrations>
   > | null>(null);
+  const [intakeSubmitting, setIntakeSubmitting] = useState(false);
+  const [intakeSubmitError, setIntakeSubmitError] = useState<string | null>(null);
 
   const { data: webinars = [], isLoading } = useQuery({
     queryKey: ['webinars'],
@@ -119,7 +122,7 @@ export default function LiveMultiRegister() {
         selectedIds: [...selected],
         intakeByProgramId,
         maxIntakeIndexCompleted,
-        phase,
+        phase: phase === 'result' ? 'review' : phase,
         intakeIndex,
         ...overrides,
       });
@@ -179,44 +182,6 @@ export default function LiveMultiRegister() {
     persistWizard();
   }, [hydrated, phase, selected, intakeByProgramId, intakeIndex, maxIntakeIndexCompleted, persistWizard]);
 
-  const { data: intakeJotformResume } = useQuery({
-    queryKey: ['program', currentIntakeProgram?.id, 'jotform-resume', 'multi'],
-    queryFn: () => programsApi.getJotformResume(currentIntakeProgram!.id),
-    enabled: phase === 'intake' && !!currentIntakeProgram?.id,
-  });
-
-  useEffect(() => {
-    const sid = searchParams.get('session') || searchParams.get('jotform_session');
-    if (!sid?.trim() || phase !== 'intake' || !currentIntakeProgram?.id || !user?.userId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await programsApi.putJotformResume(currentIntakeProgram.id, sid.trim());
-        if (!cancelled) {
-          queryClient.invalidateQueries({
-            queryKey: ['program', currentIntakeProgram.id, 'jotform-resume', 'multi'],
-          });
-          const next = new URLSearchParams(searchParams);
-          next.delete('session');
-          next.delete('jotform_session');
-          setSearchParams(next, { replace: true });
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    searchParams,
-    phase,
-    currentIntakeProgram?.id,
-    user?.userId,
-    queryClient,
-    setSearchParams,
-  ]);
-
   const submitMut = useMutation({
     mutationFn: () =>
       programsApi.submitBatchRegistrations([...selected], intakeByProgramId),
@@ -254,6 +219,22 @@ export default function LiveMultiRegister() {
   };
 
   const continueFromIntake = () => {
+    if (
+      currentIntakeProgram &&
+      hasIntakeForm(currentIntakeProgram) &&
+      !intakeByProgramId[currentIntakeProgram.id]?.trim()
+    ) {
+      setIntakeSubmitError('Complete and save the intake survey before continuing.');
+      const form = document.getElementById(
+        MULTI_REGISTER_INTAKE_FORM_ID,
+      ) as HTMLFormElement | null;
+      if (form) {
+        if (!form.reportValidity()) return;
+        form.requestSubmit();
+      }
+      return;
+    }
+    setIntakeSubmitError(null);
     setMaxIntakeIndexCompleted((prev) => Math.max(prev, intakeIndex));
     if (intakeIndex < intakePrograms.length - 1) {
       setIntakeIndex((i) => i + 1);
@@ -277,25 +258,6 @@ export default function LiveMultiRegister() {
     if (phase === 'review') return stepLabels.length - 1;
     return 0;
   }, [phase, intakeIndex, stepLabels.length]);
-
-  const intakeReturnUrl = useMemo(() => {
-    if (!currentIntakeProgram?.id || typeof window === 'undefined') return '';
-    const href = buildMultiRegisterHref({
-      intakeProgramId: currentIntakeProgram.id,
-      programIds: [...selected],
-    });
-    return `${window.location.origin}${href}`;
-  }, [currentIntakeProgram?.id]);
-
-  const intakeFormSrc = useMemo(() => {
-    if (!currentIntakeProgram?.jotformIntakeFormUrl?.trim()) return '';
-    return buildIntakeFormUrl(currentIntakeProgram.jotformIntakeFormUrl, {
-      returnRedirect: intakeReturnUrl || undefined,
-      userId: user?.userId || undefined,
-      programId: currentIntakeProgram.id,
-      jotformSessionId: intakeJotformResume?.sessionId,
-    });
-  }, [currentIntakeProgram, intakeReturnUrl, user?.userId, intakeJotformResume?.sessionId]);
 
   const currentIntakeSubmissionId = currentIntakeProgram
     ? intakeByProgramId[currentIntakeProgram.id]?.trim()
@@ -347,7 +309,7 @@ export default function LiveMultiRegister() {
           {phase === 'select'
             ? 'Select upcoming sessions, then complete each session’s intake form when prompted before submitting your registration requests.'
             : phase === 'intake'
-              ? 'Complete the intake form for each selected session. Use Continue when done. You won’t be able to return to a previous intake step.'
+              ? 'Complete the intake form for each selected session. Use Continue when done — you won’t be able to return to a previous intake step.'
               : phase === 'review'
                 ? 'Review your selections and submit. Intake answers are locked for sessions you already continued past.'
                 : 'Registration summary'}
@@ -389,7 +351,7 @@ export default function LiveMultiRegister() {
                     <Link to={`/app/live/${r.programId}`} className="underline font-medium">
                       {r.title}
                     </Link>
-                    {': '}
+                    {' — '}
                     {r.status === 'APPROVED' ? 'Approved' : 'Pending approval'}
                   </li>
                 ))}
@@ -551,7 +513,7 @@ export default function LiveMultiRegister() {
 
           <p className="text-sm text-gray-700">
             Complete the intake form below for this session. Submit the form, then click{' '}
-            <strong>Continue</strong> to move on: you won&apos;t be able to return to this step afterward.
+            <strong>Continue</strong> to move on — you won&apos;t be able to return to this step afterward.
           </p>
 
           {currentIntakeSubmissionId ? (
@@ -562,39 +524,67 @@ export default function LiveMultiRegister() {
 
           {intakeIndex <= maxIntakeIndexCompleted ? (
             <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              You already continued past this intake step. Answers are locked. Complete the remaining steps below.
+              You already continued past this intake step. Answers are locked — complete the remaining steps below.
             </p>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-600">
-                Submit the form below, or{' '}
-                <a
-                  href={intakeFormSrc}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-gray-900 underline"
-                >
-                  open it in a new tab
-                </a>
-                .
-              </p>
-              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                <iframe
-                  title={`Intake form: ${currentIntakeProgram.title}`}
-                  src={intakeFormSrc}
-                  className="h-[480px] w-full"
-                  allow="camera; microphone"
-                />
-              </div>
+          ) : currentIntakeProgram.intakeSurveyId ? (
+            <div className="space-y-3">
+              <ProgramSurveyPanel
+                key={currentIntakeProgram.id}
+                surveyId={currentIntakeProgram.intakeSurveyId}
+                userId={user.userId}
+                programId={currentIntakeProgram.id}
+                authenticated
+                userSummary={{
+                  firstName: user.firstName,
+                  lastName: user.lastName,
+                  email: user.email,
+                }}
+                hideSubmitButton
+                formId={MULTI_REGISTER_INTAKE_FORM_ID}
+                onSubmittingChange={setIntakeSubmitting}
+                onSubmitError={() => {
+                  setIntakeSubmitting(false);
+                  setIntakeSubmitError('Could not save intake. Check your connection and try again.');
+                }}
+                onSubmitted={(submissionId) => {
+                  setIntakeSubmitting(false);
+                  setIntakeSubmitError(null);
+                  setIntakeByProgramId((prev) => ({
+                    ...prev,
+                    [currentIntakeProgram.id]: submissionId,
+                  }));
+                  setMaxIntakeIndexCompleted((prev) => Math.max(prev, intakeIndex));
+                  if (intakeIndex < intakePrograms.length - 1) {
+                    setIntakeIndex((i) => i + 1);
+                  } else {
+                    setPhase('review');
+                  }
+                }}
+              />
+              {intakeSubmitError ? (
+                <p className="text-sm text-red-700">{intakeSubmitError}</p>
+              ) : null}
             </div>
+          ) : (
+            <p className="text-sm text-gray-600">
+              No native intake survey is configured for this session yet.
+            </p>
           )}
 
           <button
             type="button"
             onClick={continueFromIntake}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700"
+            disabled={intakeSubmitting}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
-            Continue
+            {intakeSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              'Continue'
+            )}
           </button>
         </div>
       ) : null}
@@ -620,7 +610,7 @@ export default function LiveMultiRegister() {
                         intakeDone ? 'text-green-800' : 'text-amber-800',
                       ].join(' ')}
                     >
-                      {intakeDone ? 'Intake completed' : 'Intake not completed: you can still submit'}
+                      {intakeDone ? 'Intake completed' : 'Intake not completed — you can still submit'}
                     </p>
                   ) : null}
                 </li>

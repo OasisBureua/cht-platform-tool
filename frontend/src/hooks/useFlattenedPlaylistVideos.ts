@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { catalogApi } from '../api/catalog';
 import { extractYoutubeVideoIdFromUrl } from '../utils/clipUrl';
 
@@ -39,7 +39,8 @@ export function useFlattenedPlaylistVideos(playlistIds: string[], enabled: boole
       return out;
     },
     enabled: enabled && playlistIds.length > 0,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
   return {

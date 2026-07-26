@@ -2,13 +2,19 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  ArrowRight,
   Briefcase,
-  Calendar,
   ExternalLink,
   Sparkles,
 } from 'lucide-react';
+import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
+import { KolPublicationsSection } from '../../components/kol/KolPublicationsSection';
+import { useKolProfile } from '../../hooks/useKolProfile';
+import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
+import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
+import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
 
-// X/Twitter brand icon was removed from lucide-react in v1.x, local outline SVG.
+// X/Twitter brand icon was removed from lucide-react in v1.x — local outline SVG.
 function IconTwitter({ className }: { className?: string }) {
   return (
     <svg
@@ -26,7 +32,7 @@ function IconTwitter({ className }: { className?: string }) {
   );
 }
 
-// LinkedIn brand icon was removed from lucide-react in v1.x, local outline SVG.
+// LinkedIn brand icon was removed from lucide-react in v1.x — local outline SVG.
 function IconLinkedIn({ className }: { className?: string }) {
   return (
     <svg
@@ -45,23 +51,12 @@ function IconLinkedIn({ className }: { className?: string }) {
     </svg>
   );
 }
-import {
-  findKolInDirectory,
-  useKolDirectory,
-  type DolEntry,
-  type DolRegion,
-} from '../../hooks/useKolDirectory';
 
 type TabId = 'overview' | 'background' | 'engagement';
 
 function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
-}
-
-function displayHandle(entry: DolEntry): string {
-  if (entry.intel?.handle) return entry.intel.handle;
-  return `@${entry.id}`;
 }
 
 function inferredSpecialty(entry: DolEntry): string {
@@ -76,29 +71,25 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
   const i = entry.intel;
   const stateName = region.title;
   const institution =
-    entry.institution?.trim() && entry.institution !== '-'
+    entry.institution?.trim() && entry.institution !== '—'
       ? entry.institution
-      : i?.affiliation?.split('·')[0]?.trim() ?? '-';
+      : i?.affiliation?.split('·')[0]?.trim() ?? '—';
 
   return {
     displayName: entry.name,
-    handle: displayHandle(entry),
     specialty: inferredSpecialty(entry),
     stateName,
     institution,
     location: i?.location ?? stateName,
-    affiliation: institution !== '-' ? institution : (i?.affiliation ?? entry.role.split('-')[0]?.trim() ?? ''),
-    npi: i?.npi,
+    affiliation: institution !== '—' ? institution : (i?.affiliation ?? entry.role.split('—')[0]?.trim() ?? ''),
     rosterOnly: i?.rosterOnly ?? false,
     phone: i?.phone,
-    email: i?.email,
     linkedInUrl: i?.linkedInUrl,
     twitterUrl: i?.twitterUrl,
     webUrl: i?.webUrl,
     bannerImageUrl: i?.bannerImageUrl,
     awards: i?.awards,
     researchHighlights: i?.researchHighlights,
-    aiBrief: i?.aiBrief,
   };
 }
 
@@ -106,26 +97,30 @@ export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
   const [tab, setTab] = useState<TabId>('overview');
 
-  const directory = useKolDirectory();
-  const found = kolId ? findKolInDirectory(directory, kolId) : null;
+  const profile = useKolProfile(kolId);
 
   const vm = useMemo(() => {
-    if (!found) return null;
-    return buildViewModel(found.region, found.entry);
-  }, [found]);
+    if (profile.loadState !== 'ready') return null;
+    return buildViewModel(profile.region, profile.entry);
+  }, [profile]);
 
-  if (directory.loadState === 'loading') {
+  if (profile.loadState === 'loading') {
     return (
       <div className="min-h-screen w-full bg-zinc-50 px-6 py-20 text-center text-zinc-500 dark:bg-black dark:text-zinc-400">
         Loading profile…
       </div>
     );
   }
-  if (!kolId || !found || !vm) {
+  if (!kolId || profile.loadState !== 'ready' || !vm) {
     return <Navigate to="/kol-network" replace />;
   }
 
-  const { entry } = found;
+  const { entry } = profile;
+  const displayBrief = resolveKolDisplayBrief(entry);
+  const catalogHref = kolCatalogBrowseHref(entry);
+  const showBioOnBackground =
+    Boolean(entry.bio?.trim()) &&
+    (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
   return (
     <div className="min-h-screen w-full bg-zinc-50 pb-20 text-zinc-900 dark:bg-black dark:text-zinc-100">
@@ -149,7 +144,7 @@ export default function KolProfilePage() {
       </div>
 
       <div className="w-full max-w-none">
-        {/* Banner: full viewport width */}
+        {/* Banner — full viewport width */}
         <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 via-brand-900 to-zinc-950 sm:h-48">
           {vm.bannerImageUrl ? (
             <img src={vm.bannerImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -164,27 +159,40 @@ export default function KolProfilePage() {
               alt=""
               className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:bg-zinc-800 dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
             />
-            <div className="pt-20 sm:pt-24">
+            <div className="flex flex-col items-end gap-2 pt-20 sm:pt-24">
               <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-brand-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-brand-200">
                 CHM Network
               </span>
+              <Link
+                to={catalogHref}
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                Catalog videos
+                <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
+              </Link>
             </div>
           </div>
 
           <div className="mt-3 space-y-3">
             <div>
-              <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{vm.displayName}</h1>
-              <p className="mt-0.5 text-[15px] text-zinc-500 dark:text-zinc-400">{vm.handle}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {vm.rosterOnly ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{vm.displayName}</h1>
+                {entry.featured ? (
+                  <span
+                    className="rounded bg-brand-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+                    title="Curator-featured KOL"
+                  >
+                    ★ Featured
+                  </span>
+                ) : null}
+              </div>
+              {vm.rosterOnly ? (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="rounded bg-teal-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-teal-900 dark:bg-teal-950/60 dark:text-teal-200">
                     Roster
                   </span>
-                ) : null}
-                {vm.npi ? (
-                  <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">NPI {vm.npi}</span>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 text-[14px]">
@@ -200,15 +208,15 @@ export default function KolProfilePage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Institution</p>
                 <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.institution}</p>
               </div>
-              {entry.bio ? (
+              {entry.education?.trim() ? (
                 <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Summary</p>
-                  <p className="mt-1 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.bio}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Education & training</p>
+                  <p className="mt-1 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.education}</p>
                 </div>
               ) : null}
             </div>
 
-            {(vm.phone || vm.email || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
+            {(vm.phone || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
               <div className="flex flex-wrap gap-2 pt-1">
                 {vm.phone ? (
                   <a
@@ -216,11 +224,6 @@ export default function KolProfilePage() {
                     className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
                   >
                     {vm.phone}
-                  </a>
-                ) : null}
-                {vm.email ? (
-                  <a href={`mailto:${vm.email}`} className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
-                    {vm.email}
                   </a>
                 ) : null}
                 <SocialIcon href={vm.linkedInUrl} label="LinkedIn">
@@ -266,39 +269,50 @@ export default function KolProfilePage() {
           <div className="mt-4 space-y-4" role="tabpanel">
             {tab === 'overview' ? (
               <>
-                {vm.aiBrief?.whoTheyAre ? (
+                {displayBrief ? (
                   <article className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                     <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-                      <Sparkles className="h-4 w-4 text-amber-500" aria-hidden />
+                      <Sparkles
+                        className={`h-4 w-4 ${displayBrief.isAiGenerated ? 'text-amber-500' : 'text-zinc-400'}`}
+                        aria-hidden
+                      />
                       <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Intel summary</span>
-                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-zinc-400">MediaHub</span>
+                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                        {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
+                      </span>
                     </div>
                     <div className="space-y-4 px-4 py-4 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                      {vm.aiBrief.whoTheyAre ? (
+                      <div>
+                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Who they are</p>
+                        <p className="mt-1">{displayBrief.whoTheyAre}</p>
+                      </div>
+                      {displayBrief.focus ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Who they are</p>
-                          <p className="mt-1">{vm.aiBrief.whoTheyAre}</p>
+                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
+                            What they focus on
+                          </p>
+                          <p className="mt-1">{displayBrief.focus}</p>
                         </div>
                       ) : null}
-                      {vm.aiBrief.focus ? (
-                        <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Focus</p>
-                          <p className="mt-1">{vm.aiBrief.focus}</p>
-                        </div>
-                      ) : null}
-                      {vm.aiBrief.chmContext ? (
+                      {displayBrief.chmContext ? (
                         <div>
                           <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">CHM context</p>
-                          <p className="mt-1">{vm.aiBrief.chmContext}</p>
+                          <p className="mt-1">{displayBrief.chmContext}</p>
                         </div>
                       ) : null}
                     </div>
+                    {displayBrief.isAiGenerated ? (
+                      <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                        <p className="text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
+                          AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
+                          important details against primary sources.
+                        </p>
+                      </div>
+                    ) : null}
                   </article>
-                ) : (
-                  <p className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:bg-zinc-950">
-                    More info coming soon
-                  </p>
-                )}
+                ) : null}
+
+                <KolPublicationsSection kolId={entry.id} />
 
                 <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                   <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
@@ -307,15 +321,19 @@ export default function KolProfilePage() {
                   </h2>
                   <p className="mt-2 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.role}</p>
                 </article>
+
+                <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
               </>
             ) : null}
 
             {tab === 'background' ? (
               <div className="space-y-4">
-                <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                  <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Education & training</h2>
-                  <p className="mt-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.education}</p>
-                </article>
+                {showBioOnBackground ? (
+                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Summary</h2>
+                    <p className="mt-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.bio}</p>
+                  </article>
+                ) : null}
                 {vm.researchHighlights ? (
                   <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                     <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Research highlights</h2>
@@ -336,16 +354,7 @@ export default function KolProfilePage() {
             ) : null}
 
             {tab === 'engagement' ? (
-              <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-12 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
-                  <Calendar className="h-7 w-7 text-zinc-400" aria-hidden />
-                </div>
-                <h2 className="mt-4 text-lg font-bold text-zinc-900 dark:text-zinc-100">No CHM engagement recorded yet</h2>
-                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
-                  Webinars, RSVPs, questions, and catalog activity will appear here when this physician engages with Community
-                  Health Media content.
-                </p>
-              </div>
+              <KolCatalogContentSection entry={entry} variant="engagement" limit={12} />
             ) : null}
           </div>
         </div>

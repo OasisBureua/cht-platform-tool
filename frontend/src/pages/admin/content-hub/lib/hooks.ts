@@ -4,9 +4,12 @@
 // 'content-hub' so they never collide with the rest of the admin app.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '../../../../api/admin';
+import { surveysApi, type Survey } from '../../../../api/surveys';
 import * as store from './store';
 import type {
   Campaign,
+  HubspotStatus,
   IntegrationSettings,
   Platform,
   Template,
@@ -23,7 +26,10 @@ export const qk = {
   executiveReport: (id: string | number) => [KEY, 'campaign', String(id), 'executive-report'] as const,
   templates: () => [KEY, 'templates'] as const,
   integrations: () => [KEY, 'integrations'] as const,
+  integrationsConnection: () => [KEY, 'integrations-connection'] as const,
   hubspotStatus: () => [KEY, 'hubspot-status'] as const,
+  contentHubHealth: () => [KEY, 'health'] as const,
+  feedbackSurveys: () => [KEY, 'feedback-surveys'] as const,
 };
 
 const n = (id: string | number) => Number(id);
@@ -81,6 +87,49 @@ export function useUploadCsv(id: string | number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.csvData(id) });
       qc.invalidateQueries({ queryKey: qk.validation(id) });
+    },
+  });
+}
+
+export function useFeedbackSurveys(enabled = true) {
+  return useQuery({
+    queryKey: qk.feedbackSurveys(),
+    queryFn: async (): Promise<Survey[]> => {
+      const data = await surveysApi.getAll();
+      const byId = new Map(
+        [...data.active, ...data.completed]
+          .filter((survey) => survey.type === 'FEEDBACK' && survey.program)
+          .map((survey) => [survey.id, survey]),
+      );
+      return [...byId.values()].sort((a, b) =>
+        (a.program?.title ?? a.title).localeCompare(
+          b.program?.title ?? b.title,
+        ),
+      );
+    },
+    enabled,
+  });
+}
+
+export function useConnectFeedbackSurvey(id: string | number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (survey: Survey) => {
+      const data = await adminApi.getSurveyAnalytics(survey.id, {
+        includeSamples: true,
+      });
+      return store.connectFeedbackSurvey(n(id), {
+        surveyId: survey.id,
+        programId: survey.program?.id ?? null,
+        label: `${survey.program?.title ?? 'Program'} — ${survey.title}`,
+        totalResponses: data.analytics.totals.totalResponses,
+        analytics: data.analytics,
+      });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.csvData(id) });
+      qc.invalidateQueries({ queryKey: qk.validation(id) });
+      qc.invalidateQueries({ queryKey: qk.campaign(id) });
     },
   });
 }
@@ -144,13 +193,45 @@ export function useUpdateIntegrations() {
       Promise.resolve(store.updateIntegrations(patch)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.integrations() });
+      qc.invalidateQueries({ queryKey: qk.integrationsConnection() });
       qc.invalidateQueries({ queryKey: qk.hubspotStatus() });
+      qc.invalidateQueries({ queryKey: qk.contentHubHealth() });
     },
   });
 }
 
+export function useContentHubHealth(enabled = true) {
+  return useQuery({
+    queryKey: qk.contentHubHealth(),
+    queryFn: () => store.getContentHubHealth(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useIntegrationsConnection(enabled = true) {
+  return useQuery({
+    queryKey: qk.integrationsConnection(),
+    queryFn: () => store.getIntegrationsConnection(),
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
 export function useHubspotStatus(enabled = true) {
-  return useQuery({ queryKey: qk.hubspotStatus(), queryFn: () => store.getHubspotStatus(), enabled });
+  const query = useIntegrationsConnection(enabled);
+  const hubspot = query.data?.hubspot;
+  return {
+    ...query,
+    data: hubspot
+      ? ({
+          connected: hubspot.connected,
+          accountName: hubspot.accountName ?? null,
+          portalId: hubspot.portalId ?? null,
+          error: hubspot.error,
+        } satisfies HubspotStatus)
+      : undefined,
+  };
 }
 
 export type { Template };

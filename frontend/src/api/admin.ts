@@ -64,19 +64,9 @@ export interface CreateWebinarPayload {
   startDate: string;
   duration: number;
   timezone?: string;
-  /** WEBINAR = Zoom Webinar + Jotform invitation & post-event clones from env; MEETING = Office Hours. */
+  /** WEBINAR = Zoom Webinar + native intake/post-event surveys; MEETING = Office Hours. */
   zoomSessionType?: ZoomSessionType;
   status?: 'DRAFT' | 'PUBLISHED';
-  /**
-   * Optional Jotform form ID or URL for the post-event (FEEDBACK) survey.
-   * Saved to the program and listed under Surveys for learners.
-   */
-  postEventJotformFormIdOrUrl?: string;
-  /**
-   * Optional (WEBINAR). Full Jotform form URL for registration / intake.
-   * When set, skips automatic invitation clone from env for this session.
-   */
-  jotformIntakeFormUrl?: string;
   /**
    * Optional. Honorarium in USD for learners (paid via Bill.com after post-event flow). WEBINAR only.
    */
@@ -132,8 +122,8 @@ export interface CreateSurveyPayload {
   programId: string;
   title: string;
   description?: string;
-  questions: Record<string, unknown>[];
-  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+  questions: Record<string, unknown>[] | Record<string, unknown>;
+  type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
   required?: boolean;
   /** Link to an existing Jotform form. When set, the survey will embed this form and receive webhook submissions. */
   jotformFormId?: string;
@@ -177,6 +167,7 @@ export interface PendingPayment {
     firstName: string;
     lastName: string;
     billVendorId: string | null;
+    w9Submitted?: boolean;
   };
   program: { id: string; title: string } | null;
 }
@@ -203,6 +194,181 @@ export interface WebhookImportedProgram {
   startDate: string | null;
   createdAt: string;
   missingFields: string[];
+}
+
+export interface ProgramRegistrationAdminRow {
+  id: string;
+  status: string;
+  createdAt: string;
+  updatedAt?: string;
+  lastSubmittedAt?: string;
+  intakeSubmissionId?: string | null;
+  intakeRequired?: boolean;
+  intakeComplete?: boolean;
+  jotformIntakeSubmissionViewUrl?: string | null;
+  postEventSurveySubmitted?: boolean;
+  postEventSurveyResponseId?: string | null;
+  postEventSurveyAnswers?: Record<string, unknown> | null;
+  postEventSurveySubmittedAt?: string | null;
+  intakeSurveyResponseId?: string | null;
+  intakeSurveyAnswers?: Record<string, unknown> | null;
+  intakeSurveySubmittedAt?: string | null;
+  postEventJotformSubmissionId?: string | null;
+  jotformPostEventSubmissionViewUrl?: string | null;
+  postEventSurveyAcknowledgedAt?: string | null;
+  postEventAttendanceStatus?: string | null;
+  postEventAttendanceReviewedAt?: string | null;
+  user: { id: string; email: string; firstName: string; lastName: string };
+  slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
+}
+
+export interface PostEventAttendanceAdminRow {
+  id: string;
+  status: string;
+  postEventAttendanceStatus: string;
+  postEventAttendanceReviewedAt?: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    specialty?: string | null;
+    institution?: string | null;
+    city?: string | null;
+  };
+  program: {
+    id: string;
+    title: string;
+    zoomSessionType?: 'WEBINAR' | 'MEETING';
+    startDate?: string | null;
+    zoomJoinUrl?: string | null;
+  };
+}
+
+// ── Survey response analytics (mirrors backend survey-analytics.dto.ts) ──────
+// See docs/engineering/survey-response-analytics-api.md for the full contract.
+
+export type SurveyAnalyticsQuestionKind = 'choice' | 'rating' | 'text';
+export type SurveySegmentDimension = 'specialty' | 'status' | 'attendance';
+
+export interface SurveyChoiceOptionCount {
+  label: string;
+  count: number;
+  /** Share of respondents who answered (0–100). Multi-select can sum above 100. */
+  percentage: number;
+}
+
+export interface SurveyHistogramBucket {
+  value: number;
+  count: number;
+}
+
+export interface SurveyNumericStats {
+  count: number;
+  mean: number | null;
+  median: number | null;
+  min: number | null;
+  max: number | null;
+  histogram: SurveyHistogramBucket[];
+}
+
+interface SurveyQuestionAnalyticsBase {
+  id: string;
+  prompt: string;
+  /** Native schema type, or 'unknown' for inferred keys. */
+  type: string;
+  kind: SurveyAnalyticsQuestionKind;
+  /** True when inferred from data (no native schema type). */
+  inferred?: boolean;
+}
+
+export interface SurveyChoiceQuestionAnalytics
+  extends SurveyQuestionAnalyticsBase {
+  kind: 'choice';
+  multiSelect: boolean;
+  maxSelections?: number;
+  totalAnswered: number;
+  options: SurveyChoiceOptionCount[];
+}
+
+export interface SurveyRatingQuestionAnalytics
+  extends SurveyQuestionAnalyticsBase,
+    SurveyNumericStats {
+  kind: 'rating';
+}
+
+export interface SurveyTextQuestionAnalytics
+  extends SurveyQuestionAnalyticsBase {
+  kind: 'text';
+  responseCount: number;
+  /** Empty unless the request opted into redacted samples. */
+  samples: string[];
+}
+
+export type SurveyQuestionAnalytics =
+  | SurveyChoiceQuestionAnalytics
+  | SurveyRatingQuestionAnalytics
+  | SurveyTextQuestionAnalytics;
+
+export interface SurveyAnalyticsCompletionRate {
+  eligible: number;
+  completed: number;
+  rate: number;
+}
+
+export interface SurveyAnalyticsTotals {
+  totalResponses: number;
+  uniqueRespondents: number;
+  firstResponseAt: string | null;
+  lastResponseAt: string | null;
+  /** Null for INTAKE and program-less surveys. */
+  completionRate: SurveyAnalyticsCompletionRate | null;
+  /** Response-level score summary (test surveys); null when no numeric scores. */
+  score: SurveyNumericStats | null;
+}
+
+export interface SurveyAnalyticsTimeSeriesPoint {
+  /** UTC day, YYYY-MM-DD. Only days with responses appear. */
+  date: string;
+  count: number;
+}
+
+export interface SurveyAnalyticsSegmentGroup {
+  /** Raw segment value ('unknown' when missing/empty). */
+  key: string;
+  /** Display label ('Unknown' for the missing bucket). */
+  label: string;
+  totalResponses: number;
+  /** Counts-only aggregates for this segment (no free-text samples). */
+  questions: SurveyQuestionAnalytics[];
+}
+
+export interface SurveyAnalyticsSegmentBreakdown {
+  dimension: SurveySegmentDimension;
+  groups: SurveyAnalyticsSegmentGroup[];
+}
+
+export interface SurveyResponseAnalytics {
+  surveyType: string;
+  hasNativeSchema: boolean;
+  totals: SurveyAnalyticsTotals;
+  timeSeries: SurveyAnalyticsTimeSeriesPoint[];
+  questions: SurveyQuestionAnalytics[];
+  /** Present when segmentBy was provided; otherwise null. */
+  segments: SurveyAnalyticsSegmentBreakdown | null;
+}
+
+export interface SurveyAnalyticsSummary {
+  id: string;
+  title: string;
+  type: string;
+  program: { id: string; title: string } | null;
+}
+
+export interface SurveyAnalytics {
+  survey: SurveyAnalyticsSummary;
+  analytics: SurveyResponseAnalytics;
 }
 
 export const adminApi = {
@@ -245,8 +411,25 @@ export const adminApi = {
     return data;
   },
 
-  updateSurvey: async (id: string, payload: { jotformFormId?: string }) => {
+  updateSurvey: async (
+    id: string,
+    payload: {
+      title?: string;
+      description?: string;
+      questions?: Record<string, unknown>;
+      required?: boolean;
+      jotformFormId?: string;
+    },
+  ) => {
     const { data } = await apiClient.patch(`/admin/surveys/${id}`, payload);
+    return data;
+  },
+
+  ensureNativeSurveysForProgram: async (programId: string) => {
+    const { data } = await apiClient.post<{
+      intakeSurveyId: string;
+      feedbackSurveyId: string;
+    }>(`/admin/programs/${encodeURIComponent(programId)}/native-surveys`);
     return data;
   },
 
@@ -303,8 +486,8 @@ export const adminApi = {
 
   createWebinar: async (
     payload: CreateWebinarPayload,
-  ): Promise<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }> => {
-    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string; jotformFormsWarning?: string }>(
+  ): Promise<AdminWebinar & { zoomWarning?: string; surveysWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { zoomWarning?: string; surveysWarning?: string }>(
       '/admin/webinars',
       payload,
     );
@@ -324,8 +507,8 @@ export const adminApi = {
     zoomId: string;
     zoomSessionType?: ZoomSessionType;
     sponsorName?: string;
-  }): Promise<AdminWebinar & { jotformFormsWarning?: string }> => {
-    const { data } = await apiClient.post<AdminWebinar & { jotformFormsWarning?: string }>(
+  }): Promise<AdminWebinar & { surveysWarning?: string }> => {
+    const { data } = await apiClient.post<AdminWebinar & { surveysWarning?: string }>(
       '/admin/webinars/import-from-zoom',
       body,
     );
@@ -352,24 +535,25 @@ export const adminApi = {
 
   listProgramRegistrations: async (programId: string) => {
     const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/registrations`);
-    return data as Array<{
-      id: string;
-      status: string;
-      createdAt: string;
-      updatedAt?: string;
-      lastSubmittedAt?: string;
-      intakeJotformSubmissionId?: string | null;
-      intakeRequired?: boolean;
-      intakeComplete?: boolean;
-      jotformIntakeSubmissionViewUrl?: string | null;
-      postEventJotformSubmissionId?: string | null;
-      jotformPostEventSubmissionViewUrl?: string | null;
-      postEventSurveyAcknowledgedAt?: string | null;
-      postEventAttendanceStatus?: string | null;
-      postEventAttendanceReviewedAt?: string | null;
-      user: { id: string; email: string; firstName: string; lastName: string };
-      slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
-    }>;
+    const payload = data as
+      | {
+          registrations: Array<ProgramRegistrationAdminRow>;
+          surveys?: {
+            intake?: { id: string; questions: unknown } | null;
+            feedback?: { id: string; questions: unknown } | null;
+          };
+        }
+      | ProgramRegistrationAdminRow[];
+    if (Array.isArray(payload)) {
+      return {
+        registrations: payload,
+        surveys: { intake: null, feedback: null },
+      };
+    }
+    return {
+      registrations: payload.registrations ?? [],
+      surveys: payload.surveys ?? { intake: null, feedback: null },
+    };
   },
 
   listProgramEnrollments: async (programId: string) => {
@@ -410,27 +594,64 @@ export const adminApi = {
 
   listPendingPostEventAttendance: async () => {
     const { data } = await apiClient.get('/admin/webinar-registrations/pending-attendance');
-    return data as Array<{
-      id: string;
-      postEventAttendanceStatus: string;
-      createdAt: string;
-      user: {
-        id: string;
-        email: string;
-        firstName: string;
-        lastName: string;
-        specialty?: string | null;
-        institution?: string | null;
-        city?: string | null;
-      };
-      program: {
+    return data as PostEventAttendanceAdminRow[];
+  },
+
+  listPostEventAttendance: async () => {
+    const { data } = await apiClient.get('/admin/webinar-registrations/attendance');
+    return data as PostEventAttendanceAdminRow[];
+  },
+
+  listSurveyResponses: async (surveyId: string) => {
+    const { data } = await apiClient.get(`/admin/surveys/${encodeURIComponent(surveyId)}/responses`);
+    return data as {
+      survey: {
         id: string;
         title: string;
-        zoomSessionType?: 'WEBINAR' | 'MEETING';
-        startDate?: string | null;
-        zoomJoinUrl?: string | null;
+        type: string;
+        questions: unknown;
+        program?: { id: string; title: string } | null;
       };
-    }>;
+      responses: Array<{
+        id: string;
+        submissionId: string | null;
+        submittedAt: string;
+        answers: Record<string, unknown>;
+        user: {
+          id: string;
+          email: string;
+          firstName: string;
+          lastName: string;
+          specialty?: string | null;
+        };
+        registration: {
+          status: string;
+          postEventAttendanceStatus: string;
+        } | null;
+      }>;
+    };
+  },
+
+  downloadSurveyResponsesCsv: async (surveyId: string): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>(
+      `/admin/surveys/${encodeURIComponent(surveyId)}/responses.csv`,
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+
+  getSurveyAnalytics: async (
+    surveyId: string,
+    opts: { segmentBy?: SurveySegmentDimension; includeSamples?: boolean } = {},
+  ): Promise<SurveyAnalytics> => {
+    const params: Record<string, string> = {};
+    if (opts.segmentBy) params.segmentBy = opts.segmentBy;
+    if (opts.includeSamples) params.includeSamples = '1';
+    const { data } = await apiClient.get<SurveyAnalytics>(
+      `/admin/surveys/${encodeURIComponent(surveyId)}/analytics`,
+      { params: Object.keys(params).length ? params : undefined },
+    );
+    return data;
   },
 
   updatePostEventAttendance: async (registrationId: string, status: 'VERIFIED' | 'DENIED') => {
@@ -498,7 +719,7 @@ export const adminApi = {
       updatedAt?: string;
       /** Max(createdAt, updatedAt, intake submitted) — use for “last request” after resubmits */
       lastSubmittedAt?: string;
-      intakeJotformSubmissionId: string | null;
+      intakeSubmissionId: string | null;
       intakeRequired: boolean;
       intakeComplete: boolean;
       jotformIntakeSubmissionViewUrl?: string | null;
@@ -685,8 +906,77 @@ export const adminApi = {
     return data as PendingPayment;
   },
 
+  getManualPaymentEligibility: async (params: {
+    userId: string;
+    programId: string;
+  }) => {
+    const { data } = await apiClient.get<{
+      userId: string;
+      programId: string;
+      programTitle: string;
+      registrationFound: boolean;
+      attendanceStatus: string | null;
+      attendanceOk: boolean;
+      surveyRequired: boolean;
+      surveyAcknowledged: boolean;
+      hasBillVendor: boolean;
+      w9Submitted: boolean;
+      programEligibilityOk: boolean;
+      payNowReady: boolean;
+      warnings: string[];
+    }>('/payments/manual-eligibility', { params });
+    return data;
+  },
+
   getWebhookImports: async (): Promise<WebhookImportedProgram[]> => {
     const { data } = await apiClient.get<WebhookImportedProgram[]>('/admin/programs/webhook-imports');
     return data ?? [];
   },
+
+  // ─── KOL Network ─────────────────────────────────────────────────────────
+
+  getKolNetwork: async (params?: { q?: string }): Promise<AdminKolNetworkList> => {
+    const { data } = await apiClient.get<AdminKolNetworkList>('/admin/kol-network', { params });
+    return data ?? { items: [], total: 0, institutions: [] };
+  },
+
+  updateKolVisibility: async (
+    slug: string,
+    patch: { visibleOnPublic?: boolean; visibleOnApp?: boolean },
+  ): Promise<{ slug: string; visibility: KolVisibilityFlags }> => {
+    const { data } = await apiClient.patch<{ slug: string; visibility: KolVisibilityFlags }>(
+      `/admin/kol-network/${encodeURIComponent(slug)}/visibility`,
+      patch,
+    );
+    return data;
+  },
+};
+
+export type KolVisibilityFlags = {
+  visibleOnPublic: boolean;
+  visibleOnApp: boolean;
+};
+
+export type AdminKolNetworkItem = {
+  id: string;
+  slug: string;
+  name: string;
+  title: string | null;
+  specialty: string | null;
+  institution: string | null;
+  region_label: string | null;
+  shoot_count: number;
+  is_new: boolean;
+  intel?: {
+    publications_approx?: number | null;
+    open_payments?: { total: number; records: number; years: string } | null;
+    specialty?: string | null;
+  } | null;
+  visibility: KolVisibilityFlags;
+};
+
+export type AdminKolNetworkList = {
+  items: AdminKolNetworkItem[];
+  total: number;
+  institutions: string[];
 };

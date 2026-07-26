@@ -8,6 +8,7 @@ import {
   Users,
   FileBarChart,
   Stethoscope,
+  Newspaper,
 } from 'lucide-react';
 
 export type AdminNavItem = {
@@ -24,7 +25,8 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: '/admin/webinar-approvals', label: 'Approvals', icon: ClipboardCheck, end: false },
   { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, end: false },
   { to: '/admin/payments', label: 'Earnings', icon: DollarSign, end: false },
-  { to: '/admin/users', label: 'Users', icon: Users, end: false },
   { to: '/admin/kol-network', label: 'KOL Network', icon: Stethoscope, end: false },
-  { to: '/admin/content-hub', label: 'Content Hub', icon: FileBarChart, end: false },
+  { to: '/admin/users', label: 'Users', icon: Users, end: false },
+  { to: '/admin/content', label: 'Content', icon: Newspaper, end: false },
+  { to: '/admin/content-hub', label: 'Reporting', icon: FileBarChart, end: false },
 ];

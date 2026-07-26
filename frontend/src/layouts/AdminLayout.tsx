@@ -126,10 +126,12 @@ export default function AdminLayout() {
           ref={mobileFrontRef}
           data-drawer-front
           className={[
-            'relative z-[1] flex min-h-[100dvh] min-w-0 flex-1 flex-col bg-gray-100 transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none md:min-h-0 md:translate-x-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
+            // Do not apply transform when closed — translate-x-0 still creates a containing
+            // block and breaks position:fixed modals (delete/edit appear mid-page / bottom).
+            'relative z-[1] flex min-h-[100dvh] min-w-0 flex-1 flex-col bg-gray-100 motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
             mobileDrawerOpen
-              ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)]'
-              : 'translate-x-0 shadow-none',
+              ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]'
+              : 'shadow-none',
           ].join(' ')}
           onClick={(e) => e.stopPropagation()}
         >

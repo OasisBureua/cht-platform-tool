@@ -6,9 +6,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import {
-  getSessionTokenFromRequest,
-} from './session-cookie';
+import { getSessionTokenFromRequest } from './session-cookie';
 import { isProductionEnv } from '../utils/is-production-env';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
@@ -29,9 +27,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   private isJwtAuthConfigured(): boolean {
+    const cognitoPoolId = this.configService.get<string>('cognito.userPoolId');
     const auth0Domain = this.configService.get<string>('auth0.domain');
     const gotrueSecret = this.configService.get<string>('gotrue.jwtSecret');
-    return !!(auth0Domain || gotrueSecret);
+    return !!(cognitoPoolId || auth0Domain || gotrueSecret);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -51,7 +50,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     if (isProductionEnv()) {
-      throw new UnauthorizedException('Authentication is not configured for production');
+      throw new UnauthorizedException(
+        'Authentication is not configured for production',
+      );
     }
 
     return this.devBypass(context);
@@ -59,7 +60,9 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   private async devBypass(context: ExecutionContext): Promise<boolean> {
     if (isProductionEnv()) {
-      throw new UnauthorizedException('Dev auth bypass is disabled in production');
+      throw new UnauthorizedException(
+        'Dev auth bypass is disabled in production',
+      );
     }
 
     const request = context.switchToHttp().getRequest();

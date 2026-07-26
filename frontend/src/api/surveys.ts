@@ -1,13 +1,14 @@
 import apiClient from './client';
 import { mockSurveys } from '../mocks/surveys.mock';
 
-export type SurveyType = 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
+export type SurveyType = 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK' | 'INTAKE';
 
 export interface SurveyQuestion {
   id?: string;
   type?: string;
   prompt?: string;
   options?: string[];
+  maxSelections?: number;
   scaleMin?: number;
   scaleMax?: number;
   required?: boolean;
@@ -19,15 +20,21 @@ export interface Survey {
   programId: string;
   title: string;
   description?: string | null;
-  questions: any;
+  questions: unknown;
   type: SurveyType;
   required: boolean;
+  isCustomized?: boolean;
+  /** Monotonic native schema revision; stamped onto each response at submit. */
+  schemaVersion?: number;
+  /** Admin-only count used to explain response-safe editing constraints. */
+  responseCount?: number;
 
   jotformFormId?: string | null;
   jotformFormUrl?: string | null;
 
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
 
   program?: {
     id: string;
@@ -38,18 +45,44 @@ export interface Survey {
     creditAmount?: number | null;
     zoomSessionType?: string;
     startDate?: string | null;
+    duration?: number | null;
+    zoomSessionEndedAt?: string | null;
   };
 }
 
 const ENABLE_MOCK_FALLBACK = import.meta.env.DEV;
 
+export type SurveyListResponse = {
+  active: Survey[];
+  completed: Survey[];
+};
+
+function normalizeSurveyList(data: unknown): SurveyListResponse {
+  if (Array.isArray(data)) {
+    return { active: data as Survey[], completed: [] };
+  }
+  const obj = data as SurveyListResponse | null | undefined;
+  return {
+    active: obj?.active ?? [],
+    completed: obj?.completed ?? [],
+  };
+}
+
 export const surveysApi = {
-  getAll: async (): Promise<Survey[]> => {
+  getAll: async (): Promise<SurveyListResponse> => {
     try {
       const { data } = await apiClient.get('/surveys');
-      return Array.isArray(data) && data.length > 0 ? data : (ENABLE_MOCK_FALLBACK ? mockSurveys : []);
+      const list = normalizeSurveyList(data);
+      if (list.active.length > 0 || list.completed.length > 0) {
+        return list;
+      }
+      return ENABLE_MOCK_FALLBACK
+        ? { active: mockSurveys, completed: [] }
+        : list;
     } catch {
-      if (ENABLE_MOCK_FALLBACK) return mockSurveys;
+      if (ENABLE_MOCK_FALLBACK) {
+        return { active: mockSurveys, completed: [] };
+      }
       throw new Error('Failed to load surveys');
     }
   },
@@ -67,17 +100,17 @@ export const surveysApi = {
     }
   },
 
-  submitResponse: async (id: string, payload: { userId: string; answers: Record<string, unknown> }) => {
+  submitResponse: async (id: string, payload: { answers: Record<string, unknown> }) => {
     const { data } = await apiClient.post(`/surveys/${id}/responses`, {
       answers: payload.answers,
     });
-    return data;
+    return data as { id: string; submissionId?: string; submittedAt: string };
   },
 
-  /** Auth required. Reflects Jotform webhook-created rows as well as native submit. */
+  /** Auth required. Reflects webhook-created rows as well as native submit. */
   getMyResponse: async (
     id: string,
-  ): Promise<{ submitted: boolean; responseId?: string; submittedAt?: string }> => {
+  ): Promise<{ submitted: boolean; responseId?: string; submissionId?: string; submittedAt?: string }> => {
     const { data } = await apiClient.get(`/surveys/${id}/my-response`);
     return data;
   },

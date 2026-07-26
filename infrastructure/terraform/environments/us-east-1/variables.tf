@@ -13,6 +13,18 @@ variable "domain_name" {
   type        = string
 }
 
+variable "secondary_api_origin_domain" {
+  description = "Secondary region ALB DNS for CloudFront API origin failover (e.g. us-east-2 backend ALB DNS)."
+  type        = string
+  default     = ""
+}
+
+variable "route_api_to_secondary" {
+  description = "Route CloudFront /api* to the secondary ALB (DR drill). Set false to restore primary."
+  type        = bool
+  default     = false
+}
+
 # Docker images
 variable "backend_image" {
   description = "Backend Docker image"
@@ -49,6 +61,49 @@ variable "rds_multi_az" {
 variable "rds_backup_retention" {
   description = "RDS backup retention period (days)"
   type        = number
+}
+
+variable "enable_elasticache" {
+  description = "Provision single-node ElastiCache Redis for upstream caching. Defaults to true when environment is dev."
+  type        = bool
+  default     = null
+  nullable    = true
+}
+
+variable "elasticache_node_type" {
+  description = "ElastiCache node type (dev: cache.t3.micro)"
+  type        = string
+  default     = "cache.t3.micro"
+}
+
+variable "enable_aurora_global" {
+  description = "Provision Aurora PostgreSQL Global Database (parallel to RDS during migration)"
+  type        = bool
+  default     = false
+}
+
+variable "aurora_instance_class" {
+  description = "Aurora instance class for Global Database primary and secondary"
+  type        = string
+  default     = "db.r6g.large"
+}
+
+variable "aurora_engine_version" {
+  description = "Aurora PostgreSQL engine version"
+  type        = string
+  default     = "15.17"
+}
+
+variable "decommission_rds" {
+  description = "Remove RDS after Aurora cutover (requires enable_aurora_global)"
+  type        = bool
+  default     = false
+}
+
+variable "aurora_use_for_app" {
+  description = "Point app database secrets at Aurora writer (post-DMS cutover)"
+  type        = bool
+  default     = false
 }
 
 # Compute - Backend
@@ -116,11 +171,54 @@ variable "cloudfront_certificate_arn" {
   default     = ""
 }
 
+# Shared with dev.tfvars / platform.tfvars for deploy-secondary.sh (us-east-2). Not used by this stack.
+variable "dr_acm_certificate_arn" {
+  description = "ACM certificate ARN for us-east-2 DR ALB (consumed by us-east-2 apply only)."
+  type        = string
+  default     = ""
+}
+
+variable "dr_rds_instance_class" {
+  description = "RDS instance class for us-east-2 DR read replica (consumed by us-east-2 apply only)."
+  type        = string
+  default     = "db.t3.small"
+}
+
 # Monitoring
 variable "alarm_notification_emails" {
   description = "Email addresses to receive alarm notifications (DLQ, ECS, RDS, ALB, etc.). Must confirm subscription via email."
   type        = list(string)
   default     = []
+}
+
+variable "secrets_replica_regions" {
+  description = "Secrets Manager replica regions for database/app secrets (e.g. [\"us-east-2\"])."
+  type        = list(string)
+  default     = []
+}
+
+variable "enable_ecr_replication" {
+  description = "Replicate ECR images from us-east-1 to the DR region (account-level singleton ruleset; include ContentHub + platform prefixes)."
+  type        = bool
+  default     = true
+}
+
+variable "ecr_replication_destination_region" {
+  description = "Destination region for ECR image replication."
+  type        = string
+  default     = "us-east-2"
+}
+
+variable "ecr_repository_prefixes" {
+  description = "PREFIX_MATCH filters for the account ECR replication ruleset (must include contenthub- and cht-platform-)."
+  type        = list(string)
+  default     = ["contenthub-", "cht-platform-"]
+}
+
+variable "ecr_repository_names" {
+  description = "ECR repository names replicated to the DR region."
+  type        = list(string)
+  default     = ["cht-platform-backend", "cht-platform-worker"]
 }
 
 # Application secrets
@@ -150,6 +248,26 @@ variable "mediahub_base_url" {
 
 variable "mediahub_api_key" {
   description = "MediaHub Public API key for catalog"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "contenthub_base_url" {
+  description = "Content Hub API base URL for KOL network reads and HCP upsert"
+  type        = string
+  default     = ""
+}
+
+variable "contenthub_api_key" {
+  description = "Content Hub PUBLIC_API_KEY"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "internal_cache_secret" {
+  description = "Shared secret for POST /api/internal/cache/clear (Content Hub Lambda + ops)"
   type        = string
   sensitive   = true
   default     = ""
@@ -331,4 +449,139 @@ variable "session_reminders_schedule_expression" {
   description = "EventBridge schedule for the session-reminder scan (default: every 3 hours)"
   type        = string
   default     = "cron(0 0/3 * * ? *)"
+}
+
+variable "enable_bill_mfa_reminder" {
+  description = "Enable the EventBridge -> SNS reminder to refresh the Bill.com MFA rememberMeId before its 30-day expiry. Prefer platform-only."
+  type        = bool
+  default     = false
+}
+
+variable "bill_mfa_reminder_schedule" {
+  description = "Schedule for the Bill.com MFA rememberMeId refresh reminder. Fire before the 30-day expiry (default: every 20 days)."
+  type        = string
+  default     = "rate(20 days)"
+}
+
+# Cognito
+variable "enable_cognito_pools" {
+  description = "Create a Cognito User Pool for this environment. Set true in platform.tfvars and dev.tfvars."
+  type        = bool
+  default     = false
+}
+
+variable "cognito_domain_prefix" {
+  description = "Cognito hosted UI domain prefix — globally unique across all AWS accounts (e.g. chm-platform)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_mfa_configuration" {
+  description = "MFA enforcement level: OPTIONAL (grace period) or ON (enforced). Flip to ON via platform.tfvars at day 14."
+  type        = string
+  default     = "OPTIONAL"
+}
+
+variable "cognito_user_pool_tier" {
+  description = "Cognito user pool tier (LITE/ESSENTIALS/PLUS). Use ESSENTIALS or PLUS for multi-region replication add-on."
+  type        = string
+  default     = "ESSENTIALS"
+}
+
+variable "cognito_google_client_id" {
+  description = "Google OAuth client ID for Cognito identity provider (leave empty until creds are ready)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "cognito_google_client_secret" {
+  description = "Google OAuth client secret for Cognito identity provider (leave empty until creds are ready)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "recaptcha_site_key" {
+  description = "Google reCAPTCHA v3 site key (public; baked into frontend build)"
+  type        = string
+  default     = ""
+}
+
+variable "recaptcha_secret_key" {
+  description = "Google reCAPTCHA v3 secret key for backend token verification"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "recaptcha_min_score" {
+  description = "Minimum reCAPTCHA v3 score (0.0–1.0) for login/signup"
+  type        = number
+  default     = 0.5
+}
+
+variable "cognito_email_sending_account" {
+  description = "COGNITO_DEFAULT or DEVELOPER (Amazon SES). Use DEVELOPER with cognito_email_from for branded auth emails."
+  type        = string
+  default     = "COGNITO_DEFAULT"
+
+  validation {
+    condition     = contains(["COGNITO_DEFAULT", "DEVELOPER"], var.cognito_email_sending_account)
+    error_message = "cognito_email_sending_account must be COGNITO_DEFAULT or DEVELOPER."
+  }
+}
+
+variable "cognito_email_from" {
+  description = "FROM address for Cognito verification/recovery emails (requires SES-verified domain/address in us-east-1)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_email_reply_to" {
+  description = "Optional REPLY-TO for Cognito auth emails"
+  type        = string
+  default     = ""
+}
+
+variable "enable_cognito_waf" {
+  description = "Attach regional AWS WAF to the Cognito user pool"
+  type        = bool
+  default     = false
+}
+
+variable "cognito_waf_enable_managed_rules" {
+  description = "Enable AWS managed rule groups on the Cognito WAF ACL"
+  type        = bool
+  default     = true
+}
+
+variable "cognito_waf_enable_rate_limit" {
+  description = "Enable IP rate limiting on Cognito auth via WAF"
+  type        = bool
+  default     = true
+}
+
+variable "cognito_waf_rate_limit_count" {
+  description = "Max Cognito auth requests per 5 minutes per IP"
+  type        = number
+  default     = 1000
+}
+
+variable "enable_cognito_mrr" {
+  description = "Create multi-Region KMS keys for Cognito MRR; run scripts/cognito-setup-mrr.sh after apply"
+  type        = bool
+  default     = false
+}
+
+variable "cognito_mrr_replica_region" {
+  description = "AWS Region for Cognito user pool replica"
+  type        = string
+  default     = "us-east-2"
+}
+
+variable "cognito_mrr_associate_waf_replica" {
+  description = "Associate WAF with Cognito replica pool (set true after cognito-setup-mrr.sh completes)"
+  type        = bool
+  default     = false
 }

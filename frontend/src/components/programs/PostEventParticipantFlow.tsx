@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Program, ProgramRegistrationState } from '../../api/programs';
-import { buildPostEventSurveyEmbedSrc, isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
+import { isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
 import { BillComMark } from '../branding/BillComMark';
+import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
 
 type Phase = 'intro' | 'survey' | 'payout' | 'done';
+
+const POST_EVENT_NATIVE_FORM_ID = 'post-event-native-survey';
 
 /** Persists across refresh: user clicked Continue for this program and is committed to the flow. */
 function flowStartedKey(programId: string) {
@@ -30,6 +34,9 @@ export default function PostEventParticipantFlow(props: {
     Program,
     | 'id'
     | 'jotformSurveyUrl'
+    | 'hasPostEventSurvey'
+    | 'feedbackSurveyId'
+    | 'feedbackUsesJotform'
     | 'honorariumAmount'
     | 'zoomSessionType'
     | 'startDate'
@@ -37,16 +44,22 @@ export default function PostEventParticipantFlow(props: {
     | 'zoomSessionEndedAt'
   >;
   userId: string;
+  userSummary?: { firstName?: string; lastName?: string; email?: string };
   enrolled: boolean;
   myRegistration: ProgramRegistrationState | null | undefined;
   /** While true, parent should hide the page "Back" control so the learner cannot return mid-flow. */
   onPostEventNavLockChange?: (locked: boolean) => void;
 }) {
-  const { program, userId, enrolled, myRegistration, onPostEventNavLockChange } = props;
+  const { program, userId, userSummary, enrolled, myRegistration, onPostEventNavLockChange } = props;
+  const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>('intro');
   const [flowStarted, setFlowStarted] = useState(() => readFlowStarted(program.id));
+  const [nativeSurveySubmitting, setNativeSurveySubmitting] = useState(false);
+  const [nativeSurveyError, setNativeSurveyError] = useState<string | null>(null);
 
-  const hasSurvey = !!program.jotformSurveyUrl?.trim();
+  const hasSurvey =
+    program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
+  const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
   const hasHonorarium = !!program.honorariumAmount && program.honorariumAmount > 0;
   const timeUnlocked = isPostEventSurveyUnlocked(program);
   const att = myRegistration?.postEventAttendanceStatus;
@@ -92,7 +105,7 @@ export default function PostEventParticipantFlow(props: {
     const req = !!myRegistration.honorariumRequestedAt;
     // Jotform submission recorded server-side → user already filled the form; drop into survey phase
     // so they can click "Complete survey" even if localStorage was cleared (new device, incognito, etc.)
-    const jotformSubmitted = !!myRegistration.postEventJotformSubmissionId;
+    const jotformSubmitted = surveySubmitted;
 
     if (hasSurvey && !ack) {
       if (flowStarted || jotformSubmitted) setPhase('survey');
@@ -169,7 +182,7 @@ export default function PostEventParticipantFlow(props: {
   const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
   const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
 
-  const jotformSubmitted = !!myRegistration?.postEventJotformSubmissionId;
+  const jotformSubmitted = surveySubmitted;
   const surveyStepLabel = hasSurvey
     ? surveyAcked
       ? 'Survey complete'
@@ -187,6 +200,37 @@ export default function PostEventParticipantFlow(props: {
   ];
   const activeStep =
     phase === 'intro' || phase === 'survey' ? 0 : phase === 'payout' ? 1 : 2;
+
+  const nativePostEventSurvey = !!program.feedbackSurveyId;
+
+  useEffect(() => {
+    if (phase !== 'survey') {
+      setNativeSurveySubmitting(false);
+    }
+  }, [phase]);
+
+  const advanceAfterSurvey = () => {
+    if (hasHonorarium) setPhase('payout');
+    else setPhase('done');
+  };
+
+  const handleCompleteNativeSurvey = () => {
+    setNativeSurveyError(null);
+    if (surveySubmitted || surveyAcked) {
+      advanceAfterSurvey();
+      return;
+    }
+    const form = document.getElementById(POST_EVENT_NATIVE_FORM_ID) as HTMLFormElement | null;
+    if (!form) {
+      advanceAfterSurvey();
+      return;
+    }
+    if (!form.reportValidity()) {
+      setNativeSurveyError('Complete all required fields before tapping Complete survey.');
+      return;
+    }
+    form.requestSubmit();
+  };
 
   return (
     <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
@@ -234,13 +278,11 @@ export default function PostEventParticipantFlow(props: {
           <p className="text-sm text-gray-600">
             {hasSurvey ? (
               <>
-                Complete the post-event survey in the next step, then use <strong>Complete survey</strong> to save your
-                progress.
+                Complete the post-event survey in the next step to save your responses.
                 {hasHonorarium ? (
                   <>
                     {' '}
-                    On the next screen, confirm your payout details and use <strong>Continue</strong> to create a{' '}
-                    <strong>pending</strong> honorarium for an administrator to review and pay.
+                    Honorarium amount and payout steps are shown there after you submit.
                   </>
                 ) : null}{' '}
                 You cannot return to a previous step after you continue.
@@ -269,18 +311,39 @@ export default function PostEventParticipantFlow(props: {
           userId={userId}
           myRegistration={myRegistration}
           hasHonorarium={hasHonorarium}
-          surveyReadyForAck={Boolean(myRegistration?.postEventJotformSubmissionId)}
+          surveyReadyForAck={surveySubmitted}
+          manualSurveyAckRequired={!nativePostEventSurvey}
+          nativeSurveyMode={nativePostEventSurvey}
+          surveyFormSubmitting={nativeSurveySubmitting}
+          surveySubmitError={nativeSurveyError}
+          onCompleteSurveyNative={handleCompleteNativeSurvey}
           betweenAckHelpAndButton={
-            myRegistration?.postEventJotformSubmissionId &&
-            !myRegistration.postEventSurveyAcknowledgedAt ? null : (
-              <div className="min-h-[400px] rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
-                <iframe
-                  title="Post-event survey"
-                  src={buildPostEventSurveyEmbedSrc(program.jotformSurveyUrl!, userId, program.id)}
-                  className="w-full h-[480px]"
-                  allow="camera; microphone"
-                />
-              </div>
+            surveySubmitted && !nativePostEventSurvey ? null : program.feedbackSurveyId ? (
+              <ProgramSurveyPanel
+                surveyId={program.feedbackSurveyId}
+                userId={userId}
+                programId={program.id}
+                authenticated
+                userSummary={userSummary}
+                hideSubmitButton={nativePostEventSurvey}
+                formId={nativePostEventSurvey ? POST_EVENT_NATIVE_FORM_ID : undefined}
+                onSubmittingChange={setNativeSurveySubmitting}
+                onSubmitError={() => {
+                  setNativeSurveySubmitting(false);
+                  setNativeSurveyError('Could not save survey. Check your connection and try again.');
+                }}
+                onSubmitted={() => {
+                  setNativeSurveySubmitting(false);
+                  setNativeSurveyError(null);
+                  queryClient.invalidateQueries({ queryKey: ['program', program.id, 'registration'] });
+                  queryClient.invalidateQueries({ queryKey: ['survey', program.feedbackSurveyId, 'my-response'] });
+                  advanceAfterSurvey();
+                }}
+              />
+            ) : (
+              <p className="text-sm text-gray-600">
+                No native post-event survey is configured for this session yet.
+              </p>
             )
           }
           onSurveyAcknowledged={({ hasHonorarium: h }) => {

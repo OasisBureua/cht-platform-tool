@@ -114,7 +114,10 @@ resource "aws_ecs_service" "worker" {
     assign_public_ip = false
   }
 
-  deployment_maximum_percent         = 100
+  # desired_count=1 + max 100% deadlocks deploys: ECS cannot start a second task
+  # (over max) nor stop the only task if min healthy rounds to 1. Allow a brief
+  # overlap so rolling replaces work for single-task (dev) and multi-task (platform).
+  deployment_maximum_percent         = 200
   deployment_minimum_healthy_percent = 50
 
   deployment_circuit_breaker {
@@ -129,6 +132,7 @@ resource "aws_ecs_service" "worker" {
     Environment = var.environment
   }
 }
+
 
 # Auto Scaling
 resource "aws_appautoscaling_target" "worker" {

@@ -20,8 +20,12 @@ export default function ProtectedRoute({ children, requireAdmin, loginPath }: Pr
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-pulse text-gray-600">Loading...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-white px-4">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900"
+          aria-hidden
+        />
+        <p className="text-sm font-medium text-gray-700">Checking your session…</p>
       </div>
     );
   }

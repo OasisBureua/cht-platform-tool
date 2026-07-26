@@ -5,17 +5,12 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Eye,
-  EyeOff,
   ExternalLink,
-  RefreshCw,
   Upload,
   XCircle,
 } from 'lucide-react';
 import ChromeContainer from './components/ChromeContainer';
-import { useToast } from './components/Toaster';
-import { useHubspotStatus, useIntegrations, useUpdateIntegrations } from './lib/hooks';
-import * as store from './lib/store';
+import { useHubspotStatus, useContentHubHealth, useIntegrations, useIntegrationsConnection, useUpdateIntegrations } from './lib/hooks';
 import { cn } from './lib/utils';
 import type { HubspotStatus, IntegrationSettings } from './lib/types';
 
@@ -34,15 +29,15 @@ const INTEGRATIONS: IntegrationMeta[] = [
   { key: 'linkedin', initials: 'LI', color: '#0077b5', name: 'LinkedIn Campaign Manager', description: 'Ad impressions, clicks, engagement, audience reach, conversions' },
   { key: 'meta', initials: 'ME', color: '#1877f2', name: 'Meta Ads Manager', description: 'Ad spend, reach, impressions, clicks, conversions, audience insights' },
   { key: 'youtube', initials: 'YT', color: '#ff0000', name: 'YouTube Analytics', description: 'Views, watch time, audience retention, demographics, traffic sources' },
-  { key: 'livestream', initials: 'LS', color: '#3da4c0', name: 'Livestream Platform', description: 'Attendance, peak viewers, engagement, replay views, Q&A activity' },
-  { key: 'survey', initials: 'SV', color: '#2e7d32', name: 'Survey Platform', description: 'Response rates, satisfaction scores, NPS, open-ended feedback themes' },
+  { key: 'livestream', initials: 'LS', color: '#3da4c0', name: 'Zoom (Livestream)', description: 'Webinar attendance, peak viewers, and replay engagement via CHT Zoom integration' },
+  { key: 'survey', initials: 'SV', color: '#2e7d32', name: 'Native Surveys', description: 'Post-event and intake survey responses collected on CHT' },
 ];
 
 const SETUP_STEPS = [
-  'Go to HubSpot → Settings → Integrations → Private Apps',
-  'Click Create a private app and name it CHM Reporting',
-  'Grant scopes: crm.objects.contacts.read, forms, marketing-email',
-  'Copy the generated token and paste it above',
+  'Add HUBSPOT_ACCESS_TOKEN to CHT platform secrets (ECS / Secrets Manager).',
+  'Token is never stored in Content Hub — CHT calls HubSpot server-to-server.',
+  'On a campaign, open Data Sources and click Sync Now to pull HubSpot metrics.',
+  'Reports use the last synced snapshot stored on the Hub campaign.',
 ];
 
 const PRIMARY_BUTTON =
@@ -52,92 +47,46 @@ const OUTLINE_BUTTON =
   'inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50';
 
 function HubspotBody({
-  settings,
   hubspotStatus,
+  note,
 }: {
-  settings: IntegrationSettings | undefined;
   hubspotStatus: HubspotStatus | undefined;
+  note?: string;
 }) {
-  const { toast } = useToast();
-  const [token, setToken] = useState('');
-  const [showToken, setShowToken] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const saveMutation = useUpdateIntegrations();
-
-  const save = () =>
-    saveMutation.mutate(
-      { hubspot: { token } },
-      {
-        onSuccess: () =>
-          toast({ title: 'HubSpot token saved', description: 'Credentials stored and masked in API responses.' }),
-        onError: (err: Error) =>
-          toast({ title: 'Failed to save token', description: err.message, variant: 'destructive' }),
-      },
-    );
-
-  const handleTest = () => {
-    setTesting(true);
-    try {
-      const status = store.getHubspotStatus();
-      if (status.connected) {
-        toast({
-          title: 'HubSpot connected',
-          description: status.accountName ? `Connected to ${status.accountName}.` : 'Connection is working.',
-        });
-      } else {
-        toast({ title: 'HubSpot not connected', description: status.error ?? 'Connection test failed.', variant: 'destructive' });
-      }
-    } catch (err) {
-      toast({ title: 'Connection test failed', description: (err as Error).message, variant: 'destructive' });
-    } finally {
-      setTesting(false);
-    }
-  };
+  const connected = Boolean(hubspotStatus?.connected);
+  const displayNote =
+    note ?? 'HUBSPOT_ACCESS_TOKEN in CHT platform secrets. Use Sync on campaign detail.';
 
   return (
     <div className="space-y-5 border-t border-border px-6 py-5">
-      <div className="grid gap-4">
-        <div>
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Private App Token
-          </label>
-          <div className="relative">
-            <input
-              className="flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 pr-9 font-mono text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder={settings?.hubspot.token || 'pat-na1-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'}
-              type={showToken ? 'text' : 'password'}
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowToken((v) => !v)}
-              aria-label={showToken ? 'Hide token' : 'Show token'}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showToken ? <EyeOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Eye className="h-3.5 w-3.5" aria-hidden="true" />}
-            </button>
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">Create under HubSpot Settings → Integrations → Private Apps.</p>
+      <div className="rounded-lg border border-border bg-muted/50 px-4 py-4">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground">Status</p>
+        <div className="flex flex-wrap items-center gap-3 text-sm">
+          {connected ? (
+            <span className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+              Connected
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 font-medium text-muted-foreground">
+              <XCircle className="h-4 w-4" aria-hidden="true" />
+              Not configured
+            </span>
+          )}
+          {hubspotStatus?.accountName && (
+            <span className="text-muted-foreground">{hubspotStatus.accountName}</span>
+          )}
+          {hubspotStatus?.portalId && (
+            <span className="text-xs text-muted-foreground">Portal {hubspotStatus.portalId}</span>
+          )}
         </div>
+        {hubspotStatus?.error && !connected && (
+          <p className="mt-2 text-xs text-accent">{hubspotStatus.error}</p>
+        )}
       </div>
-      <div className="flex items-center gap-2">
-        <button className={PRIMARY_BUTTON} onClick={save} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? 'Saving…' : 'Save'}
-        </button>
-        <button className={OUTLINE_BUTTON} onClick={handleTest} disabled={testing}>
-          <RefreshCw className={cn('h-3.5 w-3.5', testing && 'animate-spin')} aria-hidden="true" />
-          Test
-        </button>
-        <a href="https://developers.hubspot.com/docs/api/private-apps" target="_blank" rel="noreferrer" className="ml-auto">
-          <span className={cn(OUTLINE_BUTTON, 'px-3 text-xs')}>
-            <ExternalLink className="h-3 w-3" aria-hidden="true" />
-            HubSpot Private Apps docs
-          </span>
-        </a>
-      </div>
+      <p className="text-sm text-muted-foreground">{displayNote}</p>
       <div className="rounded-lg bg-muted px-4 py-4">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground">Setup steps</p>
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-foreground">Setup</p>
         <ol className="space-y-1.5">
           {SETUP_STEPS.map((step, i) => (
             <li key={step} className="flex items-start gap-2 text-xs text-muted-foreground">
@@ -149,6 +98,14 @@ function HubspotBody({
           ))}
         </ol>
       </div>
+      <div className="flex items-center gap-2">
+        <a href="https://developers.hubspot.com/docs/api/private-apps" target="_blank" rel="noreferrer">
+          <span className={cn(OUTLINE_BUTTON, 'px-3 text-xs')}>
+            <ExternalLink className="h-3 w-3" aria-hidden="true" />
+            HubSpot Private Apps docs
+          </span>
+        </a>
+      </div>
       <div className="flex items-start gap-2 rounded-lg border border-accent/25 bg-accent/[0.08] px-3 py-2.5 text-xs text-muted-foreground">
         <Upload className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-accent" aria-hidden="true" />
         <span>
@@ -156,9 +113,6 @@ function HubspotBody({
           tab.
         </span>
       </div>
-      {hubspotStatus?.error && !hubspotStatus.connected && (
-        <p className="text-[11px] text-muted-foreground">{hubspotStatus.error}</p>
-      )}
     </div>
   );
 }
@@ -215,12 +169,12 @@ export default function Integrations() {
   const [openKey, setOpenKey] = useState<IntegrationKey | null>(null);
 
   const { data: settings } = useIntegrations();
+  const { data: connections } = useIntegrationsConnection();
   const { data: hubspotStatus } = useHubspotStatus();
+  const { data: health } = useContentHubHealth();
 
-  const isConnected = (key: IntegrationKey): boolean => {
-    if (key === 'hubspot') return Boolean(hubspotStatus?.connected || settings?.hubspot.enabled);
-    return Boolean(settings?.[key]?.enabled);
-  };
+  const isConnected = (key: IntegrationKey): boolean =>
+    Boolean(connections?.[key]?.connected);
 
   const connectedCount = INTEGRATIONS.filter((i) => isConnected(i.key)).length;
 
@@ -237,9 +191,19 @@ export default function Integrations() {
               <span className="text-sm text-muted-foreground">{connectedCount} of 6 connected</span>
             </div>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Connect data sources so reports can pull live metrics automatically. Credentials are stored in your
-              database and masked in API responses.
+              Connection status per data source. HubSpot, Zoom, and native surveys are managed on CHT;
+              LinkedIn, Meta, and YouTube are managed on Content Hub.
             </p>
+            {health?.contentHub.reachable && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Content Hub admin API is reachable.
+              </p>
+            )}
+            {health && health.contentHub.configured && !health.contentHub.reachable && (
+              <p className="mt-2 text-xs text-accent">
+                {health.contentHub.error ?? 'Content Hub configured but not reachable.'}
+              </p>
+            )}
           </div>
         </div>
         <div className="space-y-3">
@@ -285,7 +249,10 @@ export default function Integrations() {
                 </button>
                 {open &&
                   (integration.key === 'hubspot' ? (
-                    <HubspotBody settings={settings} hubspotStatus={hubspotStatus} />
+                    <HubspotBody
+                      hubspotStatus={hubspotStatus}
+                      note={connections?.hubspot?.note}
+                    />
                   ) : (
                     <SimpleBody
                       key={`${integration.key}-${String(settings?.[integration.key]?.enabled)}`}

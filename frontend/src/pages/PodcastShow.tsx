@@ -1,16 +1,21 @@
-import { useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { PODCAST_SHOWS } from '../data/podcastsCatalog';
 import { SeriesSection } from '../components/podcasts/PodcastSeriesSection';
+import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
 export default function PodcastShow() {
   const { showId } = useParams<{ showId: string }>();
-  const [sortNewestFirst, setSortNewestFirst] = useState(true);
+  const [searchParams] = useSearchParams();
+  const legacyVideoId = searchParams.get('v');
   const show = PODCAST_SHOWS.find((s) => s.id === showId);
 
   if (!showId || !show) {
     return <Navigate to="/app/podcasts" replace />;
+  }
+
+  if (legacyVideoId) {
+    return <Navigate to={podcastEpisodeWatchPath(showId, legacyVideoId)} replace />;
   }
 
   return (
@@ -23,13 +28,12 @@ export default function PodcastShow() {
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
           Back to podcasts
         </Link>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          {show.updateNote}
+        </p>
       </div>
 
-      <SeriesSection
-        show={show}
-        sortNewestFirst={sortNewestFirst}
-        onToggleSort={() => setSortNewestFirst((v) => !v)}
-      />
+      <SeriesSection show={show} />
     </div>
   );
 }

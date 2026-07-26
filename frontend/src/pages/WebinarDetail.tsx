@@ -10,10 +10,10 @@ import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
   Award,
-  DollarSign,
   ChevronLeft,
   CheckCircle2,
   Circle,
+  DollarSign,
   ExternalLink,
   Video,
   Calendar,
@@ -120,13 +120,19 @@ export default function WebinarDetail() {
       | undefined,
   ): number | false => {
     if (registration?.status === 'PENDING') return 4000;
-    const enrolledHere = id ? enrolledProgramIds.has(id) : false;
+    const enrolledHere =
+      (id ? enrolledProgramIds.has(id) : false) ||
+      registration?.status === 'APPROVED';
+    // Enrollment row may lag briefly after admin approval — keep polling until both agree.
+    if (registration?.status === 'APPROVED' && id && !enrolledProgramIds.has(id)) {
+      return 4000;
+    }
     if (
       enrolledHere &&
-      program?.jotformSurveyUrl?.trim() &&
+      (program?.hasPostEventSurvey || program?.jotformSurveyUrl?.trim()) &&
       registration?.status === 'APPROVED' &&
       !registration.postEventSurveyAcknowledgedAt &&
-      !registration.postEventJotformSubmissionId &&
+      !registration.postEventSurveySubmitted &&
       (registration.postEventAttendanceStatus === 'VERIFIED' ||
         registration.postEventAttendanceStatus === 'NOT_REQUIRED')
     ) {
@@ -163,6 +169,16 @@ export default function WebinarDetail() {
     enabled: !!userId && !isZoomWebinar,
     staleTime: 30_000,
   });
+
+  // After admin approval, registration flips to APPROVED before enrollments list refreshes.
+  // Keep enrollments in sync so the requirements "dots" leave "pending" promptly.
+  // Must stay above early returns (Rules of Hooks) — otherwise this page white-screens
+  // when program data finishes loading / when navigating to Register.
+  useEffect(() => {
+    if (myRegistration?.status === 'APPROVED' && userId) {
+      void queryClient.invalidateQueries({ queryKey: ['enrollments', userId] });
+    }
+  }, [myRegistration?.status, userId, queryClient]);
 
   if (isZoomWebinar) {
     if (zoomLoading) return <LoadingSpinner />;
@@ -253,7 +269,8 @@ export default function WebinarDetail() {
     );
   }
 
-  const enrolled = enrolledProgramIds.has(program.id);
+  const enrolled =
+    enrolledProgramIds.has(program.id) || myRegistration?.status === 'APPROVED';
 
   const myEnrollment = enrollments?.find((e) => e.programId === program.id);
   const videoCount = program.videos?.length ?? 0;
@@ -267,7 +284,8 @@ export default function WebinarDetail() {
     (a) => a.programId === program.id && a.kind === 'WEBINAR_POST_EVENT_SURVEY',
   );
 
-  const hasPostEventSurvey = !!program.jotformSurveyUrl?.trim();
+  const hasPostEventSurvey =
+    program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
   const wantsPostEventExtras =
     hasPostEventSurvey || !!(program.honorariumAmount && program.honorariumAmount > 0);
@@ -278,7 +296,7 @@ export default function WebinarDetail() {
     enrolled &&
     hasPostEventSurvey &&
     !surveyDone &&
-    !!myRegistration?.postEventJotformSubmissionId &&
+    !!myRegistration?.postEventSurveySubmitted &&
     !myRegistration?.postEventSurveyAcknowledgedAt;
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
@@ -291,7 +309,8 @@ export default function WebinarDetail() {
     (program.zoomSessionType === 'WEBINAR' ||
       (program.zoomSessionType === 'MEETING' &&
         (slots.length > 0 ||
-          !!program.jotformIntakeFormUrl?.trim() ||
+          program.hasIntakeSurvey ||
+          !!program.intakeSurveyId ||
           !!program.registrationRequiresApproval)));
 
   const ctaLabel = enrolled
@@ -325,7 +344,7 @@ export default function WebinarDetail() {
 
   const pendingRegistrationMessage =
     myRegistration?.status === 'PENDING'
-      ? myRegistration.intakeJotformSubmissionId
+      ? myRegistration.intakeSubmissionId
         ? 'Your registration survey was received. Waiting for an administrator to approve you before you can join the webinar in the app.'
         : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'
       : null;
@@ -656,6 +675,11 @@ export default function WebinarDetail() {
         <PostEventParticipantFlow
           program={program}
           userId={userId}
+          userSummary={{
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+            email: user?.email,
+          }}
           enrolled={enrolled}
           myRegistration={myRegistration}
           onPostEventNavLockChange={setPostEventNavLock}
@@ -679,7 +703,7 @@ export default function WebinarDetail() {
             <p className="text-xs font-semibold text-gray-900 truncate">{program.title}</p>
             <p className="text-xs text-gray-600 truncate">
               {program.honorariumAmount ? `${formatMoney(program.honorariumAmount)} honorarium` : 'Honorarium available'} •{' '}
-              {program.creditAmount} CME
+              {program.creditAmount > 0 ? `${program.creditAmount} CME` : 'Live session'}
             </p>
           </div>
 

@@ -10,8 +10,8 @@ import { AuthUser } from '../../auth/auth.service';
 import { ZoomService } from './zoom.service';
 import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import { programCoverImageUrl } from '../../utils/session-hero-url';
+import { SurveyType } from '@prisma/client';
 
 export interface OfficeHoursMeetingSdkAuthDto {
   signature: string;
@@ -36,7 +36,11 @@ export interface WebinarItem {
   hostDisplayName?: string;
   hostBio?: string;
   speakers?: string[];
+  /** @deprecated Intake is native-only; kept optional for older clients. */
   jotformIntakeFormUrl?: string;
+  /** Native INTAKE survey id when configured on the program. */
+  intakeSurveyId?: string;
+  hasIntakeSurvey?: boolean;
   registrationRequiresApproval?: boolean;
   /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
   honorariumAmount?: number;
@@ -68,13 +72,11 @@ export class WebinarsService {
     return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
   }
 
-  private programImageUrl(
-    program: {
-      sessionHeroImageUrl?: string | null;
-      thumbnailUrl?: string | null;
-      videos?: Array<{ platform: string; videoId: string }>;
-    },
-  ): string | undefined {
+  private programImageUrl(program: {
+    sessionHeroImageUrl?: string | null;
+    thumbnailUrl?: string | null;
+    videos?: Array<{ platform: string; videoId: string }>;
+  }): string | undefined {
     const firstVideo = program.videos?.[0];
     const youtubeFallback =
       firstVideo?.platform === 'YOUTUBE'
@@ -85,6 +87,23 @@ export class WebinarsService {
       this.sessionAssetsPublicBase(),
       youtubeFallback,
     );
+  }
+
+  /** Latest native INTAKE survey id per program (registration uses native surveys only). */
+  private async intakeSurveyIdsByProgramId(
+    programIds: string[],
+  ): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+    if (programIds.length === 0) return map;
+    const rows = await this.prisma.survey.findMany({
+      where: { programId: { in: programIds }, type: SurveyType.INTAKE },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, programId: true },
+    });
+    for (const row of rows) {
+      if (!map.has(row.programId)) map.set(row.programId, row.id);
+    }
+    return map;
   }
 
   async listWebinars(): Promise<WebinarItem[]> {
@@ -105,6 +124,10 @@ export class WebinarsService {
       take: 50,
     });
 
+    const intakeByProgramId = await this.intakeSurveyIdsByProgramId(
+      programs.map((p) => p.id),
+    );
+
     // Track which Zoom meeting IDs are already covered by a DB program
     const coveredZoomIds = new Set<string>();
 
@@ -112,9 +135,7 @@ export class WebinarsService {
       if (p.zoomMeetingId) coveredZoomIds.add(String(p.zoomMeetingId));
 
       const imageUrl = this.programImageUrl(p);
-      const defaultIntake =
-        this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
-        undefined;
+      const intakeSurveyId = intakeByProgramId.get(p.id);
       items.push({
         id: p.id,
         title: p.title,
@@ -128,12 +149,8 @@ export class WebinarsService {
         hostDisplayName: p.hostDisplayName || undefined,
         hostBio: p.hostBio || undefined,
         speakers: p.speakers?.length ? p.speakers : undefined,
-        jotformIntakeFormUrl:
-          effectiveWebinarIntakeFormUrl(
-            p.zoomSessionType,
-            p.jotformIntakeFormUrl,
-            defaultIntake,
-          ) || undefined,
+        intakeSurveyId,
+        hasIntakeSurvey: !!intakeSurveyId,
         registrationRequiresApproval: p.registrationRequiresApproval,
         honorariumAmount: p.honorariumAmount
           ? p.honorariumAmount / 100
@@ -195,9 +212,14 @@ export class WebinarsService {
       take: 50,
     });
 
+    const intakeByProgramId = await this.intakeSurveyIdsByProgramId(
+      programs.map((p) => p.id),
+    );
+
     const items: WebinarItem[] = [];
     for (const p of programs) {
       const imageUrl = this.programImageUrl(p);
+      const intakeSurveyId = intakeByProgramId.get(p.id);
 
       items.push({
         id: p.id,
@@ -212,7 +234,8 @@ export class WebinarsService {
         hostDisplayName: p.hostDisplayName || undefined,
         hostBio: p.hostBio || undefined,
         speakers: p.speakers?.length ? p.speakers : undefined,
-        jotformIntakeFormUrl: p.jotformIntakeFormUrl || undefined,
+        intakeSurveyId,
+        hasIntakeSurvey: !!intakeSurveyId,
         registrationRequiresApproval: p.registrationRequiresApproval,
         honorariumAmount: p.honorariumAmount
           ? p.honorariumAmount / 100
@@ -246,10 +269,9 @@ export class WebinarsService {
     if (!program) return null;
 
     const imageUrl = this.programImageUrl(program);
+    const intakeByProgramId = await this.intakeSurveyIdsByProgramId([program.id]);
+    const intakeSurveyId = intakeByProgramId.get(program.id);
 
-    const defaultIntake =
-      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
-      undefined;
     return {
       id: program.id,
       title: program.title,
@@ -263,12 +285,8 @@ export class WebinarsService {
       hostDisplayName: program.hostDisplayName || undefined,
       hostBio: program.hostBio || undefined,
       speakers: program.speakers?.length ? program.speakers : undefined,
-      jotformIntakeFormUrl:
-        effectiveWebinarIntakeFormUrl(
-          program.zoomSessionType,
-          program.jotformIntakeFormUrl,
-          defaultIntake,
-        ) || undefined,
+      intakeSurveyId,
+      hasIntakeSurvey: !!intakeSurveyId,
       registrationRequiresApproval: program.registrationRequiresApproval,
       honorariumAmount: program.honorariumAmount
         ? program.honorariumAmount / 100
@@ -284,6 +302,8 @@ export class WebinarsService {
     if (!program) return null;
 
     const imageUrl = this.programImageUrl(program);
+    const intakeByProgramId = await this.intakeSurveyIdsByProgramId([program.id]);
+    const intakeSurveyId = intakeByProgramId.get(program.id);
 
     return {
       id: program.id,
@@ -298,7 +318,8 @@ export class WebinarsService {
       hostDisplayName: program.hostDisplayName || undefined,
       hostBio: program.hostBio || undefined,
       speakers: program.speakers?.length ? program.speakers : undefined,
-      jotformIntakeFormUrl: program.jotformIntakeFormUrl || undefined,
+      intakeSurveyId,
+      hasIntakeSurvey: !!intakeSurveyId,
       registrationRequiresApproval: program.registrationRequiresApproval,
       honorariumAmount: program.honorariumAmount
         ? program.honorariumAmount / 100

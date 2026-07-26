@@ -1,45 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { kolNetworkApi, type PublicKol } from '../api/kol-network';
-import {
-  kolStaticEnrichment,
-  type DolEntry,
-  type DolRegion,
-  type KolIntel,
-} from '../data/dol-network';
+import { kolNetworkApi } from '../api/kol-network';
+import { type DolEntry, type DolRegion } from '../data/dol-network';
 import { US_STATES, usStateLabel } from '../data/us-states';
-import { deriveKolUsState, kolInstitutionLabel } from '../utils/kol-state';
+import { mergePublicKolToEntry } from '../utils/kol-directory-merge';
 
-/**
- * Hydrate API roster with static intel (NPI, AI brief, social URLs, etc.).
- * MediaHub is the source of truth for *who* is in the directory; the static
- * file is mock-only enrichment until MediaHub emits the same fields.
- */
-function mergeApiWithStatic(apiKol: PublicKol): DolEntry {
-  const stat = kolStaticEnrichment.find((e) => e.id === apiKol.slug);
-  const role = stat?.role ?? apiKol.title ?? '';
-  const merged: DolEntry = {
-    id: apiKol.slug,
-    name: apiKol.name,
-    role,
-    bio: apiKol.bio || stat?.bio || '',
-    education: stat?.education ?? '',
-    isNew: apiKol.is_new || stat?.isNew,
-    addedAt: stat?.addedAt,
-    photoUrl: apiKol.photo_url ?? undefined,
-    shootCount: apiKol.shoot_count,
-    intel: stat?.intel,
-    institution: kolInstitutionLabel(apiKol, { role, education: stat?.education ?? '', intel: stat?.intel }),
-    stateCode: undefined,
-  };
-  merged.stateCode = deriveKolUsState(apiKol, merged) ?? undefined;
-  return merged;
-}
+export type KolListFilters = {
+  /** Server-side search (name, institution, specialty, bio). */
+  q?: string;
+  /** Exact institution match — use values from API `institutions` facet. */
+  institution?: string;
+  new_only?: boolean;
+  /** `public` = marketing site; `app` = in-app CHM Docs */
+  surface?: 'public' | 'app';
+};
 
-/** Group KOLs by US state (50 states + DC); unknown state last. */
-function groupByUsState(items: PublicKol[]): DolRegion[] {
+/** Group merged entries by US state (50 states + DC); unknown state last. */
+function groupByUsState(entries: DolEntry[]): DolRegion[] {
   const buckets = new Map<string, DolEntry[]>();
-  for (const item of items) {
-    const entry = mergeApiWithStatic(item);
+  for (const entry of entries) {
     const code = entry.stateCode ?? 'UNKNOWN';
     if (!buckets.has(code)) buckets.set(code, []);
     buckets.get(code)!.push(entry);
@@ -65,28 +43,51 @@ function groupByUsState(items: PublicKol[]): DolRegion[] {
 
 export type KolDirectory = {
   regions: DolRegion[];
+  /** Total from API after server filters (before client state filter). */
   total: number;
+  /** Institution facet from API for the current filter set. */
+  institutions: string[];
   loadState: 'idle' | 'loading' | 'error' | 'ready';
 };
 
-export function useKolDirectory(): KolDirectory {
+export function useKolDirectory(filters: KolListFilters = {}): KolDirectory {
+  const normalized: KolListFilters = {
+    q: filters.q?.trim() || undefined,
+    institution: filters.institution?.trim() || undefined,
+    new_only: filters.new_only || undefined,
+    surface: filters.surface,
+  };
+
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['kol-network', 'list'],
-    queryFn: () => kolNetworkApi.list({ limit: 200 }),
+    queryKey: ['kol-network', 'list', normalized],
+    queryFn: () =>
+      kolNetworkApi.list({
+        q: normalized.q,
+        institution: normalized.institution,
+        new_only: normalized.new_only,
+        surface: normalized.surface,
+        limit: 200,
+      }),
     staleTime: 60_000,
   });
 
-  if (isLoading) return { regions: [], total: 0, loadState: 'loading' };
-  if (isError || !data) return { regions: [], total: 0, loadState: 'error' };
+  if (isLoading) {
+    return { regions: [], total: 0, institutions: [], loadState: 'loading' };
+  }
+  if (isError || !data) {
+    return { regions: [], total: 0, institutions: [], loadState: 'error' };
+  }
+
+  const entries = data.items.map(mergePublicKolToEntry);
 
   return {
-    regions: groupByUsState(data.items),
+    regions: groupByUsState(entries),
     total: data.total,
+    institutions: data.institutions ?? [],
     loadState: 'ready',
   };
 }
 
-/** Find one KOL by slug, merged with static intel. */
 export function findKolInDirectory(
   directory: KolDirectory,
   slug: string,
@@ -98,7 +99,6 @@ export function findKolInDirectory(
   return null;
 }
 
-/** Resolve a state section by 2-letter code (e.g. NY). */
 export function getRegionFromDirectory(
   directory: KolDirectory,
   stateCode: string,
@@ -107,5 +107,5 @@ export function getRegionFromDirectory(
   return directory.regions.find((r) => r.id === code) ?? null;
 }
 
-// Re-export types so callers don't need to import from two places
-export type { DolEntry, DolRegion, KolIntel };
+export type { DolEntry, DolRegion };
+export type { KolIntel } from '../data/dol-network';

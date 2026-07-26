@@ -12,7 +12,7 @@ Recovery procedures for the CHT Platform when infrastructure or data must be res
 
 ## Recovery objectives
 
-| Metric | Platform (prod) | Staging | Notes |
+| Metric | Platform (prod) | Dev | Notes |
 |--------|-----------------|---------|-------|
 | **RPO** (max data loss) | **24 hours** | **24 hours** | Automated daily RDS snapshots; finer RPO requires increasing backup retention / PITR window |
 | **RTO** (max downtime) | **4 hours** | **8 hours** | Single-region, no hot standby; depends on engineer availability |
@@ -35,7 +35,7 @@ These targets are **goals** for planning and audits. Update after architecture c
 | **Secrets** | AWS Secrets Manager | Rotated via Terraform + GitHub Environment secrets |
 | **Audit logs** | CloudTrail, VPC flow, ECS logs | 365-day retention (platform/staging) |
 
-**Staging:** `cht-platform-staging-db` with **1-day** backup retention (`staging.tfvars`).
+**Staging:** `cht-platform-dev-db` with **1-day** backup retention (`dev.tfvars`).
 
 **Point-in-time recovery (PITR):** Available while `backup_retention_period > 0`. Restores to any second within the retention window (platform: last 7 days).
 
@@ -59,12 +59,12 @@ These targets are **goals** for planning and audits. Update after architecture c
 
 | Resource | Name |
 |----------|------|
-| Domain | `staging.testapp.communityhealth.media` |
-| ECS cluster | `cht-platform-staging-cluster` |
-| Backend service | `cht-platform-staging-backend` |
-| Worker service | `cht-platform-staging-worker` |
-| RDS instance | `cht-platform-staging-db` |
-| Health check | `https://staging.testapp.communityhealth.media/health/ready` |
+| Domain | `devapp.communityhealth.media` |
+| ECS cluster | `cht-dev-cluster` |
+| Backend service | `cht-dev-backend` |
+| Worker service | `cht-dev-worker` |
+| RDS instance | `cht-staging-db` |
+| Health check | `https://devapp.communityhealth.media/health/ready` |
 
 ---
 
@@ -77,7 +77,7 @@ These targets are **goals** for planning and audits. Update after architecture c
 ### Option A — GitHub Actions rollback (preferred)
 
 1. GitHub → **Actions** → **Rollback Deployment** → Run workflow.
-2. **Environment:** `platform` or `staging`.
+2. **Environment:** `platform` or `dev`.
 3. **Image tag:** Last known-good tag (e.g. `v2.1.6` or `platform-abc1234-1234567890` from ECR/Actions history).
 4. Workflow updates ECS task definitions and waits for stability.
 5. Verify:
@@ -228,7 +228,7 @@ Follow [incident-response.md](./incident-response.md#aws-lockdown-checklist), th
 ```bash
 # Health
 curl -sf https://testapp.communityhealth.media/health/ready | jq .
-curl -sf https://staging.testapp.communityhealth.media/health/ready | jq .
+curl -sf https://devapp.communityhealth.media/health/ready | jq .
 
 # ECS service status
 aws ecs describe-services \

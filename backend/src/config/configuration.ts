@@ -4,6 +4,19 @@ export default () => ({
   port: parseInt(process.env.PORT || '3000', 10),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 
+  app: {
+    name: process.env.APP_NAME?.trim() || 'cht-platform-backend',
+    environment:
+      process.env.CHT_ENVIRONMENT?.trim() ||
+      process.env.NODE_ENV?.trim() ||
+      'development',
+    imageTag:
+      process.env.IMAGE_TAG?.trim() ||
+      process.env.APP_VERSION?.trim() ||
+      'local',
+    containerImage: process.env.CONTAINER_IMAGE?.trim() || '',
+  },
+
   // Database
   database: {
     url: process.env.DATABASE_URL || '',
@@ -21,14 +34,38 @@ export default () => ({
     jwtSecret: process.env.GOTRUE_JWT_SECRET,
   },
 
+  // Amazon Cognito (replaces GoTrue when COGNITO_USER_POOL_ID is set)
+  cognito: {
+    userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
+    clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
+    region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
+    hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
+    domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
+    jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
+  },
+
   // Supabase Auth (for backend login validation)
   supabase: {
     url: process.env.SUPABASE_URL,
     anonKey: process.env.SUPABASE_ANON_KEY,
+    /**
+     * When true, block MediaHub/GoTrue-backed user creation flows (signup + oauth login).
+     * Existing email/password login can remain temporarily available for migrated users.
+     */
+    authDecommissioned:
+      process.env.SUPABASE_AUTH_DECOMMISSIONED === undefined
+        ? true
+        : process.env.SUPABASE_AUTH_DECOMMISSIONED === 'true' ||
+          process.env.SUPABASE_AUTH_DECOMMISSIONED === '1',
   },
 
   // Session TTL in seconds (default 30 min). Sessions stored in Postgres.
   sessionTtlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '1800', 10),
+
+  recaptcha: {
+    secretKey: process.env.RECAPTCHA_SECRET_KEY?.trim() || '',
+    minScore: parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5'),
+  },
 
   // Bill.com
   bill: {
@@ -93,6 +130,13 @@ export default () => ({
       process.env.SURVEY_BONUS_AMOUNT_CENTS || '0',
       10,
     ),
+    useNativeForms:
+      process.env.SURVEYS_USE_NATIVE_FORMS?.trim().toLowerCase() !== 'false' &&
+      process.env.SURVEYS_USE_LEGACY_JOTFORM_FORMS?.trim().toLowerCase() !==
+        'true',
+    useLegacyJotformForms:
+      process.env.SURVEYS_USE_LEGACY_JOTFORM_FORMS?.trim().toLowerCase() ===
+      'true',
   },
 
   // MediaHub Public API (catalog - clips, tags, doctors, search)
@@ -101,6 +145,19 @@ export default () => ({
       process.env.MEDIAHUB_BASE_URL ||
       'https://mediahub.communityhealth.media/api/public',
     apiKey: process.env.MEDIAHUB_API_KEY,
+  },
+
+  // Content Hub — KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
+  contenthub: {
+    baseUrl: process.env.CONTENTHUB_BASE_URL || '',
+    adminBaseUrl: (() => {
+      const explicit = process.env.CONTENTHUB_ADMIN_BASE_URL?.trim();
+      if (explicit) return explicit.replace(/\/$/, '');
+      const pub = (process.env.CONTENTHUB_BASE_URL || '').replace(/\/$/, '');
+      if (!pub) return '';
+      return pub.replace(/\/api\/public\/?$/, '/api/admin');
+    })(),
+    apiKey: process.env.CONTENTHUB_API_KEY,
   },
 
   // YouTube Data API v3 (for catalog playlists - fallback when MediaHub not configured)
@@ -114,26 +171,36 @@ export default () => ({
         const fs = require('fs');
         const path = require('path');
         const dataDir = path.resolve(process.cwd(), '..', 'data');
-        const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
-          ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
-          : [
-              path.join(dataDir, 'youtube-playlists.csv'),
-              path.join(dataDir, 'YT Playlist IDs - Sheet1.csv'),
-            ].find((p) => fs.existsSync(p)) ||
-            path.join(dataDir, 'youtube-playlists.csv');
-        if (fs.existsSync(csvPath)) {
-          const content = fs.readFileSync(csvPath, 'utf8');
-          const lines = content.split(/\r?\n/).filter((l) => l.trim());
-          const start = lines[0]?.toLowerCase().includes('playlist') ? 1 : 0;
-          const idRegex = /PL[\w-]{20,}/g;
-          for (let i = start; i < lines.length; i++) {
-            const line = lines[i];
-            if (line.startsWith('#')) continue;
-            const matches = line.match(idRegex);
-            if (matches) ids.push(...matches);
-          }
-          ids = [...new Set(ids)];
+        const txtPath = path.join(dataDir, 'youtube-playlist-ids.txt');
+        if (fs.existsSync(txtPath)) {
+          ids = fs
+            .readFileSync(txtPath, 'utf8')
+            .split(/\r?\n/)
+            .map((l: string) => l.trim())
+            .filter((l: string) => l && !l.startsWith('#') && l.startsWith('PL'));
         }
+        if (ids.length === 0) {
+          const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
+            ? path.resolve(process.cwd(), process.env.YOUTUBE_PLAYLIST_CSV)
+            : [
+                path.join(dataDir, 'youtube-playlists.csv'),
+                path.join(dataDir, 'YT Playlist IDs - Sheet1.csv'),
+              ].find((p) => fs.existsSync(p)) ||
+              path.join(dataDir, 'youtube-playlists.csv');
+          if (fs.existsSync(csvPath)) {
+            const content = fs.readFileSync(csvPath, 'utf8');
+            const lines = content.split(/\r?\n/).filter((l: string) => l.trim());
+            const start = lines[0]?.toLowerCase().includes('playlist') ? 1 : 0;
+            const idRegex = /PL[\w-]{20,}/g;
+            for (let i = start; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.startsWith('#')) continue;
+              const matches = line.match(idRegex);
+              if (matches) ids.push(...matches);
+            }
+          }
+        }
+        ids = [...new Set(ids)];
       } catch {
         /* ignore */
       }
@@ -211,5 +278,30 @@ export default () => ({
     audienceId: process.env.MAILCHIMP_AUDIENCE_ID,
     serverPrefix:
       process.env.MAILCHIMP_SERVER || process.env.MAILCHIMP_SERVER_PREFIX,
+  },
+
+  catalog: {
+    useContentHub:
+      process.env.CATALOG_USE_CONTENTHUB?.trim().toLowerCase() === 'true' ||
+      !!process.env.CONTENTHUB_BASE_URL?.trim(),
+    wordpressOnly:
+      process.env.CATALOG_WORDPRESS_ONLY?.trim().toLowerCase() !== 'false',
+    clipsCacheTtlSeconds: parseInt(
+      process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '1800',
+      10,
+    ), // 30 minutes — public clips / catalog
+    wordpressCacheTtlSeconds: parseInt(
+      process.env.CATALOG_WORDPRESS_CACHE_TTL_SECONDS || '300',
+      10,
+    ), // 5 minutes — admin Content + WP editorial
+  },
+
+  redis: {
+    url: process.env.REDIS_URL?.trim() || '',
+    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '1800', 10), // 30 minutes
+  },
+
+  internalCache: {
+    secret: process.env.INTERNAL_CACHE_SECRET?.trim() || '',
   },
 });

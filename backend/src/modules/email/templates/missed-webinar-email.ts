@@ -1,9 +1,4 @@
-import {
-  E,
-  emailWrap,
-  emailButton,
-  emailSupportLine,
-} from './email-layout';
+import { E, emailWrap, emailButton, emailSupportLine } from './email-layout';
 
 export type MissedWebinarTemplateInput = {
   firstName: string;
@@ -25,14 +20,17 @@ export function buildMissedWebinarEmail(
   p: MissedWebinarTemplateInput,
   escape: (s: string) => string,
 ): { subject: string; text: string; html: string } {
-  const first   = escape(p.firstName.trim() || 'there');
-  const title   = escape(p.programTitle);
+  const first = escape(p.firstName.trim() || 'there');
+  const title = escape(p.programTitle);
   const support = escape(p.supportEmail);
   const sponsor = escape(p.sponsorName);
 
   const when = p.startDate
     ? new Intl.DateTimeFormat('en-US', {
-        weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
         timeZone: 'America/New_York',
       }).format(p.startDate)
     : null;
@@ -75,7 +73,9 @@ export function buildMissedWebinarEmail(
     <p style="margin:0 0 6px;color:${E.BODY_TEXT};font-size:17px">Hi <strong>${first}</strong>,</p>
     <p style="margin:0 0 16px;color:${E.MUTED};font-size:15px;line-height:1.6">
       We noticed you were registered for <strong style="color:${E.BODY_TEXT}">${title}</strong>${
-        when ? ` on <strong style="color:${E.BODY_TEXT}">${escape(when)}</strong>` : ''
+        when
+          ? ` on <strong style="color:${E.BODY_TEXT}">${escape(when)}</strong>`
+          : ''
       } but weren&apos;t able to make it.
     </p>
 
@@ -93,10 +93,17 @@ export function buildMissedWebinarEmail(
     ${emailSupportLine(support)}
   `;
 
-  const html = emailWrap({ sponsorName: sponsor, subtitle: 'We Missed You', body });
+  const html = emailWrap({
+    sponsorName: sponsor,
+    subtitle: 'We Missed You',
+    body,
+  });
   return { subject, text, html };
 }
 
 function sanitizePlainDescription(s: string): string {
-  return s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

@@ -48,23 +48,25 @@ export class OutboundSyncService {
     const npi = (input.npiNumber || '').replace(/\D/g, '');
     const hasValidNpi = npi.length === 10;
 
-    const hubspotPromise = this.hubspot
-      .createOrUpdateContact({
-        email,
-        firstname: input.firstName,
-        lastname: input.lastName,
-        jobtitle: input.specialty ?? undefined,
-        company: input.institution ?? undefined,
-        city: input.city ?? undefined,
-        state: input.state ?? undefined,
-        zip: input.zipCode ?? undefined,
-        npi_number: hasValidNpi ? npi : undefined,
-      })
-      .then(() => true)
-      .catch((err) => {
-        this.logger.error(`[OutboundSync] hubspot error for ${email}:`, err);
-        return false;
-      });
+    const hubspotPromise = this.hubspot.isConfigured()
+      ? this.hubspot
+          .createOrUpdateContact({
+            email,
+            firstname: input.firstName,
+            lastname: input.lastName,
+            jobtitle: input.specialty ?? undefined,
+            company: input.institution ?? undefined,
+            city: input.city ?? undefined,
+            state: input.state ?? undefined,
+            zip: input.zipCode ?? undefined,
+            npi_number: hasValidNpi ? npi : undefined,
+          })
+          .then(() => true)
+          .catch((err) => {
+            this.logger.error(`[OutboundSync] hubspot error for ${email}:`, err);
+            return false;
+          })
+      : Promise.resolve(false);
 
     const mailchimpPromise = this.mailchimp.upsertMember({
       email,

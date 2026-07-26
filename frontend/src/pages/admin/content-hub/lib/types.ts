@@ -34,6 +34,9 @@ export interface Campaign {
   createdAt: string;
   updatedAt: string;
   aiInsights?: string | null;
+  surveySourceId?: string | null;
+  surveySourceProgramId?: string | null;
+  surveySourceLabel?: string | null;
 }
 
 export interface Template {
@@ -51,6 +54,46 @@ export interface HubspotStatus {
   portalId: string | null;
   error?: string;
 }
+
+export type PlatformSnapshotStatus = 'missing' | 'syncing' | 'available' | 'error';
+
+export interface PlatformSnapshot {
+  platform: Platform;
+  status: PlatformSnapshotStatus;
+  syncedAt: string | null;
+  fetchDate?: string | null;
+  nextSyncAt?: string | null;
+  rowCount?: number | null;
+  filename?: string | null;
+  error?: string | null;
+}
+
+export interface PlatformDataList {
+  items: PlatformSnapshot[];
+}
+
+export interface ContentHubHealth {
+  status: string;
+  contentHub: {
+    configured: boolean;
+    reachable: boolean;
+    error?: string;
+  };
+}
+
+export interface IntegrationConnectionStatus {
+  managedBy?: 'cht' | 'contenthub';
+  connected: boolean;
+  note?: string;
+  error?: string;
+  accountName?: string | null;
+  portalId?: string | null;
+  enabled?: boolean;
+}
+
+export type IntegrationsConnectionMap = Partial<
+  Record<keyof IntegrationSettings, IntegrationConnectionStatus>
+>;
 
 export interface IntegrationSettings {
   hubspot: { token: string; enabled: boolean; accountName: string };
@@ -205,4 +248,10 @@ export interface StoredCsvUpload {
   filename: string;
   rows: Array<Record<string, string>>;
   uploadedAt: string;
+  metadata?: {
+    source: 'cht-feedback-survey';
+    surveyId: string;
+    programId: string | null;
+    analytics: unknown;
+  };
 }

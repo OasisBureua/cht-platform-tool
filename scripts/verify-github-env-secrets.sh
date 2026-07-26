@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Fail fast when required GitHub Environment secrets are missing/empty.
-# Usage: verify-github-env-secrets.sh STAGING|PRODUCTION
+# Usage: verify-github-env-secrets.sh [development|staging|platform|production]
 set -euo pipefail
 
-ENV_LABEL="${1:-staging}"
+ENV_LABEL="${1:-development}"
 echo "Verifying GitHub secrets for: $ENV_LABEL"
 
 require() {
@@ -34,16 +34,22 @@ require BILL_PASSWORD BILL_PASSWORD || missing=1
 require BILL_ORG_ID BILL_ORG_ID || missing=1
 require BILL_FUNDING_ACCOUNT_ID BILL_FUNDING_ACCOUNT_ID || missing=1
 require HUBSPOT_ACCESS_TOKEN HUBSPOT_ACCESS_TOKEN || missing=1
+require COGNITO_GOOGLE_CLIENT_ID COGNITO_GOOGLE_CLIENT_ID || missing=1
+require COGNITO_GOOGLE_CLIENT_SECRET COGNITO_GOOGLE_CLIENT_SECRET || missing=1
+require RECAPTCHA_SITE_KEY RECAPTCHA_SITE_KEY || missing=1
+require RECAPTCHA_SECRET_KEY RECAPTCHA_SECRET_KEY || missing=1
+require CONTENTHUB_API_KEY CONTENTHUB_API_KEY || missing=1
+require INTERNAL_CACHE_SECRET INTERNAL_CACHE_SECRET || missing=1
 
 if [ "$missing" -ne 0 ]; then
   echo ""
   echo "Terraform will write empty strings to Secrets Manager when these are missing."
-  if [ "$ENV_LABEL" = "staging" ]; then
-    echo "Check GitHub: ./scripts/verify-github-secrets.sh staging"
+  if [ "$ENV_LABEL" = "staging" ] || [ "$ENV_LABEL" = "development" ]; then
+    echo "Check GitHub: ./scripts/verify-github-secrets.sh $ENV_LABEL"
     echo "AWS Secrets Manager: ./scripts/bootstrap-staging-secrets-from-platform.sh"
   else
-    echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh production"
-    echo "Check GitHub: ./scripts/verify-github-secrets.sh production"
+    echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh platform"
+    echo "Check GitHub: ./scripts/verify-github-secrets.sh platform"
   fi
   exit 1
 fi

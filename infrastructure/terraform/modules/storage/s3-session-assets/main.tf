@@ -1,5 +1,6 @@
 locals {
-  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  prefix              = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  replication_enabled = var.enable_replication && var.replication_destination_bucket_arn != ""
 }
 
 resource "aws_s3_bucket" "session_assets" {
@@ -28,6 +29,14 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "session_assets" {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
+  }
+}
+
+resource "aws_s3_bucket_versioning" "session_assets" {
+  bucket = aws_s3_bucket.session_assets.id
+
+  versioning_configuration {
+    status = "Enabled"
   }
 }
 
@@ -60,4 +69,103 @@ resource "aws_s3_bucket_policy" "session_assets_public_read_prefix" {
       }
     ]
   })
+}
+
+resource "aws_iam_role" "replication" {
+  count = local.replication_enabled ? 1 : 0
+  name  = "${local.prefix}-session-assets-replication"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "s3.amazonaws.com"
+      }
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "replication" {
+  count = local.replication_enabled ? 1 : 0
+  name  = "${local.prefix}-session-assets-replication-policy"
+  role  = aws_iam_role.replication[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = concat(
+      [
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:GetReplicationConfiguration",
+            "s3:ListBucket"
+          ]
+          Resource = aws_s3_bucket.session_assets.arn
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:GetObjectVersionForReplication",
+            "s3:GetObjectVersionAcl",
+            "s3:GetObjectVersionTagging"
+          ]
+          Resource = "${aws_s3_bucket.session_assets.arn}/*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:ReplicateObject",
+            "s3:ReplicateDelete",
+            "s3:ReplicateTags",
+            "s3:ObjectOwnerOverrideToBucketOwner"
+          ]
+          Resource = "${var.replication_destination_bucket_arn}/*"
+        }
+      ],
+      var.replication_destination_kms_key_arn != "" ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "kms:Decrypt",
+            "kms:GenerateDataKey"
+          ]
+          Resource = var.replication_destination_kms_key_arn
+        }
+      ] : []
+    )
+  })
+}
+
+resource "aws_s3_bucket_replication_configuration" "session_assets" {
+  count  = local.replication_enabled ? 1 : 0
+  bucket = aws_s3_bucket.session_assets.id
+  role   = aws_iam_role.replication[0].arn
+
+  rule {
+    id     = "replicate-all"
+    status = "Enabled"
+
+    filter {}
+
+    destination {
+      bucket        = var.replication_destination_bucket_arn
+      storage_class = "STANDARD"
+      account       = var.replication_destination_account_id != "" ? var.replication_destination_account_id : null
+
+      dynamic "encryption_configuration" {
+        for_each = var.replication_destination_kms_key_arn != "" ? [1] : []
+        content {
+          replica_kms_key_id = var.replication_destination_kms_key_arn
+        }
+      }
+    }
+
+    delete_marker_replication {
+      status = "Enabled"
+    }
+  }
+
+  depends_on = [aws_s3_bucket_versioning.session_assets]
 }

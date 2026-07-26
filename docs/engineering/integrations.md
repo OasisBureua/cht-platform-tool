@@ -89,9 +89,9 @@ Public content API for the video catalog.
 
 Transactional email from the worker (`EMAIL_FROM`, typically `info@communityhealth.media`). Requires verified domain/identity in SES and IAM permissions on the worker task role.
 
-## YouTube (podcasts)
-
-Optional playlist sync for podcast content:
+## YouTube (catalog & podcasts)
 
 - `YOUTUBE_API_KEY`
-- `YOUTUBE_PLAYLIST_IDS` (comma-separated)
+- `YOUTUBE_PLAYLIST_IDS` (comma-separated) — catalog playlists
+
+Podcast show pages load episodes via `GET /api/podcasts/:showId/episodes?sort=latest|popular|oldest`. The server maps each show to its YouTube channel and returns **full episodes only**: YouTube Shorts (≤3 min / `#Shorts`), promos, and clip uploads under the show’s minimum duration (15 minutes for Breast Friends) are excluded. The frontend applies the same filter as a safeguard. Requires `YOUTUBE_API_KEY`.

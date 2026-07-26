@@ -237,7 +237,9 @@ export class ZoomService implements OnModuleInit {
       );
       return all;
     } catch (err) {
-      this.logger.warn(`Zoom listWebinars failed: ${this.zoomErrorMessage(err)}`);
+      this.logger.warn(
+        `Zoom listWebinars failed: ${this.zoomErrorMessage(err)}`,
+      );
       return all;
     }
   }

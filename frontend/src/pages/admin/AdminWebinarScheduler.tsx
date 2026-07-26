@@ -20,10 +20,6 @@ const TIMEZONES = [
   'UTC',
 ];
 
-/** Default Jotforms for Zoom Webinar schedules (registration intake + post-session survey). */
-const DEFAULT_WEBINAR_INTAKE_JOTFORM_URL = 'https://communityhealthmedia.jotform.com/261116295463861';
-const DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL = 'https://communityhealthmedia.jotform.com/260698533879881';
-
 export type AdminWebinarSchedulerProps = {
   /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
   defaultZoomSessionType?: ZoomSessionType;
@@ -40,12 +36,6 @@ export default function AdminWebinarScheduler({
 
   const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
   const [honorariumUsd, setHonorariumUsd] = useState('');
-  const [jotformIntakeFormUrl, setJotformIntakeFormUrl] = useState(
-    () => (defaultZoomSessionType === 'WEBINAR' ? DEFAULT_WEBINAR_INTAKE_JOTFORM_URL : ''),
-  );
-  const [postEventJotformFormIdOrUrl, setPostEventJotformFormIdOrUrl] = useState(
-    () => (defaultZoomSessionType === 'WEBINAR' ? DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL : ''),
-  );
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -61,6 +51,7 @@ export default function AdminWebinarScheduler({
   const [sessionDisclaimer, setSessionDisclaimer] = useState('');
 
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [zoomWarning, setZoomWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setZoomSessionType(defaultZoomSessionType);
@@ -69,13 +60,7 @@ export default function AdminWebinarScheduler({
   useEffect(() => {
     if (zoomSessionType === 'MEETING') {
       setHonorariumUsd('');
-      setJotformIntakeFormUrl('');
-      setPostEventJotformFormIdOrUrl('');
-      return;
     }
-    /** WEBINAR: pre-fill CHM Jotforms when switching from office hours or restoring empty inputs */
-    setJotformIntakeFormUrl((v) => (v.trim() ? v : DEFAULT_WEBINAR_INTAKE_JOTFORM_URL));
-    setPostEventJotformFormIdOrUrl((v) => (v.trim() ? v : DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL));
   }, [zoomSessionType]);
 
   const { data: adminConfig } = useQuery({
@@ -99,7 +84,7 @@ export default function AdminWebinarScheduler({
       const warnings = [
         data?.zoomWarning,
         data?.zoomPanelistError,
-        data?.jotformFormsWarning,
+        data?.surveysWarning,
       ].filter(Boolean) as string[];
 
       navigate(successPath, {
@@ -136,19 +121,6 @@ export default function AdminWebinarScheduler({
       return;
     }
 
-    const intakeTrimmed = jotformIntakeFormUrl.trim();
-    const intakeUrl =
-      (isWebinar ? intakeTrimmed || DEFAULT_WEBINAR_INTAKE_JOTFORM_URL : intakeTrimmed) || '';
-    if (isWebinar && !intakeUrl) {
-      setValidationError('Registration intake (Jotform URL) is required for webinars.');
-      return;
-    }
-
-    const postEventMerged =
-      isWebinar
-        ? postEventJotformFormIdOrUrl.trim() || DEFAULT_WEBINAR_POST_EVENT_JOTFORM_URL
-        : postEventJotformFormIdOrUrl.trim();
-
     let honorariumNum: number | undefined;
     if (isWebinar && honorariumUsd.trim()) {
       honorariumNum = parseFloat(honorariumUsd);
@@ -179,8 +151,6 @@ export default function AdminWebinarScheduler({
       timezone,
       zoomSessionType,
       status: 'PUBLISHED',
-      ...(isWebinar ? { jotformIntakeFormUrl: intakeUrl } : {}),
-      ...(postEventMerged ? { postEventJotformFormIdOrUrl: postEventMerged } : {}),
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
       ...(cleanSpeakers.length > 0 ? { speakers: cleanSpeakers } : {}),
       ...(sessionHeroImageUrl.trim() ? { sessionHeroImageUrl: sessionHeroImageUrl.trim() } : {}),
@@ -199,9 +169,9 @@ export default function AdminWebinarScheduler({
         <p className="text-sm text-gray-600 mt-1">
           {isWebinar ? (
             <>
-              Creates a Zoom Webinar and publishes it. The server clones a unique invitation Jotform and post-event Jotform
-              from your template form IDs in environment variables, then wires webhooks. Learners complete invitation before
-              approval; post-event reminders appear after the session. Honorarium payouts use{' '}
+              Creates a Zoom Webinar and publishes it. The server automatically creates native registration intake and
+              post-event surveys for this program. Learners complete intake before approval; post-event steps appear
+              after the session. Honorarium payouts use{' '}
               <BillComMark size="sm" className="translate-y-px" />.
             </>
           ) : (
@@ -210,8 +180,26 @@ export default function AdminWebinarScheduler({
         </p>
       </div>
 
+      {/* Post-submit: session saved but Zoom was not available */}
+      {zoomWarning && (
+        <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
+          <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-yellow-800">Session saved — no Zoom meeting created</p>
+            <p className="text-sm text-yellow-700 mt-0.5">{zoomWarning}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(successPath)}
+            className="text-xs font-semibold text-yellow-800 underline shrink-0"
+          >
+            View list
+          </button>
+        </div>
+      )}
+
       {/* Pre-form: warn when Zoom env vars are not set */}
-      {adminConfig !== undefined && !adminConfig.zoomConfigured && (
+      {!zoomWarning && adminConfig !== undefined && !adminConfig.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-orange-50 border border-orange-300 px-4 py-3">
           <Video className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
           <div className="flex-1">
@@ -236,7 +224,7 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {!isOfficeHoursOnly && adminConfig?.zoomConfigured && (
+      {!zoomWarning && !isOfficeHoursOnly && adminConfig?.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
@@ -246,11 +234,11 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {isOfficeHoursOnly && adminConfig?.zoomConfigured && (
+      {!zoomWarning && isOfficeHoursOnly && adminConfig?.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>), often used
+            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>)—often used
             alongside webinar-style programming. Host admits attendees from the waiting room.
           </p>
         </div>
@@ -339,7 +327,7 @@ export default function AdminWebinarScheduler({
             />
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Learner disclaimer <span className="font-normal text-gray-500">(optional)</span>
+                Learner disclaimer <span className="font-normal text-gray-500">— optional</span>
               </label>
               <textarea
                 rows={3}
@@ -358,7 +346,7 @@ export default function AdminWebinarScheduler({
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Host
-              <span className="ml-1 font-normal text-gray-500">(optional)</span>
+              <span className="ml-1 font-normal text-gray-500">— optional</span>
             </label>
             <div className="flex gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -390,7 +378,7 @@ export default function AdminWebinarScheduler({
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-900">
                 Speakers / KOLs
-                <span className="ml-1 font-normal text-gray-500">(optional); add one or more</span>
+                <span className="ml-1 font-normal text-gray-500">— optional; add one or more</span>
               </label>
               <button
                 type="button"
@@ -486,7 +474,7 @@ export default function AdminWebinarScheduler({
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
                 Honorarium (USD){' '}
-                <span className="font-normal text-gray-500">(optional); webinars only</span>
+                <span className="font-normal text-gray-500">— optional; webinars only</span>
               </label>
               <input
                 type="number"
@@ -505,89 +493,18 @@ export default function AdminWebinarScheduler({
           ) : null}
 
           {isWebinar ? (
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Registration intake (Jotform URL) *
-              </label>
-              <input
-                type="url"
-                required
-                value={jotformIntakeFormUrl}
-                onChange={(e) => setJotformIntakeFormUrl(e.target.value)}
-                placeholder="https://form.jotform.com/… or https://communityhealthmedia.jotform.com/…"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
-              <p className="mt-1 text-xs text-gray-600">
-                Required for webinars. This URL is saved on the program for learner registration intake. Point webhooks
-                for this form at your app so submissions and progress sync correctly.
-              </p>
-            </div>
-          ) : null}
-
-          <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              Post-event survey (Jotform){' '}
-              <span className="font-normal text-gray-500">(optional)</span>
-            </label>
-            <input
-              type="text"
-              value={postEventJotformFormIdOrUrl}
-              onChange={(e) => setPostEventJotformFormIdOrUrl(e.target.value)}
-              placeholder="e.g. 241234567890123 or https://form.jotform.com/241234567890123"
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-            />
-            <p className="mt-1 text-xs text-gray-600">
-              When set, this form is saved as the <strong>post-event</strong> survey for the session and appears in the
-              learner <strong>Surveys</strong> tab (and admin Surveys). Webhook should point at this app if you want
-              responses stored automatically.
-            </p>
-            {isWebinar ? (
-              <p className="mt-1 text-xs text-gray-600">
-                For <strong>webinars</strong>, if you leave this blank, the server attaches post-event feedback from your
-                environment template or shared form when Jotform is configured.
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-gray-600">
-                For <strong>office hours</strong>, there is no automatic Jotform clone. Use this field or Program hub to
-                attach feedback.
-              </p>
-            )}
-          </div>
-
-          {isWebinar && (
             <div className="text-sm text-gray-700 border border-gray-200 rounded-xl bg-gray-50 px-4 py-3 space-y-2">
-              <p className="font-semibold text-gray-900">Post-event survey (Jotform API)</p>
+              <p className="font-semibold text-gray-900">Registration &amp; post-event surveys</p>
               <p>
-                The intake URL above is always the form learners use to register. If you do not set a post-event form in
-                the field above, the <strong>after-session</strong> survey is created from your environment&apos;s shared
-                form or post-event template when Jotform API access is configured.
+                When you save a webinar, the platform creates two native surveys for this program: a{' '}
+                <strong>registration intake</strong> form (required before admin approval) and a{' '}
+                <strong>post-event feedback</strong> form (shown after the session). No Jotform URLs are required here.
               </p>
-              {adminConfig?.webinarJotformTemplatesConfigured ? (
-                <p className="text-xs text-green-800">
-                  This environment looks ready. Invitation template form ID{' '}
-                  <span className="font-mono">{adminConfig.jotformInvitationTemplateFormId || '-'}</span>; post-event{' '}
-                  {adminConfig.jotformPostEventSharedFormId ? (
-                    <>
-                      using shared form <span className="font-mono">{adminConfig.jotformPostEventSharedFormId}</span>
-                    </>
-                  ) : (
-                    <>
-                      cloning from template <span className="font-mono">{adminConfig.jotformPostEventTemplateFormId || '-'}</span>
-                    </>
-                  )}
-                  .
-                </p>
-              ) : (
-                <p className="text-xs text-amber-800">
-                  Jotform templates or API access are not fully configured for this environment. You can still save a
-                  post-event form above; invitation cloning may need your technical administrator to finish deployment
-                  setup.
-                </p>
-              )}
+              <p className="text-xs text-gray-600">
+                To replace or edit questions later, use Program hub or the admin Surveys list.
+              </p>
             </div>
-          )}
-
-          {!isWebinar && (
+          ) : (
             <p className="text-sm text-gray-600 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
               Office hours use Zoom Meetings (MEETING). Optional intake or other links can be set in Program hub.
             </p>

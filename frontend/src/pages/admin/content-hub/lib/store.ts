@@ -1,23 +1,22 @@
-// Content Hub data layer.
-//
-// TODO(content-hub): swap localStorage for real NestJS endpoints; this interface is the seam.
-// Every exported function below maps 1:1 to an endpoint documented in the standalone app's
-// docs/research/API_CONTRACT.md. To go live, replace each function body with an axios call
-// (src/api/client.ts) to the corresponding /api route and keep the same signatures, the
-// pages and hooks call ONLY through this module, so nothing else needs to change.
+// Content Hub data layer — localStorage for campaigns/reports (dev UI).
+// Integration health: GET /api/admin/content-hub/health (CHT probes Hub + HubSpot).
+// TODO(content-hub): swap campaign CRUD to NestJS proxy when Hub admin API is live.
 
 import {
   buildAnalyticsReport,
   buildDataValidation,
   buildExecutiveReport,
 } from './reports';
+import apiClient from '../../../../api/client';
 import type {
   AnalyticsReport,
   Campaign,
+  ContentHubHealth,
   CsvUpload,
   DataValidation,
   ExecutiveReport,
   HubspotStatus,
+  IntegrationsConnectionMap,
   IntegrationSettings,
   Platform,
   StoredCsvUpload,
@@ -50,7 +49,7 @@ const SEED_INTEGRATIONS: IntegrationSettings = {
   meta: { enabled: false, note: 'Upload CSV exports from Meta Ads Manager.' },
   youtube: { enabled: false, note: 'Upload CSV exports from YouTube Studio analytics.' },
   livestream: { enabled: false, note: 'Upload attendance/engagement CSV from your livestream platform.' },
-  survey: { enabled: false, note: 'Upload survey results CSV from your survey platform.' },
+  survey: { enabled: true, note: 'Select native CHT post-event feedback responses by program.' },
 };
 
 function seed(): DbShape {
@@ -178,6 +177,62 @@ export function uploadCsv(id: number, platform: Platform, filename: string, cont
   return { id: upload.id, campaignId: id, platform, filename: upload.filename, rowCount: rows.length, uploadedAt: upload.uploadedAt };
 }
 
+export function connectFeedbackSurvey(
+  id: number,
+  input: {
+    surveyId: string;
+    programId: string | null;
+    label: string;
+    totalResponses: number;
+    analytics: unknown;
+  },
+): CsvUpload {
+  const db = load();
+  const campaign = db.campaigns.find((item) => item.id === id);
+  if (!campaign) throw new Error('Campaign not found');
+
+  db.csvUploads = db.csvUploads.filter(
+    (upload) => !(upload.campaignId === id && upload.platform === 'survey'),
+  );
+  const uploadedAt = now();
+  const upload: StoredCsvUpload = {
+    id: db.nextUploadId++,
+    campaignId: id,
+    platform: 'survey',
+    filename: input.label,
+    // Reports currently use row count for the survey KPI. Detailed, PII-safe
+    // aggregates are retained in metadata for report sections to consume.
+    rows: Array.from({ length: input.totalResponses }, (_, index) => ({
+      response: String(index + 1),
+    })),
+    uploadedAt,
+    metadata: {
+      source: 'cht-feedback-survey',
+      surveyId: input.surveyId,
+      programId: input.programId,
+      analytics: input.analytics,
+    },
+  };
+  db.csvUploads.push(upload);
+  campaign.surveySourceId = input.surveyId;
+  campaign.surveySourceProgramId = input.programId;
+  campaign.surveySourceLabel = input.label;
+  if (!campaign.platforms.includes('survey')) {
+    campaign.platforms = [...campaign.platforms, 'survey'];
+  }
+  campaign.updatedAt = uploadedAt;
+  save(db);
+
+  return {
+    id: upload.id,
+    campaignId: id,
+    platform: 'survey',
+    filename: upload.filename,
+    rowCount: upload.rows.length,
+    uploadedAt,
+  };
+}
+
 export function getCsvData(id: number): CsvUpload[] {
   return uploadsFor(load(), id).map((u) => ({
     id: u.id,
@@ -243,6 +298,9 @@ export function createTemplate(body: { name: string; type: string; description: 
   const db = load();
   const template: Template = {
     id: db.nextTemplateId++,
+    name: '',
+    type: 'Analytics Report',
+    description: '',
     ...body,
     createdAt: now(),
     updatedAt: now(),
@@ -286,4 +344,30 @@ export function getHubspotStatus(): HubspotStatus {
     };
   }
   return { connected: true, accountName: db.integrations.hubspot.accountName || 'HubSpot Account', portalId: null };
+}
+
+/** Content Hub dependency health — reachability only (not integration credentials). */
+export async function getContentHubHealth(): Promise<ContentHubHealth> {
+  try {
+    const { data } = await apiClient.get<ContentHubHealth>('/admin/content-hub/health');
+    return data;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Health check failed';
+    return {
+      status: 'error',
+      contentHub: { configured: false, reachable: false, error: message },
+    };
+  }
+}
+
+/** Live integration connection status from CHT (HubSpot, Zoom, surveys + Hub platforms). */
+export async function getIntegrationsConnection(): Promise<IntegrationsConnectionMap> {
+  try {
+    const { data } = await apiClient.get<IntegrationsConnectionMap>(
+      '/admin/content-hub/integrations',
+    );
+    return data ?? {};
+  } catch {
+    return {};
+  }
 }

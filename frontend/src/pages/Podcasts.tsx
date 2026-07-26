@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Mic2, Play, PlayCircle, Bell, Headphones } from 'lucide-react';
 import {
@@ -7,7 +7,8 @@ import {
   type PodcastEpisode,
   type PodcastShow,
 } from '../data/podcastsCatalog';
-import { SeriesSection, latestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { useShowLatestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
 function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   const n = shows.length;
@@ -129,9 +130,9 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
   return (
     <div className="flex items-start gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {shows.map((show) => (
-        <a
+        <Link
           key={`top-${show.id}`}
-          href={`#${show.id}`}
+          to={`/app/podcasts/${show.id}`}
           className="group shrink-0 w-[5.5rem] text-center"
         >
           <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-white shadow-[0_8px_28px_-18px_rgba(0,0,0,0.12),0_2px_10px_-4px_rgba(0,0,0,0.06)] ring-1 ring-zinc-200/80 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.14),0_4px_14px_-4px_rgba(0,0,0,0.08)] dark:bg-white dark:ring-zinc-700 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
@@ -146,13 +147,54 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
           <p className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-tight text-zinc-800 dark:text-zinc-200">
             {show.title}
           </p>
-        </a>
+        </Link>
       ))}
     </div>
   );
 }
 
-function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode }) {
+function CatalogShowCard({ show }: { show: PodcastShow }) {
+  return (
+    <Link
+      to={`/app/podcasts/${show.id}`}
+      className="group flex gap-4 overflow-hidden rounded-2xl bg-white p-4 shadow-[0_10px_36px_-24px_rgba(15,23,42,0.14)] ring-1 ring-zinc-200/90 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-22px_rgba(15,23,42,0.16)] active:scale-[0.995] dark:bg-zinc-950 dark:ring-zinc-800 sm:gap-5 sm:p-5"
+    >
+      <img
+        src={show.logo ?? show.image}
+        alt=""
+        className={[
+          'h-20 w-20 shrink-0 rounded-xl shadow-md ring-1 ring-zinc-200/90 sm:h-24 sm:w-24 dark:ring-zinc-700',
+          show.logo
+            ? 'object-contain bg-white p-2 dark:bg-white'
+            : 'bg-white object-cover dark:bg-white',
+        ].join(' ')}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel-700 dark:text-steel-300">
+          {show.category}
+        </p>
+        <h3 className="mt-1 text-balance text-lg font-extrabold tracking-tight text-zinc-900 group-hover:underline dark:text-zinc-100 sm:text-xl">
+          {show.title}
+        </h3>
+        <p className="mt-1 line-clamp-2 text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          {show.tagline}
+        </p>
+        <p className="mt-2 text-xs font-semibold text-steel-700 dark:text-steel-400">
+          Open series →
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode | null }) {
+  if (!episode) return null;
+  const playHref = episode.videoId
+    ? podcastEpisodeWatchPath(show.id, episode.videoId)
+    : `/app/podcasts/${show.id}`;
+
   return (
     <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_36px_-20px_rgba(0,0,0,0.15)] ring-1 ring-zinc-200/90 sm:max-h-[300px] dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
       <img
@@ -182,11 +224,11 @@ function WorthListenCard({ show, episode }: { show: PodcastShow; episode: Podcas
         ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Link
-            to={`/app/podcasts/${show.id}`}
+            to={playHref}
             className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white px-4 text-xs font-semibold text-zinc-900 shadow-md transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.98] sm:text-sm"
           >
             <Play className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" aria-hidden />
-            {episode.duration}
+            {episode.duration || 'Play'}
           </Link>
           <span className="text-[10px] text-white/70 tabular-nums sm:text-xs">{episode.date}</span>
         </div>
@@ -195,16 +237,14 @@ function WorthListenCard({ show, episode }: { show: PodcastShow; episode: Podcas
   );
 }
 
-export default function Podcasts() {
-  const [sortNewestFirst, setSortNewestFirst] = useState(true);
-  const shows = PODCAST_SHOWS;
+function ShowLatestCard({ show }: { show: PodcastShow }) {
+  const episode = useShowLatestEpisode(show);
+  if (!episode) return null;
+  return <WorthListenCard show={show} episode={episode} />;
+}
 
-  const worthListen = useMemo(() => {
-    return shows.slice(0, 3).map((show) => ({
-      show,
-      episode: latestEpisode(show),
-    }));
-  }, [shows]);
+export default function Podcasts() {
+  const shows = PODCAST_SHOWS;
 
   return (
     <div className="flex flex-col gap-6 pb-24 md:gap-8 md:pb-16">
@@ -239,13 +279,13 @@ export default function Podcasts() {
           Latest standout episodes: full art, quick play, then open the show page for the full run.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {worthListen.map(({ show, episode }) => (
-            <WorthListenCard key={show.id} show={show} episode={episode} />
+          {shows.slice(0, 3).map((show) => (
+            <ShowLatestCard key={show.id} show={show} />
           ))}
         </div>
       </section>
 
-      {/* Compact thumb row + view all */}
+      {/* Compact thumb row */}
       <section aria-labelledby="podcasts-top" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="podcasts-top" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -261,22 +301,19 @@ export default function Podcasts() {
         <TopShowsRow shows={shows} />
       </section>
 
-      {/* Full catalog */}
-      <div id="podcast-catalog" className="scroll-mt-24 space-y-8 md:space-y-10">
-        <div className="pt-10 shadow-[0_-24px_48px_-36px_rgba(15,23,42,0.07)] dark:shadow-[0_-24px_48px_-36px_rgba(0,0,0,0.35)]">
+      {/* Full catalog — cards open dedicated show pages */}
+      <div id="podcast-catalog" className="scroll-mt-24 space-y-4 md:space-y-5">
+        <div className="pt-6">
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">All series</h2>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Every CHM podcast with full episode lists and listen links.
+            Open a show for its full episode list and listen links.
           </p>
         </div>
-        {shows.map((show) => (
-          <SeriesSection
-            key={show.id}
-            show={show}
-            sortNewestFirst={sortNewestFirst}
-            onToggleSort={() => setSortNewestFirst((v) => !v)}
-          />
-        ))}
+        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+          {shows.map((show) => (
+            <CatalogShowCard key={show.id} show={show} />
+          ))}
+        </div>
       </div>
 
       <section

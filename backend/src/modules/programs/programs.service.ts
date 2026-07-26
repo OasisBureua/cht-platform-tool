@@ -9,6 +9,11 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import {
+  loadProgramSurveyMeta,
+  getPostEventSurveyUnlockAt,
+  isPostEventSurveyWithinWindow,
+} from '../../utils/program-survey-config';
 import { QueueService } from '../../queue/queue.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
@@ -225,6 +230,11 @@ export class ProgramsService {
     );
 
     let jotformSurveyUrl = program.jotformSurveyUrl?.trim() || undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      program,
+      defaultIntake,
+    );
     if (!jotformSurveyUrl && program.zoomSessionType === 'WEBINAR') {
       const feedback = await this.prisma.survey.findFirst({
         where: {
@@ -270,6 +280,12 @@ export class ProgramsService {
       zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),
       jotformSurveyUrl,
       jotformIntakeFormUrl: intakeForClient,
+      hasPostEventSurvey: surveyMeta.hasPostEventSurvey,
+      hasIntakeSurvey: surveyMeta.hasIntakeSurvey,
+      feedbackSurveyId: surveyMeta.feedbackSurveyId,
+      intakeSurveyId: surveyMeta.intakeSurveyId,
+      feedbackUsesJotform: surveyMeta.feedbackUsesJotform,
+      intakeUsesJotform: surveyMeta.intakeUsesJotform,
       jotformPreEventUrl: program.jotformPreEventUrl || undefined,
       registrationRequiresApproval: program.registrationRequiresApproval,
       hostDisplayName: program.hostDisplayName || undefined,
@@ -367,38 +383,57 @@ export class ProgramsService {
    * Get user's enrollments
    */
   async getUserEnrollments(userId: string) {
-    const enrollments = await this.prisma.programEnrollment.findMany({
+    // Two-step load avoids Prisma throwing when orphan enrollments point at a
+    // deleted Program ("Field program is required … got null").
+    const enrollmentRows = await this.prisma.programEnrollment.findMany({
       where: { userId },
-      include: {
-        program: {
-          include: {
-            videos: true,
-          },
-        },
+      select: {
+        id: true,
+        userId: true,
+        programId: true,
+        overallProgress: true,
+        completed: true,
+        enrolledAt: true,
+        completedAt: true,
       },
       orderBy: { enrolledAt: 'desc' },
     });
 
-    return enrollments.map((e) => ({
-      id: e.id,
-      userId: e.userId,
-      programId: e.programId,
-      overallProgress: e.overallProgress,
-      completed: e.completed,
-      enrolledAt: e.enrolledAt.toISOString(),
-      completedAt: e.completedAt?.toISOString(),
-      program: {
-        id: e.program.id,
-        title: e.program.title,
-        description: e.program.description,
-        thumbnailUrl: e.program.thumbnailUrl || undefined,
-        creditAmount: e.program.creditAmount,
-        honorariumAmount: e.program.honorariumAmount
-          ? e.program.honorariumAmount / 100
-          : undefined,
-        videosCount: e.program.videos.length,
-      },
-    }));
+    const programIds = [...new Set(enrollmentRows.map((e) => e.programId))];
+    const programs =
+      programIds.length === 0
+        ? []
+        : await this.prisma.program.findMany({
+            where: { id: { in: programIds } },
+            include: { videos: true },
+          });
+    const programById = new Map(programs.map((p) => [p.id, p]));
+
+    return enrollmentRows
+      .filter((e) => programById.has(e.programId))
+      .map((e) => {
+        const program = programById.get(e.programId)!;
+        return {
+          id: e.id,
+          userId: e.userId,
+          programId: e.programId,
+          overallProgress: e.overallProgress,
+          completed: e.completed,
+          enrolledAt: e.enrolledAt.toISOString(),
+          completedAt: e.completedAt?.toISOString(),
+          program: {
+            id: program.id,
+            title: program.title,
+            description: program.description,
+            thumbnailUrl: program.thumbnailUrl || undefined,
+            creditAmount: program.creditAmount,
+            honorariumAmount: program.honorariumAmount
+              ? program.honorariumAmount / 100
+              : undefined,
+            videosCount: program.videos.length,
+          },
+        };
+      });
   }
 
   /**
@@ -629,6 +664,7 @@ export class ProgramsService {
         startDate: true,
         duration: true,
         zoomSessionEndedAt: true,
+        zoomSessionType: true,
       },
       orderBy: { startDate: 'desc' },
       take: 50,
@@ -652,11 +688,20 @@ export class ProgramsService {
       }),
       this.prisma.programRegistration.findMany({
         where: { userId, programId: { in: programIds } },
-        select: { programId: true, postEventAttendanceStatus: true },
+        select: {
+          programId: true,
+          postEventAttendanceStatus: true,
+          status: true,
+        },
       }),
     ]);
 
     const enrolledSet = new Set(enrollments.map((e) => e.programId));
+    const approvedRegSet = new Set(
+      liveRegs
+        .filter((r) => r.status === 'APPROVED')
+        .map((r) => r.programId),
+    );
     const attendanceByProgram = new Map(
       liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]),
     );
@@ -682,9 +727,9 @@ export class ProgramsService {
     }> = [];
 
     for (const p of programs) {
-      const enrolled = enrolledSet.has(p.id);
+      const hasAccess = enrolledSet.has(p.id) || approvedRegSet.has(p.id);
 
-      if (!enrolled) {
+      if (!hasAccess) {
         continue;
       }
 
@@ -700,8 +745,13 @@ export class ProgramsService {
         const durationMin = p.duration ?? 60;
         postSurveyAllowed =
           now >= new Date(p.startDate.getTime() + durationMin * 60 * 1000);
+      } else if (p.zoomSessionType === 'MEETING') {
+        postSurveyAllowed = true;
       }
       if (!postSurveyAllowed) continue;
+
+      const unlockAt = getPostEventSurveyUnlockAt(p);
+      if (!isPostEventSurveyWithinWindow(unlockAt, now.getTime())) continue;
 
       const att = attendanceByProgram.get(p.id);
       if (att !== 'VERIFIED' && att !== 'NOT_REQUIRED') {

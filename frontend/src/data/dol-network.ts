@@ -39,6 +39,10 @@ export type DolEntry = {
   photoUrl?: string;
   /** From MediaHub kol_group_member count (videos this KOL appears in) */
   shootCount?: number;
+  /** SCRUM-70: curator-marked as featured — pinned to the top of DolNetwork. */
+  featured?: boolean;
+  /** SCRUM-70: manual sort weight; lower first, null last. */
+  displayOrder?: number | null;
   intel?: KolIntel;
 };
 

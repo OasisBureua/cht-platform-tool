@@ -60,6 +60,28 @@ export default function AdminKolDirectory() {
     },
   });
 
+  // Facets (region + institution dropdowns) are populated from an UNFILTERED
+  // list call so the dropdown options don't shrink after a selection. Prior
+  // behavior: dropdown options came from `data.regions`/`data.institutions`,
+  // which are the facets of the CURRENT filter — selecting one region made
+  // the dropdown collapse to only that region. Observed 2026-07-21 on devapp.
+  //
+  // Stale-time set high; the roster doesn't churn on the timescale a user
+  // sits on this page.
+  const { data: facetData } = useQuery({
+    queryKey: ['admin', 'kol-network', 'facets'],
+    networkMode: 'always',
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async (): Promise<PublicKolList> => {
+      const res = await kolNetworkApi.list({ limit: 200 });
+      if (!res || !Array.isArray(res.items) || typeof res.total !== 'number') {
+        throw new Error('Malformed /kol-network facet response');
+      }
+      return res;
+    },
+  });
+
   // Fallback ONLY on error — a valid empty list still renders the live
   // empty state. Filters are applied client-side against the demo roster.
   const usingDemo = isError;
@@ -70,6 +92,12 @@ export default function AdminKolDirectory() {
         institution: institution || undefined,
       })
     : data;
+
+  // Facet source: unfiltered call in live mode; demo roster's full facet set
+  // in demo mode. Fallback to the current list if facets aren't loaded yet.
+  const facetList: PublicKolList | undefined = usingDemo
+    ? demoKolList({})
+    : (facetData ?? list);
 
   const items = list?.items ?? [];
   const total = typeof list?.total === 'number' ? list.total : items.length;
@@ -114,7 +142,7 @@ export default function AdminKolDirectory() {
           aria-label="Filter by region"
         >
           <option value="">All regions</option>
-          {(list?.regions ?? []).map((r) => (
+          {(facetList?.regions ?? []).map((r) => (
             <option key={r.slug} value={r.slug}>
               {r.label} ({r.kol_count})
             </option>
@@ -127,7 +155,7 @@ export default function AdminKolDirectory() {
           aria-label="Filter by institution"
         >
           <option value="">All institutions</option>
-          {(list?.institutions ?? []).map((inst) => (
+          {(facetList?.institutions ?? []).map((inst) => (
             <option key={inst} value={inst}>
               {inst}
             </option>

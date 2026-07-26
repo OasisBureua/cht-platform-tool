@@ -7,6 +7,7 @@ import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNavItems';
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -19,7 +20,7 @@ export default function PlaylistDetail() {
     queryKey: ['catalog', 'playlist', playlistId],
     queryFn: () => catalogApi.getPlaylist(playlistId!),
     enabled: !!playlistId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   // Sync selected video from URL ?v=videoId
@@ -33,29 +34,39 @@ export default function PlaylistDetail() {
     }
   }, [data?.videos, videoIdFromUrl]);
 
-  // Derive selected video safely: may be undefined before data loads
-  const videos = data?.videos ?? [];
+  // Derive selected video safely — may be undefined before data loads
+  const [hiddenVideoIds, setHiddenVideoIds] = useState<Set<string>>(() => new Set());
+  const videos = (data?.videos ?? []).filter((v) => v.id && !hiddenVideoIds.has(v.id));
   const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));
   const selectedVideo = videos[safeIndex];
+
+  useEffect(() => {
+    setHiddenVideoIds(new Set());
+  }, [playlistId]);
+
+  useEffect(() => {
+    if (selectedVideoIndex > 0 && selectedVideoIndex >= videos.length) {
+      setSelectedVideoIndex(Math.max(0, videos.length - 1));
+    }
+  }, [videos.length, selectedVideoIndex]);
 
   // All hooks must come before any early returns (Rules of Hooks)
   const { data: clipDetail } = useQuery({
     queryKey: ['catalog', 'clip', selectedVideo?.id],
     queryFn: () => catalogApi.getClip(selectedVideo!.id),
     enabled: !!selectedVideo?.id,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
     retry: 0, // 404s from MediaHub are expected; don't retry
   });
 
-  const clipRecord = clipDetail as unknown as Record<string, unknown> | undefined;
-  const shootId = clipRecord?.shoot_id as string | undefined;
-  const summary = clipRecord ? clipDisplaySummary(clipRecord) : '';
+  const shootId = (clipDetail as Record<string, unknown> | undefined)?.shoot_id as string | undefined;
+  const summary = clipDetail ? clipDisplaySummary(clipDetail as Record<string, unknown>) : '';
 
   const { data: transcript, isLoading: transcriptLoading } = useQuery({
     queryKey: ['catalog', 'transcript', shootId],
     queryFn: () => catalogApi.getTranscript(shootId!),
     enabled: !!shootId,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
     retry: 0,
   });
 
@@ -195,6 +206,14 @@ export default function PlaylistDetail() {
                               className="w-full h-full object-cover"
                               loading="lazy"
                               referrerPolicy="no-referrer"
+                              onError={() => {
+                                setHiddenVideoIds((prev) => {
+                                  if (prev.has(video.id)) return prev;
+                                  const next = new Set(prev);
+                                  next.add(video.id);
+                                  return next;
+                                });
+                              }}
                             />
                           </div>
                           <div className="flex-1 min-w-0 py-1">
@@ -224,9 +243,9 @@ function PlaylistTranscriptDisplay({ data }: { data: unknown }) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
-          {obj.shoot_name ? (
+          {obj.shoot_name && (
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
-          ) : null}
+          )}
           {paragraphs.map((para, i) => (
             <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
           ))}

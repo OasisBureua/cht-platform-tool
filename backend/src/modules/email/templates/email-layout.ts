@@ -13,23 +13,23 @@
 
 // ── Brand palette ──────────────────────────────────────────────────────────────
 export const E = {
-  HEADER_BG:   '#7c2d12', // brand-800
-  HEADER_SUB:  '#fdba74', // brand-300
-  ACCENT:      '#ea580c', // brand-500
+  HEADER_BG: '#7c2d12', // brand-800
+  HEADER_SUB: '#fdba74', // brand-300
+  ACCENT: '#ea580c', // brand-500
   ACCENT_DARK: '#c2410c', // brand-600
-  CARD_BG:     '#fff7ed', // brand-50
-  BODY_TEXT:   '#111827', // gray-900
-  MUTED:       '#4b5563', // gray-600
-  LABEL:       '#6b7280', // gray-500
-  FOOTER_BG:   '#f9fafb', // gray-50
-  BORDER:      '#e5e7eb', // gray-200
-  LINK:        '#c2410c', // brand-600
-  WARN_BG:     '#fef9c3', // yellow-100
+  CARD_BG: '#fff7ed', // brand-50
+  BODY_TEXT: '#111827', // gray-900
+  MUTED: '#4b5563', // gray-600
+  LABEL: '#6b7280', // gray-500
+  FOOTER_BG: '#f9fafb', // gray-50
+  BORDER: '#e5e7eb', // gray-200
+  LINK: '#c2410c', // brand-600
+  WARN_BG: '#fef9c3', // yellow-100
   WARN_BORDER: '#fde047', // yellow-300
-  WARN_TEXT:   '#713f12', // yellow-900
-  SUCCESS_BG:  '#f0fdf4', // green-50
+  WARN_TEXT: '#713f12', // yellow-900
+  SUCCESS_BG: '#f0fdf4', // green-50
   SUCCESS_BORDER: '#bbf7d0', // green-200
-  SUCCESS_TEXT:   '#14532d', // green-900
+  SUCCESS_TEXT: '#14532d', // green-900
 } as const;
 
 // ── Full wrapper ───────────────────────────────────────────────────────────────

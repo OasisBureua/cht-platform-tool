@@ -7,6 +7,12 @@ export const validationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().default(3000),
   FRONTEND_URL: Joi.string().default('http://localhost:5173'),
+  LOG_PRETTY: Joi.string().valid('true', 'false', '1', '0', '').optional(),
+  APP_NAME: Joi.string().allow('').optional(),
+  CHT_ENVIRONMENT: Joi.string().allow('').optional(),
+  IMAGE_TAG: Joi.string().allow('').optional(),
+  APP_VERSION: Joi.string().allow('').optional(),
+  CONTAINER_IMAGE: Joi.string().allow('').optional(),
 
   // Database (required)
   DATABASE_URL: Joi.string().required(),
@@ -15,6 +21,25 @@ export const validationSchema = Joi.object({
   AUTH0_DOMAIN: Joi.string().allow('').optional(),
   AUTH0_AUDIENCE: Joi.string().allow('').optional(),
   AUTH0_CLIENT_ID: Joi.string().allow('').optional(),
+
+  // GoTrue/Supabase auth wiring (optional during migration)
+  GOTRUE_JWT_SECRET: Joi.string().allow('').optional(),
+  SUPABASE_URL: Joi.string().allow('').optional(),
+  SUPABASE_ANON_KEY: Joi.string().allow('').optional(),
+  SUPABASE_AUTH_DECOMMISSIONED: Joi.string()
+    .valid('true', 'false', '1', '0', '')
+    .optional(),
+
+  // Cognito (optional — when set, Cognito replaces GoTrue for auth)
+  COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
+  COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_REGION: Joi.string().allow('').optional(),
+  COGNITO_HOSTED_UI_BASE_URL: Joi.string().allow('').optional(),
+  COGNITO_DOMAIN_PREFIX: Joi.string().allow('').optional(),
+  COGNITO_JWKS_URI: Joi.string().allow('').optional(),
+
+  RECAPTCHA_SECRET_KEY: Joi.string().allow('').optional(),
+  RECAPTCHA_MIN_SCORE: Joi.number().min(0).max(1).optional(),
 
   // Bill.com (optional - empty strings allowed)
   BILL_DEV_KEY: Joi.string().allow('').optional(),
@@ -55,6 +80,11 @@ export const validationSchema = Joi.object({
   MEDIAHUB_BASE_URL: Joi.string().allow('').optional(),
   MEDIAHUB_API_KEY: Joi.string().allow('').optional(),
 
+  // Content Hub producer API (KOL network + HCP upsert; catalog stays on MediaHub)
+  CONTENTHUB_BASE_URL: Joi.string().allow('').optional(),
+  CONTENTHUB_ADMIN_BASE_URL: Joi.string().allow('').optional(),
+  CONTENTHUB_API_KEY: Joi.string().allow('').optional(),
+
   // YouTube (optional – for catalog playlists, fallback when MediaHub not configured)
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),
   YOUTUBE_PLAYLIST_IDS: Joi.string().allow('').optional(),
@@ -91,4 +121,8 @@ export const validationSchema = Joi.object({
   MAILCHIMP_AUDIENCE_ID: Joi.string().allow('').optional(),
   MAILCHIMP_SERVER: Joi.string().allow('').optional(),
   MAILCHIMP_SERVER_PREFIX: Joi.string().allow('').optional(),
+
+  REDIS_URL: Joi.string().allow('').optional(),
+  REDIS_CACHE_TTL_SECONDS: Joi.number().optional(),
+  INTERNAL_CACHE_SECRET: Joi.string().allow('').optional(),
 });

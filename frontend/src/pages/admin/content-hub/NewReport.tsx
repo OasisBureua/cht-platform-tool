@@ -5,7 +5,9 @@ import ChromeContainer from './components/ChromeContainer';
 import { useToast } from './components/Toaster';
 import {
   useCreateCampaign,
+  useConnectFeedbackSurvey,
   useDataValidation,
+  useFeedbackSurveys,
   useHubspotStatus,
   useUpdateCampaign,
   useUploadCsv,
@@ -33,7 +35,7 @@ const PLATFORM_UPLOAD_DESCRIPTIONS: Record<Platform, string> = {
   meta: 'Ads Manager export — impressions, reach, link clicks, CTR, demographics',
   youtube: 'Studio Analytics export — views, watch time, CTR, engaged views',
   livestream: 'Event platform export — registrations, attendees, HCP verification rate',
-  survey: 'Survey results export — responses, practice-change intent, confidence lift',
+  survey: 'CHT post-event feedback — responses, practice-change intent, confidence lift',
 };
 
 interface FormState {
@@ -170,6 +172,7 @@ export default function NewReport() {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [campaignId, setCampaignId] = useState<number | null>(null);
   const [uploads, setUploads] = useState<Partial<Record<Platform, string>>>({});
+  const [selectedSurveyId, setSelectedSurveyId] = useState('');
 
   const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
@@ -178,11 +181,14 @@ export default function NewReport() {
     setPlatforms((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]));
 
   const { data: hubspotStatus } = useHubspotStatus(step === 3);
+  const { data: feedbackSurveys = [], isLoading: feedbackSurveysLoading } =
+    useFeedbackSurveys(step === 3);
   const { data: validation } = useDataValidation(campaignId ?? 0, step === 4 && campaignId != null);
 
   const createCampaign = useCreateCampaign();
   const updateCampaign = useUpdateCampaign(campaignId ?? 0);
   const uploadCsv = useUploadCsv(campaignId ?? 0);
+  const connectFeedbackSurvey = useConnectFeedbackSurvey(campaignId ?? 0);
 
   const saveCampaign = () => {
     const body = { ...form, reportType, platforms, status: 'draft' as const };
@@ -218,6 +224,26 @@ export default function NewReport() {
       });
     }
     e.target.value = '';
+  };
+
+  const connectSelectedSurvey = () => {
+    const survey = feedbackSurveys.find((item) => item.id === selectedSurveyId);
+    if (!survey || campaignId == null) return;
+    connectFeedbackSurvey.mutate(survey, {
+      onSuccess: (connected) => {
+        setUploads((prev) => ({ ...prev, survey: connected.filename }));
+        toast({
+          title: 'Feedback survey connected',
+          description: `${connected.rowCount} response${connected.rowCount === 1 ? '' : 's'} available for reporting.`,
+        });
+      },
+      onError: (error: Error) =>
+        toast({
+          title: 'Could not connect survey',
+          description: error.message,
+          variant: 'destructive',
+        }),
+    });
   };
 
   const generateReport = () => {
@@ -407,7 +433,8 @@ export default function NewReport() {
         {step === 3 && (
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground">
-              Upload CSV exports for each platform. You can skip this step and upload data later.
+              Connect a CHT post-event feedback survey for survey reporting. External platform CSVs
+              can still be uploaded below.
             </p>
 
             <div className="rounded-xl border border-border bg-card">
@@ -429,14 +456,20 @@ export default function NewReport() {
 
             <div className="overflow-hidden rounded-xl border border-border bg-card">
               <div className="border-b border-border bg-muted px-5 py-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground">Platform CSV Uploads</h2>
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground">Reporting Data Sources</h2>
               </div>
               <div className="divide-y divide-border">
                 {PLATFORMS.map((p) => {
                   const selected = platforms.includes(p);
                   const uploadedFile = uploads[p];
                   return (
-                    <div key={p} className="flex items-center gap-4 px-5 py-4">
+                    <div
+                      key={p}
+                      className={cn(
+                        'flex items-center gap-4 px-5 py-4',
+                        p === 'survey' && 'flex-wrap lg:flex-nowrap',
+                      )}
+                    >
                       <div className="flex min-w-0 flex-1 items-center gap-3">
                         <div
                           className={cn(
@@ -456,14 +489,52 @@ export default function NewReport() {
                           <p className="truncate text-xs text-muted-foreground">{PLATFORM_UPLOAD_DESCRIPTIONS[p]}</p>
                         </div>
                       </div>
-                      <div className="flex-shrink-0">
-                        <label className="cursor-pointer">
-                          <input accept=".csv" className="sr-only" type="file" onChange={handleFileChange(p)} />
-                          <span className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-3 py-1.5 text-xs text-primary transition-colors hover:border-primary hover:bg-primary/10">
-                            <Upload className="h-3 w-3" />
-                            Upload CSV
-                          </span>
-                        </label>
+                      <div className={p === 'survey' ? 'w-full max-w-md' : 'flex-shrink-0'}>
+                        {p === 'survey' ? (
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <select
+                              value={selectedSurveyId}
+                              onChange={(event) => setSelectedSurveyId(event.target.value)}
+                              disabled={!selected || feedbackSurveysLoading}
+                              className={`${INPUT_CLS} min-w-0 flex-1 disabled:cursor-not-allowed disabled:opacity-50`}
+                              aria-label="Feedback survey responses"
+                            >
+                              <option value="">
+                                {feedbackSurveysLoading
+                                  ? 'Loading feedback surveys…'
+                                  : feedbackSurveys.length === 0
+                                    ? 'No feedback surveys available'
+                                    : 'Select program feedback responses'}
+                              </option>
+                              {feedbackSurveys.map((survey) => (
+                                <option key={survey.id} value={survey.id}>
+                                  {survey.program?.title ?? 'Program'} — {survey.title} (
+                                  {survey.responseCount ?? 0} responses)
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={connectSelectedSurvey}
+                              disabled={
+                                !selectedSurveyId ||
+                                !selected ||
+                                connectFeedbackSurvey.isPending
+                              }
+                              className={BTN_OUTLINE}
+                            >
+                              {connectFeedbackSurvey.isPending ? 'Connecting…' : 'Use responses'}
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="cursor-pointer">
+                            <input accept=".csv" className="sr-only" type="file" onChange={handleFileChange(p)} />
+                            <span className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-3 py-1.5 text-xs text-primary transition-colors hover:border-primary hover:bg-primary/10">
+                              <Upload className="h-3 w-3" />
+                              Upload CSV
+                            </span>
+                          </label>
+                        )}
                       </div>
                     </div>
                   );
@@ -508,7 +579,10 @@ export default function NewReport() {
                       <div className="bg-accent/5 px-5 py-3">
                         <p className="mb-1 text-xs font-medium text-accent">Missing metrics:</p>
                         <p className="text-xs text-muted-foreground">
-                          {source.metricsMissing.join(', ')} — upload {source.source} CSV export to include these metrics.
+                          {source.metricsMissing.join(', ')} —{' '}
+                          {source.source === 'Survey'
+                            ? 'select a CHT program feedback survey to include these metrics.'
+                            : `upload ${source.source} CSV export to include these metrics.`}
                         </p>
                       </div>
                     )}

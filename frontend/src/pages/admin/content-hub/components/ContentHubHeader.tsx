@@ -1,6 +1,5 @@
-// Local top bar for Content Hub app-chrome pages. Replaces the report generator's
-// AppShell chrome. Shows the "Content Hub" title + the platform ThemeToggle so the
-// user can flip light/dark within the report hub. (The two report document VIEWERS
+// Local top bar for Reporting (campaign report) pages. Replaces the report generator's
+// AppShell chrome. Shows the "Reporting" title + ThemeToggle. (Report document VIEWERS
 // keep their own dark toolbars and do not render this header.)
 import { Link } from 'react-router-dom';
 import ThemeToggle from '../../../../components/ThemeToggle';
@@ -13,7 +12,7 @@ export default function ContentHubHeader() {
         <Link to="/admin/content-hub" className="flex items-center gap-2.5">
           <LogoMark size={26} color="#3da4c0" />
           <div className="leading-tight">
-            <div className="text-sm font-semibold text-foreground">Content Hub</div>
+            <div className="text-sm font-semibold text-foreground">Reporting</div>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Campaign Reports
             </div>

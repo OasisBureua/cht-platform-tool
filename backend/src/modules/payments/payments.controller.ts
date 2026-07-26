@@ -260,6 +260,29 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/manual-eligibility
+   * Attendance / survey ack preview before admin queues a manual honorarium.
+   */
+  @Get('manual-eligibility')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Check honorarium eligibility for manual payment (admin)',
+  })
+  @ApiQuery({ name: 'userId', required: true })
+  @ApiQuery({ name: 'programId', required: true })
+  async getManualEligibility(
+    @Query('userId') userId: string,
+    @Query('programId') programId: string,
+  ) {
+    return this.paymentsService.getManualHonorariumEligibility(
+      userId,
+      programId,
+    );
+  }
+
+  /**
    * POST /api/payments/manual
    * Queue a manual PENDING payment for admin pay-now flow (no immediate Bill.com call).
    */

@@ -7,31 +7,30 @@ import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '
 import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { ContentLibraryNavTabs } from '../../components/content/ContentLibraryNavTabs';
-import { PlaylistGrid } from '../../components/content/PlaylistGrid';
-import { PlaylistVideosFlattenGrid } from '../../components/content/PlaylistVideosFlattenGrid';
+import { PlaylistSections } from '../../components/content/PlaylistSections';
 import { ConversationsHero, ConversationsHeroSkeleton } from '../../components/content/ConversationsHero';
 import { ConversationsClipCard } from '../../components/content/ConversationsClipCard';
 import { ConversationRow, StripCard, StripRowLoading } from '../../components/home/ConversationRow';
 import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../../components/content/BiomarkerConversationRow';
 import {
-  filterPlaylistsByFocus,
   parsePlaylistFocus,
   playlistBrowseHeading as playlistBrowseHeadingText,
+  PLAYLIST_FOCUS_TO_TAG,
   PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS,
 } from '../../utils/playlistFocusFilters';
 import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
-import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
-import { APP_CATALOG_CLIPS_GRID } from '../../components/navigation/appNavItems';
+import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
+import { useWordPressCatalog, WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 
 /**
  * Sort options surfaced in the catalog "Sort by" dropdown.
  * - `recorded_at`: orders by shoot date (Shoot.shoot_date with posted_at fallback).
- *   Distinct from `posted`: this is when the content was *recorded*, not when it
+ *   Distinct from `posted` — this is when the content was *recorded*, not when it
  *   was published to social media. Default UX choice for "what's new in the catalog".
  * - `posted`: orders by social-media post date (`posted_at`). Renamed in the UI from
  *   the older "Most recent" / "Recently posted" pair (which were byte-identical at
- *   the backend: see 2026-05-16 audit). The duplicate "Most recent" option has been
+ *   the backend — see 2026-05-16 audit). The duplicate "Most recent" option has been
  *   removed; legacy `?sort=recent` URLs are redirected to `posted` below.
  * - `views`/`likes`: engagement-driven sorts.
  */
@@ -51,7 +50,7 @@ const DEFAULT_SORT = 'recorded_at';
 /**
  * Tag-namespace ordering + display labels for the grouped tag dropdown.
  * Backend `/api/catalog/tags` returns `Record<namespace, string[]>`; we render one
- * `<optgroup>` per namespace in this order. `doctor` is intentionally omitted, 
+ * `<optgroup>` per namespace in this order. `doctor` is intentionally omitted —
  * the "All doctors" dropdown sitting next to this control already covers it.
  */
 const TAG_NAMESPACE_ORDER: { key: string; label: string }[] = [
@@ -124,6 +123,10 @@ export default function VideosPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const isInApp = location.pathname.startsWith('/app');
+  const basePath = isInApp ? '/app' : '';
+  const wpMode = useWordPressCatalog();
+  /** Server already filters with has_wordpress=true; do not require inline wordpress blob yet. */
+  const clipSurfaceOpts = undefined;
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('');
@@ -174,7 +177,7 @@ export default function VideosPage() {
 
   // Keep query string in sync with filter state only. Reads location via ref so
   // that tab navigation (which changes location.search) does NOT retrigger this
-  // effect: preventing the playlists ↔ catalog ping-pong caused by stale filter
+  // effect — preventing the playlists ↔ catalog ping-pong caused by stale filter
   // state being seen after a navigation but before the URL→state effect resets it.
   useEffect(() => {
     const loc = locationRef.current;
@@ -184,7 +187,7 @@ export default function VideosPage() {
     if (q) params.set('q', q);
     if (tagFilter) params.set('tag', tagFilter);
     if (doctorFilter) params.set('doctor', doctorFilter);
-    // Only emit `?sort=` when it differs from the default: keeps URLs clean.
+    // Only emit `?sort=` when it differs from the default — keeps URLs clean.
     if (sortBy && sortBy !== DEFAULT_SORT) params.set('sort', sortBy);
 
     const curParams = new URLSearchParams((loc.search || '').replace(/^\?/, ''));
@@ -223,42 +226,51 @@ export default function VideosPage() {
   const { data: tags = {}, isSuccess: tagsReady } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+    enabled: !wpMode,
   });
 
   const { data: doctors = [], isSuccess: doctorsReady } = useQuery({
     queryKey: ['catalog', 'doctors'],
     queryFn: catalogApi.getDoctors,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+    enabled: !wpMode,
   });
 
   const tagGroups = useMemo(() => groupTagsByNamespace(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
-  /** Clips/filters load once tags + doctors requests finish: do not block on empty tag list (MediaHub can return {}). */
-  const useMediaHub = tagsReady && doctorsReady;
+  /** WordPress catalog: clips load without waiting on MediaHub tags/doctors. */
+  const useMediaHub = wpMode || (tagsReady && doctorsReady);
 
   const { data: playlists = [] } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    staleTime: 10 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   const playlistFocus = useMemo(() => parsePlaylistFocus(location.search || ''), [location.search]);
+  const focusTag = playlistFocus ? PLAYLIST_FOCUS_TO_TAG[playlistFocus] : null;
 
-  const playlistsForPlaylistView = useMemo(() => {
-    if (effectiveLibraryView !== 'playlists') return playlists;
-    if (!playlistFocus) return playlists;
-    return filterPlaylistsByFocus(playlists, playlistFocus);
-  }, [playlists, effectiveLibraryView, playlistFocus]);
+  const {
+    data: focusClipsData,
+    isLoading: focusClipsLoading,
+    isError: focusClipsError,
+  } = useQuery({
+    queryKey: ['catalog', 'clips', 'playlist-focus', playlistFocus, focusTag],
+    queryFn: () =>
+      catalogApi.getClips({
+        tag: focusTag!,
+        sort_by: 'recorded_at',
+        limit: 48,
+        ...(wpMode ? { has_wordpress: true } : {}),
+      }),
+    enabled: !!playlistFocus && !!focusTag && effectiveLibraryView === 'playlists' && useMediaHub,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+  });
 
-  const focusPlaylistIds = useMemo(
-    () => playlistsForPlaylistView.map((p) => p.id),
-    [playlistsForPlaylistView],
-  );
-
-  const focusPlaylistVideosFetch = useFlattenedPlaylistVideos(
-    focusPlaylistIds,
-    !!(playlistFocus && effectiveLibraryView === 'playlists' && focusPlaylistIds.length > 0),
+  const focusClips = useMemo(
+    () => (focusClipsData?.items ?? []).filter((c) => shouldSurfaceCatalogClip(c, clipSurfaceOpts)),
+    [focusClipsData?.items],
   );
 
   const {
@@ -274,7 +286,7 @@ export default function VideosPage() {
     readonly [string, string, string, string, string, string],
     number
   >({
-    queryKey: ['catalog', 'clips', debouncedQuery, tagFilter, doctorFilter, sortBy],
+    queryKey: ['catalog', 'clips', debouncedQuery, tagFilter, doctorFilter, sortBy, wpMode ? 'wp' : 'legacy'],
     queryFn: ({ pageParam = 0 }) =>
       catalogApi.getClips({
         q: debouncedQuery || undefined,
@@ -283,15 +295,21 @@ export default function VideosPage() {
         sort_by: sortBy ? (sortBy as SortByParam) : undefined,
         limit: CLIPS_PAGE_SIZE,
         offset: pageParam,
+        ...(wpMode ? { has_wordpress: true } : {}),
       }),
     getNextPageParam: (lastPage, allPages) => {
       const lastItems = lastPage?.items ?? [];
+      // Full page ⇒ assume more exist. Do not trust `total` when it equals
+      // the page size (ContentHub currently returns total === items.length).
+      if (lastItems.length < CLIPS_PAGE_SIZE) return undefined;
       const loaded = allPages.reduce((acc, p) => acc + (p?.items?.length ?? 0), 0);
-      return lastItems.length === CLIPS_PAGE_SIZE ? loaded : undefined;
+      const total = lastPage?.total ?? 0;
+      if (total > CLIPS_PAGE_SIZE && loaded >= total) return undefined;
+      return loaded;
     },
     initialPageParam: 0,
     enabled: useMediaHub && effectiveLibraryView === 'clips',
-    staleTime: 2 * 60 * 1000,
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
   const clipsData: InfiniteData<ClipsPage, number> | undefined =
@@ -307,11 +325,17 @@ export default function VideosPage() {
   const handleObserver = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [target] = entries;
-      if (target?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+      if (
+        target?.isIntersecting &&
+        hasNextPage &&
+        !isFetchingNextPage &&
+        !clipsLoading &&
+        clipsPageCount > 0
+      ) {
         fetchNextPage();
       }
     },
-    [hasNextPage, isFetchingNextPage, fetchNextPage],
+    [hasNextPage, isFetchingNextPage, fetchNextPage, clipsLoading, clipsPageCount],
   );
 
   useEffect(() => {
@@ -319,21 +343,36 @@ export default function VideosPage() {
     if (!el) return;
     const clipsPagerActive =
       effectiveLibraryView === 'clips' && (!isInApp || showClipsGrid);
-    if (!clipsPagerActive) return;
-    const observer = new IntersectionObserver(handleObserver, { rootMargin: '200px', threshold: 0.1 });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid]);
+    // Wait until the first page is on screen before observing, so an empty
+    // first paint can't chain-load every offset.
+    if (!clipsPagerActive || clipsLoading || clipsPageCount === 0) return;
+    const observer = new IntersectionObserver(handleObserver, {
+      rootMargin: '200px',
+      threshold: 0,
+    });
+    // Defer observe one frame so the sentinel isn't treated as "already
+    // intersecting" during the initial layout of page 1.
+    const raf = requestAnimationFrame(() => observer.observe(el));
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+    };
+  }, [effectiveLibraryView, handleObserver, isInApp, showClipsGrid, clipsLoading, clipsPageCount]);
 
   const mediaHubItems = useMemo(
-    () => (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter(shouldSurfaceCatalogClip),
+    () =>
+      (clipsData?.pages?.flatMap((p) => p?.items ?? []) ?? []).filter((c) =>
+        shouldSurfaceCatalogClip(c, clipSurfaceOpts),
+      ),
     [clipsData?.pages],
   );
 
   const displayItems = useMediaHub ? mediaHubItems : [];
   const isLoading = useMediaHub ? clipsLoading : false;
 
-  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter(shouldSurfaceCatalogClip);
+  const firstPageItems = (clipsData?.pages?.[0]?.items ?? []).filter((c) =>
+    shouldSurfaceCatalogClip(c, clipSurfaceOpts),
+  );
   const featuredClip = firstPageItems[0] ?? null;
   const gridItems = useMemo(
     () => (featuredClip ? displayItems.filter((c) => c.id !== featuredClip.id) : displayItems),
@@ -416,35 +455,39 @@ export default function VideosPage() {
               />
             </div>
 
-            <select
-              value={tagFilter}
-              onChange={(e) => setTagFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
-            >
-              <option value="">All tags</option>
-              {tagGroups.map((group) => (
-                <optgroup key={group.label} label={group.label}>
-                  {group.options.map((opt) => (
-                    <option key={`${group.label}:${opt.value}`} value={opt.value}>
+            {!wpMode ? (
+              <>
+                <select
+                  value={tagFilter}
+                  onChange={(e) => setTagFilter(e.target.value)}
+                  className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                >
+                  <option value="">All tags</option>
+                  {tagGroups.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.options.map((opt) => (
+                        <option key={`${group.label}:${opt.value}`} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+
+                <select
+                  value={doctorFilter}
+                  onChange={(e) => setDoctorFilter(e.target.value)}
+                  className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                >
+                  <option value="">All doctors</option>
+                  {doctorOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
-                </optgroup>
-              ))}
-            </select>
-
-            <select
-              value={doctorFilter}
-              onChange={(e) => setDoctorFilter(e.target.value)}
-              className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
-            >
-              <option value="">All doctors</option>
-              {doctorOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+                </select>
+              </>
+            ) : null}
 
             <div className="relative">
               <button
@@ -507,18 +550,16 @@ export default function VideosPage() {
                   </h2>
                   {playlistFocus ? (
                     <p className="text-sm text-gray-600 dark:text-zinc-400">
-                      {focusPlaylistVideosFetch.isLoading
-                        ? 'Loading videos…'
-                        : focusPlaylistVideosFetch.entries.length > 0
-                          ? `${focusPlaylistVideosFetch.entries.length} videos from ${playlistsForPlaylistView.length} playlist${
-                              playlistsForPlaylistView.length !== 1 ? 's' : ''
-                            }`
-                          : playlistsForPlaylistView.length === 0
-                            ? ''
-                            : 'Videos from playlists in this category'}
+                      {focusClipsLoading
+                        ? 'Loading conversations…'
+                        : focusClips.length > 0
+                          ? `${focusClips.length} conversation${focusClips.length !== 1 ? 's' : ''}`
+                          : 'No conversations in this category yet'}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">Browse playlists by category</p>
+                    <p className="text-sm text-gray-600 dark:text-zinc-400">
+                      Browse KOL playlists and ASCO 2026 series
+                    </p>
                   )}
                 </div>
                 {!isInApp ? (
@@ -531,26 +572,34 @@ export default function VideosPage() {
                 ) : null}
               </div>
             {playlistFocus ? (
-              focusPlaylistVideosFetch.isLoading ? (
+              focusClipsLoading ? (
                 <div className="flex justify-center py-16" aria-busy="true">
                   <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
                 </div>
-              ) : focusPlaylistVideosFetch.isError ? (
-                <p className="text-sm text-red-600">Could not load playlist videos. Try again later.</p>
-              ) : focusPlaylistVideosFetch.entries.length > 0 ? (
-                <PlaylistVideosFlattenGrid
-                  entries={focusPlaylistVideosFetch.entries}
-                  isInApp={isInApp}
-                  showPlaylistTitles
-                />
-              ) : playlistsForPlaylistView.length === 0 ? (
-                <p className="text-sm text-gray-600 dark:text-zinc-400">No playlists match this category yet.</p>
+              ) : focusClipsError ? (
+                <p className="text-sm text-red-600">Could not load conversations. Try again later.</p>
+              ) : focusClips.length > 0 ? (
+                <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {focusClips.map((item) => (
+                    <ConversationsClipCard
+                      key={item.id}
+                      item={item}
+                      href={
+                        isInApp
+                          ? `/app/clip/${getShortClipId(item.id)}`
+                          : `/catalog/clip/${getShortClipId(item.id)}`
+                      }
+                    />
+                  ))}
+                </div>
               ) : (
-                <p className="text-sm text-gray-600 dark:text-zinc-400">No videos found in these playlists.</p>
+                <p className="text-sm text-gray-600 dark:text-zinc-400">
+                  No conversations match this category yet.
+                </p>
               )
             ) : (
               <>
-                <PlaylistGrid playlists={playlistsForPlaylistView} isInApp={isInApp} descriptionForItem={playlistDescription} />
+                <PlaylistSections playlists={playlists} isInApp={isInApp} />
                 {playlists.length === 0 ? (
                   <p className="text-sm text-gray-600 dark:text-zinc-400">
                     No playlists configured. Add YouTube playlist IDs on the server.
@@ -560,7 +609,7 @@ export default function VideosPage() {
             )}
           </section>
         ) : isInApp && showClipsGrid ? (
-          // /app/catalog?view=clips: full searchable grid, same layout as public /catalog?view=clips
+          // /app/catalog?view=clips — full searchable grid, same layout as public /catalog?view=clips
           <section className="space-y-4">
             <h2 className="sr-only">Video library</h2>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -594,7 +643,7 @@ export default function VideosPage() {
             )}
           </section>
         ) : isInApp ? (
-          // /app/catalog (default): strip rows with hero + biomarker sections
+          // /app/catalog (default) — strip rows with hero + biomarker sections
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">

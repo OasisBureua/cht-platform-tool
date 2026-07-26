@@ -44,7 +44,9 @@ describe('ZoomWebhookService', () => {
 
     service = new ZoomWebhookService(
       prisma as unknown as PrismaService,
-      { get: jest.fn().mockReturnValue('test-webhook-secret') } as unknown as ConfigService,
+      {
+        get: jest.fn().mockReturnValue('test-webhook-secret'),
+      } as unknown as ConfigService,
       {} as HubSpotService,
       surveys as unknown as SurveysService,
       zoom as unknown as ZoomService,

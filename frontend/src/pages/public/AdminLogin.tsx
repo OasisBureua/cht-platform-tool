@@ -2,8 +2,12 @@ import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
+import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
+import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
+import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { Shield } from 'lucide-react';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
+import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function AdminLogin() {
   const location = useLocation();
@@ -16,10 +20,22 @@ export default function AdminLogin() {
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
+    if (!googleOAuthEnabled) {
+      setError(googleOAuthMigrationMessage);
+      return;
+    }
     setError(null);
     setOauthLoading('google');
-    window.location.href = buildOAuthAuthorizeUrl('google', from);
+    try {
+      const url = cognitoAuthEnabled
+        ? await buildCognitoAuthorizeUrl('Google', from)
+        : buildOAuthAuthorizeUrl('google', from);
+      window.location.href = url;
+    } catch (err) {
+      setOauthLoading(null);
+      setError(err instanceof Error ? err.message : 'Could not start Google sign-in.');
+    }
   };
 
   if (isAuthenticated && !isLoading) {
@@ -66,6 +82,9 @@ export default function AdminLogin() {
         </div>
 
         <div className="p-6">
+          <div className="mb-4">
+            <AuthMigrationNotice variant="login" />
+          </div>
           <form className="space-y-4" onSubmit={handleLogin}>
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -97,27 +116,36 @@ export default function AdminLogin() {
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
 
-            <div className="relative mt-4">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={!!oauthLoading}
-              className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {oauthLoading === 'google' ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
-              ) : (
-                <GoogleIcon />
-              )}
-              Google
-            </button>
+            {googleOAuthEnabled ? (
+              <>
+                <div className="relative mt-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  disabled={!!oauthLoading}
+                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {oauthLoading === 'google' ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  ) : (
+                    <GoogleIcon />
+                  )}
+                  Google
+                </button>
+                <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
+              </>
+            ) : (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {googleOAuthMigrationMessage}
+              </p>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-500">

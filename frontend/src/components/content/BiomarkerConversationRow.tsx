@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { catalogApi, type MediaHubClip } from '../../api/catalog';
-import { shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import {
   type CarouselConfig,
+  getCarousel,
   HCP_CAROUSELS,
 } from '../../data/carousels.config';
 import { ConversationRow, StripCard, StripRowLoading } from '../home/ConversationRow';
@@ -40,9 +41,7 @@ export function BiomarkerConversationRow({
   /** When true (e.g. app dashboard home), omit tiles whose poster fails to load. */
   hideBrokenCatalogThumbnails?: boolean;
 }) {
-  const config: CarouselConfig | undefined = HCP_CAROUSELS.find(
-    (c) => c.id === carouselId,
-  );
+  const config: CarouselConfig | undefined = getCarousel(carouselId);
 
   if (!config) {
     // Misconfigured carouselId — render nothing rather than blow up. Bug
@@ -79,7 +78,15 @@ export function BiomarkerConversationRow({
     shouldSurfaceCatalogClip,
   );
 
-  const seeAllHref = buildCatalogSectionPlaylistsHref(isInApp, config.label);
+  // Anon home uses short row titles (HER2+ / HR+); catalog browse uses section labels.
+  const seeAllSectionById: Record<string, string> = {
+    'anon-home-her2': 'HER2+ Conversations',
+    'anon-home-hr': 'HR+ · CDK4/6 · Endocrine',
+  };
+  const seeAllHref = buildCatalogSectionPlaylistsHref(
+    isInApp,
+    seeAllSectionById[config.id] ?? config.label,
+  );
 
   if (isLoading) {
     return (
@@ -109,16 +116,12 @@ export function BiomarkerConversationRow({
           key={c.id}
           hideThumbnailOnError={hideBrokenCatalogThumbnails}
           to={
-            isInApp ? `/app/catalog/clip/${c.id}` : `/catalog/clip/${c.id}`
+            isInApp
+              ? `/app/clip/${getShortClipId(c.id)}`
+              : `/catalog/clip/${getShortClipId(c.id)}`
           }
           title={c.title}
-          imageUrl={
-            c.thumbnail_url ||
-            // ID is `official:youtube:<videoId>`; extract the YouTube ID for the fallback poster.
-            (c.id.startsWith('official:youtube:')
-              ? `https://img.youtube.com/vi/${c.id.split(':').slice(2).join(':')}/hqdefault.jpg`
-              : '')
-          }
+          imageUrl={getMediaHubThumbnail(c)}
           description={
             c.doctors && c.doctors.length > 0
               ? c.doctors.slice(0, 2).join(' · ')
@@ -143,3 +146,9 @@ export function BiomarkerConversationRow({
 export const BIOMARKER_CAROUSEL_IDS: string[] = HCP_CAROUSELS.filter((c) =>
   c.id.startsWith('hcp-home-') && c.id !== 'hcp-home-recently-added',
 ).map((c) => c.id);
+
+/** Public marketing home biomarker strips (catalog clips by tag, not YouTube playlists). */
+export const ANON_HOME_BIOMARKER_CAROUSEL_IDS: string[] = [
+  'anon-home-her2',
+  'anon-home-hr',
+];

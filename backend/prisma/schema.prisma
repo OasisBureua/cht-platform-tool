@@ -224,7 +224,7 @@ model ProgramRegistration {
   userId                    String
   programId                 String
   status                    ProgramRegistrationStatus   @default(PENDING)
-  intakeJotformSubmissionId String?
+  intakeSubmissionId String?
   intakeJotformSubmittedAt  DateTime?
   officeHoursSlotId         String?
   adminNotes                String?                   @db.Text
@@ -235,8 +235,6 @@ model ProgramRegistration {
   postEventAttendanceReviewedAt        DateTime?
   postEventAttendanceReviewedByUserId  String?
   postEventSurveyAcknowledgedAt        DateTime?
-  /// Jotform submission id for post-event survey (first submission wins; webhook sets).
-  postEventJotformSubmissionId        String?
   honorariumRequestedAt                DateTime?
   /// Set after the ~24h pre-session reminder email is sent. Reset to null when session time changes so a new reminder fires.
   reminder24hSentAt                    DateTime?
@@ -420,6 +418,10 @@ model Survey {
   questions   Json     // Survey questions in JSON format
   type        SurveyType
   required    Boolean  @default(true)
+  /// Set on any admin edit so template ensure/regeneration never overwrites this row.
+  isCustomized Boolean @default(false)
+  /// Monotonic schema revision for native questions; stamped onto SurveyResponse at submit.
+  schemaVersion Int @default(1)
   
   // Jotform integration
   jotformFormId     String?
@@ -441,6 +443,8 @@ enum SurveyType {
   PRE_TEST
   POST_TEST
   FEEDBACK
+  /// Webinar registration intake (native replacement for Jotform intake).
+  INTAKE
 }
 
 // ============================================================================
@@ -454,9 +458,11 @@ model SurveyResponse {
   // Response data
   answers     Json     // Survey answers in JSON format
   score       Float?   // Score if applicable
+  /// Survey.schemaVersion at the time this response was submitted (answer-key snapshot).
+  schemaVersion Int @default(1)
   
-  // Jotform tracking
-  jotformSubmissionId String? @unique
+  // External submission id (UUID for native submit; Jotform id for legacy webhooks)
+  submissionId String? @unique
   
   // Timestamps
   submittedAt DateTime @default(now())
@@ -468,6 +474,7 @@ model SurveyResponse {
   @@unique([userId, surveyId])
   @@index([userId])
   @@index([surveyId])
+  @@index([surveyId, schemaVersion])
   @@map("SurveyResponse")
 }
 
@@ -504,7 +511,7 @@ model Payment {
   
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  program     Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  program     Program? @relation(fields: [programId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([programId])
@@ -626,4 +633,17 @@ model AdminAuditLog {
   @@index([createdAt])
   @@index([resource, resourceId])
   @@map("AdminAuditLog")
+}
+
+// ============================================================================
+// KOL DIRECTORY VISIBILITY (CHT overlay — Content Hub remains source of roster)
+// ============================================================================
+model KolDirectoryVisibility {
+  slug            String   @id
+  visibleOnPublic Boolean  @default(true)
+  visibleOnApp    Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+  updatedByUserId String?
+
+  @@map("kol_directory_visibility")
 }

@@ -103,9 +103,9 @@ class PaymentConsumer(SQSBaseConsumer):
                     text(
                         """
                         INSERT INTO "Payment"
-                        (id, "userId", "programId", amount, type, status, description, "idempotencyKey", "createdAt", "updatedAt")
+                        (id, "userId", "programId", amount, type, status, description, "idempotencyKey", "w9Collected", "createdAt", "updatedAt")
                         VALUES
-                        (gen_random_uuid()::text, :user_id, :program_id, :amount, CAST(:ptype AS "PaymentType"), 'PENDING', :desc, :idempotency_key, NOW(), NOW())
+                        (gen_random_uuid()::text, :user_id, :program_id, :amount, CAST(:ptype AS "PaymentType"), 'PENDING', :desc, :idempotency_key, false, NOW(), NOW())
                         ON CONFLICT ("idempotencyKey") DO NOTHING
                         RETURNING id
                         """

@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,11 @@ import {
   PostEventAttendanceMessage,
   PostEventFeedbackLearnerActions,
 } from '../components/programs/PostEventFeedbackLearnerActions';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { NativeSurveyForm } from '../components/surveys/NativeSurveyForm';
+import { surveyHasNativeQuestions } from '../utils/survey-questions';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+
+const SURVEY_DETAIL_NATIVE_FORM_ID = 'survey-detail-native-form';
 
 function typeLabel(type?: Survey['type']) {
   if (!type) return 'Survey';
@@ -29,12 +33,12 @@ function formatHonorarium(cents?: number | null) {
 
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
 
   const [started, setStarted] = useState(false);
+  const [nativeSurveyError, setNativeSurveyError] = useState<string | null>(null);
 
   const { data: survey, isLoading, isError, error } = useQuery({
     queryKey: ['survey', id],
@@ -55,82 +59,45 @@ export default function SurveyDetail() {
     programRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
     programRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
 
-  const hasJotform = Boolean(survey?.jotformFormId);
+  const useNativeRenderer = Boolean(survey && surveyHasNativeQuestions(survey.questions));
 
   const { data: myResponse } = useQuery({
     queryKey: ['survey', id, 'my-response'],
     queryFn: () => surveysApi.getMyResponse(id!),
     enabled: Boolean(id && userId && survey),
-    refetchInterval: (q) => {
-      if (!hasJotform || !started || q.state.data?.submitted) return false;
-      return 4000;
-    },
   });
   const surveySaved = Boolean(myResponse?.submitted);
   const surveyAcked = isPostEventFeedback && !!programRegistration?.postEventSurveyAcknowledgedAt;
   // For FEEDBACK surveys, once acknowledged the form is permanently locked — no resubmission.
   const formLocked = surveyAcked;
 
-  const { data: jotformResume } = useQuery({
-    queryKey: ['survey', id, 'jotform-resume'],
-    queryFn: () => surveysApi.getJotformResume(id!),
-    enabled: Boolean(id && userId && survey && hasJotform && !surveySaved),
-  });
-
-  const baseUrl = survey
-    ? survey.jotformFormUrl ??
-      (survey.jotformFormId ? `https://communityhealthmedia.jotform.com/${survey.jotformFormId}` : null)
-    : null;
-  const jotformFormUrl = baseUrl;
-  const jotformEmbedUrl = useMemo(() => {
-    if (!baseUrl || !survey) return null;
-    const q = new URLSearchParams();
-    if (userId) q.set('user_id', userId);
-    if (survey.programId) q.set('program_id', survey.programId);
-    const sessionId = jotformResume?.sessionId?.trim();
-    if (sessionId) q.set('session', sessionId);
-    const join = baseUrl.includes('?') ? '&' : '?';
-    const suffix = q.toString();
-    return suffix ? `${baseUrl}${join}${suffix}` : baseUrl;
-  }, [baseUrl, userId, survey, jotformResume?.sessionId]);
-
-  useEffect(() => {
-    const sid = searchParams.get('session') || searchParams.get('jotform_session');
-    if (!sid?.trim() || !userId || !id || !survey?.jotformFormId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await surveysApi.putJotformResume(id, sid.trim());
-        if (!cancelled) {
-          queryClient.invalidateQueries({ queryKey: ['survey', id, 'jotform-resume'] });
-          const next = new URLSearchParams(searchParams);
-          next.delete('session');
-          next.delete('jotform_session');
-          setSearchParams(next, { replace: true });
-        }
-      } catch {
-        /* ignore */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [searchParams, userId, id, survey?.jotformFormId, queryClient, setSearchParams]);
-
   const submitMutation = useMutation({
-    mutationFn: async () => {
-      // UI-only placeholder submission payload (answers empty for now)
-      return surveysApi.submitResponse(id!, {
-        userId,
-        answers: {},
-      });
-    },
+    mutationFn: async (answers: Record<string, unknown>) =>
+      surveysApi.submitResponse(id!, { answers }),
     onSuccess: () => {
+      setNativeSurveyError(null);
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
-      queryClient.invalidateQueries({ queryKey: ['survey', id, 'jotform-resume'] });
+      if (survey?.programId) {
+        queryClient.invalidateQueries({ queryKey: ['program', survey.programId, 'registration'] });
+      }
+    },
+    onError: () => {
+      setNativeSurveyError('Could not save survey. Check your connection and try again.');
     },
   });
+
+  const handleCompleteNativeSurvey = () => {
+    setNativeSurveyError(null);
+    if (surveySaved || surveyAcked) return;
+    const form = document.getElementById(SURVEY_DETAIL_NATIVE_FORM_ID) as HTMLFormElement | null;
+    if (!form) return;
+    if (!form.reportValidity()) {
+      setNativeSurveyError('Complete all required fields before tapping Complete survey.');
+      return;
+    }
+    form.requestSubmit();
+  };
 
   if (!userId) {
     return (
@@ -215,28 +182,11 @@ export default function SurveyDetail() {
           {/* Start / Embed */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
             {!started ? (
-              formLocked || (surveySaved && hasJotform && isPostEventFeedback) ? (
+              formLocked || surveySaved ? (
                 <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                   {formLocked
                     ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
                     : 'Your responses are saved. Thank you for completing this survey.'}
-                </p>
-              ) : surveySaved && hasJotform ? (
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                    Your responses are saved. Thank you for completing this survey.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setStarted(true)}
-                    className="inline-flex w-fit items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
-                  >
-                    Open embedded form
-                  </button>
-                </div>
-              ) : surveySaved && !hasJotform ? (
-                <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                  Your responses are saved. Thank you for completing this survey.
                 </p>
               ) : (
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -254,68 +204,28 @@ export default function SurveyDetail() {
 
             {started && !formLocked ? (
               <div>
-                {hasJotform && jotformEmbedUrl ? (
-                  <div className="space-y-4">
-                    {surveySaved ? (
-                      <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                        Your responses are saved. Thank you for completing this survey.
-                      </p>
-                    ) : (
-                      <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                        After you submit the form below, this page will update automatically when we receive your
-                        responses (usually within a few seconds). If your Jotform uses <strong>Save &amp; Continue</strong>,
-                        your progress is stored for <strong>24 hours</strong> when you return through this app (same
-                        account).
-                      </p>
-                    )}
-                    <div className="rounded-2xl overflow-hidden border border-gray-200 bg-white">
-                      <iframe
-                        src={jotformEmbedUrl}
-                        title={survey.title}
-                        className="w-full border-0"
-                        style={{ height: 720, minHeight: 720 }}
-                        allow="clipboard-write; camera; microphone"
-                      />
-                    </div>
-                    {jotformFormUrl ? (
-                      <p className="text-sm text-gray-600">
-                        If the survey doesn&apos;t load above (e.g. on localhost),{' '}
-                        <a
-                          href={jotformEmbedUrl || jotformFormUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-semibold text-gray-900 underline hover:text-gray-700"
-                        >
-                          open the survey in a new tab
-                        </a>
-                        .
-                      </p>
-                    ) : null}
-                  </div>
+                {useNativeRenderer ? (
+                  <NativeSurveyForm
+                    surveyId={survey.id}
+                    title={survey.title}
+                    questions={survey.questions}
+                    authenticated={!!userId}
+                    userSummary={{
+                      firstName: user?.firstName,
+                      lastName: user?.lastName,
+                      email: user?.email,
+                    }}
+                    disabled={formLocked || submitMutation.isPending}
+                    submitting={submitMutation.isPending}
+                    hideSubmitButton={isPostEventFeedback}
+                    formId={isPostEventFeedback ? SURVEY_DETAIL_NATIVE_FORM_ID : undefined}
+                    showPayoutNotice={isPostEventFeedback}
+                    onSubmit={(answers) => submitMutation.mutate(answers)}
+                  />
                 ) : (
-                  <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6">
-                    <p className="font-semibold text-gray-900">Native survey renderer (placeholder)</p>
-                    <p className="mt-1 text-sm text-gray-600">
-                      We’ll render questions natively once the question format is finalized.
-                      For now, you can preview the questions below.
-                    </p>
-
-                    <div className="mt-5">
-                      <button
-                        onClick={() => submitMutation.mutate()}
-                        disabled={submitMutation.isPending}
-                        className={[
-                          'inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-semibold',
-                          submitMutation.isPending
-                            ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                            : 'bg-brand-600 text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]',
-                        ].join(' ')}
-                      >
-                        {submitMutation.isPending ? 'Submitting…' : 'Mark as completed (UI)'}
-                        <CheckCircle2 className="ml-2 h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
+                  <p className="text-sm text-gray-600">
+                    This survey is not available yet. Contact support if you need assistance.
+                  </p>
                 )}
               </div>
             ) : null}
@@ -328,18 +238,35 @@ export default function SurveyDetail() {
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
                   <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
                   <p className="text-sm text-gray-600">
-                    After you submit the Jotform above, use <strong>Complete survey</strong> to lock in your response
-                    {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
-                      ? ', then confirm payout details and tap Continue to create your pending honorarium request'
-                      : ''}
-                    . Each step can only be submitted once.
+                    {isPostEventFeedback && useNativeRenderer ? (
+                      <>
+                        Complete all questions above, then tap <strong>Complete survey</strong> below to save your
+                        responses
+                        {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
+                          ? ' before confirming payout details'
+                          : ''}
+                        .
+                      </>
+                    ) : (
+                      <>
+                        Submit the survey above to save your responses
+                        {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
+                          ? ', then confirm payout details below to create your pending honorarium request'
+                          : ''}
+                        .
+                      </>
+                    )}
                   </p>
                   <PostEventFeedbackLearnerActions
                     programId={survey.programId}
                     userId={userId}
                     myRegistration={programRegistration}
                     hasHonorarium={Boolean(survey.program?.honorariumAmount && survey.program.honorariumAmount > 0)}
-                    surveyReadyForAck={started || surveySaved}
+                    surveyReadyForAck={surveySaved && !useNativeRenderer}
+                    nativeSurveyMode={isPostEventFeedback && useNativeRenderer}
+                    surveyFormSubmitting={submitMutation.isPending}
+                    surveySubmitError={nativeSurveyError}
+                    onCompleteSurveyNative={handleCompleteNativeSurvey}
                     surveyDetailId={id}
                   />
                 </div>

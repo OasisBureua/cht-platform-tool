@@ -4,6 +4,7 @@ import { ArrowRight, Dna, Loader2, Play } from 'lucide-react';
 import { catalogApi } from '../api/catalog';
 import { webinarsApi } from '../api/webinars';
 import DISEASE_AREAS from '../data/disease-areas';
+import { getShortClipId } from '../utils/clipUrl';
 
 export default function DiseaseAreas() {
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
@@ -170,7 +171,7 @@ export default function DiseaseAreas() {
                         {matchedClips.slice(0, 8).map((c) => (
                           <Link
                             key={c.id}
-                            to={`/app/catalog/clip/${c.id}`}
+                            to={`/app/clip/${getShortClipId(c.id)}`}
                             className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995] group"
                           >
                             <div className="aspect-video bg-gray-100 relative">

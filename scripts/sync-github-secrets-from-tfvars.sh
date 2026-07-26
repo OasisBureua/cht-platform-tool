@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Sync Terraform tfvars application secrets into a GitHub Environment.
-# Default: platform.tfvars → production (used by deploy-prod.yml "Deploy to Platform").
+# Default: platform.tfvars → platform (used by deploy-prod.yml "Deploy to Platform").
 #
 # Usage:
-#   ./scripts/sync-github-secrets-from-tfvars.sh [production|staging|development]
+#   ./scripts/sync-github-secrets-from-tfvars.sh [platform|production|staging|development]
 #   ./scripts/sync-github-secrets-from-tfvars.sh staging --tfvars infrastructure/terraform/environments/variables/staging.tfvars
-#   ./scripts/sync-github-secrets-from-tfvars.sh production --dry-run
-#   ./scripts/sync-github-secrets-from-tfvars.sh production --with-aws-role
+#   ./scripts/sync-github-secrets-from-tfvars.sh platform --dry-run
+#   ./scripts/sync-github-secrets-from-tfvars.sh platform --with-aws-role
 #
 # Requires: gh auth login, repo admin (or secrets: write). AWS CLI only for --with-aws-role.
 set -euo pipefail
@@ -15,11 +15,19 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-GH_ENV="production"
+GH_ENV="platform"
 TFVARS="infrastructure/terraform/environments/variables/platform.tfvars"
 DRY_RUN=""
 WITH_AWS_ROLE=""
 AWS_ROLE_ARN_OVERRIDE=""
+
+normalize_gh_env() {
+  case "$1" in
+    production|platform) echo "platform" ;;
+    staging|development) echo "$1" ;;
+    *) return 1 ;;
+  esac
+}
 
 usage() {
   sed -n '2,12p' "$0" | sed 's/^# \?//'
@@ -29,7 +37,9 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage 0 ;;
-    production|staging|development) GH_ENV="$1" ;;
+    production|platform|staging|development)
+      GH_ENV=$(normalize_gh_env "$1") || { echo "Unknown environment: $1" >&2; exit 1; }
+      ;;
     --tfvars) shift; TFVARS="${1:?--tfvars requires a path}" ;;
     --dry-run) DRY_RUN=1 ;;
     --with-aws-role) WITH_AWS_ROLE=1 ;;
@@ -89,6 +99,12 @@ bill_mfa_remember_me_id:BILL_MFA_REMEMBER_ME_ID
 bill_mfa_device_name:BILL_MFA_DEVICE_NAME
 admin_bootstrap_secret:ADMIN_BOOTSTRAP_SECRET
 hubspot_access_token:HUBSPOT_ACCESS_TOKEN
+cognito_google_client_id:COGNITO_GOOGLE_CLIENT_ID
+cognito_google_client_secret:COGNITO_GOOGLE_CLIENT_SECRET
+recaptcha_site_key:RECAPTCHA_SITE_KEY
+recaptcha_secret_key:RECAPTCHA_SECRET_KEY
+contenthub_api_key:CONTENTHUB_API_KEY
+internal_cache_secret:INTERNAL_CACHE_SECRET
 EOF
 )
 
@@ -122,7 +138,7 @@ set_github_secret() {
 
 aws_role_for_env() {
   case "$1" in
-    production) echo "GitHubActions-CHT-Platform-Prod" ;;
+    platform|production) echo "GitHubActions-CHT-Platform" ;;
     staging|development) echo "GitHubActions-CHT-Platform" ;;
     *) return 1 ;;
   esac

@@ -38,17 +38,25 @@
         "ecr:BatchGetImage",
         "ecr:GetDownloadUrlForLayer",
         "ecr:DescribeRepositories",
-        "ecr:ListImages"
+        "ecr:ListImages",
+        "ecr:PutLifecyclePolicy",
+        "ecr:GetLifecyclePolicy",
+        "ecr:DeleteLifecyclePolicy"
       ],
-      "Resource": "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*"
+      "Resource": [
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*",
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-dev-*"
+      ]
     },
     {
-      "Sid": "PlatformS3",
+      "Sid": "DeployS3",
       "Effect": "Allow",
       "Action": "s3:*",
       "Resource": [
         "arn:aws:s3:::cht-platform-*",
-        "arn:aws:s3:::cht-platform-*/*"
+        "arn:aws:s3:::cht-platform-*/*",
+        "arn:aws:s3:::cht-dev-*",
+        "arn:aws:s3:::cht-dev-*/*"
       ]
     },
     {
@@ -63,7 +71,7 @@
       "Resource": "arn:aws:dynamodb:us-east-1:233636046512:table/cht-platform-terraform-locks"
     },
     {
-      "Sid": "PlatformIAMRoles",
+      "Sid": "DeployIAMRoles",
       "Effect": "Allow",
       "Action": [
         "iam:GetRole",
@@ -93,7 +101,9 @@
       ],
       "Resource": [
         "arn:aws:iam::233636046512:role/cht-platform-*",
+        "arn:aws:iam::233636046512:role/cht-dev-*",
         "arn:aws:iam::233636046512:policy/cht-platform-*",
+        "arn:aws:iam::233636046512:policy/cht-dev-*",
         "arn:aws:iam::233636046512:policy/GitHubActions-CHT-Platform-Deploy"
       ]
     },
@@ -126,12 +136,14 @@
         "cloudfront:*",
         "cloudtrail:*",
         "cloudwatch:*",
+        "cognito-idp:*",
         "config:*",
-        "guardduty:*",
         "ec2:*",
         "ecs:*",
+        "elasticache:*",
         "elasticloadbalancing:*",
         "events:*",
+        "guardduty:*",
         "kms:*",
         "logs:*",
         "rds:*",
@@ -154,7 +166,11 @@
         "logs:GetLogEvents",
         "logs:FilterLogEvents"
       ],
-      "Resource": "arn:aws:logs:us-east-1:233636046512:log-group:/ecs/cht-platform*"
+      "Resource": [
+        "arn:aws:logs:us-east-1:233636046512:log-group:/ecs/cht-platform*",
+        "arn:aws:logs:us-east-1:233636046512:log-group:/ecs/cht-dev*",
+        "arn:aws:logs:us-east-1:233636046512:log-group:/aws/vpc/cht-dev*"
+      ]
     }
   ]
 }

@@ -13,10 +13,19 @@ import {
   ProgramRegistrationStatus,
   ProgramStatus,
   ProgramZoomSessionType,
+  SurveyType,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import {
+  isPostEventSurveyWithinWindow,
+  getPostEventSurveyUnlockAt,
+  loadProgramSurveyMeta,
+  programHasPostEventSurvey,
+  userHasIntakeSurveyResponse,
+  userHasPostEventSurveyResponse,
+} from '../../utils/program-survey-config';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { HubSpotService } from '../hubspot/hubspot.service';
@@ -102,11 +111,12 @@ export class ProgramRegistrationsService {
       return PostEventAttendanceStatus.NOT_REQUIRED;
     }
     const hasHonorarium = (program.honorariumAmount ?? 0) > 0;
-    const hasJotform = !!program.jotformSurveyUrl?.trim();
     const feedbackCount = await this.prisma.survey.count({
       where: { programId, type: 'FEEDBACK' },
     });
-    if (hasHonorarium || hasJotform || feedbackCount > 0) {
+    const hasPostEventSurvey =
+      !!program.jotformSurveyUrl?.trim() || feedbackCount > 0;
+    if (hasHonorarium || hasPostEventSurvey) {
       return PostEventAttendanceStatus.PENDING_VERIFICATION;
     }
     return PostEventAttendanceStatus.NOT_REQUIRED;
@@ -138,7 +148,28 @@ export class ProgramRegistrationsService {
       where: { userId_programId: { userId, programId } },
       select: { id: true },
     });
-    if (!enrolled) {
+
+    const reg = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+      select: { status: true, postEventAttendanceStatus: true },
+    });
+
+    if (!enrolled && (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)) {
+      return false;
+    }
+
+    const feedbackSurvey = await this.prisma.survey.findFirst({
+      where: { programId, type: 'FEEDBACK' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, createdAt: true },
+    });
+    if (!feedbackSurvey) {
+      return false;
+    }
+
+    const now = new Date();
+    const unlockAt = getPostEventSurveyUnlockAt(program);
+    if (!isPostEventSurveyWithinWindow(unlockAt, now.getTime())) {
       return false;
     }
 
@@ -148,8 +179,6 @@ export class ProgramRegistrationsService {
     ) {
       return true;
     }
-
-    const now = new Date();
     let postSurveyAllowed = false;
     if (program.zoomSessionEndedAt) {
       postSurveyAllowed = now >= program.zoomSessionEndedAt;
@@ -157,6 +186,8 @@ export class ProgramRegistrationsService {
       const durationMin = program.duration ?? 60;
       postSurveyAllowed =
         now.getTime() >= program.startDate.getTime() + durationMin * 60_000;
+    } else if (program.zoomSessionType === ProgramZoomSessionType.MEETING) {
+      postSurveyAllowed = true;
     } else {
       return false;
     }
@@ -164,10 +195,6 @@ export class ProgramRegistrationsService {
       return false;
     }
 
-    const reg = await this.prisma.programRegistration.findUnique({
-      where: { userId_programId: { userId, programId } },
-      select: { status: true, postEventAttendanceStatus: true },
-    });
     if (!reg || reg.status !== ProgramRegistrationStatus.APPROVED) {
       return false;
     }
@@ -310,9 +337,32 @@ export class ProgramRegistrationsService {
   async getMyRegistration(userId: string, programId: string) {
     const reg = await this.prisma.programRegistration.findUnique({
       where: { userId_programId: { userId, programId } },
-      include: { slot: true },
+      include: { slot: true, program: true },
     });
     if (!reg) return null;
+
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      reg.program,
+      defaultIntake,
+    );
+
+    const [postEventSurveySubmitted, intakeSurveySubmitted] = await Promise.all([
+      userHasPostEventSurveyResponse(
+        this.prisma,
+        userId,
+        surveyMeta.feedbackSurveyId,
+      ),
+      userHasIntakeSurveyResponse(
+        this.prisma,
+        userId,
+        surveyMeta.intakeSurveyId,
+        reg,
+      ),
+    ]);
 
     const honorariumPayment = await this.prisma.payment.findFirst({
       where: { userId, programId, type: 'HONORARIUM' },
@@ -324,15 +374,19 @@ export class ProgramRegistrationsService {
       id: reg.id,
       status: reg.status,
       officeHoursSlotId: reg.officeHoursSlotId ?? undefined,
-      intakeJotformSubmissionId: reg.intakeJotformSubmissionId ?? undefined,
+      intakeSubmissionId: reg.intakeSubmissionId ?? undefined,
       intakeJotformSubmittedAt: reg.intakeJotformSubmittedAt?.toISOString(),
       createdAt: reg.createdAt.toISOString(),
       reviewedAt: reg.reviewedAt?.toISOString(),
       postEventAttendanceStatus: reg.postEventAttendanceStatus,
       postEventSurveyAcknowledgedAt:
         reg.postEventSurveyAcknowledgedAt?.toISOString(),
-      postEventJotformSubmissionId:
-        reg.postEventJotformSubmissionId ?? undefined,
+      postEventSurveySubmitted,
+      intakeSurveySubmitted,
+      hasPostEventSurvey: surveyMeta.hasPostEventSurvey,
+      hasIntakeSurvey: surveyMeta.hasIntakeSurvey,
+      feedbackSurveyId: surveyMeta.feedbackSurveyId,
+      intakeSurveyId: surveyMeta.intakeSurveyId,
       honorariumRequestedAt: reg.honorariumRequestedAt?.toISOString(),
       honorariumPayment: honorariumPayment
         ? { id: honorariumPayment.id, status: honorariumPayment.status }
@@ -392,7 +446,7 @@ export class ProgramRegistrationsService {
   async submitRegistration(
     userId: string,
     programId: string,
-    body: { officeHoursSlotId?: string; intakeJotformSubmissionId?: string },
+    body: { officeHoursSlotId?: string; intakeSubmissionId?: string },
   ) {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
@@ -457,11 +511,11 @@ export class ProgramRegistrationsService {
       status === ProgramRegistrationStatus.APPROVED &&
       existingRegistration?.status !== ProgramRegistrationStatus.APPROVED;
 
-    const intakeSid = body.intakeJotformSubmissionId?.trim();
-    const incomingIntakeDefined = body.intakeJotformSubmissionId !== undefined;
+    const intakeSid = body.intakeSubmissionId?.trim();
+    const incomingIntakeDefined = body.intakeSubmissionId !== undefined;
     const mergedIntakeId = incomingIntakeDefined
       ? intakeSid || null
-      : (existingRegistration?.intakeJotformSubmissionId ?? null);
+      : (existingRegistration?.intakeSubmissionId ?? null);
 
     const reg = await this.prisma.programRegistration.upsert({
       where: { userId_programId: { userId, programId } },
@@ -476,7 +530,7 @@ export class ProgramRegistrationsService {
               )
             : PostEventAttendanceStatus.NOT_REQUIRED,
         officeHoursSlotId: body.officeHoursSlotId ?? null,
-        intakeJotformSubmissionId: intakeSid || null,
+        intakeSubmissionId: intakeSid || null,
         intakeJotformSubmittedAt: intakeSid ? new Date() : null,
       },
       update: {
@@ -495,7 +549,7 @@ export class ProgramRegistrationsService {
             : {}),
         officeHoursSlotId: body.officeHoursSlotId ?? undefined,
         ...(incomingIntakeDefined
-          ? { intakeJotformSubmissionId: intakeSid || null }
+          ? { intakeSubmissionId: intakeSid || null }
           : {}),
         /** Refresh whenever they submit again and an intake id is on file (body or existing). */
         intakeJotformSubmittedAt: mergedIntakeId ? new Date() : null,
@@ -529,6 +583,49 @@ export class ProgramRegistrationsService {
     this.logger.log(
       `Registration ${reg.id} for program ${programId} user ${userId} status=${status}`,
     );
+
+    if (
+      user?.email &&
+      (program.zoomSessionType === ProgramZoomSessionType.WEBINAR ||
+        program.zoomSessionType === ProgramZoomSessionType.MEETING)
+    ) {
+      void (async () => {
+        if (requiresApproval && status === ProgramRegistrationStatus.PENDING) {
+          await this.sesEmail.sendLiveSessionRegistrationSubmittedEmail({
+            to: user.email,
+            firstName: user.firstName || 'there',
+            program: { id: program.id, title: program.title },
+            sessionKind: program.zoomSessionType,
+            requiresApproval: true,
+          });
+          return;
+        }
+        if (
+          status === ProgramRegistrationStatus.APPROVED &&
+          becomesApproved
+        ) {
+          const joinUrlForLearner = learnerWebinarJoinUrl(program.zoomJoinUrl);
+          await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
+            to: user.email,
+            firstName: user.firstName || 'there',
+            program: {
+              id: program.id,
+              title: program.title,
+              description: program.description,
+              startDate: program.startDate,
+              duration: program.duration,
+              honorariumAmount: program.honorariumAmount,
+              hostDisplayName: program.hostDisplayName,
+              sponsorName: program.sponsorName,
+              zoomJoinUrl: joinUrlForLearner,
+            },
+            sessionKind: program.zoomSessionType,
+          });
+        }
+      })().catch((e: Error) =>
+        this.logger.warn(`Registration email side effect: ${e.message}`),
+      );
+    }
 
     return {
       id: reg.id,
@@ -631,7 +728,8 @@ export class ProgramRegistrationsService {
         skipped.push({
           programId,
           title,
-          reason: 'This session requires choosing a time slot — open it to register',
+          reason:
+            'This session requires choosing a time slot — open it to register',
         });
         continue;
       }
@@ -639,7 +737,7 @@ export class ProgramRegistrationsService {
       try {
         const intakeSid = intakeByProgramId?.[programId]?.trim();
         const result = await this.submitRegistration(userId, programId, {
-          ...(intakeSid ? { intakeJotformSubmissionId: intakeSid } : {}),
+          ...(intakeSid ? { intakeSubmissionId: intakeSid } : {}),
         });
         submitted.push({
           programId,
@@ -650,8 +748,8 @@ export class ProgramRegistrationsService {
       } catch (err: unknown) {
         const rawMessage: string | string[] =
           err instanceof BadRequestException
-            ? ((err.getResponse() as { message?: string | string[] })?.message ??
-              err.message)
+            ? ((err.getResponse() as { message?: string | string[] })
+                ?.message ?? err.message)
             : err instanceof Error
               ? err.message
               : 'Registration failed';
@@ -686,9 +784,9 @@ export class ProgramRegistrationsService {
   }
 
   /**
-   * Jotform webhook: published webinar intake submitted — persist submission id and optionally enroll.
+   * Intake submitted (native survey or Jotform webhook) — persist submission id and optionally enroll.
    */
-  async recordWebinarIntakeFromJotformWebhook(
+  async recordWebinarIntakeSubmission(
     userId: string,
     programId: string,
     submissionId: string,
@@ -706,15 +804,17 @@ export class ProgramRegistrationsService {
       );
       return false;
     }
-    const intakeEffective = effectiveWebinarIntakeFormUrl(
-      program.zoomSessionType,
-      program.jotformIntakeFormUrl,
+    const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
-        undefined,
+      undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      program,
+      defaultIntake,
     );
-    if (!intakeEffective) {
+    if (!surveyMeta.hasIntakeSurvey) {
       this.logger.warn(
-        `Intake webhook: program ${programId} has no intake URL configured`,
+        `Intake: program ${programId} has no intake survey configured`,
       );
       return false;
     }
@@ -732,11 +832,11 @@ export class ProgramRegistrationsService {
           programId,
           status: ProgramRegistrationStatus.APPROVED,
           postEventAttendanceStatus: att,
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
         update: {
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
       });
@@ -751,7 +851,7 @@ export class ProgramRegistrationsService {
       await this.prisma.programRegistration.update({
         where: { id: existing.id },
         data: {
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
       });
@@ -775,7 +875,7 @@ export class ProgramRegistrationsService {
           postEventAttendanceStatus: approvedNow
             ? attendanceIfApproved
             : PostEventAttendanceStatus.NOT_REQUIRED,
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
         },
       });
@@ -790,7 +890,7 @@ export class ProgramRegistrationsService {
       await this.prisma.programRegistration.update({
         where: { id: existing.id },
         data: {
-          intakeJotformSubmissionId: submissionId,
+          intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
           status: nextStatus,
           ...(nextStatus === ProgramRegistrationStatus.PENDING
@@ -971,7 +1071,9 @@ export class ProgramRegistrationsService {
     emailed: number;
     skipped: { userId: string; email: string; reason: string }[];
   }> {
-    const uniqueProgramIds = [...new Set(opts.programIds.map((id) => id.trim()).filter(Boolean))];
+    const uniqueProgramIds = [
+      ...new Set(opts.programIds.map((id) => id.trim()).filter(Boolean)),
+    ];
     if (uniqueProgramIds.length === 0) {
       throw new BadRequestException('Select at least one webinar.');
     }
@@ -996,9 +1098,7 @@ export class ProgramRegistrationsService {
     ).replace(/\/$/, '');
     const registerUrl = `${base}/app/live/register-multiple?programs=${programs.map((p) => p.id).join(',')}`;
 
-    let userIds = opts.userIds?.length
-      ? [...new Set(opts.userIds)]
-      : undefined;
+    let userIds = opts.userIds?.length ? [...new Set(opts.userIds)] : undefined;
     if (!userIds?.length && opts.role) {
       const users = await this.prisma.user.findMany({
         where: { role: opts.role, status: 'ACTIVE' },
@@ -1126,7 +1226,6 @@ export class ProgramRegistrationsService {
           ...(status === ProgramRegistrationStatus.REJECTED
             ? {
                 postEventSurveyAcknowledgedAt: null,
-                postEventJotformSubmissionId: null,
                 honorariumRequestedAt: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
@@ -1135,9 +1234,9 @@ export class ProgramRegistrationsService {
           ...(status === ProgramRegistrationStatus.PENDING &&
           previousStatus === ProgramRegistrationStatus.APPROVED
             ? {
-                postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
+                postEventAttendanceStatus:
+                  PostEventAttendanceStatus.NOT_REQUIRED,
                 postEventSurveyAcknowledgedAt: null,
-                postEventJotformSubmissionId: null,
                 honorariumRequestedAt: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
@@ -1196,7 +1295,9 @@ export class ProgramRegistrationsService {
         if (!u?.email) {
           return;
         }
-        const joinUrlForLearner = learnerWebinarJoinUrl(reg.program.zoomJoinUrl);
+        const joinUrlForLearner = learnerWebinarJoinUrl(
+          reg.program.zoomJoinUrl,
+        );
         await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
           to: u.email,
           firstName: u.firstName || 'there',
@@ -1292,7 +1393,6 @@ export class ProgramRegistrationsService {
             status: ProgramRegistrationStatus.REJECTED,
             postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
             postEventSurveyAcknowledgedAt: null,
-            postEventJotformSubmissionId: null,
             honorariumRequestedAt: null,
             postEventAttendanceReviewedAt: null,
             postEventAttendanceReviewedByUserId: null,
@@ -1316,6 +1416,7 @@ export class ProgramRegistrationsService {
       where: { id: programId },
       select: {
         jotformSurveyUrl: true,
+        jotformIntakeFormUrl: true,
         zoomSessionType: true,
         startDate: true,
         duration: true,
@@ -1323,9 +1424,18 @@ export class ProgramRegistrationsService {
       },
     });
     if (!program) throw new NotFoundException('Program not found');
-    if (!program.jotformSurveyUrl?.trim()) {
+
+    const defaultIntake =
+      this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
+      undefined;
+    const surveyMeta = await loadProgramSurveyMeta(
+      this.prisma,
+      { id: programId, ...program },
+      defaultIntake,
+    );
+    if (!surveyMeta.hasPostEventSurvey) {
       throw new BadRequestException(
-        'This program does not have a post-event survey URL.',
+        'This program does not have a post-event survey.',
       );
     }
     this.assertProgramPostEventWindowOpen(program);
@@ -1347,6 +1457,17 @@ export class ProgramRegistrationsService {
     if (reg.postEventAttendanceStatus === PostEventAttendanceStatus.DENIED) {
       throw new ForbiddenException(
         'Attendance was not verified for this session.',
+      );
+    }
+
+    const submitted = await userHasPostEventSurveyResponse(
+      this.prisma,
+      userId,
+      surveyMeta.feedbackSurveyId,
+    );
+    if (!submitted) {
+      throw new BadRequestException(
+        'Submit the post-event survey before acknowledging completion.',
       );
     }
 
@@ -1421,10 +1542,12 @@ export class ProgramRegistrationsService {
       };
     }
 
-    if (
-      program.jotformSurveyUrl?.trim() &&
-      !reg.postEventSurveyAcknowledgedAt
-    ) {
+    const hasPostEventSurvey = await programHasPostEventSurvey(
+      this.prisma,
+      programId,
+      program.jotformSurveyUrl,
+    );
+    if (hasPostEventSurvey && !reg.postEventSurveyAcknowledgedAt) {
       throw new BadRequestException(
         'Complete and acknowledge the post-event survey first.',
       );
@@ -1552,7 +1675,17 @@ export class ProgramRegistrationsService {
       },
     });
 
+    if (status === 'VERIFIED') {
+      await this.ensureEnrollment(reg.userId, reg.programId);
+    }
+
     if (status === 'VERIFIED' && reg.user?.email) {
+      const feedbackSurvey = await this.prisma.survey.findFirst({
+        where: { programId: reg.programId, type: SurveyType.FEEDBACK },
+        select: { id: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
       this.sesEmail
         .sendPostWebinarSurveyEmail({
           to: reg.user.email,
@@ -1565,8 +1698,9 @@ export class ProgramRegistrationsService {
             zoomSessionType:
               reg.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
           },
-          // No Jotform URL — CTA falls back to the app session page
+          // Native in-app survey only — CTA opens /app/surveys/:id (Surveys tab).
           surveyUrl: null,
+          feedbackSurveyId: feedbackSurvey?.id ?? null,
         })
         .catch((err: Error) =>
           this.logger.warn(
@@ -1599,14 +1733,29 @@ export class ProgramRegistrationsService {
   }
 
   async listPendingPostEventAttendanceForAdmin() {
+    return this.listPostEventAttendanceForAdmin({
+      statuses: [PostEventAttendanceStatus.PENDING_VERIFICATION],
+    });
+  }
+
+  /** All approved learners with attendance tracking (pending, verified, or denied). */
+  async listPostEventAttendanceForAdmin(opts?: {
+    programId?: string;
+    statuses?: PostEventAttendanceStatus[];
+  }) {
+    const statuses = opts?.statuses ?? [
+      PostEventAttendanceStatus.PENDING_VERIFICATION,
+      PostEventAttendanceStatus.VERIFIED,
+      PostEventAttendanceStatus.DENIED,
+    ];
     return this.prisma.programRegistration.findMany({
       where: {
         status: ProgramRegistrationStatus.APPROVED,
-        postEventAttendanceStatus:
-          PostEventAttendanceStatus.PENDING_VERIFICATION,
+        postEventAttendanceStatus: { in: statuses },
         program: {
           zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
           status: 'PUBLISHED',
+          ...(opts?.programId ? { id: opts.programId } : {}),
         },
       },
       include: {
@@ -1631,7 +1780,7 @@ export class ProgramRegistrationsService {
           },
         },
       },
-      orderBy: { updatedAt: 'asc' },
+      orderBy: [{ program: { title: 'asc' } }, { updatedAt: 'desc' }],
     });
   }
 

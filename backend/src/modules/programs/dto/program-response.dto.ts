@@ -111,6 +111,30 @@ export class ProgramResponseDto {
   @IsOptional()
   jotformIntakeFormUrl?: string;
 
+  @IsBoolean()
+  @IsOptional()
+  hasPostEventSurvey?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  hasIntakeSurvey?: boolean;
+
+  @IsString()
+  @IsOptional()
+  feedbackSurveyId?: string;
+
+  @IsString()
+  @IsOptional()
+  intakeSurveyId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  feedbackUsesJotform?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  intakeUsesJotform?: boolean;
+
   @IsString()
   @IsOptional()
   jotformPreEventUrl?: string;

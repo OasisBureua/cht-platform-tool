@@ -1,6 +1,3 @@
-import type { CatalogItem } from '../api/catalog';
-import { APP_CATALOG_PLAYLIST_SECTIONS } from '../data/catalogPlaylistRows';
-
 /** URL `?playlistFocus=` — cohort strips + catalogue browse (`hr` matches home + HR strip.) */
 export type PlaylistFocus = 'her2' | 'hr' | 'her2-low' | 'tnbc' | 'high-risk';
 
@@ -15,6 +12,18 @@ export const CATALOG_SECTION_TO_FOCUS: Record<string, PlaylistFocus> = {
   'High Risk Breast Cancer': 'high-risk',
 };
 
+/**
+ * ContentHub / MediaHub clip tags for each cohort chip.
+ * Playlist focus browse loads clips by these tags (not by fuzzy YouTube playlist title match).
+ */
+export const PLAYLIST_FOCUS_TO_TAG: Record<PlaylistFocus, string> = {
+  her2: 'biomarker:HER2+',
+  'her2-low': 'biomarker:HER2-low,biomarker:HER2-ultralow',
+  hr: 'biomarker:HR+',
+  tnbc: 'biomarker:TNBC',
+  'high-risk': 'biomarker:High-Risk / CNS',
+};
+
 export function buildCatalogSectionPlaylistsHref(isInApp: boolean, sectionLabel: string): string {
   const focus = CATALOG_SECTION_TO_FOCUS[sectionLabel];
   const base = isInApp ? '/app/catalog' : '/catalog';
@@ -25,7 +34,7 @@ export function buildCatalogSectionPlaylistsHref(isInApp: boolean, sectionLabel:
 /** Row CTA; opens in-app / public playlist focus (`?playlistFocus=`). */
 export const VIEW_PLAYLIST_LABEL = 'View playlist';
 
-/** Playlist chips on **public** `/catalog?view=playlists` only (HER2 + HR; homepage parity). */
+/** Playlist chips on **public** `/catalog?view=playlists` (HER2+ and HR+). */
 export const PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS: readonly PlaylistFocus[] = ['her2', 'hr'];
 
 /** Parse `playlistFocus` from a location search string. */
@@ -40,8 +49,8 @@ export function parsePlaylistFocus(search: string): PlaylistFocus | null {
 export function playlistBrowseHeading(focus: PlaylistFocus | null): string {
   if (!focus) return 'Playlists';
   const map: Record<PlaylistFocus, string> = {
-    her2: 'HER2+',
-    hr: 'HR+',
+    her2: 'HER2+ Conversations',
+    hr: 'HR+ · CDK4/6 · Endocrine',
     'her2-low': 'HER2-Low / Ultra-Low',
     tnbc: 'TNBC & Triple Negative',
     'high-risk': 'High Risk Breast Cancer',
@@ -49,47 +58,14 @@ export function playlistBrowseHeading(focus: PlaylistFocus | null): string {
   return map[focus] ?? 'Playlists';
 }
 
-function titleMatchesStrip(playlistTitle: string, stripTitle: string): boolean {
-  const norm = (s: string) => s.replace(/[\u2018\u2019]/g, "'").trim().toLowerCase();
-  const a = norm(playlistTitle);
-  const b = norm(stripTitle);
-  if (a === b) return true;
-  if (a.includes(b) || b.includes(a)) return true;
-  const n = Math.min(32, Math.min(a.length, b.length));
-  if (n >= 14) return a.slice(0, n) === b.slice(0, n);
-  return false;
-}
-
-function stripTitlesForFocus(focus: PlaylistFocus): string[] | null {
-  const entry = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
-  if (!entry) return null;
-  return entry.items.map((i) => i.title);
-}
-
 /**
- * Narrow MediaHub playlist rows to those listed in `APP_CATALOG_PLAYLIST_SECTIONS` for this cohort.
+ * SCRUM-79 (2026-07-21): `filterPlaylistsByFocus` + `titleMatchesStrip`
+ * removed. The regex playlist-title-match fallback caused the "10/27
+ * resolvable" incident where playlist strips were populated from best-
+ * guess title heuristics rather than curator intent.
+ *
+ * Callers are now tag-driven: fetch `/api/catalog/playlists-tags?tag=<X>`
+ * (via `catalogApi.getPlaylistsTags`) and intersect the returned playlist
+ * IDs against the YT metadata list from `catalogApi.getPlaylists()`.
+ * See `Home.tsx her2PlaylistStrip` for the reference implementation.
  */
-export function filterPlaylistsByFocus(playlists: CatalogItem[], focus: PlaylistFocus): CatalogItem[] {
-  const stripTitles = stripTitlesForFocus(focus);
-  if (stripTitles?.length) {
-    return playlists.filter((p) => stripTitles.some((st) => titleMatchesStrip(p.title, st)));
-  }
-
-  const t = (p: CatalogItem) => p.title ?? '';
-  switch (focus) {
-    case 'her2':
-      return playlists.filter((p) => /HER2|DESTINY-Breast|HER2\+|first-line/i.test(t(p)));
-    case 'hr':
-      return playlists.filter(
-        (p) =>
-          /HR\+|TNBC|mTNBC|CDK4|endocrine|triple.?negative|PARP/i.test(t(p)) &&
-          !/HER2|DESTINY-Breast(?:02|06|07|03)/i.test(t(p)),
-      );
-    case 'her2-low':
-    case 'tnbc':
-    case 'high-risk':
-      return [];
-    default:
-      return playlists;
-  }
-}

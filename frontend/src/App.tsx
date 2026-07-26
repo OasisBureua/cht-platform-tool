@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ScrollToTop from './components/ScrollToTop';
 import { Loader2 } from 'lucide-react';
 
-// Layouts + guards: always needed immediately, keep static
+// Layouts + guards — always needed immediately, keep static
 import PublicLayout from './layouts/PublicLayout';
 import Layout from './components/layout/Layout';
 import AdminLayout from './layouts/AdminLayout';
@@ -18,9 +18,12 @@ const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail')
 const About                 = lazy(() => import('./pages/public/About'));
 const Contact               = lazy(() => import('./pages/public/Contact'));
 const Join                  = lazy(() => import('./pages/public/Join'));
+const VerifyEmail           = lazy(() => import('./pages/public/VerifyEmail'));
 const Login                 = lazy(() => import('./pages/public/Login'));
 const AdminLogin            = lazy(() => import('./pages/public/AdminLogin'));
 const ForgotPassword        = lazy(() => import('./pages/public/ForgotPassword'));
+const ResetPasswordConfirm  = lazy(() => import('./pages/public/ResetPasswordConfirm'));
+const MfaSetup              = lazy(() => import('./pages/public/MfaSetup'));
 const AuthCallback          = lazy(() => import('./pages/public/AuthCallback'));
 const CompleteProfile       = lazy(() => import('./pages/public/CompleteProfile'));
 const Privacy               = lazy(() => import('./pages/public/Privacy'));
@@ -58,11 +61,16 @@ const Payments              = lazy(() => import('./pages/Payments'));
 const Settings              = lazy(() => import('./pages/Settings'));
 const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
+const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
+const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
+const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
+const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminPrograms         = lazy(() => import('./pages/admin/AdminPrograms'));
 const AdminSurveys          = lazy(() => import('./pages/admin/AdminSurveys'));
+const AdminSurveyResponses  = lazy(() => import('./pages/admin/AdminSurveyResponses'));
 const AdminCreateSurvey     = lazy(() => import('./pages/admin/AdminCreateSurvey'));
 const AdminEditSurvey       = lazy(() => import('./pages/admin/AdminEditSurvey'));
 const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarScheduler'));
@@ -71,6 +79,7 @@ const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'
 const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
 const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
+const AdminContent          = lazy(() => import('./pages/admin/AdminContent'));
 const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub'));
 const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
 const AdminKolDirectory     = lazy(() => import('./pages/admin/kol-network/AdminKolDirectory'));
@@ -99,9 +108,9 @@ function PageLoader() {
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       retry: 1,
-      staleTime: 5 * 60 * 1000,
+      staleTime: 60 * 1000,
     },
   },
 });
@@ -129,9 +138,12 @@ function App() {
               <Route path="/portfolios" element={<Portfolios />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/join" element={<Join />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route path="/login" element={<Login />} />
               <Route path="/admin/login" element={<AdminLogin />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
+              <Route path="/mfa/setup" element={<MfaSetup />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/privacy" element={<Privacy />} />
@@ -196,11 +208,15 @@ function App() {
               <Route path="surveys/:id" element={<SurveyDetail />} />
 
               <Route path="podcasts" element={<Podcasts />} />
+              <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
+              <Route path="podcasts/:showId" element={<PodcastShow />} />
 
               <Route path="watch/:videoId" element={<WatchVideo />} />
               <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
 
               <Route path="clip/:id" element={<ClipDetail />} />
+              {/* Legacy in-app links used /app/catalog/clip/:id — keep working */}
+              <Route path="catalog/clip/:id" element={<ClipDetail />} />
 
               <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
               <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
@@ -242,6 +258,7 @@ function App() {
               <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
               <Route path="office-hours" element={<AdminPrograms />} />
               <Route path="surveys" element={<AdminSurveys />} />
+              <Route path="surveys/:id/responses" element={<AdminSurveyResponses />} />
               <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
               <Route path="create-survey" element={<AdminCreateSurvey />} />
               <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
@@ -255,14 +272,15 @@ function App() {
               <Route path="settings" element={<AdminSettings />} />
               <Route path="hcp-explorer" element={<AdminHcpExplorer />} />
               <Route path="users" element={<AdminUsers />} />
+              <Route path="content" element={<AdminContent />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
 
-              {/* KOL Network: internal HCP intelligence (ported from MediaHub) */}
+              {/* KOL Network — internal HCP intelligence (ported from MediaHub) */}
               <Route path="kol-network" element={<AdminKolDirectory />} />
               <Route path="kol-network/hcps/:id" element={<AdminHcpIntel />} />
 
 
-              {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
+              {/* Content Hub — ported report generator (self-contained, localStorage data layer) */}
               <Route path="content-hub" element={<ContentHubLayout />}>
                 <Route index element={<ContentHubDashboard />} />
                 <Route path="new" element={<ContentHubNewReport />} />

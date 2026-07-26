@@ -27,7 +27,9 @@ const PRESIGN_EXPIRES_SEC = 120;
 
 function safeFileStem(raw: string): string {
   const base = raw.replace(/^.*[/\\]/, '').slice(0, 120);
-  const cleaned = base.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
+  const cleaned = base
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
   return cleaned || 'image';
 }
 
@@ -71,7 +73,11 @@ export class SessionHeroPresignService {
     }
 
     const ct = params.contentType.trim().toLowerCase();
-    if (!ALLOWED_CONTENT_TYPES.includes(ct as (typeof ALLOWED_CONTENT_TYPES)[number])) {
+    if (
+      !ALLOWED_CONTENT_TYPES.includes(
+        ct as (typeof ALLOWED_CONTENT_TYPES)[number],
+      )
+    ) {
       throw new BadRequestException(
         `Unsupported content type. Allowed: ${ALLOWED_CONTENT_TYPES.join(', ')}`,
       );
