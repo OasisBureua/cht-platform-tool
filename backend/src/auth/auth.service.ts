@@ -286,7 +286,7 @@ export class AuthService {
   }
 
   /**
-   * Get session by token — Redis first (TTL matches DB), then Postgres.
+   * Get session by token, Redis first (TTL matches DB), then Postgres.
    */
   async getSession(token: string): Promise<AuthUser | null> {
     if (!token?.trim()) {

@@ -2,7 +2,7 @@
 
 Ensure **production** has every secret and configuration value needed **before** destroying the staging AWS stack or GitHub `staging` environment.
 
-**When to run:** Phase 0 — complete **before** [staging-teardown.md](./staging-teardown.md).
+**When to run:** Phase 0, complete **before** [staging-teardown.md](./staging-teardown.md).
 
 **Owner:** Uche Aduakaa  
 **Reviewer:** Adaze Oviawe  
@@ -25,7 +25,7 @@ Production (`platform` GitHub Environment + `cht-platform-app-secrets` in AWS) m
 
 ---
 
-## Step 1 — Verify production GitHub secrets
+## Step 1: Verify production GitHub secrets
 
 ```bash
 ./scripts/verify-github-secrets.sh platform
@@ -72,7 +72,7 @@ All **required** secrets must show ✅. Fix missing values:
 
 ---
 
-## Step 2 — Compare staging vs platform
+## Step 2: Compare staging vs platform
 
 If staging environment still exists:
 
@@ -95,7 +95,7 @@ gh secret set MEDIAHUB_API_KEY --env platform --body "<value-from-staging>"
 
 ---
 
-## Step 3 — Verify AWS Secrets Manager (runtime)
+## Step 3: Verify AWS Secrets Manager (runtime)
 
 Production app secrets JSON:
 
@@ -130,7 +130,7 @@ If prod is stale and staging is known-good (historical one-time fix):
 
 ---
 
-## Step 4 — Non-secret config in tfvars
+## Step 4: Non-secret config in tfvars
 
 Check `infrastructure/terraform/environments/variables/`:
 
@@ -152,7 +152,7 @@ Examples to compare:
 
 ---
 
-## Step 5 — Document staging-only values (safe to lose)
+## Step 5: Document staging-only values (safe to lose)
 
 Record anything that **only existed for staging** and is **not** needed in prod:
 
@@ -160,7 +160,7 @@ Record anything that **only existed for staging** and is **not** needed in prod:
 | Item                                        | Keep for prod? | Notes                                    |
 | ------------------------------------------- | -------------- | ---------------------------------------- |
 | `staging.testapp.communityhealth.media` DNS | No             | Retired in staging teardown              |
-| Staging RDS data                            | Usually no     | Optional snapshot — see staging teardown |
+| Staging RDS data                            | Usually no     | Optional snapshot: see staging teardown |
 | Staging-specific test users                 | No             |                                          |
 | Staging admin bootstrap secret              | No             | Prod has its own                         |
 
@@ -174,7 +174,7 @@ Record anything that **only existed for staging** and is **not** needed in prod:
 - [x] `./scripts/verify-github-secrets.sh platform` passes
 - [x] Prod Secrets Manager validated
 - [x] Migration log completed (secret **names** only)
-- [x] Sign-off from engineering lead (Uche Aduakaa, reviewed by Adaze Oviawe — June 16, 2026 at 08:28 PM EDT)
+- [x] Sign-off from engineering lead (Uche Aduakaa, reviewed by Adaze Oviawe: June 16, 2026 at 08:28 PM EDT)
 
 **Then proceed to:** [staging-teardown.md](./staging-teardown.md)
 
@@ -182,7 +182,7 @@ Record anything that **only existed for staging** and is **not** needed in prod:
 
 ## Rollback
 
-Not applicable — this is a verification/migration checklist. If a secret was copied incorrectly, update `platform` GitHub secret and redeploy backend:
+Not applicable: this is a verification/migration checklist. If a secret was copied incorrectly, update `platform` GitHub secret and redeploy backend:
 
 ```bash
 # GitHub Actions → Deploy to Platform → Run workflow

@@ -7,7 +7,7 @@
  *
  * Both the CSV exporter (survey-responses-csv.ts) and the response analytics
  * build on this single flattener so they agree on question ids, order,
- * prompts, types, and choice options — one source of truth.
+ * prompts, types, and choice options: one source of truth.
  */
 
 /** Native question types emitted by native-survey-templates.ts. Unknown/legacy values pass through. */

@@ -1,12 +1,12 @@
-# Survey Response Analytics — API Contract
+# Survey Response Analytics: API Contract
 
 **Status:** Stable (backend implemented; frontend chart work is a separate story)
 **Audience:** CHT admin UI (survey analytics charts), CHT platform backend
 **Source of truth:**
-- Response DTO — `backend/src/modules/admin/dto/survey-analytics.dto.ts`
-- Aggregator (pure) — `backend/src/utils/survey-analytics.ts`
-- Service — `backend/src/modules/surveys/surveys.service.ts` (`getResponseAnalyticsForAdmin`)
-- Controller — `backend/src/modules/admin/admin.controller.ts` (`getSurveyAnalytics`)
+- Response DTO: `backend/src/modules/admin/dto/survey-analytics.dto.ts`
+- Aggregator (pure): `backend/src/utils/survey-analytics.ts`
+- Service: `backend/src/modules/surveys/surveys.service.ts` (`getResponseAnalyticsForAdmin`)
+- Controller: `backend/src/modules/admin/admin.controller.ts` (`getSurveyAnalytics`)
 
 ---
 
@@ -18,7 +18,7 @@ GET /api/admin/surveys/:id/analytics
 
 - **Auth:** admin session (`JwtAuthGuard` + `RolesGuard`, `@Roles(ADMIN)`, `session-token` bearer). Non-admins get `403`.
 - **404:** unknown survey id.
-- **Aggregation:** computed on demand from stored `SurveyResponse` rows; no caching. Payload scales with number of questions × responses (and × segments when `segmentBy` is set) — surveys are small, so this is fine.
+- **Aggregation:** computed on demand from stored `SurveyResponse` rows; no caching. Payload scales with number of questions × responses (and × segments when `segmentBy` is set), surveys are small, so this is fine.
 
 ### Query parameters
 
@@ -40,7 +40,7 @@ Top level:
 }
 ```
 
-### `survey` — summary
+### `survey`: summary
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -78,9 +78,9 @@ Top level:
 | `date` | `string` | UTC day, `YYYY-MM-DD`. |
 | `count` | `number` | Responses on that day. |
 
-Ordered ascending. **Only days with responses appear** — gaps are not filled. Charts that need continuous axes should fill missing days client-side.
+Ordered ascending. **Only days with responses appear**, gaps are not filled. Charts that need continuous axes should fill missing days client-side.
 
-#### `questions[]` — discriminated by `kind`
+#### `questions[]`: discriminated by `kind`
 
 All questions share:
 
@@ -89,7 +89,7 @@ All questions share:
 | `id` | `string` | Question id (or answer key for inferred questions). |
 | `prompt` | `string` | Question text (falls back to `id`). |
 | `type` | `string` | Native schema type, or `"unknown"` for inferred keys. |
-| `kind` | `choice \| rating \| text` | Aggregate discriminator — **switch on this**. |
+| `kind` | `choice \| rating \| text` | Aggregate discriminator: **switch on this**. |
 | `inferred` | `boolean?` | `true` when the aggregate was inferred from data (no native type). |
 
 **`kind: "choice"`** (single/multi choice, or inferred low-cardinality)
@@ -103,7 +103,7 @@ All questions share:
 
 - `percentage` is the **share of respondents who answered** (0–100). For multi-select, per-option percentages **can sum to more than 100%**.
 
-**`kind: "rating"`** (rating/scale/number, or inferred numeric) — extends `NumericStats`:
+**`kind: "rating"`** (rating/scale/number, or inferred numeric): extends `NumericStats`:
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -124,7 +124,7 @@ Notes:
 - `info` (display-only) questions are **excluded** from `questions`.
 - Native schema questions come first (in schema order), then any extra/drift answer keys not in the schema, appended sorted by key and flagged `inferred: true`.
 
-#### `segments` — cross-cut breakdown
+#### `segments`: cross-cut breakdown
 
 Present only when `segmentBy` was provided; otherwise `null`.
 
@@ -142,7 +142,7 @@ Present only when `segmentBy` was provided; otherwise `null`.
 
 - Groups are sorted by `totalResponses` descending, then `key` ascending.
 - Missing/empty dimension values are bucketed under `key: 'unknown'` / `label: 'Unknown'`.
-- **Segment groups are always counts-only** — `text` questions inside a group never carry `samples`, regardless of `includeSamples`.
+- **Segment groups are always counts-only**, `text` questions inside a group never carry `samples`, regardless of `includeSamples`.
 
 ---
 
@@ -151,7 +151,7 @@ Present only when `segmentBy` was provided; otherwise `null`.
 - Identity fields (`email`, `name`, `first_name`, `user_id`, `program_id`, …) are **stripped from answers before aggregation** and never appear as questions or samples.
 - `samples` are **opt-in** (`includeSamples=1`), only produced for author-declared `text`/`long_text` questions, **de-duplicated**, length-truncated (~200 chars), and count-capped.
 - Email and phone values inside samples are redacted (`[redacted-email]`, `[redacted-phone]`).
-- **Limitation:** an identity *value* typed inline in prose (e.g. a name inside a sentence) cannot be reliably scrubbed — which is why samples are opt-in and never emitted inside segment groups.
+- **Limitation:** an identity *value* typed inline in prose (e.g. a name inside a sentence) cannot be reliably scrubbed, which is why samples are opt-in and never emitted inside segment groups.
 
 ---
 

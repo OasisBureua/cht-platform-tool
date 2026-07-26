@@ -32,7 +32,7 @@ export function buildProgramRegisterHref(programId: string, pathname: string): s
   return `/app/live/${programId}/register`;
 }
 
-/** Multi-webinar registration wizard — persist selection across Jotform redirects. */
+/** Multi-webinar registration wizard: persist selection across Jotform redirects. */
 export const MULTI_REGISTER_STORAGE_KEY = 'cht:live-multi-register';
 
 export type MultiRegisterPersistedState = {

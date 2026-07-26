@@ -2,7 +2,7 @@
 
 Decommission the AWS **staging** stack and GitHub **staging** deploy path. Production is the only hosted environment until Phase 3 (stable dev).
 
-**When to run:** Phase 1 — **after** [secrets-migration-staging-to-prod.md](./secrets-migration-staging-to-prod.md) is complete and signed off.
+**When to run:** Phase 1, **after** [secrets-migration-staging-to-prod.md](./secrets-migration-staging-to-prod.md) is complete and signed off.
 
 **Owner:** Uche Aduakaa  
 **Reviewer:** Adaze Oviawe  
@@ -20,7 +20,7 @@ Decommission the AWS **staging** stack and GitHub **staging** deploy path. Produ
 | Removed                                 | Production impact if pre-flight skipped |
 | --------------------------------------- | --------------------------------------- |
 | `staging.testapp.communityhealth.media` | None if prod validated independently    |
-| Staging RDS                             | **Data loss** — snapshot optional       |
+| Staging RDS                             | **Data loss**: snapshot optional       |
 | Staging ECS / ALB / SQS                 | None                                    |
 | GitHub `staging` environment            | Staging deploys stop                    |
 | `deploy-staging.yml` active path        | Feature branches no longer auto-deploy  |
@@ -40,7 +40,7 @@ Decommission the AWS **staging** stack and GitHub **staging** deploy path. Produ
 
 ---
 
-## Step 1 — Optional final RDS snapshot
+## Step 1: Optional final RDS snapshot
 
 Skip if staging data has no value.
 
@@ -64,21 +64,21 @@ aws rds describe-db-snapshots \
 
 ---
 
-## Step 2 — Disable staging deploys
+## Step 2: Disable staging deploys
 
 Staging workflow already has `DEPLOY_ENABLED: 'false'` and push triggers commented out. Confirm no accidental deploy during destroy:
 
 - [x] No in-progress `Deploy to Staging` workflow runs
 - [x] Team agrees not to re-enable staging deploys
 
-Optional — archive workflow in repo (separate PR after destroy):
+Optional: archive workflow in repo (separate PR after destroy):
 
 - Comment or remove `.github/workflows/deploy-staging.yml` push triggers permanently
-- Add note at top: `ARCHIVED — staging destroyed YYYY-MM-DD`
+- Add note at top: `ARCHIVED: staging destroyed YYYY-MM-DD`
 
 ---
 
-## Step 3 — Terraform destroy
+## Step 3: Terraform destroy
 
 ```bash
 cd infrastructure/terraform/environments/us-east-1-staging
@@ -109,7 +109,7 @@ Type `yes` when prompted.
 
 ---
 
-## Step 4 — Verify AWS cleanup
+## Step 4: Verify AWS cleanup
 
 ```bash
 # Should return empty or NotFound
@@ -121,7 +121,7 @@ aws rds describe-db-instances --region us-east-1 | grep staging || true
 
 ---
 
-## Step 5 — GitHub environment
+## Step 5: GitHub environment
 
 1. Export secret **names** from staging environment (not values) for audit log.
 2. Delete or archive GitHub Environment `staging` (Settings → Environments).
@@ -134,17 +134,17 @@ gh secret list --env staging   # document names before delete
 
 ---
 
-## Step 6 — DNS and documentation
+## Step 6: DNS and documentation
 
 - [x] Remove or repoint `staging.testapp.communityhealth.media` (Route53 / CloudFront) if record remains
-- [x] Update [deployment.md](../engineering/deployment.md) — prod + local only
-- [x] Update [architecture.md](../engineering/architecture.md) — remove staging row
-- [x] Update [incident-response.md](../compliance/incident-response.md) — remove staging URLs from health checks
-- [x] Update [disaster-recovery.md](../compliance/disaster-recovery.md) — remove staging RTO row
+- [x] Update [deployment.md](../engineering/deployment.md): prod + local only
+- [x] Update [architecture.md](../engineering/architecture.md): remove staging row
+- [x] Update [incident-response.md](../compliance/incident-response.md): remove staging URLs from health checks
+- [x] Update [disaster-recovery.md](../compliance/disaster-recovery.md): remove staging RTO row
 
 ---
 
-## Step 7 — Post-teardown validation
+## Step 7: Post-teardown validation
 
 Production smoke test:
 
@@ -164,7 +164,7 @@ Production smoke test:
 - [x] Docs updated
 - [x] Prod smoke test passes
 
-**Next phase:** Phase 2 auth decoupling — see [CHT-Auth-Decoupling-Next-Steps-Report.md](../reports/CHT-Auth-Decoupling-Next-Steps-Report.md) and [CHM-Platform-Roadmap-Plan.md](../reports/CHM-Platform-Roadmap-Plan.md). Local docker-compose is the day-to-day dev path until Phase 3 stable dev.
+**Next phase:** Phase 2 auth decoupling: see [CHT-Auth-Decoupling-Next-Steps-Report.md](../reports/CHT-Auth-Decoupling-Next-Steps-Report.md) and [CHM-Platform-Roadmap-Plan.md](../reports/CHM-Platform-Roadmap-Plan.md). Local docker-compose is the day-to-day dev path until Phase 3 stable dev.
 
 ---
 
@@ -174,6 +174,6 @@ Production smoke test:
 | Scenario              | Action                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------ |
 | Destroyed by mistake  | Restore from RDS snapshot to new instance; re-run `terraform apply` on us-east-1-staging (hours) |
-| Prod broken unrelated | Do not recreate staging as panic fix — fix prod directly                                         |
+| Prod broken unrelated | Do not recreate staging as panic fix, fix prod directly                                         |
 
 

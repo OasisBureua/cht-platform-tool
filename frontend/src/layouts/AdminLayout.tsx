@@ -74,7 +74,7 @@ export default function AdminLayout() {
           setMobileDrawerOpen(false);
         }}
       >
-        {/* Slide-reveal drawer — matches app shell pattern */}
+        {/* Slide-reveal drawer: matches app shell pattern */}
         <nav
           id="admin-slide-drawer-nav"
           className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[240px] flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-gray-50 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-8px_0_24px_-16px_rgba(0,0,0,0.06)] md:hidden dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-8px_0_28px_-18px_rgba(0,0,0,0.5)]"
@@ -126,7 +126,7 @@ export default function AdminLayout() {
           ref={mobileFrontRef}
           data-drawer-front
           className={[
-            // Do not apply transform when closed — translate-x-0 still creates a containing
+            // Do not apply transform when closed, translate-x-0 still creates a containing
             // block and breaks position:fixed modals (delete/edit appear mid-page / bottom).
             'relative z-[1] flex min-h-[100dvh] min-w-0 flex-1 flex-col bg-gray-100 motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
             mobileDrawerOpen

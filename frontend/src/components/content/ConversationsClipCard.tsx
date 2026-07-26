@@ -14,7 +14,7 @@ type ConversationsClipCardProps = {
   href: string;
 };
 
-/** YouTube serves a 120×90 gray box (HTTP 200) for missing videos — treat as failure. */
+/** YouTube serves a 120×90 gray box (HTTP 200) for missing videos: treat as failure. */
 function isYoutubeMissingPoster(img: HTMLImageElement): boolean {
   return img.naturalWidth > 0 && img.naturalWidth <= 120 && img.naturalHeight <= 90;
 }

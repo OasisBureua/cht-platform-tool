@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# smoke.sh — post-deploy smoke tests
+# smoke.sh: post-deploy smoke tests
 #
 # Verifies a deploy didn't break anything user-visible. Runs immediately
 # after a deploy completes (dev or prod). Exits non-zero if anything fails
@@ -19,7 +19,7 @@
 set -u
 
 BASE="${1:-https://testapp.communityhealth.media}"
-# Allow `./smoke.sh testapp.communityhealth.media` — curl treats bare hosts as http:// → 301.
+# Allow `./smoke.sh testapp.communityhealth.media`: curl treats bare hosts as http:// → 301.
 BASE="${BASE%/}"
 if [[ "$BASE" != http://* && "$BASE" != https://* ]]; then
   BASE="https://${BASE}"
@@ -73,7 +73,7 @@ for page in "${PAGES[@]}"; do
   fi
 done
 
-# ── 3. Auth endpoint behaves (401 is fine — confirms server up) ─
+# ── 3. Auth endpoint behaves (401 is fine, confirms server up) ─
 auth_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$BASE/api/auth/me")
 if [ "$auth_code" = "200" ] || [ "$auth_code" = "401" ]; then
   echo "✓ /api/auth/me $auth_code (server up)"
@@ -84,7 +84,7 @@ fi
 
 echo ""
 if [ "$fail" -ne 0 ]; then
-  echo "✗ smoke FAILED — investigate before leaving deploy unattended."
+  echo "✗ smoke FAILED, investigate before leaving deploy unattended."
   exit 1
 fi
 echo "✓ smoke passed."

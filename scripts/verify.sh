@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# verify.sh — run before pushing to a branch
+# verify.sh: run before pushing to a branch
 #
 # Runs frontend + backend typecheck, lint, and unit tests. Mirrors what
 # `.github/workflows/pr-validation.yml` does on GitHub so you catch the
@@ -56,7 +56,7 @@ fi
 
 if [ "$fail" -ne 0 ]; then
   echo ""
-  echo "✗ verify FAILED — fix the issues above before pushing."
+  echo "✗ verify FAILED, fix the issues above before pushing."
   exit 1
 fi
 

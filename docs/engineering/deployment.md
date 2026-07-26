@@ -39,14 +39,14 @@ Does **not** deploy on push to `main`. Use a release branch or tag when promotin
 3. Terraform plan → manual approval issue → apply (same pattern as deploy-dev)
 4. Health gate: `/health/ready`, `/health`, `/` on `APP_URL`
 
-Concurrency group `deploy-platform` — overlapping prod deploys are queued, not cancelled.
+Concurrency group `deploy-platform`: overlapping prod deploys are queued, not cancelled.
 
 ## Manual deploy (Terraform)
 
 For infrastructure changes outside CI, or emergency applies:
 
 ```bash
-# Platform (prod) — default
+# Platform (prod): default
 ./scripts/deploy-primary.sh platform
 
 # Dev stack

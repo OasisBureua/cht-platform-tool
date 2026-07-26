@@ -2,12 +2,12 @@
 
 Move `mediahub-api`, `mediahub-worker`, and `mediahub-reports` onto the CHT ECS cluster with separate MediaHub RDS.
 
-**When to run:** Phase 4 — after Cognito prod stable and Phase 3 dev documented.
+**When to run:** Phase 4, after Cognito prod stable and Phase 3 dev documented.
 
 **Owner:** Uche Aduakaa  
 **Reviewer:** Adaze Oviawe  
 **Approved:** June 16, 2026 at 08:28 PM EDT  
-**Status:** Draft outline — expand before execution
+**Status:** Draft outline: expand before execution
 
 ---
 

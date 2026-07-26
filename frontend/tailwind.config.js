@@ -10,9 +10,9 @@ export default {
       fontFamily: {
         /** Type mix: Chillax = shared UI/display; Georgia serif = report documents; mono = data/tokens. */
         sans: ['Chillax', 'system-ui', 'sans-serif'],
-        /** Display/headings — Chillax with a serif fallback (unchanged for existing usage). */
+        /** Display/headings: Chillax with a serif fallback (unchanged for existing usage). */
         serif: ['Chillax', 'Georgia', 'serif'],
-        /** Report-document body — true editorial serif (matches Report Generator white-papers). */
+        /** Report-document body: true editorial serif (matches Report Generator white-papers). */
         report: ['Georgia', '"Times New Roman"', 'serif'],
         /** Numeric/tabular data, tokens, IDs. */
         mono: ['Menlo', 'Monaco', 'ui-monospace', 'monospace'],
@@ -37,7 +37,7 @@ export default {
       },
       colors: {
         /* ============================================================
-         * SEMANTIC TOKENS (CSS-var driven — see index.css :root/.dark)
+         * SEMANTIC TOKENS (CSS-var driven: see index.css :root/.dark)
          * These are the preferred surface. `hsl(var(--x) / <alpha-value>)`
          * so opacity modifiers (bg-primary/20) work in both themes.
          * ============================================================ */
@@ -71,7 +71,7 @@ export default {
           900: '#284a58',
           950: '#16303b',
         },
-        /** ACCENT = CHM Connection Orange. The pop color — used sparingly. */
+        /** ACCENT = CHM Connection Orange. The pop color: used sparingly. */
         accent: {
           DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
           foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
@@ -89,7 +89,7 @@ export default {
           950: '#401a0f',
         },
         /**
-         * Official CHM brand palette (marketing / guidelines). Unchanged —
+         * Official CHM brand palette (marketing / guidelines). Unchanged, 
          * knowledge=teal and connection=orange are already correct.
          */
         chm: {
@@ -102,7 +102,7 @@ export default {
           discovery: '#79869a',
         },
         /**
-         * `brand-*` — REMAPPED from orange to teal so the ~45 files using
+         * `brand-*`: REMAPPED from orange to teal so the ~45 files using
          * `bg-brand-600` etc. become teal-primary with zero per-file churn.
          * Deprecated alias of `primary-*`; new code should use `primary`.
          */
@@ -120,7 +120,7 @@ export default {
           950: '#16303b',
         },
         /**
-         * `steel-*` — the former blue `accent-*` chrome scale, renamed so the
+         * `steel-*`: the former blue `accent-*` chrome scale, renamed so the
          * `accent` token can mean orange. Neutral cool chrome for nav/links.
          */
         steel: {

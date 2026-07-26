@@ -740,7 +740,7 @@ export class AuthController {
    * POST /api/auth/login
    * Validates email/password against Supabase when configured.
    * When Supabase not configured (dev only): lookup by email in DB, password
-   * ignored — for local development against a seeded DB. Production refuses
+   * ignored: for local development against a seeded DB. Production refuses
    * the DB-fallback path outright (SCRUM-101).
    */
   @Post('login')
@@ -861,7 +861,7 @@ export class AuthController {
     }
 
     // SCRUM-101: fail-closed in production. The dev-fallback path below logs
-    // a user in by email with the password IGNORED — a critical vulnerability
+    // a user in by email with the password IGNORED, a critical vulnerability
     // if SUPABASE_URL/SUPABASE_ANON_KEY are ever missing in prod (config
     // drift, secret rotation, misdeploy). Never allow this path outside of
     // local/test environments.

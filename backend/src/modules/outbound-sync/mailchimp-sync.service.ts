@@ -14,13 +14,13 @@ export interface MailchimpUpsertInput {
 }
 
 /**
- * Mailchimp Marketing API client — List/Audience member upsert.
+ * Mailchimp Marketing API client: List/Audience member upsert.
  *
  * Audience schema (verified in CHM Mailchimp dashboard 2026-04-24):
- *   NPI     — Text (10), tag NPI       — present
- *   FNAME   — Text, default            — present
- *   LNAME   — Text, default            — present
- *   COMPANY — Text, tag COMPANY        — present (used for institution)
+ *   NPI    : Text (10), tag NPI      : present
+ *   FNAME  : Text, default           : present
+ *   LNAME  : Text, default           : present
+ *   COMPANY: Text, tag COMPANY       : present (used for institution)
  *
  * Missing merge tags are silently dropped by Mailchimp without failing the
  * PUT, so the rest of the request still succeeds.
@@ -45,7 +45,7 @@ export class MailchimpSyncService {
 
     if (!this.apiKey || !this.audienceId || !this.serverPrefix) {
       this.logger.warn(
-        '[Mailchimp] not configured (missing MAILCHIMP_API_KEY / MAILCHIMP_AUDIENCE_ID / MAILCHIMP_SERVER_PREFIX) — sync disabled',
+        '[Mailchimp] not configured (missing MAILCHIMP_API_KEY / MAILCHIMP_AUDIENCE_ID / MAILCHIMP_SERVER_PREFIX), sync disabled',
       );
     }
   }
@@ -76,7 +76,7 @@ export class MailchimpSyncService {
     if (input.npi)
       mergeFields.NPI = String(input.npi).replace(/\D/g, '').slice(0, 10);
     if (input.institution) mergeFields.COMPANY = input.institution.trim();
-    // specialty has no merge field in the audience today — drop silently.
+    // specialty has no merge field in the audience today, drop silently.
 
     const body = {
       email_address: email,

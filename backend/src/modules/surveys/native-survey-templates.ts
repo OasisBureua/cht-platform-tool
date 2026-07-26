@@ -53,7 +53,7 @@ function info(id: string, prompt: string): NativeQuestion {
   return { id, type: 'info', prompt, required: false };
 }
 
-/** Default webinar registration intake (identity from auth session — not collected here). */
+/** Default webinar registration intake (identity from auth session: not collected here). */
 export function defaultWebinarIntakeQuestions() {
   return {
     version: 1,
@@ -66,7 +66,7 @@ export function defaultWebinarIntakeQuestions() {
         text('phone', 'Phone number', { required: false }),
         text('npi', 'NPI number', { required: false }),
         text('organization', 'Organization', { required: true }),
-        text('address_street', 'Company address — street', { required: false }),
+        text('address_street', 'Company address: street', { required: false }),
         text('address_line2', 'Street address line 2', { required: false }),
         text('city', 'City', { required: true }),
         text('state', 'State / Province', { required: true }),

@@ -185,7 +185,7 @@ export default function AdminWebinarScheduler({
         <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
           <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-yellow-800">Session saved — no Zoom meeting created</p>
+            <p className="text-sm font-semibold text-yellow-800">Session saved, no Zoom meeting created</p>
             <p className="text-sm text-yellow-700 mt-0.5">{zoomWarning}</p>
           </div>
           <button
@@ -238,7 +238,7 @@ export default function AdminWebinarScheduler({
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>)—often used
+            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>), often used
             alongside webinar-style programming. Host admits attendees from the waiting room.
           </p>
         </div>
@@ -327,7 +327,7 @@ export default function AdminWebinarScheduler({
             />
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Learner disclaimer <span className="font-normal text-gray-500">— optional</span>
+                Learner disclaimer <span className="font-normal text-gray-500">, optional</span>
               </label>
               <textarea
                 rows={3}
@@ -346,7 +346,7 @@ export default function AdminWebinarScheduler({
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Host
-              <span className="ml-1 font-normal text-gray-500">— optional</span>
+              <span className="ml-1 font-normal text-gray-500">, optional</span>
             </label>
             <div className="flex gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -378,7 +378,7 @@ export default function AdminWebinarScheduler({
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-900">
                 Speakers / KOLs
-                <span className="ml-1 font-normal text-gray-500">— optional; add one or more</span>
+                <span className="ml-1 font-normal text-gray-500">, optional; add one or more</span>
               </label>
               <button
                 type="button"
@@ -474,7 +474,7 @@ export default function AdminWebinarScheduler({
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
                 Honorarium (USD){' '}
-                <span className="font-normal text-gray-500">— optional; webinars only</span>
+                <span className="font-normal text-gray-500">, optional; webinars only</span>
               </label>
               <input
                 type="number"

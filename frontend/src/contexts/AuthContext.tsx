@@ -207,7 +207,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   }, [devUserId]);
 
   // Bootstrap session once on mount / API URL change only.
-  // Login responses already include the profile — do not re-fetch /auth/me
+  // Login responses already include the profile, do not re-fetch /auth/me
   // (that used to flip isLoading and show "Signing you in...").
   useEffect(() => {
     let cancelled = false;

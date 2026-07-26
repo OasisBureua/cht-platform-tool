@@ -172,11 +172,11 @@ function stateFromPracticeText(text: string): string | null {
 
 /**
  * Derive US state for a KOL from practice location (role, institution, intel) before
- * MediaHub production region — region_label is often a hub default (e.g. New York).
+ * MediaHub production region: region_label is often a hub default (e.g. New York).
  */
 export function deriveKolUsState(
   kol: PublicKol,
-  entry?: Pick<DolEntry, 'role' | 'education' | 'intel'>,
+  entry?: Partial<Pick<DolEntry, 'role' | 'education' | 'intel'>>,
 ): string | null {
   const loc = entry?.intel?.location?.trim();
   if (loc) {
@@ -219,7 +219,7 @@ export function deriveKolUsState(
 /** Display label for state (full name). */
 export function kolStateDisplayName(
   kol: PublicKol,
-  entry?: Pick<DolEntry, 'role' | 'education' | 'intel' | 'stateCode'>,
+  entry?: Partial<Pick<DolEntry, 'role' | 'education' | 'intel' | 'stateCode'>>,
 ): string {
   const code = entry?.stateCode ?? deriveKolUsState(kol, entry);
   return code ? usStateLabel(code) : 'Unknown';
@@ -228,7 +228,7 @@ export function kolStateDisplayName(
 /** Primary institution for cards and profile. */
 export function kolInstitutionLabel(
   kol: PublicKol,
-  entry?: Pick<DolEntry, 'role' | 'education' | 'intel'>,
+  entry?: Partial<Pick<DolEntry, 'role' | 'education' | 'intel'>>,
 ): string {
   const fromApi = kol.institution?.trim();
   if (fromApi) return fromApi;
@@ -254,5 +254,5 @@ export function kolInstitutionLabel(
     if (school.length > 3) return school;
   }
 
-  return '—';
+  return '-';
 }

@@ -44,7 +44,7 @@ Document substitutes when primary contacts are unavailable.
 
 ### Amazon CloudWatch alarms
 
-All alarms publish to SNS `cht-platform-alerts` (staging: `cht-platform-staging-alerts`). Subscribers are configured via `alarm_notification_emails` in Terraform tfvars — confirm subscription emails are active.
+All alarms publish to SNS `cht-platform-alerts` (staging: `cht-platform-staging-alerts`). Subscribers are configured via `alarm_notification_emails` in Terraform tfvars: confirm subscription emails are active.
 
 | Alarm (platform prefix) | Meaning |
 |-------------------------|---------|
@@ -53,7 +53,7 @@ All alarms publish to SNS `cht-platform-alerts` (staging: `cht-platform-staging-
 | `cht-platform-alb-5xx-errors` | ALB target 5xx count > 10 in 5 min |
 | `cht-platform-application-errors` | Backend log ERROR count > 50 in 5 min |
 | `cht-platform-email-dlq-messages` | Messages in email dead-letter queue |
-| `cht-platform-payment-dlq-messages` | Messages in payment DLQ — **priority** |
+| `cht-platform-payment-dlq-messages` | Messages in payment DLQ: **priority** |
 | `cht-platform-cme-dlq-messages` | Messages in CME certificate DLQ |
 | `cht-platform-scheduled-jobs-dlq-messages` | Scheduled job failures |
 
@@ -137,7 +137,7 @@ Choose actions based on incident type. Prefer **least destructive** steps that s
 
 1. Review ALB 5xx and WAF logs (CloudFront/WAF console).
 2. Block offending IPs in **WAF** (CloudFront scope) if confirmed malicious.
-3. Scale ECS tasks if resource exhaustion (CPU alarm) — note root cause before leaving scaled up.
+3. Scale ECS tasks if resource exhaustion (CPU alarm): note root cause before leaving scaled up.
 
 #### Data integrity / bad deploy
 
@@ -210,7 +210,7 @@ Use when repo secrets, PATs, or org access may be compromised.
 
 ## Related documents
 
-- [disaster-recovery.md](./disaster-recovery.md) — RDS restore, ECS redeploy
-- [../engineering/deployment.md](../engineering/deployment.md) — Normal deploy and rollback via Actions
-- [../engineering/architecture.md](../engineering/architecture.md) — System components and data flows
-- [../../infrastructure/README.md](../../infrastructure/README.md) — Terraform security controls
+- [disaster-recovery.md](./disaster-recovery.md): RDS restore, ECS redeploy
+- [../engineering/deployment.md](../engineering/deployment.md): Normal deploy and rollback via Actions
+- [../engineering/architecture.md](../engineering/architecture.md): System components and data flows
+- [../../infrastructure/README.md](../../infrastructure/README.md): Terraform security controls

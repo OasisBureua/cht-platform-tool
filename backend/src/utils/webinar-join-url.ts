@@ -22,7 +22,7 @@ export function attendeeJoinUrl(
 }
 
 /**
- * Join URL for a registered learner. Always the shared attendee link — never a panelist URL.
+ * Join URL for a registered learner. Always the shared attendee link: never a panelist URL.
  */
 export function learnerWebinarJoinUrl(
   zoomJoinUrl: string | null | undefined,
@@ -32,7 +32,7 @@ export function learnerWebinarJoinUrl(
 
 /**
  * Panelist link only when the user's email exactly matches a stored panelist entry.
- * Used for admin/speaker tooling — not for typical HCP registrations.
+ * Used for admin/speaker tooling, not for typical HCP registrations.
  */
 export function panelistJoinUrlForEmail(
   panelistLinks: unknown,

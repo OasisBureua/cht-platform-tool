@@ -10,7 +10,7 @@ export type FlatPlaylistVideo = {
 
 /**
  * Fetches each playlist detail and merges video lists (stable playlist order;
- * skips duplicate video ids — first playlist wins).
+ * skips duplicate video ids, first playlist wins).
  */
 export function useFlattenedPlaylistVideos(playlistIds: string[], enabled: boolean) {
   const keyJoined = playlistIds.join('|');

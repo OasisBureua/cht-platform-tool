@@ -380,7 +380,7 @@ export class MediaHubService {
     return left.some((id) => right.has(id));
   }
 
-  /** ContentHub /clips/:id may 404 while list works — scan list as a bridge. */
+  /** ContentHub /clips/:id may 404 while list works, scan list as a bridge. */
   private async findClipInList(id: string): Promise<MediaHubClip | null> {
     const pageSize = 50;
     const maxPages = 20;
@@ -420,7 +420,7 @@ export class MediaHubService {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404 || status === 401) {
         this.logger.warn(
-          `ContentHub /wordpress/categories unavailable (${status ?? 'error'}) — returning empty`,
+          `ContentHub /wordpress/categories unavailable (${status ?? 'error'}): returning empty`,
         );
         return { items: [], total: 0 };
       }
@@ -430,7 +430,7 @@ export class MediaHubService {
 
   /**
    * Latest WordPress editorial posts (ContentHub GET /wordpress).
-   * Used by admin Content tab — view-only mirror of WP, not authoring.
+   * Used by admin Content tab, view-only mirror of WP, not authoring.
    * `total` is ContentHub's full corpus count (not capped); `limit` only pages.
    */
   async getWordPressPosts(params?: {
@@ -481,7 +481,7 @@ export class MediaHubService {
       const status = (err as { response?: { status?: number } })?.response?.status;
       if (status === 404 || status === 401) {
         this.logger.warn(
-          `ContentHub /wordpress unavailable (${status ?? 'error'}) — returning empty`,
+          `ContentHub /wordpress unavailable (${status ?? 'error'}): returning empty`,
         );
         return { items: [], total: 0 };
       }
@@ -556,7 +556,7 @@ export class MediaHubService {
   }
 
   /**
-   * MediaHub `/doctors`. ContentHub has no such route — use KOL directory
+   * MediaHub `/doctors`. ContentHub has no such route, use KOL directory
    * slugs (same identifiers the catalog doctor filter expects).
    */
   async getDoctors(): Promise<MediaHubDoctor[]> {

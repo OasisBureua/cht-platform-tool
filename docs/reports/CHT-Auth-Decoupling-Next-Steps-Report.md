@@ -1,11 +1,11 @@
-# CHT Platform — Auth Decoupling & Cognito Migration Report
+# CHT Platform: Auth Decoupling & Cognito Migration Report
 
 **Community Health Technologies (CHT) Platform Tool**  
 **Report date:** June 3, 2026 (revised)  
-**Prepared for:** Internal stakeholders — compliance, engineering, product leadership, and MediaHub team  
+**Prepared for:** Internal stakeholders: compliance, engineering, product leadership, and MediaHub team  
 **Scope:** CHT-owned IdP (Amazon Cognito), MediaHub GoTrue decommission for end users, admin-only MediaHub access, and API-key-based server-to-server integration  
 **Related:** [CHT-MediaHub-Go-Forward-Options.md](./CHT-MediaHub-Go-Forward-Options.md)  
-**Strategy:** **Option 3 selected** — this auth/Cognito workstream is **Phase 1 (immediate)** and proceeds independently of MediaHub microservices recovery (months 4–8).
+**Strategy:** **Option 3 selected**: this auth/Cognito workstream is **Phase 1 (immediate)** and proceeds independently of MediaHub microservices recovery (months 4–8).
 
 ---
 
@@ -17,10 +17,10 @@ CHT’s **approved auth strategy** is to **own the identity provider** by migrat
 
 | Capability | End users (KOL/HCP/industry) | CHT admins | Integration |
 | ---------- | ---------------------------- | ---------- | ----------- |
-| **Authentication (GoTrue)** | **Removed** — no auth users on MediaHub | Admin-only GoTrue (or separate admin auth) until MediaHub decommissions non-admin IdP | MediaHub **decommissions GoTrue for all non-admin users** |
-| **Content / HCP data APIs** | **No direct access** — data served via CHT APIs | May use MediaHub admin UI for content ops | **API key retained** — server-to-server only (`MEDIAHUB_API_KEY`) |
+| **Authentication (GoTrue)** | **Removed**: no auth users on MediaHub | Admin-only GoTrue (or separate admin auth) until MediaHub decommissions non-admin IdP | MediaHub **decommissions GoTrue for all non-admin users** |
+| **Content / HCP data APIs** | **No direct access**: data served via CHT APIs | May use MediaHub admin UI for content ops | **API key retained**: server-to-server only (`MEDIAHUB_API_KEY`) |
 
-MediaHub will **no longer receive CHT auth users** as it does today (shared GoTrue, shared JWT secret, OAuth redirects to `mediahub.communityhealth.media`). Identity leaves MediaHub entirely for end users. MediaHub keeps **API-key-based integration** for catalog ingestion, HCP upsert, and playlist sync — initiated by the CHT backend, not by user sessions on MediaHub.
+MediaHub will **no longer receive CHT auth users** as it does today (shared GoTrue, shared JWT secret, OAuth redirects to `mediahub.communityhealth.media`). Identity leaves MediaHub entirely for end users. MediaHub keeps **API-key-based integration** for catalog ingestion, HCP upsert, and playlist sync, initiated by the CHT backend, not by user sessions on MediaHub.
 
 **Status:** Planned, not started. Production still uses GoTrue via MediaHub. Cognito Terraform, migration runbook, and MediaHub GoTrue decommission plan are not yet in the repository.
 
@@ -34,12 +34,12 @@ MediaHub will **no longer receive CHT auth users** as it does today (shared GoTr
 
 | Principle | Policy |
 | --------- | ------ |
-| **IdP ownership** | **CHT owns IdP** — Amazon Cognito with MFA |
-| **User-facing product** | CHT only — login, signup, catalog, sessions, payments, surveys |
-| **End-user roles** | KOL, HCP, industry — **no MediaHub UI, GoTrue, links, or credentials** |
+| **IdP ownership** | **CHT owns IdP**: Amazon Cognito with MFA |
+| **User-facing product** | CHT only: login, signup, catalog, sessions, payments, surveys |
+| **End-user roles** | KOL, HCP, industry: **no MediaHub UI, GoTrue, links, or credentials** |
 | **Admin access** | **Only CHT admins** may access MediaHub (content/KOL workflows) |
-| **MediaHub auth users** | **Decommission GoTrue for all non-admin users** — MediaHub stops being an auth destination for CHT learners |
-| **Data exchange** | **API key only** — server-to-server (CHT backend ↔ MediaHub API); end users never call MediaHub |
+| **MediaHub auth users** | **Decommission GoTrue for all non-admin users**: MediaHub stops being an auth destination for CHT learners |
+| **Data exchange** | **API key only**: server-to-server (CHT backend ↔ MediaHub API); end users never call MediaHub |
 
 ### 2.2 Why CHT must own the IdP
 
@@ -55,9 +55,9 @@ MediaHub will **no longer receive CHT auth users** as it does today (shared GoTr
 
 MediaHub team actions needed as part of this program:
 
-1. **Decommission GoTrue for non-admin users** — remove CHT learner/HCP/KOL/industry accounts from shared auth; stop accepting CHT OAuth redirect traffic for end users.
-2. **Retain admin GoTrue access** (interim) or migrate MediaHub admin auth separately — only staff who manage content in MediaHub UI.
-3. **Retain public/content API** with API key — CHT backend continues `MediaHubService` and `MediaHubSyncService` server-to-server.
+1. **Decommission GoTrue for non-admin users**: remove CHT learner/HCP/KOL/industry accounts from shared auth; stop accepting CHT OAuth redirect traffic for end users.
+2. **Retain admin GoTrue access** (interim) or migrate MediaHub admin auth separately: only staff who manage content in MediaHub UI.
+3. **Retain public/content API** with API key: CHT backend continues `MediaHubService` and `MediaHubSyncService` server-to-server.
 4. **No user-session or JWT-based auth to MediaHub** from CHT end users post-cutover.
 
 ### 2.4 Relationship to other MediaHub dependencies
@@ -67,8 +67,8 @@ MediaHub team actions needed as part of this program:
 | **Authentication (IdP)** | MediaHub GoTrue/Supabase | **Amazon Cognito (CHT-owned)**; MediaHub GoTrue **decommissioned for end users** |
 | **Conversation playlists** | Live MediaHub API | **CHT APIs**; ingest/sync via API key |
 | **KOL/content/catalog** | MediaHub API + admin UI | End users → CHT; admins → MediaHub UI optional; data via API key |
-| **HCP sync on signup** | MediaHub `/hcp/upsert` | **Keep** — server-to-server API key only |
-| **Podcasts** | Direct YouTube API | **Keep** — no MediaHub |
+| **HCP sync on signup** | MediaHub `/hcp/upsert` | **Keep**, server-to-server API key only |
+| **Podcasts** | Direct YouTube API | **Keep**, no MediaHub |
 
 ---
 
@@ -106,9 +106,9 @@ MediaHub team actions needed as part of this program:
 | **IdP** | MediaHub GoTrue/Supabase | CHT does not own IdP; users registered on MediaHub |
 | **Login flows** | CHT proxies to GoTrue | Must move to Cognito |
 | **JWT validation** | `GOTRUE_JWT_SECRET` (HS256) | Replace with Cognito JWKS (RS256) |
-| **Sessions** | CHT Postgres + httpOnly cookies | **Keep** — unchanged |
+| **Sessions** | CHT Postgres + httpOnly cookies | **Keep**, unchanged |
 | **User.authId** | GoTrue `sub` | Remap to Cognito `sub` on migration |
-| **Catalog / HCP** | MediaHub API key (server-side) | **Keep** — API key model is correct |
+| **Catalog / HCP** | MediaHub API key (server-side) | **Keep**, API key model is correct |
 | **Chatbot** | GoTrue JWT in session | Switch to Cognito access token via backend |
 
 ### 3.3 Code touchpoints
@@ -119,8 +119,8 @@ MediaHub team actions needed as part of this program:
 | JWKS strategy (Auth0 scaffold) | `backend/src/auth/jwt.strategy.ts` | Adapt for Cognito issuer/audience |
 | Auth controller (GoTrue proxy) | `backend/src/auth/auth.controller.ts` | Rewire to Cognito SignUp/InitiateAuth/OAuth |
 | Auth module factory | `backend/src/auth/auth.module.ts` | Select Cognito strategy |
-| OAuth URL builder | `frontend/src/lib/supabase-oauth.ts` | **Remove** — Cognito Hosted UI or Amplify on CHT domain |
-| Catalog / HCP sync | `mediahub.service.ts`, `mediahub-sync.service.ts` | **Keep** — API key only |
+| OAuth URL builder | `frontend/src/lib/supabase-oauth.ts` | **Remove**: Cognito Hosted UI or Amplify on CHT domain |
+| Catalog / HCP sync | `mediahub.service.ts`, `mediahub-sync.service.ts` | **Keep**, API key only |
 | Terraform secrets | `secrets-manager/` | Add Cognito pool/client; remove GoTrue secrets post-cutover |
 
 ---
@@ -139,7 +139,7 @@ MediaHub team actions needed as part of this program:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  END USERS — CHT domain only (testapp.communityhealth.media)    │
+│  END USERS: CHT domain only (testapp.communityhealth.media)    │
 └────────────────────────────┬────────────────────────────────────┘
                              │ login / signup / OAuth
                              ▼
@@ -153,12 +153,12 @@ MediaHub team actions needed as part of this program:
              ▼                               ▼
 ┌──────────────────────────┐    ┌──────────────────────────────┐
 │ Amazon Cognito           │    │ MediaHub Public API          │
-│ (CHT-owned IdP + MFA)    │    │ API key — NO user auth       │
+│ (CHT-owned IdP + MFA)    │    │ API key: NO user auth       │
 └──────────────────────────┘    └──────────────────────────────┘
                                              ▲
                                              │ admin UI only
 ┌────────────────────────────────────────────┴────────────────────┐
-│  CHT ADMINS ONLY — MediaHub (GoTrue admin-only or separate)     │
+│  CHT ADMINS ONLY: MediaHub (GoTrue admin-only or separate)     │
 │  MediaHub: GoTrue DECOMMISSIONED for all non-admin users        │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -167,23 +167,23 @@ MediaHub team actions needed as part of this program:
 
 | Requirement | Target |
 | ----------- | ------ |
-| **IdP** | Amazon Cognito — one user pool per environment |
+| **IdP** | Amazon Cognito: one user pool per environment |
 | **MFA** | Required TOTP MFA |
 | **OAuth** | Google (and Apple if required) via Cognito |
 | **JWT** | RS256 via Cognito JWKS |
 | **Sessions** | Existing CHT Postgres session + httpOnly cookies |
 | **Custom attributes** | NPI, profession, institution (today in GoTrue `user_metadata`) |
 
-### 4.4 Auth flows — target behavior
+### 4.4 Auth flows: target behavior
 
 | Flow | Target |
 | ---- | ------ |
 | Email/password signup | CHT UI → backend → Cognito SignUp → CHT session |
 | Email/password login | CHT UI → backend → Cognito InitiateAuth (+ MFA) → CHT session |
-| Google OAuth | Cognito federated identity — **CHT domain only** |
-| Password reset | Cognito ForgotPassword — CHT-branded emails |
+| Google OAuth | Cognito federated identity: **CHT domain only** |
+| Password reset | Cognito ForgotPassword: CHT-branded emails |
 | Admin login | Cognito + `@Roles(ADMIN)` in Postgres |
-| Chatbot | Cognito access token via CHT backend — never MediaHub JWT |
+| Chatbot | Cognito access token via CHT backend: never MediaHub JWT |
 
 ### 4.5 MediaHub API integration (unchanged model, clarified scope)
 
@@ -202,7 +202,7 @@ MediaHub team actions needed as part of this program:
 
 ### 5.1 Deliverable
 
-**Cognito Migration & MediaHub Auth Decommission Specification** — signed off by CHT engineering, product, compliance, **and MediaHub team**.
+**Cognito Migration & MediaHub Auth Decommission Specification**: signed off by CHT engineering, product, compliance, **and MediaHub team**.
 
 ### 5.2 Required decisions
 
@@ -280,7 +280,7 @@ MediaHub team actions needed as part of this program:
 4. Frontend: Cognito login/OAuth on CHT domain only
         │
         ▼
-5. Staging cutover — zero MediaHub auth URLs for end users
+5. Staging cutover: zero MediaHub auth URLs for end users
         │
         ▼
 6. User migration (GoTrue sub → Cognito sub)
@@ -292,7 +292,7 @@ MediaHub team actions needed as part of this program:
 8. Remove GOTRUE_JWT_SECRET, SUPABASE_* from CHT secrets
         │
         ▼
-9. Expand CHT catalog APIs (API key sync from MediaHub — unchanged auth model)
+9. Expand CHT catalog APIs (API key sync from MediaHub: unchanged auth model)
 ```
 
 ---
@@ -316,11 +316,11 @@ MediaHub team actions needed as part of this program:
 
 Migration is complete when:
 
-1. **CHT owns IdP** — Amazon Cognito with TOTP MFA in all environments.
-2. **KOL, HCP, and industry users** authenticate only through CHT — no MediaHub GoTrue, URLs, or auth user records.
+1. **CHT owns IdP**: Amazon Cognito with TOTP MFA in all environments.
+2. **KOL, HCP, and industry users** authenticate only through CHT, no MediaHub GoTrue, URLs, or auth user records.
 3. **MediaHub has decommissioned GoTrue for all non-admin users** (confirmed by MediaHub team).
 4. **Only CHT admins** access MediaHub UI for content operations.
-5. **MediaHub API key integration remains** for server-to-server catalog and HCP sync — no user auth coupling.
+5. **MediaHub API key integration remains** for server-to-server catalog and HCP sync, no user auth coupling.
 6. End-user catalog and account data is served through **CHT APIs** only.
 7. `GOTRUE_JWT_SECRET`, `SUPABASE_URL`, and `SUPABASE_ANON_KEY` are **removed** from CHT production secrets.
 8. Subprocessor register lists **Cognito** as auth provider; MediaHub as content/API subprocessor only.
@@ -334,11 +334,11 @@ Migration is complete when:
 
 1. **Draft the Cognito Migration & MediaHub Auth Decommission Specification** (Section 5.2).
 2. **Engage MediaHub team** on GoTrue decommission timeline for non-admin users.
-3. **Assign owners** — Cognito migration is Phase 1; catalog API sync is Phase 2.
+3. **Assign owners**: Cognito migration is Phase 1; catalog API sync is Phase 2.
 
 ### Do not do
 
-1. **Keep end-user auth on MediaHub GoTrue** — this is explicitly out of scope for the target state.
+1. **Keep end-user auth on MediaHub GoTrue**, this is explicitly out of scope for the target state.
 2. **Expose MediaHub API keys or GoTrue client config** to end-user browsers.
 3. **Cut over MediaHub GoTrue decommission without Cognito staging validation.**
 
@@ -354,23 +354,23 @@ Migration is complete when:
 
 | Document / path | Description |
 | --------------- | ----------- |
-| `backend/src/auth/jwt.strategy.ts` | JWKS pattern — adapt for Cognito |
+| `backend/src/auth/jwt.strategy.ts` | JWKS pattern: adapt for Cognito |
 | `backend/src/auth/gotrue.strategy.ts` | **Remove/replace** after cutover |
 | `backend/src/auth/auth.controller.ts` | **Rewire** from GoTrue proxy to Cognito |
-| `backend/src/modules/catalog/mediahub.service.ts` | API key catalog — **keep** |
-| `backend/src/modules/outbound-sync/mediahub-sync.service.ts` | API key HCP sync — **keep** |
+| `backend/src/modules/catalog/mediahub.service.ts` | API key catalog: **keep** |
+| `backend/src/modules/outbound-sync/mediahub-sync.service.ts` | API key HCP sync: **keep** |
 | `frontend/src/lib/supabase-oauth.ts` | **Remove** after Cognito OAuth on CHT |
 
 ### B. Environment variables (current → target)
 
 | Current (GoTrue) | Target (Cognito) | End-user browser? |
 | ---------------- | ---------------- | ------------------- |
-| `SUPABASE_URL` | — (removed) | **No** |
-| `SUPABASE_ANON_KEY` | — (removed) | **No** |
+| `SUPABASE_URL` |: (removed) | **No** |
+| `SUPABASE_ANON_KEY` |: (removed) | **No** |
 | `GOTRUE_JWT_SECRET` | Cognito JWKS (derived from pool) | **No** |
-| — | `COGNITO_USER_POOL_ID` | **No** |
-| — | `COGNITO_CLIENT_ID` | Public client ID only if using SPA flow |
-| — | `COGNITO_REGION` | **No** |
+|: | `COGNITO_USER_POOL_ID` | **No** |
+|: | `COGNITO_CLIENT_ID` | Public client ID only if using SPA flow |
+|: | `COGNITO_REGION` | **No** |
 | `MEDIAHUB_API_KEY` | `MEDIAHUB_API_KEY` (unchanged) | **Backend only** |
 | `MEDIAHUB_BASE_URL` | `MEDIAHUB_BASE_URL` (unchanged) | **Backend only** |
 
@@ -378,6 +378,6 @@ Migration is complete when:
 
 | Date | Change |
 | ---- | ------ |
-| June 3, 2026 | Initial report — Cognito migration plan |
-| June 3, 2026 | Revised — retain GoTrue; user isolation (superseded) |
-| June 3, 2026 | **Corrected** — CHT owns IdP via Cognito; MediaHub decommissions GoTrue for non-admins; API key retained; admin-only MediaHub access |
+| June 3, 2026 | Initial report: Cognito migration plan |
+| June 3, 2026 | Revised: retain GoTrue; user isolation (superseded) |
+| June 3, 2026 | **Corrected**: CHT owns IdP via Cognito; MediaHub decommissions GoTrue for non-admins; API key retained; admin-only MediaHub access |

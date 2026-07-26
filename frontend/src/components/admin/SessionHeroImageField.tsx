@@ -77,7 +77,7 @@ export function SessionHeroImageField({
   return (
     <div>
       <label className={labelCls}>
-        Session banner image <span className="font-normal text-gray-400">— optional</span>
+        Session banner image <span className="font-normal text-gray-400">, optional</span>
       </label>
 
       {uploadEnabled ? (

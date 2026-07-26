@@ -59,7 +59,7 @@ export default function AuthCallback() {
           startedRef.current = false;
           return;
         }
-        // Navigate even if React Strict Mode cleaned up the effect — auth already succeeded.
+        // Navigate even if React Strict Mode cleaned up the effect, auth already succeeded.
         navigate(
           getPostLoginPath(result.role, oauthState?.from || fromPath),
           { replace: true },
@@ -87,7 +87,7 @@ export default function AuthCallback() {
       }
       navigate(getPostLoginPath(result.role, fromPath), { replace: true });
     });
-    // Intentionally omit callback fn deps — startedRef guards a single exchange per code.
+    // Intentionally omit callback fn deps: startedRef guards a single exchange per code.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, searchParams]);
 

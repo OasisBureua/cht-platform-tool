@@ -44,7 +44,7 @@ export default function AdminPayments() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
     onError: () => {
-      // Bill.com failures mark the row FAILED server-side — refresh both lists.
+      // Bill.com failures mark the row FAILED server-side, refresh both lists.
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
@@ -349,12 +349,12 @@ export default function AdminPayments() {
                       <p className="text-xs text-gray-500">{r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}</p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
-                      {r.program.honorariumAmount ? formatMoney(r.program.honorariumAmount) : '—'}
+                      {r.program.honorariumAmount ? formatMoney(r.program.honorariumAmount) : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {r.postEventSurveyAcknowledgedAt
                         ? format(new Date(r.postEventSurveyAcknowledgedAt), 'MMM d, yyyy')
-                        : '—'}
+                        : '-'}
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -669,7 +669,7 @@ function ManualPaymentForm() {
               <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
               <div>
                 <h3 id="manual-pay-eligibility-title" className="font-semibold text-gray-900">
-                  Eligibility incomplete — add anyway?
+                  Eligibility incomplete: add anyway?
                 </h3>
                 <p className="mt-1 text-sm text-gray-600">
                   This person is not fully ready for Pay now on{' '}
@@ -766,11 +766,11 @@ function FailedRow({
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-sm text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
       <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-        {payment.failedAt ? format(new Date(payment.failedAt), 'MMM d, yyyy') : '—'}
+        {payment.failedAt ? format(new Date(payment.failedAt), 'MMM d, yyyy') : '-'}
       </td>
       <td className="px-4 py-3 text-xs text-red-700 max-w-xs">
         <span className="line-clamp-2" title={payment.failureReason ?? undefined}>
-          {payment.failureReason ?? '—'}
+          {payment.failureReason ?? '-'}
         </span>
       </td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -813,7 +813,7 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
   const paidLabel =
     payment.paidAt != null && payment.paidAt !== ''
       ? format(new Date(payment.paidAt), 'MMM d, yyyy · h:mm a')
-      : '—';
+      : '-';
 
   return (
     <tr className="hover:bg-gray-50/80">
@@ -825,7 +825,7 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
       </td>
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
-      <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '—'}</td>
+      <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{paidLabel}</td>
     </tr>
   );
@@ -850,9 +850,9 @@ function PendingRow({
   const hasW9 = payment.user.w9Submitted !== false;
   const canPay = hasVendor && hasW9;
   const blockReason = !hasVendor
-    ? 'No Bill.com vendor — HCP must add bank details'
+    ? 'No Bill.com vendor: HCP must add bank details'
     : !hasW9
-      ? 'W-9 not submitted — HCP must complete W-9 first'
+      ? 'W-9 not submitted: HCP must complete W-9 first'
       : null;
 
   return (

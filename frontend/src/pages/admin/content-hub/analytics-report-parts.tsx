@@ -167,7 +167,7 @@ export function DocTable({ headers, children }: { headers: string[]; children: R
 function KpiValueCell({ value }: { value: string }) {
   return (
     <td style={tdStyle(false)}>
-      <strong style={{ color: value === '—' ? INK.faint : INK.slate }}>{value}</strong>
+      <strong style={{ color: value === '-' ? INK.faint : INK.slate }}>{value}</strong>
     </td>
   );
 }

@@ -275,7 +275,7 @@ function UserRow({ user, compactState }: { user: AdminUser; compactState?: boole
                   <span className="font-semibold text-gray-900">{formatPaidUsd(p.amount)}</span>
                   <span className="text-gray-600">{p.type.replace(/_/g, ' ')}</span>
                   <span className="text-gray-500 w-full sm:w-auto">
-                    {p.program?.title ?? '—'}
+                    {p.program?.title ?? '-'}
                     {p.paidAt ? ` · Paid ${new Date(p.paidAt).toLocaleDateString()}` : ''}
                   </span>
                   {p.description?.trim() ? (

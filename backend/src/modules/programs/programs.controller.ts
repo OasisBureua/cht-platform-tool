@@ -73,7 +73,7 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/me/live-session-status — enrollment / registration per LIVE or Office Hours program (auth).
+   * GET /api/programs/me/live-session-status, enrollment / registration per LIVE or Office Hours program (auth).
    */
   @Get('me/live-session-status')
   @UseGuards(JwtAuthGuard)
@@ -84,7 +84,7 @@ export class ProgramsController {
   }
 
   /**
-   * POST /api/programs/registrations/batch — register for multiple live webinars (approval when required).
+   * POST /api/programs/registrations/batch: register for multiple live webinars (approval when required).
    */
   @Post('registrations/batch')
   @UseGuards(JwtAuthGuard)
@@ -100,7 +100,7 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/:id/slots — published office-hours time slots (public)
+   * GET /api/programs/:id/slots, published office-hours time slots (public)
    */
   @Get(':id/slots')
   async listSlots(@Param('id') id: string) {
@@ -138,7 +138,7 @@ export class ProgramsController {
   }
 
   /**
-   * POST /api/programs/:id/post-event/acknowledge-survey — learner confirms post-event Jotform submitted (after attendance verified).
+   * POST /api/programs/:id/post-event/acknowledge-survey: learner confirms post-event Jotform submitted (after attendance verified).
    */
   @Post(':id/post-event/acknowledge-survey')
   @UseGuards(JwtAuthGuard)
@@ -153,7 +153,7 @@ export class ProgramsController {
   }
 
   /**
-   * POST /api/programs/:id/post-event/request-honorarium — learner confirms payout details; enqueues payment job (worker inserts PENDING row).
+   * POST /api/programs/:id/post-event/request-honorarium: learner confirms payout details; enqueues payment job (worker inserts PENDING row).
    */
   @Post(':id/post-event/request-honorarium')
   @UseGuards(JwtAuthGuard)
@@ -168,7 +168,7 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/:id/honorarium-preview — masked payout summary for honorarium confirmation step.
+   * GET /api/programs/:id/honorarium-preview, masked payout summary for honorarium confirmation step.
    */
   @Get(':id/honorarium-preview')
   @UseGuards(JwtAuthGuard)
@@ -180,7 +180,7 @@ export class ProgramsController {
   }
 
   /**
-   * GET /api/programs/:id/jotform-resume — saved Jotform “Save & Continue” session (24h), if any
+   * GET /api/programs/:id/jotform-resume, saved Jotform “Save & Continue” session (24h), if any
    */
   @Get(':id/jotform-resume')
   @UseGuards(JwtAuthGuard)
@@ -196,7 +196,7 @@ export class ProgramsController {
   }
 
   /**
-   * PUT /api/programs/:id/jotform-resume — store session id (extends expiry to 24h from now)
+   * PUT /api/programs/:id/jotform-resume: store session id (extends expiry to 24h from now)
    */
   @Put(':id/jotform-resume')
   @UseGuards(JwtAuthGuard)

@@ -3,7 +3,7 @@ locals {
   manage_account_resources = var.environment == "platform"
 }
 
-# AWS Config recorder is one per AWS account/region — platform only.
+# AWS Config recorder is one per AWS account/region, platform only.
 resource "aws_s3_bucket" "config" {
   count  = local.manage_account_resources ? 1 : 0
   bucket = "${local.prefix}-aws-config-${var.aws_account_id}"

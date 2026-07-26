@@ -5,7 +5,7 @@ import ChatBubble from '../components/ChatBubble';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import ThemeToggle from '../components/ThemeToggle';
 
-// Brand icons were removed from lucide-react in v1.x — local outline SVGs
+// Brand icons were removed from lucide-react in v1.x, local outline SVGs
 // (same 24px stroke language as the lucide icons they replace).
 function IconInstagram({ className }: { className?: string }) {
   return (

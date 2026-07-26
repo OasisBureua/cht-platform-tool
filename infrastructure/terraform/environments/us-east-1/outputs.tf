@@ -5,7 +5,7 @@ output "vpc_id" {
 }
 
 output "backend_security_group_id" {
-  description = "CHT backend ECS security group — pass to Content Hub dev.tfvars as cht_backend_security_group_id"
+  description = "CHT backend ECS security group: pass to Content Hub dev.tfvars as cht_backend_security_group_id"
   value       = module.ecs_backend.security_group_id
 }
 

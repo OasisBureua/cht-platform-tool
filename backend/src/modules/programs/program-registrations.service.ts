@@ -554,7 +554,7 @@ export class ProgramRegistrationsService {
         /** Refresh whenever they submit again and an intake id is on file (body or existing). */
         intakeJotformSubmittedAt: mergedIntakeId ? new Date() : null,
         updatedAt: new Date(),
-        // Fresh pending request after rejection — clear last review so admins see a new queue item.
+        // Fresh pending request after rejection: clear last review so admins see a new queue item.
         ...(requiresApproval &&
         status === ProgramRegistrationStatus.PENDING &&
         existingRegistration?.status === ProgramRegistrationStatus.REJECTED
@@ -636,7 +636,7 @@ export class ProgramRegistrationsService {
 
   /**
    * Register the current user for multiple live webinars at once (approval requests when required).
-   * Office Hours (MEETING) and sessions that need a time slot are skipped — use per-session registration.
+   * Office Hours (MEETING) and sessions that need a time slot are skipped, use per-session registration.
    */
   async submitBatchRegistrations(
     userId: string,
@@ -729,7 +729,7 @@ export class ProgramRegistrationsService {
           programId,
           title,
           reason:
-            'This session requires choosing a time slot — open it to register',
+            'This session requires choosing a time slot, open it to register',
         });
         continue;
       }
@@ -784,7 +784,7 @@ export class ProgramRegistrationsService {
   }
 
   /**
-   * Intake submitted (native survey or Jotform webhook) — persist submission id and optionally enroll.
+   * Intake submitted (native survey or Jotform webhook): persist submission id and optionally enroll.
    */
   async recordWebinarIntakeSubmission(
     userId: string,
@@ -1003,7 +1003,7 @@ export class ProgramRegistrationsService {
           },
         },
       },
-      /** Resubmits after rejection bump updatedAt — sort by that so queue order matches “last touch”. */
+      /** Resubmits after rejection bump updatedAt: sort by that so queue order matches “last touch”. */
       orderBy: { updatedAt: 'asc' },
     });
   }
@@ -1698,7 +1698,7 @@ export class ProgramRegistrationsService {
             zoomSessionType:
               reg.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
           },
-          // Native in-app survey only — CTA opens /app/surveys/:id (Surveys tab).
+          // Native in-app survey only: CTA opens /app/surveys/:id (Surveys tab).
           surveyUrl: null,
           feedbackSurveyId: feedbackSurvey?.id ?? null,
         })
@@ -1786,7 +1786,7 @@ export class ProgramRegistrationsService {
 
   /**
    * Registrations that are APPROVED, attendance VERIFIED, survey acknowledged,
-   * and have a program honorarium — but the user has not yet requested payment.
+   * and have a program honorarium, but the user has not yet requested payment.
    * Used by the admin payments panel to surface actionable follow-up items.
    */
   async listPaymentEligibleNotYetRequestedForAdmin() {

@@ -59,7 +59,7 @@ resource "aws_elasticache_replication_group" "main" {
   }
 
   # Passwordless clusters (transit_encryption_enabled = false) must not send
-  # auth_token_update_strategy on ModifyReplicationGroup — AWS rejects it and
+  # auth_token_update_strategy on ModifyReplicationGroup: AWS rejects it and
   # the AWS provider defaults ROTATE on any in-place change (hashicorp/terraform-provider-aws#34589).
   lifecycle {
     ignore_changes = [

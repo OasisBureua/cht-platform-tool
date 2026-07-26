@@ -1,7 +1,7 @@
 /** Combined stored value replaces separate Student + Researcher dropdown options */
 export const STUDENT_RESEARCHER_VALUE = 'StudentResearcher';
 
-/** Stored as `User.specialty` — same options across signup / complete-profile / settings. */
+/** Stored as `User.specialty`: same options across signup / complete-profile / settings. */
 export const PROFESSION_OPTIONS = [
   { value: '', label: 'Select your profession' },
   { value: 'Physician', label: 'Physician (MD/DO)' },
@@ -18,7 +18,7 @@ export const PROFESSION_OPTIONS = [
 ] as const;
 
 /**
- * Backend may still hold removed option values — treat these as non-HCP for NPI rules.
+ * Backend may still hold removed option values, treat these as non-HCP for NPI rules.
  */
 export const NON_HCP_PROFESSIONS = new Set([
   'Industry',
@@ -64,7 +64,7 @@ export function specialtyToSelectValue(specialty: string | undefined | null): st
   return specialty;
 }
 
-/** Same as PROFESSION_OPTIONS — explicit alias for signup copy. */
+/** Same as PROFESSION_OPTIONS: explicit alias for signup copy. */
 export function signupProfessionSelectOptions(): { value: string; label: string }[] {
   return [...PROFESSION_OPTIONS];
 }

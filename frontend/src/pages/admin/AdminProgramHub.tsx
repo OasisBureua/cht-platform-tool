@@ -383,9 +383,9 @@ export default function AdminProgramHub() {
                 placeholder="https://form.jotform.com/..."
               />
               <span className="mt-1 block text-xs text-gray-500">
-                Pre-event forms are deprecated — use this intake for registration; use a FEEDBACK survey for post-event. In
+                Pre-event forms are deprecated. Use this intake for registration; use a FEEDBACK survey for post-event. In
                 Jotform, set the thank-you redirect to this app&apos;s registration URL for this program (…/register) and
-                append the submission id (merge tag), e.g. …/register?submissionID={'{submission_id}'} — learners need that
+                append the submission id (merge tag), e.g. …/register?submissionID={'{submission_id}'}: learners need that
                 id on file to finish signing up. Add hidden fields <strong>user_id</strong> and <strong>program_id</strong>{' '}
                 (the app pre-fills them when the form opens). Point the Jotform form webhook to your API{' '}
                 <code className="text-xs bg-gray-100 px-1 rounded">POST /api/webhooks/jotform</code> so submissions are
@@ -878,7 +878,7 @@ export default function AdminProgramHub() {
                                     ? format(parseISO(r.intakeSurveySubmittedAt), 'MMM d, yyyy h:mm a')
                                     : hasIntake
                                       ? 'Recorded'
-                                      : '—'}
+                                      : '-'}
                                   {r.jotformIntakeSubmissionViewUrl ? (
                                     <a
                                       href={r.jotformIntakeSubmissionViewUrl}
@@ -1001,7 +1001,7 @@ export default function AdminProgramHub() {
                                     ? format(parseISO(r.postEventSurveySubmittedAt), 'MMM d, yyyy h:mm a')
                                     : r.postEventSurveySubmitted
                                       ? 'Recorded'
-                                      : '—'}
+                                      : '-'}
                                   {r.jotformPostEventSubmissionViewUrl ? (
                                     <a
                                       href={r.jotformPostEventSubmissionViewUrl}
@@ -1142,7 +1142,7 @@ export default function AdminProgramHub() {
                           </td>
                           <td className="py-2 pr-4 text-gray-600">
                             <div className="space-y-1">
-                              <span>{!intakeRequired ? '—' : intakeOk ? 'Recorded' : 'Missing'}</span>
+                              <span>{!intakeRequired ? '-' : intakeOk ? 'Recorded' : 'Missing'}</span>
                               {r.jotformIntakeSubmissionViewUrl ? (
                                 <a
                                   href={r.jotformIntakeSubmissionViewUrl}
@@ -1399,7 +1399,7 @@ function ZoomLinksSection({
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-800">Attendee join link</p>
               <p className="mt-0.5 text-xs text-gray-500">
-                Zoom silent-participant / listener URL — same link learners see as <strong>Join session</strong> in the app.
+                Zoom silent-participant / listener URL: same link learners see as <strong>Join session</strong> in the app.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -1420,7 +1420,7 @@ function ZoomLinksSection({
         {links.length > 0 ? (
           <>
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 pt-1">
-              Panelist / speaker links — share individually
+              Panelist / speaker links: share individually
             </p>
             <p className="text-xs text-gray-500">
               Each link targets the same webinar but includes a unique token (<code className="text-[10px]">tk=</code>) so

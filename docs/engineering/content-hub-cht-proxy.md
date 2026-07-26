@@ -1,9 +1,9 @@
-# Content Hub — CHT proxy implementation guide
+# Content Hub: CHT proxy implementation guide
 
 **Status:** Implementation runbook  
 **Audience:** CHT backend + frontend engineers  
 **Related:** [content-hub-report-api-contract.md](./content-hub-report-api-contract.md) (full API contract)  
-**Hub repo:** `cht-content-hub` — admin API at `/api/admin/*`
+**Hub repo:** `cht-content-hub`: admin API at `/api/admin/*`
 
 ---
 
@@ -13,7 +13,7 @@ The Content Hub admin UI (`/admin/content-hub`) today uses **localStorage** via 
 
 1. **CHT NestJS** exposes `/api/admin/content-hub/*` (admin JWT).
 2. CHT proxies to **Content Hub** `/api/admin/*` (server-to-server `X-API-Key`).
-3. **HubSpot** stays on CHT only — never proxied to Hub for token/sync UI.
+3. **HubSpot** stays on CHT only: never proxied to Hub for token/sync UI.
 
 The browser **never** calls Content Hub directly.
 
@@ -31,17 +31,17 @@ Deploy Content Hub to dev first (migrations through `0006`, API image, ACM cert)
 ### Environment variables (dev)
 
 ```bash
-# KOL — existing
+# KOL: existing
 CONTENTHUB_BASE_URL=https://devhub.communityhealth.media/api/public
 CONTENTHUB_API_KEY=<Hub Secrets Manager public_api_key>
 
-# Campaign admin — new (or derive: baseUrl.replace('/api/public', '/api/admin'))
+# Campaign admin: new (or derive: baseUrl.replace('/api/public', '/api/admin'))
 CONTENTHUB_ADMIN_BASE_URL=https://devhub.communityhealth.media/api/admin
 
-# HubSpot — existing (CHT only)
+# HubSpot: existing (CHT only)
 HUBSPOT_ACCESS_TOKEN=...
 
-# Cache clear — Hub calls after writes (optional on Hub until URL is set)
+# Cache clear: Hub calls after writes (optional on Hub until URL is set)
 INTERNAL_CACHE_SECRET=...
 ```
 
@@ -106,7 +106,7 @@ After any Hub write or HubSpot PATCH → `CacheClearService.clear('contenthub')`
 
 Create `backend/src/modules/content-hub/content-hub-campaign.service.ts`.
 
-Thin wrapper — paths relative to admin base:
+Thin wrapper: paths relative to admin base:
 
 | Service method | Hub |
 |----------------|-----|
@@ -179,7 +179,7 @@ async getExecutiveReport(id: number) {
 
 Reports read **stored** platform data + `hubspotRawData` on the Hub campaign (from last HubSpot sync).
 
-#### HubSpot (CHT only — not proxied to Hub integrations)
+#### HubSpot (CHT only: not proxied to Hub integrations)
 
 | Browser (CHT) | Implementation |
 |---------------|----------------|
@@ -195,7 +195,7 @@ Reports read **stored** platform data + `hubspotRawData` on the Hub campaign (fr
 5. `CacheClearService.clear('contenthub')`.
 6. Return `{ synced: true, syncedAt }`.
 
-**Integrations GET** — include static HubSpot block (no token field):
+**Integrations GET**, include static HubSpot block (no token field):
 
 ```json
 {
@@ -225,7 +225,7 @@ Add to `backend/src/app.module.ts`.
 ### Swap `store.ts`
 
 Replace localStorage with `apiClient` (`frontend/src/api/client.ts`).  
-Make exported functions **`async`** — hooks already accept promises.
+Make exported functions **`async`**: hooks already accept promises.
 
 ```typescript
 import apiClient from '../../../../api/client';
@@ -341,7 +341,7 @@ curl -s -H "Authorization: Bearer $ADMIN_JWT" \
 
 ## Phases
 
-### Phase 1 — Unblock UI (no platform APIs)
+### Phase 1: Unblock UI (no platform APIs)
 
 - [ ] Config: `CONTENTHUB_ADMIN_BASE_URL`
 - [ ] Extend client + campaign service + admin controller
@@ -351,7 +351,7 @@ curl -s -H "Authorization: Bearer $ADMIN_JWT" \
 - [ ] Frontend `store.ts` swap
 - [ ] CSV bootstrap + stub platform sync on Hub
 
-### Phase 2 — Production quality
+### Phase 2: Production quality
 
 - [ ] Real HubSpot campaign analytics in sync handler
 - [ ] Hub daily cron + real platform connectors (Hub-side)
@@ -376,6 +376,6 @@ CHT never stores platform metric rows long-term. Hub never stores HubSpot tokens
 
 ## See also
 
-- [content-hub-report-api-contract.md](./content-hub-report-api-contract.md) — full request/response shapes
-- [cache-sync-contract.md](../runbooks/cache-sync-contract.md) — `POST /internal/cache/clear?scope=contenthub`
+- [content-hub-report-api-contract.md](./content-hub-report-api-contract.md): full request/response shapes
+- [cache-sync-contract.md](../runbooks/cache-sync-contract.md): `POST /internal/cache/clear?scope=contenthub`
 - Hub contract copy: `cht-content-hub/docs/contenthub-campaign-report-api-contract.md`

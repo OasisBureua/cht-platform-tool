@@ -43,7 +43,7 @@ export function buildWebinarAccessEmail(
     ? sanitizePlainDescription(p.programDescription).slice(0, 400)
     : null;
 
-  const subject = `Your Zoom link is ready — ${p.programTitle}`;
+  const subject = `Your Zoom link is ready, ${p.programTitle}`;
 
   // ── Plain text ───────────────────────────────────────────────────────────────
   const text = [

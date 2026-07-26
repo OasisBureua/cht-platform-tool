@@ -1,8 +1,8 @@
-# CHM Platform Roadmap — Dev, Cognito & MediaHub
+# CHM Platform Roadmap: Dev, Cognito & MediaHub
 
 **Prepared for:** CHM leadership, CHT platform team, MediaHub engineering  
 **Updated:** June 16, 2026  
-**Status:** Phase 1 complete (staging destroyed). Phase 2 in progress — Cognito prod; local dev only until Cognito is stable, then scoped AWS dev deploy.
+**Status:** Phase 1 complete (staging destroyed). Phase 2 in progress: Cognito prod; local dev only until Cognito is stable, then scoped AWS dev deploy.
 
 ---
 
@@ -10,9 +10,9 @@
 
 This plan consolidates architecture and sequencing decisions for the CHM platform:
 
-1. ~~**Destroy staging**~~ — **done.**
-2. **Cognito in production** — migrate existing GoTrue users; cut over prod auth.
-3. **Cognito dev pool + specs in parallel with prod** — provision **prod and dev Cognito** (Terraform, app clients, groups) in the **same Phase 2 workstream**. Use dev pool for local/testing; **do not fully deploy AWS dev** (ECS/RDS/CI) until Phase 3.
+1. ~~**Destroy staging**~~: **done.**
+2. **Cognito in production**: migrate existing GoTrue users; cut over prod auth.
+3. **Cognito dev pool + specs in parallel with prod**: provision **prod and dev Cognito** (Terraform, app clients, groups) in the **same Phase 2 workstream**. Use dev pool for local/testing; **do not fully deploy AWS dev** (ECS/RDS/CI) until Phase 3.
 4. **After Cognito prod is stable**, **fully deploy** the hosted dev environment (AWS stack + deploy pipeline). ECS/RDS/domain scope deferred to Phase 3.
 4. **Move MediaHub** into the CHT AWS footprint as separate microservices (separate repo, deploys, RDS).
 5. **CHT-only Redis cache** (24h TTL) with catalog refresh on sync.
@@ -26,18 +26,18 @@ This plan consolidates architecture and sequencing decisions for the CHM platfor
 | Decision | Choice |
 | -------- | ------ |
 | Auth | CHT-owned Cognito + required TOTP MFA; end users never authenticate on MediaHub |
-| Users | Migrate existing GoTrue users; remap `User.authId` in CHT Postgres — no greenfield accounts |
-| Environments | **Prod (Cognito cutover first)** → **full AWS dev deploy (Phase 3)** + **local** — staging destroyed |
+| Users | Migrate existing GoTrue users; remap `User.authId` in CHT Postgres: no greenfield accounts |
+| Environments | **Prod (Cognito cutover first)** → **full AWS dev deploy (Phase 3)** + **local**: staging destroyed |
 | Cognito | **Prod + dev pools** provisioned together in Phase 2 Terraform; prod cutover in Phase 2; dev pool used for testing |
-| Deployed dev (ECS/RDS/CI) | **Phase 3 only** — after Cognito prod stable; sizing/domain scoped later |
+| Deployed dev (ECS/RDS/CI) | **Phase 3 only**: after Cognito prod stable; sizing/domain scoped later |
 | Local dev | docker-compose Postgres; point at **dev Cognito pool** or localhost (see [local-cognito-setup.md](../runbooks/local-cognito-setup.md)) |
 | MediaHub | Separate `mediahub-platform` repo; independent ECS deploys |
 | Cluster | One ECS cluster per environment: chm-backend, chm-worker, mediahub-api, mediahub-worker, mediahub-reports |
-| MediaHub database | **Separate RDS instance** — Postgres 15.17, db.t3.small, Multi-AZ (prod) |
+| MediaHub database | **Separate RDS instance**: Postgres 15.17, db.t3.small, Multi-AZ (prod) |
 | CHT ↔ MediaHub | Internal HTTP + API key only; chm-backend never connects to MediaHub Postgres |
 | Cache | CHT-only ElastiCache Redis; 24h TTL; worker clears catalog keys after successful sync |
-| Language | Keep MediaHub in Python (FastAPI) — no TypeScript rewrite |
-| Service mesh | Not required — security groups + internal DNS; ECS Service Connect optional later |
+| Language | Keep MediaHub in Python (FastAPI): no TypeScript rewrite |
+| Service mesh | Not required: security groups + internal DNS; ECS Service Connect optional later |
 
 ---
 
@@ -45,7 +45,7 @@ This plan consolidates architecture and sequencing decisions for the CHM platfor
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  END USERS — CHT domain only                                    │
+│  END USERS: CHT domain only                                    │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -136,27 +136,27 @@ Phase in during MediaHub migration (Phase 5):
 
 ---
 
-## Phase 0 — Spec & Runbooks (1–2 weeks)
+## Phase 0: Spec & Runbooks (1–2 weeks)
 
 **Goal:** Signed documentation before infra changes.
 
 **Deliverables** (drafts in [docs/runbooks/](../runbooks/README.md)):
 
-- [ ] [Cognito migration spec](../runbooks/cognito-migration-spec.md) — sign-off table
-- [ ] [User migration runbook](../runbooks/cognito-user-migration.md) — GoTrue → Cognito, authId remap
-- [ ] [Secrets migration](../runbooks/secrets-migration-staging-to-prod.md) — before staging destroy
+- [ ] [Cognito migration spec](../runbooks/cognito-migration-spec.md): sign-off table
+- [ ] [User migration runbook](../runbooks/cognito-user-migration.md): GoTrue → Cognito, authId remap
+- [ ] [Secrets migration](../runbooks/secrets-migration-staging-to-prod.md): before staging destroy
 - [ ] [Staging teardown](../runbooks/staging-teardown.md)
-- [ ] [Local Cognito setup](../runbooks/local-cognito-setup.md) — Phase 2 build
+- [ ] [Local Cognito setup](../runbooks/local-cognito-setup.md): Phase 2 build
 - [ ] [Cognito prod cutover](../runbooks/cognito-prod-cutover.md) + [MediaHub auth checklist](../runbooks/mediahub-auth-decommission-checklist.md)
-- [ ] [Stable dev spec](../runbooks/stable-dev-environment.md) — Phase 3 (after Cognito prod)
-- [ ] [MediaHub platform cutover](../runbooks/mediahub-platform-cutover.md) — Phase 4 outline
-- [ ] [Cache & sync contract](../runbooks/cache-sync-contract.md) — Phase 4
+- [ ] [Stable dev spec](../runbooks/stable-dev-environment.md): Phase 3 (after Cognito prod)
+- [ ] [MediaHub platform cutover](../runbooks/mediahub-platform-cutover.md): Phase 4 outline
+- [ ] [Cache & sync contract](../runbooks/cache-sync-contract.md): Phase 4
 
 **Exit criteria:** Runbooks approved in [runbooks/README.md](../runbooks/README.md) sign-off table; rollback defined for each phase.
 
 ---
 
-## Phase 1 — Destroy Staging ✅ Complete
+## Phase 1: Destroy Staging ✅ Complete
 
 **Goal:** Decommission staging AWS stack before Cognito work.
 
@@ -173,29 +173,29 @@ Phase in during MediaHub migration (Phase 5):
 
 ---
 
-## Phase 2 — Cognito on Production (4–7 weeks)
+## Phase 2: Cognito on Production (4–7 weeks)
 
 **Goal:** Production auth on Cognito; existing users migrated; GoTrue decommissioned for end users.
 
-### 2a — Local + dev Cognito during build (parallel)
+### 2a: Local + dev Cognito during build (parallel)
 
 Implement auth against **docker-compose locally**, using the **AWS dev Cognito pool** provisioned in Step 2b (or cognito-local until pool exists). **No full AWS dev stack** (ECS/RDS) in Phase 2.
 
 | Option | Use case |
 | ------ | -------- |
-| **Dev Cognito pool** (`cht-platform-dev`) | Primary — same spec as prod; test signup/MFA/OAuth before prod cutover |
+| **Dev Cognito pool** (`cht-platform-dev`) | Primary: same spec as prod; test signup/MFA/OAuth before prod cutover |
 | **cognito-local / LocalStack** | Optional offline fallback |
 | **VITE_USE_DEV_AUTH=true** | Non-auth UI work only |
 
 ```
 localhost:5173 → localhost:3000 → local Postgres
                       ↓
-         dev Cognito pool (Phase 2 Terraform — NOT prod pool)
+         dev Cognito pool (Phase 2 Terraform: NOT prod pool)
 ```
 
 **Pre-cutover validation:** auth flows on **dev pool** + local backend; dry-run migration on prod DB snapshot.
 
-### 2b — Cognito infra — prod + dev together (week 1–2)
+### 2b: Cognito infra: prod + dev together (week 1–2)
 
 Provision **both pools in one Terraform pass** (same spec, different pools):
 
@@ -209,7 +209,7 @@ Provision **both pools in one Terraform pass** (same spec, different pools):
 - [ ] App client `cht-web` (PKCE); dev pool includes localhost callback URLs
 - [ ] App client `mediahub-admin` (CHM operators)
 - [ ] Groups: `cht-kol`, `cht-hcp`, `cht-pharma-client`
-- [ ] MFA: required TOTP (grace period on **prod** only — _TBD_)
+- [ ] MFA: required TOTP (grace period on **prod** only: _TBD_)
 
 **Secrets Manager:**
 
@@ -217,9 +217,9 @@ Provision **both pools in one Terraform pass** (same spec, different pools):
 - [ ] Dev Cognito IDs → dev secrets file / team store (for local `.env`)
 - [ ] Retain GoTrue secrets until **prod** cutover day
 
-**Not in Phase 2:** ECS, RDS, ALB, or deploy workflow for hosted dev — that is Phase 3.
+**Not in Phase 2:** ECS, RDS, ALB, or deploy workflow for hosted dev: that is Phase 3.
 
-### 2c — Application (week 2–5)
+### 2c: Application (week 2–5)
 
 - [ ] Backend: Cognito SignUp, InitiateAuth, MFA challenge, JWKS validation
 - [ ] Remove GoTrue proxy from auth.controller.ts
@@ -230,13 +230,13 @@ Provision **both pools in one Terraform pass** (same spec, different pools):
 
 **Validate on dev Cognito pool + local docker before prod cutover.**
 
-### 2d — User migration — no new users (week 5–6)
+### 2d: User migration: no new users (week 5–6)
 
 1. Export GoTrue users: email, sub, user_metadata (NPI, profession, institution).
 2. Import into Cognito prod via bulk import or User Migration Lambda.
 3. Remap CHT Postgres `User.authId`: GoTrue sub → Cognito sub (match by email).
 4. OAuth users: federate Google in Cognito; link by email to existing User row.
-5. Communicate: same account, one-time MFA setup — not a new registration.
+5. Communicate: same account, one-time MFA setup: not a new registration.
 
 **Pre-cutover validation:**
 
@@ -245,13 +245,13 @@ Provision **both pools in one Terraform pass** (same spec, different pools):
 - [ ] Dry-run authId remap on prod DB snapshot (read-only)
 - [ ] Rollback plan: keep GoTrue secrets 48h post-cutover
 
-### 2e — MediaHub auth coordination (parallel)
+### 2e: MediaHub auth coordination (parallel)
 
 - [ ] Block end-user OAuth redirects to MediaHub
-- [ ] Deactivate non-admin GoTrue users (learners/HCP/KOL) — content data unchanged
+- [ ] Deactivate non-admin GoTrue users (learners/HCP/KOL): content data unchanged
 - [ ] Confirm API key valid through and after cutover
 
-### 2f — Production cutover (week 6–7)
+### 2f: Production cutover (week 6–7)
 
 - [ ] Maintenance window + user comms
 - [ ] Import users to Cognito prod; run authId remap
@@ -270,11 +270,11 @@ Provision **both pools in one Terraform pass** (same spec, different pools):
 
 ---
 
-## Phase 3 — Full AWS dev deploy (after Cognito prod stable)
+## Phase 3: Full AWS dev deploy (after Cognito prod stable)
 
-**Goal:** Deploy the **hosted dev stack** (ECS, RDS, ALB, S3, CI/CD) — staging replacement. **Cognito dev pool already exists from Phase 2**; connect it when the stack goes live.
+**Goal:** Deploy the **hosted dev stack** (ECS, RDS, ALB, S3, CI/CD): staging replacement. **Cognito dev pool already exists from Phase 2**; connect it when the stack goes live.
 
-**Scope:** ECS/RDS/domain/CI sizing **deferred** until Phase 3 kickoff — does not block Phase 2.
+**Scope:** ECS/RDS/domain/CI sizing **deferred** until Phase 3 kickoff, does not block Phase 2.
 
 **Prerequisites:**
 
@@ -286,7 +286,7 @@ Provision **both pools in one Terraform pass** (same spec, different pools):
 
 | Topic | Status |
 | ----- | ------ |
-| Cognito dev pool | ✅ Provisioned in Phase 2 — wire dev ECS to existing pool |
+| Cognito dev pool | ✅ Provisioned in Phase 2: wire dev ECS to existing pool |
 | Domain | _TBD_ (e.g. `dev.testapp.communityhealth.media`) |
 | Terraform | _TBD_ (`us-east-1-dev` ECS/RDS/ALB) |
 | GitHub `dev` env + deploy workflow | _TBD_ |
@@ -307,18 +307,18 @@ See [stable-dev-environment.md](../runbooks/stable-dev-environment.md).
 
 ---
 
-## Phase 4 — MediaHub Platform Move (6–10 weeks)
+## Phase 4: MediaHub Platform Move (6–10 weeks)
 
 **Goal:** mediahub-api, mediahub-worker, mediahub-reports on CHT ECS cluster; separate RDS; internal integration.
 
-### 4a — Repository & CI (week 1–2)
+### 4a: Repository & CI (week 1–2)
 
 - [ ] Create mediahub-platform repo (Python / FastAPI)
 - [ ] Separate Dockerfiles and deploy workflows per service
 - [ ] Publish OpenAPI for /api/public/*
 - [ ] Contract tests consumable by CHT CI
 
-### 4b — Production infra (week 2–4)
+### 4b: Production infra (week 2–4)
 
 Add to us-east-1 Terraform:
 
@@ -330,15 +330,15 @@ Add to us-east-1 Terraform:
 - [ ] Secrets: mediahub/database, API keys, LLM keys
 - [ ] Security groups: Hub DB accessible only from Hub services
 
-### 4c — Data migration (week 4–5)
+### 4c: Data migration (week 4–5)
 
 - [ ] pg_dump from MediaHub EC2 Postgres
 - [ ] Restore to mediahub-db
 - [ ] Validate clips, KOLs, tags, analytics row counts
 - [ ] Point mediahub-api at new RDS
-- [ ] No new auth users — identity already on Cognito from Phase 2
+- [ ] No new auth users: identity already on Cognito from Phase 2
 
-### 4d — Cutover (week 5–6)
+### 4d: Cutover (week 5–6)
 
 - [ ] Deploy Hub services to prod ECS (same cluster as chm-backend)
 - [ ] Update CHT MEDIAHUB_BASE_URL to internal service URL
@@ -346,7 +346,7 @@ Add to us-east-1 Terraform:
 - [ ] Decommission MediaHub EC2 Compose stack
 - [ ] Optional: admin hostname to new mediahub-api
 
-### 4e — CHT cache + sync refresh (week 6–7)
+### 4e: CHT cache + sync refresh (week 6–7)
 
 - [ ] Wire ElastiCache to chm-backend
 - [ ] NestJS cache on catalog/KOL routes (24h TTL)
@@ -363,7 +363,7 @@ Add to us-east-1 Terraform:
 
 ---
 
-## Phase 5 — Hardening (ongoing)
+## Phase 5: Hardening (ongoing)
 
 - [ ] X-Request-Id across chm-backend ↔ mediahub-api ↔ SQS jobs
 - [ ] CloudWatch alarms: Hub ECS, both RDS instances, Redis, DLQs
@@ -383,14 +383,14 @@ Phase 1: Destroy staging
     ↓
 Phase 2: Cognito prod + dev pools (same Terraform); prod cutover; local testing on dev pool
     ↓
-Phase 3: Full AWS dev deploy (ECS/RDS/CI) — Cognito dev pool already exists
+Phase 3: Full AWS dev deploy (ECS/RDS/CI): Cognito dev pool already exists
     ↓
 Phase 4: MediaHub ECS + separate RDS + cache
     ↓
 Phase 5: Hardening
 ```
 
-**Destroy staging before Cognito — no dev env blocker.**
+**Destroy staging before Cognito: no dev env blocker.**
 
 **Phase 2:** Prod + dev **Cognito** together; prod cutover; no hosted dev stack yet.
 
@@ -402,12 +402,12 @@ Phase 5: Hardening
 
 | Phase | Duration | Outcome |
 | ----- | -------- | ------- |
-| 0 — Spec | 1–2 weeks | Signed runbooks |
-| 1 — Destroy staging | ✅ Done | Staging gone; cost saved |
-| 2 — Cognito | 4–7 weeks (in progress) | Prod + dev pools; prod cutover; test on dev pool locally |
-| 3 — Full AWS dev deploy | TBD (after Cognito prod stable) | ECS/RDS/CI; dev pool already exists |
-| 4 — MediaHub move | 6–10 weeks | Microservices on platform; internal URL |
-| 5 — Hardening | Ongoing | Tracing, DR, monitoring |
+| 0: Spec | 1–2 weeks | Signed runbooks |
+| 1: Destroy staging | ✅ Done | Staging gone; cost saved |
+| 2: Cognito | 4–7 weeks (in progress) | Prod + dev pools; prod cutover; test on dev pool locally |
+| 3: Full AWS dev deploy | TBD (after Cognito prod stable) | ECS/RDS/CI; dev pool already exists |
+| 4: MediaHub move | 6–10 weeks | Microservices on platform; internal URL |
+| 5: Hardening | Ongoing | Tracing, DR, monitoring |
 
 **Total:** approximately 3–4 months.
 
@@ -419,7 +419,7 @@ Phase 5: Hardening
 | ------ | ---------------------- |
 | Destroy staging | **Save ~$50–100** |
 | Cognito prod | ~$0–5 (MAU-based) |
-| AWS dev (Phase 3, scoped later) | ~$40–80 (estimate — confirm when scoped) |
+| AWS dev (Phase 3, scoped later) | ~$40–80 (estimate: confirm when scoped) |
 | MediaHub RDS (db.t3.small Multi-AZ) | +$55–75 |
 | ElastiCache (cache.t3.micro) | +$12–25 |
 | MediaHub Fargate (api×2, worker×1, reports×1) | +~$72 |

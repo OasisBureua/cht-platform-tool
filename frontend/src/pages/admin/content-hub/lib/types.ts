@@ -1,4 +1,4 @@
-// Content Hub types — ported verbatim from the standalone report generator's src/types.ts.
+// Content Hub types: ported verbatim from the standalone report generator's src/types.ts.
 export type Platform = 'linkedin' | 'meta' | 'youtube' | 'livestream' | 'survey';
 
 export type CampaignStatus = 'draft' | 'data_needed' | 'ready_for_review' | 'final';
@@ -240,7 +240,7 @@ export const STATUS_LABELS: Record<CampaignStatus, string> = {
   final: 'Final',
 };
 
-/** Raw upload record kept in the client store — includes parsed rows (the API surface hides rows). */
+/** Raw upload record kept in the client store: includes parsed rows (the API surface hides rows). */
 export interface StoredCsvUpload {
   id: number;
   campaignId: number;

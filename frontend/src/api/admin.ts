@@ -717,7 +717,7 @@ export const adminApi = {
       status: string;
       createdAt: string;
       updatedAt?: string;
-      /** Max(createdAt, updatedAt, intake submitted) — use for “last request” after resubmits */
+      /** Max(createdAt, updatedAt, intake submitted): use for “last request” after resubmits */
       lastSubmittedAt?: string;
       intakeSubmissionId: string | null;
       intakeRequired: boolean;

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Worker supervisor — spawns consumer subprocesses and restarts them on crash
+Worker supervisor: spawns consumer subprocesses and restarts them on crash
 with exponential backoff. ECS restarts the whole container only when the
 supervisor itself gives up (MAX_RESTARTS exhausted) or is stopped.
 """
@@ -66,7 +66,7 @@ def run_supervised(worker_dir: str, env: dict):
         state[name] = {"script": script, "proc": p, "restarts": 0}
         time.sleep(1)  # stagger startup
 
-    logger.info(f"All {len(CONSUMERS)} consumer(s) running — supervisor active")
+    logger.info(f"All {len(CONSUMERS)} consumer(s) running: supervisor active")
 
     while True:
         time.sleep(SUPERVISOR_POLL_INTERVAL)
@@ -81,7 +81,7 @@ def run_supervised(worker_dir: str, env: dict):
 
             if restarts >= MAX_RESTARTS:
                 logger.critical(
-                    f"{name} has crashed {restarts} time(s) — giving up. "
+                    f"{name} has crashed {restarts} time(s): giving up. "
                     f"Last exit code: {exit_code}. Exiting supervisor so ECS can restart."
                 )
                 # Terminate remaining processes cleanly
@@ -103,7 +103,7 @@ def run_supervised(worker_dir: str, env: dict):
 
 
 def signal_handler(sig, frame):
-    logger.info("Shutdown signal received — terminating workers…")
+    logger.info("Shutdown signal received, terminating workers…")
     # Subprocesses are in the same process group; SIGTERM propagates automatically.
     sys.exit(0)
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     # Verify DB connectivity before spawning consumers
     logger.info("Testing database connection…")
     if not test_connection():
-        logger.critical("Cannot start workers — database connection failed")
+        logger.critical("Cannot start workers: database connection failed")
         sys.exit(1)
 
     run_supervised(worker_dir, env)

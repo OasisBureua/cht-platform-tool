@@ -1,4 +1,4 @@
-/* Chillax (brand) — local @font-face so the family applies even when the Fontshare CSS link is slow or blocked */
+/* Chillax (brand): local @font-face so the family applies even when the Fontshare CSS link is slow or blocked */
 @font-face {
   font-family: 'Chillax';
   font-style: normal;
@@ -52,7 +52,7 @@
   --chm-discovery-gray: #79869a;
 
   /* ============================================================
-   * SEMANTIC DESIGN TOKENS (light — platform default)
+   * SEMANTIC DESIGN TOKENS (light: platform default)
    * HSL channel triplets so Tailwind `hsl(var(--x) / <alpha>)`
    * opacity modifiers work. Consumed by tailwind.config colors.
    * PRIMARY = teal (knowledge/expertise), ACCENT = connection orange.
@@ -256,7 +256,7 @@
     animation-delay: 0.3s;
   }
 
-  /** /app shell: soft route content fade (opacity only — no transform fights with children) */
+  /** /app shell: soft route content fade (opacity only: no transform fights with children) */
   @keyframes app-outlet-enter {
     from {
       opacity: 0;

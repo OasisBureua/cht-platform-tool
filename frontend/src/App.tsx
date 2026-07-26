@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ScrollToTop from './components/ScrollToTop';
 import { Loader2 } from 'lucide-react';
 
-// Layouts + guards — always needed immediately, keep static
+// Layouts + guards: always needed immediately, keep static
 import PublicLayout from './layouts/PublicLayout';
 import Layout from './components/layout/Layout';
 import AdminLayout from './layouts/AdminLayout';
@@ -215,7 +215,7 @@ function App() {
               <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
 
               <Route path="clip/:id" element={<ClipDetail />} />
-              {/* Legacy in-app links used /app/catalog/clip/:id — keep working */}
+              {/* Legacy in-app links used /app/catalog/clip/:id, keep working */}
               <Route path="catalog/clip/:id" element={<ClipDetail />} />
 
               <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
@@ -275,12 +275,12 @@ function App() {
               <Route path="content" element={<AdminContent />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
 
-              {/* KOL Network — internal HCP intelligence (ported from MediaHub) */}
+              {/* KOL Network: internal HCP intelligence (ported from MediaHub) */}
               <Route path="kol-network" element={<AdminKolDirectory />} />
               <Route path="kol-network/hcps/:id" element={<AdminHcpIntel />} />
 
 
-              {/* Content Hub — ported report generator (self-contained, localStorage data layer) */}
+              {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
               <Route path="content-hub" element={<ContentHubLayout />}>
                 <Route index element={<ContentHubDashboard />} />
                 <Route path="new" element={<ContentHubNewReport />} />

@@ -5,29 +5,29 @@
 - `Test Intake Fofm.pdf` → form `261116295463861` (default webinar intake)
 
 **Not visible in PDF exports (required in JotForm today):**
-- Hidden `user_id` — CHT user UUID (prefilled on embed)
-- Hidden `program_id` — program UUID (prefilled on embed; post-event only)
+- Hidden `user_id`: CHT user UUID (prefilled on embed)
+- Hidden `program_id`: program UUID (prefilled on embed; post-event only)
 
 ---
 
-## Form 1 — Post-event survey (per-program / sponsor template)
+## Form 1: Post-event survey (per-program / sponsor template)
 
 **Example URL:** https://communityhealthmedia.jotform.com/260698533879881  
 **Used for:** Post-webinar feedback; honorarium gate after acknowledge  
 **Backend today:** `Survey` row (`type=FEEDBACK`, `jotformFormId=…`); webhook → `SurveyResponse.answers`
 
-**Product decision:** Post-event content is **not** one global form. Each webinar gets a **sponsor- or program-specific** question set (the HER2/T-DXd PDF is one template example). When a webinar is **created in admin** or **imported via Zoom webhook**, the platform should **auto-create** native `Survey` records for that program — intake at registration time and post-event after the session (replacing today’s JotForm clone/attach flow in `SurveysService`).
+**Product decision:** Post-event content is **not** one global form. Each webinar gets a **sponsor- or program-specific** question set (the HER2/T-DXd PDF is one template example). When a webinar is **created in admin** or **imported via Zoom webhook**, the platform should **auto-create** native `Survey` records for that program: intake at registration time and post-event after the session (replacing today’s JotForm clone/attach flow in `SurveysService`).
 
-### Section A — Identity (may pre-fill from CHT profile)
+### Section A: Identity (may pre-fill from CHT profile)
 
 | # | Label | Type | Required | Native notes |
 |---|-------|------|----------|--------------|
-| A1 | Name (First / Last) | text (split) | yes | **Do not collect in survey UI** when authenticated — bind from session server-side |
-| A2 | Email | email | yes | Same — server binds `userId`; never accept client-supplied email for identity |
+| A1 | Name (First / Last) | text (split) | yes | **Do not collect in survey UI** when authenticated, bind from session server-side |
+| A2 | Email | email | yes | Same: server binds `userId`; never accept client-supplied email for identity |
 | A3 | Organization | text | yes | Pre-fill from profile; editable only if missing |
 | A4 | Need a W9? Download | link/info | no | Replace with in-app W9 status + link to profile/payments |
 
-### Section B — Demographics (Q1–Q5)
+### Section B: Demographics (Q1–Q5)
 
 | # | Label | Type | Options |
 |---|-------|------|---------|
@@ -37,7 +37,7 @@
 | 4 | HER2+ mBC patients actively managed | single_choice | ≤5; 6–10; 11–20; 21–40; >40 |
 | 5 | Patients treated with T-DXd to date | single_choice | 0; 1–5; 6–15; >15; Unsure |
 
-### Section C — Clinical practice (Q6–Q23)
+### Section C: Clinical practice (Q6–Q23)
 
 | # | Label | Type | Options / notes |
 |---|-------|------|-----------------|
@@ -69,25 +69,25 @@
 
 ---
 
-## Form 2 — Webinar intake (per-program; default template)
+## Form 2: Webinar intake (per-program; default template)
 
 **Example URL:** https://communityhealthmedia.jotform.com/261116295463861  
 **Used for:** Webinar registration before session  
-**Backend today:** Webhook only sets `ProgramRegistration.intakeJotformSubmissionId` — **does not parse field values into User**
+**Backend today:** Webhook only sets `ProgramRegistration.intakeJotformSubmissionId`: **does not parse field values into User**
 
-**Product decision:** Same as post-event — **one intake survey auto-created per webinar** at create/import, cloned from a default template (fields below). Admin may customize before publish.
+**Product decision:** Same as post-event: **one intake survey auto-created per webinar** at create/import, cloned from a default template (fields below). Admin may customize before publish.
 
 ### Confirmed field list (production JotForm)
 
 | # | Label | Type | Required | Native notes |
 |---|-------|------|----------|--------------|
-| 1 | Name | text | yes | Hidden when logged in — use `User.firstName` |
-| 2 | Last Name | text | yes | Hidden when logged in — use `User.lastName` |
-| 3 | Email | email | yes | Hidden when logged in — server binds from session; show helper text only if guest flow ever added |
-| — | *(helper)* | info | — | “We will send your confirmation and join link to this email.” — in-app copy on register page |
+| 1 | Name | text | yes | Hidden when logged in: use `User.firstName` |
+| 2 | Last Name | text | yes | Hidden when logged in: use `User.lastName` |
+| 3 | Email | email | yes | Hidden when logged in: server binds from session; show helper text only if guest flow ever added |
+|: | *(helper)* | info |: | “We will send your confirmation and join link to this email.”, in-app copy on register page |
 | 4 | Phone Number | phone (area + number) | no | Collect if missing on profile |
 | 5 | Organization | text | yes | Pre-fill `User.institution`; required if empty |
-| 6 | Company Address — street | text | no | Map to profile address fields |
+| 6 | Company Address: street | text | no | Map to profile address fields |
 | 7 | Street Address Line 2 | text | no | |
 | 8 | City | text | yes | |
 | 9 | State / Province | text | yes | |
@@ -98,7 +98,7 @@
 | 14 | How would you like to receive your honorarium? | single_choice | yes | Check; PayPal/Zelle; ACH/Wire |
 | 15 | Please provide payment instructions | long_text | yes* | Show when honorarium method selected; sync to payments profile |
 
-### Native intake — what to build
+### Native intake: what to build
 
 Today intake webhook **only** records submission ID + creates pending registration. Native intake should:
 
@@ -110,7 +110,7 @@ Today intake webhook **only** records submission ID + creates pending registrati
 ### Gap vs CHT Join flow
 
 Platform **Join** already collects: name, email, password, profession, NPI, institution, city, state, zip.  
-Intake form duplicates org/address/payment — native design should **merge** with profile (collect missing fields only).
+Intake form duplicates org/address/payment: native design should **merge** with profile (collect missing fields only).
 
 ---
 
@@ -165,11 +165,11 @@ Intake form duplicates org/address/payment — native design should **merge** wi
 
 ## Phase 1+ priorities (from this mapping)
 
-1. **Program lifecycle:** On webinar create (admin) or Zoom import, create **two** native surveys per program — **intake** (registration) + **post-event** (`FEEDBACK`) — from sponsor/topic templates; replace `attachJotformFormsFromConfig` / clone paths when cut over
+1. **Program lifecycle:** On webinar create (admin) or Zoom import, create **two** native surveys per program: **intake** (registration) + **post-event** (`FEEDBACK`): from sponsor/topic templates; replace `attachJotformFormsFromConfig` / clone paths when cut over
 2. **Post-event:** Template library keyed by sponsor; default seeds Section B+C from oncology example PDF
 3. **Intake:** Default template = confirmed field list above; show only **missing** profile fields + honorarium block for logged-in users
 4. **Honorarium gate:** Use native `SurveyResponse` + acknowledge, not `jotformSurveyUrl`
-5. **Security:** Never trust hidden `user_id` / form-posted email — `userId` from auth session only; identity fields omitted from POST body
+5. **Security:** Never trust hidden `user_id` / form-posted email: `userId` from auth session only; identity fields omitted from POST body
 
 ---
 
@@ -178,11 +178,11 @@ Intake form duplicates org/address/payment — native design should **merge** wi
 | # | Question | Decision |
 |---|----------|----------|
 | 1 | Post-event content scope | **Per-program / sponsor template.** Auto-create surveys when a webinar is created or imported. |
-| 2 | Intake field inventory | **Confirmed** — first + last name, email (+ helper), phone, org, full address block, social handles, honorarium method + instructions (see table above). |
+| 2 | Intake field inventory | **Confirmed**: first + last name, email (+ helper), phone, org, full address block, social handles, honorarium method + instructions (see table above). |
 | 3 | Hide identity when logged in? | **Yes.** Omit name/email from UI; server binds user from session. Reduces spoofing and duplicate data entry. Organization/address still shown when profile incomplete. |
-| 4 | Export JotForm conditional rules? | **Keep as PDF.** Post-event conditionals (Q6, Q7, Q21) are sourced from `Post-Event Survey.pdf` only — no JotForm builder/API export. |
+| 4 | Export JotForm conditional rules? | **Keep as PDF.** Post-event conditionals (Q6, Q7, Q21) are sourced from `Post-Event Survey.pdf` only: no JotForm builder/API export. |
 
-### Post-event conditional rules (from PDF — source of truth)
+### Post-event conditional rules (from PDF: source of truth)
 
 | Question | Show follow-up when parent answer is |
 |----------|-------------------------------------|
@@ -197,11 +197,11 @@ Implement these in native `Survey.questions` as `followUp` rules matching the PD
 - **Server:** Resolve `userId` from JWT/session on submit; reject body fields that attempt to override identity
 - **Client:** Hide name, last name, email on intake and post-event when `useAuth()` has a user; show read-only summary optional
 - **W9 / honorarium:** Link to existing profile flows instead of free-form identity in surveys
-- **Hidden JotForm fields:** Retire entirely — they were a JotForm embed workaround, not a security control
+- **Hidden JotForm fields:** Retire entirely: they were a JotForm embed workaround, not a security control
 
 ---
 
-## Native parity — same logic as today’s JotForm structure
+## Native parity: same logic as today’s JotForm structure
 
 Native intake + post-event forms replace **UI and submission transport** only. All **gates, statuses, admin flows, and payout rules** stay as they are in code today. Phase 1+ refactors should swap JotForm-specific checks for survey-record checks without changing learner or admin behavior.
 
@@ -211,9 +211,9 @@ Native intake + post-event forms replace **UI and submission transport** only. A
 |-----------------|-----------------|
 | Admin create or Zoom webhook → `SurveysService.attachJotformFormsFromConfig` / clone pair | Auto-create **intake** + **FEEDBACK** `Survey` rows per program from sponsor templates |
 | `Program.jotformIntakeFormUrl` + `Program.jotformSurveyUrl` | Keep URLs optional during migration; **presence of configured surveys** drives the same flags |
-| Imported DRAFT webinars missing forms → admin checklist | Same checklist — “Intake form” / “Post-event survey” until native surveys seeded |
+| Imported DRAFT webinars missing forms → admin checklist | Same checklist: “Intake form” / “Post-event survey” until native surveys seeded |
 
-### Intake — registration (before session)
+### Intake: registration (before session)
 
 | Step | Current behavior | Native must preserve |
 |------|------------------|----------------------|
@@ -221,10 +221,10 @@ Native intake + post-event forms replace **UI and submission transport** only. A
 | Submit | JotForm iframe + hidden `user_id` / `program_id`; webhook → `intakeJotformSubmissionId` + `intakeJotformSubmittedAt` | `POST` native answers → create/update `SurveyResponse`; set same registration fields (or equivalent `intakeSurveyResponseId`) |
 | Approval | `registrationRequiresApproval` → PENDING until admin approves; else APPROVED + enroll | Unchanged |
 | Attendance flag on approve | Honorarium **or** post-event survey **or** FEEDBACK survey → `postEventAttendanceStatus = PENDING_VERIFICATION` | Same trigger when program has honorarium or post-event survey |
-| Admin view | `intakeRequired` / `intakeJotformSubmissionId` on registration hub | Same columns — “Recorded” / “Missing” from native response |
+| Admin view | `intakeRequired` / `intakeJotformSubmissionId` on registration hub | Same columns: “Recorded” / “Missing” from native response |
 | Batch register | Optional `intakeByProgramId` map | Same batch API with per-program intake completion |
 
-### Post-event — after session
+### Post-event: after session
 
 | Step | Current behavior | Native must preserve |
 |------|------------------|----------------------|
@@ -243,7 +243,7 @@ Native intake + post-event forms replace **UI and submission transport** only. A
 
 | Source | Rule |
 |--------|------|
-| **PDF only** | Q6, Q7, Q21 follow-ups as in table above — no JotForm export |
+| **PDF only** | Q6, Q7, Q21 follow-ups as in table above, no JotForm export |
 | Native renderer | Show/hide follow-up fields client-side; persist full answer object in `SurveyResponse.answers` |
 | Validation | Required parent answer required; follow-up required when visible (match JotForm required behavior) |
 

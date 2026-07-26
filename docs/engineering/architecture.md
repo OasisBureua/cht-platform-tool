@@ -82,14 +82,14 @@ Source: [`diagrams/cht-platform-auth.mmd`](./diagrams/cht-platform-auth.mmd) · 
 | Frontend | React 18, Vite, Tailwind | HCP app, admin portal, public catalog |
 | CDN | CloudFront + S3 | Static assets; primary + us-east-2 DR bucket |
 | Backend | NestJS, Prisma | REST API, webhooks, Cognito auth, business logic |
-| Worker | Python 3.11 | SQS consumers — email, payments, CME PDFs |
+| Worker | Python 3.11 | SQS consumers: email, payments, CME PDFs |
 | Database (platform) | **Aurora PostgreSQL Global** | Writer us-east-1, reader us-east-2 |
 | Database (dev) | RDS PostgreSQL + us-east-2 read replica | Unchanged |
 | Auth | **Amazon Cognito** | User pool, Hosted UI, Google federation, MFA |
 | Queue | SQS + DLQs | Async email, payment, CME jobs |
 | Email | Amazon SES | Transactional mail (`noreply@communityhealth.media`) |
 | Secrets | Secrets Manager | DB URL, API keys, Bill.com, Zoom, etc. |
-| Content | MediaHub public API (`X-API-Key`) | Catalog clips, playlists, KOLs, HCP upsert — future domain **contenthub.communityhealth.media** |
+| Content | MediaHub public API (`X-API-Key`) | Catalog clips, playlists, KOLs, HCP upsert: future domain **contenthub.communityhealth.media** |
 
 ---
 
@@ -135,9 +135,9 @@ Both run in AWS account `233636046512`. Account-level services (GuardDuty, AWS C
 
 ## Health checks
 
-- `GET /health` — liveness
-- `GET /health/ready` — database connectivity (used by deploy workflows and ALB)
-- `GET /actuator/info` — region, auth provider, image tag
+- `GET /health`: liveness
+- `GET /health/ready`: database connectivity (used by deploy workflows and ALB)
+- `GET /actuator/info`: region, auth provider, image tag
 
 ---
 

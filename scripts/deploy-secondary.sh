@@ -23,7 +23,7 @@ case "$ENV" in
     ;;
 esac
 
-# Platform us-east-2 ECS is intentionally paused — Deploy to Platform / us-east-1 only.
+# Platform us-east-2 ECS is intentionally paused, Deploy to Platform / us-east-1 only.
 if [ "$ENV" = "platform" ] && [ "${FORCE_SECONDARY_ECS:-}" != "1" ]; then
   echo "⏸️  Skipping platform us-east-2 ECS deploy."
   echo "   App deploys (deploy-prod.yml) only update ECS in us-east-1."

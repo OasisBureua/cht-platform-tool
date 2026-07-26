@@ -62,7 +62,7 @@ export interface CarouselConfig {
  * (matches the existing PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS=['her2','hr'] policy).
  */
 export const ANON_CAROUSELS: CarouselConfig[] = [
-  // /home — marketing landing
+  // /home: marketing landing
   {
     id: 'anon-home-featured',
     label: 'Featured videos',
@@ -87,7 +87,7 @@ export const ANON_CAROUSELS: CarouselConfig[] = [
     limit: 12,
   },
 
-  // /catalog/breast-cancer — disease detail (only active disease area today)
+  // /catalog/breast-cancer: disease detail (only active disease area today)
   {
     id: 'anon-breast-conversations',
     label: 'Conversations',
@@ -99,11 +99,11 @@ export const ANON_CAROUSELS: CarouselConfig[] = [
 ];
 
 /**
- * Carousels in the HCP dashboard (`/app/*` routes — authenticated).
+ * Carousels in the HCP dashboard (`/app/*` routes: authenticated).
  * Full biomarker breakdown matches the audit's existing labels.
  */
 export const HCP_CAROUSELS: CarouselConfig[] = [
-  // /app/home + /app/catalog (when not in clips-grid view) — dashboard
+  // /app/home + /app/catalog (when not in clips-grid view): dashboard
 
   {
     id: 'hcp-home-recently-added',

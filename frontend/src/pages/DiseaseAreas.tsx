@@ -36,7 +36,7 @@ export default function DiseaseAreas() {
         </div>
         <p className="text-pretty max-w-2xl text-sm text-gray-600">
           Explore content by therapeutic area. Each disease area has Live sessions, conversations,
-          surveys, and expert insights — all in one place.
+          surveys, and expert insights: all in one place.
         </p>
       </header>
 

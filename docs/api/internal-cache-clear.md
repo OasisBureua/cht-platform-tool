@@ -1,6 +1,6 @@
 # Internal Cache Clear API
 
-Ops/sync endpoints for invalidating CHT upstream Redis cache. These are **not** for browser or admin UI use — they are intended for workers, CI, and ops scripts.
+Ops/sync endpoints for invalidating CHT upstream Redis cache. These are **not** for browser or admin UI use, they are intended for workers, CI, and ops scripts.
 
 **Base URL:** `https://<api-host>/api`  
 (e.g. `https://devapi.communityhealth.media/api`)
@@ -94,7 +94,7 @@ curl -X POST \
 
 ---
 
-### 3. Legacy — catalog clear (MediaHub worker)
+### 3. Legacy: catalog clear (MediaHub worker)
 
 Same behavior as `scope=all`. Kept for existing sync jobs.
 

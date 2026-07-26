@@ -101,7 +101,7 @@ export default function AdminPrograms() {
           </h1>
           <p className="text-sm text-gray-600">
             {isOfficeHours
-              ? 'Zoom Meeting sessions for live Q&A—often scheduled beside webinars. Host admits participants from the waiting room.'
+              ? 'Zoom Meeting sessions for live Q&A, often scheduled beside webinars. Host admits participants from the waiting room.'
               : 'Schedule and manage live Zoom Webinars and learner-facing registration.'}
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function AdminPrograms() {
         </div>
       ) : null}
 
-      {/* Delete confirmation — portal so fixed centering is viewport-relative */}
+      {/* Delete confirmation: portal so fixed centering is viewport-relative */}
       {deleteConfirmId &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -315,7 +315,7 @@ function WebinarRow({
   const openMenu = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      // position:fixed is viewport-relative — do not add scrollY
+      // position:fixed is viewport-relative, do not add scrollY
       const menuHeight = 140;
       const spaceBelow = window.innerHeight - rect.bottom;
       const top =
@@ -396,11 +396,11 @@ function WebinarRow({
           <p className="font-medium text-gray-900 line-clamp-1">{webinar.title}</p>
           {durationStr && <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>}
           <p className="text-xs font-medium text-amber-800 mt-1">
-            In Zoom only — schedule or publish in the platform to show on LIVE
+            In Zoom only: schedule or publish in the platform to show on LIVE
           </p>
         </td>
         <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">{dateStr}</td>
-        <td className="px-4 py-3 text-gray-600 hidden md:table-cell">—</td>
+        <td className="px-4 py-3 text-gray-600 hidden md:table-cell">, </td>
         <td className="px-4 py-3">
           <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
             Zoom only
@@ -762,7 +762,7 @@ function EditWebinarModal({
             />
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Learner disclaimer <span className="font-normal text-gray-400">— optional</span>
+                Learner disclaimer <span className="font-normal text-gray-400">, optional</span>
               </label>
               <textarea
                 rows={3}
@@ -778,7 +778,7 @@ function EditWebinarModal({
           {sessionKind === 'WEBINAR' ? (
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Honorarium (USD) — optional
+                Honorarium (USD): optional
               </label>
               <input
                 type="number"
@@ -799,7 +799,7 @@ function EditWebinarModal({
             <>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Host <span className="font-normal text-gray-400">— optional</span>
+                  Host <span className="font-normal text-gray-400">, optional</span>
                 </label>
                 <input
                   type="text"
@@ -815,7 +815,7 @@ function EditWebinarModal({
 
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Host bio <span className="font-normal text-gray-400">— optional</span>
+                  Host bio <span className="font-normal text-gray-400">, optional</span>
                 </label>
                 <textarea
                   rows={2}
@@ -828,7 +828,7 @@ function EditWebinarModal({
 
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Speakers / KOLs <span className="font-normal text-gray-400">— optional; add one or more</span>
+                  Speakers / KOLs <span className="font-normal text-gray-400">, optional; add one or more</span>
                 </label>
                 <div className="space-y-2">
                   {speakers.map((sp, i) => (

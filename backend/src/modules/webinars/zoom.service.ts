@@ -129,7 +129,7 @@ export class ZoomService implements OnModuleInit {
         : undefined;
     const detail = body?.data ? JSON.stringify(body.data) : '';
     const status = body?.status ? ` HTTP ${body.status}` : '';
-    return `${base}${status}${detail ? ` — ${detail}` : ''}`;
+    return `${base}${status}${detail ? `: ${detail}` : ''}`;
   }
 
   /** Upcoming sessions within this many months (inclusive) from today. */
@@ -375,7 +375,7 @@ export class ZoomService implements OnModuleInit {
     );
 
     this.logger.log(
-      `Zoom: webinar created — id=${data.id} topic="${data.topic}" join_url=${data.join_url} (attendee / silent participant link)`,
+      `Zoom: webinar created: id=${data.id} topic="${data.topic}" join_url=${data.join_url} (attendee / silent participant link)`,
     );
     return {
       id: String(data.id),
@@ -454,7 +454,7 @@ export class ZoomService implements OnModuleInit {
             : undefined;
         const detail = axiosBody?.data ? JSON.stringify(axiosBody.data) : '';
         const status = axiosBody?.status;
-        // Panelist may already exist on refresh/retry — continue unless it's a hard failure.
+        // Panelist may already exist on refresh/retry, continue unless it's a hard failure.
         if (status === 400 && /already/i.test(detail)) {
           this.logger.warn(
             `Zoom: panelist ${panelist.email} already on webinar ${webinarId}, skipping add`,
@@ -463,7 +463,7 @@ export class ZoomService implements OnModuleInit {
         }
         const base = err instanceof Error ? err.message : String(err);
         throw new Error(
-          `${base}${status ? ` (HTTP ${status})` : ''}${detail ? ` — Zoom response: ${detail}` : ''}`,
+          `${base}${status ? ` (HTTP ${status})` : ''}${detail ? `: Zoom response: ${detail}` : ''}`,
         );
       }
     }
@@ -504,7 +504,7 @@ export class ZoomService implements OnModuleInit {
     const uniqueJoinUrls = new Set(joinUrls);
     if (joinUrls.length > 0 && uniqueJoinUrls.size < joinUrls.length) {
       this.logger.warn(
-        `Zoom: duplicate panelist join URLs detected for webinar ${webinarId} — check Webinar add-on and panelist settings`,
+        `Zoom: duplicate panelist join URLs detected for webinar ${webinarId}: check Webinar add-on and panelist settings`,
       );
     }
 
@@ -514,7 +514,7 @@ export class ZoomService implements OnModuleInit {
     results.forEach((p) => {
       if (p.joinUrl) {
         this.logger.log(
-          `Zoom: panelist join URL — ${p.name} <${p.email}>: ${panelistUrlLogLabel(p.joinUrl)}`,
+          `Zoom: panelist join URL: ${p.name} <${p.email}>: ${panelistUrlLogLabel(p.joinUrl)}`,
         );
       } else {
         this.logger.warn(
@@ -664,7 +664,7 @@ export class ZoomService implements OnModuleInit {
     );
 
     this.logger.log(
-      `Zoom: meeting (office hours) created — id=${data.id} topic="${data.topic}" join_url=${data.join_url}`,
+      `Zoom: meeting (office hours) created: id=${data.id} topic="${data.topic}" join_url=${data.join_url}`,
     );
     return {
       id: String(data.id),

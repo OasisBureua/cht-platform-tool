@@ -56,7 +56,7 @@ export function buildRegistrationApprovedEmail(
       : 'Interactive Q&A with faculty and your peers, plus access to the session from your device.';
   const bodyIntro = buildIntroParagraphs(p, escape);
 
-  const subject = `You're approved — ${p.programTitle}`;
+  const subject = `You're approved: ${p.programTitle}`;
 
   // ── Calendar block (plain text) ──────────────────────────────────────────────
   const calendarBlock: string[] = [];
@@ -108,7 +108,7 @@ export function buildRegistrationApprovedEmail(
   const calendarHtml =
     p.calendarInviteIncluded && p.startDate
       ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:${E.MUTED}">
-        <strong style="color:${E.BODY_TEXT}">Calendar invite</strong> — A <code style="font-size:12px">live-session.ics</code> file is attached to this email.${
+        <strong style="color:${E.BODY_TEXT}">Calendar invite</strong>, A <code style="font-size:12px">live-session.ics</code> file is attached to this email.${
           p.googleCalendarUrl
             ? ` You can also <a href="${escape(p.googleCalendarUrl)}" style="color:${E.LINK};font-weight:600">add to Google Calendar</a>.`
             : ''

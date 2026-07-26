@@ -46,7 +46,7 @@ function TrendTooltip({
 }
 
 /**
- * "Rx · pre / post first CHM shoot" attribution chart — evilcharts-style
+ * "Rx · pre / post first CHM shoot" attribution chart: evilcharts-style
  * AreaChart: smooth teal monotone line with a fade-to-transparent gradient
  * fill and a subtle glow, orange dashed reference line on the first-CHM-shoot
  * month, minimal muted axes, animated draw-in.

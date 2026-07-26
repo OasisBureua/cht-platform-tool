@@ -13,14 +13,14 @@ export type PreWebinarReminderTemplateInput = {
   programDescription?: string | null;
   startDate: Date | null;
   durationMinutes: number | null;
-  /** Zoom join URL — displayed prominently as the primary CTA. */
+  /** Zoom join URL: displayed prominently as the primary CTA. */
   zoomJoinUrl: string | null;
   hostDisplayName: string | null;
   sponsorName: string;
   appSessionUrl: string;
   supportEmail: string;
   /**
-   * How many hours until the session starts — used to personalize the subject line.
+   * How many hours until the session starts, used to personalize the subject line.
    * Pass 24 for the day-before reminder, 1 for the 1-hour reminder, etc.
    */
   hoursUntilStart: number;
@@ -82,9 +82,9 @@ export function buildPreWebinarReminderEmail(
     '',
     'Quick tips:',
     '• Join 2–3 minutes early to test your audio.',
-    '• Keep questions ready — there will be time for Q&A.',
+    '• Keep questions ready. There will be time for Q&A.',
     zoomUrl
-      ? '• The Zoom link above is your direct join link — no waiting room password needed.'
+      ? '• The Zoom link above is your direct join link, no waiting room password needed.'
       : null,
     '',
     `Questions? Reach us at ${p.supportEmail}.`,

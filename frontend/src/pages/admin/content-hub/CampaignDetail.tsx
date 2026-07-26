@@ -173,7 +173,7 @@ export default function CampaignDetail() {
                 <h1 className="text-xl font-bold text-foreground">{campaign?.name}</h1>
                 <div className="mt-1 flex flex-wrap items-center gap-3">
                   {campaign?.programName && <span className="text-sm text-muted-foreground">{campaign.programName}</span>}
-                  {campaign?.clientSponsor && <span className="text-sm text-muted-foreground">— {campaign.clientSponsor}</span>}
+                  {campaign?.clientSponsor && <span className="text-sm text-muted-foreground">, {campaign.clientSponsor}</span>}
                   {campaign?.platforms.map((p) => (
                     <span key={p} className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white" style={{ backgroundColor: PLATFORM_COLORS[p] }}>
                       {capFirst(p)}

@@ -20,7 +20,7 @@ export const buttonVariants = cva(
         default: 'bg-primary text-primary-foreground shadow-card hover:bg-primary-hover',
         outline: 'border border-border bg-card text-foreground hover:bg-muted',
         ghost: 'text-foreground hover:bg-muted',
-        /** Orange accent CTA — sparingly. */
+        /** Orange accent CTA: sparingly. */
         accent: 'bg-accent text-accent-foreground shadow-card hover:bg-accent-hover',
       },
       size: {

@@ -1,5 +1,5 @@
 /**
- * Shared HTML email layout helpers — Community Health Media brand (orange palette).
+ * Shared HTML email layout helpers: Community Health Media brand (orange palette).
  *
  * All transactional emails use `emailWrap()` to produce a consistent shell:
  *   - Deep-orange header bar  (#7c2d12 brand-800)
@@ -97,7 +97,7 @@ export function emailButton(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:${E.ACCENT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.01em;line-height:1">${label} &rarr;</a>`;
 }
 
-/** Secondary (dark) button — used for neutral actions like "Open in app". */
+/** Secondary (dark) button: used for neutral actions like "Open in app". */
 export function emailButtonDark(href: string, label: string): string {
   return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:${E.BODY_TEXT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.01em;line-height:1">${label} &rarr;</a>`;
 }

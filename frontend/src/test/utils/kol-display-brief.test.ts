@@ -34,6 +34,6 @@ describe('resolveKolDisplayBrief', () => {
       role: 'Chief of Oncology.',
       bio: '',
     });
-    expect(brief?.whoTheyAre).toBe('Dr. C — Chief of Oncology');
+    expect(brief?.whoTheyAre).toBe('Dr. C: Chief of Oncology');
   });
 });

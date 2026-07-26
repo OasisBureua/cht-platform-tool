@@ -35,7 +35,7 @@ const INTEGRATIONS: IntegrationMeta[] = [
 
 const SETUP_STEPS = [
   'Add HUBSPOT_ACCESS_TOKEN to CHT platform secrets (ECS / Secrets Manager).',
-  'Token is never stored in Content Hub — CHT calls HubSpot server-to-server.',
+  'Token is never stored in Content Hub, CHT calls HubSpot server-to-server.',
   'On a campaign, open Data Sources and click Sync Now to pull HubSpot metrics.',
   'Reports use the last synced snapshot stored on the Hub campaign.',
 ];
@@ -109,7 +109,7 @@ function HubspotBody({
       <div className="flex items-start gap-2 rounded-lg border border-accent/25 bg-accent/[0.08] px-3 py-2.5 text-xs text-muted-foreground">
         <Upload className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-accent" aria-hidden="true" />
         <span>
-          API connection not ready yet? You can always upload CSV exports instead — go to a campaign and use the Upload
+          API connection not ready yet? You can always upload CSV exports instead, go to a campaign and use the Upload
           tab.
         </span>
       </div>
