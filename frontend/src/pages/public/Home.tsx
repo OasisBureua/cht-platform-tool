@@ -76,7 +76,7 @@ function playlistRowSubtitle(focus: 'her2' | 'hr', treatments: Treatment[], usin
   const section = APP_CATALOG_PLAYLIST_SECTIONS.find((s) => CATALOG_SECTION_TO_FOCUS[s.label] === focus);
   if (!section) return '';
 
-  /** HR-style rows often have "9 videos · …" on each strip item — sum those for a static fallback total. */
+  /** HR-style rows often have "9 videos · …" on each strip item, sum those for a static fallback total. */
   let hintedSum = 0;
   let hintedCount = 0;
   for (const item of section.items) {
@@ -261,7 +261,7 @@ export default function Home() {
     [hrPlaylistStrip],
   );
 
-  /** YouTube playlist ids for stripping — used to hydrate individual videos on the carousel. */
+  /** YouTube playlist ids for stripping: used to hydrate individual videos on the carousel. */
   const her2PlaylistIds = useMemo(
     () => (her2PlaylistStrip.fallback ? [] : her2PlaylistStrip.treatments.map((t) => t.id)),
     [her2PlaylistStrip],
@@ -476,7 +476,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* View treatment specific content — below HR+ playlists */}
+          {/* View treatment specific content: below HR+ playlists */}
           <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
         </>
       )}
@@ -610,7 +610,7 @@ export default function Home() {
                 </span>
               </summary>
               <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
-                Engage KOLs, HCPs, patients, and caregivers through a unified content ecosystem.
+                Engage KOLs, HCPs, patients, and caregivers through one connected content system.
               </p>
             </details>
             <details className="group home-faq-item">
@@ -624,7 +624,7 @@ export default function Home() {
                 </span>
               </summary>
               <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
-                Leverage podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
+                Use podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
             <details className="group home-faq-item">
@@ -652,7 +652,7 @@ export default function Home() {
                 </span>
               </summary>
               <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
-                Move beyond impressions. Track who watched, who shared, and who took meaningful action.
+                Move beyond impressions. Track who watched, who shared, and who acted on it.
               </p>
             </details>
           </div>

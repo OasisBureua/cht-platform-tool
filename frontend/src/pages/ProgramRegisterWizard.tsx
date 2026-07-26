@@ -3,12 +3,11 @@ import { Link, useNavigate, useParams, useLocation, useSearchParams } from 'reac
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Loader2, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
 import { OfficeHoursSlotPicker } from '../components/office-hours/OfficeHoursSlotPicker';
 import { useAuth } from '../contexts/AuthContext';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { buildIntakeFormUrl } from '../utils/jotform-intake-prefill';
-import { BillComMark } from '../components/branding/BillComMark';
 import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 
@@ -34,7 +33,7 @@ export default function ProgramRegisterWizard() {
   const isOfficeHours = location.pathname.includes('/office-hours/') || location.pathname.includes('/chm-office-hours/');
   const backHref = isOfficeHours ? `/app/chm-office-hours/${id}` : `/app/live/${id}`;
 
-  /** Jotform must redirect here (with submission id) so this page can read it — not the session detail URL. */
+  /** Jotform must redirect here (with submission id) so this page can read it, not the session detail URL. */
   const registerHref = id ? buildProgramRegisterHref(id, location.pathname) : '';
   const returnUrl =
     typeof window !== 'undefined' && registerHref ? `${window.location.origin}${registerHref}` : '';
@@ -151,9 +150,9 @@ export default function ProgramRegisterWizard() {
   if (isError || !program) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Program not found</p>
-        <Link to="/app/webinars" className="mt-4 inline-block text-sm font-semibold text-gray-900 underline">
-          Back
+        <p className="font-semibold text-gray-900">Session not found</p>
+        <Link to="/app/live" className="mt-4 inline-block text-sm font-semibold text-gray-900 underline">
+          Back to sessions
         </Link>
       </div>
     );
@@ -194,12 +193,13 @@ export default function ProgramRegisterWizard() {
         ) : null}
         <div className="p-6 md:p-8 space-y-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-          {program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'} registration
+          {program.zoomSessionType === 'MEETING' ? 'Office hours' : 'Live webinar'} registration
         </p>
         <h1 className="mt-1 text-2xl font-semibold text-gray-900">{program.title}</h1>
         <p className="mt-2 text-sm text-gray-600">
-          Complete intake if this step appears, then pick a time slot when offered. Submit to send your registration for
-          review when required. Post-event feedback lives under <strong>Surveys</strong>.
+          {program.registrationRequiresApproval
+            ? 'An administrator reviews each request for this session. Your registration stays pending until it is approved.'
+            : 'Your registration is confirmed as soon as you submit.'}
         </p>
 
         {program.sessionDisclaimer?.trim() ? (
@@ -226,7 +226,7 @@ export default function ProgramRegisterWizard() {
             <div className="space-y-3">
               <p className="text-sm font-semibold text-gray-900">Your information</p>
               <p className="text-xs text-gray-600">
-                Submit the form below, or{' '}
+                Fill out the form below, or{' '}
                 <a
                   href={intakeFormSrc}
                   target="_blank"
@@ -239,8 +239,7 @@ export default function ProgramRegisterWizard() {
               </p>
               {intakeSubmissionId?.trim() ? (
                 <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  Intake submission recorded. Use <strong>Continue</strong>, then <strong>Submit registration</strong> to
-                  send your request for admin approval.
+                  Your answers are saved.
                 </p>
               ) : null}
               <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
@@ -254,51 +253,9 @@ export default function ProgramRegisterWizard() {
             </div>
           )}
 
-          {current === 'pre' && program.jotformPreEventUrl && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">Pre-event survey</p>
-              <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
-                <iframe
-                  title="Pre-event survey"
-                  src={jotformAppendReturn(program.jotformPreEventUrl)}
-                  className="h-[480px] w-full"
-                  allow="camera; microphone; payment"
-                />
-              </div>
-            </div>
-          )}
-
-          {current === 'bill' && (
-            <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-sm font-semibold text-gray-900 inline-flex flex-wrap items-center gap-2">
-                Vendor & payouts <BillComMark size="sm" />
-              </p>
-              <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
-                If this program requires payment setup, open{' '}
-                <BillComMark size="xs" className="translate-y-px" /> in a new tab, complete onboarding, then return here
-                and continue. This keeps Jotform and{' '}
-                <BillComMark size="xs" className="translate-y-px" /> in one guided flow without mixing iframes.
-              </p>
-              <a
-                href="/app/payments"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-              >
-                Open payout setup
-                <ExternalLink className="h-4 w-4" />
-              </a>
-            </div>
-          )}
-
           {current === 'slot' && (
             <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
-              <OfficeHoursSlotPicker
-                slots={slots}
-                selectedId={selectedSlotId}
-                onSelect={setSelectedSlotId}
-                subtitle="The session is split into 10-minute windows (six per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
-              />
+              <OfficeHoursSlotPicker slots={slots} selectedId={selectedSlotId} onSelect={setSelectedSlotId} />
             </div>
           )}
 
@@ -306,27 +263,21 @@ export default function ProgramRegisterWizard() {
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
               {program.registrationRequiresApproval ? (
                 <>
-                  <p className="font-semibold text-amber-950">Submit registration for approval</p>
+                  <p className="font-semibold text-amber-950">Ready to submit</p>
                   <p>
-                    Tap <strong>Submit registration</strong> below to send your request to the host. An administrator
-                    must approve you before you can join the session or unlock Conversations and surveys for this
-                    activity.
-                  </p>
-                  <p className="text-xs text-amber-900">
-                    You are <strong>not</strong> enrolled until approval—expect a pending state on the session page
-                    until then.
+                    Your request goes to an administrator for review. Until it is approved, your registration shows as
+                    pending and you cannot join the session.
                   </p>
                 </>
               ) : (
                 <p>
-                  <strong>Almost done:</strong> Submit to complete registration
-                  {program.zoomSessionType === 'MEETING' ? ' and reserve your slot' : ''}.
+                  Submitting completes your registration
+                  {program.zoomSessionType === 'MEETING' ? ' and reserves your time slot' : ''}.
                 </p>
               )}
               {!!program.jotformIntakeFormUrl?.trim() && !intakeSubmissionId?.trim() ? (
                 <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
-                  Intake is optional before you submit. Complete the form when you can so we can keep your answers on
-                  file (return from Jotform or wait for the automatic save).
+                  You have not finished the intake form. You can submit now and complete it later from this page.
                 </p>
               ) : null}
             </div>

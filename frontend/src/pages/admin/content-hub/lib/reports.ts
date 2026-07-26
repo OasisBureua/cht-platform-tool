@@ -1,4 +1,4 @@
-// Report builders — ported from the standalone app's server/reports.ts.
+// Report builders: ported from the standalone app's server/reports.ts.
 // Browser-safe: the Node getDb() bits are removed; uploads + hubspot-connected
 // state are passed in as function arguments (see store.ts for the caller).
 // Empty-data shapes match the captured fixtures exactly (docs/research/api-*.json).
@@ -124,25 +124,25 @@ export function buildAnalyticsReport(
   const hasAnyData = uploads.length > 0 || connected;
 
   const kpiTiles = [
-    { label: 'Total Impressions', value: totalImpressions ? fmt(totalImpressions) : '—', source: totalImpressions ? 'csv' : 'unavailable', note: totalImpressions ? 'LinkedIn + Meta CSV' : 'Upload platform CSVs' },
-    { label: 'HubSpot Contacts', value: '—', source: 'unavailable', note: 'Connect HubSpot' },
-    { label: 'Form Submissions', value: '—', source: 'unavailable', note: 'Connect HubSpot' },
-    { label: 'LinkedIn Video Views', value: li ? fmt(sumColumn(li.rows, ['video view', 'views'])) : '—', source: li ? 'csv' : 'unavailable', note: li ? li.filename : 'Upload LinkedIn CSV' },
-    { label: 'Meta CTR', value: '—', source: me ? 'csv' : 'unavailable', note: me ? me.filename : 'Upload Meta CSV' },
-    { label: 'Meta Link Clicks', value: me ? fmt(sumColumn(me.rows, ['click'])) : '—', source: me ? 'csv' : 'unavailable', note: me ? me.filename : 'Upload Meta CSV' },
-    { label: 'YouTube Total Views', value: yt ? fmt(ytViews) : '—', source: yt ? 'csv' : 'unavailable', note: yt ? yt.filename : 'Upload YouTube CSV' },
-    { label: 'YouTube Watch Time', value: yt ? fmt(sumColumn(yt.rows, ['watch'])) : '—', source: yt ? 'csv' : 'unavailable', note: yt ? yt.filename : 'Upload YouTube CSV' },
-    { label: 'Live Attendees', value: ls ? fmt(sumColumn(ls.rows, ['attend'])) : '—', source: ls ? 'csv' : 'unavailable', note: ls ? ls.filename : 'Upload Livestream CSV' },
-    { label: 'Survey Responses', value: sv ? fmt(sv.rows?.length ?? 0) : '—', source: sv ? 'csv' : 'unavailable', note: sv ? sv.filename : 'Upload Survey CSV' },
+    { label: 'Total Impressions', value: totalImpressions ? fmt(totalImpressions) : '-', source: totalImpressions ? 'csv' : 'unavailable', note: totalImpressions ? 'LinkedIn + Meta CSV' : 'Upload platform CSVs' },
+    { label: 'HubSpot Contacts', value: '-', source: 'unavailable', note: 'Connect HubSpot' },
+    { label: 'Form Submissions', value: '-', source: 'unavailable', note: 'Connect HubSpot' },
+    { label: 'LinkedIn Video Views', value: li ? fmt(sumColumn(li.rows, ['video view', 'views'])) : '-', source: li ? 'csv' : 'unavailable', note: li ? li.filename : 'Upload LinkedIn CSV' },
+    { label: 'Meta CTR', value: '-', source: me ? 'csv' : 'unavailable', note: me ? me.filename : 'Upload Meta CSV' },
+    { label: 'Meta Link Clicks', value: me ? fmt(sumColumn(me.rows, ['click'])) : '-', source: me ? 'csv' : 'unavailable', note: me ? me.filename : 'Upload Meta CSV' },
+    { label: 'YouTube Total Views', value: yt ? fmt(ytViews) : '-', source: yt ? 'csv' : 'unavailable', note: yt ? yt.filename : 'Upload YouTube CSV' },
+    { label: 'YouTube Watch Time', value: yt ? fmt(sumColumn(yt.rows, ['watch'])) : '-', source: yt ? 'csv' : 'unavailable', note: yt ? yt.filename : 'Upload YouTube CSV' },
+    { label: 'Live Attendees', value: ls ? fmt(sumColumn(ls.rows, ['attend'])) : '-', source: ls ? 'csv' : 'unavailable', note: ls ? ls.filename : 'Upload Livestream CSV' },
+    { label: 'Survey Responses', value: sv ? fmt(sv.rows?.length ?? 0) : '-', source: sv ? 'csv' : 'unavailable', note: sv ? sv.filename : 'Upload Survey CSV' },
   ];
 
   const dataGaps: string[] = [];
-  if (!connected) dataGaps.push('HubSpot not connected — contact activity, form submissions, landing page analytics, email performance, HCP lifecycle stage, and funnel data are unavailable.');
-  if (!li) dataGaps.push('LinkedIn performance data not uploaded — video views, dwell time, completion rates, and creative-level CTR are unavailable.');
-  if (!me) dataGaps.push('Meta performance data not uploaded — regional breakdowns, audience demographics, and CTR benchmarking are unavailable.');
-  if (!yt) dataGaps.push('YouTube performance data not uploaded — video-level views, engaged views, and watch time are unavailable.');
-  if (!ls) dataGaps.push('Livestream/event attendance data not uploaded — registrations, live attendance, HCP verification rate are unavailable.');
-  if (!sv) dataGaps.push('Post-event survey data not uploaded — practice-change intent, confidence lift, and qualitative HCP insights are unavailable.');
+  if (!connected) dataGaps.push('HubSpot not connected: contact activity, form submissions, landing page analytics, email performance, HCP lifecycle stage, and funnel data are unavailable.');
+  if (!li) dataGaps.push('LinkedIn performance data not uploaded: video views, dwell time, completion rates, and creative-level CTR are unavailable.');
+  if (!me) dataGaps.push('Meta performance data not uploaded: regional breakdowns, audience demographics, and CTR benchmarking are unavailable.');
+  if (!yt) dataGaps.push('YouTube performance data not uploaded: video-level views, engaged views, and watch time are unavailable.');
+  if (!ls) dataGaps.push('Livestream/event attendance data not uploaded: registrations, live attendance, HCP verification rate are unavailable.');
+  if (!sv) dataGaps.push('Post-event survey data not uploaded: practice-change intent, confidence lift, and qualitative HCP insights are unavailable.');
 
   const executiveSummary = hasAnyData
     ? `The ${campaign.name} campaign delivered across ${(campaign.platforms ?? []).join(', ')} during the reporting period ${campaign.reportingPeriodStart} – ${campaign.reportingPeriodEnd}. This report summarizes aggregate performance, channel breakdowns, and strategic recommendations based on the connected data sources.`
@@ -234,17 +234,17 @@ export function buildExecutiveReport(
         'overviewText',
         'This campaign was purpose-built to extend the clinical and educational value of expert scientific discussions into a sustained, multi-platform engagement program for healthcare professionals. Anchored by expert conversations with ' +
           (campaign.physicianSpeakers || 'physician speakers') +
-          ', the campaign applied a professional production, distribution, and targeting framework to drive meaningful reach, long-term visibility, and durable educational impact.',
+          ', the campaign applied a professional production, distribution, and targeting framework to drive reach, long-term visibility, and educational impact.',
       ),
       productionOverview: s(
         'productionOverview',
-        'The campaign was anchored by primary production assets designed to maximise scientific depth and downstream content scalability. Long-form expert discussions served as the cornerstone, addressing ' +
+        'The campaign was anchored by primary production assets designed for scientific depth and reuse across channels. Long-form expert discussions carried the core content, addressing ' +
           (campaign.diseaseState || 'the disease state') +
-          ', emerging clinical trial evidence, and real-world treatment considerations. Live streaming expanded the conversation further with real-time healthcare professional participation.',
+          ', emerging clinical trial evidence, and real-world treatment considerations. Live streaming added real-time participation from healthcare professionals.',
       ),
       distributionOverview: s(
         'distributionOverview',
-        "Long-form content was distributed across Community Health Media's primary video and podcast platforms. Clinical insights were identified and edited into modular short-form content optimized for digital consumption and distributed organically, with targeted paid support, syndicated across clip-focused outlets on LinkedIn, YouTube, and Meta.",
+        "Long-form content was distributed across Community Health Media's primary video and podcast platforms. Clinical insights were identified and edited into modular short-form content sized for social feeds and distributed organically, with targeted paid support, syndicated across clip-focused outlets on LinkedIn, YouTube, and Meta.",
       ),
       conclusionText: s(
         'conclusionText',
