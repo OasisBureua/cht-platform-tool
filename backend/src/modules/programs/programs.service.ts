@@ -614,7 +614,7 @@ export class ProgramsService {
     );
   }
 
-  /** Admin hub — who is enrolled (e.g. webinars). */
+  /** Admin hub: who is enrolled (e.g. webinars). */
   async listProgramEnrollmentsForAdmin(programId: string) {
     return this.prisma.programEnrollment.findMany({
       where: { programId },

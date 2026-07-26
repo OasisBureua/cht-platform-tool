@@ -19,13 +19,13 @@ export type AppNavItem = {
 /** Sidebar Conversations → catalog home (featured strips + biomarker rows). */
 export const APP_CATALOG_CONVERSATIONS_HUB = '/app/catalog';
 
-/** Full clips library (search, filters, grid) — “See all in library”. Playlists: `?view=playlists`. */
+/** Full clips library (search, filters, grid): “See all in library”. Playlists: `?view=playlists`. */
 export const APP_CATALOG_CLIPS_GRID = '/app/catalog?view=clips';
 
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
 export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
 
-/** Primary app destinations — desktop sidebar + mobile slide-reveal drawer (Search lives in header) */
+/** Primary app destinations: desktop sidebar + mobile slide-reveal drawer (Search lives in header) */
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
   { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },

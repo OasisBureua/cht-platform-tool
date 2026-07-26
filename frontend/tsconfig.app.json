@@ -24,5 +24,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  /**
+   * Orphaned WIP: imports '@zoom/meetingsdk', which is not a dependency. Nothing
+   * imports this component, so it never reaches the bundle. Excluded so the
+   * typecheck in `npm run build` passes. Remove this line once the SDK is added
+   * (note: 6.2.0 pins react@18.2.0 as a peer and this app is on React 19).
+   */
+  "exclude": ["src/components/zoom/OfficeHoursZoomEmbed.tsx"]
 }

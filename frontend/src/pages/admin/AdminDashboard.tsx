@@ -59,7 +59,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bento: asymmetric grid — dense on small screens, full 12-col on md+ */}
+      {/* Bento: asymmetric grid: dense on small screens, full 12-col on md+ */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-12 md:gap-5">
         {/* Hero metric */}
         <Link
@@ -69,7 +69,7 @@ export default function AdminDashboard() {
           <span
             className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-xs ${activeHcpsChange?.colorClass ?? 'bg-white/80 text-gray-600 shadow-sm dark:bg-zinc-800 dark:text-zinc-300'}`}
           >
-            {activeHcpsChange?.label ?? '—'}
+            {activeHcpsChange?.label ?? '-'}
           </span>
           <Users className="mb-3 h-8 w-8 text-sky-600 opacity-90 dark:text-sky-400" strokeWidth={1.75} aria-hidden />
           <p className="text-3xl font-bold tabular-nums text-gray-900 dark:text-zinc-50 md:text-4xl">
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
           <p className="mt-1 text-sm font-semibold text-sky-800 group-hover:underline dark:text-sky-300">Active HCPs</p>
         </Link>
 
-        {/* Engagement — compact tile */}
+        {/* Engagement: compact tile */}
         <Link
           to="/admin/rx-analytics"
           className="group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-violet-50 to-white p-4 shadow-[0_10px_36px_-22px_rgba(91,33,182,0.22)] ring-1 ring-violet-100/70 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 md:col-span-4 dark:from-violet-950/35 dark:to-zinc-900 dark:ring-violet-900/30"
@@ -108,7 +108,7 @@ export default function AdminDashboard() {
           </div>
         </Link>
 
-        {/* Analytics — wide */}
+        {/* Analytics: wide */}
         <div className="col-span-2 flex min-h-[220px] flex-col justify-between rounded-2xl bg-white/90 p-5 shadow-[0_12px_44px_-28px_rgba(0,0,0,0.12)] ring-1 ring-gray-200/80 dark:bg-zinc-900/80 dark:ring-zinc-700/60 md:col-span-8 md:min-h-[280px]">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -137,7 +137,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Stacked column — campaign + queue */}
+        {/* Stacked column: campaign + queue */}
         <div className="col-span-2 flex flex-col gap-3 md:col-span-4 md:gap-5">
           <div className="rounded-2xl bg-white/90 p-4 shadow-[0_10px_40px_-26px_rgba(0,0,0,0.14)] ring-1 ring-gray-200/70 dark:bg-zinc-900/80 dark:ring-zinc-700/60">
             <div className="flex items-center justify-between gap-2">

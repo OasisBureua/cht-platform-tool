@@ -40,7 +40,7 @@ export class ContentHubClientService {
 
     if (!this.apiKey && (this.baseUrl || this.adminBaseUrl)) {
       this.logger.warn(
-        'CONTENTHUB_API_KEY not configured — Content Hub calls disabled',
+        'CONTENTHUB_API_KEY not configured, Content Hub calls disabled',
       );
     }
   }

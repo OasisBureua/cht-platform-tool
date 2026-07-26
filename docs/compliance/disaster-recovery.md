@@ -4,7 +4,7 @@ Recovery procedures for the CHT Platform when infrastructure or data must be res
 
 **Primary region:** `us-east-1`  
 **AWS account:** `233636046512`  
-**Standby:** `us-east-2` Terraform exists (`infrastructure/terraform/environments/us-east-2`) but is **not deployed by default** — failover is manual.
+**Standby:** `us-east-2` Terraform exists (`infrastructure/terraform/environments/us-east-2`) but is **not deployed by default**, failover is manual.
 
 **Last reviewed:** _Set date when approved_
 
@@ -16,7 +16,7 @@ Recovery procedures for the CHT Platform when infrastructure or data must be res
 |--------|-----------------|---------|-------|
 | **RPO** (max data loss) | **24 hours** | **24 hours** | Automated daily RDS snapshots; finer RPO requires increasing backup retention / PITR window |
 | **RTO** (max downtime) | **4 hours** | **8 hours** | Single-region, no hot standby; depends on engineer availability |
-| **RTO (region failover)** | **24+ hours** | N/A | Requires deploying `us-east-2` stack and DNS cutover — not automated |
+| **RTO (region failover)** | **24+ hours** | N/A | Requires deploying `us-east-2` stack and DNS cutover: not automated |
 
 These targets are **goals** for planning and audits. Update after architecture changes (e.g. Multi-AZ RDS, active DR region).
 
@@ -74,7 +74,7 @@ These targets are **goals** for planning and audits. Update after architecture c
 
 **RTO:** ~15–30 minutes.
 
-### Option A — GitHub Actions rollback (preferred)
+### Option A: GitHub Actions rollback (preferred)
 
 1. GitHub → **Actions** → **Rollback Deployment** → Run workflow.
 2. **Environment:** `platform` or `dev`.
@@ -85,13 +85,13 @@ These targets are **goals** for planning and audits. Update after architecture c
    ./smoke.sh https://testapp.communityhealth.media
    ```
 
-### Option B — Redeploy previous release
+### Option B: Redeploy previous release
 
 1. Re-run a successful **Deploy to Platform** workflow from Actions history, or
 2. Push the previous `v*` tag, or
 3. Push to the last good `release/**` branch commit.
 
-### Option C — AWS CLI (manual)
+### Option C: AWS CLI (manual)
 
 ```bash
 # List recent task definitions
@@ -117,7 +117,7 @@ aws ecs update-service \
 
 **RTO:** 1–3 hours (restore + validation).
 
-### Step 1 — Assess
+### Step 1: Assess
 
 1. RDS console → **Databases** → `cht-platform-db` → Monitoring / Events.
 2. Decide:
@@ -125,27 +125,27 @@ aws ecs update-service \
    - **Logical corruption / bad migration:** Restore snapshot or PITR to **new** instance.
    - **Accidental delete:** PITR to time before delete.
 
-### Step 2 — Stop writes (if corruption suspected)
+### Step 2: Stop writes (if corruption suspected)
 
 1. Scale backend desired count to **0** (ECS console or CLI) to prevent further writes.
 2. Notify incident commander (see [incident-response.md](./incident-response.md)).
 
-### Step 3 — Restore from snapshot
+### Step 3: Restore from snapshot
 
 1. RDS → **Snapshots** → select automated or manual snapshot → **Restore snapshot**.
 2. New identifier example: `cht-platform-db-restored-YYYYMMDD`.
 3. Use same VPC subnet group and security group as original (`cht-platform-rds-sg`).
 4. **Do not** delete original instance until restore is validated.
 
-### Step 4 — Point-in-time restore (preferred when time of failure is known)
+### Step 4: Point-in-time restore (preferred when time of failure is known)
 
 1. RDS → `cht-platform-db` → **Actions** → **Restore to point in time**.
 2. Choose target time **just before** the incident.
 3. New instance identifier as above.
 
-### Step 5 — Reconnect application
+### Step 5: Reconnect application
 
-1. Update `DATABASE_URL` in Secrets Manager to the restored endpoint (or update Terraform to point to new instance and apply — coordinate carefully).
+1. Update `DATABASE_URL` in Secrets Manager to the restored endpoint (or update Terraform to point to new instance and apply, coordinate carefully).
 2. Run migrations only if restoring to **empty** DB or known schema state:
    ```bash
    # Via ECS Exec on backend task (see deploy workflow pattern)
@@ -154,7 +154,7 @@ aws ecs update-service \
 3. Scale ECS services back to desired count.
 4. Validate health, login, sample admin read, payment queue depth.
 
-### Step 6 — Post-restore
+### Step 6: Post-restore
 
 - Root-cause analysis and postmortem.
 - If original instance is retired, update Terraform to manage the new identifier or swap identifiers per AWS guidance.
@@ -179,7 +179,7 @@ aws ecs update-service \
 
 **Symptoms:** DLQ CloudWatch alarms; emails or payments not processing.
 
-**RPO:** Messages retained in DLQ (14-day default SQS retention — confirm in Terraform).
+**RPO:** Messages retained in DLQ (14-day default SQS retention: confirm in Terraform).
 
 1. Fix underlying bug or credential issue in worker.
 2. Inspect DLQ messages in SQS console (payment DLQ: **manual review** before replay).
@@ -204,7 +204,7 @@ Follow [incident-response.md](./incident-response.md#aws-lockdown-checklist), th
 
 1. Declare disaster; incident commander activates DR plan.
 2. Deploy `us-east-2` infrastructure from `infrastructure/terraform/environments/us-east-2` (requires state bucket, AMIs/images in region, DNS updates).
-3. Restore RDS from cross-region snapshot copy (must be configured **in advance** — not currently in default stack).
+3. Restore RDS from cross-region snapshot copy (must be configured **in advance**, not currently in default stack).
 4. Update Route53 / DNS to point `testapp.communityhealth.media` to DR ALB/CloudFront.
 5. Reconfigure GitHub secrets and vendor webhooks to DR URLs.
 
@@ -251,6 +251,6 @@ aws rds describe-db-instance-automated-backups \
 
 ## Related documents
 
-- [incident-response.md](./incident-response.md) — Escalation and lockdown
-- [../engineering/deployment.md](../engineering/deployment.md) — Normal release process
-- [../../.github/workflows/rollback.yml](../../.github/workflows/rollback.yml) — Automated ECS rollback
+- [incident-response.md](./incident-response.md): Escalation and lockdown
+- [../engineering/deployment.md](../engineering/deployment.md): Normal release process
+- [../../.github/workflows/rollback.yml](../../.github/workflows/rollback.yml): Automated ECS rollback

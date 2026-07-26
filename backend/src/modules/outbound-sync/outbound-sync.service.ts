@@ -79,7 +79,7 @@ export class OutboundSyncService {
       state: input.state,
     });
 
-    // MediaHub roster is NPI-keyed — skip HCPs without a valid NPI rather than
+    // MediaHub roster is NPI-keyed, skip HCPs without a valid NPI rather than
     // pushing noise. HubSpot and Mailchimp still sync (lead-nurture surfaces).
     const mediahubPromise = hasValidNpi
       ? this.mediahub.upsertHCP({

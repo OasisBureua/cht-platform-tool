@@ -1,7 +1,7 @@
 # Figma HTML→Design captures (route checklist)
 
 Captured frames live in Figma file  
-[CHM Platform — Screens & FRS Scope (`bud5cW5tvQyWNp6eZkWGMr`)](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr/).
+[CHM Platform: Screens & FRS Scope (`bud5cW5tvQyWNp6eZkWGMr`)](https://www.figma.com/design/bud5cW5tvQyWNp6eZkWGMr/).
 
 See **`/.figma-capture-results.md`** at workspace root (`CHM`) for **path → `node-id` links** logged so far.
 
@@ -52,7 +52,7 @@ Paste into an agent prompt to continue **sequential** MCP captures (`generate_fi
 - `/kol-network/profile/traina` *(example KOL id; replace with `/kol-network/profile/:kolId`)*
 - `/watch/db11_neoadjuvant` *(redirect → clip; capture final `/catalog/clip/…` with hash too if redirect strips hash)*
 
-`/surveys/:id` (public compat) redirects to `/app/surveys/:id` — capture the `/app/surveys/:id` variant.
+`/surveys/:id` (public compat) redirects to `/app/surveys/:id`: capture the `/app/surveys/:id` variant.
 
 ---
 

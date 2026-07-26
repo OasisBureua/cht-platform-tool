@@ -1,4 +1,4 @@
-// Content Hub utilities — ported from the report generator's src/lib/utils.ts.
+// Content Hub utilities: ported from the report generator's src/lib/utils.ts.
 export function cn(...classes: Array<string | false | null | undefined>): string {
   return classes.filter(Boolean).join(' ');
 }

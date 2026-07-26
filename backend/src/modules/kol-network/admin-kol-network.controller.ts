@@ -101,7 +101,7 @@ export class AdminKolNetworkController {
     }
   }
 
-  /** SCRUM-67 — bust CHT's contenthub cache after any admin KOL write. */
+  /** SCRUM-67: bust CHT's contenthub cache after any admin KOL write. */
   private async afterHubWrite(): Promise<void> {
     await this.cacheClear.clear('contenthub');
   }

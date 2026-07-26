@@ -1041,7 +1041,7 @@ export class SurveysService {
    * Attach Jotform forms to a webhook-imported program without cloning.
    * Uses env-configured form IDs/URLs directly:
    *  - Intake: JOTFORM_WEBINAR_DEFAULT_INTAKE_URL (preferred) or constructed from invitationTemplateFormId
-   *  - Post-event: postEventSharedFormId (preferred) or postEventTemplateFormId — no clone, just links the Survey record
+   *  - Post-event: postEventSharedFormId (preferred) or postEventTemplateFormId: no clone, just links the Survey record
    * Fails gracefully if none of the env vars are set.
    */
   async attachJotformFormsFromConfig(
@@ -1066,7 +1066,7 @@ export class SurveysService {
       .get<string>('jotform.postEventTemplateFormId')
       ?.trim();
 
-    // 1. Intake / invitation form — no clone, just set the URL
+    // 1. Intake / invitation form: no clone, just set the URL
     const intakeUrl =
       defaultIntakeUrl ||
       (invFormId
@@ -1082,7 +1082,7 @@ export class SurveysService {
       );
     }
 
-    // 2. Post-event survey — use shared form (preferred) or template form ID directly, no clone
+    // 2. Post-event survey: use shared form (preferred) or template form ID directly, no clone
     const postFormId = sharedPost || postTemplate;
     if (postFormId) {
       await this.attachSharedPostEventSurvey(
@@ -1094,7 +1094,7 @@ export class SurveysService {
 
     if (!intakeUrl && !postFormId) {
       this.logger.warn(
-        `Webhook import: no Jotform env vars configured for program ${programId} — skipping form attachment`,
+        `Webhook import: no Jotform env vars configured for program ${programId}, skipping form attachment`,
       );
     }
   }

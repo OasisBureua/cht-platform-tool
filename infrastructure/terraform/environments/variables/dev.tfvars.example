@@ -1,4 +1,4 @@
-# CHT Platform — dev.tfvars.example
+# CHT Platform: dev.tfvars.example
 # Copy to dev.tfvars for local applies:
 #   cp dev.tfvars.example dev.tfvars
 # Then add secrets (or regenerate from AWS):

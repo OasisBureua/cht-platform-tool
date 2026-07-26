@@ -8,7 +8,7 @@ Operational runbooks for the [CHM Platform Roadmap](../reports/CHM-Platform-Road
 - [CHT-Auth-Decoupling-Next-Steps-Report.md](../reports/CHT-Auth-Decoupling-Next-Steps-Report.md)
 - [CHT-MediaHub-Go-Forward-Options.md](../reports/CHT-MediaHub-Go-Forward-Options.md)
 
-## Phase 0 — Required before execution
+## Phase 0: Required before execution
 
 | Runbook | Phase | Status |
 | ------- | ----- | ------ |

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Rebuild dev.tfvars / platform.tfvars from *.github.tfvars + AWS Secrets Manager + GitHub env secrets.
-# Files are gitignored — never commit the output.
+# Files are gitignored, never commit the output.
 #
 # Usage:
 #   ./scripts/sync-tfvars-from-secrets-manager.sh [dev|platform|both]
 # Requires: aws CLI, jq, python3
-# Note: GitHub Environment secret *values* cannot be read back via API/gh CLI — only
+# Note: GitHub Environment secret *values* cannot be read back via API/gh CLI, only
 #       AWS Secrets Manager fields are populated automatically. Fill any commented
 #       keys in *.tfvars manually (or re-copy from your password manager).
 set -euo pipefail
@@ -57,7 +57,7 @@ sm = sm_json()
 vals = {k: (sm.get(k) or "") for k in SECRET_KEYS}
 
 lines = []
-lines.append(f"# AUTO-GENERATED — {datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ')}")
+lines.append(f"# AUTO-GENERATED: {datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%MZ')}")
 lines.append(f"# Source: {env}.github.tfvars + {sm_id}")
 lines.append(f"# Regenerate: ./scripts/sync-tfvars-from-secrets-manager.sh {env}")
 lines.append("# DO NOT COMMIT")
@@ -79,7 +79,7 @@ for k in SECRET_KEYS:
     if v:
         lines.append(f"{k} = {hcl_string(v)}")
     else:
-        lines.append(f"# {k} = \"\"  # missing — set manually")
+        lines.append(f"# {k} = \"\"  # missing: set manually")
         missing += 1
 
 out_file.write_text("\n".join(lines) + "\n")

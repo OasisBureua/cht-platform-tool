@@ -95,7 +95,7 @@ export default function AnalyticsReport() {
             {campaign.name}
           </span>
           <span className="hidden sm:block" style={{ color: 'rgba(255, 255, 255, 0.35)', fontSize: 11 }}>
-            — Analytics Report (White Paper)
+           : Analytics Report (White Paper)
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -151,7 +151,7 @@ export default function AnalyticsReport() {
             </h1>
             <p style={{ fontSize: 14, color: INK.muted, fontStyle: 'italic', margin: '0px 0px 8px', fontFamily: SERIF }}>{campaign.programName}</p>
             <p style={{ fontSize: 12, color: INK.muted, margin: 0, fontFamily: SERIF }}>
-              {campaign.diseaseState} — {campaign.treatmentTopic}
+              {campaign.diseaseState}: {campaign.treatmentTopic}
             </p>
           </div>
           <div style={{ borderTop: `1px solid ${INK.rule}`, borderBottom: `1px solid ${INK.rule}`, padding: '20px 0px', marginBottom: 32 }}>
@@ -185,7 +185,7 @@ export default function AnalyticsReport() {
             {sections.dataGaps.length > 0 && (
               <div style={{ background: INK.orangeBg, borderWidth: '1px 1px 1px 3px', borderStyle: 'solid', borderColor: `${INK.orangeBorder} ${INK.orangeBorder} ${INK.orangeBorder} ${INK.orange}`, padding: '12px 16px', marginTop: 'auto' }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: INK.orangeDark, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8, fontFamily: SANS }}>
-                  Data Gaps — Upload Required
+                  Data Gaps: Upload Required
                 </div>
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
                   {sections.dataGaps.map((gap, i) => (
@@ -253,7 +253,7 @@ export default function AnalyticsReport() {
                 <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>✦</div>
                 <p style={{ fontSize: 13, fontWeight: 600, color: INK.slate, marginBottom: 8, fontFamily: SANS }}>AI Insights Not Yet Generated</p>
                 <p style={{ fontSize: 11, color: INK.muted, maxWidth: 400, margin: '0px auto', lineHeight: 1.7, fontFamily: SERIF }}>
-                  Click "Regenerate Insights" in the toolbar above to generate AI-written commentary from your live campaign data — including an executive summary, standout observations, and strategic recommendations.
+                  Click "Regenerate Insights" in the toolbar above to generate AI-written commentary from your live campaign data, including an executive summary, standout observations, and strategic recommendations.
                 </p>
               </div>
             )}
@@ -261,7 +261,7 @@ export default function AnalyticsReport() {
           <PageFooter page={4} today={today} />
         </section>
 
-        {/* ===== APPENDIX A — METRICS GLOSSARY ===== */}
+        {/* ===== APPENDIX A: METRICS GLOSSARY ===== */}
         <section id="s-glossary" className="doc-page report-page" style={{ breakAfter: 'page' }}>
           <PageRunningHeader campaignName={campaign.name} />
           <div className="doc-page-body" style={{ flex: '1 1 0%' }}>

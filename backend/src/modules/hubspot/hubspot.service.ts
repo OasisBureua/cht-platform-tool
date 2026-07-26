@@ -108,7 +108,7 @@ export class HubSpotService {
           if (!this.authFailureLogged) {
             this.authFailureLogged = true;
             this.logger.warn(
-              `[HubSpot] Auth failed (401) — disabling contact sync for this process. Set a valid private-app token in Secrets Manager (hubspot_access_token), or clear it to silence sync. Detail: ${errText}`,
+              `[HubSpot] Auth failed (401): disabling contact sync for this process. Set a valid private-app token in Secrets Manager (hubspot_access_token), or clear it to silence sync. Detail: ${errText}`,
             );
           }
           return;

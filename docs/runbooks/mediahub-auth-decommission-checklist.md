@@ -14,17 +14,17 @@ MediaHub team actions required for Cognito cutover. CHT cannot complete Phase 2 
 | Actor | After cutover |
 | ----- | ------------- |
 | HCP / KOL / Industry end users | **No** MediaHub UI, GoTrue, or auth URLs |
-| CHT backend | **Yes** — `/api/public/*` via `MEDIAHUB_API_KEY` only |
-| CHM admin / content ops | **Yes** — MediaHub admin UI via Cognito `mediahub-admin` client |
+| CHT backend | **Yes**: `/api/public/*` via `MEDIAHUB_API_KEY` only |
+| CHM admin / content ops | **Yes**: MediaHub admin UI via Cognito `mediahub-admin` client |
 
 ---
 
 ## Pre-cutover confirmations
 
-- [ ] **API key continuity** — `MEDIAHUB_API_KEY` in CHT prod Secrets Manager remains valid through cutover week
-- [ ] **No auth coupling in public API** — `/api/public/hcp/upsert` and catalog routes accept API key only (no user JWT required)
-- [ ] **OAuth redirect block list** — MediaHub/nginx stops accepting CHT end-user OAuth callbacks at `mediahub.communityhealth.media`
-- [ ] **Admin access plan** — how CHM staff authenticate to MediaHub UI post-cutover (Cognito admin client)
+- [ ] **API key continuity**: `MEDIAHUB_API_KEY` in CHT prod Secrets Manager remains valid through cutover week
+- [ ] **No auth coupling in public API**: `/api/public/hcp/upsert` and catalog routes accept API key only (no user JWT required)
+- [ ] **OAuth redirect block list**: MediaHub/nginx stops accepting CHT end-user OAuth callbacks at `mediahub.communityhealth.media`
+- [ ] **Admin access plan**: how CHM staff authenticate to MediaHub UI post-cutover (Cognito admin client)
 
 ---
 
@@ -45,7 +45,7 @@ MediaHub team actions required for Cognito cutover. CHT cannot complete Phase 2 
 MediaHub actions:
 
 - [ ] Export GoTrue user list for CHT migration ([cognito-user-migration.md](./cognito-user-migration.md))
-- [ ] Deactivate (not delete) learner/HCP/KOL GoTrue accounts — **preserve content/HCP data in MediaHub DB**
+- [ ] Deactivate (not delete) learner/HCP/KOL GoTrue accounts: **preserve content/HCP data in MediaHub DB**
 - [ ] Remove CHT register-profile / end-user invitation flows
 
 **Do not** revoke API keys or delete clip/KOL/HCP content data.

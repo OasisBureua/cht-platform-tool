@@ -276,7 +276,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
   );
 }
 
-/** Latest episode for cards — uses YouTube when configured. */
+/** Latest episode for cards: uses YouTube when configured. */
 export function useShowLatestEpisode(show: PodcastShow): PodcastEpisode | null {
   const { data } = useQuery({
     queryKey: ['podcast', 'episodes', show.id, 'latest-card'],

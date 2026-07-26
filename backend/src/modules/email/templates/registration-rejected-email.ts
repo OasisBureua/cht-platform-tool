@@ -59,7 +59,7 @@ export function buildRegistrationRejectedEmail(
           <p style="margin:0;line-height:1.6;color:${E.BODY_TEXT}">If the program allows another registration, you may <strong>try again from the app</strong>; a new request will appear as pending for review.</p>`,
         };
 
-  const subject = `Update on your registration — ${p.programTitle}`;
+  const subject = `Update on your registration: ${p.programTitle}`;
 
   // ── Plain text ───────────────────────────────────────────────────────────────
   const text = [

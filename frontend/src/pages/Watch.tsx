@@ -20,7 +20,7 @@ const PLAYLISTS = [
   { id: '3', title: 'High-Risk & CNS Disease', videoNames: ['Video Name', 'Video Name', 'Video Name'] },
   { id: '4', title: 'HER2+ & Endocrine Crosstalk', videoNames: ['Video Name', 'Video Name'] },
   { id: '5', title: 'ADC-Centered Conversations', desc: 'Video Description: Lorem ipsum dolor sit amet consectetur.' },
-  { id: '6', title: 'Expert Roundtables & Deep Dives', videoNames: ['Video Name', 'Video Name'] },
+  { id: '6', title: 'Expert Roundtables & In-Depth Sessions', videoNames: ['Video Name', 'Video Name'] },
 ];
 
 export default function Watch() {

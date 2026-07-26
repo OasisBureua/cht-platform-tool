@@ -11,7 +11,7 @@ function rememberQuestions(questions: unknown) {
 }
 
 export function formatSurveyAnswerValue(value: unknown): string {
-  if (value == null || value === '') return '—';
+  if (value == null || value === '') return '-';
   if (Array.isArray(value)) return value.join(', ');
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
@@ -48,7 +48,7 @@ export function attendanceStatusLabel(att: string | null | undefined): string {
   if (att === 'VERIFIED') return 'Verified';
   if (att === 'DENIED') return 'Denied';
   if (att === 'PENDING_VERIFICATION') return 'Pending';
-  return '—';
+  return '-';
 }
 
 /** Admin list labels, e.g. PROGRAM 1 - REGISTRATION (INTAKE). */

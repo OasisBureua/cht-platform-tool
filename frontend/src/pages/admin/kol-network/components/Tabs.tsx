@@ -3,7 +3,7 @@ import { cn } from './cn';
 
 /**
  * Minimal controlled Tabs (same component surface as MediaHub's shadcn
- * tabs.tsx — Tabs/TabsList/TabsTrigger/TabsContent — without the Radix
+ * tabs.tsx: Tabs/TabsList/TabsTrigger/TabsContent: without the Radix
  * dependency; restyled to CHT platform tokens).
  */
 

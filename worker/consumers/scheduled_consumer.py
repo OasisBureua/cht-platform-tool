@@ -1,4 +1,4 @@
-"""Scheduled-jobs consumer — processes EventBridge trigger payloads from the
+"""Scheduled-jobs consumer: processes EventBridge trigger payloads from the
 SQS scheduled-jobs queue.
 
 Each message has a single field:
@@ -34,7 +34,7 @@ from utils.sqs_base import PermanentFailure, SQSBaseConsumer
 logger = setup_logger(__name__)
 
 # ── Window: sessions starting between NOW+LOW and NOW+HIGH get a reminder ──────
-# EventBridge fires every 6 hours; window is [18h, 30h] — centered on 24h with
+# EventBridge fires every 6 hours; window is [18h, 30h], centered on 24h with
 # a 12h spread so every session is caught by at least one tick regardless of
 # when the cron last ran.  Both bounds are env-overridable.
 _REMINDER_WINDOW_LOW_H = float(os.getenv("REMINDER_WINDOW_LOW_H", "18"))   # 18h from now
@@ -56,10 +56,10 @@ class ScheduledConsumer(SQSBaseConsumer):
                 region_name=os.getenv("AWS_REGION", "us-east-1"),
                 config=Config(retries={"max_attempts": 5, "mode": "adaptive"}),
             )
-            logger.info(f"Scheduled consumer initialised — queue: {queue_url}")
+            logger.info(f"Scheduled consumer initialised, queue: {queue_url}")
         else:
             logger.warning(
-                "Scheduled consumer: SQS_SCHEDULED_JOBS_QUEUE_URL is not set — "
+                "Scheduled consumer: SQS_SCHEDULED_JOBS_QUEUE_URL is not set, "
                 "consumer will run in mock mode and EventBridge triggers will be ignored"
             )
 
@@ -85,12 +85,12 @@ class ScheduledConsumer(SQSBaseConsumer):
     def _session_reminders(self) -> bool:
         """Scan APPROVED registrations for sessions starting in the reminder window
         and send each user one reminder email if it has not already been sent."""
-        logger.info("[session-reminders] trigger received — starting scan")
+        logger.info("[session-reminders] trigger received, starting scan")
 
         ses_from = os.getenv("SES_FROM_EMAIL", "")
         if not ses_from:
             logger.warning(
-                "[session-reminders] SES_FROM_EMAIL not set — skipping session reminders. "
+                "[session-reminders] SES_FROM_EMAIL not set, skipping session reminders. "
                 "Set the env var in the ECS worker task definition and redeploy."
             )
             return True  # Not a transient error; nothing to retry
@@ -126,7 +126,7 @@ class ScheduledConsumer(SQSBaseConsumer):
                 failed += 1
 
         logger.info(
-            f"[session-reminders] done — sent={sent} skipped={skipped} failed={failed}"
+            f"[session-reminders] done: sent={sent} skipped={skipped} failed={failed}"
         )
         # Return True even if some individual emails failed so the trigger message
         # is removed.  Per-registration failures are logged; the next tick will
@@ -217,11 +217,11 @@ class ScheduledConsumer(SQSBaseConsumer):
 
         # Atomically mark sent before calling SES so a crash between the two
         # steps causes a duplicate email rather than a missed one (the lesser evil).
-        # The UPDATE returns 0 rows if already set (concurrent worker) — safe to skip.
+        # The UPDATE returns 0 rows if already set (concurrent worker): safe to skip.
         marked = self._mark_reminder_sent(registration_id)
         if not marked:
             logger.info(
-                f"[session-reminders] registration {registration_id} already marked — skipping SES call"
+                f"[session-reminders] registration {registration_id} already marked: skipping SES call"
             )
             return False
 

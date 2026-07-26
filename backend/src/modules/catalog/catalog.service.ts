@@ -113,7 +113,7 @@ export class CatalogService implements OnModuleInit {
     private cache: RedisCacheService,
   ) {}
 
-  /** Catalog YouTube upstream cache — 30m (matches MediaHub / Redis defaults). */
+  /** Catalog YouTube upstream cache: 30m (matches MediaHub / Redis defaults). */
   private readonly youtubeCacheTtlSeconds = 1_800;
 
   private async cachedYouTube<T>(
@@ -328,7 +328,7 @@ export class CatalogService implements OnModuleInit {
   /**
    * Home carousel videos. Prefer ContentHub/MediaHub clips tagged biomarker:HER2+
    * (WordPress-backed when available). Fall back to YouTube playlist sampling only
-   * when the catalog is empty/unavailable — avoids 404 spam from stale playlist IDs.
+   * when the catalog is empty/unavailable, avoids 404 spam from stale playlist IDs.
    */
   async getRandomVideos(count = 6): Promise<PlaylistVideo[]> {
     const n = Number.isFinite(count) && count > 0 ? Math.min(count, 24) : 6;
@@ -414,7 +414,7 @@ export class CatalogService implements OnModuleInit {
     const playlistIds = this.config.get<string[]>('youtube.playlistIds') || [];
     if (!apiKey || playlistIds.length === 0) return [];
 
-    // Do not cache the shuffled sample — only the per-playlist fetch path is noisy;
+    // Do not cache the shuffled sample, only the per-playlist fetch path is noisy;
     // keep behavior as a last-resort fallback for misconfigured catalog.
     const shuffled = [...playlistIds]
       .sort(() => Math.random() - 0.5)

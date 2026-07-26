@@ -1,4 +1,4 @@
-// Chart strokes/fills are literal brand hexes — SVG attributes can't resolve
+// Chart strokes/fills are literal brand hexes, SVG attributes can't resolve
 // the hsl(var(--x)) design tokens. Matches RxTrendChart so survey-analytics
 // charts read as part of the same admin chart family.
 export const TEAL = '#3da4c0'; // primary-500

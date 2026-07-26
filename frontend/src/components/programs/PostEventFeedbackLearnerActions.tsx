@@ -332,7 +332,7 @@ export function PostEventFeedbackLearnerActions(props: {
               </Link>
             </>
           ) : (
-            <p className="text-sm text-gray-700">Thank you—your post-event survey response is recorded.</p>
+            <p className="text-sm text-gray-700">Thank you. Your post-event survey response is recorded.</p>
           )}
         </div>
       ) : null}

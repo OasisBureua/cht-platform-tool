@@ -273,7 +273,7 @@ export class SesEmailService {
   }
   /**
    * User registered for a webinar but did not attend.
-   * Must NOT be called for users who attended — they enter the survey/payment workflow instead.
+   * Must NOT be called for users who attended, they enter the survey/payment workflow instead.
    */
   async sendMissedWebinarEmail(opts: {
     to: string;
@@ -321,7 +321,7 @@ export class SesEmailService {
   }
 
   /**
-   * Attendee completed the webinar — prompt them to fill in the post-event survey.
+   * Attendee completed the webinar: prompt them to fill in the post-event survey.
    * Survey completion drives payment eligibility.
    */
   async sendPostWebinarSurveyEmail(opts: {

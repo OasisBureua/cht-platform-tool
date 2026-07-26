@@ -7,7 +7,7 @@ export interface DiseaseArea {
   /**
    * Legacy free-text tokens used by older client-side regex filtering.
    * Kept for backward compatibility with code that may still consume them.
-   * Prefer `clipTags` (namespaced MediaHub tags) for any new code path —
+   * Prefer `clipTags` (namespaced MediaHub tags) for any new code path, 
    * the backend can filter exactly on those.
    */
   searchTags: string[];
@@ -46,7 +46,7 @@ const DISEASE_AREAS: DiseaseArea[] = [
   {
     slug: 'lung-cancer',
     title: 'Lung Cancer',
-    description: 'Thoracic oncology content launching soon — clinical insights and treatment paradigms.',
+    description: 'Thoracic oncology content launching soon: clinical insights and treatment paradigms.',
     image: '/images/iStock-1917170353-5564763c-6ced-49b2-93ff-6a2261700399.png',
     active: false,
     searchTags: ['lung', 'NSCLC', 'SCLC', 'thoracic', 'pulmonary'],

@@ -53,8 +53,8 @@ aws ecs describe-services --cluster cht-dev-cluster --services cht-dev-backend \
 
 ```
                     Aurora Global Cluster (cht-platform-global)
-                    ├── Primary cluster (us-east-1) — WRITER (db.t4g.medium)
-                    └── Secondary cluster (us-east-2) — READER (db.t4g.medium)
+                    ├── Primary cluster (us-east-1): WRITER (db.t4g.medium)
+                    └── Secondary cluster (us-east-2): READER (db.t4g.medium)
 
 Primary ECS/worker  → writer endpoint (Secrets Manager, us-east-1)
 DR ECS/worker       → reader endpoint (Secrets Manager, us-east-2), run_db_migrations=false
@@ -68,7 +68,7 @@ DR ECS/worker       → reader endpoint (Secrets Manager, us-east-2), run_db_mig
 
 ## Two-week plan
 
-### Week 1 — Design, Terraform, empty Aurora
+### Week 1: Design, Terraform, empty Aurora
 
 | Day | Work |
 |-----|------|
@@ -81,7 +81,7 @@ DR ECS/worker       → reader endpoint (Secrets Manager, us-east-2), run_db_mig
 
 **Week 1 exit criteria:** Empty Aurora clusters exist; secrets documented; `terraform plan` clean; dev unchanged and healthy.
 
-### Week 2 — Migration, cutover, validation
+### Week 2: Migration, cutover, validation
 
 | Day | Work |
 |-----|------|
@@ -157,8 +157,8 @@ Choose before Week 1 Day 3 implementation details.
 
 ## Smoke tests (post-cutover)
 
-- [ ] `GET https://testapp.communityhealth.media/health/ready` — database up
-- [ ] `GET /actuator/info` — region us-east-1, auth cognito
+- [ ] `GET https://testapp.communityhealth.media/health/ready`: database up
+- [ ] `GET /actuator/info`: region us-east-1, auth cognito
 - [ ] Login (email + Cognito OAuth)
 - [ ] `GET /api/auth/me` with session
 - [ ] Catalog / webinars list (read)
@@ -198,8 +198,8 @@ Keep RDS snapshot until Aurora is validated for **at least 48 hours**.
 
 - [Aurora Global Database](https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/aurora-global-database.html)
 - [Aurora pricing](https://aws.amazon.com/rds/aurora/pricing/)
-- `docs/runbooks/multi-region-active-passive-us-east-2.md` — traffic DR (CloudFront, ECS)
-- `infrastructure/terraform/environments/variables/platform.tfvars` — current RDS sizing
+- `docs/runbooks/multi-region-active-passive-us-east-2.md`: traffic DR (CloudFront, ECS)
+- `infrastructure/terraform/environments/variables/platform.tfvars`: current RDS sizing
 
 ---
 

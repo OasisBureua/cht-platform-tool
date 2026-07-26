@@ -14,8 +14,8 @@ import type { CacheClearScope } from '../../cache/cache-keys';
  * Internal cache invalidation for sync jobs and ops (see docs/runbooks/cache-sync-contract.md).
  *
  * POST /internal/cache/clear?scope=catalog|contenthub|all&cacheKey=<INTERNAL_CACHE_SECRET>
- * POST /internal/cache/clear/all?cacheKey=<INTERNAL_CACHE_SECRET>  — all namespaces
- * POST /internal/cache/catalog/clear?cacheKey=...  — legacy alias (clears all upstream cache)
+ * POST /internal/cache/clear/all?cacheKey=<INTERNAL_CACHE_SECRET> , all namespaces
+ * POST /internal/cache/catalog/clear?cacheKey=... : legacy alias (clears all upstream cache)
  */
 @Controller('internal/cache')
 export class InternalCacheController {
@@ -86,6 +86,6 @@ function parseScope(raw?: string): CacheClearScope {
   if (!scope || scope === 'all') return 'all';
   if (scope === 'catalog' || scope === 'contenthub') return scope;
   throw new BadRequestException(
-    'Invalid scope — use catalog, contenthub, or all',
+    'Invalid scope: use catalog, contenthub, or all',
   );
 }

@@ -12,7 +12,7 @@ const FETCH_PAGE = 100;
 /** Enough for 10k+ posts (ContentHub pages; page size max is 500 upstream). */
 const MAX_FETCH_PAGES = 100;
 
-/** ContentHub seed/test rows — hide probe/smoke posts from admin Content. */
+/** ContentHub seed/test rows: hide probe/smoke posts from admin Content. */
 function isProbeWordPressPost(post: WordPressPostItem): boolean {
   const slug = (post.slug || '').toLowerCase();
   const title = (post.title || '').toLowerCase();

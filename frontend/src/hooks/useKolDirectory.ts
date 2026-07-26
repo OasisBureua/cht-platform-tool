@@ -7,7 +7,7 @@ import { mergePublicKolToEntry } from '../utils/kol-directory-merge';
 export type KolListFilters = {
   /** Server-side search (name, institution, specialty, bio). */
   q?: string;
-  /** Exact institution match — use values from API `institutions` facet. */
+  /** Exact institution match, use values from API `institutions` facet. */
   institution?: string;
   new_only?: boolean;
   /** `public` = marketing site; `app` = in-app CHM Docs */

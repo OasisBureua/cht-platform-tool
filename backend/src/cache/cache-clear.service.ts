@@ -75,7 +75,7 @@ export class CacheClearService {
     return 'header';
   }
 
-  /** @deprecated Use assertCacheClearAuth — kept for callers not yet migrated. */
+  /** @deprecated Use assertCacheClearAuth, kept for callers not yet migrated. */
   assertInternalSecret(
     authorization?: string,
     internalSecret?: string,

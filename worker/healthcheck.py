@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ECS container health check — verify the worker supervisor process is running."""
+"""ECS container health check: verify the worker supervisor process is running."""
 import os
 import sys
 

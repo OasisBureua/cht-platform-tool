@@ -31,11 +31,11 @@ const STEPS = ['Report Type', 'Campaign Details', 'Data Connection', 'Validation
 const PLATFORMS: Platform[] = ['linkedin', 'meta', 'youtube', 'livestream', 'survey'];
 
 const PLATFORM_UPLOAD_DESCRIPTIONS: Record<Platform, string> = {
-  linkedin: 'Campaign Manager export — impressions, video views, dwell time, completions',
-  meta: 'Ads Manager export — impressions, reach, link clicks, CTR, demographics',
-  youtube: 'Studio Analytics export — views, watch time, CTR, engaged views',
-  livestream: 'Event platform export — registrations, attendees, HCP verification rate',
-  survey: 'CHT post-event feedback — responses, practice-change intent, confidence lift',
+  linkedin: 'Campaign Manager export: impressions, video views, dwell time, completions',
+  meta: 'Ads Manager export: impressions, reach, link clicks, CTR, demographics',
+  youtube: 'Studio Analytics export: views, watch time, CTR, engaged views',
+  livestream: 'Event platform export: registrations, attendees, HCP verification rate',
+  survey: 'CHT post-event feedback: responses, practice-change intent, confidence lift',
 };
 
 interface FormState {
@@ -64,7 +64,7 @@ const EMPTY_FORM: FormState = {
   eventDate: '', livestreamUrl: '',
 };
 
-/* lucide chart-no-axes-column — transcribed verbatim (not in the installed lucide version). */
+/* lucide chart-no-axes-column: transcribed verbatim (not in the installed lucide version). */
 function ChartNoAxesColumnIcon({ className }: { className?: string }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -508,7 +508,7 @@ export default function NewReport() {
                               </option>
                               {feedbackSurveys.map((survey) => (
                                 <option key={survey.id} value={survey.id}>
-                                  {survey.program?.title ?? 'Program'} — {survey.title} (
+                                  {survey.program?.title ?? 'Program'}: {survey.title} (
                                   {survey.responseCount ?? 0} responses)
                                 </option>
                               ))}
@@ -579,7 +579,7 @@ export default function NewReport() {
                       <div className="bg-accent/5 px-5 py-3">
                         <p className="mb-1 text-xs font-medium text-accent">Missing metrics:</p>
                         <p className="text-xs text-muted-foreground">
-                          {source.metricsMissing.join(', ')} —{' '}
+                          {source.metricsMissing.join(', ')}, {' '}
                           {source.source === 'Survey'
                             ? 'select a CHT program feedback survey to include these metrics.'
                             : `upload ${source.source} CSV export to include these metrics.`}

@@ -30,7 +30,7 @@ export const validationSchema = Joi.object({
     .valid('true', 'false', '1', '0', '')
     .optional(),
 
-  // Cognito (optional — when set, Cognito replaces GoTrue for auth)
+  // Cognito (optional: when set, Cognito replaces GoTrue for auth)
   COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
   COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_REGION: Joi.string().allow('').optional(),

@@ -2,7 +2,7 @@ locals {
   prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
 }
 
-# GuardDuty detector — one per AWS account/region.
+# GuardDuty detector: one per AWS account/region.
 resource "aws_guardduty_detector" "main" {
   count  = var.enable_detector ? 1 : 0
   enable = true

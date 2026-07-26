@@ -14,7 +14,7 @@ import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
 
-// X/Twitter brand icon was removed from lucide-react in v1.x — local outline SVG.
+// X/Twitter brand icon was removed from lucide-react in v1.x, local outline SVG.
 function IconTwitter({ className }: { className?: string }) {
   return (
     <svg
@@ -32,7 +32,7 @@ function IconTwitter({ className }: { className?: string }) {
   );
 }
 
-// LinkedIn brand icon was removed from lucide-react in v1.x — local outline SVG.
+// LinkedIn brand icon was removed from lucide-react in v1.x, local outline SVG.
 function IconLinkedIn({ className }: { className?: string }) {
   return (
     <svg
@@ -71,9 +71,9 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
   const i = entry.intel;
   const stateName = region.title;
   const institution =
-    entry.institution?.trim() && entry.institution !== '—'
+    entry.institution?.trim() && entry.institution !== '-'
       ? entry.institution
-      : i?.affiliation?.split('·')[0]?.trim() ?? '—';
+      : i?.affiliation?.split('·')[0]?.trim() ?? '-';
 
   return {
     displayName: entry.name,
@@ -81,7 +81,7 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
     stateName,
     institution,
     location: i?.location ?? stateName,
-    affiliation: institution !== '—' ? institution : (i?.affiliation ?? entry.role.split('—')[0]?.trim() ?? ''),
+    affiliation: institution !== '-' ? institution : (i?.affiliation ?? entry.role.split('—')[0]?.trim() ?? ''),
     rosterOnly: i?.rosterOnly ?? false,
     phone: i?.phone,
     linkedInUrl: i?.linkedInUrl,
@@ -144,7 +144,7 @@ export default function KolProfilePage() {
       </div>
 
       <div className="w-full max-w-none">
-        {/* Banner — full viewport width */}
+        {/* Banner: full viewport width */}
         <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 via-brand-900 to-zinc-950 sm:h-48">
           {vm.bannerImageUrl ? (
             <img src={vm.bannerImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />

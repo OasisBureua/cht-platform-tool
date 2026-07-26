@@ -1,5 +1,5 @@
 # Regional WAF for Amazon Cognito user pools (Hosted UI + auth API).
-# Scope must be REGIONAL — not CLOUDFRONT.
+# Scope must be REGIONAL, not CLOUDFRONT.
 locals {
   prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
 }

@@ -13,15 +13,15 @@ export const badgeVariants = cva(
   {
     variants: {
       variant: {
-        /** Teal primary — the platform CTA color. */
+        /** Teal primary: the platform CTA color. */
         default: 'border-transparent bg-primary text-primary-foreground',
-        /** Soft teal tint — "engaged / active / good" states. */
+        /** Soft teal tint: "engaged / active / good" states. */
         teal: 'border-transparent bg-primary/10 text-primary-700 dark:bg-primary/20 dark:text-primary-300',
-        /** Soft orange tint — attribution / lift callouts. */
+        /** Soft orange tint: attribution / lift callouts. */
         orange:
           'border-transparent bg-accent/10 text-accent-700 dark:bg-accent/20 dark:text-accent-300',
         muted: 'border-transparent bg-muted text-muted-foreground',
-        /** Solid orange accent — the pop color, use sparingly. */
+        /** Solid orange accent: the pop color, use sparingly. */
         accent: 'border-transparent bg-accent text-accent-foreground',
         outline: 'border-border text-foreground',
         /** Alias of `teal` kept for existing call sites. */
@@ -52,7 +52,7 @@ Badge.displayName = 'Badge';
 export function DemoBadge({ className }: { className?: string }) {
   return (
     <span
-      title="Representative demo data — MediaHub intel endpoints are not proxied through the CHT backend yet."
+      title="Representative demo data: MediaHub intel endpoints are not proxied through the CHT backend yet."
       className={cn(
         'inline-flex items-center rounded-pill border border-dashed border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground',
         className,

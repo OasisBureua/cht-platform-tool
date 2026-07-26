@@ -463,7 +463,7 @@ module "cloudwatch" {
 }
 
 # ============================================
-# Monitoring - GuardDuty (us-east-2 — DR region compliance)
+# Monitoring - GuardDuty (us-east-2: DR region compliance)
 # ============================================
 module "guardduty" {
   source = "../../modules/monitoring/guardduty"

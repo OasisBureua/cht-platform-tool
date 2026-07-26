@@ -1,4 +1,4 @@
-/** URL `?playlistFocus=` — cohort strips + catalogue browse (`hr` matches home + HR strip.) */
+/** URL `?playlistFocus=`: cohort strips + catalogue browse (`hr` matches home + HR strip.) */
 export type PlaylistFocus = 'her2' | 'hr' | 'her2-low' | 'tnbc' | 'high-risk';
 
 const VALID_FOCUS = new Set<string>(['her2', 'hr', 'her2-low', 'tnbc', 'high-risk']);

@@ -124,7 +124,7 @@ resource "aws_sqs_queue" "cme" {
   }
 }
 
-# Scheduled jobs queue — EventBridge cron rules drop trigger payloads here;
+# Scheduled jobs queue, EventBridge cron rules drop trigger payloads here;
 # the ECS worker's ScheduledConsumer polls and runs the job in-process.
 resource "aws_sqs_queue" "scheduled_jobs_dlq" {
   name                      = "${local.prefix}-scheduled-jobs-dlq"
@@ -145,7 +145,7 @@ resource "aws_sqs_queue" "scheduled_jobs" {
   name                       = "${local.prefix}-scheduled-jobs-queue"
   message_retention_seconds  = 345600 # 4 days
   receive_wait_time_seconds  = 20
-  visibility_timeout_seconds = 900 # 15 min — reminder scan can take time for large cohorts
+  visibility_timeout_seconds = 900 # 15 min: reminder scan can take time for large cohorts
 
   kms_master_key_id                 = var.kms_key_id
   kms_data_key_reuse_period_seconds = 300

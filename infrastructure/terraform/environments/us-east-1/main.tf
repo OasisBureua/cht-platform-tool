@@ -645,7 +645,7 @@ module "ecr_replication" {
 }
 
 # ============================================
-# Monitoring - GuardDuty (us-east-1 — platform environment only)
+# Monitoring - GuardDuty (us-east-1: platform environment only)
 # ============================================
 module "guardduty" {
   source = "../../modules/monitoring/guardduty"
@@ -657,7 +657,7 @@ module "guardduty" {
 }
 
 # ============================================
-# Monitoring - AWS Config (account-level — platform environment only)
+# Monitoring - AWS Config (account-level: platform environment only)
 # ============================================
 module "aws_config" {
   source = "../../modules/monitoring/aws-config"

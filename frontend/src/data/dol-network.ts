@@ -1,7 +1,7 @@
 /** Optional MediaHub / NPPES-style enrichment (mock today; replace with API later). */
 export type KolIntel = {
   npi?: string;
-  /** MediaHub catalogue doctor slug — use when KOL `id` does not match the catalog doctors list */
+  /** MediaHub catalogue doctor slug: use when KOL `id` does not match the catalog doctors list */
   catalogDoctorSlug?: string;
   /** Twitter-style handle, e.g. @NameInstitution */
   handle?: string;
@@ -35,11 +35,11 @@ export type DolEntry = {
   isNew?: boolean;
   /** ISO date when the entry was added; used to auto-expire the "New" badge after 7 days */
   addedAt?: string;
-  /** From MediaHub kol-headshots/<slug>.png — undefined falls back to ui-avatars */
+  /** From MediaHub kol-headshots/<slug>.png: undefined falls back to ui-avatars */
   photoUrl?: string;
   /** From MediaHub kol_group_member count (videos this KOL appears in) */
   shootCount?: number;
-  /** SCRUM-70: curator-marked as featured — pinned to the top of DolNetwork. */
+  /** SCRUM-70: curator-marked as featured: pinned to the top of DolNetwork. */
   featured?: boolean;
   /** SCRUM-70: manual sort weight; lower first, null last. */
   displayOrder?: number | null;
@@ -74,7 +74,7 @@ export const kolStaticEnrichment: DolEntry[] = [
               'Dr. Traina leads the Triple-Negative Breast Cancer program at MSK and is internationally recognized for early-phase trials of novel therapeutics and antibody-drug conjugates.',
             focus: 'TNBC, ADC sequencing, and integration of biomarker-driven trials into community-aligned workflows.',
             chmContext:
-              'No CHM platform engagement recorded yet—webinars, RSVPs, and content activity will appear here when available.',
+              'No CHM platform engagement recorded yet. Webinars, RSVPs, and content activity will appear here when available.',
           },
           awards: ['NCI-funded trial leadership', 'MSK leadership in early-phase breast cancer development'],
           researchHighlights:

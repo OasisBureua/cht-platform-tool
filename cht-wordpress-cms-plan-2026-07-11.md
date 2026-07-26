@@ -60,14 +60,14 @@ This is the end-to-end path from the editorial team publishing a video post on `
 │    modified_gmt: ISO8601                                                    │
 │    permalink: full URL on communityhealth.media                             │
 │    site_url: https://communityhealth.media                                  │
-│    categories: [string] — WordPress category slugs (VERBATIM, includes     │
+│    categories: [string]: WordPress category slugs (VERBATIM, includes     │
 │                p-*/hp-* variants if present)                                │
-│    tags: [string] — WordPress tag slugs                                     │
-│    series: [string] — WordPress series slugs (doctor pairings) [NEW]       │
-│    format: string — "video" or "standard" [NEW]                            │
-│    youtube_video_id: string | null — 11-char YouTube ID [NEW]              │
+│    tags: [string]: WordPress tag slugs                                     │
+│    series: [string]: WordPress series slugs (doctor pairings) [NEW]       │
+│    format: string: "video" or "standard" [NEW]                            │
+│    youtube_video_id: string | null: 11-char YouTube ID [NEW]              │
 │                       extracted from post_content via PHP regex             │
-│    featured_media_url: string | null — thumbnail URL [NEW]                  │
+│    featured_media_url: string | null: thumbnail URL [NEW]                  │
 │                                                                            │
 │  Signs body: X-CHT-Signature: sha256=<HMAC of body using shared secret>    │
 │  POSTs fire-and-forget (blocking=false) to:                                 │
@@ -109,7 +109,7 @@ This is the end-to-end path from the editorial team publishing a video post on `
 │        raw_payload (JSONB)                                                 │
 │      )                                                                     │
 │    - UNIQUE constraint on (post_id, modified_gmt) provides idempotency    │
-│    - Deleted events: same insert, event='deleted' — endpoint filters these│
+│    - Deleted events: same insert, event='deleted': endpoint filters these│
 │                                                                            │
 │  All events land, including format=standard (livestream announcements).    │
 │  format=standard rows just never join to a Clip because they lack           │
@@ -163,7 +163,7 @@ This is the end-to-end path from the editorial team publishing a video post on `
 │  STAGE 7: CHT RENDERS THE PAGE                                             │
 ├────────────────────────────────────────────────────────────────────────────┤
 │                                                                            │
-│  Landing page (/catalog/:diseaseSlug) — e.g., /catalog/her2:               │
+│  Landing page (/catalog/:diseaseSlug): e.g., /catalog/her2:               │
 │    • Backend filters clips where wordpress.categories includes 'her2'     │
 │    • Each card renders from:                                              │
 │        clip.title, clip.thumbnail_url, clip.ai_summary (truncated),        │
@@ -193,7 +193,7 @@ This is the end-to-end path from the editorial team publishing a video post on `
 - **CHT clones the WordPress structural pattern.** YouTube iframe embed for the video hero, ContentHub metadata (tags, AI summary, engagement counts, doctors, series) overlaid on the page. No self-hosted video. No custom player.
 - **One HTTP call to render a page.** ContentHub does the WP↔Clip join server-side. CHT's `/api/public/clips` response carries a `wordpress: {...} | null` field inline. No separate WordPress endpoint for the primary catalog path, no client-side join.
 - **Store WordPress data verbatim.** Category slugs, tag slugs, series slugs pass through untouched. No normalization, stripping, or mapping. CHT decides how to render at display time.
-- **Cache what ContentHub produces.** Tags, AI summaries, engagement stats, doctor names cached client-side with 5-minute TTL. YouTube handles video CDN and playback via its iframe — no CHT proxying.
+- **Cache what ContentHub produces.** Tags, AI summaries, engagement stats, doctor names cached client-side with 5-minute TTL. YouTube handles video CDN and playback via its iframe, no CHT proxying.
 
 ---
 
@@ -207,7 +207,7 @@ Every video post embeds exactly one YouTube video via a `<figure class="wp-block
 
 - 98/100 posts had exactly 1 YouTube ID
 - 0/100 had multiple YouTube IDs (clean 1:1)
-- 2/100 that failed extraction have `format=standard` — livestream registration pages (Jotform embeds)
+- 2/100 that failed extraction have `format=standard`: livestream registration pages (Jotform embeds)
 
 **Extraction regex** (validated against real data):
 ```
@@ -249,11 +249,11 @@ Implication: mu-plugin needs to send `series` in the payload. ContentHub stores 
 | ...more... | | | |
 
 **`p-*` and `hp-*` prefixes observed but unresolved.**
-- `hp-*` (5 categories, all with `count=0`) — appears to be a historical, unused scheme.
+- `hp-*` (5 categories, all with `count=0`): appears to be a historical, unused scheme.
 - `p-*` variants co-occur with plain versions on every post sampled. Every `her2` post is ALSO tagged `p-her2`. Category landing pages exist for both (`/category/her2/` and `/category/p-her2/`) but render identically.
 - Homepage HTML contains `category-p-hr` CSS class markers, suggesting `p-*` powers some homepage feed logic.
 
-**Design decision: don't resolve or normalize.** Store all slugs verbatim. CHT decides how to render. If the editorial team later clarifies what `p-*` means, that's a rendering-side change on CHT — no ContentHub schema or data changes required.
+**Design decision: don't resolve or normalize.** Store all slugs verbatim. CHT decides how to render. If the editorial team later clarifies what `p-*` means, that's a rendering-side change on CHT: no ContentHub schema or data changes required.
 
 ### F4: WordPress `tags` taxonomy
 
@@ -265,16 +265,16 @@ Higher granularity than categories. Some overlap with categories at the top (`he
 
 - **500 total posts** on `communityhealth.media`
 - Compare: 3,158 clips on ContentHub, of which 952 are `chm-official` channel
-- WordPress covers roughly half of chm-official. The other half exists on YouTube but not on WordPress — those clips do NOT appear on CHT.
+- WordPress covers roughly half of chm-official. The other half exists on YouTube but not on WordPress, those clips do NOT appear on CHT.
 
 ### F6: CHT's URL scheme (extracted from CHT SPA bundle)
 
 CHT's client-side router (React Router) defines these paths for catalog rendering:
 
-- `/catalog` — top-level catalog page
-- `/catalog/:diseaseSlug` — biomarker/disease-state landing (e.g., `/catalog/her2`)
-- `/catalog/clip/:id` — clip detail page
-- `/catalog/playlist/:playlistId` — playlist page
+- `/catalog`: top-level catalog page
+- `/catalog/:diseaseSlug`: biomarker/disease-state landing (e.g., `/catalog/her2`)
+- `/catalog/clip/:id`: clip detail page
+- `/catalog/playlist/:playlistId`: playlist page
 
 **`:diseaseSlug` matches WordPress category slug directly.** So `/catalog/her2` filters to clips whose `wordpress.categories` contains `her2`. No renaming or mapping needed on CHT's side.
 
@@ -284,9 +284,9 @@ CHT's client-side router (React Router) defines these paths for catalog renderin
 
 ### Q1. What does the `p-` category prefix mean?
 
-**Best guess from data:** promoted / publisher / homepage-featured. `p-*` categories co-occur with plain versions on every video post. `hp-*` (Home Page) categories are all empty — likely a historical scheme that got replaced by `p-*`.
+**Best guess from data:** promoted / publisher / homepage-featured. `p-*` categories co-occur with plain versions on every video post. `hp-*` (Home Page) categories are all empty, likely a historical scheme that got replaced by `p-*`.
 
-**Decision:** don't resolve. Store slugs verbatim. If the editorial team later clarifies what `p-*` means, that's a rendering-side change on CHT — no ContentHub schema change needed.
+**Decision:** don't resolve. Store slugs verbatim. If the editorial team later clarifies what `p-*` means, that's a rendering-side change on CHT: no ContentHub schema change needed.
 
 ### Q2. CHT landing page URL scheme?
 
@@ -309,7 +309,7 @@ If CHT later needs webinar/livestream URLs, add a separate `/api/public/wordpres
 
 **In the response**, put WP series slugs in `wordpress.series` directly. CHT renders them.
 
-ContentHub's `kol_groups` table continues to exist for internal KOL-network features (accessed via `/api/public/kols` — a separate endpoint CHT already uses). WordPress series and ContentHub kol_groups are two independent data models that happen to overlap conceptually. No backfill or reconciliation needed.
+ContentHub's `kol_groups` table continues to exist for internal KOL-network features (accessed via `/api/public/kols`: a separate endpoint CHT already uses). WordPress series and ContentHub kol_groups are two independent data models that happen to overlap conceptually. No backfill or reconciliation needed.
 
 ### Q5. Cache TTL?
 
@@ -465,11 +465,11 @@ LEFT JOIN LATERAL against `wordpress_events` matched on `youtube_video_id`. Only
 
 **C. New query param:**
 
-`has_wordpress=true` — server-side filter to only clips with a matching WP post.
+`has_wordpress=true`: server-side filter to only clips with a matching WP post.
 
 ### 5. Categories helper endpoint (MVP)
 
-`GET /api/public/wordpress/categories` — returns the list of currently-live WP category slugs with post counts. CHT uses this to render biomarker navigation dynamically. Read from `wordpress_events` where `event != 'deleted'`.
+`GET /api/public/wordpress/categories`: returns the list of currently-live WP category slugs with post counts. CHT uses this to render biomarker navigation dynamically. Read from `wordpress_events` where `event != 'deleted'`.
 
 Ships with the primary endpoint change. Without it, CHT would have to derive the category list from the clips response, which only surfaces categories that have at least one visible clip (fragile for empty landing pages).
 
@@ -499,18 +499,18 @@ Change CHT's environment variable from `mediahub.communityhealth.media/api/publi
 GET /api/public/clips?has_wordpress=true&limit=50
 ```
 
-Or filter client-side on `wordpress != null` — same effect.
+Or filter client-side on `wordpress != null`: same effect.
 
 ### 3. Landing pages driven by WP category slug
 
 `/catalog/:diseaseSlug` renders clips where `wordpress.categories.includes(diseaseSlug)`.
 
-Example: `/catalog/her2` → shows clips where `wordpress.categories` contains `her2`. Since the editorial team also tags with `p-her2`, the CHT UI can decide whether to match `/catalog/p-her2` as a separate route or fold it into `/catalog/her2` — that's CHT's decision, no ContentHub work.
+Example: `/catalog/her2` → shows clips where `wordpress.categories` contains `her2`. Since the editorial team also tags with `p-her2`, the CHT UI can decide whether to match `/catalog/p-her2` as a separate route or fold it into `/catalog/her2`: that's CHT's decision, no ContentHub work.
 
 ### 4. Clip detail page
 
 `/catalog/clip/:id` renders:
-- Hero: `<iframe src={clip.youtube_url}>` — YouTube iframe embed
+- Hero: `<iframe src={clip.youtube_url}>`: YouTube iframe embed
 - Summary: `clip.ai_summary`
 - Tags: `clip.tags` as pills
 - Doctors: `clip.doctors`
@@ -564,11 +564,11 @@ Any layer of this can revert independently:
 - **Endpoint change breaks CHT**: CHT flips `CONTENTHUB_BASE_URL` back to MediaHub (both continue serving during transition).
 - **mu-plugin fails on WordPress**: plugin has defensive no-op fallback if constants undefined; revert file to previous version, no site breakage.
 - **`wordpress` field breaks a CHT deserializer**: CHT ignores the field (JSON parsers pass unknown fields; TypeScript can mark optional).
-- **Category slug variant confusion (`p-*` etc.)**: since we're storing verbatim, "fix" is a CHT rendering change — no data migration.
+- **Category slug variant confusion (`p-*` etc.)**: since we're storing verbatim, "fix" is a CHT rendering change, no data migration.
 
 ---
 
-## Appendix A: Worked example — one clip on the wire
+## Appendix A: Worked example: one clip on the wire
 
 **CHT calls:**
 ```

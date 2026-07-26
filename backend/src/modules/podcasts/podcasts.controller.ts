@@ -27,7 +27,7 @@ export type PodcastEpisodeDto = {
 export class PodcastsController {
   constructor(private readonly catalogService: CatalogService) {}
 
-  /** GET /api/podcasts — public show list (no YouTube details). */
+  /** GET /api/podcasts, public show list (no YouTube details). */
   @Get()
   listShows() {
     return listPodcastShowConfigs().map(({ id, title }) => ({ id, title }));

@@ -1,9 +1,9 @@
-# Content Hub — Campaign & Report API Contract
+# Content Hub: Campaign & Report API Contract
 
 **Status:** Draft (for Hub implementation + CHT proxy)  
 **Audience:** Content Hub backend, CHT platform backend, CHT admin UI  
 **UI source:** `frontend/src/pages/admin/content-hub/lib/store.ts` + `types.ts`  
-**Related:** KOL producer API (`GET /api/public/kols*`) — separate surface, same Hub service
+**Related:** KOL producer API (`GET /api/public/kols*`): separate surface, same Hub service
 
 ---
 
@@ -14,7 +14,7 @@ CHT Admin UI (/admin/content-hub)
     → CHT NestJS  /api/admin/content-hub/*
         ├─→ Content Hub  (pull campaign + platform snapshots at report time)
         ├─→ Content Hub  POST .../report/generate  (or Hub builds from its DB)
-        └─→ HubSpot API  (CHT only — on manual HubSpot sync, not every report view)
+        └─→ HubSpot API  (CHT only: on manual HubSpot sync, not every report view)
 
 Content Hub (background + storage)
     ├─ Daily cron: resync platform data per active campaign
@@ -36,9 +36,9 @@ Content Hub (background + storage)
 | LinkedIn / Meta / YouTube / livestream / survey data | **Content Hub** | Stored as normalized snapshots per campaign + platform |
 | Platform connector credentials (non-HubSpot) | **Content Hub** | Encrypted in Hub secrets / integration config |
 | Daily platform resync | **Content Hub** | Scheduled job (e.g. 02:00 UTC) for campaigns in `draft` … `final` |
-| Manual “pull fresh data” | **Content Hub** | Admin action — `POST .../platforms/{platform}/sync` or `sync-all` (proxied via CHT). **Not** implicit on every report view. |
+| Manual “pull fresh data” | **Content Hub** | Admin action: `POST .../platforms/{platform}/sync` or `sync-all` (proxied via CHT). **Not** implicit on every report view. |
 | Report generation (orchestration) | **CHT** | On `GET .../report`, CHT **pulls** latest campaign + snapshots **from Hub**, then asks Hub to build (or builds from pulled payload) |
-| Report generation (logic) | **Content Hub** | `reports.ts` port — operates on snapshots Hub already has |
+| Report generation (logic) | **Content Hub** | `reports.ts` port: operates on snapshots Hub already has |
 | HubSpot token + API calls | **CHT** | `HUBSPOT_ACCESS_TOKEN`, extend `HubSpotService` |
 | HubSpot snapshot on campaign | **CHT writes → Hub stores** | After CHT pull, `PATCH` campaign `hubspotSyncedAt` + `hubspotRawData` |
 | `hubspotCampaignId` | **Content Hub** | Campaign metadata |
@@ -77,7 +77,7 @@ After Hub writes that affect read models, Hub (or CHT after proxy POST) should t
 | Prod | `https://contenthub.communityhealth.media/api/admin` | `https://<prod-domain>/api/admin/content-hub` |
 
 JSON bodies unless noted. Timestamps ISO-8601 UTC.  
-IDs: UI uses `number` today; Hub may use `bigint` or UUID — **proxy normalizes to `number` or migrate UI to `string`**. Recommend Hub `id` as integer serial for minimal UI churn.
+IDs: UI uses `number` today; Hub may use `bigint` or UUID: **proxy normalizes to `number` or migrate UI to `string`**. Recommend Hub `id` as integer serial for minimal UI churn.
 
 ---
 
@@ -97,7 +97,7 @@ type ReportType = 'analytics' | 'executive';
 
 List all campaigns (newest first).
 
-**Query:** `q` (optional) — search name, sponsor, program  
+**Query:** `q` (optional): search name, sponsor, program  
 **Response:** `200`
 
 ```json
@@ -206,7 +206,7 @@ interface CampaignPlatformSnapshot {
   nextSyncAt: string | null;       // set by daily scheduler
   rowCount: number | null;         // normalized metric rows
   error: string | null;
-  // raw: stored server-side only — not returned in list APIs
+  // raw: stored server-side only: not returned in list APIs
 }
 ```
 
@@ -237,7 +237,7 @@ List sync status per platform for a campaign (replaces UI’s upload list over t
 
 ### `POST /campaigns/{id}/platforms/{platform}/sync`
 
-**On-demand pull** — admin clicks “Sync” / “Refresh data” on campaign detail.
+**On-demand pull**: admin clicks “Sync” / “Refresh data” on campaign detail.
 
 **Response:** `202` (async) or `200` (sync)
 
@@ -258,7 +258,7 @@ Hub worker calls the platform connector (API or file drop), normalizes rows, ups
 
 ### `POST /campaigns/{id}/sync-all`
 
-Refresh all platforms on the campaign (+ optional `?includeHubspot=false` — HubSpot triggered separately via CHT).
+Refresh all platforms on the campaign (+ optional `?includeHubspot=false`: HubSpot triggered separately via CHT).
 
 **CHT proxy:** `POST /api/admin/content-hub/campaigns/:id/sync-all`
 
@@ -274,7 +274,7 @@ No CHT involvement in daily platform sync.
 
 ---
 
-## CSV uploads (bootstrap / fallback — Content Hub)
+## CSV uploads (bootstrap / fallback: Content Hub)
 
 Manual CSV upload remains a **v1 bootstrap** when a connector is not wired yet. Long-term, prefer connector sync above.
 
@@ -297,7 +297,7 @@ Manual CSV upload remains a **v1 bootstrap** when a connector is not wired yet. 
 }
 ```
 
-**Note:** Do not return parsed `rows` in list — storage stays server-side.
+**Note:** Do not return parsed `rows` in list: storage stays server-side.
 
 **Maps from:** `store.getCsvData(id)`  
 **CHT proxy:** `GET /api/admin/content-hub/campaigns/:id/uploads`
@@ -306,7 +306,7 @@ Manual CSV upload remains a **v1 bootstrap** when a connector is not wired yet. 
 
 ### `POST /campaigns/{id}/uploads`
 
-**Option A — JSON (matches current UI):**
+**Option A: JSON (matches current UI):**
 
 ```json
 {
@@ -316,7 +316,7 @@ Manual CSV upload remains a **v1 bootstrap** when a connector is not wired yet. 
 }
 ```
 
-**Option B — `multipart/form-data`** with `file` + `platform` (preferred long-term).
+**Option B: `multipart/form-data`** with `file` + `platform` (preferred long-term).
 
 **Response:** `201` CsvUpload (same shape as list item)
 
@@ -349,14 +349,14 @@ interface DataValidation {
 }
 ```
 
-**Maps from:** `store.getDataValidation(id)` — logic in `reports.buildDataValidation()`  
+**Maps from:** `store.getDataValidation(id)`: logic in `reports.buildDataValidation()`  
 **CHT proxy:** `GET /api/admin/content-hub/campaigns/:id/validation`
 
 **Implementation:** **Content Hub** computes validation from `campaign_platform_snapshots` + `hubspot_raw_data` on campaign. CHT proxies; for `hubspotConnected`, CHT may inject `HubSpotService.isConfigured()` into the response or Hub reads a boolean set on last HubSpot PATCH.
 
 ---
 
-## HubSpot (CHT only — not on Content Hub)
+## HubSpot (CHT only: not on Content Hub)
 
 HubSpot is platform-owned. Token lives in **`HUBSPOT_ACCESS_TOKEN`** (Terraform / Secrets Manager).  
 Extend `HubSpotService` for campaign-level marketing analytics pulls (beyond contact upsert).
@@ -374,7 +374,7 @@ interface HubspotStatus {
 }
 ```
 
-**Maps from:** `store.getHubspotStatus()` — **do not** read token from Content Hub.
+**Maps from:** `store.getHubspotStatus()`: **do not** read token from Content Hub.
 
 ---
 
@@ -401,7 +401,7 @@ interface HubspotStatus {
 ### Integrations UI
 
 - **HubSpot:** status from CHT (`GET .../hubspot/status`); sync button calls CHT `POST .../hubspot/sync` → CHT PATCHes Hub campaign.
-- **Other platforms:** configured on **Content Hub** (`GET/PATCH /integrations` on Hub, proxied via CHT). Show last sync time + “Refresh now” per platform — no CSV-only messaging once connectors ship.
+- **Other platforms:** configured on **Content Hub** (`GET/PATCH /integrations` on Hub, proxied via CHT). Show last sync time + “Refresh now” per platform, no CSV-only messaging once connectors ship.
 
 ---
 
@@ -442,7 +442,7 @@ Admin UI  GET /api/admin/content-hub/campaigns/:id/report
         4. Return AnalyticsReport JSON to UI
 ```
 
-CHT may cache list endpoints (`GET /campaigns`) briefly in Redis; **do not** cache full report payloads across sync boundaries — always pull from Hub when generating.
+CHT may cache list endpoints (`GET /campaigns`) briefly in Redis; **do not** cache full report payloads across sync boundaries, always pull from Hub when generating.
 
 HubSpot is included via `hubspot_raw_data` already on the campaign (last CHT sync). Report generation does **not** re-call HubSpot unless admin ran **HubSpot sync** first.
 
@@ -507,9 +507,9 @@ Body: `{ name, type, description }`
 
 ### Platform connectors (Content Hub)
 
-`GET /integrations` — connection status per non-HubSpot platform (credentials configured, last global test).
+`GET /integrations`: connection status per non-HubSpot platform (credentials configured, last global test).
 
-`PATCH /integrations` — update connector config (API keys, ad account ids, etc.). **Stored only on Hub.**
+`PATCH /integrations`: update connector config (API keys, ad account ids, etc.). **Stored only on Hub.**
 
 **CHT proxy:** `GET/PATCH /api/admin/content-hub/integrations`
 
@@ -531,10 +531,10 @@ HubSpot status: `GET /api/admin/content-hub/integrations/hubspot/status` (CHT).
 
 ## CHT module checklist
 
-1. `ContentHubReportsService` — pull from Hub + orchestrate report generation  
-2. `AdminContentHubController` — `@Controller('admin/content-hub')`, `@Roles(ADMIN)`  
+1. `ContentHubReportsService`: pull from Hub + orchestrate report generation  
+2. `AdminContentHubController`: `@Controller('admin/content-hub')`, `@Roles(ADMIN)`  
 3. **Report methods:** `GET .../report` → fetch Hub campaign + snapshots → `POST .../report/generate` on Hub → return JSON  
-4. **HubSpot only on CHT** — status + `POST .../hubspot/sync` → PATCH Hub campaign  
+4. **HubSpot only on CHT**: status + `POST .../hubspot/sync` → PATCH Hub campaign  
 5. **Proxy** CRUD, platform-data, sync-all, integrations (pass-through to Hub)  
 6. Redis: cache campaign **lists** only; invalidate `scope=contenthub` after Hub writes / HubSpot PATCH  
 7. Frontend: replace `store.ts`; sync buttons → Hub sync endpoints; reports → CHT GET (which pulls Hub)
@@ -558,7 +558,7 @@ HubSpot status: `GET /api/admin/content-hub/integrations/hubspot/status` (CHT).
 
 ## Implementation phases
 
-### Phase 1 — MVP (unblock UI + data model)
+### Phase 1: MVP (unblock UI + data model)
 
 **Content Hub:**
 - [ ] CRUD campaigns  
@@ -571,7 +571,7 @@ HubSpot status: `GET /api/admin/content-hub/integrations/hubspot/status` (CHT).
 - [ ] HubSpot status + sync → PATCH Hub campaign  
 - [ ] Swap `store.ts`  
 
-### Phase 2 — Sync engine (Content Hub)
+### Phase 2: Sync engine (Content Hub)
 
 **Content Hub:**
 - [ ] Per-platform connectors (start with one: YouTube or LinkedIn)  
@@ -582,7 +582,7 @@ HubSpot status: `GET /api/admin/content-hub/integrations/hubspot/status` (CHT).
 **CHT:**
 - [ ] Extend `HubSpotService` for campaign analytics pull  
 
-### Phase 3 — Polish
+### Phase 3: Polish
 
 - [ ] Templates CRUD  
 - [ ] AI insights (Hub)  
@@ -617,4 +617,4 @@ Hooks in `lib/hooks.ts` unchanged.
 }
 ```
 
-NestJS standard — UI already handles axios errors.
+NestJS standard: UI already handles axios errors.

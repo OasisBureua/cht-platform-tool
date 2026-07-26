@@ -225,7 +225,7 @@ export default function ClipDetail() {
           </div>
         </div>
 
-        {/* Tags — brand: prefixed tags are internal and not shown to users */}
+        {/* Tags: brand: prefixed tags are internal and not shown to users */}
         {(clip.tags?.filter((t) => !String(t).startsWith('brand:')).length > 0 ||
           (wp?.categories?.length ?? 0) > 0) && (
           <div className="flex flex-wrap gap-2">
@@ -249,7 +249,7 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {/* Summary — catalog description only shown when summary is absent */}
+        {/* Summary: catalog description only shown when summary is absent */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Summary</h2>
           {aiSummary ? (

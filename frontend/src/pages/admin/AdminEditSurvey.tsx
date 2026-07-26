@@ -131,7 +131,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
               {' '}
               Current schema version: <strong>v{survey.schemaVersion}</strong>
               {survey.responseCount
-                ? ' — saving question changes bumps the version; new responses are stamped with it.'
+                ? ': saving question changes bumps the version; new responses are stamped with it.'
                 : null}
             </>
           ) : null}

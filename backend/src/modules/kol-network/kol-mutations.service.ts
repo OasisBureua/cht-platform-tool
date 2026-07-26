@@ -59,11 +59,11 @@ export interface KolHeadshotPresignResult {
 
 /**
  * Proxies KOL admin writes to Content Hub:
- * - PATCH /api/admin/kols/{slug}     — field edits
+ * - PATCH /api/admin/kols/{slug}    : field edits
  * - POST  /api/admin/kols/{slug}/refresh
  * - POST  /api/admin/kols/{slug}/headshot/presign
  *
- * All three are cache-invalidating on CHT — the controller calls
+ * All three are cache-invalidating on CHT, the controller calls
  * `CacheClearService.clear('contenthub')` after a successful response.
  */
 @Injectable()

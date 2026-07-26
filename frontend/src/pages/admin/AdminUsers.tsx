@@ -183,7 +183,7 @@ function UserRow({
               <Trash2 className="h-4 w-4" />
             </button>
           ) : (
-            <span className="text-xs text-gray-400">—</span>
+            <span className="text-xs text-gray-400">, </span>
           )}
         </div>
       </td>

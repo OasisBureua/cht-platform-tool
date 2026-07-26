@@ -45,7 +45,7 @@ interface BillLoginResponse {
   trusted?: boolean;
 }
 
-/** GET /v3/login/session — https://developer.bill.com/reference/getsessioninfo */
+/** GET /v3/login/session, https://developer.bill.com/reference/getsessioninfo */
 interface BillSessionInfoResponse {
   organizationId?: string;
   userId?: string;

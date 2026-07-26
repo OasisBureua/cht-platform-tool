@@ -8,7 +8,7 @@ export function SurveyAnswersTable(props: {
   const { answers, questionsSchema, compact } = props;
   const rows = surveyAnswersToRows(answers, questionsSchema);
   if (rows.length === 0) {
-    return <span className="text-gray-500">—</span>;
+    return <span className="text-gray-500">, </span>;
   }
   return (
     <table

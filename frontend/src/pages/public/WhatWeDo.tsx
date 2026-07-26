@@ -18,7 +18,7 @@ const AUDIENCES = [
   {
     title: 'Physicians & healthcare professionals',
     body:
-      'CHM provides access to trusted knowledge, expert perspectives, and meaningful peer discussions that support continuous professional development and informed clinical practice.',
+      'CHM provides access to trusted knowledge, expert perspectives, and peer discussion that support continuous professional development and informed clinical practice.',
     icon: <Stethoscope className="h-5 w-5" />,
   },
   {
@@ -75,7 +75,7 @@ export default function WhatWeDo() {
                 </h1>
                 <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
                   Community Health Media delivers expert-led medical communications: content, distribution, and
-                  engagement across the healthcare ecosystem. Our public platform helps clinicians discover
+                  engagement across healthcare. Our public platform helps clinicians discover
                   treatment-specific material, learn through short-form video, and explore curated collections built
                   around disease areas and subtypes.
                 </p>

@@ -120,4 +120,4 @@ aws ecs execute-command \
 
 echo ""
 echo "✅ DMS schema repair complete (_prisma_migrations + uniques + enum types + column casts)."
-echo "   Refresh admin dashboard — user counts and payments should load."
+echo "   Refresh admin dashboard: user counts and payments should load."

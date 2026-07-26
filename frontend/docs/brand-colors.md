@@ -1,23 +1,23 @@
-# CHM brand colors — where they show up
+# CHM brand colors: where they show up
 
 Official hex values live in `tailwind.config.js` under `theme.extend.colors.chm` and as CSS variables in `src/index.css` (`:root`).
 
 | Token | Hex | Role |
 |--------|-----|------|
-| `chm.surface` | `#f2f4f8` | Base White — app canvas |
-| `chm.knowledge` | `#3da4c0` | Knowledge Blue — secondary CTAs, learning emphasis |
-| `chm.expertise` | `#3a839b` | Expertise Blue — depth, hovers, icon accents |
-| `chm.sharing` | `#ff9e40` | Sharing Yellow — eyebrows, highlights on dark imagery |
-| `chm.precision` | `#485165` | Precision Black — headings, strong body |
-| `chm.connection` | `#e7764f` | Connection Orange — energy CTAs, badges, survey accents |
-| `chm.discovery` | `#79869a` | Discovery Gray — labels, supporting text |
+| `chm.surface` | `#f2f4f8` | Base White: app canvas |
+| `chm.knowledge` | `#3da4c0` | Knowledge Blue: secondary CTAs, learning emphasis |
+| `chm.expertise` | `#3a839b` | Expertise Blue: depth, hovers, icon accents |
+| `chm.sharing` | `#ff9e40` | Sharing Yellow: eyebrows, highlights on dark imagery |
+| `chm.precision` | `#485165` | Precision Black: headings, strong body |
+| `chm.connection` | `#e7764f` | Connection Orange: energy CTAs, badges, survey accents |
+| `chm.discovery` | `#79869a` | Discovery Gray: labels, supporting text |
 
 The legacy `accent` scale is still used in places while the UI migrates; new work should prefer `chm-*` for brand-semantic spots.
 
 ## App shell
 
-- **`bg-chm-surface`** — `Layout.tsx`, `PublicLayout.tsx` main backgrounds (Base White in light mode).
-- **Body text** — `index.css` sets `color: var(--chm-precision-black)` in light theme (Precision Black).
+- **`bg-chm-surface`**: `Layout.tsx`, `PublicLayout.tsx` main backgrounds (Base White in light mode).
+- **Body text**: `index.css` sets `color: var(--chm-precision-black)` in light theme (Precision Black).
 
 ## Dashboard (`src/pages/Dashboard.tsx`)
 
@@ -27,7 +27,7 @@ The legacy `accent` scale is still used in places while the UI migrates; new wor
   - Subtitle copy: **`text-chm-discovery`**.
 - **Next LIVE card**
   - When the next session has **`imageUrl`**: full-bleed cover `object-cover`, dark gradients for readability; title/meta in white; “Tap to open session” uses **`text-chm-sharing`** on imagery.
-  - **“Next LIVE” pill**: frosted glass — **`border-white/80`**, **`bg-white/70`**, **`backdrop-blur-md`**, label + icon **`text-chm-knowledge`** (Knowledge Blue). For Sharing Yellow instead, swap those classes to **`text-chm-sharing`**.
+  - **“Next LIVE” pill**: frosted glass: **`border-white/80`**, **`bg-white/70`**, **`backdrop-blur-md`**, label + icon **`text-chm-knowledge`** (Knowledge Blue). For Sharing Yellow instead, swap those classes to **`text-chm-sharing`**.
   - Chevron (no image): **`text-chm-expertise`**, hover **`text-chm-knowledge`**.
   - Empty / no image: soft gradient (accent/amber) fallback; headline **`text-chm-precision`**, supporting **`text-chm-discovery`**.
 - **Earnings & Activity tiles**

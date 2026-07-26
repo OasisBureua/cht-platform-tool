@@ -43,7 +43,7 @@ variable "rds_instance_class" {
 }
 
 variable "rds_engine_version" {
-  description = "PostgreSQL engine version — must match or exceed the version currently running in AWS (downgrades are not allowed)"
+  description = "PostgreSQL engine version: must match or exceed the version currently running in AWS (downgrades are not allowed)"
   type        = string
   default     = "15.17"
 }
@@ -314,7 +314,7 @@ variable "zoom_webhook_secret" {
 }
 
 variable "zoom_sdk_key" {
-  description = "Zoom Meeting SDK Client ID / SDK Key (in-browser join — separate from Server-to-Server OAuth)"
+  description = "Zoom Meeting SDK Client ID / SDK Key (in-browser join: separate from Server-to-Server OAuth)"
   type        = string
   sensitive   = true
   default     = ""
@@ -471,7 +471,7 @@ variable "enable_cognito_pools" {
 }
 
 variable "cognito_domain_prefix" {
-  description = "Cognito hosted UI domain prefix — globally unique across all AWS accounts (e.g. chm-platform)"
+  description = "Cognito hosted UI domain prefix: globally unique across all AWS accounts (e.g. chm-platform)"
   type        = string
   default     = ""
 }

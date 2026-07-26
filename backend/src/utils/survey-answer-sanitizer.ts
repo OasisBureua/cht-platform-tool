@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
-/** Keys learners must not supply — identity comes from the auth session. */
+/** Keys learners must not supply, identity comes from the auth session. */
 const IDENTITY_ANSWER_KEYS = new Set([
   'userid',
   'user_id',

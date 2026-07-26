@@ -724,7 +724,7 @@ export class PaymentsService {
 
     // For honorarium payments tied to a program, enforce the eligibility contract:
     // attendance must be VERIFIED (or NOT_REQUIRED) AND the survey must be acknowledged.
-    // (Includes admin-queued manual rows — Pay now still requires eligibility.)
+    // (Includes admin-queued manual rows, Pay now still requires eligibility.)
     if (payment.type === 'HONORARIUM' && payment.programId) {
       const reg = await this.prisma.programRegistration.findUnique({
         where: {
