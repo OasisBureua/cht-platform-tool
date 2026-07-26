@@ -3,7 +3,7 @@
 // TODO(content-hub): swap localStorage for real NestJS endpoints; this interface is the seam.
 // Every exported function below maps 1:1 to an endpoint documented in the standalone app's
 // docs/research/API_CONTRACT.md. To go live, replace each function body with an axios call
-// (src/api/client.ts) to the corresponding /api route and keep the same signatures — the
+// (src/api/client.ts) to the corresponding /api route and keep the same signatures, the
 // pages and hooks call ONLY through this module, so nothing else needs to change.
 
 import {
@@ -243,9 +243,6 @@ export function createTemplate(body: { name: string; type: string; description: 
   const db = load();
   const template: Template = {
     id: db.nextTemplateId++,
-    name: '',
-    type: 'Analytics Report',
-    description: '',
     ...body,
     createdAt: now(),
     updatedAt: now(),

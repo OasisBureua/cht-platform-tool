@@ -15,7 +15,7 @@ type UnauthorizedHandler = () => void;
 let authHeaderGetter: AuthHeaderGetter | null = null;
 let onUnauthorized: UnauthorizedHandler | null = null;
 
-export function setAuthHeaderGetter(getter: AuthHeaderGetter) {
+export function setAuthHeaderGetter(getter: AuthHeaderGetter | null) {
   authHeaderGetter = getter;
 }
 

@@ -61,7 +61,6 @@ export default function AdminWebinarScheduler({
   const [sessionDisclaimer, setSessionDisclaimer] = useState('');
 
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [zoomWarning, setZoomWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setZoomSessionType(defaultZoomSessionType);
@@ -211,26 +210,8 @@ export default function AdminWebinarScheduler({
         </p>
       </div>
 
-      {/* Post-submit: session saved but Zoom was not available */}
-      {zoomWarning && (
-        <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
-          <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-yellow-800">Session saved — no Zoom meeting created</p>
-            <p className="text-sm text-yellow-700 mt-0.5">{zoomWarning}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate(successPath)}
-            className="text-xs font-semibold text-yellow-800 underline shrink-0"
-          >
-            View list
-          </button>
-        </div>
-      )}
-
       {/* Pre-form: warn when Zoom env vars are not set */}
-      {!zoomWarning && adminConfig !== undefined && !adminConfig.zoomConfigured && (
+      {adminConfig !== undefined && !adminConfig.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-orange-50 border border-orange-300 px-4 py-3">
           <Video className="h-4 w-4 text-orange-600 mt-0.5 shrink-0" />
           <div className="flex-1">
@@ -255,7 +236,7 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {!zoomWarning && !isOfficeHoursOnly && adminConfig?.zoomConfigured && (
+      {!isOfficeHoursOnly && adminConfig?.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
@@ -265,11 +246,11 @@ export default function AdminWebinarScheduler({
         </div>
       )}
 
-      {!zoomWarning && isOfficeHoursOnly && adminConfig?.zoomConfigured && (
+      {isOfficeHoursOnly && adminConfig?.zoomConfigured && (
         <div className="flex items-start gap-3 rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
           <Video className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
           <p className="text-sm text-blue-700">
-            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>)—often used
+            This flow schedules <strong>Office Hours</strong> as a Zoom Meeting (<code className="text-xs">MEETING</code>), often used
             alongside webinar-style programming. Host admits attendees from the waiting room.
           </p>
         </div>
@@ -358,7 +339,7 @@ export default function AdminWebinarScheduler({
             />
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Learner disclaimer <span className="font-normal text-gray-500">— optional</span>
+                Learner disclaimer <span className="font-normal text-gray-500">(optional)</span>
               </label>
               <textarea
                 rows={3}
@@ -377,7 +358,7 @@ export default function AdminWebinarScheduler({
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
               Host
-              <span className="ml-1 font-normal text-gray-500">— optional</span>
+              <span className="ml-1 font-normal text-gray-500">(optional)</span>
             </label>
             <div className="flex gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -409,7 +390,7 @@ export default function AdminWebinarScheduler({
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-semibold text-gray-900">
                 Speakers / KOLs
-                <span className="ml-1 font-normal text-gray-500">— optional; add one or more</span>
+                <span className="ml-1 font-normal text-gray-500">(optional); add one or more</span>
               </label>
               <button
                 type="button"
@@ -505,7 +486,7 @@ export default function AdminWebinarScheduler({
             <div>
               <label className="block text-sm font-semibold text-gray-900 mb-1">
                 Honorarium (USD){' '}
-                <span className="font-normal text-gray-500">— optional; webinars only</span>
+                <span className="font-normal text-gray-500">(optional); webinars only</span>
               </label>
               <input
                 type="number"
@@ -546,7 +527,7 @@ export default function AdminWebinarScheduler({
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-1">
               Post-event survey (Jotform){' '}
-              <span className="font-normal text-gray-500">— optional</span>
+              <span className="font-normal text-gray-500">(optional)</span>
             </label>
             <input
               type="text"
@@ -567,7 +548,7 @@ export default function AdminWebinarScheduler({
               </p>
             ) : (
               <p className="mt-1 text-xs text-gray-600">
-                For <strong>office hours</strong>, there is no automatic Jotform clone—use this field or Program hub to
+                For <strong>office hours</strong>, there is no automatic Jotform clone. Use this field or Program hub to
                 attach feedback.
               </p>
             )}
@@ -584,14 +565,14 @@ export default function AdminWebinarScheduler({
               {adminConfig?.webinarJotformTemplatesConfigured ? (
                 <p className="text-xs text-green-800">
                   This environment looks ready. Invitation template form ID{' '}
-                  <span className="font-mono">{adminConfig.jotformInvitationTemplateFormId || '—'}</span>; post-event{' '}
+                  <span className="font-mono">{adminConfig.jotformInvitationTemplateFormId || '-'}</span>; post-event{' '}
                   {adminConfig.jotformPostEventSharedFormId ? (
                     <>
                       using shared form <span className="font-mono">{adminConfig.jotformPostEventSharedFormId}</span>
                     </>
                   ) : (
                     <>
-                      cloning from template <span className="font-mono">{adminConfig.jotformPostEventTemplateFormId || '—'}</span>
+                      cloning from template <span className="font-mono">{adminConfig.jotformPostEventTemplateFormId || '-'}</span>
                     </>
                   )}
                   .

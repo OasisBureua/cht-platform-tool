@@ -118,7 +118,7 @@ export default function Earnings() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
-                <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+                <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} />
                 <Line type="monotone" dataKey="earnings" stroke="#111827" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>

@@ -115,8 +115,8 @@ export default function ExploreOpportunities() {
     return m;
   }, [liveStatuses]);
 
-  // When a query is present (>=2 chars), use the dedicated /catalog/search endpoint —
-  // same one public /search uses — for parity. Otherwise fall back to the default
+  // When a query is present (>=2 chars), use the dedicated /catalog/search endpoint, 
+  // same one public /search uses, for parity. Otherwise fall back to the default
   // "recent clips" list via /catalog/clips.
   const { data: clipsData, isLoading: clipsLoading, isError: clipsError } = useQuery({
     queryKey: ['catalog', 'clips-or-search', debouncedQuery],
@@ -210,7 +210,7 @@ export default function ExploreOpportunities() {
     const q = debouncedQuery;
     // When the API already filtered clips by q, don't double-filter clip items by title/desc
     // (the search endpoint matches on transcript/tags too, which matchesQuery can't see).
-    // Webinars + surveys still need the client-side text filter — those aren't searched server-side.
+    // Webinars + surveys still need the client-side text filter, those aren't searched server-side.
     const apiFilteredClips = q.length >= 2 && useMediaHub;
     let list = items.filter((item) => {
       if (apiFilteredClips && item.type === 'clip') return true;
@@ -329,9 +329,9 @@ export default function ExploreOpportunities() {
                   ) : null}
                 </div>
                 <div className="flex-1 min-h-0 mt-2">
-                  {item.subtitle ? (
+                  {item.type === 'clip' && item.subtitle ? (
                     <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
-                  ) : item.videoNames?.length ? (
+                  ) : item.type === 'playlist' && item.videoNames?.length ? (
                     <ul className="space-y-1">
                       {item.videoNames.slice(0, 3).map((v, i) => (
                         <li key={i} className="flex items-center gap-2 text-sm text-gray-600">

@@ -18,21 +18,20 @@ import {
   parsePlaylistFocus,
   playlistBrowseHeading as playlistBrowseHeadingText,
   PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS,
-  VIEW_PLAYLIST_LABEL,
 } from '../../utils/playlistFocusFilters';
 import { PlaylistFocusNav } from '../../components/content/PlaylistFocusNav';
 import { useFlattenedPlaylistVideos } from '../../hooks/useFlattenedPlaylistVideos';
-import { APP_CATALOG_CLIPS_GRID, APP_CATALOG_CONVERSATIONS_HUB } from '../../components/navigation/appNavItems';
+import { APP_CATALOG_CLIPS_GRID } from '../../components/navigation/appNavItems';
 import { getPublicLibraryViewFromSearch } from '../../utils/catalogBrowseLocation';
 
 /**
  * Sort options surfaced in the catalog "Sort by" dropdown.
  * - `recorded_at`: orders by shoot date (Shoot.shoot_date with posted_at fallback).
- *   Distinct from `posted` — this is when the content was *recorded*, not when it
+ *   Distinct from `posted`: this is when the content was *recorded*, not when it
  *   was published to social media. Default UX choice for "what's new in the catalog".
  * - `posted`: orders by social-media post date (`posted_at`). Renamed in the UI from
  *   the older "Most recent" / "Recently posted" pair (which were byte-identical at
- *   the backend — see 2026-05-16 audit). The duplicate "Most recent" option has been
+ *   the backend: see 2026-05-16 audit). The duplicate "Most recent" option has been
  *   removed; legacy `?sort=recent` URLs are redirected to `posted` below.
  * - `views`/`likes`: engagement-driven sorts.
  */
@@ -52,7 +51,7 @@ const DEFAULT_SORT = 'recorded_at';
 /**
  * Tag-namespace ordering + display labels for the grouped tag dropdown.
  * Backend `/api/catalog/tags` returns `Record<namespace, string[]>`; we render one
- * `<optgroup>` per namespace in this order. `doctor` is intentionally omitted —
+ * `<optgroup>` per namespace in this order. `doctor` is intentionally omitted, 
  * the "All doctors" dropdown sitting next to this control already covers it.
  */
 const TAG_NAMESPACE_ORDER: { key: string; label: string }[] = [
@@ -175,7 +174,7 @@ export default function VideosPage() {
 
   // Keep query string in sync with filter state only. Reads location via ref so
   // that tab navigation (which changes location.search) does NOT retrigger this
-  // effect — preventing the playlists ↔ catalog ping-pong caused by stale filter
+  // effect: preventing the playlists ↔ catalog ping-pong caused by stale filter
   // state being seen after a navigation but before the URL→state effect resets it.
   useEffect(() => {
     const loc = locationRef.current;
@@ -185,7 +184,7 @@ export default function VideosPage() {
     if (q) params.set('q', q);
     if (tagFilter) params.set('tag', tagFilter);
     if (doctorFilter) params.set('doctor', doctorFilter);
-    // Only emit `?sort=` when it differs from the default — keeps URLs clean.
+    // Only emit `?sort=` when it differs from the default: keeps URLs clean.
     if (sortBy && sortBy !== DEFAULT_SORT) params.set('sort', sortBy);
 
     const curParams = new URLSearchParams((loc.search || '').replace(/^\?/, ''));
@@ -235,7 +234,7 @@ export default function VideosPage() {
 
   const tagGroups = useMemo(() => groupTagsByNamespace(tags), [tags]);
   const doctorOptions = useMemo(() => getDoctorOptions(doctors), [doctors]);
-  /** Clips/filters load once tags + doctors requests finish — do not block on empty tag list (MediaHub can return {}). */
+  /** Clips/filters load once tags + doctors requests finish: do not block on empty tag list (MediaHub can return {}). */
   const useMediaHub = tagsReady && doctorsReady;
 
   const { data: playlists = [] } = useQuery({
@@ -561,7 +560,7 @@ export default function VideosPage() {
             )}
           </section>
         ) : isInApp && showClipsGrid ? (
-          // /app/catalog?view=clips — full searchable grid, same layout as public /catalog?view=clips
+          // /app/catalog?view=clips: full searchable grid, same layout as public /catalog?view=clips
           <section className="space-y-4">
             <h2 className="sr-only">Video library</h2>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -595,7 +594,7 @@ export default function VideosPage() {
             )}
           </section>
         ) : isInApp ? (
-          // /app/catalog (default) — strip rows with hero + biomarker sections
+          // /app/catalog (default): strip rows with hero + biomarker sections
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">

@@ -28,7 +28,7 @@ function mergeApiWithStatic(apiKol: PublicKol): DolEntry {
     photoUrl: apiKol.photo_url ?? undefined,
     shootCount: apiKol.shoot_count,
     intel: stat?.intel,
-    institution: kolInstitutionLabel(apiKol, { role, education: stat?.education, intel: stat?.intel }),
+    institution: kolInstitutionLabel(apiKol, { role, education: stat?.education ?? '', intel: stat?.intel }),
     stateCode: undefined,
   };
   merged.stateCode = deriveKolUsState(apiKol, merged) ?? undefined;

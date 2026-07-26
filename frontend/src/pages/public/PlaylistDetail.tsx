@@ -33,7 +33,7 @@ export default function PlaylistDetail() {
     }
   }, [data?.videos, videoIdFromUrl]);
 
-  // Derive selected video safely — may be undefined before data loads
+  // Derive selected video safely: may be undefined before data loads
   const videos = data?.videos ?? [];
   const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));
   const selectedVideo = videos[safeIndex];
@@ -47,8 +47,9 @@ export default function PlaylistDetail() {
     retry: 0, // 404s from MediaHub are expected; don't retry
   });
 
-  const shootId = (clipDetail as Record<string, unknown> | undefined)?.shoot_id as string | undefined;
-  const summary = clipDetail ? clipDisplaySummary(clipDetail as Record<string, unknown>) : '';
+  const clipRecord = clipDetail as unknown as Record<string, unknown> | undefined;
+  const shootId = clipRecord?.shoot_id as string | undefined;
+  const summary = clipRecord ? clipDisplaySummary(clipRecord) : '';
 
   const { data: transcript, isLoading: transcriptLoading } = useQuery({
     queryKey: ['catalog', 'transcript', shootId],
@@ -223,9 +224,9 @@ function PlaylistTranscriptDisplay({ data }: { data: unknown }) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
-          {obj.shoot_name && (
+          {obj.shoot_name ? (
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
-          )}
+          ) : null}
           {paragraphs.map((para, i) => (
             <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
           ))}

@@ -4,7 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { YouTubePlayer } from '../components/YouTubePlayer';
 import { useAuth } from '../contexts/AuthContext';
-import { programsApi, type Program, type Video } from '../api/programs';
+import { programsApi, type Program } from '../api/programs';
 import { ChevronLeft, RotateCcw, CheckCircle2, ExternalLink } from 'lucide-react';
 
 // How often we sync progress to backend (seconds)

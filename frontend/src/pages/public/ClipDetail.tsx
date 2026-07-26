@@ -116,7 +116,7 @@ export default function ClipDetail() {
     typeof clip.youtube_url === 'string'
       ? clip.youtube_url
       : typeof (clip as { youtubeUrl?: unknown }).youtubeUrl === 'string'
-        ? (clip as { youtubeUrl: string }).youtubeUrl
+        ? ((clip as { youtubeUrl?: unknown }).youtubeUrl as string)
         : '';
 
   if (!extractYoutubeVideoIdFromUrl(youtubeUrl)) {
@@ -183,7 +183,7 @@ export default function ClipDetail() {
           </div>
         </div>
 
-        {/* Tags — brand: prefixed tags are internal and not shown to users */}
+        {/* Tags: brand: prefixed tags are internal and not shown to users */}
         {clip.tags?.filter((t) => !String(t).startsWith('brand:')).length > 0 && (
           <div className="flex flex-wrap gap-2">
             {clip.tags.filter((t) => !String(t).startsWith('brand:')).map((tag) => (
@@ -197,7 +197,7 @@ export default function ClipDetail() {
           </div>
         )}
 
-        {/* Summary — catalog description only shown when summary is absent */}
+        {/* Summary: catalog description only shown when summary is absent */}
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-1">Summary</h2>
           {aiSummary ? (
@@ -240,9 +240,9 @@ function TranscriptDisplay({ data }: { data: unknown }) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (
         <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
-          {obj.shoot_name && (
+          {obj.shoot_name ? (
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
-          )}
+          ) : null}
           {paragraphs.map((para, i) => (
             <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
           ))}

@@ -1,4 +1,5 @@
-import { defineConfig, createLogger } from 'vite'
+import { createLogger } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // Tailwind v3 emits many rules without per-declaration `source.input.file`. Vite's CSS URL rewriter

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ScrollToTop from './components/ScrollToTop';
 import { Loader2 } from 'lucide-react';
 
-// Layouts + guards — always needed immediately, keep static
+// Layouts + guards: always needed immediately, keep static
 import PublicLayout from './layouts/PublicLayout';
 import Layout from './components/layout/Layout';
 import AdminLayout from './layouts/AdminLayout';
@@ -58,9 +58,6 @@ const Payments              = lazy(() => import('./pages/Payments'));
 const Settings              = lazy(() => import('./pages/Settings'));
 const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
-const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
-const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
-const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -260,12 +257,12 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
 
-              {/* KOL Network — internal HCP intelligence (ported from MediaHub) */}
+              {/* KOL Network: internal HCP intelligence (ported from MediaHub) */}
               <Route path="kol-network" element={<AdminKolDirectory />} />
               <Route path="kol-network/hcps/:id" element={<AdminHcpIntel />} />
 
 
-              {/* Content Hub — ported report generator (self-contained, localStorage data layer) */}
+              {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
               <Route path="content-hub" element={<ContentHubLayout />}>
                 <Route index element={<ContentHubDashboard />} />
                 <Route path="new" element={<ContentHubNewReport />} />

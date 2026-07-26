@@ -119,7 +119,7 @@ export default function LiveMultiRegister() {
         selectedIds: [...selected],
         intakeByProgramId,
         maxIntakeIndexCompleted,
-        phase: phase === 'result' ? 'review' : phase,
+        phase,
         intakeIndex,
         ...overrides,
       });
@@ -347,7 +347,7 @@ export default function LiveMultiRegister() {
           {phase === 'select'
             ? 'Select upcoming sessions, then complete each session’s intake form when prompted before submitting your registration requests.'
             : phase === 'intake'
-              ? 'Complete the intake form for each selected session. Use Continue when done — you won’t be able to return to a previous intake step.'
+              ? 'Complete the intake form for each selected session. Use Continue when done. You won’t be able to return to a previous intake step.'
               : phase === 'review'
                 ? 'Review your selections and submit. Intake answers are locked for sessions you already continued past.'
                 : 'Registration summary'}
@@ -389,7 +389,7 @@ export default function LiveMultiRegister() {
                     <Link to={`/app/live/${r.programId}`} className="underline font-medium">
                       {r.title}
                     </Link>
-                    {' — '}
+                    {': '}
                     {r.status === 'APPROVED' ? 'Approved' : 'Pending approval'}
                   </li>
                 ))}
@@ -551,7 +551,7 @@ export default function LiveMultiRegister() {
 
           <p className="text-sm text-gray-700">
             Complete the intake form below for this session. Submit the form, then click{' '}
-            <strong>Continue</strong> to move on — you won&apos;t be able to return to this step afterward.
+            <strong>Continue</strong> to move on: you won&apos;t be able to return to this step afterward.
           </p>
 
           {currentIntakeSubmissionId ? (
@@ -562,7 +562,7 @@ export default function LiveMultiRegister() {
 
           {intakeIndex <= maxIntakeIndexCompleted ? (
             <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              You already continued past this intake step. Answers are locked — complete the remaining steps below.
+              You already continued past this intake step. Answers are locked. Complete the remaining steps below.
             </p>
           ) : (
             <div className="space-y-2">
@@ -580,7 +580,7 @@ export default function LiveMultiRegister() {
               </p>
               <div className="min-h-[420px] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
                 <iframe
-                  title={`Intake form — ${currentIntakeProgram.title}`}
+                  title={`Intake form: ${currentIntakeProgram.title}`}
                   src={intakeFormSrc}
                   className="h-[480px] w-full"
                   allow="camera; microphone"
@@ -620,7 +620,7 @@ export default function LiveMultiRegister() {
                         intakeDone ? 'text-green-800' : 'text-amber-800',
                       ].join(' ')}
                     >
-                      {intakeDone ? 'Intake completed' : 'Intake not completed — you can still submit'}
+                      {intakeDone ? 'Intake completed' : 'Intake not completed: you can still submit'}
                     </p>
                   ) : null}
                 </li>
