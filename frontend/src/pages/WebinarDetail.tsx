@@ -300,8 +300,10 @@ export default function WebinarDetail() {
     !myRegistration?.postEventSurveyAcknowledgedAt;
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
+  const surveySubmittedOnly = myRegistration?.status === 'SURVEY_SUBMITTED';
   const showJoinSessionCard =
-    program.zoomSessionType === 'WEBINAR' && (enrolled || registrationPendingApproval);
+    program.zoomSessionType === 'WEBINAR' &&
+    (enrolled || registrationPendingApproval || surveySubmittedOnly);
 
   /** Live webinars always use the registration wizard so intake (when configured) is not skipped via quick enroll. */
   const needsRegistrationWizard =
@@ -344,10 +346,10 @@ export default function WebinarDetail() {
 
   const pendingRegistrationMessage =
     myRegistration?.status === 'PENDING'
-      ? myRegistration.intakeSubmissionId
-        ? 'Your registration survey was received. Waiting for an administrator to approve you before you can join the webinar in the app.'
-        : 'Registration is pending. Complete the survey if you have not yet, then wait for approval.'
-      : null;
+      ? 'Registration is pending administrator approval. Join opens when you are approved and the live session starts.'
+      : myRegistration?.status === 'SURVEY_SUBMITTED'
+        ? 'Your intake survey was submitted. Finish registration so an administrator can approve you.'
+        : null;
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
@@ -548,7 +550,21 @@ export default function WebinarDetail() {
                 <div>
                   <p className="text-sm font-semibold text-amber-900">Registration submitted, pending approval</p>
                   <p className="mt-0.5 text-sm text-amber-800">
-                    Your request has been received. An administrator will review it shortly. Your join link will activate here automatically after approval.
+                    Your request has been received. An administrator will review it shortly. Your join link will activate here automatically after approval, when the live session opens.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : myRegistration?.status === 'SURVEY_SUBMITTED' && !enrolled ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-4">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-sky-400 flex items-center justify-center">
+                  <div className="h-2 w-2 rounded-full bg-sky-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-sky-900">Survey submitted</p>
+                  <p className="mt-0.5 text-sm text-sky-800">
+                    Your intake survey was received. Finish registration on the Register page so an administrator can approve you.
                   </p>
                 </div>
               </div>
@@ -559,35 +575,58 @@ export default function WebinarDetail() {
                 <svg className="h-5 w-5 shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <p className="text-sm font-semibold text-green-900">You&apos;re registered and approved. Use <strong>Join session</strong> when it&apos;s time.</p>
+                <p className="text-sm font-semibold text-green-900">
+                  You&apos;re registered and approved.{' '}
+                  {program.canJoinSession
+                    ? 'Use Join session below.'
+                    : program.joinSessionOpensAt
+                      ? `Join opens ${new Date(program.joinSessionOpensAt).toLocaleString()}.`
+                      : 'Join opens closer to the live session.'}
+                </p>
               </div>
             </div>
           ) : null}
-          {program.zoomJoinUrl?.trim() ? (
-            enrolled ? (
-              <a
-                href={program.zoomJoinUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="Opens Zoom as an attendee (view-only listener)"
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-              >
-                <Video className="h-4 w-4" />
-                Join session
-                <ExternalLink className="h-4 w-4 opacity-90" />
-              </a>
-            ) : (
+          {program.zoomJoinUrl?.trim() && program.canJoinSession !== false && enrolled ? (
+            <a
+              href={program.zoomJoinUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Opens Zoom as an attendee (view-only listener)"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+            >
+              <Video className="h-4 w-4" />
+              Join session
+              <ExternalLink className="h-4 w-4 opacity-90" />
+            </a>
+          ) : enrolled ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-500"
+              title={
+                program.joinSessionReason ||
+                (program.joinSessionOpensAt
+                  ? `Join opens ${new Date(program.joinSessionOpensAt).toLocaleString()}`
+                  : 'Join opens closer to the live session.')
+              }
+            >
+              <Video className="h-4 w-4" />
+              {program.joinSessionOpensAt
+                ? `Join opens ${new Date(program.joinSessionOpensAt).toLocaleString()}`
+                : 'Join session'}
+              <ExternalLink className="h-4 w-4 opacity-60" />
+            </button>
+          ) : program.zoomJoinUrl?.trim() || program.joinSessionOpensAt ? (
               <button
                 type="button"
                 disabled
                 className="inline-flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-500"
-                title="Available after an administrator approves your registration."
+                title="Available after an administrator approves your registration, when the live session opens."
               >
                 <Video className="h-4 w-4" />
                 Join session
                 <ExternalLink className="h-4 w-4 opacity-60" />
               </button>
-            )
           ) : (
             <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               A join link is not available yet. If this persists, contact support so an admin can confirm the Zoom

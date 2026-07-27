@@ -200,6 +200,8 @@ enum ProgramZoomSessionType {
 }
 
 enum ProgramRegistrationStatus {
+  /// Intake survey completed; learner has not finished "Submit registration" yet.
+  SURVEY_SUBMITTED
   PENDING
   APPROVED
   REJECTED

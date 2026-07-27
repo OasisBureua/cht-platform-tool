@@ -11,6 +11,8 @@ import { ZoomService } from './zoom.service';
 import { ZoomMeetingSdkService } from './zoom-meeting-sdk.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { programCoverImageUrl } from '../../utils/session-hero-url';
+import { resolveLiveJoinWindow } from '../../utils/session-join-window';
+import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { SurveyType } from '@prisma/client';
 
 export interface OfficeHoursMeetingSdkAuthDto {
@@ -89,6 +91,17 @@ export class WebinarsService {
     );
   }
 
+  /** Attendee join URL only inside the live session window. */
+  private gatedLearnerJoinUrl(
+    zoomJoinUrl: string | null | undefined,
+    startDate: Date | string | null | undefined,
+    duration: number | null | undefined,
+  ): string | undefined {
+    const window = resolveLiveJoinWindow(startDate, duration);
+    const url = learnerWebinarJoinUrl(zoomJoinUrl);
+    return window.canJoin && url ? url : undefined;
+  }
+
   /** Latest native INTAKE survey id per program (registration uses native surveys only). */
   private async intakeSurveyIdsByProgramId(
     programIds: string[],
@@ -143,7 +156,7 @@ export class WebinarsService {
         imageUrl: imageUrl || undefined,
         startTime: p.startDate?.toISOString(),
         duration: p.duration ?? undefined,
-        joinUrl: p.zoomJoinUrl || undefined,
+        joinUrl: this.gatedLearnerJoinUrl(p.zoomJoinUrl, p.startDate, p.duration),
         source: 'program',
         sessionKind: 'WEBINAR',
         hostDisplayName: p.hostDisplayName || undefined,
@@ -228,7 +241,7 @@ export class WebinarsService {
         imageUrl: imageUrl || undefined,
         startTime: p.startDate?.toISOString(),
         duration: p.duration ?? undefined,
-        joinUrl: p.zoomJoinUrl || undefined,
+        joinUrl: this.gatedLearnerJoinUrl(p.zoomJoinUrl, p.startDate, p.duration),
         source: 'program',
         sessionKind: 'MEETING',
         hostDisplayName: p.hostDisplayName || undefined,
@@ -279,7 +292,11 @@ export class WebinarsService {
       imageUrl: imageUrl || undefined,
       startTime: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
-      joinUrl: program.zoomJoinUrl || undefined,
+      joinUrl: this.gatedLearnerJoinUrl(
+        program.zoomJoinUrl,
+        program.startDate,
+        program.duration,
+      ),
       source: 'program',
       sessionKind: 'WEBINAR',
       hostDisplayName: program.hostDisplayName || undefined,
@@ -312,7 +329,11 @@ export class WebinarsService {
       imageUrl: imageUrl || undefined,
       startTime: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
-      joinUrl: program.zoomJoinUrl || undefined,
+      joinUrl: this.gatedLearnerJoinUrl(
+        program.zoomJoinUrl,
+        program.startDate,
+        program.duration,
+      ),
       source: 'program',
       sessionKind: 'MEETING',
       hostDisplayName: program.hostDisplayName || undefined,

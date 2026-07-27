@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
+import { resolveLiveJoinWindow } from '../../utils/session-join-window';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import {
   loadProgramSurveyMeta,
@@ -302,7 +303,23 @@ export class ProgramsService {
         order: v.order,
       })),
       zoomSessionType: program.zoomSessionType,
-      zoomJoinUrl: learnerWebinarJoinUrl(program.zoomJoinUrl) || undefined,
+      ...(() => {
+        const joinWindow = resolveLiveJoinWindow(
+          program.startDate,
+          program.duration,
+        );
+        const attendeeUrl = learnerWebinarJoinUrl(program.zoomJoinUrl);
+        // Never expose the Zoom join URL outside the live window (except host start link below).
+        return {
+          zoomJoinUrl:
+            joinWindow.canJoin && attendeeUrl ? attendeeUrl : undefined,
+          canJoinSession: Boolean(joinWindow.canJoin && attendeeUrl),
+          joinSessionOpensAt: joinWindow.opensAt ?? undefined,
+          joinSessionReason: joinWindow.canJoin
+            ? undefined
+            : joinWindow.reason ?? undefined,
+        };
+      })(),
       startDate: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
       zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),

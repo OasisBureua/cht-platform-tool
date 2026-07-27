@@ -173,6 +173,143 @@ export class HubSpotService {
   }
 
   /**
+   * Upsert contact fields and attach a timeline note for a CHT program event
+   * (survey submitted / pending / approved / rejected). Soft-fails on notes.
+   */
+  async recordProgramActivity(input: {
+    contact: HubSpotContactProperties;
+    programId: string;
+    programTitle: string;
+    registrationStatus: string;
+    event:
+      | 'survey_submitted'
+      | 'registration_pending'
+      | 'registration_approved'
+      | 'registration_rejected'
+      | 'registration_updated';
+  }): Promise<void> {
+    if (!this.isConfigured() || !this.accessToken) return;
+
+    const email = input.contact.email?.trim()?.toLowerCase();
+    if (!email) return;
+
+    const identityProps: Record<string, string> = {
+      email,
+      ...(input.contact.firstname && {
+        firstname: input.contact.firstname.trim(),
+      }),
+      ...(input.contact.lastname && {
+        lastname: input.contact.lastname.trim(),
+      }),
+      ...(input.contact.phone && { phone: input.contact.phone.trim() }),
+      ...(input.contact.company && { company: input.contact.company.trim() }),
+      ...(input.contact.city && { city: input.contact.city.trim() }),
+      ...(input.contact.state && { state: input.contact.state.trim() }),
+      ...(input.contact.zip && { zip: input.contact.zip.trim() }),
+      ...(input.contact.jobtitle && {
+        jobtitle: input.contact.jobtitle.trim(),
+      }),
+      ...(input.contact.npi_number && {
+        npi_number: String(input.contact.npi_number).trim(),
+      }),
+    };
+
+    const withStatusProps = {
+      ...identityProps,
+      cht_registration_status: input.registrationStatus,
+      cht_last_program_id: input.programId,
+      cht_last_program_title: input.programTitle.slice(0, 250),
+      cht_last_program_event: input.event,
+    };
+
+    const upsert = async (properties: Record<string, string>) => {
+      await this.requestJson(
+        '/crm/v3/objects/contacts/batch/upsert',
+        {
+          method: 'POST',
+          body: {
+            inputs: [
+              { id: email, idProperty: 'email', properties },
+            ],
+          },
+        },
+        { swallowAuth: true },
+      );
+    };
+
+    try {
+      await upsert(withStatusProps);
+    } catch (err) {
+      if (this.authDisabled) return;
+      this.logger.warn(
+        `[HubSpot] Contact upsert with status props failed; retrying identity only: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      try {
+        await upsert(identityProps);
+      } catch (err2) {
+        if (this.authDisabled) return;
+        this.logger.error(`[HubSpot] Contact upsert failed for ${email}:`, err2);
+        return;
+      }
+    }
+
+    const statusLabel = input.registrationStatus.replace(/_/g, ' ');
+    const eventLabel = input.event.replace(/_/g, ' ');
+    const noteBody = [
+      `CHT Platform: ${eventLabel}`,
+      `Program: ${input.programTitle} (${input.programId})`,
+      `Registration status: ${statusLabel}`,
+    ].join('\n');
+
+    try {
+      const contact = await this.requestJson<{ id?: string }>(
+        `/crm/v3/objects/contacts/${encodeURIComponent(email)}?idProperty=email`,
+        { method: 'GET' },
+        { swallowAuth: true },
+      );
+      const contactId = contact?.id;
+      if (!contactId) return;
+
+      await this.requestJson(
+        '/crm/v3/objects/notes',
+        {
+          method: 'POST',
+          body: {
+            properties: {
+              hs_timestamp: String(Date.now()),
+              hs_note_body: noteBody,
+            },
+            associations: [
+              {
+                to: { id: contactId },
+                types: [
+                  {
+                    associationCategory: 'HUBSPOT_DEFINED',
+                    associationTypeId: 202,
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        { swallowAuth: true },
+      );
+      this.logger.debug(
+        `[HubSpot] Program activity note for ${email}: ${input.event}`,
+      );
+    } catch (err) {
+      if (this.authDisabled) return;
+      this.logger.warn(
+        `[HubSpot] Program activity note failed for ${email}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  /**
    * Resolve portal metadata for the configured private-app token.
    * Uses GET /integrations/v1/me — OAuth token introspection
    * (`/oauth/v1/access-tokens/{token}`) rejects private-app `pat-…` tokens

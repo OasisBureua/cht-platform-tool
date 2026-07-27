@@ -32,14 +32,17 @@ export function surveyAnswersToRows(
 
 export function registrationStatusLabel(status: string): string {
   if (status === 'APPROVED') return 'Approved';
-  if (status === 'PENDING') return 'Pending';
+  if (status === 'PENDING') return 'Pending approval';
+  if (status === 'SURVEY_SUBMITTED') return 'Survey submitted';
   if (status === 'REJECTED') return 'Denied';
+  if (status === 'WAITLISTED') return 'Waitlisted';
   return status;
 }
 
 export function registrationStatusClass(status: string): string {
   if (status === 'APPROVED') return 'bg-green-100 text-green-800';
   if (status === 'PENDING') return 'bg-amber-50 text-amber-800';
+  if (status === 'SURVEY_SUBMITTED') return 'bg-sky-50 text-sky-800';
   if (status === 'REJECTED') return 'bg-red-100 text-red-800';
   return 'bg-gray-100 text-gray-600';
 }

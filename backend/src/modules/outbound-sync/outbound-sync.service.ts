@@ -14,6 +14,18 @@ export interface OutboundSyncInput {
   zipCode?: string | null;
 }
 
+export interface OutboundProgramEventInput extends OutboundSyncInput {
+  programId: string;
+  programTitle: string;
+  registrationStatus: string;
+  event:
+    | 'survey_submitted'
+    | 'registration_pending'
+    | 'registration_approved'
+    | 'registration_rejected'
+    | 'registration_updated';
+}
+
 export interface OutboundSyncResult {
   hubspot: boolean;
   mediahub: boolean;
@@ -88,6 +100,72 @@ export class OutboundSyncService {
 
     this.logger.log(
       `[OutboundSync] ${email} npi=${hasValidNpi ? npi : 'none'} results: hubspot=${hubspot} mediahub=${mediahub}`,
+    );
+
+    return { hubspot, mediahub };
+  }
+
+  /**
+   * Contact upsert + HubSpot timeline note for registration/survey lifecycle.
+   * Never throws. MediaHub still only gets identity when NPI is valid.
+   */
+  async syncProgramEvent(
+    input: OutboundProgramEventInput,
+  ): Promise<OutboundSyncResult> {
+    const email = (input.email || '').trim().toLowerCase();
+    const npi = (input.npiNumber || '').replace(/\D/g, '');
+    const hasValidNpi = npi.length === 10;
+
+    const hubspotPromise = this.hubspot.isConfigured()
+      ? this.hubspot
+          .recordProgramActivity({
+            contact: {
+              email,
+              firstname: input.firstName,
+              lastname: input.lastName,
+              jobtitle: input.specialty ?? undefined,
+              company: input.institution ?? undefined,
+              city: input.city ?? undefined,
+              state: input.state ?? undefined,
+              zip: input.zipCode ?? undefined,
+              npi_number: hasValidNpi ? npi : undefined,
+            },
+            programId: input.programId,
+            programTitle: input.programTitle,
+            registrationStatus: input.registrationStatus,
+            event: input.event,
+          })
+          .then(() => true)
+          .catch((err) => {
+            this.logger.error(
+              `[OutboundSync] hubspot program-event error for ${email}:`,
+              err,
+            );
+            return false;
+          })
+      : Promise.resolve(false);
+
+    const mediahubPromise = hasValidNpi
+      ? this.mediahub.upsertHCP({
+          npi,
+          firstName: input.firstName,
+          lastName: input.lastName,
+          email,
+          specialty: input.specialty,
+          institution: input.institution,
+          city: input.city,
+          state: input.state,
+          zip: input.zipCode,
+        })
+      : Promise.resolve(false);
+
+    const [hubspot, mediahub] = await Promise.all([
+      hubspotPromise,
+      mediahubPromise,
+    ]);
+
+    this.logger.log(
+      `[OutboundSync] program-event ${input.event} ${email} program=${input.programId} hubspot=${hubspot} mediahub=${mediahub}`,
     );
 
     return { hubspot, mediahub };

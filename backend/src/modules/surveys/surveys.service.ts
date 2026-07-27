@@ -1419,10 +1419,10 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.INTAKE) {
-      // Persist NPI from intake answers. Do NOT create/approve a registration here —
-      // the registration wizard's explicit "Submit registration" (or Jotform webhook)
-      // owns that. Auto-registering on survey save caused pending rows before the
-      // learner confirmed the final step.
+      // Persist NPI from intake answers. Mark registration SURVEY_SUBMITTED —
+      // the wizard's explicit "Submit registration" (or Jotform path) moves to
+      // PENDING/APPROVED. Do not auto-approve here.
+      const intakeSubmissionId = response.submissionId ?? response.id;
       const npiRaw = answers.npi ?? answers.npi_number;
       const npi =
         typeof npiRaw === 'string' && npiRaw.trim()
@@ -1440,6 +1440,17 @@ export class SurveysService {
             );
           });
       }
+      await this.programRegistrations
+        .markIntakeSurveySubmitted(
+          userId,
+          survey.programId,
+          intakeSubmissionId,
+        )
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Could not mark intake survey submitted on registration: ${String(err)}`,
+          );
+        });
     }
 
     return {
