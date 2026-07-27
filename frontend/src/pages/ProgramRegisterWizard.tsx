@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
@@ -14,6 +14,44 @@ import { getSessionCoverUrl } from '../utils/session-cover-url';
 type StepKey = 'intake' | 'slot' | 'submit';
 
 const REGISTRATION_INTAKE_FORM_ID = 'registration-intake-survey';
+
+type WizardDraft = {
+  stepIndex: number;
+  selectedSlotId?: string;
+  intakeSubmissionId?: string;
+};
+
+function draftStorageKey(programId: string) {
+  return `cht:register-wizard:${programId}`;
+}
+
+function readDraft(programId: string): WizardDraft | null {
+  try {
+    const raw = sessionStorage.getItem(draftStorageKey(programId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as WizardDraft;
+    if (typeof parsed?.stepIndex !== 'number' || parsed.stepIndex < 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(programId: string, draft: WizardDraft) {
+  try {
+    sessionStorage.setItem(draftStorageKey(programId), JSON.stringify(draft));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function clearDraft(programId: string) {
+  try {
+    sessionStorage.removeItem(draftStorageKey(programId));
+  } catch {
+    /* ignore */
+  }
+}
 
 function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
   const steps: StepKey[] = [];
@@ -32,7 +70,10 @@ export default function ProgramRegisterWizard() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId;
-  const [intakeSubmissionId, setIntakeSubmissionId] = useState<string | undefined>();
+  const initialDraft = id ? readDraft(id) : null;
+  const [intakeSubmissionId, setIntakeSubmissionId] = useState<string | undefined>(
+    initialDraft?.intakeSubmissionId,
+  );
   const isOfficeHours =
     location.pathname.includes('/office-hours/') ||
     location.pathname.includes('/chm-office-hours/');
@@ -71,10 +112,13 @@ export default function ProgramRegisterWizard() {
     [program, slots.length],
   );
 
-  const [stepIndex, setStepIndex] = useState(0);
-  const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>();
+  const [stepIndex, setStepIndex] = useState(() => initialDraft?.stepIndex ?? 0);
+  const [selectedSlotId, setSelectedSlotId] = useState<string | undefined>(
+    initialDraft?.selectedSlotId,
+  );
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
   const [intakeSubmitError, setIntakeSubmitError] = useState<string | null>(null);
+  const restoredFromServer = useRef(false);
 
   const { data: intakeMyResponse } = useQuery({
     queryKey: ['survey', program?.intakeSurveyId, 'my-response'],
@@ -89,6 +133,49 @@ export default function ProgramRegisterWizard() {
       setIntakeSubmissionId((prev) => prev?.trim() || sid.trim());
     }
   }, [intakeMyResponse]);
+
+  // After intake answers exist but registration is not submitted yet, land on Submit
+  // (or keep a further draft step). Never auto-call submitRegistration.
+  useEffect(() => {
+    if (!id || !program || steps.length === 0 || restoredFromServer.current) return;
+    const intakeDone =
+      !!intakeSubmissionId?.trim() || !!intakeMyResponse?.submitted;
+    const alreadyRegistered = !!myRegistration?.status;
+    if (alreadyRegistered) {
+      restoredFromServer.current = true;
+      return;
+    }
+    if (!intakeDone) return;
+
+    const submitIdx = steps.indexOf('submit');
+    const slotIdx = steps.indexOf('slot');
+    const draft = readDraft(id);
+    if (draft && draft.stepIndex > 0 && draft.stepIndex < steps.length) {
+      setStepIndex(draft.stepIndex);
+    } else if (slotIdx >= 0 && !selectedSlotId) {
+      setStepIndex(slotIdx);
+    } else if (submitIdx >= 0) {
+      setStepIndex(submitIdx);
+    }
+    restoredFromServer.current = true;
+  }, [
+    id,
+    program,
+    steps,
+    intakeSubmissionId,
+    intakeMyResponse?.submitted,
+    myRegistration?.status,
+    selectedSlotId,
+  ]);
+
+  useEffect(() => {
+    if (!id || steps.length === 0) return;
+    writeDraft(id, {
+      stepIndex: Math.min(stepIndex, steps.length - 1),
+      selectedSlotId,
+      intakeSubmissionId: intakeSubmissionId?.trim() || undefined,
+    });
+  }, [id, stepIndex, selectedSlotId, intakeSubmissionId, steps.length]);
 
   const currentStepKey = steps[stepIndex];
 
@@ -105,6 +192,7 @@ export default function ProgramRegisterWizard() {
         intakeSubmissionId: intakeSubmissionId?.trim(),
       }),
     onSuccess: () => {
+      if (id) clearDraft(id);
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       queryClient.invalidateQueries({ queryKey: ['program', id, 'registration'] });
       queryClient.invalidateQueries({
@@ -133,10 +221,13 @@ export default function ProgramRegisterWizard() {
     );
   }
 
-  const current = steps[stepIndex];
+  const current = steps[stepIndex] ?? 'submit';
   const isLastStep = stepIndex >= steps.length - 1;
   const intakeRecorded =
     !!intakeSubmissionId?.trim() || !!intakeMyResponse?.submitted;
+  const alreadyRegistered =
+    myRegistration?.status === 'PENDING' ||
+    myRegistration?.status === 'APPROVED';
 
   const goNext = () => {
     if (current === 'intake') {
@@ -155,6 +246,7 @@ export default function ProgramRegisterWizard() {
           );
           return;
         }
+        form.dataset.chtExplicitSubmit = '1';
         form.requestSubmit();
         return;
       }
@@ -163,6 +255,10 @@ export default function ProgramRegisterWizard() {
     }
 
     if (isLastStep) {
+      if (alreadyRegistered) {
+        navigate(`${backHref}?registered=1`);
+        return;
+      }
       submitMut.mutate();
       return;
     }
@@ -198,14 +294,9 @@ export default function ProgramRegisterWizard() {
               : 'Live webinar'}{' '}
             registration
           </p>
-          <h1 className="mt-1 text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-gray-900">
             {program.title}
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            {program.registrationRequiresApproval
-              ? 'An administrator reviews each request for this session. Your registration stays pending until it is approved.'
-              : 'Your registration is confirmed as soon as you submit.'}
-          </p>
 
           {program.sessionDisclaimer?.trim() ? (
             <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
@@ -230,7 +321,18 @@ export default function ProgramRegisterWizard() {
             ))}
           </ol>
 
-          <div className="mt-8 space-y-4">
+          <div className="space-y-4">
+            {alreadyRegistered ? (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 space-y-1">
+                <p className="font-semibold">Registration already submitted</p>
+                <p>
+                  {myRegistration?.status === 'PENDING'
+                    ? 'Your request is pending administrator review.'
+                    : 'You are registered for this session.'}
+                </p>
+              </div>
+            ) : null}
+
             {current === 'intake' && program.intakeSurveyId ? (
               <div className="space-y-3">
                 <p className="text-sm font-semibold text-gray-900">
@@ -258,10 +360,8 @@ export default function ProgramRegisterWizard() {
                   onSubmitted={(submissionId) => {
                     setIntakeSubmitting(false);
                     setIntakeSubmitError(null);
-                    queryClient.invalidateQueries({
-                      queryKey: ['program', id, 'registration'],
-                    });
                     setIntakeSubmissionId(submissionId);
+                    // Advance to the next wizard step only — do not register yet.
                     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
                   }}
                 />
@@ -270,7 +370,8 @@ export default function ProgramRegisterWizard() {
                 ) : null}
                 {intakeRecorded ? (
                   <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                    Your answers are saved.
+                    Your answers are saved. Continue when you are ready — registration
+                    is not submitted until the last step.
                   </p>
                 ) : null}
               </div>
@@ -293,7 +394,7 @@ export default function ProgramRegisterWizard() {
               </div>
             )}
 
-            {current === 'submit' && (
+            {current === 'submit' && !alreadyRegistered && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
                 {program.registrationRequiresApproval ? (
                   <>
@@ -356,6 +457,8 @@ export default function ProgramRegisterWizard() {
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Saving…
                 </>
+              ) : alreadyRegistered && isLastStep ? (
+                'Back to session'
               ) : isLastStep ? (
                 'Submit registration'
               ) : (

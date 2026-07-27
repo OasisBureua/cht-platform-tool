@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { SurveyQuestion } from '../api/surveys';
 import {
@@ -27,6 +27,37 @@ type Props = {
   showPayoutNotice?: boolean;
 };
 
+function draftAnswersKey(surveyId: string) {
+  return `cht:survey-draft:${surveyId}`;
+}
+
+function readDraftAnswers(surveyId: string): Record<string, unknown> {
+  try {
+    const raw = sessionStorage.getItem(draftAnswersKey(surveyId));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeDraftAnswers(surveyId: string, answers: Record<string, unknown>) {
+  try {
+    sessionStorage.setItem(draftAnswersKey(surveyId), JSON.stringify(answers));
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearDraftAnswers(surveyId: string) {
+  try {
+    sessionStorage.removeItem(draftAnswersKey(surveyId));
+  } catch {
+    /* ignore */
+  }
+}
+
 export function NativeSurveyForm({
   surveyId,
   title,
@@ -48,7 +79,13 @@ export function NativeSurveyForm({
     return all.filter((q) => !isIdentitySurveyQuestion(q));
   }, [questions, authenticated]);
 
-  const [answers, setAnswers] = useState<Record<string, unknown>>({});
+  const [answers, setAnswers] = useState<Record<string, unknown>>(() =>
+    readDraftAnswers(surveyId),
+  );
+
+  useEffect(() => {
+    writeDraftAnswers(surveyId, answers);
+  }, [surveyId, answers]);
 
   if (!surveyHasNativeQuestions(questions)) {
     return (
@@ -62,15 +99,34 @@ export function NativeSurveyForm({
     setAnswers((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Parent-owned submit (hideSubmitButton): ignore Enter / implicit submits.
+    // Explicit Complete survey / Continue must set data-cht-explicit-submit="1" first.
+    if (hideSubmitButton) {
+      const form = e.currentTarget;
+      if (form.dataset.chtExplicitSubmit !== '1') {
+        return;
+      }
+      form.dataset.chtExplicitSubmit = '';
+    }
+    clearDraftAnswers(surveyId);
     onSubmit(answers);
+  };
+
+  const blockImplicitEnterSubmit = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    if (!hideSubmitButton) return;
+    if (e.key !== 'Enter') return;
+    const tag = (e.target as HTMLElement | null)?.tagName;
+    if (tag === 'TEXTAREA' || tag === 'BUTTON') return;
+    e.preventDefault();
   };
 
   return (
     <form
       id={formId}
       onSubmit={handleSubmit}
+      onKeyDown={blockImplicitEnterSubmit}
       className="space-y-5"
       data-survey-id={surveyId}
     >

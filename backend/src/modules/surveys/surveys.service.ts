@@ -1415,7 +1415,10 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.INTAKE) {
-      const intakeSubmissionId = response.submissionId ?? response.id;
+      // Persist NPI from intake answers. Do NOT create/approve a registration here —
+      // the registration wizard's explicit "Submit registration" (or Jotform webhook)
+      // owns that. Auto-registering on survey save caused pending rows before the
+      // learner confirmed the final step.
       const npiRaw = answers.npi ?? answers.npi_number;
       const npi =
         typeof npiRaw === 'string' && npiRaw.trim()
@@ -1433,17 +1436,6 @@ export class SurveysService {
             );
           });
       }
-      await this.programRegistrations
-        .recordWebinarIntakeSubmission(
-          userId,
-          survey.programId,
-          intakeSubmissionId,
-        )
-        .catch((err: unknown) => {
-          this.logger.warn(
-            `Could not sync native intake survey to registration: ${String(err)}`,
-          );
-        });
     }
 
     return {

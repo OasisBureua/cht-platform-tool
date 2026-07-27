@@ -153,7 +153,7 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-3">
           {nativeSurveyMode ? (
             <p className="text-sm text-gray-600">
-              Complete all questions below, then tap <strong>Complete survey</strong> to save your responses
+              When you are finished, tap <strong>Complete survey</strong> to save your responses
               {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
             </p>
           ) : surveyReadyForAck ? (
