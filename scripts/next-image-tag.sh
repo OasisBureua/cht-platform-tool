@@ -4,6 +4,10 @@
 # Platform: v1.0.0, v1.0.1, … (cht-platform-* repos)
 # Ignores floating tags (dev-latest, platform-latest, sha tags, etc.).
 #
+# Each major/minor/patch segment is 0–9. Bumping past .9 rolls the next segment:
+#   4.1.8 → 4.1.9 → 4.2.0
+#   4.9.9 → 5.0.0
+#
 # When ECR is empty (or only has floating tags), falls back to the semver tag on the
 # live ECS task definition so clearing ECR does not reuse a tag Terraform already has.
 #
@@ -67,4 +71,18 @@ fi
 LATEST="$(sort -V "$TAGS_FILE" | uniq | tail -1)"
 VERSION="${LATEST#"$PREFIX"}"
 IFS=. read -r major minor patch <<< "$VERSION"
-echo "${PREFIX}${major}.${minor}.$((patch + 1))"
+
+# Each segment is 0–9. After .9, roll the next higher segment:
+#   4.1.9 → 4.2.0
+#   4.9.9 → 5.0.0
+patch=$((patch + 1))
+if [ "$patch" -gt 9 ]; then
+  patch=0
+  minor=$((minor + 1))
+fi
+if [ "$minor" -gt 9 ]; then
+  minor=0
+  major=$((major + 1))
+fi
+
+echo "${PREFIX}${major}.${minor}.${patch}"

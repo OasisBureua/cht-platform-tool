@@ -1,10 +1,16 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
 
 export default function MfaSetup() {
-  const { beginMfaSetup, verifyMfaSetup } = useAuth();
+  const { beginMfaSetup, verifyMfaSetup, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
+    (user?.role === 'ADMIN' ? '/admin' : '/app/settings');
 
   const [secretCode, setSecretCode] = useState<string | null>(null);
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
@@ -13,6 +19,7 @@ export default function MfaSetup() {
   const [success, setSuccess] = useState(false);
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [showManualKey, setShowManualKey] = useState(false);
 
   const handleStartSetup = async () => {
     setError(null);
@@ -26,6 +33,7 @@ export default function MfaSetup() {
     }
     setSecretCode(result.secretCode || null);
     setOtpauthUri(result.otpauthUri || null);
+    setShowManualKey(false);
   };
 
   const handleVerify = async (e: React.FormEvent) => {
@@ -59,8 +67,17 @@ export default function MfaSetup() {
           </div>
         )}
         {success && (
-          <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
-            MFA is now enabled for your account.
+          <div className="space-y-3">
+            <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+              MFA is now enabled for your account.
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(from, { replace: true })}
+              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
+            >
+              Continue
+            </button>
           </div>
         )}
 
@@ -78,14 +95,46 @@ export default function MfaSetup() {
         {secretCode && !success && (
           <>
             <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <p className="font-medium text-gray-900">Step 1: Add to authenticator app</p>
-              <p className="mt-2">Use this secret key:</p>
-              <p className="mt-1 break-all rounded bg-white px-2 py-1 font-mono text-xs">{secretCode}</p>
-              {otpauthUri && (
-                <p className="mt-2 text-xs text-gray-600 break-all">
-                  If your app supports OTP URI, paste this: {otpauthUri}
-                </p>
-              )}
+              <p className="font-medium text-gray-900">Step 1: Scan with your authenticator app</p>
+              <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm text-gray-700">
+                <li>Open an authenticator app on your phone.</li>
+                <li>Choose add account / scan QR code.</li>
+                <li>Point your camera at the QR code below.</li>
+              </ol>
+              <p className="mt-3 text-xs text-gray-600">
+                Works with apps such as{' '}
+                <span className="font-medium text-gray-800">Google Authenticator</span>,{' '}
+                <span className="font-medium text-gray-800">Microsoft Authenticator</span>,{' '}
+                <span className="font-medium text-gray-800">Authy</span>,{' '}
+                <span className="font-medium text-gray-800">1Password</span>, or{' '}
+                <span className="font-medium text-gray-800">Apple Passwords</span>.
+              </p>
+              {otpauthUri ? (
+                <div className="mt-4 flex justify-center rounded-lg bg-white p-4">
+                  <QRCodeSVG
+                    value={otpauthUri}
+                    size={180}
+                    level="M"
+                    marginSize={1}
+                    title="MFA setup QR code"
+                  />
+                </div>
+              ) : null}
+
+              <div className="mt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowManualKey((v) => !v)}
+                  className="text-xs font-medium text-gray-900 underline hover:no-underline"
+                >
+                  {showManualKey ? 'Hide manual key' : 'Can’t scan? Enter key manually'}
+                </button>
+                {showManualKey && (
+                  <p className="mt-2 break-all rounded bg-white px-2 py-1.5 font-mono text-xs text-gray-800">
+                    {secretCode}
+                  </p>
+                )}
+              </div>
             </div>
 
             <form className="space-y-3" onSubmit={handleVerify}>
@@ -116,18 +165,20 @@ export default function MfaSetup() {
           </>
         )}
 
-        <div className="pt-2 space-y-2">
-          <p className="text-center text-sm text-gray-600">
-            <Link to="/app/settings" className="font-medium text-gray-900 hover:underline">
-              Back to Settings
-            </Link>
-          </p>
-          <p className="text-center text-sm text-gray-600">
-            <Link to="/login" className="font-medium text-gray-900 hover:underline">
-              Back to Login
-            </Link>
-          </p>
-        </div>
+        {!success && (
+          <div className="pt-2 space-y-2">
+            <p className="text-center text-sm text-gray-600">
+              <Link to="/app/settings" className="font-medium text-gray-900 hover:underline">
+                Back to Settings
+              </Link>
+            </p>
+            <p className="text-center text-sm text-gray-600">
+              <Link to="/login" className="font-medium text-gray-900 hover:underline">
+                Back to Login
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
     </AuthFormCard>
   );

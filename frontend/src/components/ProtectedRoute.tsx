@@ -39,5 +39,12 @@ export default function ProtectedRoute({ children, requireAdmin, loginPath }: Pr
     return <Navigate to="/app/home" replace />;
   }
 
+  // Soft MFA gate for admins while Cognito pool MFA is still OPTIONAL.
+  if (requireAdmin && user.mfaEnrollmentRequired) {
+    return (
+      <Navigate to="/mfa/setup" state={{ from: location }} replace />
+    );
+  }
+
   return <>{children}</>;
 }

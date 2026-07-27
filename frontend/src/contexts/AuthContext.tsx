@@ -20,6 +20,24 @@ export interface AuthUser {
   lastName?: string;
   role?: string;
   profileComplete?: boolean;
+  /** Cognito software-token MFA enabled for this user. */
+  mfaEnabled?: boolean;
+  /** Soft gate: ADMIN must enroll MFA while pool MFA is still OPTIONAL. */
+  mfaEnrollmentRequired?: boolean;
+}
+
+function profileFromMePayload(data: Record<string, unknown>): AuthUser {
+  return {
+    userId: data.userId as string,
+    email: data.email as string | undefined,
+    name: data.name as string | undefined,
+    firstName: data.firstName as string | undefined,
+    lastName: data.lastName as string | undefined,
+    role: data.role as string | undefined,
+    profileComplete: (data.profileComplete as boolean | undefined) ?? true,
+    mfaEnabled: Boolean(data.mfaEnabled),
+    mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
+  };
 }
 
 interface AuthError {
@@ -230,15 +248,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         const data = res.ok ? await res.json().catch(() => null) : null;
         if (!cancelled && data?.userId) {
           setAuthMode('cookie');
-          setProfile({
-            userId: data.userId,
-            email: data.email,
-            name: data.name,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            role: data.role,
-            profileComplete: data.profileComplete ?? true,
-          });
+          setProfile(profileFromMePayload(data));
           return;
         }
       } catch {
@@ -254,15 +264,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           if (!cancelled && data?.userId) {
             setAuthMode('dev');
             setDevUserId(storedDevId);
-            setProfile({
-              userId: data.userId,
-              email: data.email,
-              name: data.name,
-              firstName: data.firstName,
-              lastName: data.lastName,
-              role: data.role,
-              profileComplete: data.profileComplete ?? true,
-            });
+            setProfile(profileFromMePayload(data));
             return;
           }
         } catch {
@@ -291,29 +293,13 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       const res = await authFetch(meUrl, { cache: 'no-store' });
       const data = await res.json().catch(() => null);
       if (data?.userId) {
-        setProfile({
-          userId: data.userId,
-          email: data.email,
-          name: data.name,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          role: data.role,
-          profileComplete: data.profileComplete ?? true,
-        });
+        setProfile(profileFromMePayload(data));
       }
     } else if (authMode === 'dev' && devUserId) {
       const res = await fetch(meUrl, { headers: { 'X-Dev-User-Id': devUserId } });
       const data = await res.json().catch(() => null);
       if (data?.userId) {
-        setProfile({
-          userId: data.userId,
-          email: data.email,
-          name: data.name,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          role: data.role,
-          profileComplete: data.profileComplete ?? true,
-        });
+        setProfile(profileFromMePayload(data));
       }
     }
   }, [authMode, devUserId, apiUrl]);
@@ -328,27 +314,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       setAuthMode('cookie');
       setDevUserId('');
       setAccessToken((data.access_token as string | undefined) ?? null);
-      setProfile({
-        userId: data.userId as string,
-        email: data.email as string | undefined,
-        name: data.name as string | undefined,
-        firstName: data.firstName as string | undefined,
-        lastName: data.lastName as string | undefined,
-        role: data.role as string | undefined,
-        profileComplete: (data.profileComplete as boolean | undefined) ?? true,
-      });
+      setProfile(profileFromMePayload(data));
       return true;
     }
     if (data.userId) {
       setAuthMode('dev');
       setAccessToken(null);
       setDevUserId(data.userId as string);
-      setProfile({
-        userId: data.userId as string,
-        email: data.email as string | undefined,
-        name: data.name as string | undefined,
-        role: data.role as string | undefined,
-      });
+      setProfile(profileFromMePayload(data));
       return true;
     }
     return false;
@@ -667,9 +640,10 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       if (data.error) {
         return { error: { message: data.error } };
       }
+      await refreshProfile();
       return {};
     },
-    [apiUrl],
+    [apiUrl, refreshProfile],
   );
 
   const logout = useCallback(() => {

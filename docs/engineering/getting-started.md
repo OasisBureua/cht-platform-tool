@@ -34,7 +34,8 @@ Fill in `.env` for any integrations you need locally (Zoom, JotForm, Bill.com, M
 | `DATABASE_URL` | Postgres connection string |
 | `FRONTEND_URL` | CORS / redirect base (`http://localhost:5173`) |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `GOTRUE_JWT_SECRET` | Production auth (optional locally) |
-| `SESSION_TTL_SECONDS` | Session lifetime (default 1800) |
+| `SESSION_TTL_SECONDS` | Idle session lifetime (default 1800); slid on activity |
+| `SESSION_ABSOLUTE_TTL_SECONDS` | Absolute max from login (default 28800); see `docs/engineering/session-lifetime.md` |
 | `ZOOM_*` | Webinar creation and webhooks |
 | `JOTFORM_API_KEY` | Survey clone / webhook verification |
 | `BILL_*` | Honorarium payouts (worker) |

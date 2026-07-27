@@ -6,14 +6,18 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
-import { getSessionTokenFromRequest } from './session-cookie';
+import {
+  getSessionTokenFromRequest,
+  setSessionCookie,
+  SESSION_COOKIE_NAME,
+} from './session-cookie';
 import { isProductionEnv } from '../utils/is-production-env';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
 
 /**
  * JWT Auth Guard with session and dev bypass.
- * 1. X-Session-Token or Bearer (UUID): validate against DB session.
+ * 1. X-Session-Token or Bearer (UUID): validate against DB session (idle + absolute TTL).
  * 2. When JWT configured: Bearer JWT via Passport.
  * 3. When not configured: X-Dev-User-Id header (dev fallback).
  */
@@ -35,12 +39,27 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
+    const response = context.switchToHttp().getResponse();
     const sessionToken = getSessionTokenFromRequest(request);
 
     if (sessionToken) {
-      const user = await this.authService.getSession(sessionToken);
-      if (user) {
-        request.user = user;
+      const resolved = await this.authService.resolveSession(sessionToken);
+      if (resolved) {
+        request.user = resolved.user;
+        // Refresh cookie Max-Age only for cookie-based sessions (not header-only clients).
+        const cookieToken = request.cookies?.[SESSION_COOKIE_NAME];
+        if (
+          resolved.cookieMaxAgeSeconds > 0 &&
+          typeof cookieToken === 'string' &&
+          cookieToken === sessionToken
+        ) {
+          setSessionCookie(
+            response,
+            sessionToken,
+            resolved.cookieMaxAgeSeconds,
+            this.configService.get<string>('nodeEnv'),
+          );
+        }
         return true;
       }
     }

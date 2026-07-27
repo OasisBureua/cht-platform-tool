@@ -64,7 +64,9 @@ enable_bill_mfa_reminder              = true
 enable_cognito_pools                = true
 cognito_domain_prefix               = "chm-platform"
 cognito_user_pool_tier              = "ESSENTIALS"
-cognito_mfa_configuration           = "OPTIONAL"
+# MFA enrollment soft-gate is fordev-only in app code; keep pool MFA off on
+# testapp/platform until we intentionally re-enable it.
+cognito_mfa_configuration           = "OFF"
 cognito_email_sending_account       = "DEVELOPER"
 cognito_email_from                  = "noreply@communityhealth.media"
 cognito_email_reply_to              = "info@communityhealth.media"
