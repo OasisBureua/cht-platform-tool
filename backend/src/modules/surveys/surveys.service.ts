@@ -14,7 +14,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
-import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { JotformService } from '../jotform/jotform.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import {
@@ -53,7 +53,7 @@ export class SurveysService {
     private prisma: PrismaService,
     private queueService: QueueService,
     private configService: ConfigService,
-    private outboundSync: OutboundSyncService,
+    private hubspot: HubSpotService,
     private jotformService: JotformService,
     private formJotformProgress: FormJotformProgressService,
     private programRegistrations: ProgramRegistrationsService,
@@ -1347,25 +1347,21 @@ export class SurveysService {
           city: true,
           state: true,
           zipCode: true,
-          npiNumber: true,
         },
       });
       if (user) {
-        this.outboundSync
-          .syncUser({
+        this.hubspot
+          .createOrUpdateContact({
             email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            npiNumber: user.npiNumber,
-            specialty: user.specialty,
-            institution: user.institution,
-            city: user.city,
-            state: user.state,
-            zipCode: user.zipCode,
+            firstname: user.firstName,
+            lastname: user.lastName,
+            jobtitle: user.specialty ?? undefined,
+            company: user.institution ?? undefined,
+            city: user.city ?? undefined,
+            state: user.state ?? undefined,
+            zip: user.zipCode ?? undefined,
           })
-          .catch((err) =>
-            this.logger.error('[Surveys] outbound-sync error:', err),
-          );
+          .catch(() => {});
       }
 
       this.logger.log(`Survey ${surveyId} submitted by user ${userId}`);

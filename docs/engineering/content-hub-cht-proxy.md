@@ -183,17 +183,17 @@ Reports read **stored** platform data + `hubspotRawData` on the Hub campaign (fr
 
 | Browser (CHT) | Implementation |
 |---------------|----------------|
-| `GET /admin/content-hub/integrations/hubspot/status` | `HubSpotService.getAccountMetadata()` (token introspection → portal id / hub domain) |
+| `GET /admin/content-hub/integrations/hubspot/status` | `HubSpotService.isConfigured()` + account metadata (Phase 2) |
 | `POST /admin/content-hub/campaigns/:id/hubspot/sync` | See flow below |
 
 **HubSpot sync flow:**
 
 1. `GET` Hub campaign (`hubspotCampaignId`, reporting period).
 2. If `!hubspot.isConfigured()` → `400`.
-3. Call HubSpot API (campaign + metrics + period email statistics → `hubspotRawData`).
+3. Call HubSpot API (Phase 1: minimal; Phase 2: campaign marketing analytics).
 4. **`PATCH` Hub campaign** with `{ hubspotSyncedAt, hubspotRawData }`.
 5. `CacheClearService.clear('contenthub')`.
-6. Return `{ synced: true, syncedAt, warnings?, errors? }`.
+6. Return `{ synced: true, syncedAt }`.
 
 **Integrations GET**, include static HubSpot block (no token field):
 
@@ -348,12 +348,12 @@ curl -s -H "Authorization: Bearer $ADMIN_JWT" \
 - [ ] Report orchestration (GET → POST generate on Hub)
 - [ ] HubSpot status + sync → PATCH Hub campaign
 - [ ] Cache clear on writes
-- [x] Frontend `store.ts` swap (campaign CRUD, uploads, reports, HubSpot sync/status)
+- [ ] Frontend `store.ts` swap
 - [ ] CSV bootstrap + stub platform sync on Hub
 
 ### Phase 2: Production quality
 
-- [x] Real HubSpot campaign analytics in sync handler
+- [ ] Real HubSpot campaign analytics in sync handler
 - [ ] Hub daily cron + real platform connectors (Hub-side)
 - [ ] Port report builder fully (Hub `campaign_reports.py` / former `reports.ts`)
 - [ ] UI: prefer Sync over Upload where connectors exist

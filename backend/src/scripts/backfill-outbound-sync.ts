@@ -1,25 +1,28 @@
 /**
  * One-shot backfill: push every existing CHT user with a valid NPI to
- * MediaHub + HubSpot.
+ * MediaHub + HubSpot + Mailchimp.
  *
  * Motivation: outbound sync is wired on signup + profile-update going forward,
- * but any user who signed up before this landed never got propagated. Both
- * downstream endpoints are idempotent (HubSpot email-upsert, MediaHub
- * NPI-upsert) so re-running is safe.
+ * but any user who signed up before this landed never got propagated. All
+ * three downstream endpoints are idempotent (HubSpot email-upsert, MediaHub
+ * NPI-upsert, Mailchimp subscriber-hash PUT) so re-running is safe.
  *
  * Usage (from backend/):
  *   npx ts-node --transpile-only src/scripts/backfill-outbound-sync.ts --dry-run
  *   npx ts-node --transpile-only src/scripts/backfill-outbound-sync.ts --apply
  *
  * Env vars read: DATABASE_URL, MEDIAHUB_BASE_URL, MEDIAHUB_API_KEY,
- *                HUBSPOT_ACCESS_TOKEN.
+ *                HUBSPOT_ACCESS_TOKEN, MAILCHIMP_API_KEY, MAILCHIMP_AUDIENCE_ID,
+ *                MAILCHIMP_SERVER_PREFIX.
  */
 import { PrismaClient } from '@prisma/client';
+import { createHash } from 'crypto';
 
 type Stats = {
   users_scanned: number;
   users_with_npi: number;
   hubspot_ok: number;
+  mailchimp_ok: number;
   mediahub_ok: number;
   errors: string[];
 };
@@ -106,12 +109,53 @@ async function syncMediahub(user: {
   return res.ok;
 }
 
+async function syncMailchimp(user: {
+  email: string;
+  firstName: string;
+  lastName: string;
+  specialty: string | null;
+  institution: string | null;
+  npiNumber: string | null;
+}): Promise<boolean> {
+  const key = process.env.MAILCHIMP_API_KEY?.trim();
+  const list = process.env.MAILCHIMP_AUDIENCE_ID?.trim();
+  const server =
+    process.env.MAILCHIMP_SERVER?.trim() ||
+    process.env.MAILCHIMP_SERVER_PREFIX?.trim() ||
+    key?.split('-').pop();
+  if (!key || !list || !server) return false;
+  const email = user.email.toLowerCase();
+  const hash = createHash('md5').update(email).digest('hex');
+  const res = await fetch(
+    `https://${server}.api.mailchimp.com/3.0/lists/${list}/members/${hash}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`apikey:${key}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email_address: email,
+        status_if_new: 'subscribed',
+        merge_fields: {
+          FNAME: user.firstName,
+          LNAME: user.lastName,
+          ...(user.npiNumber && { NPI: user.npiNumber }),
+          ...(user.institution && { COMPANY: user.institution }),
+        },
+      }),
+    },
+  );
+  return res.ok;
+}
+
 async function run(dry: boolean): Promise<Stats> {
   const prisma = new PrismaClient();
   const stats: Stats = {
     users_scanned: 0,
     users_with_npi: 0,
     hubspot_ok: 0,
+    mailchimp_ok: 0,
     mediahub_ok: 0,
     errors: [],
   };
@@ -147,10 +191,11 @@ async function run(dry: boolean): Promise<Stats> {
         continue;
       }
 
-      // HubSpot always runs (even without NPI, for CRM); MediaHub only when
-      // NPI is present (it's an HCP-only roster).
+      // HubSpot + Mailchimp always run (even without NPI, for marketing);
+      // MediaHub only when NPI is present (it's an HCP-only roster).
       const results = await Promise.allSettled([
         syncHubspot({ ...u, npiNumber: hasNpi ? npi : null }),
+        syncMailchimp({ ...u, npiNumber: hasNpi ? npi : null }),
         hasNpi
           ? syncMediahub({ ...u, npiNumber: npi })
           : Promise.resolve(false),
@@ -162,11 +207,16 @@ async function run(dry: boolean): Promise<Stats> {
         stats.errors.push(`hubspot ${u.email}: ${results[0].reason}`);
 
       if (results[1].status === 'fulfilled' && results[1].value)
-        stats.mediahub_ok++;
+        stats.mailchimp_ok++;
       else if (results[1].status === 'rejected')
-        stats.errors.push(`mediahub ${u.email}: ${results[1].reason}`);
+        stats.errors.push(`mailchimp ${u.email}: ${results[1].reason}`);
 
-      // Be polite: throttle ~5 req/s so we don't tip HubSpot rate limits.
+      if (results[2].status === 'fulfilled' && results[2].value)
+        stats.mediahub_ok++;
+      else if (results[2].status === 'rejected')
+        stats.errors.push(`mediahub ${u.email}: ${results[2].reason}`);
+
+      // Be polite: throttle ~5 req/s so we don't tip over Mailchimp or HubSpot rate limits.
       await new Promise((r) => setTimeout(r, 200));
     }
   } finally {

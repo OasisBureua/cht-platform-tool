@@ -18,19 +18,6 @@ describe('contentHubErrorMessage', () => {
     ).toBe('Invalid API key');
   });
 
-  it('reads flat admin API message (error string + message)', () => {
-    expect(
-      contentHubErrorMessage({
-        error: 'Unprocessable Entity',
-        message:
-          'reportingPeriodStart: Input should be a valid date or datetime, input is too short',
-        statusCode: 422,
-      }),
-    ).toBe(
-      'reportingPeriodStart: Input should be a valid date or datetime, input is too short',
-    );
-  });
-
   it('falls back to errors.details', () => {
     expect(
       contentHubErrorMessage({

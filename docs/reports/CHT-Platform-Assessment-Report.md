@@ -214,8 +214,8 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
      │                          │
      ▼                          ▼
 ┌─────────┐              ┌───────────┐
-│ YouTube │              │  HubSpot  │
-│ Podcasts│              │    CRM    │
+│ YouTube │              │ HubSpot / │
+│ Podcasts│              │ Mailchimp │
 └─────────┘              └───────────┘
 ```
 
@@ -231,7 +231,7 @@ The CHT Platform (`cht-platform-tool`) is a production-deployed healthcare educa
 | **MediaHub**                     | Video catalog, HCP sync   | API key (server-to-server only)   | **High**     | Yes for catalog                     | **Keep API key**; no user auth; admin-only UI; CHT APIs to end users |
 | **Amazon SES**                   | Transactional email       | IAM (ECS task role)               | **High**     | No (AWS native)                     |:                                         |
 | **YouTube Data API**             | Podcast episodes          | API key                           | **Medium**   | Degrades podcast UX only            |:                                         |
-| **HubSpot**                      | CRM contact sync on signup | API token                         | **Low**      | Fire-and-forget; signup not blocked |:                                         |
+| **HubSpot / Mailchimp**          | Marketing sync on signup  | API keys                          | **Low**      | Fire-and-forget; signup not blocked |:                                         |
 | **Chatbot (chmbot)**             | AI assistant widget       | GoTrue JWT (today)                | **Medium**   | Degrades chatbot auth               | Cognito JWT via CHT backend post-migration |
 
 

@@ -82,7 +82,7 @@ export class AdminContentHubController {
       if (meta.status === 404) {
         throw new NotFoundException(meta.message || 'Not found');
       }
-      if (meta.status === 400 || meta.status === 422) {
+      if (meta.status === 400) {
         throw new BadRequestException(meta.message || 'Bad request');
       }
     }

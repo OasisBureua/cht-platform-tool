@@ -278,6 +278,16 @@ export default () => ({
     accessToken: process.env.HUBSPOT_ACCESS_TOKEN,
   },
 
+  // Mailchimp (audience sync: NPI merge field on signup/profile update).
+  // MAILCHIMP_SERVER is what MediaHub uses; accept either name so a single
+  // shared `~/.config/chm-mediahub/mailchimp.env` works for both services.
+  mailchimp: {
+    apiKey: process.env.MAILCHIMP_API_KEY,
+    audienceId: process.env.MAILCHIMP_AUDIENCE_ID,
+    serverPrefix:
+      process.env.MAILCHIMP_SERVER || process.env.MAILCHIMP_SERVER_PREFIX,
+  },
+
   catalog: {
     useContentHub:
       process.env.CATALOG_USE_CONTENTHUB?.trim().toLowerCase() === 'true' ||

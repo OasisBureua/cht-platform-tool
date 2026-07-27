@@ -15,7 +15,7 @@ import {
   isPostEventSurveyWithinWindow,
 } from '../../utils/program-survey-config';
 import { QueueService } from '../../queue/queue.service';
-import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
+import { HubSpotService } from '../hubspot/hubspot.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
 import {
@@ -31,37 +31,9 @@ export class ProgramsService {
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
-    private outboundSync: OutboundSyncService,
+    private hubspot: HubSpotService,
     private config: ConfigService,
   ) {}
-
-  private syncUserOutbound(user: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    specialty?: string | null;
-    institution?: string | null;
-    city?: string | null;
-    state?: string | null;
-    zipCode?: string | null;
-    npiNumber?: string | null;
-  }): void {
-    this.outboundSync
-      .syncUser({
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        npiNumber: user.npiNumber,
-        specialty: user.specialty,
-        institution: user.institution,
-        city: user.city,
-        state: user.state,
-        zipCode: user.zipCode,
-      })
-      .catch((err) =>
-        this.logger.error('[Programs] outbound-sync error:', err),
-      );
-  }
 
   private sessionAssetsPublicBase(): string {
     return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
@@ -382,7 +354,18 @@ export class ProgramsService {
       },
     });
 
-    this.syncUserOutbound(user);
+    this.hubspot
+      .createOrUpdateContact({
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        jobtitle: user.specialty ?? undefined,
+        company: user.institution ?? undefined,
+        city: user.city ?? undefined,
+        state: user.state ?? undefined,
+        zip: user.zipCode ?? undefined,
+      })
+      .catch(() => {});
 
     this.logger.log(`User enrolled successfully: ${enrollment.id}`);
 
@@ -613,7 +596,18 @@ export class ProgramsService {
       }
     }
 
-    this.syncUserOutbound(user);
+    this.hubspot
+      .createOrUpdateContact({
+        email: user.email,
+        firstname: user.firstName,
+        lastname: user.lastName,
+        jobtitle: user.specialty ?? undefined,
+        company: user.institution ?? undefined,
+        city: user.city ?? undefined,
+        state: user.state ?? undefined,
+        zip: user.zipCode ?? undefined,
+      })
+      .catch(() => {});
 
     this.logger.log(
       `Completion workflow triggered for program ${enrollment.programId}`,
