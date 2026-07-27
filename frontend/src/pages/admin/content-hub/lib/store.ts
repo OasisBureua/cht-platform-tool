@@ -26,6 +26,27 @@ type TemplateListResponse = {
   total?: number;
 };
 
+/** Hub rejects empty strings for date fields — send null instead. */
+const CAMPAIGN_DATE_KEYS = [
+  'reportingPeriodStart',
+  'reportingPeriodEnd',
+  'eventDate',
+] as const;
+
+function sanitizeCampaignBody(
+  body: Partial<Campaign>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...body };
+  for (const key of CAMPAIGN_DATE_KEYS) {
+    if (!(key in out)) continue;
+    const value = out[key];
+    if (value === '' || value === undefined) {
+      out[key] = null;
+    }
+  }
+  return out;
+}
+
 function asCampaign(data: unknown): Campaign {
   return data as Campaign;
 }
@@ -64,7 +85,7 @@ export async function createCampaign(
   try {
     const { data } = await apiClient.post<Campaign>(
       '/admin/content-hub/campaigns',
-      body,
+      sanitizeCampaignBody(body),
     );
     return asCampaign(data);
   } catch (err) {
@@ -79,7 +100,7 @@ export async function updateCampaign(
   try {
     const { data } = await apiClient.patch<Campaign>(
       `/admin/content-hub/campaigns/${id}`,
-      body,
+      sanitizeCampaignBody(body),
     );
     return asCampaign(data);
   } catch (err) {

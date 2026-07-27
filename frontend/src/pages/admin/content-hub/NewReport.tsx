@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Presentation, Upload } from 'lucide-react';
+import { getApiErrorMessage } from '../../../api/client';
 import ChromeContainer from './components/ChromeContainer';
 import { useToast } from './components/Toaster';
 import {
@@ -196,8 +197,12 @@ export default function NewReport() {
       setCampaignId(campaign.id);
       setStep(3);
     };
-    const onError = (error: Error) =>
-      toast({ title: 'Failed to save campaign', description: error.message, variant: 'destructive' });
+    const onError = (error: unknown) =>
+      toast({
+        title: 'Failed to save campaign',
+        description: getApiErrorMessage(error, 'Failed to save campaign.'),
+        variant: 'destructive',
+      });
 
     if (campaignId) {
       updateCampaign.mutate(body, { onSuccess, onError });
