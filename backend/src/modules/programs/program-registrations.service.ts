@@ -28,7 +28,7 @@ import {
 } from '../../utils/program-survey-config';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
 
@@ -83,11 +83,161 @@ export class ProgramRegistrationsService {
 
   constructor(
     private prisma: PrismaService,
-    private hubspot: HubSpotService,
+    private outboundSync: OutboundSyncService,
     private config: ConfigService,
     private queueService: QueueService,
     private sesEmail: SesEmailService,
   ) {}
+
+  private syncUserOutbound(user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    specialty?: string | null;
+    institution?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    npiNumber?: string | null;
+  }): void {
+    this.outboundSync
+      .syncUser({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        npiNumber: user.npiNumber,
+        specialty: user.specialty,
+        institution: user.institution,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+      })
+      .catch((err) =>
+        this.logger.error('[ProgramRegistrations] outbound-sync error:', err),
+      );
+  }
+
+  private syncRegistrationEvent(
+    user: {
+      email: string;
+      firstName: string;
+      lastName: string;
+      specialty?: string | null;
+      institution?: string | null;
+      city?: string | null;
+      state?: string | null;
+      zipCode?: string | null;
+      npiNumber?: string | null;
+    },
+    program: { id: string; title: string },
+    registrationStatus: string,
+    event:
+      | 'survey_submitted'
+      | 'registration_pending'
+      | 'registration_approved'
+      | 'registration_rejected'
+      | 'registration_updated',
+  ): void {
+    this.outboundSync
+      .syncProgramEvent({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        npiNumber: user.npiNumber,
+        specialty: user.specialty,
+        institution: user.institution,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+        programId: program.id,
+        programTitle: program.title,
+        registrationStatus,
+        event,
+      })
+      .catch((err) =>
+        this.logger.error(
+          '[ProgramRegistrations] outbound program-event error:',
+          err,
+        ),
+      );
+  }
+
+  /**
+   * Native intake survey completed: stamp SURVEY_SUBMITTED without enqueueing
+   * for admin approval (learner must still finish "Submit registration").
+   */
+  async markIntakeSurveySubmitted(
+    userId: string,
+    programId: string,
+    submissionId: string,
+  ): Promise<void> {
+    const program = await this.prisma.program.findFirst({
+      where: {
+        id: programId,
+        status: 'PUBLISHED',
+        zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+      },
+      select: {
+        id: true,
+        title: true,
+        registrationRequiresApproval: true,
+      },
+    });
+    if (!program) return;
+
+    const existing = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+
+    // Never downgrade APPROVED / PENDING — only stamp intake metadata.
+    if (
+      existing?.status === ProgramRegistrationStatus.APPROVED ||
+      existing?.status === ProgramRegistrationStatus.PENDING
+    ) {
+      await this.prisma.programRegistration.update({
+        where: { id: existing.id },
+        data: {
+          intakeSubmissionId: submissionId,
+          intakeJotformSubmittedAt: new Date(),
+        },
+      });
+      return;
+    }
+
+    const status = ProgramRegistrationStatus.SURVEY_SUBMITTED;
+    if (existing) {
+      await this.prisma.programRegistration.update({
+        where: { id: existing.id },
+        data: {
+          status,
+          intakeSubmissionId: submissionId,
+          intakeJotformSubmittedAt: new Date(),
+          reviewedAt: null,
+          reviewedByUserId: null,
+        },
+      });
+    } else {
+      await this.prisma.programRegistration.create({
+        data: {
+          userId,
+          programId,
+          status,
+          intakeSubmissionId: submissionId,
+          intakeJotformSubmittedAt: new Date(),
+        },
+      });
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      this.syncRegistrationEvent(
+        user,
+        program,
+        status,
+        'survey_submitted',
+      );
+    }
+  }
 
   /**
    * LIVE programs with honorarium, post-event Jotform, or FEEDBACK survey need attendance verification after approval.
@@ -569,15 +719,16 @@ export class ProgramRegistrationsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      this.hubspot
-        .createOrUpdateContact({
-          email: user.email,
-          firstname: user.firstName,
-          lastname: user.lastName,
-          jobtitle: user.specialty ?? undefined,
-          company: user.institution ?? undefined,
-        })
-        .catch(() => {});
+      this.syncRegistrationEvent(
+        user,
+        program,
+        status,
+        status === ProgramRegistrationStatus.APPROVED
+          ? 'registration_approved'
+          : status === ProgramRegistrationStatus.PENDING
+            ? 'registration_pending'
+            : 'registration_updated',
+      );
     }
 
     this.logger.log(
@@ -871,7 +1022,7 @@ export class ProgramRegistrationsService {
           programId,
           status: approvedNow
             ? ProgramRegistrationStatus.APPROVED
-            : ProgramRegistrationStatus.PENDING,
+            : ProgramRegistrationStatus.SURVEY_SUBMITTED,
           postEventAttendanceStatus: approvedNow
             ? attendanceIfApproved
             : PostEventAttendanceStatus.NOT_REQUIRED,
@@ -883,7 +1034,7 @@ export class ProgramRegistrationsService {
       const nextStatus = approvedNow
         ? ProgramRegistrationStatus.APPROVED
         : existing.status === ProgramRegistrationStatus.REJECTED
-          ? ProgramRegistrationStatus.PENDING
+          ? ProgramRegistrationStatus.SURVEY_SUBMITTED
           : existing.status;
       const becomesApprovedHere =
         nextStatus === ProgramRegistrationStatus.APPROVED;
@@ -893,7 +1044,8 @@ export class ProgramRegistrationsService {
           intakeSubmissionId: submissionId,
           intakeJotformSubmittedAt: new Date(),
           status: nextStatus,
-          ...(nextStatus === ProgramRegistrationStatus.PENDING
+          ...(nextStatus === ProgramRegistrationStatus.PENDING ||
+          nextStatus === ProgramRegistrationStatus.SURVEY_SUBMITTED
             ? {
                 postEventAttendanceStatus:
                   PostEventAttendanceStatus.NOT_REQUIRED,
@@ -911,15 +1063,16 @@ export class ProgramRegistrationsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      this.hubspot
-        .createOrUpdateContact({
-          email: user.email,
-          firstname: user.firstName,
-          lastname: user.lastName,
-          jobtitle: user.specialty ?? undefined,
-          company: user.institution ?? undefined,
-        })
-        .catch(() => {});
+      this.syncRegistrationEvent(
+        user,
+        program,
+        approvedNow
+          ? ProgramRegistrationStatus.APPROVED
+          : existing?.status === ProgramRegistrationStatus.PENDING
+            ? ProgramRegistrationStatus.PENDING
+            : ProgramRegistrationStatus.SURVEY_SUBMITTED,
+        approvedNow ? 'registration_approved' : 'survey_submitted',
+      );
     }
 
     this.logger.log(
@@ -1355,6 +1508,24 @@ export class ProgramRegistrationsService {
         this.logger.warn(
           `Registration-rejected email side effect: ${e.message}`,
         ),
+      );
+    }
+
+    const userForSync = await this.prisma.user.findUnique({
+      where: { id: reg.userId },
+    });
+    if (userForSync && status !== previousStatus) {
+      this.syncRegistrationEvent(
+        userForSync,
+        reg.program,
+        status,
+        status === ProgramRegistrationStatus.APPROVED
+          ? 'registration_approved'
+          : status === ProgramRegistrationStatus.REJECTED
+            ? 'registration_rejected'
+            : status === ProgramRegistrationStatus.PENDING
+              ? 'registration_pending'
+              : 'registration_updated',
       );
     }
 

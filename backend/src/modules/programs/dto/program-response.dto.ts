@@ -87,6 +87,21 @@ export class ProgramResponseDto {
   @IsOptional()
   zoomJoinUrl?: string;
 
+  /** True when an approved learner may use zoomJoinUrl (within live join window). */
+  @IsBoolean()
+  @IsOptional()
+  canJoinSession?: boolean;
+
+  /** ISO time when Join session becomes available (15 min before start). */
+  @IsString()
+  @IsOptional()
+  joinSessionOpensAt?: string;
+
+  /** Human-readable reason when canJoinSession is false. */
+  @IsString()
+  @IsOptional()
+  joinSessionReason?: string;
+
   @IsString()
   @IsOptional()
   zoomStartUrl?: string;

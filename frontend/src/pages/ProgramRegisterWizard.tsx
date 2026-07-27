@@ -327,8 +327,15 @@ export default function ProgramRegisterWizard() {
                 <p className="font-semibold">Registration already submitted</p>
                 <p>
                   {myRegistration?.status === 'PENDING'
-                    ? 'Your request is pending administrator review.'
-                    : 'You are registered for this session.'}
+                    ? 'Your request is pending administrator review. Join opens after approval, when the live session starts.'
+                    : 'You are registered for this session. Join opens closer to the live start time.'}
+                </p>
+              </div>
+            ) : myRegistration?.status === 'SURVEY_SUBMITTED' ? (
+              <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 space-y-1">
+                <p className="font-semibold">Survey submitted</p>
+                <p>
+                  Your intake survey was saved. Continue to submit registration so an administrator can approve you.
                 </p>
               </div>
             ) : null}

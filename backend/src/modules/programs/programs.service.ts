@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
+import { resolveLiveJoinWindow } from '../../utils/session-join-window';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import {
   loadProgramSurveyMeta,
@@ -15,7 +16,7 @@ import {
   isPostEventSurveyWithinWindow,
 } from '../../utils/program-survey-config';
 import { QueueService } from '../../queue/queue.service';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
 import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
 import {
@@ -31,9 +32,37 @@ export class ProgramsService {
   constructor(
     private prisma: PrismaService,
     private queueService: QueueService,
-    private hubspot: HubSpotService,
+    private outboundSync: OutboundSyncService,
     private config: ConfigService,
   ) {}
+
+  private syncUserOutbound(user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    specialty?: string | null;
+    institution?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    npiNumber?: string | null;
+  }): void {
+    this.outboundSync
+      .syncUser({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        npiNumber: user.npiNumber,
+        specialty: user.specialty,
+        institution: user.institution,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+      })
+      .catch((err) =>
+        this.logger.error('[Programs] outbound-sync error:', err),
+      );
+  }
 
   private sessionAssetsPublicBase(): string {
     return this.config.get<string>('sessionAssets.publicUrlBase')?.trim() || '';
@@ -274,7 +303,23 @@ export class ProgramsService {
         order: v.order,
       })),
       zoomSessionType: program.zoomSessionType,
-      zoomJoinUrl: learnerWebinarJoinUrl(program.zoomJoinUrl) || undefined,
+      ...(() => {
+        const joinWindow = resolveLiveJoinWindow(
+          program.startDate,
+          program.duration,
+        );
+        const attendeeUrl = learnerWebinarJoinUrl(program.zoomJoinUrl);
+        // Never expose the Zoom join URL outside the live window (except host start link below).
+        return {
+          zoomJoinUrl:
+            joinWindow.canJoin && attendeeUrl ? attendeeUrl : undefined,
+          canJoinSession: Boolean(joinWindow.canJoin && attendeeUrl),
+          joinSessionOpensAt: joinWindow.opensAt ?? undefined,
+          joinSessionReason: joinWindow.canJoin
+            ? undefined
+            : joinWindow.reason ?? undefined,
+        };
+      })(),
       startDate: program.startDate?.toISOString(),
       duration: program.duration ?? undefined,
       zoomSessionEndedAt: program.zoomSessionEndedAt?.toISOString(),
@@ -354,18 +399,7 @@ export class ProgramsService {
       },
     });
 
-    this.hubspot
-      .createOrUpdateContact({
-        email: user.email,
-        firstname: user.firstName,
-        lastname: user.lastName,
-        jobtitle: user.specialty ?? undefined,
-        company: user.institution ?? undefined,
-        city: user.city ?? undefined,
-        state: user.state ?? undefined,
-        zip: user.zipCode ?? undefined,
-      })
-      .catch(() => {});
+    this.syncUserOutbound(user);
 
     this.logger.log(`User enrolled successfully: ${enrollment.id}`);
 
@@ -596,18 +630,7 @@ export class ProgramsService {
       }
     }
 
-    this.hubspot
-      .createOrUpdateContact({
-        email: user.email,
-        firstname: user.firstName,
-        lastname: user.lastName,
-        jobtitle: user.specialty ?? undefined,
-        company: user.institution ?? undefined,
-        city: user.city ?? undefined,
-        state: user.state ?? undefined,
-        zip: user.zipCode ?? undefined,
-      })
-      .catch(() => {});
+    this.syncUserOutbound(user);
 
     this.logger.log(
       `Completion workflow triggered for program ${enrollment.programId}`,
