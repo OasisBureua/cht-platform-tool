@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ContactController } from './contact.controller';
 import { ContactService } from './contact.service';
-import { HubSpotModule } from '../hubspot/hubspot.module';
+import { OutboundSyncModule } from '../outbound-sync/outbound-sync.module';
 
 @Module({
-  imports: [HubSpotModule],
+  imports: [OutboundSyncModule],
   controllers: [ContactController],
   providers: [ContactService],
 })

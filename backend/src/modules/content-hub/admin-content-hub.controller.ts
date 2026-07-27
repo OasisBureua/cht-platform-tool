@@ -243,7 +243,7 @@ export class AdminContentHubController {
     );
     return {
       ...hubPlatforms,
-      hubspot: this.buildHubspotIntegration(),
+      hubspot: await this.buildHubspotIntegration(),
       livestream: this.buildZoomIntegration(),
       survey: this.buildNativeSurveyIntegration(),
     };
@@ -258,7 +258,7 @@ export class AdminContentHubController {
   }
 
   @Get('integrations/hubspot/status')
-  getHubspotStatus() {
+  async getHubspotStatus() {
     return this.buildHubspotIntegration();
   }
 
@@ -320,23 +320,27 @@ export class AdminContentHubController {
     }
   }
 
-  private buildHubspotIntegration(): IntegrationStatusBlock {
-    if (!this.hubspot.isConfigured()) {
+  private async buildHubspotIntegration(): Promise<IntegrationStatusBlock> {
+    const meta = await this.hubspot.getAccountMetadata();
+    if (!meta.connected) {
       return {
         managedBy: 'cht',
         connected: false,
         accountName: null,
         portalId: null,
         note: 'HUBSPOT_ACCESS_TOKEN in platform secrets. Use Sync on campaign detail.',
-        error: 'HUBSPOT_ACCESS_TOKEN not configured in platform secrets.',
+        error:
+          meta.error ??
+          'HUBSPOT_ACCESS_TOKEN not configured in platform secrets.',
       };
     }
     return {
       managedBy: 'cht',
       connected: true,
-      accountName: 'CHT HubSpot',
-      portalId: null,
+      accountName: meta.accountName,
+      portalId: meta.portalId,
       note: 'HUBSPOT_ACCESS_TOKEN in platform secrets. Use Sync on campaign detail.',
+      ...(meta.error ? { error: meta.error } : {}),
     };
   }
 
@@ -407,15 +411,18 @@ export class AdminContentHubController {
       }>(id),
     );
 
-    const syncedAt = new Date().toISOString();
-    const hubspotRawData = {
-      hubspotCampaignId: campaign.hubspotCampaignId ?? '',
-      reportingPeriodStart: campaign.reportingPeriodStart ?? '',
-      reportingPeriodEnd: campaign.reportingPeriodEnd ?? '',
-      syncedAt,
-      source: 'cht-hubspot-sync',
-      phase: 'minimal',
-    };
+    const hubspotRawData = await this.hubspot.getCampaignAnalytics({
+      hubspotCampaignId: campaign.hubspotCampaignId,
+      reportingPeriodStart: campaign.reportingPeriodStart,
+      reportingPeriodEnd: campaign.reportingPeriodEnd,
+    });
+    const syncedAt = hubspotRawData.syncedAt;
+
+    if (hubspotRawData.errors.length) {
+      this.logger.warn(
+        `HubSpot sync for campaign ${id} completed with errors: ${hubspotRawData.errors.join('; ')}`,
+      );
+    }
 
     await this.hubCall(() =>
       this.campaigns.updateCampaign(id, {
@@ -425,7 +432,14 @@ export class AdminContentHubController {
     );
     await this.afterHubWrite();
 
-    this.logger.log(`HubSpot snapshot PATCHed to Hub campaign ${id}`);
-    return { synced: true, syncedAt };
+    this.logger.log(
+      `HubSpot analytics snapshot PATCHed to Hub campaign ${id} (phase=${hubspotRawData.phase})`,
+    );
+    return {
+      synced: true,
+      syncedAt,
+      warnings: hubspotRawData.warnings,
+      errors: hubspotRawData.errors,
+    };
   }
 }

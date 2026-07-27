@@ -28,7 +28,7 @@ import {
 } from '../../utils/program-survey-config';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
 
@@ -83,11 +83,39 @@ export class ProgramRegistrationsService {
 
   constructor(
     private prisma: PrismaService,
-    private hubspot: HubSpotService,
+    private outboundSync: OutboundSyncService,
     private config: ConfigService,
     private queueService: QueueService,
     private sesEmail: SesEmailService,
   ) {}
+
+  private syncUserOutbound(user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    specialty?: string | null;
+    institution?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    npiNumber?: string | null;
+  }): void {
+    this.outboundSync
+      .syncUser({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        npiNumber: user.npiNumber,
+        specialty: user.specialty,
+        institution: user.institution,
+        city: user.city,
+        state: user.state,
+        zipCode: user.zipCode,
+      })
+      .catch((err) =>
+        this.logger.error('[ProgramRegistrations] outbound-sync error:', err),
+      );
+  }
 
   /**
    * LIVE programs with honorarium, post-event Jotform, or FEEDBACK survey need attendance verification after approval.
@@ -569,15 +597,7 @@ export class ProgramRegistrationsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      this.hubspot
-        .createOrUpdateContact({
-          email: user.email,
-          firstname: user.firstName,
-          lastname: user.lastName,
-          jobtitle: user.specialty ?? undefined,
-          company: user.institution ?? undefined,
-        })
-        .catch(() => {});
+      this.syncUserOutbound(user);
     }
 
     this.logger.log(
@@ -911,15 +931,7 @@ export class ProgramRegistrationsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      this.hubspot
-        .createOrUpdateContact({
-          email: user.email,
-          firstname: user.firstName,
-          lastname: user.lastName,
-          jobtitle: user.specialty ?? undefined,
-          company: user.institution ?? undefined,
-        })
-        .catch(() => {});
+      this.syncUserOutbound(user);
     }
 
     this.logger.log(

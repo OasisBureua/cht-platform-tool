@@ -1,7 +1,5 @@
-// react-query hooks for Content Hub. Thin wrappers over store.ts (localStorage today,
-// real NestJS endpoints later: see the seam comment in store.ts). Using the platform's
-// shared QueryClient (from App.tsx) is fine: these query keys are namespaced under
-// 'content-hub' so they never collide with the rest of the admin app.
+// react-query hooks for Content Hub. Thin wrappers over store.ts (apiClient →
+// NestJS admin proxy). Query keys are namespaced under 'content-hub'.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../../../api/admin';
@@ -9,7 +7,6 @@ import { surveysApi, type Survey } from '../../../../api/surveys';
 import * as store from './store';
 import type {
   Campaign,
-  HubspotStatus,
   IntegrationSettings,
   Platform,
   Template,
@@ -40,13 +37,17 @@ export function useCampaigns() {
 }
 
 export function useCampaign(id: string | number, enabled = true) {
-  return useQuery({ queryKey: qk.campaign(id), queryFn: () => store.getCampaign(n(id)), enabled });
+  return useQuery({
+    queryKey: qk.campaign(id),
+    queryFn: () => store.getCampaign(n(id)),
+    enabled: enabled && Number.isFinite(n(id)) && n(id) > 0,
+  });
 }
 
 export function useCreateCampaign() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<Campaign>) => Promise.resolve(store.createCampaign(body)),
+    mutationFn: (body: Partial<Campaign>) => store.createCampaign(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.campaigns() }),
   });
 }
@@ -54,7 +55,7 @@ export function useCreateCampaign() {
 export function useUpdateCampaign(id: string | number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: Partial<Campaign>) => Promise.resolve(store.updateCampaign(n(id), body)),
+    mutationFn: (body: Partial<Campaign>) => store.updateCampaign(n(id), body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.campaigns() });
       qc.invalidateQueries({ queryKey: qk.campaign(id) });
@@ -65,7 +66,7 @@ export function useUpdateCampaign(id: string | number) {
 export function useDeleteCampaign() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string | number) => Promise.resolve(store.deleteCampaign(n(id))),
+    mutationFn: (id: string | number) => store.deleteCampaign(n(id)),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.campaigns() }),
   });
 }
@@ -76,14 +77,18 @@ export function useCsvData(id: string | number) {
 }
 
 export function useDataValidation(id: string | number, enabled = true) {
-  return useQuery({ queryKey: qk.validation(id), queryFn: () => store.getDataValidation(n(id)), enabled });
+  return useQuery({
+    queryKey: qk.validation(id),
+    queryFn: () => store.getDataValidation(n(id)),
+    enabled,
+  });
 }
 
 export function useUploadCsv(id: string | number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (args: { platform: Platform; filename: string; content: string }) =>
-      Promise.resolve(store.uploadCsv(n(id), args.platform, args.filename, args.content)),
+      store.uploadCsv(n(id), args.platform, args.filename, args.content),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.csvData(id) });
       qc.invalidateQueries({ queryKey: qk.validation(id) });
@@ -137,7 +142,7 @@ export function useConnectFeedbackSurvey(id: string | number) {
 export function useHubspotSync(id: string | number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => Promise.resolve(store.hubspotSync(n(id))),
+    mutationFn: () => store.hubspotSync(n(id)),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.campaign(id) }),
   });
 }
@@ -145,7 +150,7 @@ export function useHubspotSync(id: string | number) {
 export function useGenerateInsights(id: string | number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => Promise.resolve(store.generateAiInsights(n(id))),
+    mutationFn: () => store.generateAiInsights(n(id)),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.report(id) }),
   });
 }
@@ -156,7 +161,10 @@ export function useAnalyticsReport(id: string | number) {
 }
 
 export function useExecutiveReport(id: string | number) {
-  return useQuery({ queryKey: qk.executiveReport(id), queryFn: () => store.getExecutiveReport(n(id)) });
+  return useQuery({
+    queryKey: qk.executiveReport(id),
+    queryFn: () => store.getExecutiveReport(n(id)),
+  });
 }
 
 // ---------- Templates ----------
@@ -168,7 +176,7 @@ export function useCreateTemplate() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: { name: string; type: string; description: string }) =>
-      Promise.resolve(store.createTemplate(body)),
+      store.createTemplate(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.templates() }),
   });
 }
@@ -176,7 +184,7 @@ export function useCreateTemplate() {
 export function useDeleteTemplate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => Promise.resolve(store.deleteTemplate(id)),
+    mutationFn: (id: number) => store.deleteTemplate(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: qk.templates() }),
   });
 }
@@ -190,7 +198,7 @@ export function useUpdateIntegrations() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (patch: Partial<Record<keyof IntegrationSettings, unknown>>) =>
-      Promise.resolve(store.updateIntegrations(patch)),
+      store.updateIntegrations(patch),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.integrations() });
       qc.invalidateQueries({ queryKey: qk.integrationsConnection() });
@@ -219,19 +227,12 @@ export function useIntegrationsConnection(enabled = true) {
 }
 
 export function useHubspotStatus(enabled = true) {
-  const query = useIntegrationsConnection(enabled);
-  const hubspot = query.data?.hubspot;
-  return {
-    ...query,
-    data: hubspot
-      ? ({
-          connected: hubspot.connected,
-          accountName: hubspot.accountName ?? null,
-          portalId: hubspot.portalId ?? null,
-          error: hubspot.error,
-        } satisfies HubspotStatus)
-      : undefined,
-  };
+  return useQuery({
+    queryKey: qk.hubspotStatus(),
+    queryFn: () => store.getHubspotStatus(),
+    enabled,
+    staleTime: 60_000,
+  });
 }
 
 export type { Template };

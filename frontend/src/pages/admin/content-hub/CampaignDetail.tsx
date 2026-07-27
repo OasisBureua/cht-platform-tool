@@ -11,6 +11,7 @@ import {
   X,
   XCircle,
 } from 'lucide-react';
+import { getApiErrorMessage } from '../../../api/client';
 import ChromeContainer from './components/ChromeContainer';
 import { useToast } from './components/Toaster';
 import {
@@ -95,8 +96,25 @@ export default function CampaignDetail() {
 
   const doSync = () =>
     syncMutation.mutate(undefined, {
-      onSuccess: () => toast({ title: 'HubSpot synced', description: 'Contact, form, and email data pulled.' }),
-      onError: (err: Error) => toast({ title: 'HubSpot sync failed', description: err.message, variant: 'destructive' }),
+      onSuccess: (result) => {
+        const notes = [
+          ...(result.errors?.length ? [`Errors: ${result.errors.join('; ')}`] : []),
+          ...(result.warnings?.length ? [`Notes: ${result.warnings.join('; ')}`] : []),
+        ];
+        toast({
+          title: 'HubSpot synced',
+          description:
+            notes.length > 0
+              ? notes.join(' ')
+              : 'Campaign analytics snapshot saved to Content Hub.',
+        });
+      },
+      onError: (err: unknown) =>
+        toast({
+          title: 'HubSpot sync failed',
+          description: getApiErrorMessage(err, 'HubSpot sync failed.'),
+          variant: 'destructive',
+        }),
     });
 
   const startEditing = () => {
