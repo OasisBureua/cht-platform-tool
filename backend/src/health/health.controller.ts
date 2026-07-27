@@ -8,7 +8,15 @@ import {
 } from '@nestjs/terminus';
 import { PrismaHealthIndicator } from './prisma.health';
 
-@SkipThrottle()
+// Named throttlers only — bare @SkipThrottle() skips { default: true }, which
+// does nothing here, so ALB/ECS /health probes were getting 429 and killing tasks.
+@SkipThrottle({
+  short: true,
+  medium: true,
+  long: true,
+  auth: true,
+  authMfa: true,
+})
 @Controller()
 export class HealthController {
   constructor(

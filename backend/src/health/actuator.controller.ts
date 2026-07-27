@@ -2,7 +2,13 @@ import { Controller, Get } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { AppInfoService } from './app-info.service';
 
-@SkipThrottle()
+@SkipThrottle({
+  short: true,
+  medium: true,
+  long: true,
+  auth: true,
+  authMfa: true,
+})
 @Controller('actuator')
 export class ActuatorController {
   constructor(private readonly appInfo: AppInfoService) {}
