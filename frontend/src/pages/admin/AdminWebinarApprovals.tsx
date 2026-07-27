@@ -437,7 +437,7 @@ export default function AdminWebinarApprovals() {
                   <td className="py-3 px-4 text-gray-600 whitespace-nowrap text-xs">
                     {r.postEventAttendanceReviewedAt
                       ? format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, yyyy h:mm a')
-                      : '—'}
+                      : '-'}
                   </td>
                   <td className="py-3 px-4">
                     {isPending ? (
@@ -518,7 +518,7 @@ export default function AdminWebinarApprovals() {
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
-                      {r.reviewedAt ? format(parseISO(r.reviewedAt), 'MMM d, yyyy h:mm a') : '—'}
+                      {r.reviewedAt ? format(parseISO(r.reviewedAt), 'MMM d, yyyy h:mm a') : '-'}
                     </td>
                     <td className="py-3 px-4 text-amber-900 font-mono text-xs whitespace-nowrap">
                       {remaining > 0 ? formatUndoCountdown(remaining) : 'Expired'}

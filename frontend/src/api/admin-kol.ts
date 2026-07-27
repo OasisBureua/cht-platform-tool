@@ -21,7 +21,7 @@ export interface AdminKol {
   updated_at: string | null;
 }
 
-/** PATCH body — every field optional; omitted fields are untouched. */
+/** PATCH body: every field optional; omitted fields are untouched. */
 export interface AdminKolUpdate {
   title?: string | null;
   specialty?: string | null;
@@ -77,7 +77,7 @@ export const adminKolApi = {
   },
 };
 
-/** Direct browser PUT to S3 using the presigned URL. Not through apiClient — the
+/** Direct browser PUT to S3 using the presigned URL. Not through apiClient: the
  * S3 URL rejects our JWT + adds its own signature. */
 export async function uploadHeadshotToS3(
   presign: KolHeadshotPresign,

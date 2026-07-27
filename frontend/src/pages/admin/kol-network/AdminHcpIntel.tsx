@@ -38,7 +38,7 @@ import {
   type SignalType,
 } from './lib/intel';
 import { cn } from './components/cn';
-import { Card, CardContent, CardHeader, CardTitle } from './components/Card';
+import { Card, CardContent, CardHeader } from './components/Card';
 import { Badge, DemoBadge } from './components/Badge';
 import { Button, buttonVariants } from './components/Button';
 import { InitialsAvatar } from './components/InitialsAvatar';
@@ -112,7 +112,7 @@ const NEGATIVE = 'text-red-600 dark:text-red-400';
 // ─── page ────────────────────────────────────────────────────────────────────
 
 /**
- * Internal HCP intelligence detail — "Mix 1 · A + B" layout: identity band +
+ * Internal HCP intelligence detail: "Mix 1 · A + B" layout: identity band +
  * KPI tiles up top, the AI Intelligence Briefing as the editorial centerpiece
  * with the Rx attribution chart and signal feed beside it, publications and
  * trials/grants below, and the remaining detail (engagement, prescribing,
@@ -129,7 +129,7 @@ export default function AdminHcpIntel() {
   const profileQuery = useQuery({
     queryKey: ['admin', 'kol-network', 'detail', id],
     // 'always' + no retry: fire even when react-query's onlineManager reports
-    // offline, and reject on the FIRST failure — retries park the query in
+    // offline, and reject on the FIRST failure: retries park the query in
     // 'paused' when the tab is unfocused/offline, so the error state (and the
     // demo fallback) would never engage.
     networkMode: 'always',
@@ -137,7 +137,7 @@ export default function AdminHcpIntel() {
     queryFn: async (): Promise<PublicKol | null> => {
       const k = await kolNetworkApi.get(id);
       // Guard against a non-API service answering on the port with a 200
-      // whose body isn't a KOL payload — treat as an error so the demo
+      // whose body isn't a KOL payload: treat as an error so the demo
       // fallback triggers instead of rendering garbage.
       if (k !== null && (typeof k !== 'object' || typeof k.name !== 'string')) {
         throw new Error('Malformed /kol-network profile response (backend unreachable?)');
@@ -153,7 +153,7 @@ export default function AdminHcpIntel() {
   const isLoading = profileQuery.isLoading;
   const name = kol?.name ?? '';
 
-  // Live — MediaHub public publications endpoint, proxied via CHT backend.
+  // Live: MediaHub public publications endpoint, proxied via CHT backend.
   // Skipped entirely when the profile already fell back to demo.
   const pubsQuery = useQuery({
     queryKey: ['admin', 'kol-network', 'detail', id, 'publications'],
@@ -171,7 +171,7 @@ export default function AdminHcpIntel() {
   const pubsDemo = usingDemoProfile || pubsQuery.isError;
   const pubs = pubsDemo ? demoKolPublications(id) : pubsQuery.data;
 
-  // Demo seam — see lib/intel.ts.
+  // Demo seam: see lib/intel.ts.
   const briefQuery = useQuery({
     queryKey: ['admin', 'kol-intel', id, 'brief'],
     queryFn: () => intelApi.getAIBrief(id, name),
@@ -254,7 +254,7 @@ export default function AdminHcpIntel() {
     }
   }
 
-  // "Log outreach" toast stub — outreach logging isn't wired to a backend yet.
+  // "Log outreach" toast stub: outreach logging isn't wired to a backend yet.
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
   function showToast(msg: string) {
@@ -284,7 +284,7 @@ export default function AdminHcpIntel() {
         showToast(`Intel refresh enqueued for ${kol.name}.`);
       } else if (result.status === 'cooldown') {
         showToast(
-          `Refresh cooldown active — retry in ${result.cooldown_remaining_seconds ?? '?'}s.`,
+          `Refresh cooldown active: retry in ${result.cooldown_remaining_seconds ?? '?'}s.`,
         );
       } else {
         showToast(result.reason || 'Refresh skipped.');
@@ -310,7 +310,7 @@ export default function AdminHcpIntel() {
     );
   }
   if (!kol) {
-    // Only reachable on a VALID 404 from the API — backend/network failures
+    // Only reachable on a VALID 404 from the API: backend/network failures
     // fall back to the demo profile above so the page stays reviewable.
     return (
       <Card className="border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
@@ -335,12 +335,12 @@ export default function AdminHcpIntel() {
   const liftLabel =
     topLift && topLift.pct_lift !== null
       ? `${topLift.pct_lift > 0 ? '+' : ''}${topLift.pct_lift.toFixed(0)}%`
-      : '—';
+      : '-';
 
   const paymentsTotal = payments?.summary.total_usd ?? null;
   const paymentsLabel =
     paymentsTotal === null
-      ? '—'
+      ? '-'
       : paymentsTotal >= 1000
         ? `$${Math.round(paymentsTotal / 1000)}K`
         : `$${paymentsTotal.toLocaleString()}`;
@@ -348,7 +348,7 @@ export default function AdminHcpIntel() {
     ? `${payments.summary.year_range[0]}–${payments.summary.year_range[1]} · disclosed`
     : 'CMS Sunshine Act';
 
-  // Signal feed — freshest item per intel stream (webinar / Rx / pubs / news).
+  // Signal feed: freshest item per intel stream (webinar / Rx / pubs / news).
   const signals: { id: string; tone: 'teal' | 'orange'; meta: string; line: string }[] = [];
   const webinar = timeline.find((s) => s.signal_type === 'webinar_attendance');
   if (webinar) {
@@ -389,7 +389,7 @@ export default function AdminHcpIntel() {
 
   return (
     <div className="space-y-4">
-      {/* Back — browser history so the user returns to wherever they came from */}
+      {/* Back: browser history so the user returns to wherever they came from */}
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1 rounded-lg text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -409,7 +409,7 @@ export default function AdminHcpIntel() {
                 <Badge
                   variant="teal"
                   className="text-[10px]"
-                  title="Has appeared in CHM-produced content — actively engaged KOL."
+                  title="Has appeared in CHM-produced content, actively engaged KOL."
                 >
                   Engaged
                 </Badge>
@@ -450,7 +450,7 @@ export default function AdminHcpIntel() {
               variant="outline"
               onClick={() => setEditOpen(true)}
               disabled={usingDemoProfile}
-              title={usingDemoProfile ? 'Backend unreachable — edits disabled' : undefined}
+              title={usingDemoProfile ? 'Backend unreachable: edits disabled' : undefined}
             >
               Edit
             </Button>
@@ -472,7 +472,7 @@ export default function AdminHcpIntel() {
               size="sm"
               onClick={() =>
                 showToast(
-                  `Outreach logging for ${kol.name} is a stub — it will create a CRM touchpoint once wired to the backend.`,
+                  `Outreach logging for ${kol.name} is a stub. It will create a CRM touchpoint once wired to the backend.`,
                 )
               }
             >
@@ -483,7 +483,7 @@ export default function AdminHcpIntel() {
         {lastRefresh && (
           <div className="border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
             Last refresh {new Date(lastRefresh.at).toLocaleTimeString()} · {lastRefresh.status}
-            {lastRefresh.reason ? ` — ${lastRefresh.reason}` : ''}
+            {lastRefresh.reason ? `: ${lastRefresh.reason}` : ''}
           </div>
         )}
       </Card>
@@ -513,7 +513,7 @@ export default function AdminHcpIntel() {
         />
         <KpiTile
           eyebrow="Total Rx"
-          value={rx.length > 0 ? totalRxAllYears.toLocaleString() : '—'}
+          value={rx.length > 0 ? totalRxAllYears.toLocaleString() : '-'}
           note="CMS Part D · demo"
         />
         <KpiTile
@@ -611,7 +611,7 @@ export default function AdminHcpIntel() {
         <TrialsGrantsCard trials={trialsQuery.data ?? []} nih={nihQuery.data ?? null} />
       </div>
 
-      {/* 5 · Below the fold — remaining detail as stacked cards */}
+      {/* 5 · Below the fold: remaining detail as stacked cards */}
       <EngagementSection engagement={engagementQuery.data ?? null} timeline={timeline} />
       <PrescribingSection rx={rx} shifts={shifts} />
       <OpenPaymentsCard payments={payments} />
@@ -633,7 +633,7 @@ export default function AdminHcpIntel() {
 
 // ─── shared atoms ────────────────────────────────────────────────────────────
 
-/** Small uppercase teal section label — the platform's card-header language. */
+/** Small uppercase teal section label: the platform's card-header language. */
 function Eyebrow({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <span
@@ -702,7 +702,7 @@ function MiniKPI({ label, value }: { label: string; value: string | number }) {
 
 function DrugChip({ drug, klass }: { drug: string; klass?: string | null }) {
   return (
-    <Badge variant="outline" className="gap-1.5" title={klass ? `${drug} — ${klass}` : drug}>
+    <Badge variant="outline" className="gap-1.5" title={klass ? `${drug}: ${klass}` : drug}>
       <Pill className="h-3 w-3" />
       {drug}
       {klass && (
@@ -713,7 +713,7 @@ function DrugChip({ drug, klass }: { drug: string; klass?: string | null }) {
 }
 
 /**
- * Minimal markdown renderer — just enough for the AI brief's headers +
+ * Minimal markdown renderer: just enough for the AI brief's headers +
  * paragraphs + bold/italic (ported from MediaHub; avoids a markdown dep).
  * Headers render as muted eyebrows per the approved dossier layout.
  */
@@ -1061,14 +1061,14 @@ function TrialsGrantsCard({
                       {g.project_title ?? g.project_num ?? g.appl_id}
                     </p>
                     <p className="text-[11px] text-muted-foreground">
-                      {g.fiscal_year ?? '—'} · {g.activity_code ?? '—'} · {g.agency_ic ?? '—'}
+                      {g.fiscal_year ?? '-'} · {g.activity_code ?? '-'} · {g.agency_ic ?? '-'}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="font-mono text-sm font-semibold tabular-nums">
                       {g.award_amount
                         ? `$${g.award_amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                        : '—'}
+                        : '-'}
                     </p>
                     {g.is_active && (
                       <Badge variant="teal" className="mt-1 text-[9px]">
@@ -1167,7 +1167,7 @@ function EngagementSection({
             active={activePill === 'qa'}
             onClick={() => setActivePill('qa')}
           />
-          {/* Future CHT-event pills — greyed out until CHT engagement events land */}
+          {/* Future CHT-event pills: greyed out until CHT engagement events land */}
           {['Videos', 'Emails', 'Surveys', 'Payments', 'Chat'].map((p) => (
             <span
               key={p}
@@ -1187,7 +1187,7 @@ function EngagementSection({
             <MiniKPI label="Questions asked" value={engagement.questions_asked} />
             <MiniKPI
               label="Q&A rate"
-              value={engagement.qa_rate === null ? '—' : `${Math.round(engagement.qa_rate * 100)}%`}
+              value={engagement.qa_rate === null ? '-' : `${Math.round(engagement.qa_rate * 100)}%`}
             />
           </div>
         )}
@@ -1214,7 +1214,7 @@ function EngagementSection({
               const isClip = s.signal_type === 'clip_appearance';
               const clipTitle =
                 isClip && s.panel && s.panel.length > 0
-                  ? `${s.title} — ${s.panel.join(', ')}`
+                  ? `${s.title}: ${s.panel.join(', ')}`
                   : s.title;
               return (
                 <div
@@ -1350,7 +1350,7 @@ function PrescribingSection({
                       <span className="ml-1 text-xs text-muted-foreground">({d.brand_name})</span>
                     )}
                   </td>
-                  <td className="p-3 text-xs text-muted-foreground">{d.drug_class ?? '—'}</td>
+                  <td className="p-3 text-xs text-muted-foreground">{d.drug_class ?? '-'}</td>
                   <td className="p-3 pr-5 text-right font-mono tabular-nums">
                     {d.total_claims_all_years.toLocaleString()}
                   </td>
@@ -1390,7 +1390,7 @@ function PrescribingSection({
                       className="border-b border-border transition-colors duration-200 last:border-0 hover:bg-muted/40"
                     >
                       <td className="p-3 pl-5 font-medium">{s.drug_normalized}</td>
-                      <td className="p-3 text-xs text-muted-foreground">{s.drug_class ?? '—'}</td>
+                      <td className="p-3 text-xs text-muted-foreground">{s.drug_class ?? '-'}</td>
                       <td className="p-3 text-right font-mono tabular-nums">
                         {s.pre_claims.toLocaleString()}
                       </td>
@@ -1408,7 +1408,7 @@ function PrescribingSection({
                       </td>
                       <td className="p-3 pr-5 text-right font-mono tabular-nums">
                         {s.pct_lift === null ? (
-                          '—'
+                          '-'
                         ) : (
                           <span className={s.has_lift ? `font-medium ${POSITIVE}` : ''}>
                             {s.pct_lift > 0 ? '+' : ''}
@@ -1463,7 +1463,7 @@ function OpenPaymentsCard({ payments }: { payments: OpenPaymentsResponse | null 
               <MiniKPI label="Records" value={summary.record_count} />
               <MiniKPI
                 label="Years"
-                value={summary.year_range ? `${summary.year_range[0]}–${summary.year_range[1]}` : '—'}
+                value={summary.year_range ? `${summary.year_range[0]}–${summary.year_range[1]}` : '-'}
               />
             </div>
 

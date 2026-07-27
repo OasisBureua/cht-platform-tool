@@ -127,7 +127,7 @@ function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalyt
 }
 
 function RatingStats({ q }: { q: SurveyRatingQuestionAnalytics }) {
-  const fmt = (n: number | null) => (n == null ? '—' : Number.isInteger(n) ? String(n) : n.toFixed(1));
+  const fmt = (n: number | null) => (n == null ? '-' : Number.isInteger(n) ? String(n) : n.toFixed(1));
   const stats: Array<{ label: string; value: string }> = [
     { label: 'Mean', value: fmt(q.mean) },
     { label: 'Median', value: fmt(q.median) },

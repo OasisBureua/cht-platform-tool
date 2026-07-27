@@ -118,7 +118,7 @@ nano terraform.tfvars
 
 ### 3. Deploy Infrastructure
 
-**Platform (single stack, `us-east-1`)** — copy `infrastructure/terraform/environments/variables/platform.tfvars.example` to `platform.tfvars` in that same folder, then:
+**Platform (single stack, `us-east-1`)**: copy `infrastructure/terraform/environments/variables/platform.tfvars.example` to `platform.tfvars` in that same folder, then:
 
 ```bash
 cd infrastructure/terraform/environments/us-east-1

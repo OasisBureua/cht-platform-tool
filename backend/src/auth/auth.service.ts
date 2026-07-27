@@ -398,7 +398,7 @@ export class AuthService {
   }
 
   /**
-   * Resolve session by token — Redis first, then Postgres.
+   * Resolve session by token: Redis first, then Postgres.
    * Enforces idle + absolute timeouts and slides idle expiry on activity
    * (when less than half the idle window remains) so active users stay signed in
    * until the absolute cap.

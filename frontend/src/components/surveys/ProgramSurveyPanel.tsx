@@ -9,9 +9,9 @@ type Props = {
   surveyId: string;
   userId: string;
   programId: string;
-  /** @deprecated Ignored — registration/feedback panels are native-only. */
+  /** @deprecated Ignored: registration/feedback panels are native-only. */
   legacyJotformUrl?: string;
-  /** @deprecated Ignored — Jotform embeds are no longer used. */
+  /** @deprecated Ignored: Jotform embeds are no longer used. */
   feedbackUsesJotform?: boolean;
   authenticated: boolean;
   userSummary?: { firstName?: string; lastName?: string; email?: string };

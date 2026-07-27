@@ -160,7 +160,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Get admin config (Jotform webinar template form IDs from env — used when scheduling webinars)',
+      'Get admin config (Jotform webinar template form IDs from env: used when scheduling webinars)',
   })
   getAdminConfig() {
     const invitation =
@@ -431,7 +431,7 @@ export class AdminController {
       updateData.zoomStartUrl = sessionDetail.startUrl;
     }
     if (sessionDetail?.joinUrl) {
-      // Attendee / silent-participant link — always refresh from Zoom when available.
+      // Attendee / silent-participant link: always refresh from Zoom when available.
       updateData.zoomJoinUrl = sessionDetail.joinUrl;
     }
 
@@ -445,7 +445,7 @@ export class AdminController {
       const uniqueUrls = new Set(links.map((l) => l.joinUrl));
       if (links.length > 0 && uniqueUrls.size < links.length) {
         this.logger.warn(
-          `Refreshed panelist links for program ${id} contain duplicate join URLs — re-create panelists in Zoom if speakers cannot join independently`,
+          `Refreshed panelist links for program ${id} contain duplicate join URLs, re-create panelists in Zoom if speakers cannot join independently`,
         );
       }
       if (links.length) updateData.zoomPanelistLinks = links;
@@ -1040,7 +1040,7 @@ export class AdminController {
           zoomStartUrl = created.startUrl;
 
           // Build panelist list: CHM Staff (fixed) + each speaker with an indexed email
-          // Host does not get a personal Zoom URL — they start the session via the host start link.
+          // Host does not get a personal Zoom URL, they start the session via the host start link.
           const speakerNames = (body.speakers ?? [])
             .map((s) => s.trim())
             .filter(Boolean);
@@ -1150,7 +1150,7 @@ export class AdminController {
         : !this.zoom.isConfigured()
           ? {
               zoomWarning:
-                'Session saved, but Zoom is not connected — no meeting was created on Zoom. ' +
+                'Session saved, but Zoom is not connected, no meeting was created on Zoom. ' +
                 'Add ZOOM_ACCOUNT_ID, ZOOM_CLIENT_ID, and ZOOM_CLIENT_SECRET to your environment variables to enable Zoom meeting creation.',
             }
           : {}),

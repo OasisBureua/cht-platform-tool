@@ -4,7 +4,7 @@
 // timeline) still return demo data and continue to render a <DemoBadge/>.
 // See LIVE_INTEL_METHODS below.
 //
-// Every consumer types against the interfaces in this file — the live-swap
+// Every consumer types against the interfaces in this file, the live-swap
 // changes function bodies only, plus a couple of adapters to shape backend
 // envelopes into the frontend types.
 
@@ -184,7 +184,7 @@ export interface RxTrendResponse {
 // The directory + intel pages render this seeded roster when kolNetworkApi
 // errors (backend down, or a malformed non-API response on the port). Live
 // behavior is unchanged whenever the API responds with a valid payload.
-// NOTE: 'amara-osei' carries id 1003031212 — the NPI slot the reviewers use;
+// NOTE: 'amara-osei' carries id 1003031212: the NPI slot the reviewers use;
 // MediaHub's source doesn't reveal the real doctor, so she is invented.
 
 export const DEMO_KOLS: PublicKol[] = [
@@ -477,7 +477,7 @@ const DEMO_SHIFTS: ShiftsResponse = {
 
 /**
  * Monthly claims for the headline drug, pre/post the first CHM shoot.
- * Anchors the "Rx · pre / post first CHM shoot" attribution chart —
+ * Anchors the "Rx · pre / post first CHM shoot" attribution chart, 
  * real monthly granularity requires PurpleLab (not yet connected).
  */
 const DEMO_RX_TREND: RxTrendResponse = {
@@ -738,7 +738,7 @@ function demoBrief(slug: string, name: string): AIBrief {
       `**${name}** is a breast-cancer-focused medical oncologist researching **ESR1-mutant, HR+/HER2- disease**, with work clustered around oral SERDs and CDK4/6 sequencing (NIH R01, NCI).`,
       '',
       '## Why they matter to CHM',
-      'Repeat webinar attendee with above-average *Q&A*, plus a CHM shoot appearance. CMS Part D shows a **+78% YoY lift in elacestrant claims** after first CHM attendance — a strong attribution story for SERD-category partners.',
+      'Repeat webinar attendee with above-average *Q&A*, plus a CHM shoot appearance. CMS Part D shows a **+78% YoY lift in elacestrant claims** after first CHM attendance, a strong attribution story for SERD-category partners.',
       '',
       '## Suggested engagement angle',
       'Invite to panel on **post-CDK4/6 sequencing**; trial work and Orserdu consulting history make them credible to academic and community audiences. Avoid speaker-bureau topic overlap.',
@@ -760,7 +760,7 @@ function demoBrief(slug: string, name: string): AIBrief {
 //
 // The 5 live endpoints (SCRUM-65) return response envelopes and use a subset
 // of the HCPSignal fields (backend doesn't ship hcp_npi/signal_type/drugs on
-// per-signal reads — those are inferred from the endpoint URL).
+// per-signal reads: those are inferred from the endpoint URL).
 
 interface AdminTrialSignal {
   id: string;

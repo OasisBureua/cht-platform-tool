@@ -48,6 +48,6 @@ function stripDescription(text: string): string {
   return firstBlock.length > 280 ? `${firstBlock.slice(0, 277)}…` : firstBlock;
 }
 
-/** @deprecated use mapPodcastEpisodesToUi — kept for any stale imports */
+/** @deprecated use mapPodcastEpisodesToUi, kept for any stale imports */
 export type YouTubeChannelVideoDto = PodcastEpisodeDto;
 export const mapYouTubeVideosToEpisodes = mapPodcastEpisodesToUi;

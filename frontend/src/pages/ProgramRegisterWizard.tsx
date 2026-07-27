@@ -122,12 +122,12 @@ export default function ProgramRegisterWizard() {
   if (isError || !program) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Program not found</p>
+        <p className="font-semibold text-gray-900">Session not found</p>
         <Link
-          to="/app/webinars"
+          to="/app/live"
           className="mt-4 inline-block text-sm font-semibold text-gray-900 underline"
         >
-          Back
+          Back to sessions
         </Link>
       </div>
     );
@@ -194,7 +194,7 @@ export default function ProgramRegisterWizard() {
         <div className="p-6 md:p-8 space-y-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
             {program.zoomSessionType === 'MEETING'
-              ? 'Office Hours'
+              ? 'Office hours'
               : 'Live webinar'}{' '}
             registration
           </p>
@@ -202,9 +202,9 @@ export default function ProgramRegisterWizard() {
             {program.title}
           </h1>
           <p className="mt-2 text-sm text-gray-600">
-            Complete intake if this step appears, then pick a time slot when
-            offered. Submit to send your registration for review when required.
-            Post-event feedback lives under <strong>Surveys</strong>.
+            {program.registrationRequiresApproval
+              ? 'An administrator reviews each request for this session. Your registration stays pending until it is approved.'
+              : 'Your registration is confirmed as soon as you submit.'}
           </p>
 
           {program.sessionDisclaimer?.trim() ? (
@@ -270,8 +270,7 @@ export default function ProgramRegisterWizard() {
                 ) : null}
                 {intakeRecorded ? (
                   <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                    Intake saved. Tap <strong>Continue</strong> for the next
-                    step.
+                    Your answers are saved.
                   </p>
                 ) : null}
               </div>
@@ -299,33 +298,27 @@ export default function ProgramRegisterWizard() {
                 {program.registrationRequiresApproval ? (
                   <>
                     <p className="font-semibold text-amber-950">
-                      Submit registration for approval
+                      Ready to submit
                     </p>
                     <p>
-                      Tap <strong>Submit registration</strong> below to send
-                      your request to the host. An administrator must approve
-                      you before you can join the session or unlock Conversations
-                      and surveys for this activity.
-                    </p>
-                    <p className="text-xs text-amber-900">
-                      You are <strong>not</strong> enrolled until
-                      approval—expect a pending state on the session page until
-                      then.
+                      Your request goes to an administrator for review. Until it
+                      is approved, your registration shows as pending and you
+                      cannot join the session.
                     </p>
                   </>
                 ) : (
                   <p>
-                    <strong>Almost done:</strong> Submit to complete registration
+                    Submitting completes your registration
                     {program.zoomSessionType === 'MEETING'
-                      ? ' and reserve your slot'
+                      ? ' and reserves your time slot'
                       : ''}
                     .
                   </p>
                 )}
                 {program.intakeSurveyId && !intakeSubmissionId?.trim() ? (
                   <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
-                    Intake is optional before you submit. Complete the survey
-                    when you can so we can keep your answers on file.
+                    You have not finished the intake form. You can submit now
+                    and complete it later from this page.
                   </p>
                 ) : null}
               </div>

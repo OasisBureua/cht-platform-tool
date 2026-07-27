@@ -68,7 +68,7 @@ export default function SurveyDetail() {
   });
   const surveySaved = Boolean(myResponse?.submitted);
   const surveyAcked = isPostEventFeedback && !!programRegistration?.postEventSurveyAcknowledgedAt;
-  // For FEEDBACK surveys, once acknowledged the form is permanently locked — no resubmission.
+  // For FEEDBACK surveys, once acknowledged the form is permanently locked, no resubmission.
   const formLocked = surveyAcked;
 
   const submitMutation = useMutation({

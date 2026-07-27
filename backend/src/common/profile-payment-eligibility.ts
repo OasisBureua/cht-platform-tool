@@ -20,7 +20,7 @@ export const NON_HCP_SPECIALTIES = new Set([
   'Other',
 ]);
 
-/** Same rules as learner profile for /auth/me profileComplete — used for payouts and honorarium. */
+/** Same rules as learner profile for /auth/me profileComplete, used for payouts and honorarium. */
 export function isProfileCompleteForPayments(
   user: ProfilePaymentFields | null | undefined,
 ): boolean {

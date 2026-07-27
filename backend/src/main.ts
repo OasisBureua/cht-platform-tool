@@ -20,12 +20,12 @@ async function bootstrap() {
   // SCRUM-108: standard security headers via helmet.
   // - HSTS enabled in production so browsers refuse http:// downgrades (2yr max-age,
   //   subdomains included, ready for HSTS preload if we opt in later).
-  // - contentSecurityPolicy: disabled — CHT serves the SPA from S3/CloudFront (not
+  // - contentSecurityPolicy: disabled: CHT serves the SPA from S3/CloudFront (not
   //   through this backend), so CSP belongs at the edge. Enabling here would only
   //   affect /api/* JSON responses where CSP has no effect anyway.
   // - crossOriginResourcePolicy: 'cross-origin' so testapp SPA + admin surfaces on
   //   different hostnames can consume API responses without CORP-mismatch blocks.
-  // - referrerPolicy: 'no-referrer' — API responses never need to leak the referring
+  // - referrerPolicy: 'no-referrer': API responses never need to leak the referring
   //   URL to other origins.
   // Other defaults kept: X-Content-Type-Options, X-Frame-Options: SAMEORIGIN,
   // X-DNS-Prefetch-Control, X-Download-Options, X-Permitted-Cross-Domain-Policies.

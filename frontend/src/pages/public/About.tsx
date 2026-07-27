@@ -13,17 +13,17 @@ const CORE_PILLARS = [
   {
     title: 'Trusted medical knowledge',
     body:
-      'We connect expert knowledge, professional communities, and meaningful engagement so medical knowledge reaches the right audiences and supports insight into how medicine learns and evolves.',
+      'We connect expert knowledge with the professional communities that use it, so medical knowledge reaches the right audiences and shows how medicine learns and evolves.',
   },
   {
     title: 'Professional community',
     body:
-      'We bring together physicians, experts, and healthcare stakeholders so knowledge is exchanged, perspectives are shared, and dialogue can thrive.',
+      'We bring together physicians, experts, and healthcare stakeholders so knowledge and perspective actually get exchanged.',
   },
   {
     title: 'Engagement that generates insight',
     body:
-      'Through expert-driven content, discussion, and live experiences, we capture meaningful engagement, helping organizations understand how medical audiences learn, respond, and stay informed.',
+      'Through expert-driven content, discussion, and live sessions, we capture engagement data that shows organizations how medical audiences learn and respond.',
   },
 ] as const;
 
@@ -53,7 +53,7 @@ export default function About() {
               <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900">What we stand for</h2>
               <p className="text-base md:text-lg text-gray-600 leading-relaxed">
                 CHM produces credible, expert-driven medical content designed to inform healthcare professionals and
-                support continuous learning in an evolving clinical landscape.
+                support continuous learning as clinical practice changes.
               </p>
               <ul className="space-y-5">
                 {CORE_PILLARS.map(({ title, body }) => (
@@ -75,24 +75,22 @@ export default function About() {
 
             <p className="text-base md:text-lg text-gray-600 leading-relaxed">
               We help healthcare organizations, pharmaceutical companies, and medical brands connect with healthcare
-              professionals (HCPs), key opinion leaders (KOLs), and patient communities through clinically credible,
-              high-impact communication.
+              professionals (HCPs), key opinion leaders (KOLs), and patient communities through clinically credible communication.
             </p>
 
             <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              Our approach combines medical content production with targeted distribution, ensuring that important
-              knowledge reaches the right audience, at the right time, through the right channels.
+              Our approach combines medical content production with targeted distribution, so important knowledge
+              reaches the right clinicians while it still matters to their practice.
             </p>
 
             <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-              By integrating content, community, and data-driven insight, we go beyond traditional medical
-              communications. We create meaningful engagement, generate actionable insights, and support better
-              decision-making across the healthcare ecosystem.
+              We treat content, community, and data as one system rather than three separate services. That is what
+              sets this apart from traditional medical communications: engagement you can measure, and insight you
+              can act on.
             </p>
 
             <p className="text-base md:text-lg text-gray-700 font-medium leading-relaxed">
-              Community Health Media helps transform medical knowledge into connection, engagement, and measurable
-              impact.
+              Community Health Media turns medical knowledge into measurable impact.
             </p>
 
             <div className="pt-2 space-y-4">

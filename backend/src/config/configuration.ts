@@ -117,7 +117,7 @@ export default () => ({
     publicUrlBase: process.env.SESSION_ASSETS_PUBLIC_URL_BASE?.trim() || '',
   },
 
-  // Transactional email (Amazon SES) — e.g. registration approved for Live / Office Hours
+  // Transactional email (Amazon SES): e.g. registration approved for Live / Office Hours
   email: {
     from: (process.env.EMAIL_FROM || 'info@communityhealth.media').trim(),
     /** Set EMAIL_ENABLED to false, 0, or no to skip sending (e.g. local dev without IAM). */
@@ -155,7 +155,7 @@ export default () => ({
     apiKey: process.env.MEDIAHUB_API_KEY,
   },
 
-  // Content Hub — KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
+  // Content Hub: KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
   contenthub: {
     baseUrl: process.env.CONTENTHUB_BASE_URL || '',
     adminBaseUrl: (() => {
@@ -219,7 +219,7 @@ export default () => ({
     };
   })(),
 
-  // Jotform — REST API per https://api.jotform.com/docs/ (use EU/HIPAA host or Enterprise …/API via JOTFORM_BASE_URL when required)
+  // Jotform: REST API per https://api.jotform.com/docs/ (use EU/HIPAA host or Enterprise …/API via JOTFORM_BASE_URL when required)
   jotform: {
     apiKey: process.env.JOTFORM_API_KEY,
     baseUrl: process.env.JOTFORM_BASE_URL?.trim() || 'https://api.jotform.com',
@@ -252,7 +252,7 @@ export default () => ({
   },
 
   /**
-   * Legacy env flag — LIVE listing now always merges upcoming Zoom webinars when Zoom is configured.
+   * Legacy env flag: LIVE listing now always merges upcoming Zoom webinars when Zoom is configured.
    * Kept for backwards compatibility; no longer gates listing behavior.
    */
   webinars: {
@@ -278,7 +278,7 @@ export default () => ({
     accessToken: process.env.HUBSPOT_ACCESS_TOKEN,
   },
 
-  // Mailchimp (audience sync — NPI merge field on signup/profile update).
+  // Mailchimp (audience sync: NPI merge field on signup/profile update).
   // MAILCHIMP_SERVER is what MediaHub uses; accept either name so a single
   // shared `~/.config/chm-mediahub/mailchimp.env` works for both services.
   mailchimp: {
@@ -297,11 +297,11 @@ export default () => ({
     clipsCacheTtlSeconds: parseInt(
       process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '1800',
       10,
-    ), // 30 minutes — public clips / catalog
+    ), // 30 minutes: public clips / catalog
     wordpressCacheTtlSeconds: parseInt(
       process.env.CATALOG_WORDPRESS_CACHE_TTL_SECONDS || '300',
       10,
-    ), // 5 minutes — admin Content + WP editorial
+    ), // 5 minutes: admin Content + WP editorial
   },
 
   redis: {

@@ -106,7 +106,7 @@ class SQSBaseConsumer(ABC):
                 f"Invalid JSON in message message_id={msg_id} error={e} "
                 f"body_preview={body_str[:200]}"
             )
-            # Malformed messages can never succeed — delete immediately
+            # Malformed messages can never succeed, delete immediately
             self._delete_message(receipt_handle, msg_id)
             return True
 
@@ -127,20 +127,20 @@ class SQSBaseConsumer(ABC):
                 return True
             else:
                 logger.warning(
-                    f"Processing returned False — message will retry message_id={msg_id}"
+                    f"Processing returned False: message will retry message_id={msg_id}"
                 )
                 return False
         except PermanentFailure as e:
             logger.error(
-                f"Permanent failure — deleting message immediately message_id={msg_id}: {e}"
+                f"Permanent failure: deleting message immediately message_id={msg_id}: {e}"
             )
             self._delete_message(receipt_handle, msg_id)
-            return True  # Removed — no point retrying
+            return True  # Removed: no point retrying
         except Exception as e:
             logger.error(
                 f"Processing failed message_id={msg_id} error={e}\n{traceback.format_exc()}"
             )
-            # Transient error — don't delete; SQS will redeliver after visibility timeout
+            # Transient error: don't delete; SQS will redeliver after visibility timeout
             return False
         finally:
             stop_event.set()
@@ -180,7 +180,7 @@ class SQSBaseConsumer(ABC):
 
         if not self.sqs or not self.queue_url:
             logger.warning(
-                f"{self.queue_name}: Mock mode — SQS_SCHEDULED_JOBS_QUEUE_URL is not set. "
+                f"{self.queue_name}: Mock mode: SQS_SCHEDULED_JOBS_QUEUE_URL is not set. "
                 f"EventBridge triggers will NOT be processed. Set the env var and redeploy."
             )
             while not self._shutdown:
@@ -221,7 +221,7 @@ class SQSBaseConsumer(ABC):
                     poll_count += 1
                     if poll_count >= _HEARTBEAT_LOG_INTERVAL:
                         logger.info(
-                            f"[{self.queue_name}] poll heartbeat — queue idle, "
+                            f"[{self.queue_name}] poll heartbeat: queue idle, "
                             f"consumer alive (every {_HEARTBEAT_LOG_INTERVAL} empty polls)"
                         )
                         poll_count = 0
@@ -233,7 +233,7 @@ class SQSBaseConsumer(ABC):
                     f"{e}\n{traceback.format_exc()}"
                 )
                 if consecutive_errors >= max_consecutive_errors:
-                    logger.error("Max consecutive errors reached — backing off 60s")
+                    logger.error("Max consecutive errors reached, backing off 60s")
                     time.sleep(60)
                     consecutive_errors = 0
                 else:

@@ -47,7 +47,7 @@ export interface CognitoIdTokenClaims {
   aud?: string | string[];
   iss?: string;
   exp?: number;
-  /** Pool username — for Google IdP this is often `Google_<sub>`, not the email. */
+  /** Pool username: for Google IdP this is often `Google_<sub>`, not the email. */
   'cognito:username'?: string;
   'cognito:groups'?: string[];
 }
@@ -597,7 +597,7 @@ export class CognitoService {
       (await this.resolveUsername(email));
     if (!username) {
       this.logger.warn(
-        `[Cognito] Skipping group sync — no pool username for ${email.trim().toLowerCase()}`,
+        `[Cognito] Skipping group sync: no pool username for ${email.trim().toLowerCase()}`,
       );
       return;
     }
@@ -613,7 +613,7 @@ export class CognitoService {
 
   /**
    * Resolve pool Username. Native users often match email; Google/federated users
-   * use `Google_<id>` — look them up via ListUsers email filter.
+   * use `Google_<id>`: look them up via ListUsers email filter.
    */
   async resolveUsername(email: string): Promise<string | null> {
     const normalized = email.trim().toLowerCase();
@@ -756,7 +756,7 @@ export class CognitoService {
       grant_type: 'authorization_code',
       client_id: this.clientId,
       code: code.trim(),
-      // Cognito requires exact allowlist match — never forward ?from= / hash.
+      // Cognito requires exact allowlist match, never forward ?from= / hash.
       redirect_uri: this.normalizeOAuthRedirectUri(redirectUri),
       code_verifier: codeVerifier.trim(),
     });

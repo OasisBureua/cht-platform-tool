@@ -77,7 +77,7 @@ echo ""
 
 cd "$REPO_ROOT/infrastructure/terraform/environments/us-east-1"
 
-# Legacy RDS teardown helper — not needed for platform (Aurora-only; RDS already gone).
+# Legacy RDS teardown helper: not needed for platform (Aurora-only; RDS already gone).
 if [ "$ENV" != "platform" ]; then
   "$REPO_ROOT/scripts/prepare-legacy-rds-decommission.sh" us-east-1 "$ENV"
 fi

@@ -33,7 +33,7 @@ export class MediaHubSyncService {
     this.mediahubApiKey = this.config.get<string>('mediahub.apiKey')?.trim() || null;
     if (!this.mediahubApiKey && !this.contentHub.isConfigured()) {
       this.logger.warn(
-        'MEDIAHUB_API_KEY and CONTENTHUB_API_KEY not configured — HCP upsert disabled',
+        'MEDIAHUB_API_KEY and CONTENTHUB_API_KEY not configured, HCP upsert disabled',
       );
     }
   }

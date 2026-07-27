@@ -152,7 +152,7 @@ export default function OfficeHoursDetail() {
                     <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-amber-900">Registration submitted — pending approval</p>
+                    <p className="text-sm font-semibold text-amber-900">Registration submitted, pending approval</p>
                     <p className="mt-0.5 text-sm text-amber-800">
                       Your request has been received. An administrator will review it shortly. Join link unlocks here automatically after approval.
                     </p>

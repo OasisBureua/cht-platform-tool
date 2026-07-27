@@ -80,7 +80,7 @@ resource "aws_cognito_user_pool" "main" {
     }
   }
 
-  # Open sign-up — users can register without admin invite
+  # Open sign-up: users can register without admin invite
   admin_create_user_config {
     allow_admin_create_user_only = false
   }
@@ -129,13 +129,13 @@ resource "aws_cognito_user_pool_domain" "main" {
 }
 
 # ============================================
-# App Client — cht-web (PKCE public client)
+# App Client: cht-web (PKCE public client)
 # ============================================
 resource "aws_cognito_user_pool_client" "cht_web" {
   name         = var.app_client_name
   user_pool_id = aws_cognito_user_pool.main.id
 
-  # Public client — no secret; PKCE enforced by the frontend
+  # Public client: no secret; PKCE enforced by the frontend
   generate_secret = false
 
   allowed_oauth_flows                  = ["code"]
@@ -198,7 +198,7 @@ resource "aws_cognito_user_group" "admin" {
   description  = "CHT platform administrators"
 }
 
-# Future: add cht-kol and cht-industry groups here when needed —
+# Future: add cht-kol and cht-industry groups here when needed, 
 # no pool migration required, just new aws_cognito_user_group resources.
 
 # ============================================

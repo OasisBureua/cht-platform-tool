@@ -25,7 +25,7 @@ interface Props {
 }
 
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const MAX_HEADSHOT_BYTES = 5 * 1024 * 1024; // 5 MB — CloudFront-served, keep small.
+const MAX_HEADSHOT_BYTES = 5 * 1024 * 1024; // 5 MB: CloudFront-served, keep small.
 
 /**
  * SCRUM-69: admin edit form for one KOL. All fields optional (Content Hub's
@@ -82,7 +82,7 @@ export function EditKolModal({ slug, kol, onClose, onSaved }: Props) {
     }
     if (file.size > MAX_HEADSHOT_BYTES) {
       const sizeMb = (file.size / 1024 / 1024).toFixed(1);
-      setError(`Photo is ${sizeMb} MB — max 5 MB. Please resize before uploading.`);
+      setError(`Photo is ${sizeMb} MB, max 5 MB. Please resize before uploading.`);
       return;
     }
     setUploading(true);

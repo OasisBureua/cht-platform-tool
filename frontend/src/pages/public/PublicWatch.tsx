@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Play, Bookmark, Calendar, User, Users, Eye } from 'lucide-react';
 
 // Stock images (Figma node-id=237-3637)
@@ -36,11 +36,11 @@ const STUDY_COLLECTIONS = [
   ]},
 ];
 
-function getPageData(videoId: string | undefined) {
+function getPageData() {
   return {
     breadcrumb: 'Breast Cancer Research',
     title: 'Advanced Treatment Protocols and Patient Outcomes',
-    subtitle: 'Comprehensive analysis of innovative treatment approaches and their impact on patient recovery rates in breast cancer care.',
+    subtitle: 'Analysis of new treatment approaches and their effect on patient recovery rates in breast cancer care.',
     studyDuration: '18 months',
     leadResearcher: 'Dr. Sarah Chen',
     participants: '240 patients',
@@ -56,8 +56,7 @@ function getPageData(videoId: string | undefined) {
 }
 
 export default function PublicWatch() {
-  const { videoId } = useParams<{ videoId?: string }>();
-  const data = getPageData(videoId);
+  const data = getPageData();
 
   return (
     <div className="bg-white min-h-screen">

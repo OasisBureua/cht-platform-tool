@@ -115,8 +115,8 @@ export default function ExecutiveReport() {
   }
 
   const { campaign, metrics, platformBreakdown, config } = report;
-  const views = metrics.totalViewsFormatted ?? '—';
-  const impressions = metrics.totalImpressionsFormatted ?? '—';
+  const views = metrics.totalViewsFormatted ?? '-';
+  const impressions = metrics.totalImpressionsFormatted ?? '-';
   const noMetrics = metrics.totalViews == null && metrics.totalImpressions == null;
   const episodeCount = Number(config.longFormEpisodes);
 
@@ -137,7 +137,7 @@ export default function ExecutiveReport() {
             <LogoMark size={20} />
           </div>
           <span className="max-w-xs truncate text-sm font-semibold text-white">{campaign.name}</span>
-          <span className="hidden text-xs text-white/30 sm:block">— Executive Report</span>
+          <span className="hidden text-xs text-white/30 sm:block">, Executive Report</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="mr-3 hidden items-center gap-1 sm:flex">
@@ -212,7 +212,7 @@ export default function ExecutiveReport() {
             <div className="flex items-end justify-between">
               <div className="text-sm leading-relaxed text-white/35">
                 <span>{campaign.diseaseState}</span>
-                <span className="ml-2 text-white/20">— {campaign.treatmentTopic}</span>
+                <span className="ml-2 text-white/20">, {campaign.treatmentTopic}</span>
               </div>
               <div className="text-right">
                 <div className="text-sm font-semibold text-white/55">{coverDate(campaign.reportingPeriodEnd || campaign.createdAt)}</div>
@@ -272,7 +272,7 @@ export default function ExecutiveReport() {
               <div className="rounded-xl border-l-4 border-[#3da4c0] bg-[#f2f4f8] p-6">
                 <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#3da4c0]">Long-Form</div>
                 <div className="text-4xl font-black text-[#485165]">{config.longFormEpisodes} Episode{episodeCount === 1 ? '' : 's'}</div>
-                <div className="mt-2 text-base text-[#79869a]">Expert conversation — professionally produced</div>
+                <div className="mt-2 text-base text-[#79869a]">Expert conversation, professionally produced</div>
               </div>
               <div className="rounded-xl border-l-4 border-[#e7764f] bg-[#f2f4f8] p-6">
                 <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#e7764f]">Live Stream</div>
@@ -337,9 +337,9 @@ export default function ExecutiveReport() {
             <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-white/50">Distribution</div>
             <h2 className="mb-10 text-5xl font-black text-white">Total Touch Points</h2>
             <div className="flex flex-1 flex-col justify-center gap-9">
-              <TouchRow stat={`${config.longFormEpisodes} LONG FORM EPISODE${episodeCount === 1 ? '' : 'S'}`} color="rgb(61, 164, 192)" posts={config.longFormPosts} hint="Our owned channels — organic posts with paid support." />
-              <TouchRow stat={`${config.shortFormTopics} SHORT FORM TOPICS`} color="rgb(255, 158, 64)" posts={config.shortFormPosts} hint="Our owned channels — organic posts with paid support." />
-              <TouchRow stat={`${config.clipVariations}+ "CLIPS"`} color="rgb(231, 118, 79)" posts={config.clipPosts} hint={'Organic "Clip" channels — slow-building outlets driven by association with our main channels.'} />
+              <TouchRow stat={`${config.longFormEpisodes} LONG FORM EPISODE${episodeCount === 1 ? '' : 'S'}`} color="rgb(61, 164, 192)" posts={config.longFormPosts} hint="Our owned channels: organic posts with paid support." />
+              <TouchRow stat={`${config.shortFormTopics} SHORT FORM TOPICS`} color="rgb(255, 158, 64)" posts={config.shortFormPosts} hint="Our owned channels: organic posts with paid support." />
+              <TouchRow stat={`${config.clipVariations}+ "CLIPS"`} color="rgb(231, 118, 79)" posts={config.clipPosts} hint={'Organic "Clip" channels: slow-building outlets driven by association with our main channels.'} />
             </div>
           </div>
         </Slide>
@@ -392,7 +392,7 @@ export default function ExecutiveReport() {
             <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">Enduring Content</div>
             <h2 className="mb-2 text-5xl font-black text-[#485165]">Platform Breakdown</h2>
             <p className="mb-7 text-base text-[#79869a]">
-              Aggregated performance by platform across the full distribution window — long-form and short-form assets combined.
+              Aggregated performance by platform across the full distribution window, long-form and short-form assets combined.
             </p>
             <div className="grid grid-cols-4 gap-5">
               {platformBreakdown.map((p) => (
@@ -441,11 +441,11 @@ export default function ExecutiveReport() {
           </div>
         </Slide>
 
-        {/* ---- 9. Key Learnings & Recommendations ---- */}
+        {/* ---- 9. Key Takeaways & Recommendations ---- */}
         <Slide id="slide-learnings">
           <div className="px-14 py-10">
             <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">What We Learned</div>
-            <h2 className="mb-7 text-5xl font-black text-[#485165]">Key Learnings &amp; Recommendations</h2>
+            <h2 className="mb-7 text-5xl font-black text-[#485165]">Key Takeaways &amp; Recommendations</h2>
             <div className="grid grid-cols-2 gap-x-14 gap-y-7">
               {config.keyLearnings.map((learning, i) => (
                 <div key={learning.title} className="flex gap-4">

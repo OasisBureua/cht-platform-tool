@@ -12,7 +12,7 @@ export default function CompleteProfile() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading, refreshProfile } = useAuth();
   const [profession, setProfession] = useState('');
-  /** Original DB specialty — keeps legacy-only options visible until user saves */
+  /** Original DB specialty: keeps legacy-only options visible until user saves */
   const [persistedSpecialtyHint, setPersistedSpecialtyHint] = useState<string | null>(null);
   const [npiNumber, setNpiNumber] = useState('');
   const [institution, setInstitution] = useState('');

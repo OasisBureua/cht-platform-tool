@@ -151,8 +151,8 @@ export type StripCardProps = {
   /** Playlist-style count line, shown prominently below the description */
   videoLabel?: string;
   /**
-   * `compact` — thumbnail + tight text; height follows content (default).
-   * `thumbnailOnly` — poster-style tile; title exposed to AT via sr-only (use when the row heading supplies context).
+   * `compact`: thumbnail + tight text; height follows content (default).
+   * `thumbnailOnly`: poster-style tile; title exposed to AT via sr-only (use when the row heading supplies context).
    */
   variant?: 'compact' | 'thumbnailOnly';
   /**
@@ -417,7 +417,7 @@ export function StripRowLoading({ homepage }: { homepage?: boolean }) {
   );
 }
 
-/** Matches `StripCard` `thumbnailOnly` — use while Featured carousel loads */
+/** Matches `StripCard` `thumbnailOnly`: use while Featured carousel loads */
 export function StripRowLoadingThumbnails({ homepage }: { homepage?: boolean }) {
   const w = homepage ? 'w-[311px] sm:w-[356px]' : 'w-[226px] sm:w-[259px]';
   const aspect = homepage ? 'aspect-[16/13.5]' : 'aspect-video';

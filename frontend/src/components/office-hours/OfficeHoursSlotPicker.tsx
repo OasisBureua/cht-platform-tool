@@ -43,7 +43,7 @@ export function OfficeHoursSlotPicker({
   if (slots.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">
-        No time slots are open yet. Check back later or contact the host.
+        No time slots are open yet. Check back before the session starts.
       </p>
     );
   }
@@ -53,8 +53,7 @@ export function OfficeHoursSlotPicker({
       <div className="space-y-1">
         <h3 className="text-base font-semibold text-gray-900">Select a 10-minute window</h3>
         <p className="text-sm text-gray-600">
-          {subtitle ??
-            'Each option is a 10-minute segment within the session. You still join the host in Zoom from this app after you register.'}
+          {subtitle ?? 'After you register, join from this app using the session Zoom link.'}
         </p>
       </div>
 

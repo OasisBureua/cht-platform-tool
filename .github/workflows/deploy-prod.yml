@@ -1,12 +1,12 @@
 name: Deploy to Platform
 
 # Mirror of deploy-dev.yml for testapp (us-east-1 only).
-# us-east-2 ECS / deploy-secondary.sh is intentional later — not part of this workflow.
+# us-east-2 ECS / deploy-secondary.sh is intentional later, not part of this workflow.
 on:
   workflow_dispatch:
     inputs:
       plan_only:
-        description: 'Plan only — skip apply approval and deploy steps'
+        description: 'Plan only: skip apply approval and deploy steps'
         type: boolean
         default: false
   pull_request:
@@ -309,7 +309,7 @@ jobs:
         run: |
           EXTRA_VARS=()
           if [ "${{ needs.changes.outputs.deploy_backend }}" = "true" ]; then
-            # New images built in this run — pin ECS to those tags.
+            # New images built in this run, pin ECS to those tags.
             EXTRA_VARS+=(
               -var="backend_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}"
               -var="worker_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}"
@@ -383,9 +383,9 @@ jobs:
           echo "| destroy | ${DESTROY} |" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           if [ "${{ github.event.inputs.plan_only }}" = "true" ]; then
-            echo "ℹ️ **Plan only** — apply and deploy skipped." >> "$GITHUB_STEP_SUMMARY"
+            echo "ℹ️ **Plan only**: apply and deploy skipped." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "⏸️ **Awaiting approval** — review the plan above, then approve the pending issue to run \`terraform apply\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "⏸️ **Awaiting approval**: review the plan above, then approve the pending issue to run \`terraform apply\`." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Approve Terraform apply
@@ -541,7 +541,7 @@ jobs:
       - name: Final health gate
         if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true') && steps.healthcheck.outcome == 'failure'
         run: |
-          echo "Health check failed — marking workflow failed."
+          echo "Health check failed, marking workflow failed."
           exit 1
 
       - name: Deployment Summary

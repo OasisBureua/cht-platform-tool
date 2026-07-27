@@ -14,7 +14,7 @@ type PlaylistFocusNavProps = {
 };
 
 /**
- * Playlist cohort pills — “All playlists” clears focus; each cohort matches `?playlistFocus=`.
+ * Playlist cohort pills: “All playlists” clears focus; each cohort matches `?playlistFocus=`.
  */
 export function PlaylistFocusNav({ isInApp, allowedPlaylistFocusFilters }: PlaylistFocusNavProps) {
   const { search } = useLocation();

@@ -19,7 +19,7 @@ Docs-only changes under `docs/**` do not trigger dev deploy.
 
 GitHub **rulesets alone cannot** restrict which source branch merges into `main`. Use **rulesets + required status check**:
 
-### 1. Ruleset — protect `main`
+### 1. Ruleset: protect `main`
 
 Repo → **Settings → Rules → Rulesets → New branch ruleset**
 
@@ -31,7 +31,7 @@ Repo → **Settings → Rules → Rulesets → New branch ruleset**
 | Restrict deletions | ✓ |
 | Block force pushes | ✓ |
 | Require a pull request | ✓ (1 approval, optional code owners) |
-| Require status checks | ✓ — add **`main-from-release-only`** and **`release-contains-develop`** (after first workflow run; `release-contains-develop` only runs for `release/*`) |
+| Require status checks | ✓: add **`main-from-release-only`** and **`release-contains-develop`** (after first workflow run; `release-contains-develop` only runs for `release/*`) |
 | Require branches up to date | ✓ (recommended) |
 
 Do **not** allow broad bypass on this ruleset.
@@ -50,7 +50,7 @@ Do **not** allow broad bypass on this ruleset.
 
 Optional: also require **PR Validation / Validate PR** from `pr-validation.yml`.
 
-### 2. Ruleset — protect `release/*`
+### 2. Ruleset: protect `release/*`
 
 New ruleset:
 
@@ -61,7 +61,7 @@ New ruleset:
 | Restrict deletions | ✓ |
 | Block force pushes | ✓ |
 | Require a pull request | ✓ (for merges between release branches if needed) |
-| Restrict updates | Optional — limit who can push directly to `release/*` |
+| Restrict updates | Optional: limit who can push directly to `release/*` |
 
 **Creating `release/*` from `main`:** GitHub has no single “must branch off main” toggle. Enforce with:
 
@@ -73,7 +73,7 @@ New ruleset:
 ```text
 feature/*  →  dev  (integrate + deploy dev via deploy-dev.yml)
        ↓
-    main     (stable — PRs from release/* or hotfix/*)
+    main     (stable: PRs from release/* or hotfix/*)
        ↓
 release/vX.Y.Z  (cut from main → platform deploy)
        ↓
@@ -82,7 +82,7 @@ release/vX.Y.Z  (cut from main → platform deploy)
 
 For CHT dev deploys: push to `develop` or `feature/**` triggers `deploy-dev.yml` (or run manually).
 
-### 4. Optional — block direct pushes to main
+### 4. Optional: block direct pushes to main
 
 In the `main` ruleset, ensure **Restrict updates** is on so nobody pushes to `main` without a PR (except bypass actors you trust).
 
@@ -107,7 +107,7 @@ Sync secrets into the `development` environment:
 - **Environment:** `platform` (GitHub Environment secrets)
 - **Domain:** `testapp.communityhealth.media`
 - **Var file (CI):** `infrastructure/terraform/environments/variables/platform.github.tfvars`
-- **Infra + app (CI):** `deploy-prod.yml` — ECR images, Terraform plan/apply (manual approval), frontend S3/CloudFront
+- **Infra + app (CI):** `deploy-prod.yml`: ECR images, Terraform plan/apply (manual approval), frontend S3/CloudFront
 - **Infra (local fallback):** `./scripts/deploy-platform-infra-local.sh` when applying outside CI
 - **Content Hub:** separate `cht-content-hub` repo; CHT only configures `contenthub_base_url` + `CONTENTHUB_API_KEY`
 - **Image tags:** semver `v1.0.0`, `v1.0.1`, …; also `platform-latest`

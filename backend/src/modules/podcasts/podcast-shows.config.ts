@@ -1,12 +1,12 @@
 /**
- * Server-side podcast show registry. YouTube channel handles stay here —
+ * Server-side podcast show registry. YouTube channel handles stay here, 
  * clients call /api/podcasts/:showId/episodes only.
  */
 export type PodcastShowConfig = {
   id: string;
   title: string;
   youtubeChannelHandle: string;
-  /** Exclude promos/clips/Shorts — only list uploads at least this long (seconds). */
+  /** Exclude promos/clips/Shorts: only list uploads at least this long (seconds). */
   minEpisodeDurationSeconds?: number;
 };
 

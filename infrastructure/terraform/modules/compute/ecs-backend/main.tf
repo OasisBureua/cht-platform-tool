@@ -319,7 +319,7 @@ resource "aws_ecs_service" "backend" {
   # In staging we want a clean view of what's happening during a deploy:
   # spin a NEW task up alongside the old one (max 200%) and only kill the
   # old one once the new one is steady. Disable rollback so failed deploys
-  # stop in place — surfaces the real cause in ECS events + CloudWatch
+  # stop in place, surfaces the real cause in ECS events + CloudWatch
   # instead of silently reverting to the previous task definition.
   # Prod stays conservative (100% max, 50% min, auto-rollback) until we
   # explicitly graduate this config after staging validates.

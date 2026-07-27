@@ -301,7 +301,7 @@ export default function Podcasts() {
         <TopShowsRow shows={shows} />
       </section>
 
-      {/* Full catalog — cards open dedicated show pages */}
+      {/* Full catalog: cards open dedicated show pages */}
       <div id="podcast-catalog" className="scroll-mt-24 space-y-4 md:space-y-5">
         <div className="pt-6">
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">All series</h2>

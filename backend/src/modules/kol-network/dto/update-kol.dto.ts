@@ -10,7 +10,7 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * PATCH /api/admin/kol-network/:slug body. Mirrors Content Hub
- * `KOLAdminUpdate` — every field optional, omitted fields untouched.
+ * `KOLAdminUpdate`: every field optional, omitted fields untouched.
  * Content Hub is the authority on the editable-field allowlist and
  * curated_fields locking.
  */
@@ -64,7 +64,7 @@ export class UpdateKolDto {
 
 export class PresignHeadshotDto {
   @ApiPropertyOptional({
-    description: 'MIME type — image/jpeg, image/png, or image/webp',
+    description: 'MIME type: image/jpeg, image/png, or image/webp',
   })
   @IsString()
   content_type!: string;

@@ -16,7 +16,7 @@ export type PostWebinarSurveyTemplateInput = {
   appSessionUrl: string;
   supportEmail: string;
   sponsorName: string;
-  /** Optional: honorarium amount in cents — include if survey completion drives payment eligibility. */
+  /** Optional: honorarium amount in cents: include if survey completion drives payment eligibility. */
   honorariumCents?: number | null;
 };
 
@@ -42,7 +42,7 @@ export function buildPostWebinarSurveyEmail(
       ? formatHonorariumLine(p.honorariumCents)
       : null;
 
-  const subject = `Action required: complete your post-event survey — ${p.programTitle}`;
+  const subject = `Action required: complete your post-event survey, ${p.programTitle}`;
 
   // ── Plain text ───────────────────────────────────────────────────────────────
   const text = [

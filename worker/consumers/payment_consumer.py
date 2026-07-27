@@ -58,7 +58,7 @@ class PaymentConsumer(SQSBaseConsumer):
         """Process payment message. Returns True on success."""
         valid, err = self._validate_message(body)
         if not valid:
-            # Structural/schema errors never fix themselves — remove from queue immediately
+            # Structural/schema errors never fix themselves: remove from queue immediately
             raise PermanentFailure(f"Invalid message: {err}")
 
         user_id = body["userId"]
@@ -92,7 +92,7 @@ class PaymentConsumer(SQSBaseConsumer):
                 ).fetchone()
 
                 if not result:
-                    # User doesn't exist — no amount of retries will fix this
+                    # User doesn't exist: no amount of retries will fix this
                     raise PermanentFailure(f"User not found: {user_id}")
 
                 description = self._pending_payment_description(
@@ -126,7 +126,7 @@ class PaymentConsumer(SQSBaseConsumer):
                     )
                 else:
                     logger.info(
-                        f"Skipped insert — duplicate idempotencyKey for user {user_id} type={payment_type}",
+                        f"Skipped insert: duplicate idempotencyKey for user {user_id} type={payment_type}",
                     )
 
             return True

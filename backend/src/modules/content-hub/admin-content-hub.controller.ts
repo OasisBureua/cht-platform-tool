@@ -186,7 +186,7 @@ export class AdminContentHubController {
     };
   }
 
-  // ─── Reports (orchestration — no cache) ──────────────────────────────────
+  // ─── Reports (orchestration: no cache) ──────────────────────────────────
 
   @Get('campaigns/:id/report')
   async getAnalyticsReport(@Param('id') id: string) {
@@ -235,7 +235,7 @@ export class AdminContentHubController {
   @Get('integrations')
   @ApiOperation({
     summary:
-      'Integration connection status — Hub (LI/Meta/YT) + CHT (HubSpot, Zoom livestream, native surveys)',
+      'Integration connection status: Hub (LI/Meta/YT) + CHT (HubSpot, Zoom livestream, native surveys)',
   })
   async getIntegrations() {
     const hubPlatforms = this.normalizeHubIntegrations(

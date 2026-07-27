@@ -1,4 +1,4 @@
-%% CHT Platform — multi-region architecture (platform / testapp)
+%% CHT Platform: multi-region architecture (platform / testapp)
 %% Export: ./scripts/export-architecture-diagram.sh
 
 flowchart TB
@@ -14,7 +14,7 @@ flowchart TB
     S3FE["S3 frontend buckets<br/>us-east-1 + us-east-2 DR"]
   end
 
-  subgraph USE1["us-east-1 — primary"]
+  subgraph USE1["us-east-1, primary"]
     ALB1["Application Load Balancer"]
     ECSB["ECS Fargate<br/>cht-platform-backend<br/>NestJS API"]
     ECSW["ECS Fargate<br/>cht-platform-worker<br/>Python SQS consumers"]
@@ -25,7 +25,7 @@ flowchart TB
     SES["Amazon SES<br/>transactional email"]
   end
 
-  subgraph USE2["us-east-2 — DR standby"]
+  subgraph USE2["us-east-2, DR standby"]
     ALB2["DR Application Load Balancer"]
     ECSB2["DR ECS backend<br/>run_db_migrations=false"]
     AuroraS["Aurora Global<br/>secondary cluster<br/>reader"]

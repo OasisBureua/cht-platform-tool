@@ -39,7 +39,7 @@ export default function PublicWebinars() {
         <header>
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">Live</h1>
           <p className="mt-2 text-sm text-gray-600 md:text-base">
-            Live and upcoming sessions — click any webinar to register and join.
+            Live and upcoming sessions: click any webinar to register and join.
           </p>
         </header>
 

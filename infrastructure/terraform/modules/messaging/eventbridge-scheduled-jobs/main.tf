@@ -54,7 +54,7 @@ resource "aws_sqs_queue_policy" "eventbridge_to_sqs" {
 # Bill.com's MFA-trusted session (rememberMeId) always expires 30 days after it
 # is set, and there is no way to renew it without a human completing an MFA
 # challenge (an OTP is sent to a device). So we cannot fully automate the refresh
-# — instead we fire a reminder ~20 days out (10-day buffer) to the alerts topic.
+#: instead we fire a reminder ~20 days out (10-day buffer) to the alerts topic.
 resource "aws_cloudwatch_event_rule" "bill_mfa_reminder" {
   count = var.enable_bill_mfa_reminder ? 1 : 0
 

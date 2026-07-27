@@ -29,12 +29,12 @@ type SortMode = 'state' | 'name-asc' | 'name-desc' | 'new-first';
 
 function institutionHint(k: FlatKol): string {
   const inst = k.institution?.trim();
-  if (inst && inst !== '—') {
+  if (inst && inst !== '-') {
     return inst.length > 48 ? `${inst.slice(0, 47)}…` : inst;
   }
   const edu = k.education || '';
   const cut = edu.split(/[;(]/)[0]?.trim() || '';
-  return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || '—';
+  return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || '-';
 }
 
 function avatarUrl(name: string): string {
@@ -149,7 +149,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">CHT Platform</p>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">Key Opinion Leader (KOL) Network</h1>
           <p className="text-sm md:text-base text-gray-600 max-w-3xl">
-            Oncology & breast cancer specialists — filter by state, institution, or text; sort by name, state, or
+            Oncology & breast cancer specialists: filter by state, institution, or text; sort by name, state, or
             newest.
           </p>
         </header>
@@ -316,7 +316,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
 
         <footer className="mt-12 space-y-2 border-t border-gray-200 pt-8 text-center">
           <p className="text-xs text-gray-500">
-            Community Health Technologies — KOL Network | ★ = Newly added (within 60 days)
+            Community Health Technologies: KOL Network | ★ = Newly added (within 60 days)
           </p>
           <p className="mx-auto max-w-2xl text-[10px] leading-snug text-gray-500">
             AI-generated summaries are provided for convenience and may contain inaccuracies. Verify

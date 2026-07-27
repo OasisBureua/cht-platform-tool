@@ -1,4 +1,4 @@
-# CHT Platform — platform.github.tfvars
+# CHT Platform: platform.github.tfvars
 # Non-secret infra for GitHub Actions deploy-prod.yml (committed).
 # Secrets: GitHub Environment "platform" → TF_VAR_* (see .github/CI_CD.md).
 # Local prod: copy platform.tfvars.example → platform.tfvars and add secrets.

@@ -12,7 +12,7 @@ export default function Services() {
             </h1>
             <p className="text-sm md:text-base text-gray-600">
               We combine production expertise with targeted multi-channel campaigns to deliver
-              high-impact healthcare content.
+              healthcare content that reaches the right clinicians.
             </p>
             <Link
               to="/contact"

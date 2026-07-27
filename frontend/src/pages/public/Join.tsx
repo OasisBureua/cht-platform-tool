@@ -201,7 +201,7 @@ export default function Join() {
   return (
     <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-gray-50/90 via-white to-white px-4 py-10 sm:px-6 sm:py-12 md:py-16">
       <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-14">
-        {/* Mobile: form first (order-1). Desktop: story left, form right — equal 1fr columns */}
+        {/* Mobile: form first (order-1). Desktop: story left, form right: equal 1fr columns */}
         <aside className="order-2 space-y-5 lg:sticky lg:top-24 lg:order-1">
           <header className="text-center lg:text-left">
             <p className="text-sm font-semibold tracking-wide text-brand-800 dark:text-brand-400">Join</p>
@@ -344,7 +344,7 @@ export default function Join() {
                 {profession && !professionRequiresNpi(profession) ? (
                   <p className="mt-1.5 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                     <strong>Note:</strong> NPI is not required for your role. Honorarium programs are designed for licensed
-                    healthcare professionals — you can still access all educational content and events.
+                    healthcare professionals: you can still access all educational content and events.
                   </p>
                 ) : null}
               </div>

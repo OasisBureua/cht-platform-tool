@@ -2,7 +2,7 @@
 
 Defines Redis caching on **chm-backend only** and cache invalidation when MediaHub sync completes.
 
-**When to implement:** Phase 4 (MediaHub platform move) — document now for Hub worker + CHT backend alignment.
+**When to implement:** Phase 4 (MediaHub platform move): document now for Hub worker + CHT backend alignment.
 
 **Owner:** Uche Aduakaa  
 **Reviewer:** Adaze Oviawe  
@@ -13,10 +13,10 @@ Defines Redis caching on **chm-backend only** and cache invalidation when MediaH
 
 ## Principles
 
-- **CHT-only cache** — no HTTP cache in mediahub-api; no FastAPI middleware
-- **4h TTL** — safety net for populated keys (`EX 14400`)
-- **Refresh on sync** — clear catalog keys after successful worker sync (no version counters)
-- **Never cache** — auth, payments, admin writes, HCP upsert responses
+- **CHT-only cache**: no HTTP cache in mediahub-api; no FastAPI middleware
+- **4h TTL**: safety net for populated keys (`EX 14400`)
+- **Refresh on sync**: clear catalog keys after successful worker sync (no version counters)
+- **Never cache**: auth, payments, admin writes, HCP upsert responses
 
 ---
 
@@ -25,7 +25,7 @@ Defines Redis caching on **chm-backend only** and cache invalidation when MediaH
 | Item | Value |
 | ---- | ----- |
 | Cluster | **One** shared ElastiCache Redis per environment (cost + ops simplicity) |
-| Isolation | **Logical key prefixes** — not separate clusters or durable DB storage |
+| Isolation | **Logical key prefixes**: not separate clusters or durable DB storage |
 | TTL | `EX 14400` (4 hours; override via `REDIS_CACHE_TTL_SECONDS` / `CATALOG_CLIPS_CACHE_TTL_SECONDS`) |
 
 Nothing cached here is authoritative data (no sessions, payments, or user records). MediaHub catalog reads, Content Hub KOL/intel reads, and YouTube fallbacks are ephemeral upstream caches only.
@@ -36,7 +36,7 @@ Nothing cached here is authoritative data (no sessions, payments, or user record
 | --- | ------- |
 | `cht:catalog:*` | YouTube playlist/channel catalog fallbacks |
 | `cht:contenthub:*` | Content Hub producer reads (`/kols`, `/kols/{slug}`, publications, …) |
-| `cht:kol-network:*` | Legacy prefix — cleared for backwards compatibility |
+| `cht:kol-network:*` | Legacy prefix: cleared for backwards compatibility |
 
 `hash(params)` = stable hash of sorted query string (Content Hub paths include this in the key).
 
@@ -54,7 +54,7 @@ POST /api/internal/cache/clear/all?cacheKey=${INTERNAL_CACHE_SECRET}
 Authorization: Bearer ${INTERNAL_CACHE_SECRET}   # optional alternative to cacheKey query param
 ```
 
-Legacy alias (clears **all** upstream prefixes — used by MediaHub worker today):
+Legacy alias (clears **all** upstream prefixes: used by MediaHub worker today):
 
 ```
 POST /api/internal/cache/catalog/clear?cacheKey=${INTERNAL_CACHE_SECRET}
@@ -109,7 +109,7 @@ contenthub-worker completes KOL enrichment
 
 ### Security
 
-Shared secret in Secrets Manager or ECS env (`INTERNAL_CACHE_SECRET`). Content Hub Lambda and ops scripts use this — not admin login.
+Shared secret in Secrets Manager or ECS env (`INTERNAL_CACHE_SECRET`). Content Hub Lambda and ops scripts use this, not admin login.
 
 ### Worker hook (MediaHub)
 
@@ -129,7 +129,7 @@ Call CHT clear endpoint **only after** sync transaction commits successfully. Do
 
 - [ ] `CHT_CACHE_CLEAR_URL` + secret env vars
 - [ ] HTTP POST on sync success
-- [ ] Log success/failure (non-blocking — TTL still expires stale data)
+- [ ] Log success/failure (non-blocking: TTL still expires stale data)
 
 ---
 
@@ -147,5 +147,5 @@ Call CHT clear endpoint **only after** sync transaction commits successfully. Do
 
 ## Related
 
-- [CHM-Platform-Roadmap-Plan.md](../reports/CHM-Platform-Roadmap-Plan.md) — CHT-only cache strategy
+- [CHM-Platform-Roadmap-Plan.md](../reports/CHM-Platform-Roadmap-Plan.md): CHT-only cache strategy
 - [mediahub-platform-cutover.md](./mediahub-platform-cutover.md)

@@ -34,7 +34,7 @@ export default function PlaylistDetail() {
     }
   }, [data?.videos, videoIdFromUrl]);
 
-  // Derive selected video safely — may be undefined before data loads
+  // Derive selected video safely: may be undefined before data loads
   const [hiddenVideoIds, setHiddenVideoIds] = useState<Set<string>>(() => new Set());
   const videos = (data?.videos ?? []).filter((v) => v.id && !hiddenVideoIds.has(v.id));
   const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));

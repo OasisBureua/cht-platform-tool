@@ -35,7 +35,7 @@ frontend/.vite/
 .terraform/
 .terraform.lock.hcl
 *.tfplan
-# Tfvars with real secrets — use *.tfvars.example as templates
+# Tfvars with real secrets: use *.tfvars.example as templates
 infrastructure/terraform/environments/variables/platform.tfvars
 infrastructure/terraform/environments/variables/dev.tfvars
 infrastructure/terraform/environments/variables/prod.tfvars

@@ -20,7 +20,7 @@ variable "user_pool_tier" {
 }
 
 variable "domain_prefix" {
-  description = "Cognito hosted UI domain prefix — must be globally unique across all AWS accounts (e.g. chm-platform)"
+  description = "Cognito hosted UI domain prefix: must be globally unique across all AWS accounts (e.g. chm-platform)"
   type        = string
 }
 

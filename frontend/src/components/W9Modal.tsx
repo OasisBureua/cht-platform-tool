@@ -75,7 +75,7 @@ export function W9Modal({
             <strong className="text-slate-900">Security:</strong> Community Health Media does not store full payment card
             data. Tax and banking details are handled by{' '}
             <BillComMark size="xs" className="inline translate-y-px mx-0.5" /> using industry-standard safeguards. Only
-            provide information through official CHM screens or your vendor portal—never share passwords or full account
+            provide information through official CHM screens or your vendor portal, never share passwords or full account
             numbers by email.
           </div>
 

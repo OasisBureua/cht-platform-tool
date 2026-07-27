@@ -175,7 +175,7 @@ function StatChip({ label, value }: { label: string; value: number }) {
 function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string }) {
   const showHonorarium = survey.type === 'FEEDBACK';
   const honorarium = showHonorarium ? formatHonorarium(survey.program?.honorariumAmount ?? null) : null;
-  const payoutLabel = honorarium ?? '—';
+  const payoutLabel = honorarium ?? '-';
   const remainingDays = getRemainingDays(survey);
   const badge = typeBadge(survey.type);
 

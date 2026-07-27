@@ -15,14 +15,14 @@ import {
 /**
  * A single themed clip row driven by `carousels.config.ts`.
  *
- * Each row's behavior is declared in the config — tag filter, sort
+ * Each row's behavior is declared in the config, tag filter, sort
  * dimension, dedup, per-shoot cap, page size, platform. This component
  * just executes the contract.
  *
  * Replaces the older `filterPlaylistsByFocus` + flatten-playlist-videos
  * approach (audit fixes #1, #2, #3, #5, #7 in
  * .claude/audits/2026-05-16-cht-video-audit.md). The brittle
- * `_generated-catalog-playlists.json` fuzzy-title-match is gone — every
+ * `_generated-catalog-playlists.json` fuzzy-title-match is gone, every
  * card is now an on-topic clip pulled from MediaHub by tag.
  *
  * Behavior states:
@@ -44,7 +44,7 @@ export function BiomarkerConversationRow({
   const config: CarouselConfig | undefined = getCarousel(carouselId);
 
   if (!config) {
-    // Misconfigured carouselId — render nothing rather than blow up. Bug
+    // Misconfigured carouselId: render nothing rather than blow up. Bug
     // surfaces in dev via the carousels.config.test.ts unit tests.
     return null;
   }
@@ -139,7 +139,7 @@ export function BiomarkerConversationRow({
  * re-importing the config module everywhere.
  *
  * The previous `BIOMARKER_ROWS` constant exported `{label, focus}` pairs.
- * It's been replaced by `BIOMARKER_CAROUSEL_IDS` — call sites now pass
+ * It's been replaced by `BIOMARKER_CAROUSEL_IDS`: call sites now pass
  * a `carouselId` (string) which the row component resolves through the
  * config.
  */

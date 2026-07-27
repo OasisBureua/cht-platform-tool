@@ -618,7 +618,7 @@ model AnalyticsEvent {
 }
 
 // ============================================================================
-// ADMIN AUDIT LOG (SOC 2 — admin mutation trail)
+// ADMIN AUDIT LOG (SOC 2: admin mutation trail)
 // ============================================================================
 model AdminAuditLog {
   id         String   @id @default(cuid())
@@ -639,7 +639,7 @@ model AdminAuditLog {
 }
 
 // ============================================================================
-// KOL DIRECTORY VISIBILITY (CHT overlay — Content Hub remains source of roster)
+// KOL DIRECTORY VISIBILITY (CHT overlay: Content Hub remains source of roster)
 // ============================================================================
 model KolDirectoryVisibility {
   slug            String   @id

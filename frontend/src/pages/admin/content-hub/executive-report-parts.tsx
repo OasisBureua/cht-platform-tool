@@ -1,10 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { LogoMark } from './components/Logo';
 
 /**
  * The CHM logo-mark watermark used throughout the deck. The standalone app referenced
  * /chm-logo-mark.png; that asset does not exist in the platform's public dir, so this
- * renders the inline SVG LogoMark (fills its container) — no broken image, same motif.
+ * renders the inline SVG LogoMark (fills its container): no broken image, same motif.
  */
 export function FluidMark({ color = '#3da4c0' }: { color?: string }) {
   return (
@@ -135,7 +134,7 @@ export function PlatformTile({
   hasData: boolean;
 }) {
   const color = PLATFORM_TILE_COLORS[platform] ?? '#79869a';
-  const fmt = (n: number) => (hasData ? Number(n).toLocaleString('en-US') : '—');
+  const fmt = (n: number) => (hasData ? Number(n).toLocaleString('en-US') : '-');
   return (
     <div className="overflow-hidden rounded-xl border" style={{ borderColor: `${color}30` }}>
       <DecoPanel className="h-14 flex-shrink-0 items-end px-4 pb-2" style={{ backgroundColor: color }} markColor="#ffffff">

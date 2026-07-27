@@ -4,7 +4,7 @@ import { AuthController } from './auth.controller';
 /**
  * SCRUM-101: /auth/login must fail-closed when Supabase is not configured
  * in production. The DB-fallback branch below the Supabase call would
- * otherwise log a user in by email with the password IGNORED — a critical
+ * otherwise log a user in by email with the password IGNORED, a critical
  * vulnerability if SUPABASE_URL/SUPABASE_ANON_KEY drift out of the prod
  * secret in any deploy.
  */

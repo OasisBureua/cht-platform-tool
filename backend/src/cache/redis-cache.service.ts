@@ -28,7 +28,7 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     const url = this.config.get<string>('redis.url')?.trim();
     if (!url) {
       this.logger.log(
-        'REDIS_URL not configured — upstream cache disabled (direct fetches)',
+        'REDIS_URL not configured, upstream cache disabled (direct fetches)',
       );
       return;
     }
@@ -48,7 +48,7 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Redis cache connected');
     } catch (err) {
       this.logger.warn(
-        `Redis unavailable — cache disabled: ${err instanceof Error ? err.message : String(err)}`,
+        `Redis unavailable: cache disabled: ${err instanceof Error ? err.message : String(err)}`,
       );
       try {
         this.client.disconnect();

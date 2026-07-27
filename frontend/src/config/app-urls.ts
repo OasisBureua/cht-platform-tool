@@ -10,7 +10,7 @@ function sameOriginApiBase(): string {
   return `${window.location.origin}/api`;
 }
 
-/** Backend API base URL — build-time VITE_API_URL, else same-origin /api on testapp hosts. */
+/** Backend API base URL: build-time VITE_API_URL, else same-origin /api on testapp hosts. */
 export function resolveApiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL?.trim();
   if (fromEnv) return trimTrailingSlash(fromEnv);
@@ -23,7 +23,7 @@ export function resolveApiBaseUrl(): string {
   return '/api';
 }
 
-/** App origin for OAuth redirects — build-time VITE_APP_URL, else current origin. */
+/** App origin for OAuth redirects: build-time VITE_APP_URL, else current origin. */
 export function resolveAppBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_APP_URL?.trim();
   if (fromEnv) return trimTrailingSlash(fromEnv);

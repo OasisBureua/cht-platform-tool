@@ -25,7 +25,7 @@ export class SurveysController {
 
   /**
    * GET /api/surveys
-   * Learner: post-event (FEEDBACK) surveys only — active and completed lists.
+   * Learner: post-event (FEEDBACK) surveys only: active and completed lists.
    * Admin: full list in `active`.
    */
   @Get()
@@ -52,7 +52,7 @@ export class SurveysController {
   }
 
   /**
-   * GET /api/surveys/:id/jotform-resume — saved Jotform session for Save & Continue (24h)
+   * GET /api/surveys/:id/jotform-resume, saved Jotform session for Save & Continue (24h)
    */
   @Get(':id/jotform-resume')
   @UseGuards(JwtAuthGuard)

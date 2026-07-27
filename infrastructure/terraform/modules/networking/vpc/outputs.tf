@@ -24,7 +24,7 @@ output "nat_gateway_ids" {
 }
 
 output "nat_gateway_public_ips" {
-  description = "NAT gateway Elastic IPs — whitelist on Content Hub ALB SG for ECS egress (Option 1)"
+  description = "NAT gateway Elastic IPs: whitelist on Content Hub ALB SG for ECS egress (Option 1)"
   value       = var.enable_nat_gateway ? aws_eip.nat[*].public_ip : []
 }
 

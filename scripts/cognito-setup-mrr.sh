@@ -178,7 +178,7 @@ else:
 print("2️⃣  Switching to multi-Region OIDC issuer (UPDATED)...")
 print("   ⚠️  This changes the iss claim in new tokens. Backend JWKS validation uses pool ID and should continue to work.")
 try:
-    # Cognito resets omitted fields on UpdateUserPool — always resend CMK with issuer update.
+    # Cognito resets omitted fields on UpdateUserPool: always resend CMK with issuer update.
     update_pool(
         KeyConfiguration=cmk_configuration(),
         IssuerConfiguration={"Type": "UPDATED"},

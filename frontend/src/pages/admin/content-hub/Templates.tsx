@@ -175,7 +175,7 @@ export default function Templates() {
                   <label className={labelClasses}>Description</label>
                   <input
                     className={inputClasses}
-                    placeholder="Optional — describe what this template is for"
+                    placeholder="Optional: describe what this template is for"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                   />

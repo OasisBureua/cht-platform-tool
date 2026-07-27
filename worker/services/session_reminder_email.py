@@ -1,7 +1,7 @@
 """Build subject, plain-text, and HTML bodies for the 24h pre-session reminder email.
 
 Colors match the Community Health Media brand palette (tailwind.config.js brand.*).
-Times are displayed in America/New_York (ET — auto-switches EST/EDT).
+Times are displayed in America/New_York (ET: auto-switches EST/EDT).
 """
 from __future__ import annotations
 
@@ -14,18 +14,18 @@ except ImportError:  # pragma: no cover
     from backports.zoneinfo import ZoneInfo  # type: ignore
 
 # ── Brand colours (CHM orange palette) ────────────────────────────────────────
-CLR_HEADER_BG   = "#7c2d12"   # brand-800  — deep orange header
-CLR_HEADER_SUB  = "#fdba74"   # brand-300  — light orange subtitle
-CLR_ACCENT      = "#ea580c"   # brand-500  — main orange
-CLR_ACCENT_DARK = "#c2410c"   # brand-600  — button hover / border
-CLR_CARD_BG     = "#fff7ed"   # brand-50   — session card background
-CLR_CARD_BORDER = "#ea580c"   # brand-500  — card left border
-CLR_BODY_TEXT   = "#111827"   # gray-900   — primary text
-CLR_MUTED       = "#4b5563"   # gray-600   — muted text
-CLR_LABEL       = "#6b7280"   # gray-500   — table label column
-CLR_FOOTER_BG   = "#f9fafb"   # gray-50    — footer strip
-CLR_BORDER      = "#e5e7eb"   # gray-200   — dividers
-CLR_LINK        = "#c2410c"   # brand-600  — inline links
+CLR_HEADER_BG   = "#7c2d12"   # brand-800 : deep orange header
+CLR_HEADER_SUB  = "#fdba74"   # brand-300 : light orange subtitle
+CLR_ACCENT      = "#ea580c"   # brand-500 : main orange
+CLR_ACCENT_DARK = "#c2410c"   # brand-600 : button hover / border
+CLR_CARD_BG     = "#fff7ed"   # brand-50  : session card background
+CLR_CARD_BORDER = "#ea580c"   # brand-500 : card left border
+CLR_BODY_TEXT   = "#111827"   # gray-900  : primary text
+CLR_MUTED       = "#4b5563"   # gray-600  : muted text
+CLR_LABEL       = "#6b7280"   # gray-500  : table label column
+CLR_FOOTER_BG   = "#f9fafb"   # gray-50   : footer strip
+CLR_BORDER      = "#e5e7eb"   # gray-200  : dividers
+CLR_LINK        = "#c2410c"   # brand-600 : inline links
 
 _ET = ZoneInfo("America/New_York")
 
@@ -88,7 +88,7 @@ def build_session_reminder_email(
     duration_str = _fmt_duration(duration_minutes)
 
     # ── Subject ────────────────────────────────────────────────────────────────
-    subject = f"Reminder: Your {kind} starts in {hours_label} — {program_title}"
+    subject = f"Reminder: Your {kind} starts in {hours_label}, {program_title}"
 
     # ── Plain text ─────────────────────────────────────────────────────────────
     host_line     = f"Host:     {host_display_name}\n" if host_display_name else ""

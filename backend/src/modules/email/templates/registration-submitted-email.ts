@@ -25,8 +25,8 @@ export function buildRegistrationSubmittedEmail(
     : 'You are registered for this session. Open the session page below for join details and next steps.';
 
   const subject = p.requiresApproval
-    ? `Registration received — ${p.programTitle}`
-    : `You are registered — ${p.programTitle}`;
+    ? `Registration received, ${p.programTitle}`
+    : `You are registered, ${p.programTitle}`;
 
   const text = [
     `Hi ${p.firstName.trim() || 'there'},`,

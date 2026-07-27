@@ -10,9 +10,9 @@ export const CACHE_NAMESPACE = {
   CATALOG: 'cht:catalog',
   /** Content Hub KOL network + future producer reads */
   CONTENTHUB: 'cht:contenthub',
-  /** Legacy prefix from early KOL caching — cleared for backwards compatibility */
+  /** Legacy prefix from early KOL caching: cleared for backwards compatibility */
   KOL_NETWORK: 'cht:kol-network',
-  /** Auth sessions — `cht:session:{token}`; TTL matches remaining Session.expiresAt */
+  /** Auth sessions: `cht:session:{token}`; TTL matches remaining Session.expiresAt */
   SESSION: 'cht:session',
 } as const;
 
@@ -24,7 +24,7 @@ export function cachePatternsForScope(scope: CacheClearScope): string[] {
       return [`${CACHE_NAMESPACE.CATALOG}:*`];
     case 'contenthub':
       // SCRUM-82 (2026-07-21): catalog cache includes proxied
-      // /api/catalog/tags, /playlists-tags, /clips, /doctors — all
+      // /api/catalog/tags, /playlists-tags, /clips, /doctors: all
       // fed from ContentHub. Any ContentHub admin write (KOL patch,
       // clip tag override, playlist tag PATCH, post_tagging Lambda
       // yt:* refresh) invalidates catalog reads. Include CATALOG in

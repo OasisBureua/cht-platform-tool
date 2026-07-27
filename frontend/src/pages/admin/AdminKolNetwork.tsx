@@ -55,7 +55,7 @@ function KolRow({
       <td className="px-4 py-3">
         <div className="font-medium text-gray-900 dark:text-zinc-100">{kol.name}</div>
         <div className="mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
-          {kol.institution || '—'}
+          {kol.institution || '-'}
           {kol.region_label ? ` · ${kol.region_label}` : ''}
         </div>
         <Link
@@ -148,7 +148,7 @@ export default function AdminKolNetwork() {
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">
             Total KOLs
           </p>
-          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-zinc-100">{data?.total ?? '—'}</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-zinc-100">{data?.total ?? '-'}</p>
         </div>
         <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">
