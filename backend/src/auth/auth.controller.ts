@@ -78,6 +78,18 @@ export class AuthController {
     return (req.ip || '').trim() || 'unknown';
   }
 
+  /**
+   * Soft admin MFA enrollment gate (redirect to /mfa/setup).
+   * Enabled on fordev only (`CHT_ENVIRONMENT=dev`); disabled on testapp/platform
+   * until we are ready to require it there.
+   */
+  private isAdminMfaEnrollmentEnforced(): boolean {
+    const env = (
+      this.configService.get<string>('app.environment') || ''
+    ).toLowerCase();
+    return env === 'dev';
+  }
+
   private async rejectIfLocked(
     action: 'login' | 'mfa' | 'signup' | 'recover',
     email: string,
@@ -185,7 +197,9 @@ export class AuthController {
       );
     }
     const mfaEnrollmentRequired =
-      user.role === UserRole.ADMIN && !mfaEnabled;
+      this.isAdminMfaEnrollmentEnforced() &&
+      user.role === UserRole.ADMIN &&
+      !mfaEnabled;
 
     this.attachSessionCookie(res, sessionToken);
     return {
@@ -1458,9 +1472,10 @@ export class AuthController {
       }
     }
 
-    // Soft enforce for admins while pool MFA is OPTIONAL: require enrollment
-    // before using admin surfaces. Flip pool to ON later for all users.
+    // Soft enforce for admins on fordev only while pool MFA is OPTIONAL.
+    // Disabled on platform/testapp via isAdminMfaEnrollmentEnforced().
     const mfaEnrollmentRequired =
+      this.isAdminMfaEnrollmentEnforced() &&
       user.role === UserRole.ADMIN &&
       this.cognitoService.isConfigured() &&
       !mfaEnabled;
