@@ -251,10 +251,39 @@ export class AdminContentHubController {
 
   @Patch('integrations')
   async patchIntegrations(@Body() body: Record<string, unknown>) {
-    const { hubspot: _ignored, ...rest } = body;
-    const updated = await this.hubCall(() => this.campaigns.patchIntegrations(rest));
-    await this.afterHubWrite();
-    return updated;
+    // CHT-owned connectors are never stored on Content Hub.
+    const hubBody = Object.fromEntries(
+      Object.entries(body).filter(([key]) => !CHT_INTEGRATION_KEYS.has(key)),
+    );
+
+    if (Object.keys(hubBody).length === 0) {
+      return this.getIntegrations();
+    }
+
+    try {
+      await this.hubCall(() => this.campaigns.patchIntegrations(hubBody));
+      await this.afterHubWrite();
+    } catch (err: unknown) {
+      // Content Hub may not have shipped platform connectors yet — don't 404 the UI.
+      const status = isAxiosError(err)
+        ? err.response?.status
+        : err instanceof NotFoundException
+          ? 404
+          : undefined;
+      if (status === 404 || status === 501) {
+        this.logger.warn(
+          `Content Hub PATCH /integrations unavailable (${status}); returning CHT status overlay`,
+        );
+        return {
+          ...(await this.getIntegrations()),
+          _warning:
+            'Platform connector settings are not available on Content Hub yet. Use CSV upload on the campaign.',
+        };
+      }
+      throw err;
+    }
+
+    return this.getIntegrations();
   }
 
   @Get('integrations/hubspot/status')
