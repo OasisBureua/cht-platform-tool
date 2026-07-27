@@ -4,6 +4,9 @@
  * Primary shape (aligned with EC2 MediaHub):
  *   { error: { code, message, status, request_id } }
  *
+ * Admin API (FastAPI) often returns:
+ *   { error: "Unprocessable Entity", message: "...", statusCode: 422 }
+ *
  * Legacy fallbacks during rollout:
  *   { errors: { details } } | { detail: string }
  */
@@ -20,6 +23,15 @@ export function contentHubErrorMessage(body: unknown): string {
     if (typeof message === 'string' && message.trim()) {
       return message;
     }
+  }
+
+  // Flat admin shape: top-level message (preferred over string `error`)
+  if (typeof record.message === 'string' && record.message.trim()) {
+    return record.message.trim();
+  }
+
+  if (typeof error === 'string' && error.trim()) {
+    return error.trim();
   }
 
   const errors = record.errors;

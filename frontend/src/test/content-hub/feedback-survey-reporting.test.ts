@@ -1,21 +1,72 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   connectFeedbackSurvey,
   createCampaign,
-  getAnalyticsReport,
-  getCsvData,
 } from '../../pages/admin/content-hub/lib/store';
+
+const get = vi.fn();
+const post = vi.fn();
+const patch = vi.fn();
+const del = vi.fn();
+
+vi.mock('../../api/client', () => ({
+  default: {
+    get: (...args: unknown[]) => get(...args),
+    post: (...args: unknown[]) => post(...args),
+    patch: (...args: unknown[]) => patch(...args),
+    delete: (...args: unknown[]) => del(...args),
+  },
+  getApiErrorMessage: (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback,
+}));
 
 describe('feedback survey reporting source', () => {
   beforeEach(() => {
-    localStorage.clear();
+    get.mockReset();
+    post.mockReset();
+    patch.mockReset();
+    del.mockReset();
   });
 
-  it('connects CHT feedback aggregates without a CSV upload', () => {
-    const campaign = createCampaign({
+  it('connects CHT feedback aggregates via Hub campaign patch + survey upload', async () => {
+    const campaign = {
+      id: 42,
+      name: 'Program report',
+      platforms: ['survey'],
+    };
+
+    post
+      .mockResolvedValueOnce({ data: campaign }) // createCampaign
+      .mockResolvedValueOnce({
+        data: {
+          id: 7,
+          campaignId: 42,
+          platform: 'survey',
+          filename: 'Program One: Feedback',
+          rowCount: 2,
+          uploadedAt: '2026-07-27T00:00:00.000Z',
+        },
+      }); // uploadCsv inside connectFeedbackSurvey
+
+    patch.mockResolvedValueOnce({
+      data: {
+        ...campaign,
+        surveySourceId: 'survey-1',
+        surveySourceProgramId: 'program-1',
+        surveySourceLabel: 'Program One: Feedback',
+      },
+    });
+
+    const created = await createCampaign({
       name: 'Program report',
       platforms: ['survey'],
     });
+    expect(created.id).toBe(42);
+    expect(post).toHaveBeenCalledWith('/admin/content-hub/campaigns', {
+      name: 'Program report',
+      platforms: ['survey'],
+    });
+
     const analytics = {
       totals: { totalResponses: 2 },
       questions: [
@@ -34,7 +85,7 @@ describe('feedback survey reporting source', () => {
       ],
     };
 
-    const connected = connectFeedbackSurvey(campaign.id, {
+    const connected = await connectFeedbackSurvey(created.id, {
       surveyId: 'survey-1',
       programId: 'program-1',
       label: 'Program One: Feedback',
@@ -42,30 +93,28 @@ describe('feedback survey reporting source', () => {
       analytics,
     });
 
+    expect(patch).toHaveBeenCalledWith('/admin/content-hub/campaigns/42', {
+      surveySourceId: 'survey-1',
+      surveySourceProgramId: 'program-1',
+      surveySourceLabel: 'Program One: Feedback',
+    });
+
+    expect(post).toHaveBeenCalledWith(
+      '/admin/content-hub/campaigns/42/uploads',
+      expect.objectContaining({
+        platform: 'survey',
+        filename: 'Program One: Feedback',
+        content: expect.stringContaining('response_index,survey_id,program_id,label'),
+      }),
+    );
+
+    const uploadBody = post.mock.calls[1][1] as { content: string };
+    expect(uploadBody.content.trim().split('\n')).toHaveLength(3); // header + 2 rows
+
     expect(connected).toMatchObject({
       platform: 'survey',
       filename: 'Program One: Feedback',
       rowCount: 2,
     });
-    expect(getCsvData(campaign.id)).toHaveLength(1);
-
-    const report = getAnalyticsReport(campaign.id);
-    const surveyKpi = report.sections.kpiTiles.find(
-      (tile) => tile.label === 'Survey Responses',
-    );
-    expect(surveyKpi).toMatchObject({
-      value: '2',
-      source: 'cht survey',
-      note: 'Program One: Feedback',
-    });
-    expect(report.sections.surveyData).toMatchObject({
-      source: 'cht-feedback-survey',
-      surveyId: 'survey-1',
-      rowCount: 2,
-      analytics,
-    });
-    expect(report.sections.keyHighlights).toContain(
-      'Will this change your practice?: Yes was the leading response (100%).',
-    );
   });
 });

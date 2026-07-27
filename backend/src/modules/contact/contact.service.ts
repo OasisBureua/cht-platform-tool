@@ -1,23 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SubmitContactDto } from './dto/submit-contact.dto';
 
 @Injectable()
 export class ContactService {
-  constructor(private readonly hubspot: HubSpotService) {}
+  constructor(private readonly outboundSync: OutboundSyncService) {}
 
   async submit(dto: SubmitContactDto): Promise<{ received: boolean }> {
     const email = dto.email.trim().toLowerCase();
     const firstName = dto.firstName.trim();
     const lastName = dto.lastName.trim();
 
-    this.hubspot
-      .createOrUpdateContact({
+    // Public contact form: HubSpot contact only (no NPI → MediaHub skipped).
+    this.outboundSync
+      .syncUser({
         email,
-        firstname: firstName,
-        lastname: lastName,
-        company: dto.organization?.trim(),
-        jobtitle: dto.role?.trim(),
+        firstName,
+        lastName,
+        institution: dto.organization?.trim() || null,
+        specialty: dto.role?.trim() || null,
       })
       .catch(() => {});
 

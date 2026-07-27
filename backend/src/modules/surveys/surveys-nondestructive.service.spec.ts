@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { JotformService } from '../jotform/jotform.service';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
@@ -70,7 +70,7 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       prisma as unknown as PrismaService,
       {} as QueueService,
       { get: jest.fn() } as unknown as ConfigService,
-      {} as HubSpotService,
+      {} as OutboundSyncService,
       {} as JotformService,
       {} as FormJotformProgressService,
       {} as ProgramRegistrationsService,

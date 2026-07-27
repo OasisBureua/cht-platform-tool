@@ -14,7 +14,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { JotformService } from '../jotform/jotform.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import {
@@ -53,7 +53,7 @@ export class SurveysService {
     private prisma: PrismaService,
     private queueService: QueueService,
     private configService: ConfigService,
-    private hubspot: HubSpotService,
+    private outboundSync: OutboundSyncService,
     private jotformService: JotformService,
     private formJotformProgress: FormJotformProgressService,
     private programRegistrations: ProgramRegistrationsService,
@@ -1347,21 +1347,25 @@ export class SurveysService {
           city: true,
           state: true,
           zipCode: true,
+          npiNumber: true,
         },
       });
       if (user) {
-        this.hubspot
-          .createOrUpdateContact({
+        this.outboundSync
+          .syncUser({
             email: user.email,
-            firstname: user.firstName,
-            lastname: user.lastName,
-            jobtitle: user.specialty ?? undefined,
-            company: user.institution ?? undefined,
-            city: user.city ?? undefined,
-            state: user.state ?? undefined,
-            zip: user.zipCode ?? undefined,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            npiNumber: user.npiNumber,
+            specialty: user.specialty,
+            institution: user.institution,
+            city: user.city,
+            state: user.state,
+            zipCode: user.zipCode,
           })
-          .catch(() => {});
+          .catch((err) =>
+            this.logger.error('[Surveys] outbound-sync error:', err),
+          );
       }
 
       this.logger.log(`Survey ${surveyId} submitted by user ${userId}`);
@@ -1415,10 +1419,10 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.INTAKE) {
-      // Persist NPI from intake answers. Do NOT create/approve a registration here —
-      // the registration wizard's explicit "Submit registration" (or Jotform webhook)
-      // owns that. Auto-registering on survey save caused pending rows before the
-      // learner confirmed the final step.
+      // Persist NPI from intake answers. Mark registration SURVEY_SUBMITTED —
+      // the wizard's explicit "Submit registration" (or Jotform path) moves to
+      // PENDING/APPROVED. Do not auto-approve here.
+      const intakeSubmissionId = response.submissionId ?? response.id;
       const npiRaw = answers.npi ?? answers.npi_number;
       const npi =
         typeof npiRaw === 'string' && npiRaw.trim()
@@ -1436,6 +1440,17 @@ export class SurveysService {
             );
           });
       }
+      await this.programRegistrations
+        .markIntakeSurveySubmitted(
+          userId,
+          survey.programId,
+          intakeSubmissionId,
+        )
+        .catch((err: unknown) => {
+          this.logger.warn(
+            `Could not mark intake survey submitted on registration: ${String(err)}`,
+          );
+        });
     }
 
     return {

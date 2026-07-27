@@ -29,6 +29,12 @@ export interface Program {
   videos: Video[];
   zoomSessionType?: 'WEBINAR' | 'MEETING';
   zoomJoinUrl?: string;
+  /** True when zoomJoinUrl is available (approved learner + within live join window). */
+  canJoinSession?: boolean;
+  /** ISO time when Join session opens (typically 15 min before start). */
+  joinSessionOpensAt?: string;
+  /** Why join is unavailable when canJoinSession is false. */
+  joinSessionReason?: string;
   /** Returned from GET /programs/:id only when the viewer is an authenticated admin (Zoom host start URL). */
   zoomStartUrl?: string;
   startDate?: string;
@@ -71,7 +77,7 @@ export type PostEventAttendanceStatus =
 
 export interface ProgramRegistrationState {
   id: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
+  status: 'SURVEY_SUBMITTED' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'WAITLISTED';
   officeHoursSlotId?: string;
   /** Present when intake Jotform redirect included a submission id */
   intakeSubmissionId?: string;

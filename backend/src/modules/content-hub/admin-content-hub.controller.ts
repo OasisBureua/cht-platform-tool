@@ -82,7 +82,7 @@ export class AdminContentHubController {
       if (meta.status === 404) {
         throw new NotFoundException(meta.message || 'Not found');
       }
-      if (meta.status === 400) {
+      if (meta.status === 400 || meta.status === 422) {
         throw new BadRequestException(meta.message || 'Bad request');
       }
     }
@@ -243,7 +243,7 @@ export class AdminContentHubController {
     );
     return {
       ...hubPlatforms,
-      hubspot: this.buildHubspotIntegration(),
+      hubspot: await this.buildHubspotIntegration(),
       livestream: this.buildZoomIntegration(),
       survey: this.buildNativeSurveyIntegration(),
     };
@@ -251,14 +251,43 @@ export class AdminContentHubController {
 
   @Patch('integrations')
   async patchIntegrations(@Body() body: Record<string, unknown>) {
-    const { hubspot: _ignored, ...rest } = body;
-    const updated = await this.hubCall(() => this.campaigns.patchIntegrations(rest));
-    await this.afterHubWrite();
-    return updated;
+    // CHT-owned connectors are never stored on Content Hub.
+    const hubBody = Object.fromEntries(
+      Object.entries(body).filter(([key]) => !CHT_INTEGRATION_KEYS.has(key)),
+    );
+
+    if (Object.keys(hubBody).length === 0) {
+      return this.getIntegrations();
+    }
+
+    try {
+      await this.hubCall(() => this.campaigns.patchIntegrations(hubBody));
+      await this.afterHubWrite();
+    } catch (err: unknown) {
+      // Content Hub may not have shipped platform connectors yet — don't 404 the UI.
+      const status = isAxiosError(err)
+        ? err.response?.status
+        : err instanceof NotFoundException
+          ? 404
+          : undefined;
+      if (status === 404 || status === 501) {
+        this.logger.warn(
+          `Content Hub PATCH /integrations unavailable (${status}); returning CHT status overlay`,
+        );
+        return {
+          ...(await this.getIntegrations()),
+          _warning:
+            'Platform connector settings are not available on Content Hub yet. Use CSV upload on the campaign.',
+        };
+      }
+      throw err;
+    }
+
+    return this.getIntegrations();
   }
 
   @Get('integrations/hubspot/status')
-  getHubspotStatus() {
+  async getHubspotStatus() {
     return this.buildHubspotIntegration();
   }
 
@@ -320,23 +349,27 @@ export class AdminContentHubController {
     }
   }
 
-  private buildHubspotIntegration(): IntegrationStatusBlock {
-    if (!this.hubspot.isConfigured()) {
+  private async buildHubspotIntegration(): Promise<IntegrationStatusBlock> {
+    const meta = await this.hubspot.getAccountMetadata();
+    if (!meta.connected) {
       return {
         managedBy: 'cht',
         connected: false,
         accountName: null,
         portalId: null,
         note: 'HUBSPOT_ACCESS_TOKEN in platform secrets. Use Sync on campaign detail.',
-        error: 'HUBSPOT_ACCESS_TOKEN not configured in platform secrets.',
+        error:
+          meta.error ??
+          'HUBSPOT_ACCESS_TOKEN not configured in platform secrets.',
       };
     }
     return {
       managedBy: 'cht',
       connected: true,
-      accountName: 'CHT HubSpot',
-      portalId: null,
+      accountName: meta.accountName,
+      portalId: meta.portalId,
       note: 'HUBSPOT_ACCESS_TOKEN in platform secrets. Use Sync on campaign detail.',
+      ...(meta.error ? { error: meta.error } : {}),
     };
   }
 
@@ -407,15 +440,18 @@ export class AdminContentHubController {
       }>(id),
     );
 
-    const syncedAt = new Date().toISOString();
-    const hubspotRawData = {
-      hubspotCampaignId: campaign.hubspotCampaignId ?? '',
-      reportingPeriodStart: campaign.reportingPeriodStart ?? '',
-      reportingPeriodEnd: campaign.reportingPeriodEnd ?? '',
-      syncedAt,
-      source: 'cht-hubspot-sync',
-      phase: 'minimal',
-    };
+    const hubspotRawData = await this.hubspot.getCampaignAnalytics({
+      hubspotCampaignId: campaign.hubspotCampaignId,
+      reportingPeriodStart: campaign.reportingPeriodStart,
+      reportingPeriodEnd: campaign.reportingPeriodEnd,
+    });
+    const syncedAt = hubspotRawData.syncedAt;
+
+    if (hubspotRawData.errors.length) {
+      this.logger.warn(
+        `HubSpot sync for campaign ${id} completed with errors: ${hubspotRawData.errors.join('; ')}`,
+      );
+    }
 
     await this.hubCall(() =>
       this.campaigns.updateCampaign(id, {
@@ -425,7 +461,14 @@ export class AdminContentHubController {
     );
     await this.afterHubWrite();
 
-    this.logger.log(`HubSpot snapshot PATCHed to Hub campaign ${id}`);
-    return { synced: true, syncedAt };
+    this.logger.log(
+      `HubSpot analytics snapshot PATCHed to Hub campaign ${id} (phase=${hubspotRawData.phase})`,
+    );
+    return {
+      synced: true,
+      syncedAt,
+      warnings: hubspotRawData.warnings,
+      errors: hubspotRawData.errors,
+    };
   }
 }
