@@ -2,7 +2,8 @@
  * Cache key namespaces in ElastiCache Redis.
  *
  * Upstream reads (catalog / Content Hub) are ephemeral and cleared by scope.
- * Session keys mirror Postgres Session rows with the same TTL (`SESSION_TTL_SECONDS`).
+ * Session keys mirror Postgres Session rows; Redis TTL matches remaining idle
+ * expiry (`SESSION_TTL_SECONDS`, slid on activity; capped by absolute TTL).
  */
 export const CACHE_NAMESPACE = {
   /** YouTube playlist/channel catalog fallbacks */
@@ -11,7 +12,7 @@ export const CACHE_NAMESPACE = {
   CONTENTHUB: 'cht:contenthub',
   /** Legacy prefix from early KOL caching: cleared for backwards compatibility */
   KOL_NETWORK: 'cht:kol-network',
-  /** Auth sessions: `cht:session:{token}`; TTL matches Postgres Session.expiresAt */
+  /** Auth sessions: `cht:session:{token}`; TTL matches remaining Session.expiresAt */
   SESSION: 'cht:session',
 } as const;
 

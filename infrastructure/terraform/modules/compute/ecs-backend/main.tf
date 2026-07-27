@@ -99,6 +99,10 @@ resource "aws_ecs_task_definition" "backend" {
             {
               name  = "SESSION_TTL_SECONDS"
               value = "1800"
+            },
+            {
+              name  = "SESSION_ABSOLUTE_TTL_SECONDS"
+              value = "28800"
             }
           ],
           concat(

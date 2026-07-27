@@ -39,6 +39,9 @@ export default () => ({
     userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
     clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
     region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
+    /** MRR replica region — tokens may carry this region's cognito-idp host in `iss`. */
+    replicaRegion:
+      process.env.COGNITO_REPLICA_REGION?.trim() || 'us-east-2',
     hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
     domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
     jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
@@ -59,8 +62,13 @@ export default () => ({
           process.env.SUPABASE_AUTH_DECOMMISSIONED === '1',
   },
 
-  // Session TTL in seconds (default 30 min). Sessions stored in Postgres.
+  // Idle session TTL in seconds (default 30 min). Slid on getSession activity.
   sessionTtlSeconds: parseInt(process.env.SESSION_TTL_SECONDS || '1800', 10),
+  // Absolute session TTL from create (default 8h). Not extended by activity.
+  sessionAbsoluteTtlSeconds: parseInt(
+    process.env.SESSION_ABSOLUTE_TTL_SECONDS || '28800',
+    10,
+  ),
 
   recaptcha: {
     secretKey: process.env.RECAPTCHA_SECRET_KEY?.trim() || '',

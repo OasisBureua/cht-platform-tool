@@ -27,6 +27,8 @@ Operational runbooks for the [CHM Platform Roadmap](../reports/CHM-Platform-Road
 | [mediahub-platform-cutover.md](./mediahub-platform-cutover.md) | Phase 4 | Approved |
 | [cache-sync-contract.md](./cache-sync-contract.md) | Phase 4 | Approved |
 
+**Related engineering notes:** [auth-session-revocation.md](../engineering/auth-session-revocation.md).
+
 ## Sign-off
 
 | Runbook | Owner | Reviewer | Approved date |

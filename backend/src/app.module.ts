@@ -74,6 +74,10 @@ const usePrettyLogs = process.env.LOG_PRETTY === 'true';
       { name: 'short', ttl: 1000, limit: 10 },
       { name: 'medium', ttl: 10000, limit: 50 },
       { name: 'long', ttl: 60000, limit: 200 },
+      // Tight limits for password / recover flows (15 min window)
+      { name: 'auth', ttl: 900_000, limit: 10 },
+      // MFA TOTP is 6 digits — keep attempts very low (5 min window)
+      { name: 'authMfa', ttl: 300_000, limit: 5 },
     ]),
     PrismaModule,
     HealthModule,

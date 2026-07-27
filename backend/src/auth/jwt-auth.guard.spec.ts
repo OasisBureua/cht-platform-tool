@@ -4,6 +4,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 describe('JwtAuthGuard dev bypass', () => {
   const authService = {
     getSession: jest.fn(),
+    resolveSession: jest.fn().mockResolvedValue(null),
     findByUserId: jest.fn(),
   };
   const configService = {
@@ -13,6 +14,7 @@ describe('JwtAuthGuard dev bypass', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    authService.resolveSession.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -27,9 +29,14 @@ describe('JwtAuthGuard dev bypass', () => {
     );
     const request = {
       headers: { 'x-dev-user-id': 'user-1' },
+      cookies: {},
     };
+    const response = { cookie: jest.fn() };
     const context = {
-      switchToHttp: () => ({ getRequest: () => request }),
+      switchToHttp: () => ({
+        getRequest: () => request,
+        getResponse: () => response,
+      }),
     } as never;
 
     await expect(guard.canActivate(context)).rejects.toBeInstanceOf(

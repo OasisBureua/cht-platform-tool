@@ -21,6 +21,7 @@
     "date-fns": "^4.3.0",
     "lucide-react": "0.484.0",
     "luxon": "^3.7.2",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-is": "^19.2.7",

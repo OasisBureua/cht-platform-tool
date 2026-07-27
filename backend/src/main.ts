@@ -14,6 +14,8 @@ import { isProductionEnv } from './utils/is-production-env';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
+  // Honor X-Forwarded-For from ALB so throttle/lockout keys by client IP.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   // SCRUM-108: standard security headers via helmet.
   // - HSTS enabled in production so browsers refuse http:// downgrades (2yr max-age,

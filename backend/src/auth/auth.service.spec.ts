@@ -60,9 +60,11 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string) =>
-              key === 'sessionTtlSeconds' ? 1800 : undefined,
-            ),
+            get: jest.fn((key: string) => {
+              if (key === 'sessionTtlSeconds') return 1800;
+              if (key === 'sessionAbsoluteTtlSeconds') return 28800;
+              return undefined;
+            }),
           },
         },
         {
@@ -183,6 +185,7 @@ describe('AuthService', () => {
     });
 
     it('getSession returns cached user without hitting Postgres', async () => {
+      const createdAt = new Date(Date.now() - 60_000).toISOString();
       const expiresAt = new Date(Date.now() + 1800_000).toISOString();
       cache.getJson.mockResolvedValue({
         authId: mockUser.authId,
@@ -191,12 +194,65 @@ describe('AuthService', () => {
         name: 'Test User',
         role: UserRole.HCP,
         expiresAt,
+        createdAt,
       });
 
       const result = await service.getSession('tok-1');
 
       expect(result?.userId).toBe(mockUser.id);
       expect(prisma.session.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('getSession rejects when absolute TTL has elapsed', async () => {
+      const createdAt = new Date(Date.now() - 30_000_000).toISOString(); // > 8h ago
+      const expiresAt = new Date(Date.now() + 1800_000).toISOString();
+      cache.getJson.mockResolvedValue({
+        authId: mockUser.authId,
+        userId: mockUser.id,
+        email: mockUser.email,
+        name: 'Test User',
+        role: UserRole.HCP,
+        expiresAt,
+        createdAt,
+      });
+
+      const result = await service.getSession('tok-abs');
+
+      expect(result).toBeNull();
+      expect(cache.del).toHaveBeenCalledWith('cht:session:tok-abs');
+    });
+
+    it('getSession slides idle expiry when less than half idle window remains', async () => {
+      cache.getJson.mockResolvedValue(null);
+      const createdAt = new Date(Date.now() - 60_000);
+      const expiresAt = new Date(Date.now() + 5 * 60_000); // 5 min left of 30
+      (prisma.session.findUnique as jest.Mock).mockResolvedValue({
+        id: 'sess-1',
+        token: 'tok-slide',
+        authId: mockUser.authId,
+        userId: mockUser.id,
+        email: mockUser.email,
+        name: 'Test User',
+        role: UserRole.HCP,
+        expiresAt,
+        createdAt,
+      });
+      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+        role: UserRole.HCP,
+      });
+      (prisma.session.update as jest.Mock).mockResolvedValue({});
+
+      const result = await service.getSession('tok-slide');
+
+      expect(result?.userId).toBe(mockUser.id);
+      expect(prisma.session.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'sess-1' },
+          data: expect.objectContaining({
+            expiresAt: expect.any(Date),
+          }),
+        }),
+      );
     });
 
     it('revokeSession deletes DB row and Redis key', async () => {
@@ -208,6 +264,34 @@ describe('AuthService', () => {
         where: { token: 'tok-2' },
       });
       expect(cache.del).toHaveBeenCalledWith('cht:session:tok-2');
+    });
+
+    it('revokeAllUserSessions deletes Postgres rows and Redis keys', async () => {
+      (prisma.session.findMany as jest.Mock).mockResolvedValue([
+        { token: 'tok-a' },
+        { token: 'tok-b' },
+      ]);
+      (prisma.session.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
+
+      const count = await service.revokeAllUserSessions(mockUser.id);
+
+      expect(count).toBe(2);
+      expect(prisma.session.deleteMany).toHaveBeenCalledWith({
+        where: { userId: mockUser.id },
+      });
+      expect(cache.del).toHaveBeenCalledWith('cht:session:tok-a');
+      expect(cache.del).toHaveBeenCalledWith('cht:session:tok-b');
+    });
+
+    it('invalidateAuthCache only clears Redis (keeps Postgres sessions)', async () => {
+      (prisma.session.findMany as jest.Mock).mockResolvedValue([
+        { token: 'tok-a' },
+      ]);
+
+      await service.invalidateAuthCache(mockUser.id);
+
+      expect(prisma.session.deleteMany).not.toHaveBeenCalled();
+      expect(cache.del).toHaveBeenCalledWith('cht:session:tok-a');
     });
   });
 });

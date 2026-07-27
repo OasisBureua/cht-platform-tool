@@ -25,6 +25,14 @@ type CachedSession = {
   name: string;
   role: UserRole;
   expiresAt: string;
+  createdAt: string;
+};
+
+/** Result of resolving a session token (includes cookie Max-Age hint). */
+export type ResolvedSession = {
+  user: AuthUser;
+  /** Seconds remaining until absolute expiry — use for Set-Cookie Max-Age. */
+  cookieMaxAgeSeconds: number;
 };
 
 @Injectable()
@@ -39,8 +47,47 @@ export class AuthService {
     private cache: RedisCacheService,
   ) {}
 
-  private sessionTtlSeconds(): number {
+  /** Idle window (default 30 min). Slid forward on authenticated activity. */
+  private sessionIdleTtlSeconds(): number {
     return this.configService.get<number>('sessionTtlSeconds') ?? 1800;
+  }
+
+  /** Hard cap from session create (default 8h). Not extended by activity. */
+  private sessionAbsoluteTtlSeconds(): number {
+    return this.configService.get<number>('sessionAbsoluteTtlSeconds') ?? 28800;
+  }
+
+  private absoluteDeadline(createdAt: Date): Date {
+    return new Date(
+      createdAt.getTime() + this.sessionAbsoluteTtlSeconds() * 1000,
+    );
+  }
+
+  /** Next idle expiry, never past the absolute deadline. */
+  private nextIdleExpiresAt(now: Date, createdAt: Date): Date {
+    const idleEnd = new Date(
+      now.getTime() + this.sessionIdleTtlSeconds() * 1000,
+    );
+    const absEnd = this.absoluteDeadline(createdAt);
+    return idleEnd.getTime() < absEnd.getTime() ? idleEnd : absEnd;
+  }
+
+  private remainingAbsoluteSeconds(createdAt: Date, now = new Date()): number {
+    return Math.max(
+      0,
+      Math.floor((this.absoluteDeadline(createdAt).getTime() - now.getTime()) / 1000),
+    );
+  }
+
+  private isSessionTimedOut(
+    now: Date,
+    expiresAt: Date,
+    createdAt: Date,
+  ): boolean {
+    return (
+      now.getTime() >= this.absoluteDeadline(createdAt).getTime() ||
+      now.getTime() >= expiresAt.getTime()
+    );
   }
 
   private toAuthUser(data: {
@@ -63,6 +110,7 @@ export class AuthService {
     token: string,
     user: AuthUser,
     expiresAt: Date,
+    createdAt: Date,
   ): Promise<void> {
     const remainingSec = Math.max(
       1,
@@ -75,12 +123,25 @@ export class AuthService {
       name: user.name,
       role: user.role,
       expiresAt: expiresAt.toISOString(),
+      createdAt: createdAt.toISOString(),
     };
     await this.cache.setJson(sessionCacheKey(token), payload, remainingSec);
   }
 
   private async deleteSessionCache(token: string): Promise<void> {
     await this.cache.del(sessionCacheKey(token));
+  }
+
+  private async destroySessionRow(
+    token: string,
+    sessionId?: string,
+  ): Promise<void> {
+    await Promise.all([
+      sessionId
+        ? this.prisma.session.delete({ where: { id: sessionId } }).catch(() => {})
+        : this.prisma.session.deleteMany({ where: { token } }),
+      this.deleteSessionCache(token),
+    ]);
   }
   /**
    * Find or create user by Auth0 sub (authId).
@@ -178,8 +239,16 @@ export class AuthService {
   }
 
   /**
-   * Drop Redis session entries for a user (e.g. after role change).
-   * Postgres remains source of truth; next getSession backfills the cache.
+   * Drop Redis session entries for a user without deleting Postgres rows.
+   *
+   * Use this when sessions should remain valid but cached AuthUser data is
+   * stale (e.g. role change via `setUserRole`). Postgres stays source of
+   * truth; the next `getSession` backfills Redis with fresh fields.
+   *
+   * Do **not** use this for password reset/change — call
+   * `revokeAllUserSessions` instead so Postgres rows are deleted too.
+   * Redis-only invalidation would allow the next request to rehydrate from
+   * still-valid Session rows.
    */
   async invalidateAuthCache(userId: string): Promise<void> {
     const sessions = await this.prisma.session.findMany({
@@ -189,6 +258,41 @@ export class AuthService {
     await Promise.all(
       sessions.map((s) => this.deleteSessionCache(s.token)),
     );
+  }
+
+  /**
+   * Fully revoke every session for a user (Postgres + Redis).
+   * Call after confirmForgotPassword or an authenticated password change so
+   * stolen cookies cannot keep working.
+   */
+  async revokeAllUserSessions(userId: string): Promise<number> {
+    const sessions = await this.prisma.session.findMany({
+      where: { userId },
+      select: { token: true },
+    });
+    await this.prisma.session.deleteMany({ where: { userId } });
+    await Promise.all(sessions.map((s) => this.deleteSessionCache(s.token)));
+    this.logger.log(
+      `[Auth] Revoked ${sessions.length} session(s) for userId=${userId}`,
+    );
+    return sessions.length;
+  }
+
+  /** Cognito (or legacy) access token stored on the session row, if any. */
+  async getSessionAccessToken(sessionToken: string): Promise<string | null> {
+    const token = sessionToken.trim();
+    if (!token) return null;
+    const session = await this.prisma.session.findUnique({
+      where: { token },
+      select: { accessToken: true, expiresAt: true, createdAt: true },
+    });
+    if (
+      !session ||
+      this.isSessionTimedOut(new Date(), session.expiresAt, session.createdAt)
+    ) {
+      return null;
+    }
+    return session.accessToken ?? null;
   }
 
   /**
@@ -235,16 +339,18 @@ export class AuthService {
   }
 
   /**
-   * Create a session in Postgres and mirror it in Redis (same TTL).
-   * @param accessToken - Optional GoTrue JWT for chatbot (stored when Supabase login)
+   * Create a session in Postgres and mirror it in Redis.
+   * Idle expiry starts at now + SESSION_TTL_SECONDS; absolute cap uses createdAt.
+   * @param accessToken - Optional Cognito/legacy access token (MFA, password, chatbot)
    */
   async createSession(
     user: AuthUser,
     accessToken?: string | null,
   ): Promise<string> {
     const token = randomUUID();
-    const ttl = this.sessionTtlSeconds();
-    const expiresAt = new Date(Date.now() + ttl * 1000);
+    const now = new Date();
+    const createdAt = now;
+    const expiresAt = this.nextIdleExpiresAt(now, createdAt);
     await this.prisma.session.create({
       data: {
         token,
@@ -254,12 +360,13 @@ export class AuthService {
         name: user.name,
         role: user.role,
         expiresAt,
+        createdAt,
         accessToken: accessToken || undefined,
       },
     });
-    await this.writeSessionCache(token, user, expiresAt);
+    await this.writeSessionCache(token, user, expiresAt, createdAt);
     this.logger.debug(
-      `Session created for ${user.userId}, expires: ${expiresAt.toISOString()}`,
+      `Session created for ${user.userId}, idleExpires=${expiresAt.toISOString()} absoluteDeadline=${this.absoluteDeadline(createdAt).toISOString()}`,
     );
     return token;
   }
@@ -274,56 +381,93 @@ export class AuthService {
   }
 
   /**
-   * Get chatbot token (GoTrue JWT) for the given session. Returns null if not stored.
+   * Get chatbot token for the given session. Returns null if missing or timed out.
    */
   async getChatbotToken(sessionToken: string): Promise<string | null> {
     const session = await this.prisma.session.findUnique({
       where: { token: sessionToken.trim() },
-      select: { accessToken: true, expiresAt: true },
+      select: { accessToken: true, expiresAt: true, createdAt: true },
     });
-    if (!session || session.expiresAt < new Date()) return null;
+    if (
+      !session ||
+      this.isSessionTimedOut(new Date(), session.expiresAt, session.createdAt)
+    ) {
+      return null;
+    }
     return session.accessToken;
   }
 
   /**
-   * Get session by token, Redis first (TTL matches DB), then Postgres.
+   * Resolve session by token: Redis first, then Postgres.
+   * Enforces idle + absolute timeouts and slides idle expiry on activity
+   * (when less than half the idle window remains) so active users stay signed in
+   * until the absolute cap.
    */
-  async getSession(token: string): Promise<AuthUser | null> {
+  async resolveSession(token: string): Promise<ResolvedSession | null> {
     if (!token?.trim()) {
       this.logger.debug('[Auth] getSession: empty token');
       return null;
     }
     const trimmed = token.trim();
+    const now = new Date();
 
     const cached = await this.cache.getJson<CachedSession>(
       sessionCacheKey(trimmed),
     );
-    if (cached) {
+    // Legacy Redis payloads (pre–absolute TTL) lack createdAt — fall through to Postgres.
+    if (cached?.expiresAt && cached.createdAt) {
       const expiresAt = new Date(cached.expiresAt);
-      if (expiresAt < new Date()) {
+      const createdAt = new Date(cached.createdAt);
+      if (
+        Number.isNaN(expiresAt.getTime()) ||
+        Number.isNaN(createdAt.getTime())
+      ) {
         await this.deleteSessionCache(trimmed);
+      } else if (this.isSessionTimedOut(now, expiresAt, createdAt)) {
+        await this.destroySessionRow(trimmed);
+        return null;
       } else {
-        return this.toAuthUser(cached);
+        const user = this.toAuthUser(cached);
+        await this.maybeSlideSession(
+          trimmed,
+          user,
+          expiresAt,
+          createdAt,
+          now,
+        );
+        return {
+          user,
+          cookieMaxAgeSeconds: this.remainingAbsoluteSeconds(createdAt, now),
+        };
       }
+    } else if (cached) {
+      // Stale shape — drop cache entry and rehydrate from Postgres.
+      await this.deleteSessionCache(trimmed);
     }
 
     const session = await this.prisma.session.findUnique({
       where: { token: trimmed },
     });
-    if (!session || session.expiresAt < new Date()) {
-      this.logger.debug(
-        `[Auth] getSession: not found or expired (found=${!!session})`,
-      );
-      if (session) {
-        await Promise.all([
-          this.prisma.session
-            .delete({ where: { id: session.id } })
-            .catch(() => {}),
-          this.deleteSessionCache(trimmed),
-        ]);
-      }
+    if (!session) {
+      this.logger.debug('[Auth] getSession: not found');
       return null;
     }
+
+    // createdAt is required after migration; coerce for safety mid-rollout.
+    const createdAt =
+      session.createdAt instanceof Date && !Number.isNaN(session.createdAt.getTime())
+        ? session.createdAt
+        : new Date(
+            session.expiresAt.getTime() - this.sessionIdleTtlSeconds() * 1000,
+          );
+    if (this.isSessionTimedOut(now, session.expiresAt, createdAt)) {
+      this.logger.debug(
+        `[Auth] getSession: timed out (idle or absolute) token=${trimmed.slice(0, 8)}…`,
+      );
+      await this.destroySessionRow(trimmed, session.id);
+      return null;
+    }
+
     const dbUser = await this.prisma.user.findUnique({
       where: { id: session.userId },
       select: { role: true },
@@ -347,8 +491,67 @@ export class AuthService {
         .catch(() => {});
     }
 
-    await this.writeSessionCache(trimmed, authUser, session.expiresAt);
-    return authUser;
+    await this.maybeSlideSession(
+      trimmed,
+      authUser,
+      session.expiresAt,
+      createdAt,
+      now,
+      session.id,
+    );
+
+    return {
+      user: authUser,
+      cookieMaxAgeSeconds: this.remainingAbsoluteSeconds(createdAt, now),
+    };
+  }
+
+  /**
+   * Slide idle expiry when less than half the idle window remains.
+   * Caps at absolute deadline. Updates Postgres + Redis.
+   */
+  private async maybeSlideSession(
+    token: string,
+    user: AuthUser,
+    expiresAt: Date,
+    createdAt: Date,
+    now: Date,
+    sessionId?: string,
+  ): Promise<boolean> {
+    const idleTtl = this.sessionIdleTtlSeconds();
+    const remainingIdleSec = Math.floor(
+      (expiresAt.getTime() - now.getTime()) / 1000,
+    );
+    const shouldSlide = remainingIdleSec < idleTtl / 2;
+    if (!shouldSlide) {
+      await this.writeSessionCache(token, user, expiresAt, createdAt);
+      return false;
+    }
+
+    const newExpiresAt = this.nextIdleExpiresAt(now, createdAt);
+    if (sessionId) {
+      await this.prisma.session
+        .update({
+          where: { id: sessionId },
+          data: { expiresAt: newExpiresAt },
+        })
+        .catch(() => {});
+    } else {
+      await this.prisma.session
+        .updateMany({
+          where: { token },
+          data: { expiresAt: newExpiresAt },
+        })
+        .catch(() => {});
+    }
+    await this.writeSessionCache(token, user, newExpiresAt, createdAt);
+    return true;
+  }
+
+  /** Get session by token (AuthUser only). Prefer resolveSession when refreshing cookies. */
+  async getSession(token: string): Promise<AuthUser | null> {
+    const resolved = await this.resolveSession(token);
+    return resolved?.user ?? null;
   }
 
   /**
