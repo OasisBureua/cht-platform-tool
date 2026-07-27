@@ -229,6 +229,7 @@ export default function PostEventParticipantFlow(props: {
       setNativeSurveyError('Complete all required fields before tapping Complete survey.');
       return;
     }
+    form.dataset.chtExplicitSubmit = '1';
     form.requestSubmit();
   };
 

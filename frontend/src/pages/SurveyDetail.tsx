@@ -96,6 +96,8 @@ export default function SurveyDetail() {
       setNativeSurveyError('Complete all required fields before tapping Complete survey.');
       return;
     }
+    // Gate: NativeSurveyForm ignores Enter/implicit submits unless this flag is set.
+    form.dataset.chtExplicitSubmit = '1';
     form.requestSubmit();
   };
 
@@ -181,54 +183,46 @@ export default function SurveyDetail() {
         <div className="lg:col-span-8 space-y-6">
           {/* Start / Embed */}
           <div className="rounded-3xl border border-gray-200 bg-white p-6">
-            {!started ? (
-              formLocked || surveySaved ? (
-                <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                  {formLocked
-                    ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
-                    : 'Your responses are saved. Thank you for completing this survey.'}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
-                  <button
-                    type="button"
-                    onClick={() => setStarted(true)}
-                    className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-                  >
-                    Start survey <ArrowRight className="ml-2 h-4 w-4" />
-                  </button>
-                </div>
-              )
-            ) : null}
-
-            {started && !formLocked ? (
-              <div>
-                {useNativeRenderer ? (
-                  <NativeSurveyForm
-                    surveyId={survey.id}
-                    title={survey.title}
-                    questions={survey.questions}
-                    authenticated={!!userId}
-                    userSummary={{
-                      firstName: user?.firstName,
-                      lastName: user?.lastName,
-                      email: user?.email,
-                    }}
-                    disabled={formLocked || submitMutation.isPending}
-                    submitting={submitMutation.isPending}
-                    hideSubmitButton={isPostEventFeedback}
-                    formId={isPostEventFeedback ? SURVEY_DETAIL_NATIVE_FORM_ID : undefined}
-                    showPayoutNotice={isPostEventFeedback}
-                    onSubmit={(answers) => submitMutation.mutate(answers)}
-                  />
-                ) : (
-                  <p className="text-sm text-gray-600">
-                    This survey is not available yet. Contact support if you need assistance.
-                  </p>
-                )}
+            {formLocked || surveySaved ? (
+              <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                {formLocked || isPostEventFeedback
+                  ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
+                  : 'Your responses are saved. Thank you for completing this survey.'}
+              </p>
+            ) : !started ? (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
+                <button
+                  type="button"
+                  onClick={() => setStarted(true)}
+                  className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                >
+                  Start survey <ArrowRight className="ml-2 h-4 w-4" />
+                </button>
               </div>
-            ) : null}
+            ) : useNativeRenderer ? (
+              <NativeSurveyForm
+                surveyId={survey.id}
+                title={survey.title}
+                questions={survey.questions}
+                authenticated={!!userId}
+                userSummary={{
+                  firstName: user?.firstName,
+                  lastName: user?.lastName,
+                  email: user?.email,
+                }}
+                disabled={submitMutation.isPending}
+                submitting={submitMutation.isPending}
+                hideSubmitButton={isPostEventFeedback}
+                formId={isPostEventFeedback ? SURVEY_DETAIL_NATIVE_FORM_ID : undefined}
+                showPayoutNotice={isPostEventFeedback}
+                onSubmit={(answers) => submitMutation.mutate(answers)}
+              />
+            ) : (
+              <p className="text-sm text-gray-600">
+                This survey is not available yet. Contact support if you need assistance.
+              </p>
+            )}
           </div>
 
           {isPostEventFeedback && survey.programId ? (
@@ -237,26 +231,6 @@ export default function SurveyDetail() {
               {registrationApproved && attendanceOkForPostEvent ? (
                 <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
                   <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
-                  <p className="text-sm text-gray-600">
-                    {isPostEventFeedback && useNativeRenderer ? (
-                      <>
-                        Complete all questions above, then tap <strong>Complete survey</strong> below to save your
-                        responses
-                        {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
-                          ? ' before confirming payout details'
-                          : ''}
-                        .
-                      </>
-                    ) : (
-                      <>
-                        Submit the survey above to save your responses
-                        {survey.program?.honorariumAmount && survey.program.honorariumAmount > 0
-                          ? ', then confirm payout details below to create your pending honorarium request'
-                          : ''}
-                        .
-                      </>
-                    )}
-                  </p>
                   <PostEventFeedbackLearnerActions
                     programId={survey.programId}
                     userId={userId}
