@@ -173,7 +173,10 @@ export class HubSpotService {
   }
 
   /**
-   * Resolve portal metadata via private-app token introspection.
+   * Resolve portal metadata for the configured private-app token.
+   * Uses GET /integrations/v1/me — OAuth token introspection
+   * (`/oauth/v1/access-tokens/{token}`) rejects private-app `pat-…` tokens
+   * with "must have the correct format" even when the token is valid.
    * Cached briefly so Integrations / status polls stay cheap.
    */
   async getAccountMetadata(forceRefresh = false): Promise<HubSpotAccountMetadata> {
@@ -200,27 +203,27 @@ export class HubSpotService {
 
     try {
       const data = await this.requestJson<{
-        hub_id?: number | string;
-        hub_domain?: string;
-        user?: string;
-        scopes?: string[];
-      }>(`/oauth/v1/access-tokens/${encodeURIComponent(this.accessToken)}`, {
-        method: 'GET',
-      });
+        portalId?: number | string;
+        timeZone?: string;
+        accountType?: string;
+        currency?: string;
+        uiDomain?: string;
+        hubDomain?: string;
+      }>('/integrations/v1/me', { method: 'GET' });
 
       const portalId =
-        data.hub_id != null && String(data.hub_id).trim()
-          ? String(data.hub_id)
+        data.portalId != null && String(data.portalId).trim()
+          ? String(data.portalId)
           : null;
       const hubDomain =
-        typeof data.hub_domain === 'string' && data.hub_domain.trim()
-          ? data.hub_domain.trim()
-          : null;
+        (typeof data.uiDomain === 'string' && data.uiDomain.trim()
+          ? data.uiDomain.trim()
+          : null) ||
+        (typeof data.hubDomain === 'string' && data.hubDomain.trim()
+          ? data.hubDomain.trim()
+          : null);
       const accountName =
         hubDomain ||
-        (typeof data.user === 'string' && data.user.trim()
-          ? data.user.trim()
-          : null) ||
         (portalId ? `HubSpot portal ${portalId}` : 'HubSpot');
 
       const value: HubSpotAccountMetadata = {
@@ -228,9 +231,7 @@ export class HubSpotService {
         accountName,
         portalId,
         hubDomain,
-        scopes: Array.isArray(data.scopes)
-          ? data.scopes.filter((s): s is string => typeof s === 'string')
-          : [],
+        scopes: [],
       };
       this.accountMetaCache = {
         expiresAt: now + ACCOUNT_META_TTL_MS,
@@ -239,10 +240,10 @@ export class HubSpotService {
       return value;
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : 'HubSpot token introspection failed';
+        err instanceof Error ? err.message : 'HubSpot account lookup failed';
       this.logger.warn(`[HubSpot] Account metadata failed: ${message}`);
       const value: HubSpotAccountMetadata = {
-        // Token present is not enough — HubSpot rejected introspection.
+        // Token present is not enough — HubSpot rejected the call.
         connected: false,
         accountName: null,
         portalId: null,
