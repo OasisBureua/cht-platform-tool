@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HubSpotService } from '../hubspot/hubspot.service';
-import { MailchimpSyncService } from './mailchimp-sync.service';
 import { MediaHubSyncService } from './mediahub-sync.service';
 
 export interface OutboundSyncInput {
@@ -17,16 +16,15 @@ export interface OutboundSyncInput {
 
 export interface OutboundSyncResult {
   hubspot: boolean;
-  mailchimp: boolean;
   mediahub: boolean;
 }
 
 /**
- * Fan-out an NPI-bearing user update to all external attribution systems.
+ * Fan-out an NPI-bearing user update to HubSpot + MediaHub/Content Hub HCP roster.
  *
  * Contract: never throws. Any single destination's failure is logged but does
- * not block the other destinations (so a Mailchimp 500 can't silently break
- * HubSpot sync on signup). Returns per-destination booleans for observability.
+ * not block the other destinations. Returns per-destination booleans for
+ * observability.
  *
  * Called from:
  *   - auth.service.findOrCreateByAuthId (new-user path, after first DB insert)
@@ -39,7 +37,6 @@ export class OutboundSyncService {
 
   constructor(
     private readonly hubspot: HubSpotService,
-    private readonly mailchimp: MailchimpSyncService,
     private readonly mediahub: MediaHubSyncService,
   ) {}
 
@@ -68,19 +65,8 @@ export class OutboundSyncService {
           })
       : Promise.resolve(false);
 
-    const mailchimpPromise = this.mailchimp.upsertMember({
-      email,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      npi: hasValidNpi ? npi : null,
-      specialty: input.specialty,
-      institution: input.institution,
-      city: input.city,
-      state: input.state,
-    });
-
     // MediaHub roster is NPI-keyed, skip HCPs without a valid NPI rather than
-    // pushing noise. HubSpot and Mailchimp still sync (lead-nurture surfaces).
+    // pushing noise. HubSpot still syncs (CRM contact surface).
     const mediahubPromise = hasValidNpi
       ? this.mediahub.upsertHCP({
           npi,
@@ -95,16 +81,15 @@ export class OutboundSyncService {
         })
       : Promise.resolve(false);
 
-    const [hubspot, mailchimp, mediahub] = await Promise.all([
+    const [hubspot, mediahub] = await Promise.all([
       hubspotPromise,
-      mailchimpPromise,
       mediahubPromise,
     ]);
 
     this.logger.log(
-      `[OutboundSync] ${email} npi=${hasValidNpi ? npi : 'none'} results: hubspot=${hubspot} mailchimp=${mailchimp} mediahub=${mediahub}`,
+      `[OutboundSync] ${email} npi=${hasValidNpi ? npi : 'none'} results: hubspot=${hubspot} mediahub=${mediahub}`,
     );
 
-    return { hubspot, mailchimp, mediahub };
+    return { hubspot, mediahub };
   }
 }

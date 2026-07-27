@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ProgramRegistrationStatus } from '@prisma/client';
 import { ProgramRegistrationsService } from './program-registrations.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { HubSpotService } from '../hubspot/hubspot.service';
+import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
 
@@ -26,7 +26,7 @@ describe('ProgramRegistrationsService', () => {
 
     service = new ProgramRegistrationsService(
       prisma as unknown as PrismaService,
-      {} as HubSpotService,
+      {} as OutboundSyncService,
       { get: jest.fn() } as unknown as ConfigService,
       {} as QueueService,
       {} as SesEmailService,

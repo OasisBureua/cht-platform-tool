@@ -242,8 +242,7 @@ export class HubSpotService {
         err instanceof Error ? err.message : 'HubSpot token introspection failed';
       this.logger.warn(`[HubSpot] Account metadata failed: ${message}`);
       const value: HubSpotAccountMetadata = {
-        // Token present is not enough — HubSpot rejected introspection.
-        connected: false,
+        connected: this.isConfigured(),
         accountName: null,
         portalId: null,
         hubDomain: null,
