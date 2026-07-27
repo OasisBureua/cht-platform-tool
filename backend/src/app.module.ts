@@ -1,6 +1,5 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
-import { RequestMethod } from '@nestjs/common';
+import { Module, RequestMethod } from '@nestjs/common';
+import type { ExecutionContext } from '@nestjs/common';
 import { join } from 'path';
 import { randomUUID } from 'node:crypto';
 import { APP_GUARD } from '@nestjs/core';
@@ -30,8 +29,21 @@ import { InternalModule } from './modules/internal/internal.module';
 import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
+import { ConfigModule } from '@nestjs/config';
 
 const usePrettyLogs = process.env.LOG_PRETTY === 'true';
+
+/** ALB + ECS probe paths must never count toward rate limits. */
+function skipHealthProbes(context: ExecutionContext): boolean {
+  const req = context.switchToHttp().getRequest<{ url?: string }>();
+  const path = (req.url || '').split('?')[0];
+  return (
+    path === '/health' ||
+    path.startsWith('/health/') ||
+    path === '/actuator' ||
+    path.startsWith('/actuator/')
+  );
+}
 
 @Module({
   imports: [
@@ -71,13 +83,13 @@ const usePrettyLogs = process.env.LOG_PRETTY === 'true';
     }),
     CacheModule,
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 10 },
-      { name: 'medium', ttl: 10000, limit: 50 },
-      { name: 'long', ttl: 60000, limit: 200 },
+      { name: 'short', ttl: 1000, limit: 10, skipIf: skipHealthProbes },
+      { name: 'medium', ttl: 10000, limit: 50, skipIf: skipHealthProbes },
+      { name: 'long', ttl: 60000, limit: 200, skipIf: skipHealthProbes },
       // Tight limits for password / recover flows (15 min window)
-      { name: 'auth', ttl: 900_000, limit: 10 },
+      { name: 'auth', ttl: 900_000, limit: 10, skipIf: skipHealthProbes },
       // MFA TOTP is 6 digits — keep attempts very low (5 min window)
-      { name: 'authMfa', ttl: 300_000, limit: 5 },
+      { name: 'authMfa', ttl: 300_000, limit: 5, skipIf: skipHealthProbes },
     ]),
     PrismaModule,
     HealthModule,
