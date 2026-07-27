@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import ScrollToTop from './components/ScrollToTop';
 import { Loader2 } from 'lucide-react';
 
@@ -109,7 +110,11 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: true,
-      retry: 1,
+      // One retry for flaky network; never retry 429 (retries worsen Nest rate limits).
+      retry: (failureCount, error) => {
+        if (isAxiosError(error) && error.response?.status === 429) return false;
+        return failureCount < 1;
+      },
       staleTime: 60 * 1000,
     },
   },

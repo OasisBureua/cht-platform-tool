@@ -95,9 +95,14 @@ export default function Home() {
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
 
+  const [brokenFeaturedIds, setBrokenFeaturedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
     const mapped = randomVideos
       .filter((v) => extractYoutubeVideoIdFromUrl(v.youtubeUrl))
+      .filter((v) => !brokenFeaturedIds.has(v.id))
       .map((v) => ({
         id: v.id,
         title: v.title,
@@ -105,8 +110,10 @@ export default function Home() {
         youtubeUrl: v.youtubeUrl,
       }));
     if (mapped.length > 0) return mapped;
+    // Placeholders are static Unsplash assets — only use when API returned nothing.
+    if (brokenFeaturedIds.size > 0) return [];
     return randomVideosLoading ? [] : FALLBACK_FEATURED;
-  }, [randomVideos, randomVideosLoading]);
+  }, [randomVideos, randomVideosLoading, brokenFeaturedIds]);
 
   const resources: Resource[] = [
     { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
@@ -201,6 +208,15 @@ export default function Home() {
                   imageUrl={v.imageUrl}
                   variant="thumbnailOnly"
                   meta={v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                  hideThumbnailOnError={!v.id.startsWith('home-placeholder')}
+                  onThumbnailError={() =>
+                    setBrokenFeaturedIds((prev) => {
+                      if (prev.has(v.id)) return prev;
+                      const next = new Set(prev);
+                      next.add(v.id);
+                      return next;
+                    })
+                  }
                 />
               ))}
             </ConversationRow>

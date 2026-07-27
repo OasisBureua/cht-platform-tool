@@ -83,9 +83,11 @@ function skipHealthProbes(context: ExecutionContext): boolean {
     }),
     CacheModule,
     ThrottlerModule.forRoot([
-      { name: 'short', ttl: 1000, limit: 10, skipIf: skipHealthProbes },
-      { name: 'medium', ttl: 10000, limit: 50, skipIf: skipHealthProbes },
-      { name: 'long', ttl: 60000, limit: 200, skipIf: skipHealthProbes },
+      // SPA pages fan out many parallel GETs (catalog biomarkers, auth/me, dashboard).
+      // Keep these high enough for a normal page load; auth* stays tight below.
+      { name: 'short', ttl: 1000, limit: 60, skipIf: skipHealthProbes },
+      { name: 'medium', ttl: 10000, limit: 300, skipIf: skipHealthProbes },
+      { name: 'long', ttl: 60000, limit: 1200, skipIf: skipHealthProbes },
       // Tight limits for password / recover flows (15 min window)
       { name: 'auth', ttl: 900_000, limit: 10, skipIf: skipHealthProbes },
       // MFA TOTP is 6 digits — keep attempts very low (5 min window)
