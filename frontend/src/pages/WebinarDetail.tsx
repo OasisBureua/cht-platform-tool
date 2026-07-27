@@ -194,13 +194,13 @@ export default function WebinarDetail() {
     }
     return (
       <div className="space-y-8 pb-24 md:pb-0">
-        <button
-          onClick={() => navigate(-1)}
+        <Link
+          to="/app/live"
           className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to Live
-        </button>
+        </Link>
         <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
           <h1 className="text-2xl font-bold text-gray-900">{zoomWebinar.title}</h1>
           <p className="mt-3 text-gray-600">{zoomWebinar.description}</p>
@@ -353,14 +353,13 @@ export default function WebinarDetail() {
     <div className="space-y-8 pb-24 md:pb-0">
       {!postEventNavLock ? (
         <div>
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
+          <Link
+            to="/app/live"
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
           >
             <ChevronLeft className="h-4 w-4" />
             Back to Live
-          </button>
+          </Link>
         </div>
       ) : null}
 
@@ -452,8 +451,8 @@ export default function WebinarDetail() {
               ) : null}
               {program.honorariumAmount ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  {formatMoney(program.honorariumAmount)} honorarium
+                  <DollarSign className="h-3.5 w-3.5" aria-hidden />
+                  {program.honorariumAmount.toLocaleString()} honorarium
                 </span>
               ) : null}
             </div>

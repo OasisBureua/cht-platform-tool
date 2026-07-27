@@ -230,6 +230,7 @@ export default function LiveMultiRegister() {
       ) as HTMLFormElement | null;
       if (form) {
         if (!form.reportValidity()) return;
+        form.dataset.chtExplicitSubmit = '1';
         form.requestSubmit();
       }
       return;
