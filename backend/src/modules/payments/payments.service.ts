@@ -664,6 +664,102 @@ export class PaymentsService {
   }
 
   /**
+   * Admin CSV export of payments (pending / failed / paid / all) with optional date range.
+   */
+  async exportPaymentsCsv(opts: {
+    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL';
+    from?: string;
+    to?: string;
+  }): Promise<string> {
+    const statusFilter =
+      opts.status && opts.status !== 'ALL'
+        ? { status: opts.status }
+        : undefined;
+
+    const fromDate = opts.from ? new Date(opts.from) : null;
+    const toDate = opts.to ? new Date(opts.to) : null;
+    const createdAt =
+      fromDate || toDate
+        ? {
+            ...(fromDate && !Number.isNaN(fromDate.getTime())
+              ? { gte: fromDate }
+              : {}),
+            ...(toDate && !Number.isNaN(toDate.getTime())
+              ? { lte: toDate }
+              : {}),
+          }
+        : undefined;
+
+    const rows = await this.prisma.payment.findMany({
+      where: {
+        ...statusFilter,
+        ...(createdAt && Object.keys(createdAt).length
+          ? { createdAt }
+          : {}),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        program: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+    });
+
+    const escape = (value: unknown) => {
+      const s = value == null ? '' : String(value);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const header = [
+      'paymentId',
+      'status',
+      'amountCents',
+      'amountDollars',
+      'type',
+      'userId',
+      'userEmail',
+      'userName',
+      'programId',
+      'programTitle',
+      'createdAt',
+      'paidAt',
+      'failedAt',
+      'billPaymentId',
+    ].join(',');
+
+    const lines = rows.map((p) =>
+      [
+        p.id,
+        p.status,
+        p.amount,
+        (p.amount / 100).toFixed(2),
+        p.type,
+        p.userId,
+        p.user?.email ?? '',
+        `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(),
+        p.programId ?? '',
+        p.program?.title ?? '',
+        p.createdAt?.toISOString?.() ?? '',
+        p.paidAt?.toISOString?.() ?? '',
+        p.failedAt?.toISOString?.() ?? '',
+        p.billPaymentId ?? '',
+      ]
+        .map(escape)
+        .join(','),
+    );
+
+    return [header, ...lines].join('\n');
+  }
+
+  /**
    * Reset a FAILED payment back to PENDING and immediately attempt payment via Bill.com (admin only).
    * Clears the previous failure metadata before delegating to the standard payNow flow.
    */

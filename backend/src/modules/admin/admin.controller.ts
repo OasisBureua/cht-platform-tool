@@ -258,7 +258,7 @@ export class AdminController {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount] =
+    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount, paymentsPaidCents, pendingPaymentsCount, pendingRegistrationsCount, publishedLiveProgramsCount] =
       await Promise.all([
         this.prisma.user.count({
           where: {
@@ -276,6 +276,29 @@ export class AdminController {
         this.prisma.payment.count({
           where: { status: PaymentStatus.PAID },
         }),
+        this.prisma.payment.aggregate({
+          where: { status: PaymentStatus.PAID },
+          _sum: { amount: true },
+        }),
+        this.prisma.payment.count({
+          where: { status: PaymentStatus.PENDING },
+        }),
+        this.prisma.programRegistration.count({
+          where: {
+            status: ProgramRegistrationStatus.PENDING,
+            program: {
+              status: 'PUBLISHED',
+              zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+              registrationRequiresApproval: true,
+            },
+          },
+        }),
+        this.prisma.program.count({
+          where: {
+            status: 'PUBLISHED',
+            zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+          },
+        }),
       ]);
     const pct =
       activeHcpsCountPreviousWeek === 0
@@ -286,7 +309,47 @@ export class AdminController {
     this.logger.debug(
       `[Admin] stats: activeHcps=${activeHcpsCount} activeHcpsPrevWeek=${activeHcpsCountPreviousWeek} change=${pct}`,
     );
-    return { activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount };
+    return {
+      activeHcpsCount,
+      activeHcpsCountPreviousWeek,
+      paymentsPaidCount,
+      paymentsPaidCents: paymentsPaidCents._sum.amount ?? 0,
+      pendingPaymentsCount,
+      pendingRegistrationsCount,
+      publishedLiveProgramsCount,
+    };
+  }
+
+  @Get('audit-logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List recent admin audit log entries' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max rows (1–500, default 100)' })
+  @ApiQuery({ name: 'resource', required: false })
+  @ApiQuery({ name: 'actorId', required: false })
+  async listAuditLogs(
+    @Query('limit') limit?: string,
+    @Query('resource') resource?: string,
+    @Query('actorId') actorId?: string,
+  ) {
+    const take = Math.min(
+      Math.max(Number.parseInt(limit ?? '100', 10) || 100, 1),
+      500,
+    );
+    const where = {
+      ...(resource?.trim() ? { resource: resource.trim() } : {}),
+      ...(actorId?.trim() ? { actorId: actorId.trim() } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.adminAuditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+      }),
+      this.prisma.adminAuditLog.count({ where }),
+    ]);
+    return { items, total, limit: take };
   }
 
   @Get('programs')

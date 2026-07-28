@@ -27,6 +27,7 @@ import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { CacheClearService } from '../../cache/cache-clear.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
+import { enrichAnalyticsReportWithHubspot } from '../../utils/hubspot-report-enrichment';
 import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { ZoomService } from '../webinars/zoom.service';
@@ -191,9 +192,17 @@ export class AdminContentHubController {
   @Get('campaigns/:id/report')
   async getAnalyticsReport(@Param('id') id: string) {
     return this.hubCall(async () => {
-      await this.campaigns.getCampaign(id);
+      const campaign = await this.campaigns.getCampaign<{
+        hubspotRawData?: unknown;
+        hubspotSyncedAt?: string | null;
+      }>(id);
       await this.campaigns.getPlatformData(id);
-      return this.campaigns.generateReport(id);
+      const report = await this.campaigns.generateReport(id);
+      return enrichAnalyticsReportWithHubspot(
+        report,
+        campaign?.hubspotRawData,
+        campaign?.hubspotSyncedAt,
+      );
     });
   }
 

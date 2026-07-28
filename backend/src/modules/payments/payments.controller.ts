@@ -8,7 +8,9 @@ import {
   Query,
   Logger,
   UseGuards,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -189,6 +191,46 @@ export class PaymentsController {
   async getPaidPayments(@Query('limit') limit?: string) {
     const n = limit != null && limit !== '' ? parseInt(limit, 10) : undefined;
     return this.paymentsService.getPaidPaymentsForAdmin(n);
+  }
+
+  /**
+   * GET /api/payments/export.csv
+   * Download payments as CSV (admin).
+   */
+  @Get('export.csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Export payments CSV (admin)' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'PENDING | FAILED | PAID | ALL (default ALL)',
+  })
+  @ApiQuery({ name: 'from', required: false, description: 'ISO start date' })
+  @ApiQuery({ name: 'to', required: false, description: 'ISO end date' })
+  async exportPaymentsCsv(
+    @Res() res: Response,
+    @Query('status') status?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const normalized =
+      status && ['PENDING', 'FAILED', 'PAID', 'ALL'].includes(status.toUpperCase())
+        ? (status.toUpperCase() as 'PENDING' | 'FAILED' | 'PAID' | 'ALL')
+        : 'ALL';
+    const csv = await this.paymentsService.exportPaymentsCsv({
+      status: normalized,
+      from,
+      to,
+    });
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="cht-payments-${normalized.toLowerCase()}-${stamp}.csv"`,
+    );
+    res.send(csv);
   }
 
   /**
