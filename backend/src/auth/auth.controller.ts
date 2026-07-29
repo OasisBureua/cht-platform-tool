@@ -82,7 +82,7 @@ export class AuthController {
   }
 
   private requestUserAgent(req: Request): string | null {
-    const ua = req.headers['user-agent'];
+    const ua = req.headers?.['user-agent'];
     return typeof ua === 'string' ? ua : null;
   }
 

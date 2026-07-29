@@ -46,7 +46,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     clearCookie: jest.fn(),
   } as unknown as ExpressResponse;
 
-  const req = { ip: '127.0.0.1' } as never;
+  const req = { ip: '127.0.0.1', headers: {} } as never;
 
   const buildController = () =>
     new AuthController(
