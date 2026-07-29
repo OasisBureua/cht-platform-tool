@@ -12,7 +12,6 @@ import {
   Query,
   ServiceUnavailableException,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
 import { isAxiosError } from 'axios';
 import {
@@ -28,7 +27,6 @@ import { Roles } from '../../auth/roles.decorator';
 import { CacheClearService } from '../../cache/cache-clear.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 import { enrichAnalyticsReportWithHubspot } from '../../utils/hubspot-report-enrichment';
-import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { ZoomService } from '../webinars/zoom.service';
 import {
@@ -54,7 +52,6 @@ type IntegrationStatusBlock = {
 @Controller('admin/content-hub')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
-@UseInterceptors(AdminAuditInterceptor)
 export class AdminContentHubController {
   private readonly logger = new Logger(AdminContentHubController.name);
 

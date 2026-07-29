@@ -4,7 +4,6 @@ import { CacheModule } from '../../cache/cache.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { ContentHubModule } from '../content-hub/content-hub.module';
-import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import { AdminKolNetworkController } from './admin-kol-network.controller';
 import { ContentHubKolService } from './content-hub-kol.service';
 import { KolIntelService } from './kol-intel.service';
@@ -20,7 +19,6 @@ import { KolVisibilityService } from './kol-visibility.service';
     KolIntelService,
     KolMutationsService,
     KolVisibilityService,
-    AdminAuditInterceptor,
   ],
   exports: [ContentHubKolService, KolVisibilityService],
 })

@@ -7,12 +7,14 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminAuditLog() {
   const [resource, setResource] = useState('');
+  const [actorRole, setActorRole] = useState('');
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['admin', 'audit-logs', resource],
+    queryKey: ['admin', 'audit-logs', resource, actorRole],
     queryFn: () =>
       adminApi.listAuditLogs({
         limit: 200,
         resource: resource.trim() || undefined,
+        actorRole: actorRole.trim() || undefined,
       }),
   });
 
@@ -33,27 +35,42 @@ export default function AdminAuditLog() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <ScrollText className="h-6 w-6 text-gray-700" aria-hidden />
-            Admin audit log
+            Audit log
           </h1>
           <p className="mt-1 text-sm text-gray-600">
-            Mutation trail for admin actions (approvals, payments, program edits, Content Hub writes).
+            Mutations for all authenticated users, plus auth events (login, logout, MFA, recover).
           </p>
         </div>
-        <label className="text-sm text-gray-700">
-          Resource
-          <select
-            className="mt-1 block rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
-            value={resource}
-            onChange={(e) => setResource(e.target.value)}
-          >
-            <option value="">All</option>
-            {resources.map((r) => (
-              <option key={r} value={r}>
-                {r}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-wrap gap-3">
+          <label className="text-sm text-gray-700">
+            Role
+            <select
+              className="mt-1 block rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={actorRole}
+              onChange={(e) => setActorRole(e.target.value)}
+            >
+              <option value="">All</option>
+              <option value="ADMIN">ADMIN</option>
+              <option value="HCP">HCP</option>
+              <option value="anonymous">anonymous</option>
+            </select>
+          </label>
+          <label className="text-sm text-gray-700">
+            Resource
+            <select
+              className="mt-1 block rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+              value={resource}
+              onChange={(e) => setResource(e.target.value)}
+            >
+              <option value="">All</option>
+              {resources.map((r) => (
+                <option key={r} value={r}>
+                  {r}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </header>
 
       {isError ? (
@@ -68,6 +85,7 @@ export default function AdminAuditLog() {
             <tr>
               <th className="px-4 py-3 font-semibold">When</th>
               <th className="px-4 py-3 font-semibold">Actor</th>
+              <th className="px-4 py-3 font-semibold">Role</th>
               <th className="px-4 py-3 font-semibold">Action</th>
               <th className="px-4 py-3 font-semibold">Resource</th>
               <th className="px-4 py-3 font-semibold">IP</th>
@@ -76,7 +94,7 @@ export default function AdminAuditLog() {
           <tbody className="divide-y divide-gray-100">
             {items.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                   No audit entries yet.
                 </td>
               </tr>
@@ -93,6 +111,9 @@ export default function AdminAuditLog() {
                     {row.actorEmail ? (
                       <div className="text-xs text-gray-500">{row.actorId}</div>
                     ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600">
+                    {row.actorRole || '—'}
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-gray-800">
                     {row.action}

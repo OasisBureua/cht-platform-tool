@@ -626,6 +626,8 @@ model AdminAuditLog {
   id         String   @id @default(cuid())
   actorId    String
   actorEmail String?
+  /// ADMIN | HCP | anonymous | system (when known)
+  actorRole  String?
   action     String
   resource   String?
   resourceId String?
@@ -637,6 +639,7 @@ model AdminAuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@index([resource, resourceId])
+  @@index([actorRole])
   @@map("AdminAuditLog")
 }
 

@@ -37,6 +37,10 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     recordSuccess: jest.fn().mockResolvedValue(undefined),
   };
 
+  const audit = {
+    record: jest.fn(),
+  };
+
   const expressRes = {
     cookie: jest.fn(),
     clearCookie: jest.fn(),
@@ -51,6 +55,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
       recaptchaService,
       lockout as never,
       configService as never,
+      audit as never,
     );
 
   beforeEach(() => {

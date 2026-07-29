@@ -196,6 +196,7 @@ export interface AdminAuditLogEntry {
   id: string;
   actorId: string;
   actorEmail: string | null;
+  actorRole?: string | null;
   action: string;
   resource: string | null;
   resourceId: string | null;
@@ -405,6 +406,7 @@ export const adminApi = {
     limit?: number;
     resource?: string;
     actorId?: string;
+    actorRole?: string;
   }): Promise<{ items: AdminAuditLogEntry[]; total: number; limit: number }> => {
     const { data } = await apiClient.get<{
       items: AdminAuditLogEntry[];

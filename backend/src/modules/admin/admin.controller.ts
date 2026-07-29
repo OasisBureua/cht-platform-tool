@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   UseGuards,
-  UseInterceptors,
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -45,7 +44,6 @@ import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
-import { AdminAuditInterceptor } from './admin-audit.interceptor';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
@@ -76,7 +74,6 @@ function lastProgramRegistrationSubmittedAtIso(r: {
 
 @ApiTags('Admin')
 @Controller('admin')
-@UseInterceptors(AdminAuditInterceptor)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
@@ -328,10 +325,12 @@ export class AdminController {
   @ApiQuery({ name: 'limit', required: false, description: 'Max rows (1–500, default 100)' })
   @ApiQuery({ name: 'resource', required: false })
   @ApiQuery({ name: 'actorId', required: false })
+  @ApiQuery({ name: 'actorRole', required: false, description: 'ADMIN | HCP | anonymous' })
   async listAuditLogs(
     @Query('limit') limit?: string,
     @Query('resource') resource?: string,
     @Query('actorId') actorId?: string,
+    @Query('actorRole') actorRole?: string,
   ) {
     const take = Math.min(
       Math.max(Number.parseInt(limit ?? '100', 10) || 100, 1),
@@ -340,6 +339,7 @@ export class AdminController {
     const where = {
       ...(resource?.trim() ? { resource: resource.trim() } : {}),
       ...(actorId?.trim() ? { actorId: actorId.trim() } : {}),
+      ...(actorRole?.trim() ? { actorRole: actorRole.trim() } : {}),
     };
     const [items, total] = await Promise.all([
       this.prisma.adminAuditLog.findMany({

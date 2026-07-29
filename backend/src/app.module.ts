@@ -8,6 +8,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuditModule } from './audit/audit.module';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './queue/queue.module';
 import { AuthModule } from './auth/auth.module';
@@ -94,6 +95,7 @@ function skipHealthProbes(context: ExecutionContext): boolean {
       { name: 'authMfa', ttl: 300_000, limit: 5, skipIf: skipHealthProbes },
     ]),
     PrismaModule,
+    AuditModule,
     HealthModule,
     QueueModule,
     AuthModule,
