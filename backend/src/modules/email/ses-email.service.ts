@@ -35,7 +35,8 @@ export class SesEmailService {
     const accessKeyId = this.config.get<string>('aws.accessKeyId');
     const secretAccessKey = this.config.get<string>('aws.secretAccessKey');
     this.from =
-      this.config.get<string>('email.from') || 'info@communityhealth.media';
+      this.config.get<string>('email.from') ||
+      '"Community Health Media" <info@communityhealth.media>';
     this.enabled = this.config.get<boolean>('email.enabled') !== false;
     this.client = new SESv2Client({
       region,
