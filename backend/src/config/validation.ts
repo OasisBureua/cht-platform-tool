@@ -64,8 +64,12 @@ export const validationSchema = Joi.object({
   SESSION_ASSETS_S3_BUCKET: Joi.string().allow('').optional(),
   SESSION_ASSETS_PUBLIC_URL_BASE: Joi.string().allow('').optional(),
 
-  // Amazon SES (registration-approved, etc.)
-  EMAIL_FROM: Joi.string().email().allow('').optional(),
+  // Amazon SES (registration-approved, etc.). Accepts either a bare address
+  // (`info@communityhealth.media`) or an RFC-5322 mailbox with display name
+  // (`"Community Health Media" <info@communityhealth.media>`); SESv2 honors
+  // the display name when present so the sender renders as "Community Health
+  // Media" in the recipient's inbox instead of the local-part.
+  EMAIL_FROM: Joi.string().allow('').optional(),
   EMAIL_ENABLED: Joi.string()
     .valid('true', 'false', '0', '1', 'yes', 'no', '')
     .optional(),
