@@ -52,6 +52,33 @@ export interface WordPressCategoriesResponse {
   total: number;
 }
 
+/** Term row from ContentHub PublicWordPressTerm — used by /series and /tags. */
+export interface WordPressTermItem {
+  slug: string;
+  name: string;
+  description?: string | null;
+  parent_slug?: string | null;
+  wp_term_id?: number | null;
+  post_count: number;
+  /** Present only on /tags: `biomarker:HER2+` etc, or `wp:<slug>` fallback. */
+  namespaced_tag?: string | null;
+}
+
+export interface WordPressTermsResponse {
+  items: WordPressTermItem[];
+  total: number;
+}
+
+export interface WordPressSeriesDetail {
+  slug: string;
+  name: string;
+  description?: string | null;
+  parent_slug?: string | null;
+  wp_term_id?: number | null;
+  post_count: number;
+  post_ids: number[];
+}
+
 /** Latest WordPress editorial state per post (ContentHub GET /wordpress). */
 export interface WordPressPostItem {
   post_id: number;
@@ -110,6 +137,49 @@ export const catalogApi = {
         items: data?.items ?? [],
         total: data?.total ?? data?.items?.length ?? 0,
       };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  },
+
+  getWordPressSeries: async (params?: {
+    fresh?: boolean;
+  }): Promise<WordPressTermsResponse> => {
+    try {
+      const { data } = await apiClient.get<WordPressTermsResponse>(
+        '/catalog/wordpress/series',
+        { params: params?.fresh ? { fresh: '1' } : undefined },
+      );
+      return { items: data?.items ?? [], total: data?.total ?? 0 };
+    } catch {
+      return { items: [], total: 0 };
+    }
+  },
+
+  getWordPressSeriesDetail: async (
+    slug: string,
+    params?: { fresh?: boolean },
+  ): Promise<WordPressSeriesDetail | null> => {
+    try {
+      const { data } = await apiClient.get<WordPressSeriesDetail | null>(
+        `/catalog/wordpress/series/${encodeURIComponent(slug)}`,
+        { params: params?.fresh ? { fresh: '1' } : undefined },
+      );
+      return data;
+    } catch {
+      return null;
+    }
+  },
+
+  getWordPressTags: async (params?: {
+    fresh?: boolean;
+  }): Promise<WordPressTermsResponse> => {
+    try {
+      const { data } = await apiClient.get<WordPressTermsResponse>(
+        '/catalog/wordpress/tags',
+        { params: params?.fresh ? { fresh: '1' } : undefined },
+      );
+      return { items: data?.items ?? [], total: data?.total ?? 0 };
     } catch {
       return { items: [], total: 0 };
     }

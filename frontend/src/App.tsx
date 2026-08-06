@@ -135,6 +135,7 @@ function App() {
               <Route path="/home" element={<Home />} />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+              <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
               <Route path="/catalog" element={<VideosPage />} />
 
@@ -225,6 +226,7 @@ function App() {
 
               <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
               <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+              <Route path="catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
               <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
               <Route path="catalog" element={<VideosPage />} />
 
