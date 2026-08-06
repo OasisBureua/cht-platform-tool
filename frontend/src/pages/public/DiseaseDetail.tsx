@@ -11,6 +11,7 @@ import {
   formatWordPressCategoryLabel,
   useWordPressCatalog,
   WORDPRESS_CATALOG_STALE_MS,
+  WORDPRESS_LOW_COUNT_THRESHOLD,
 } from '../../utils/wordpressCatalog';
 
 const CLIPS_PAGE_SIZE = 24;
@@ -261,7 +262,16 @@ export default function DiseaseDetail() {
 
             {webinars.length === 0 && allClips.length === 0 && (
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
-                <p className="font-semibold text-gray-900">No content available yet for {title}</p>
+                {wpMode && (wpCategory?.post_count ?? 0) < WORDPRESS_LOW_COUNT_THRESHOLD ? (
+                  <>
+                    <p className="font-semibold text-gray-900">Coverage for {title} is growing</p>
+                    <p className="mt-2 text-sm text-gray-600">
+                      New editorial segments are added weekly. Check back soon or browse the full library.
+                    </p>
+                  </>
+                ) : (
+                  <p className="font-semibold text-gray-900">No content available yet for {title}</p>
+                )}
                 <Link to={`${basePath}/catalog`} className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
                   Browse Library
                 </Link>

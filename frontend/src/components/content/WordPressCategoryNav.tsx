@@ -26,7 +26,7 @@ export function WordPressCategoryNav({ basePath, activeSlug }: WordPressCategory
   if (!wpMode || !data?.items?.length) return null;
 
   const categories = sortWordPressCategories(data.items).filter(
-    (c) => !c.slug.startsWith('hp-') && c.post_count > 0,
+    (c) => !c.slug.startsWith('hp-') && c.slug !== 'featured-videos',
   );
 
   if (categories.length === 0) return null;
