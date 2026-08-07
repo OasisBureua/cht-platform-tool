@@ -3,11 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { ProgramZoomSessionType } from '@prisma/client';
 import { buildRegistrationApprovedEmail } from './templates/registration-approved-email';
-import {
-  buildApprovalEmailMimeBuffer,
-  buildLiveSessionIcs,
-  googleCalendarTemplateUrl,
-} from './live-session-calendar';
+import { googleCalendarTemplateUrl } from './live-session-calendar';
 import {
   buildRegistrationRejectedEmail,
   type RejectionEmailReason,
@@ -96,84 +92,32 @@ export class SesEmailService {
           })
         : null;
 
-    const buildApproved = (calendarInviteIncluded: boolean) =>
-      buildRegistrationApprovedEmail(
-        {
-          firstName,
-          programTitle: program.title,
-          programDescription: program.description,
-          startDate: program.startDate,
-          durationMinutes: program.duration,
-          honorariumCents: null,
-          hostDisplayName: program.hostDisplayName,
-          sponsorName: program.sponsorName,
-          zoomJoinUrl: zoomTrim,
-          sessionKind,
-          appSessionUrl,
-          supportEmail,
-          googleCalendarUrl: calendarInviteIncluded ? googleCalendarUrl : null,
-          calendarInviteIncluded,
-        },
-        escapeHtml,
-      );
+    // SCRUM-185: no .ics attachment. Google Calendar link stays as an in-body
+    // "add to calendar" affordance so users can self-add without receiving
+    // an unsolicited calendar invitation.
+    const { subject, text, html } = buildRegistrationApprovedEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        programDescription: program.description,
+        startDate: program.startDate,
+        durationMinutes: program.duration,
+        honorariumCents: null,
+        hostDisplayName: program.hostDisplayName,
+        sponsorName: program.sponsorName,
+        zoomJoinUrl: zoomTrim,
+        sessionKind,
+        appSessionUrl,
+        supportEmail,
+        googleCalendarUrl,
+      },
+      escapeHtml,
+    );
 
     try {
-      if (!program.startDate) {
-        const { subject, text, html } = buildApproved(false);
-        await this.sendSimpleEmail(to, subject, text, html);
-        this.logger.log(
-          `Sent registration-approved email to ${to} for program ${program.id}`,
-        );
-        return;
-      }
-
-      const withInvite = buildApproved(true);
-      try {
-        const ics = buildLiveSessionIcs({
-          programId: program.id,
-          title: program.title,
-          description: program.description,
-          start: program.startDate,
-          durationMinutes: program.duration ?? 60,
-          appSessionUrl,
-          zoomJoinUrl: program.zoomJoinUrl,
-          organizerEmail: this.from,
-        });
-        const raw = buildApprovalEmailMimeBuffer({
-          from: this.from,
-          to,
-          subject: withInvite.subject,
-          textPlain: withInvite.text,
-          html: withInvite.html,
-          icsFilename: 'live-session.ics',
-          icsBody: ics,
-        });
-        await this.client.send(
-          new SendEmailCommand({
-            FromEmailAddress: this.from,
-            Destination: { ToAddresses: [to] },
-            Content: { Raw: { Data: raw } },
-          }),
-        );
-        this.logger.log(
-          `Sent registration-approved email (with calendar invite) to ${to} for program ${program.id}`,
-        );
-        return;
-      } catch (mimeErr) {
-        this.logger.warn(
-          `MIME registration-approved email failed for ${to} program ${program.id}, falling back to Simple: ${(mimeErr as Error).message}`,
-        );
-      }
-
-      const fallback = buildApproved(false);
-      await this.sendSimpleEmail(
-        to,
-        fallback.subject,
-        fallback.text,
-        fallback.html,
-      );
+      await this.sendSimpleEmail(to, subject, text, html);
       this.logger.log(
-        `Sent registration-approved email (simple) to ${to} for program ${program.id}`,
+        `Sent registration-approved email to ${to} for program ${program.id}`,
       );
     } catch (err) {
       this.logger.warn(
