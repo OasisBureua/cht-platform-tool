@@ -507,9 +507,9 @@ function PaymentSettingsSection({
   accountStatus,
   isLoading,
   displayName,
-  profileCity,
-  profileState,
-  profileZip,
+  profileCity: _profileCity,
+  profileState: _profileState,
+  profileZip: _profileZip,
   profileComplete,
   embedded = false,
   onSuccess,
@@ -521,6 +521,8 @@ function PaymentSettingsSection({
     w9SubmittedAt?: string;
     totalEarnings?: number;
     payoutsEnabled?: boolean;
+    preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
+    bankAccountLast4?: string | null;
   };
   isLoading: boolean;
   displayName: string;
@@ -532,55 +534,11 @@ function PaymentSettingsSection({
   embedded?: boolean;
   onSuccess: () => void;
 }) {
-  const [payeeName, setPayeeName] = useState('');
-  const [addressLine1, setAddressLine1] = useState('');
-  const [city, setCity] = useState('');
-  const [state, setState] = useState('');
-  const [zipCode, setZipCode] = useState('');
-  const [nameOnAccount, setNameOnAccount] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [routingNumber, setRoutingNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [w9ModalOpen, setW9ModalOpen] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ ok?: string; err?: string }>({});
   const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
   const profileIncomplete = profileComplete === false;
-
-  useEffect(() => {
-    if (accountStatus?.hasAccount) return;
-    setCity((c) => (c.trim() ? c : profileCity?.trim() || ''));
-    setState((s) => (s.trim() ? s : profileState?.trim().toUpperCase().slice(0, 2) || ''));
-    setZipCode((z) => (z.trim() ? z : profileZip?.trim() || ''));
-  }, [accountStatus?.hasAccount, profileCity, profileState, profileZip]);
-
-  const connectMutation = useMutation({
-    mutationFn: () =>
-      paymentsApi.createConnectAccount(userId, {
-        payeeName: payeeName.trim(),
-        addressLine1: addressLine1.trim(),
-        city: city.trim(),
-        state: state.trim().toUpperCase().slice(0, 2),
-        zipCode: zipCode.trim().replace(/\D/g, ''),
-        nameOnAccount: nameOnAccount.trim(),
-        accountNumber: accountNumber.trim(),
-        routingNumber: routingNumber.trim(),
-      }),
-    onSuccess: () => {
-      setError(null);
-      setPayeeName('');
-      setAddressLine1('');
-      setCity('');
-      setState('');
-      setZipCode('');
-      setNameOnAccount('');
-      setAccountNumber('');
-      setRoutingNumber('');
-      onSuccess();
-    },
-    onError: (err: unknown) => {
-      setError(getApiErrorMessage(err, 'Failed to add bank account'));
-    },
-  });
 
   const syncMutation = useMutation({
     mutationFn: () => paymentsApi.syncAccountStatus(userId),
@@ -595,35 +553,20 @@ function PaymentSettingsSection({
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    if (profileIncomplete) {
-      setError('Add your profession and NPI (when required) in the Profile tab first.');
-      return;
-    }
-    if (!payeeName.trim() || !addressLine1.trim() || !city.trim() || !state.trim() || !zipCode.trim()) {
-      setError('Payee name and full address are required');
-      return;
-    }
-    if (!/^\d{5}(-\d{4})?$/.test(zipCode.trim().replace(/\D/g, ''))) {
-      setError('ZIP code must be 5 or 9 digits');
-      return;
-    }
-    if (!nameOnAccount.trim() || !accountNumber.trim() || !routingNumber.trim()) {
-      setError('All bank fields are required');
-      return;
-    }
-    if (routingNumber.replace(/\D/g, '').length !== 9) {
-      setError('Routing number must be 9 digits');
-      return;
-    }
-    connectMutation.mutate();
-  };
-
   const cardShell = embedded
     ? 'min-w-0'
     : 'min-w-0 overflow-hidden rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]';
+
+  const hasAccount = accountStatus?.hasAccount ?? false;
+  const w9Submitted = accountStatus?.w9Submitted ?? false;
+  const needsW9 = hasAccount && !w9Submitted;
+  const preferredMethod = accountStatus?.preferredPaymentMethod;
+
+  useEffect(() => {
+    if (needsW9 && !isLoading) {
+      setW9ModalOpen(true);
+    }
+  }, [needsW9, isLoading]);
 
   if (isLoading) {
     return (
@@ -641,17 +584,6 @@ function PaymentSettingsSection({
     );
   }
 
-  const hasAccount = accountStatus?.hasAccount ?? false;
-  const w9Submitted = accountStatus?.w9Submitted ?? false;
-  const needsW9 = hasAccount && !w9Submitted;
-
-  // Auto-open W-9 modal when user has bank account but hasn't submitted W-9
-  useEffect(() => {
-    if (needsW9 && !isLoading) {
-      setW9ModalOpen(true);
-    }
-  }, [needsW9, isLoading]);
-
   return (
     <div id="payment-settings" className={cardShell}>
       <div className="flex items-center gap-2 mb-4">
@@ -664,8 +596,9 @@ function PaymentSettingsSection({
         <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 align-middle">
           <BillComMark size="md" className="translate-y-px shrink-0" />
           <span>
-            is how you get paid. Add bank details in your vendor profile (ACH or check). Complete the embedded W-9 before
-            admins can issue payouts.
+            is how you get paid. Choose <strong>ACH</strong> or <strong>Check</strong>, then enter the{' '}
+            <strong>official payee of record</strong> (your name or LLC / business entity). Complete your{' '}
+            <BillComMark size="xs" className="translate-y-px" /> vendor profile and W-9 before admins can issue payouts.
           </span>
         </span>
       </p>
@@ -689,8 +622,15 @@ function PaymentSettingsSection({
                 <p className="font-medium text-green-900 inline-flex flex-wrap items-center gap-2">
                   <BillComMark size="sm" /> vendor connected
                 </p>
-                <p className="text-sm text-green-700 flex flex-wrap items-center gap-x-1 gap-y-1">
-                  Admins send payouts from <BillComMark size="xs" className="translate-y-px" /> (ACH or check)
+                <p className="text-sm text-green-700">
+                  Preferred method:{' '}
+                  <strong>
+                    {preferredMethod === 'CHECK'
+                      ? 'Check (mail)'
+                      : preferredMethod === 'ACH'
+                        ? `ACH${accountStatus?.bankAccountLast4 ? ` · ••••${accountStatus.bankAccountLast4}` : ''}`
+                        : 'Not set — edit payment details'}
+                  </strong>
                 </p>
               </div>
             </div>
@@ -718,6 +658,7 @@ function PaymentSettingsSection({
               userId={userId}
               variant="update"
               locked={profileIncomplete}
+              initialMethod={preferredMethod === 'ACH' || preferredMethod === 'CHECK' ? preferredMethod : null}
               onSuccess={() => {
                 setEditingPaymentDetails(false);
                 onSuccess();
@@ -751,7 +692,12 @@ function PaymentSettingsSection({
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
-                <span>W-9 on file{accountStatus?.w9SubmittedAt ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})` : ''}</span>
+                <span>
+                  W-9 on file
+                  {accountStatus?.w9SubmittedAt
+                    ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})`
+                    : ''}
+                </span>
               </div>
               <button
                 type="button"
@@ -775,111 +721,18 @@ function PaymentSettingsSection({
           />
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4 min-w-0">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Payee name (as on tax forms)</label>
-            <input
-              type="text"
-              value={payeeName}
-              onChange={(e) => setPayeeName(e.target.value)}
-              placeholder={displayName}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Street address</label>
-            <input
-              type="text"
-              value={addressLine1}
-              onChange={(e) => setAddressLine1(e.target.value)}
-              placeholder="123 Main St"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-              <input
-                type="text"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="New York"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
-              <input
-                type="text"
-                value={state}
-                onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
-                placeholder="NY"
-                maxLength={2}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                required
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">ZIP code</label>
-            <input
-              type="text"
-              value={zipCode}
-              onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
-              placeholder="10001"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Name on bank account</label>
-            <input
-              type="text"
-              value={nameOnAccount}
-              onChange={(e) => setNameOnAccount(e.target.value)}
-              placeholder="As it appears on your bank statement"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Account number</label>
-              <input
-                type="text"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-                placeholder="Bank account number"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Routing number (9 digits)</label>
-              <input
-                type="text"
-                value={routingNumber}
-                onChange={(e) => setRoutingNumber(e.target.value.replace(/\D/g, '').slice(0, 9))}
-                placeholder="e.g. 074000010"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                required
-              />
-            </div>
-          </div>
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
-          <button
-            type="submit"
-            disabled={connectMutation.isPending || profileIncomplete}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
-          >
-            {connectMutation.isPending ? 'Saving...' : 'Add bank account'}
-          </button>
-        </form>
+        <div className="space-y-3">
+          {error ? <p className="text-sm text-red-600">{error}</p> : null}
+          <BillVendorSetupForm
+            userId={userId}
+            variant="create"
+            locked={profileIncomplete}
+            onSuccess={() => {
+              setError(null);
+              onSuccess();
+            }}
+          />
+        </div>
       )}
     </div>
   );

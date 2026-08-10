@@ -29,7 +29,7 @@ export interface CreateVendorInput {
   };
   paymentInformation?: {
     payeeName: string;
-    bankAccount: {
+    bankAccount?: {
       nameOnAccount: string;
       accountNumber: string;
       routingNumber: string;
@@ -521,11 +521,18 @@ export class BillService {
     if (input.paymentInformation) {
       payload.paymentInformation = {
         payeeName: input.paymentInformation.payeeName,
-        bankAccount: {
-          nameOnAccount: input.paymentInformation.bankAccount.nameOnAccount,
-          accountNumber: input.paymentInformation.bankAccount.accountNumber,
-          routingNumber: input.paymentInformation.bankAccount.routingNumber,
-        },
+        ...(input.paymentInformation.bankAccount
+          ? {
+              bankAccount: {
+                nameOnAccount:
+                  input.paymentInformation.bankAccount.nameOnAccount,
+                accountNumber:
+                  input.paymentInformation.bankAccount.accountNumber,
+                routingNumber:
+                  input.paymentInformation.bankAccount.routingNumber,
+              },
+            }
+          : {}),
       };
     }
 
@@ -558,11 +565,18 @@ export class BillService {
     if (input.paymentInformation) {
       payload.paymentInformation = {
         payeeName: input.paymentInformation.payeeName,
-        bankAccount: {
-          nameOnAccount: input.paymentInformation.bankAccount.nameOnAccount,
-          accountNumber: input.paymentInformation.bankAccount.accountNumber,
-          routingNumber: input.paymentInformation.bankAccount.routingNumber,
-        },
+        ...(input.paymentInformation.bankAccount
+          ? {
+              bankAccount: {
+                nameOnAccount:
+                  input.paymentInformation.bankAccount.nameOnAccount,
+                accountNumber:
+                  input.paymentInformation.bankAccount.accountNumber,
+                routingNumber:
+                  input.paymentInformation.bankAccount.routingNumber,
+              },
+            }
+          : {}),
       };
     }
     return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, payload);
