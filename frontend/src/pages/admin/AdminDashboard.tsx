@@ -6,7 +6,6 @@ import {
   ClipboardCheck,
   FileBarChart,
   Radio,
-  ScrollText,
   Wallet2,
   Users,
 } from 'lucide-react';
@@ -47,13 +46,6 @@ export default function AdminDashboard() {
         <h1 className="text-balance text-xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-2xl">
           Admin Dashboard
         </h1>
-        <Link
-          to="/admin/audit-log"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-zinc-300"
-        >
-          <ScrollText className="h-4 w-4" aria-hidden />
-          Audit log
-        </Link>
       </div>
 
       <div className="rounded-2xl border border-brand-200/80 bg-gradient-to-br from-brand-50/90 to-white p-5 shadow-sm dark:border-brand-900/50 dark:from-brand-950/40 dark:to-zinc-950">

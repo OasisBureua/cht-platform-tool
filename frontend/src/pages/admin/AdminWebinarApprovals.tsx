@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { adminApi } from '../../api/admin';
 import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
+import OperationalEmailModal from '../../components/admin/OperationalEmailModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { HCP_PROFESSIONS } from '../../data/profession-options';
+import { Mail } from 'lucide-react';
 import {
   attendanceStatusLabel,
   registrationStatusClass,
@@ -62,6 +64,8 @@ export default function AdminWebinarApprovals() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [rejectModalIds, setRejectModalIds] = useState<string[] | null>(null);
   const [programFilter, setProgramFilter] = useState<string>('all');
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailPrefillEmails, setEmailPrefillEmails] = useState<string[] | undefined>(undefined);
 
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ['admin', 'webinar-registrations', 'pending'],
@@ -239,6 +243,49 @@ export default function AdminWebinarApprovals() {
   const busy =
     approveMut.isPending || rejectMut.isPending || bulkMut.isPending || attendanceMut.isPending || undoMut.isPending;
   const selectedList = filteredRows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
+  const selectedRows = useMemo(
+    () => filteredRows.filter((r) => selectedIds.has(r.id)),
+    [filteredRows, selectedIds],
+  );
+
+  const emailTarget = useMemo(() => {
+    if (selectedRows.length > 0) {
+      const programIds = new Set(selectedRows.map((r) => r.program.id));
+      if (programIds.size !== 1) return null;
+      const program = selectedRows[0].program;
+      return { programId: program.id, programTitle: program.title };
+    }
+    if (programFilter !== 'all') {
+      const title =
+        programOptions.find(([id]) => id === programFilter)?.[1] ??
+        rows.find((r) => r.program.id === programFilter)?.program.title ??
+        'Program';
+      return { programId: programFilter, programTitle: title };
+    }
+    return null;
+  }, [selectedRows, programFilter, programOptions, rows]);
+
+  const emailRecipients = useMemo(() => {
+    if (!emailTarget) return [];
+    const map = new Map<string, { email: string; name: string; status: string }>();
+    const consider = (r: {
+      status?: string;
+      user: { email: string; firstName?: string | null; lastName?: string | null };
+      program: { id: string };
+    }) => {
+      if (r.program.id !== emailTarget.programId) return;
+      const email = r.user.email;
+      if (!email || map.has(email.toLowerCase())) return;
+      map.set(email.toLowerCase(), {
+        email,
+        name: [r.user.firstName, r.user.lastName].filter(Boolean).join(' ') || email,
+        status: r.status ?? 'PENDING',
+      });
+    };
+    for (const r of rows) consider(r);
+    for (const r of recentlyApproved) consider({ ...r, status: 'APPROVED' });
+    return [...map.values()];
+  }, [emailTarget, rows, recentlyApproved]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
@@ -251,6 +298,19 @@ export default function AdminWebinarApprovals() {
         isSubmitting={rejectMut.isPending}
         count={rejectModalIds?.length ?? 0}
       />
+      {emailTarget ? (
+        <OperationalEmailModal
+          open={emailModalOpen}
+          onClose={() => {
+            setEmailModalOpen(false);
+            setEmailPrefillEmails(undefined);
+          }}
+          programId={emailTarget.programId}
+          programTitle={emailTarget.programTitle}
+          recipients={emailRecipients}
+          initialSelectedEmails={emailPrefillEmails}
+        />
+      ) : null}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Webinar & Office Hours approvals</h1>
         <p className="mt-1 text-sm text-gray-600">
@@ -308,6 +368,19 @@ export default function AdminWebinarApprovals() {
               Clear
             </button>
           )}
+          {tab === 'registrations' && programFilter !== 'all' && emailTarget ? (
+            <button
+              type="button"
+              onClick={() => {
+                setEmailPrefillEmails(undefined);
+                setEmailModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
+            >
+              <Mail className="h-3.5 w-3.5" aria-hidden />
+              Email registrants
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -356,6 +429,20 @@ export default function AdminWebinarApprovals() {
               className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 disabled:opacity-40"
             >
               Reject selected
+            </button>
+            <button
+              type="button"
+              disabled={!emailTarget || (selectedList.length === 0 && programFilter === 'all')}
+              onClick={() => {
+                setEmailPrefillEmails(
+                  selectedRows.length > 0 ? selectedRows.map((r) => r.user.email) : undefined,
+                );
+                setEmailModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 disabled:opacity-40"
+            >
+              <Mail className="h-3.5 w-3.5" aria-hidden />
+              Email registrants
             </button>
           </div>
         </div>
