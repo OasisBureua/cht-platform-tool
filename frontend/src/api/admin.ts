@@ -747,6 +747,22 @@ export const adminApi = {
     };
   },
 
+  sendProgramOperationalEmail: async (
+    programId: string,
+    payload: { to: string[]; subject: string; body: string },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/operational-email`,
+      payload,
+    );
+    return data as {
+      programId: string;
+      sent: number;
+      failed: { email: string; error: string }[];
+      extras: string[];
+    };
+  },
+
   undoRegistrationApproval: async (registrationId: string) => {
     const { data } = await apiClient.post(
       `/admin/registrations/${encodeURIComponent(registrationId)}/undo-approval`,

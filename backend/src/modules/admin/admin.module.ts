@@ -5,6 +5,7 @@ import { AdminController } from './admin.controller';
 import { ProgramsModule } from '../programs/programs.module';
 import { SurveysModule } from '../surveys/surveys.module';
 import { WebinarsModule } from '../webinars/webinars.module';
+import { EmailModule } from '../email/email.module';
 import { SessionHeroPresignService } from './session-hero-presign.service';
 
 @Module({
@@ -14,6 +15,7 @@ import { SessionHeroPresignService } from './session-hero-presign.service';
     ProgramsModule,
     SurveysModule,
     WebinarsModule,
+    EmailModule,
   ],
   controllers: [AdminController],
   providers: [SessionHeroPresignService],

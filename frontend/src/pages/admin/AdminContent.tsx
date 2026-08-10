@@ -113,7 +113,7 @@ export default function AdminContent() {
     refetchOnMount: 'always',
   });
 
-  const { data, isLoading, isError, isFetching, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isError, error, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ['catalog', 'wordpress', 'posts', 'all', freshNonce],
     queryFn: () => fetchAllWordPressPosts(fresh),
     staleTime: ADMIN_WORDPRESS_CATALOG_STALE_MS,
@@ -262,7 +262,14 @@ export default function AdminContent() {
 
       {isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
-          Failed to load WordPress content. Check ContentHub connectivity and try again.
+          {(() => {
+            const status = (error as { response?: { status?: number } } | null)
+              ?.response?.status;
+            if (status === 429) {
+              return 'Too many requests — wait a few seconds and click Refresh from WordPress.';
+            }
+            return 'Failed to load WordPress content. Check ContentHub connectivity and try again.';
+          })()}
         </div>
       ) : isLoading ? (
         <div className="flex justify-center py-16">

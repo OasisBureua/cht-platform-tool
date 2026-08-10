@@ -27,6 +27,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import {
   UserRole,
   UserStatus,
@@ -43,6 +44,7 @@ import { ProgramRegistrationsService } from '../programs/program-registrations.s
 import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
+import { SesEmailService } from '../email/ses-email.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
@@ -50,6 +52,7 @@ import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
 import { SendRegistrationInvitesDto } from '../programs/dto/send-registration-invites.dto';
+import { SendProgramOperationalEmailDto } from './dto/send-program-operational-email.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { SurveyAnalyticsDto } from './dto/survey-analytics.dto';
 import type { SurveySegmentDimension } from '../../utils/survey-analytics';
@@ -86,6 +89,7 @@ export class AdminController {
     private authService: AuthService,
     private zoom: ZoomService,
     private sessionHeroPresign: SessionHeroPresignService,
+    private sesEmail: SesEmailService,
   ) {}
 
   // ─── Bootstrap (no auth - first-admin setup) ─────────────────────────────
@@ -1464,6 +1468,88 @@ export class AdminController {
       userIds: body.userIds,
       role: body.role,
     });
+  }
+
+  @Post('programs/:id/operational-email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @SkipThrottle({ short: true, long: true, auth: true, authMfa: true })
+  @Throttle({ medium: { limit: 20, ttl: 600_000 } })
+  @ApiOperation({
+    summary:
+      'Send a freeform operational email to program registrants (From: SES info@)',
+  })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  async sendProgramOperationalEmail(
+    @Param('id') id: string,
+    @Body() body: SendProgramOperationalEmailDto,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const program = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true, title: true },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+
+    const recipients = [
+      ...new Set(
+        body.to
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.length > 0),
+      ),
+    ];
+    if (recipients.length === 0) {
+      throw new BadRequestException('At least one recipient email is required.');
+    }
+    if (recipients.length > 50) {
+      throw new BadRequestException('At most 50 recipients per send.');
+    }
+
+    const subject = body.subject.trim();
+    const textBody = body.body.trim();
+    if (!subject || !textBody) {
+      throw new BadRequestException('Subject and body are required.');
+    }
+
+    const regs = await this.prisma.programRegistration.findMany({
+      where: { programId: id },
+      select: { user: { select: { email: true } } },
+    });
+    const registrantEmails = new Set(
+      regs.map((r) => r.user.email.trim().toLowerCase()),
+    );
+    const extras = recipients.filter((e) => !registrantEmails.has(e));
+
+    this.logger.log(
+      `[Admin] operational-email program=${id} by=${admin.userId} recipients=${recipients.length} extras=${extras.length}`,
+    );
+
+    const failed: { email: string; error: string }[] = [];
+    let sent = 0;
+    for (const email of recipients) {
+      try {
+        await this.sesEmail.sendOperationalEmail({
+          to: email,
+          subject,
+          textBody,
+          programTitle: program.title,
+        });
+        sent += 1;
+      } catch (err) {
+        failed.push({
+          email,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return {
+      programId: id,
+      sent,
+      failed,
+      extras,
+    };
   }
 
   @Get('webinar-registrations/recently-approved')
