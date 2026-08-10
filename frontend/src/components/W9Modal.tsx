@@ -8,7 +8,7 @@ export function W9Modal({
   isOpen,
   onClose,
   onSubmit,
-  displayName,
+  displayName: _displayName,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -133,16 +133,21 @@ export function W9Modal({
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">
-                Business name <span className="text-gray-400 font-normal">(optional)</span>
+                Business / LLC name{' '}
+                <span className="text-gray-400 font-normal">(if payee is an organization)</span>
               </label>
               <input
                 type="text"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
-                placeholder={displayName}
+                placeholder="Legal entity name matching your EIN (e.g., Smith Medical Consulting LLC)"
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                 disabled={submitting}
               />
+              <p className="mt-1 text-xs text-gray-500">
+                If payouts go to an LLC or other business, enter that entity&apos;s legal name here and select EIN as
+                the tax ID type so W-9 details match the payee of record on your payment setup.
+              </p>
             </div>
 
             <p className="text-xs text-gray-500">

@@ -190,6 +190,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Actions</th>
@@ -259,6 +260,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">User</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Method / delivery</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Paid on</th>
               </tr>
@@ -266,13 +268,13 @@ export default function AdminPayments() {
             <tbody className="divide-y divide-gray-100">
               {paidPending ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     Loading paid payments…
                   </td>
                 </tr>
               ) : paid.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
                     No completed payouts yet. Successful payments appear here after <strong>Pay now</strong> finishes.
                   </td>
                 </tr>
@@ -844,6 +846,17 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
       ? format(new Date(payment.paidAt), 'MMM d, yyyy · h:mm a')
       : '-';
 
+  const method =
+    payment.deliveryMethod === 'CHECK' || payment.user.preferredPaymentMethod === 'CHECK'
+      ? 'Check'
+      : payment.deliveryMethod === 'ACH' || payment.user.preferredPaymentMethod === 'ACH'
+        ? 'ACH'
+        : '—';
+  const delivery =
+    method === 'Check' && payment.checkStatus
+      ? `${method} · ${payment.checkStatus.replace(/_/g, ' ').toLowerCase()}`
+      : method;
+
   return (
     <tr className="hover:bg-gray-50/80">
       <td className="px-4 py-3">
@@ -854,6 +867,14 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
       </td>
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-gray-600">
+        <p>{delivery}</p>
+        {payment.checkMailedAt ? (
+          <p className="text-xs text-gray-500">
+            Mailed {format(new Date(payment.checkMailedAt), 'MMM d, yyyy')}
+          </p>
+        ) : null}
+      </td>
       <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{paidLabel}</td>
     </tr>
@@ -879,10 +900,17 @@ function PendingRow({
   const hasW9 = payment.user.w9Submitted !== false;
   const canPay = hasVendor && hasW9;
   const blockReason = !hasVendor
-    ? 'No Bill.com vendor: HCP must add bank details'
+    ? 'No Bill.com vendor: HCP must complete payment setup (ACH or check)'
     : !hasW9
       ? 'W-9 not submitted: HCP must complete W-9 first'
       : null;
+
+  const methodLabel =
+    payment.user.preferredPaymentMethod === 'CHECK'
+      ? 'Check'
+      : payment.user.preferredPaymentMethod === 'ACH'
+        ? `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`
+        : '—';
 
   return (
     <tr className="hover:bg-gray-50">
@@ -894,6 +922,7 @@ function PendingRow({
       </td>
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-sm text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{methodLabel}</td>
       <td className="px-4 py-3 text-sm text-gray-600">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-sm text-gray-500">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">

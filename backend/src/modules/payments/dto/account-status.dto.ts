@@ -1,4 +1,4 @@
-import { IsString, IsBoolean, IsNumber, IsOptional } from 'class-validator';
+import { IsString, IsBoolean, IsNumber, IsOptional, IsIn } from 'class-validator';
 
 export class AccountStatusDto {
   @IsBoolean()
@@ -33,4 +33,12 @@ export class AccountStatusDto {
 
   @IsBoolean()
   detailsSubmitted: boolean;
+
+  @IsOptional()
+  @IsIn(['ACH', 'CHECK'])
+  preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
+
+  @IsOptional()
+  @IsString()
+  bankAccountLast4?: string | null;
 }

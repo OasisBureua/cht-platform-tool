@@ -161,6 +161,11 @@ export interface PendingPayment {
   status: string;
   description: string | null;
   createdAt: string;
+  deliveryMethod?: 'ACH' | 'CHECK' | null;
+  checkStatus?: string | null;
+  checkMailedAt?: string | null;
+  checkDeliveredAt?: string | null;
+  checkTrackingInfo?: string | null;
   user: {
     id: string;
     email: string;
@@ -168,6 +173,8 @@ export interface PendingPayment {
     lastName: string;
     billVendorId: string | null;
     w9Submitted?: boolean;
+    preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
+    bankAccountLast4?: string | null;
   };
   program: { id: string; title: string } | null;
 }
