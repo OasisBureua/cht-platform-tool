@@ -75,3 +75,15 @@ export function usStateLabel(code: string | null | undefined): string {
   if (!code) return 'Unknown';
   return BY_VALUE.get(code)?.label ?? code;
 }
+
+/** Select options with empty placeholder for registration / profile forms. */
+export const US_STATE_SELECT_OPTIONS: UsStateOption[] = [
+  { value: '', label: 'Select state' },
+  ...US_STATES,
+];
+
+/** Exactly 5 digits (registration requires ZIP-5, not ZIP+4). */
+export function normalizeUsZip5(raw: string | null | undefined): string | null {
+  const digits = (raw ?? '').replace(/\D/g, '');
+  return digits.length === 5 ? digits : null;
+}

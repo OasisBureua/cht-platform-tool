@@ -7,6 +7,11 @@ import {
   professionOptionsForSelect,
   specialtyToSelectValue,
 } from '../../data/profession-options';
+import {
+  US_STATE_SELECT_OPTIONS,
+  normalizeUsStateCode,
+  normalizeUsZip5,
+} from '../../data/us-states';
 
 export default function CompleteProfile() {
   const navigate = useNavigate();
@@ -43,8 +48,8 @@ export default function CompleteProfile() {
         if (p.npiNumber) setNpiNumber(p.npiNumber.replace(/\D/g, '').slice(0, 10));
         if (p.institution) setInstitution(p.institution);
         if (p.city) setCity(p.city);
-        if (p.state) setState(p.state);
-        if (p.zipCode) setZipCode(p.zipCode);
+        if (p.state) setState(normalizeUsStateCode(p.state) ?? '');
+        if (p.zipCode) setZipCode(p.zipCode.replace(/\D/g, '').slice(0, 5));
       })
       .catch(() => {});
   }, [userId]);
@@ -62,9 +67,14 @@ export default function CompleteProfile() {
       setError('NPI number must be 10 digits.');
       return;
     }
-    const zip = zipCode.replace(/\D/g, '');
-    if (zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
-      setError('ZIP code must be 5 digits (or 9 for ZIP+4).');
+    const stateCode = normalizeUsStateCode(state);
+    if (!stateCode) {
+      setError('State is required.');
+      return;
+    }
+    const zip = normalizeUsZip5(zipCode);
+    if (!zip) {
+      setError('ZIP code must be exactly 5 digits.');
       return;
     }
     setSaving(true);
@@ -74,8 +84,8 @@ export default function CompleteProfile() {
         npiNumber: needsNpi ? (npi || undefined) : '',
         institution: institution.trim() || undefined,
         city: city.trim() || undefined,
-        state: state.trim().toUpperCase().slice(0, 2) || undefined,
-        zipCode: zip || undefined,
+        state: stateCode,
+        zipCode: zip,
       });
       await refreshProfile();
       navigate('/app/home', { replace: true });
@@ -181,28 +191,30 @@ export default function CompleteProfile() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                State <span className="font-normal text-gray-500">(optional)</span>
-              </label>
-              <input
-                type="text"
+              <label className="block text-sm font-semibold text-gray-900 mb-1">State</label>
+              <select
                 value={state}
-                onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
-                placeholder="NY"
-                maxLength={2}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
+                onChange={(e) => setState(e.target.value)}
+                required
+                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              >
+                {US_STATE_SELECT_OPTIONS.map((opt) => (
+                  <option key={opt.value || 'empty'} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                ZIP code <span className="font-normal text-gray-500">(optional)</span>
-              </label>
+              <label className="block text-sm font-semibold text-gray-900 mb-1">ZIP code</label>
               <input
                 type="text"
                 value={zipCode}
-                onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
+                onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
                 placeholder="10001"
-                maxLength={10}
+                required
+                maxLength={5}
+                inputMode="numeric"
                 className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>

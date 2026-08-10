@@ -2,6 +2,8 @@ name: Deploy to Platform
 
 # Mirror of deploy-dev.yml for testapp (us-east-1 only).
 # us-east-2 ECS / deploy-secondary.sh is intentional later, not part of this workflow.
+# Platform deploys only via workflow_dispatch (manual). Merging release/* or
+# hotfix/* into main does not auto-deploy — run Actions → Deploy to Platform.
 on:
   workflow_dispatch:
     inputs:
@@ -9,10 +11,6 @@ on:
         description: 'Plan only: skip apply approval and deploy steps'
         type: boolean
         default: false
-  pull_request:
-    types: [closed]
-    branches:
-      - main
 
 concurrency:
   group: deploy-platform
@@ -46,34 +44,10 @@ jobs:
     steps:
       - name: Evaluate trigger
         id: check
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          PR_MERGED: ${{ github.event.pull_request.merged }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          case "$EVENT_NAME" in
-            workflow_dispatch)
-              echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-              echo "checkout_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
-              echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
-              ;;
-            pull_request)
-              if [ "$PR_MERGED" = "true" ] && { [[ "$HEAD_REF" == release/* ]] || [[ "$HEAD_REF" == hotfix/* ]]; }; then
-                echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-                echo "checkout_ref=${MERGE_SHA}" >> "$GITHUB_OUTPUT"
-                echo "Trigger: merged ${HEAD_REF} PR → main"
-              else
-                echo "should_deploy=false" >> "$GITHUB_OUTPUT"
-                echo "checkout_ref=" >> "$GITHUB_OUTPUT"
-                echo "Skipped: not a merged release/* or hotfix/* pull request to main"
-              fi
-              ;;
-            *)
-              echo "should_deploy=false" >> "$GITHUB_OUTPUT"
-              echo "checkout_ref=" >> "$GITHUB_OUTPUT"
-              ;;
-          esac
+          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          echo "checkout_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+          echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
 
   changes:
     name: Detect deploy scope
@@ -97,8 +71,6 @@ jobs:
         uses: dorny/paths-filter@v4
         id: filter
         with:
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || '' }}
           filters: |
             backend:
               - 'backend/**'

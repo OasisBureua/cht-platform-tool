@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import {
@@ -7,6 +7,10 @@ import {
 } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
+import {
+  normalizeUsStateCode,
+  normalizeUsZip5,
+} from '../../common/us-address';
 
 @Injectable()
 export class DashboardService {
@@ -149,6 +153,23 @@ export class DashboardService {
       data.npiNumber !== undefined
         ? data.npiNumber.replace(/\D/g, '').slice(0, 10)
         : undefined;
+
+    let stateNorm: string | null | undefined;
+    if (data.state !== undefined) {
+      stateNorm = normalizeUsStateCode(data.state);
+      if (!stateNorm) {
+        throw new BadRequestException('State is required.');
+      }
+    }
+
+    let zipNorm: string | null | undefined;
+    if (data.zipCode !== undefined) {
+      zipNorm = normalizeUsZip5(data.zipCode);
+      if (!zipNorm) {
+        throw new BadRequestException('ZIP code must be exactly 5 digits.');
+      }
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -164,10 +185,8 @@ export class DashboardService {
           institution: data.institution.trim() || null,
         }),
         ...(data.city !== undefined && { city: data.city.trim() || null }),
-        ...(data.state !== undefined && { state: data.state.trim() || null }),
-        ...(data.zipCode !== undefined && {
-          zipCode: data.zipCode.trim() || null,
-        }),
+        ...(stateNorm !== undefined && { state: stateNorm }),
+        ...(zipNorm !== undefined && { zipCode: zipNorm }),
       },
     });
     this.outboundSync
