@@ -55,6 +55,16 @@ export class ProgramRegistrationsService {
     return new Date(startDate.getTime() + mins * 60 * 1000);
   }
 
+  /** True when half-open intervals [aStart, aEnd) and [bStart, bEnd) overlap. */
+  static intervalsOverlap(
+    aStart: Date,
+    aEnd: Date,
+    bStart: Date,
+    bEnd: Date,
+  ): boolean {
+    return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+  }
+
   /** True while the registration should appear in the admin "Recently approved" section. */
   static isRecentlyApprovedVisible(
     reviewedAt: Date | null | undefined,
@@ -650,6 +660,12 @@ export class ProgramRegistrationsService {
       if (used >= slot.maxAttendees) {
         throw new BadRequestException('This time slot is full');
       }
+      await this.assertNoOverlappingLiveRegistration(userId, program, {
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+      });
+    } else {
+      await this.assertNoOverlappingLiveRegistration(userId, program);
     }
 
     const requiresApproval = program.registrationRequiresApproval;
@@ -914,7 +930,8 @@ export class ProgramRegistrationsService {
 
         if (
           normalized.toLowerCase().includes('already enrolled') ||
-          normalized.toLowerCase().includes('time slot')
+          normalized.toLowerCase().includes('time slot') ||
+          normalized.toLowerCase().includes('scheduling conflict')
         ) {
           skipped.push({ programId, title, reason: normalized });
         } else {
@@ -1079,6 +1096,107 @@ export class ProgramRegistrationsService {
       `Intake webhook: user ${userId} program ${programId} submission ${submissionId} approvedNow=${approvedNow}`,
     );
     return true;
+  }
+
+  /**
+   * Block PENDING/APPROVED live-session registrations whose scheduled windows overlap.
+   * Uses office-hours slot times when provided; otherwise program startDate + duration.
+   */
+  private async assertNoOverlappingLiveRegistration(
+    userId: string,
+    program: {
+      id: string;
+      title: string;
+      startDate: Date | null;
+      duration: number | null;
+      zoomSessionType: ProgramZoomSessionType | null;
+    },
+    slotWindow?: { startsAt: Date; endsAt: Date },
+  ): Promise<void> {
+    if (
+      program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
+      program.zoomSessionType !== ProgramZoomSessionType.MEETING
+    ) {
+      return;
+    }
+
+    const candidateStart = slotWindow?.startsAt ?? program.startDate ?? null;
+    const candidateEnd =
+      slotWindow?.endsAt ??
+      ProgramRegistrationsService.sessionEndsAt(
+        program.startDate,
+        program.duration,
+      );
+    if (!candidateStart || !candidateEnd) {
+      return;
+    }
+    if (candidateEnd.getTime() <= candidateStart.getTime()) {
+      return;
+    }
+
+    const others = await this.prisma.programRegistration.findMany({
+      where: {
+        userId,
+        programId: { not: program.id },
+        status: {
+          in: [
+            ProgramRegistrationStatus.PENDING,
+            ProgramRegistrationStatus.APPROVED,
+          ],
+        },
+        program: {
+          zoomSessionType: {
+            in: [
+              ProgramZoomSessionType.WEBINAR,
+              ProgramZoomSessionType.MEETING,
+            ],
+          },
+        },
+      },
+      select: {
+        status: true,
+        program: {
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            duration: true,
+          },
+        },
+        slot: {
+          select: {
+            startsAt: true,
+            endsAt: true,
+          },
+        },
+      },
+    });
+
+    for (const reg of others) {
+      const otherStart = reg.slot?.startsAt ?? reg.program.startDate ?? null;
+      const otherEnd =
+        reg.slot?.endsAt ??
+        ProgramRegistrationsService.sessionEndsAt(
+          reg.program.startDate,
+          reg.program.duration,
+        );
+      if (!otherStart || !otherEnd) continue;
+      if (
+        !ProgramRegistrationsService.intervalsOverlap(
+          candidateStart,
+          candidateEnd,
+          otherStart,
+          otherEnd,
+        )
+      ) {
+        continue;
+      }
+
+      const conflictTitle = reg.program.title?.trim() || 'another session';
+      throw new BadRequestException(
+        `Scheduling conflict: you are already registered for "${conflictTitle}", which overlaps this session. Choose a different session or wait until that registration is no longer pending/approved.`,
+      );
+    }
   }
 
   private async ensureEnrollment(userId: string, programId: string) {
