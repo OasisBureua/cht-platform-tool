@@ -23,6 +23,30 @@ import {
   getSessionTokenFromRequest,
   setSessionCookie,
 } from './session-cookie';
+import {
+  normalizeUsStateCode,
+  normalizeUsZip5,
+  validateRegistrationLocation,
+} from '../common/us-address';
+
+function passwordMeetsSignupPolicy(password: string): string | null {
+  if (!password || password.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must include at least one capital letter.';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must include at least one lowercase letter.';
+  }
+  if (!/\d/.test(password)) {
+    return 'Password must include at least one number.';
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return 'Password must include at least one symbol.';
+  }
+  return null;
+}
 import { isProductionEnv } from '../utils/is-production-env';
 import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
@@ -510,9 +534,8 @@ export class AuthController {
       return { error: 'Please enter a valid email address.' };
     }
     if (!password) return { error: 'Password is required.' };
-    if (password.length < 8) {
-      return { error: 'Password must be at least 8 characters.' };
-    }
+    const passwordError = passwordMeetsSignupPolicy(password);
+    if (passwordError) return { error: passwordError };
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
@@ -535,6 +558,12 @@ export class AuthController {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
 
+    const locationError = validateRegistrationLocation({ state, zipCode });
+    if (locationError) return { error: locationError };
+    const stateNorm = normalizeUsStateCode(state)!;
+    const zipNorm = normalizeUsZip5(zipCode)!;
+    const cityNorm = (city || '').trim() || null;
+
     try {
       const signup = await this.cognitoService.signUp(
         emailStr,
@@ -551,9 +580,9 @@ export class AuthController {
         npiOptional ? npi || null : npi,
         professionTrim,
         institution || null,
-        city || null,
-        state || null,
-        zipCode || null,
+        cityNorm,
+        stateNorm,
+        zipNorm,
       );
 
       await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
@@ -676,8 +705,8 @@ export class AuthController {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
       return { error: 'Please enter a valid email address.' };
     if (!password) return { error: 'Password is required.' };
-    if (password.length < 8)
-      return { error: 'Password must be at least 8 characters.' };
+    const passwordError = passwordMeetsSignupPolicy(password);
+    if (passwordError) return { error: passwordError };
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
@@ -699,6 +728,12 @@ export class AuthController {
     if (npiOptional && npi.length > 0 && npi.length !== 10) {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
+
+    const locationError = validateRegistrationLocation({ state, zipCode });
+    if (locationError) return { error: locationError };
+    const stateNorm = normalizeUsStateCode(state)!;
+    const zipNorm = normalizeUsZip5(zipCode)!;
+    const cityNorm = (city || '').trim() || undefined;
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
@@ -732,9 +767,9 @@ export class AuthController {
               profession,
               npi_number: npiOptional ? npi || undefined : npi,
               institution: (institution || '').trim() || undefined,
-              city: (city || '').trim() || undefined,
-              state: (state || '').trim() || undefined,
-              zip_code: (zipCode || '').trim() || undefined,
+              city: cityNorm,
+              state: stateNorm,
+              zip_code: zipNorm,
             },
           }),
         },

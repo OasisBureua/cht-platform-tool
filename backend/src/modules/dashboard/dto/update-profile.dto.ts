@@ -1,4 +1,4 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -26,18 +26,25 @@ export class UpdateProfileDto {
   @MaxLength(200)
   institution?: string;
 
+  /** Optional practice city (not required on registration). */
   @IsOptional()
   @IsString()
   @MaxLength(100)
   city?: string;
 
+  /** Required on registration/profile forms; 2-letter US state or DC code. */
   @IsOptional()
   @IsString()
-  @MaxLength(2)
+  @Matches(/^[A-Z]{2}$/, {
+    message: 'state must be a 2-letter US state or DC code',
+  })
   state?: string;
 
+  /** Required on registration/profile forms; exactly 5 digits. */
   @IsOptional()
   @IsString()
-  @MaxLength(12)
+  @Matches(/^\d{5}$/, {
+    message: 'zipCode must be exactly 5 digits',
+  })
   zipCode?: string;
 }

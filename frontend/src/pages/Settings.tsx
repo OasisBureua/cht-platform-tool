@@ -15,6 +15,11 @@ import {
   professionOptionsForSelect,
   settingsLocationPreset,
 } from '../data/profession-options';
+import {
+  US_STATE_SELECT_OPTIONS,
+  normalizeUsStateCode,
+  normalizeUsZip5,
+} from '../data/us-states';
 import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
 import { BillComMark } from '../components/branding/BillComMark';
 function getInitials(name: string, email?: string): string {
@@ -81,8 +86,8 @@ export default function Settings() {
       setNpiNumber((profile.npiNumber ?? '').replace(/\D/g, '').slice(0, 10));
       setInstitution(profile.institution ?? '');
       setCity(profile.city ?? '');
-      setState(profile.state ?? '');
-      setZipCode(profile.zipCode ?? '');
+      setState(normalizeUsStateCode(profile.state) ?? '');
+      setZipCode((profile.zipCode ?? '').replace(/\D/g, '').slice(0, 5));
     }
   }, [profile]);
 
@@ -103,9 +108,15 @@ export default function Settings() {
         setSaving(false);
         return;
       }
-      const zip = zipCode.replace(/\D/g, '');
-      if (zip && zip.length !== 0 && zip.length !== 5 && zip.length !== 9) {
-        setSaveError('ZIP code must be 5 digits (or 9 for ZIP+4).');
+      const stateCode = normalizeUsStateCode(state);
+      if (!stateCode) {
+        setSaveError('State is required.');
+        setSaving(false);
+        return;
+      }
+      const zip = normalizeUsZip5(zipCode);
+      if (!zip) {
+        setSaveError('ZIP code must be exactly 5 digits.');
         setSaving(false);
         return;
       }
@@ -116,8 +127,8 @@ export default function Settings() {
         npiNumber: needsNpi ? npi : '',
         institution: institution.trim() || undefined,
         city: city.trim() || undefined,
-        state: state.trim().toUpperCase().slice(0, 2) || undefined,
-        zipCode: zip || undefined,
+        state: stateCode,
+        zipCode: zip,
       });
       await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       await refreshProfile();
@@ -295,7 +306,9 @@ export default function Settings() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-1">
+                      City <span className="font-normal text-gray-500">(optional)</span>
+                    </label>
                     <input
                       type="text"
                       value={city}
@@ -306,22 +319,29 @@ export default function Settings() {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
-                    <input
-                      type="text"
+                    <select
                       value={state}
-                      onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))}
-                      placeholder="e.g., NY"
-                      maxLength={2}
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
-                    />
+                      onChange={(e) => setState(e.target.value)}
+                      required
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+                    >
+                      {US_STATE_SELECT_OPTIONS.map((opt) => (
+                        <option key={opt.value || 'empty'} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-1">ZIP code</label>
                     <input
                       type="text"
                       value={zipCode}
-                      onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
+                      onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
                       placeholder="e.g., 10001"
+                      required
+                      maxLength={5}
+                      inputMode="numeric"
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
                     />
                   </div>
