@@ -41,7 +41,12 @@ model User {
   paymentEnabled   Boolean @default(false)
   w9Submitted     Boolean @default(false)
   w9SubmittedAt   DateTime?
-  
+
+  /// Learner preference for how honoraria should be paid (ACH vs paper check).
+  preferredPaymentMethod PreferredPaymentMethod?
+  /// Last 4 of bank account when ACH is configured (never store full account).
+  bankAccountLast4       String?
+
   // Earnings tracking
   totalEarnings       Int @default(0)  // Total lifetime earnings in cents
   activitiesCompleted Int @default(0)  // Count of completed programs
@@ -504,6 +509,14 @@ model Payment {
   /// Unique per logical payout; worker uses ON CONFLICT DO NOTHING for SQS at-least-once / duplicate enqueue.
   idempotencyKey String? @unique
 
+  /// How this payout is / was delivered (copied from user preference at pay time).
+  deliveryMethod PaymentDeliveryMethod?
+  /// Check lifecycle when deliveryMethod = CHECK (PENDING_MAIL, IN_TRANSIT, SENT, DELIVERED, RETURNED).
+  checkStatus        String?
+  checkMailedAt      DateTime?
+  checkDeliveredAt   DateTime?
+  checkTrackingInfo  String?
+
   // W9 tracking
   w9Collected Boolean  @default(false)
   
@@ -540,6 +553,16 @@ enum PaymentStatus {
   PAID         // Successfully paid
   FAILED       // Payment failed
   CANCELLED    // Cancelled by admin
+}
+
+enum PreferredPaymentMethod {
+  ACH
+  CHECK
+}
+
+enum PaymentDeliveryMethod {
+  ACH
+  CHECK
 }
 
 // ============================================================================
@@ -626,6 +649,8 @@ model AdminAuditLog {
   id         String   @id @default(cuid())
   actorId    String
   actorEmail String?
+  /// ADMIN | HCP | anonymous | system (when known)
+  actorRole  String?
   action     String
   resource   String?
   resourceId String?
@@ -637,6 +662,7 @@ model AdminAuditLog {
   @@index([actorId])
   @@index([createdAt])
   @@index([resource, resourceId])
+  @@index([actorRole])
   @@map("AdminAuditLog")
 }
 

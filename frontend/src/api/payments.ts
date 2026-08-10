@@ -44,7 +44,7 @@ export const paymentsApi = {
     }
   },
 
-  /** Submit bank + address details to create Bill.com vendor (US only) */
+  /** Submit payee + address, and bank details when ACH is selected */
   createConnectAccount: async (
     userId: string,
     bankData: {
@@ -53,9 +53,10 @@ export const paymentsApi = {
       city: string;
       state: string;
       zipCode: string;
-      nameOnAccount: string;
-      accountNumber: string;
-      routingNumber: string;
+      paymentMethod: 'ACH' | 'CHECK';
+      nameOnAccount?: string;
+      accountNumber?: string;
+      routingNumber?: string;
     },
   ) => {
     const { data } = await apiClient.post(`/payments/${userId}/connect-account`, {
@@ -64,11 +65,16 @@ export const paymentsApi = {
       city: bankData.city,
       state: bankData.state,
       zipCode: bankData.zipCode,
-      bankAccount: {
-        nameOnAccount: bankData.nameOnAccount,
-        accountNumber: bankData.accountNumber,
-        routingNumber: bankData.routingNumber,
-      },
+      paymentMethod: bankData.paymentMethod,
+      ...(bankData.paymentMethod === 'ACH'
+        ? {
+            bankAccount: {
+              nameOnAccount: bankData.nameOnAccount,
+              accountNumber: bankData.accountNumber,
+              routingNumber: bankData.routingNumber,
+            },
+          }
+        : {}),
     });
     return data;
   },

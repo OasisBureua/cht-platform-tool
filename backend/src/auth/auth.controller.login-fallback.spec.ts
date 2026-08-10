@@ -37,12 +37,16 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     recordSuccess: jest.fn().mockResolvedValue(undefined),
   };
 
+  const audit = {
+    record: jest.fn(),
+  };
+
   const expressRes = {
     cookie: jest.fn(),
     clearCookie: jest.fn(),
   } as unknown as ExpressResponse;
 
-  const req = { ip: '127.0.0.1' } as never;
+  const req = { ip: '127.0.0.1', headers: {} } as never;
 
   const buildController = () =>
     new AuthController(
@@ -51,6 +55,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
       recaptchaService,
       lockout as never,
       configService as never,
+      audit as never,
     );
 
   beforeEach(() => {

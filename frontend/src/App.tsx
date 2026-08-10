@@ -78,6 +78,7 @@ const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarSched
 const AdminPayments         = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'));
 const AdminRxAnalytics      = lazy(() => import('./pages/admin/AdminRxAnalytics'));
+const AdminAuditLog         = lazy(() => import('./pages/admin/AdminAuditLog'));
 const AdminSettings         = lazy(() => import('./pages/admin/AdminSettings'));
 const AdminUsers            = lazy(() => import('./pages/admin/AdminUsers'));
 const AdminContent          = lazy(() => import('./pages/admin/AdminContent'));
@@ -135,6 +136,7 @@ function App() {
               <Route path="/home" element={<Home />} />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+              <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/:diseaseSlug" element={<DiseaseDetail />} />
               <Route path="/catalog" element={<VideosPage />} />
 
@@ -225,6 +227,7 @@ function App() {
 
               <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
               <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+              <Route path="catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
               <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
               <Route path="catalog" element={<VideosPage />} />
 
@@ -279,6 +282,7 @@ function App() {
               <Route path="users" element={<AdminUsers />} />
               <Route path="content" element={<AdminContent />} />
               <Route path="rx-analytics" element={<AdminRxAnalytics />} />
+              <Route path="audit-log" element={<AdminAuditLog />} />
 
               {/* KOL Network: internal HCP intelligence (ported from MediaHub) */}
               <Route path="kol-network" element={<AdminKolDirectory />} />

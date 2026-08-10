@@ -275,13 +275,37 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
 }
 
 function HistoryRow({ item }: { item: PaymentItem }) {
+  const checkLabel =
+    item.deliveryMethod === 'CHECK' || item.method === 'Check'
+      ? item.checkStatus
+        ? `Check · ${item.checkStatus.replace(/_/g, ' ').toLowerCase()}`
+        : 'Check'
+      : null;
+  const methodLabel = checkLabel || item.method || '-';
+  const deliveryHint =
+    item.checkMailedAt || item.checkDeliveredAt
+      ? [
+          item.checkMailedAt
+            ? `Mailed ${format(new Date(item.checkMailedAt), 'MMM d, yyyy')}`
+            : null,
+          item.checkDeliveredAt
+            ? `Delivered ${format(new Date(item.checkDeliveredAt), 'MMM d, yyyy')}`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : null;
+
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div className="min-w-0">
         <p className="font-medium text-gray-900 truncate">{item.title}</p>
         <p className="text-sm text-gray-600 truncate">
-          {format(new Date(item.date), 'MMM d, yyyy')} • {item.method || '-'}
+          {format(new Date(item.date), 'MMM d, yyyy')} • {methodLabel}
         </p>
+        {deliveryHint ? (
+          <p className="text-xs text-gray-500 truncate">{deliveryHint}</p>
+        ) : null}
       </div>
       <div className="shrink-0 flex items-center gap-3">
         <span className="text-sm font-semibold text-gray-900">{formatMoney(item.amount)}</span>

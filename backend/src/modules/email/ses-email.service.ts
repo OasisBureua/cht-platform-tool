@@ -18,6 +18,7 @@ import { buildWebinarAccessEmail } from './templates/webinar-access-email';
 import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
 import { buildRegistrationInviteEmail } from './templates/registration-invite-email';
 import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
+import { buildOperationalEmail } from './templates/operational-email';
 
 /**
  * Transactional email via [Amazon SES](https://docs.aws.amazon.com/ses/) (SESv2 `SendEmail` with Simple content).
@@ -35,7 +36,8 @@ export class SesEmailService {
     const accessKeyId = this.config.get<string>('aws.accessKeyId');
     const secretAccessKey = this.config.get<string>('aws.secretAccessKey');
     this.from =
-      this.config.get<string>('email.from') || 'info@communityhealth.media';
+      this.config.get<string>('email.from') ||
+      '"Community Health Media" <info@communityhealth.media>';
     this.enabled = this.config.get<boolean>('email.enabled') !== false;
     this.client = new SESv2Client({
       region,
@@ -525,6 +527,39 @@ export class SesEmailService {
     this.logger.log(
       `Sent registration-invite email to ${to} (${programTitles.length} program(s))`,
     );
+  }
+
+  /**
+   * Admin freeform operational notice (Program Hub). Uses configured SES From
+   * (default info@communityhealth.media).
+   */
+  async sendOperationalEmail(opts: {
+    to: string;
+    subject: string;
+    textBody: string;
+    programTitle?: string;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip operational email');
+      return;
+    }
+    const to = opts.to.trim().toLowerCase();
+    const subject = opts.subject.trim();
+    const textBody = opts.textBody.trim();
+    if (!to || !subject || !textBody) {
+      throw new Error('to, subject, and body are required');
+    }
+    const { text, html } = buildOperationalEmail(
+      {
+        subject,
+        textBody,
+        programTitle: opts.programTitle,
+        supportEmail: this.from,
+      },
+      escapeHtml,
+    );
+    await this.sendSimpleEmail(to, subject, text, html);
+    this.logger.log(`Sent operational email to ${to}: ${subject.slice(0, 80)}`);
   }
 
   private async sendSimpleEmail(

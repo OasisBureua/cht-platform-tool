@@ -161,6 +161,11 @@ export interface PendingPayment {
   status: string;
   description: string | null;
   createdAt: string;
+  deliveryMethod?: 'ACH' | 'CHECK' | null;
+  checkStatus?: string | null;
+  checkMailedAt?: string | null;
+  checkDeliveredAt?: string | null;
+  checkTrackingInfo?: string | null;
   user: {
     id: string;
     email: string;
@@ -168,6 +173,8 @@ export interface PendingPayment {
     lastName: string;
     billVendorId: string | null;
     w9Submitted?: boolean;
+    preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
+    bankAccountLast4?: string | null;
   };
   program: { id: string; title: string } | null;
 }
@@ -186,6 +193,24 @@ export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
   paymentsPaidCount: number;
+  paymentsPaidCents?: number;
+  pendingPaymentsCount?: number;
+  pendingRegistrationsCount?: number;
+  publishedLiveProgramsCount?: number;
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  actorId: string;
+  actorEmail: string | null;
+  actorRole?: string | null;
+  action: string;
+  resource: string | null;
+  resourceId: string | null;
+  metadata: unknown;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
 }
 
 export interface WebhookImportedProgram {
@@ -382,6 +407,32 @@ export const adminApi = {
       }
       throw err;
     }
+  },
+
+  listAuditLogs: async (params?: {
+    limit?: number;
+    resource?: string;
+    actorId?: string;
+    actorRole?: string;
+  }): Promise<{ items: AdminAuditLogEntry[]; total: number; limit: number }> => {
+    const { data } = await apiClient.get<{
+      items: AdminAuditLogEntry[];
+      total: number;
+      limit: number;
+    }>('/admin/audit-logs', { params });
+    return data;
+  },
+
+  exportPaymentsCsv: async (params?: {
+    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL';
+    from?: string;
+    to?: string;
+  }): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>('/payments/export.csv', {
+      params,
+      responseType: 'blob',
+    });
+    return data;
   },
 
   getPrograms: async (): Promise<AdminProgram[]> => {
@@ -700,6 +751,22 @@ export const adminApi = {
       programs: { id: string; title: string }[];
       emailed: number;
       skipped: { userId: string; email: string; reason: string }[];
+    };
+  },
+
+  sendProgramOperationalEmail: async (
+    programId: string,
+    payload: { to: string[]; subject: string; body: string },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/operational-email`,
+      payload,
+    );
+    return data as {
+      programId: string;
+      sent: number;
+      failed: { email: string; error: string }[];
+      extras: string[];
     };
   },
 

@@ -258,6 +258,24 @@ export class PaymentsService {
       );
     }
 
+    const paymentMethod = vendorDto.paymentMethod;
+    if (paymentMethod !== 'ACH' && paymentMethod !== 'CHECK') {
+      throw new BadRequestException(
+        'Select a payment method: ACH or Check.',
+      );
+    }
+
+    if (paymentMethod === 'ACH' && !vendorDto.bankAccount) {
+      throw new BadRequestException(
+        'Bank account details are required for ACH payouts.',
+      );
+    }
+
+    const bankLast4 =
+      paymentMethod === 'ACH' && vendorDto.bankAccount?.accountNumber
+        ? vendorDto.bankAccount.accountNumber.replace(/\D/g, '').slice(-4)
+        : null;
+
     const vendorInput = {
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
@@ -267,25 +285,37 @@ export class PaymentsService {
         stateOrProvince,
         zipOrPostalCode,
       },
-      ...(vendorDto.bankAccount && {
-        paymentInformation: {
-          payeeName: vendorDto.payeeName,
-          bankAccount: vendorDto.bankAccount,
-        },
-      }),
+      ...(paymentMethod === 'ACH' && vendorDto.bankAccount
+        ? {
+            paymentInformation: {
+              payeeName: vendorDto.payeeName,
+              bankAccount: vendorDto.bankAccount,
+            },
+          }
+        : {
+            paymentInformation: {
+              payeeName: vendorDto.payeeName,
+            },
+          }),
     };
 
     if (user.billVendorId) {
-      if (!vendorDto.bankAccount) {
-        throw new BadRequestException(
-          'Bank account details are required to update payment information.',
-        );
-      }
-      this.logger.log(`Updating Bill.com vendor for user: ${userId}`);
+      this.logger.log(
+        `Updating Bill.com vendor for user: ${userId} method=${paymentMethod}`,
+      );
       await this.billService.updateVendorPaymentAndAddress(
         user.billVendorId,
         vendorInput,
       );
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          preferredPaymentMethod: paymentMethod,
+          bankAccountLast4: paymentMethod === 'ACH' ? bankLast4 : null,
+          paymentEnabled: true,
+          billVendorStatus: user.billVendorStatus ?? 'active',
+        },
+      });
       return {
         accountId: user.billVendorId,
         onboardingUrl: `${this.frontendUrl}/settings/payments`,
@@ -301,7 +331,8 @@ export class PaymentsService {
         billVendorId: vendor.id,
         billVendorStatus: 'active',
         paymentEnabled: true,
-        // W-9 is submitted separately via the embedded W9Modal
+        preferredPaymentMethod: paymentMethod,
+        bankAccountLast4: paymentMethod === 'ACH' ? bankLast4 : null,
       },
     });
 
@@ -345,6 +376,8 @@ export class PaymentsService {
         w9Submitted: true,
         w9SubmittedAt: true,
         totalEarnings: true,
+        preferredPaymentMethod: true,
+        bankAccountLast4: true,
       },
     });
 
@@ -362,6 +395,8 @@ export class PaymentsService {
         chargesEnabled: false,
         payoutsEnabled: false,
         detailsSubmitted: false,
+        preferredPaymentMethod: user.preferredPaymentMethod ?? null,
+        bankAccountLast4: user.bankAccountLast4 ?? null,
       };
     }
 
@@ -378,6 +413,8 @@ export class PaymentsService {
         chargesEnabled: true,
         payoutsEnabled: user.paymentEnabled,
         detailsSubmitted: !!vendor,
+        preferredPaymentMethod: user.preferredPaymentMethod ?? null,
+        bankAccountLast4: user.bankAccountLast4 ?? null,
       };
     } catch {
       return {
@@ -391,6 +428,8 @@ export class PaymentsService {
         chargesEnabled: false,
         payoutsEnabled: user.paymentEnabled,
         detailsSubmitted: false,
+        preferredPaymentMethod: user.preferredPaymentMethod ?? null,
+        bankAccountLast4: user.bankAccountLast4 ?? null,
       };
     }
   }
@@ -448,6 +487,8 @@ export class PaymentsService {
             lastName: true,
             billVendorId: true,
             w9Submitted: true,
+            preferredPaymentMethod: true,
+            bankAccountLast4: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -629,6 +670,8 @@ export class PaymentsService {
             lastName: true,
             billVendorId: true,
             w9Submitted: true,
+            preferredPaymentMethod: true,
+            bankAccountLast4: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -654,6 +697,8 @@ export class PaymentsService {
             lastName: true,
             billVendorId: true,
             w9Submitted: true,
+            preferredPaymentMethod: true,
+            bankAccountLast4: true,
           },
         },
         program: { select: { id: true, title: true } },
@@ -661,6 +706,102 @@ export class PaymentsService {
       orderBy: [{ paidAt: 'desc' }, { updatedAt: 'desc' }],
       take,
     });
+  }
+
+  /**
+   * Admin CSV export of payments (pending / failed / paid / all) with optional date range.
+   */
+  async exportPaymentsCsv(opts: {
+    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL';
+    from?: string;
+    to?: string;
+  }): Promise<string> {
+    const statusFilter =
+      opts.status && opts.status !== 'ALL'
+        ? { status: opts.status }
+        : undefined;
+
+    const fromDate = opts.from ? new Date(opts.from) : null;
+    const toDate = opts.to ? new Date(opts.to) : null;
+    const createdAt =
+      fromDate || toDate
+        ? {
+            ...(fromDate && !Number.isNaN(fromDate.getTime())
+              ? { gte: fromDate }
+              : {}),
+            ...(toDate && !Number.isNaN(toDate.getTime())
+              ? { lte: toDate }
+              : {}),
+          }
+        : undefined;
+
+    const rows = await this.prisma.payment.findMany({
+      where: {
+        ...statusFilter,
+        ...(createdAt && Object.keys(createdAt).length
+          ? { createdAt }
+          : {}),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+        program: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 5000,
+    });
+
+    const escape = (value: unknown) => {
+      const s = value == null ? '' : String(value);
+      if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+
+    const header = [
+      'paymentId',
+      'status',
+      'amountCents',
+      'amountDollars',
+      'type',
+      'userId',
+      'userEmail',
+      'userName',
+      'programId',
+      'programTitle',
+      'createdAt',
+      'paidAt',
+      'failedAt',
+      'billPaymentId',
+    ].join(',');
+
+    const lines = rows.map((p) =>
+      [
+        p.id,
+        p.status,
+        p.amount,
+        (p.amount / 100).toFixed(2),
+        p.type,
+        p.userId,
+        p.user?.email ?? '',
+        `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(),
+        p.programId ?? '',
+        p.program?.title ?? '',
+        p.createdAt?.toISOString?.() ?? '',
+        p.paidAt?.toISOString?.() ?? '',
+        p.failedAt?.toISOString?.() ?? '',
+        p.billPaymentId ?? '',
+      ]
+        .map(escape)
+        .join(','),
+    );
+
+    return [header, ...lines].join('\n');
   }
 
   /**
@@ -777,7 +918,7 @@ export class PaymentsService {
         `Pay now blocked: user ${user.id} has no Bill.com vendor`,
       );
       throw new BadRequestException(
-        'HCP has not added bank details in Bill.com. Ask them to complete payment setup, then try Pay now again.',
+        'HCP has not completed payment setup (ACH or check). Ask them to finish Settings → Payment, then try Pay now again.',
       );
     }
 
@@ -788,9 +929,26 @@ export class PaymentsService {
       );
     }
 
+    const deliveryMethod =
+      user.preferredPaymentMethod === 'CHECK'
+        ? 'CHECK'
+        : user.preferredPaymentMethod === 'ACH'
+          ? 'ACH'
+          : null;
+
     const locked = await this.prisma.payment.updateMany({
       where: { id: paymentId, status: 'PENDING' },
-      data: { status: 'PROCESSING' },
+      data: {
+        status: 'PROCESSING',
+        ...(deliveryMethod
+          ? {
+              deliveryMethod,
+              ...(deliveryMethod === 'CHECK'
+                ? { checkStatus: 'PENDING_MAIL' }
+                : { checkStatus: null }),
+            }
+          : {}),
+      },
     });
 
     if (locked.count !== 1) {
@@ -812,6 +970,12 @@ export class PaymentsService {
           status: 'PAID',
           billPaymentId: billPayment.id,
           paidAt: new Date(),
+          ...(deliveryMethod === 'CHECK'
+            ? {
+                checkStatus: 'SENT',
+                checkMailedAt: new Date(),
+              }
+            : {}),
         },
       });
 
@@ -1102,7 +1266,17 @@ export class PaymentsService {
       title: p.description || p.program?.title || p.type.replace(/_/g, ' '),
       amount: p.amount / 100,
       status: p.status,
-      method: 'Bill.com',
+      method:
+        p.deliveryMethod === 'CHECK'
+          ? 'Check'
+          : p.deliveryMethod === 'ACH'
+            ? 'ACH'
+            : 'Bill.com',
+      deliveryMethod: p.deliveryMethod ?? null,
+      checkStatus: p.checkStatus ?? null,
+      checkMailedAt: p.checkMailedAt?.toISOString() ?? null,
+      checkDeliveredAt: p.checkDeliveredAt?.toISOString() ?? null,
+      checkTrackingInfo: p.checkTrackingInfo ?? null,
     }));
   }
 
@@ -1125,7 +1299,7 @@ export class PaymentsService {
     assertProfileCompleteForPayments(user);
     if (!user.billVendorId)
       throw new BadRequestException(
-        'Add bank details first before submitting W-9',
+        'Complete payment setup (ACH or check) before submitting W-9',
       );
 
     const taxId = data.taxId.replace(/\D/g, '');

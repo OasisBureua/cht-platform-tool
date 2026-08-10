@@ -5,16 +5,29 @@ import { adminApi, type PendingPayment, type FailedPayment, type PaidPayment, ty
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download } from 'lucide-react';
 import { BillComMark } from '../../components/branding/BillComMark';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+async function downloadPaymentsCsv(status: 'PENDING' | 'FAILED' | 'PAID' | 'ALL' = 'ALL') {
+  const blob = await adminApi.exportPaymentsCsv({ status });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cht-payments-${status.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminPayments() {
   const queryClient = useQueryClient();
   const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const { data: pending, isLoading } = useQuery({
     queryKey: ['admin', 'pending-payments'],
@@ -111,7 +124,23 @@ export default function AdminPayments() {
             through <BillComMark size="sm" className="translate-y-px" /> (ACH or check).
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={() => {
+              setExporting(true);
+              void downloadPaymentsCsv('ALL')
+                .catch((err) => {
+                  window.alert(getApiErrorMessage(err, 'CSV export failed.'));
+                })
+                .finally(() => setExporting(false));
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export CSV
+          </button>
           <a
             href="#pending-table"
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
@@ -161,6 +190,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Actions</th>
@@ -230,6 +260,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">User</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Method / delivery</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Paid on</th>
               </tr>
@@ -237,13 +268,13 @@ export default function AdminPayments() {
             <tbody className="divide-y divide-gray-100">
               {paidPending ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     Loading paid payments…
                   </td>
                 </tr>
               ) : paid.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
                     No completed payouts yet. Successful payments appear here after <strong>Pay now</strong> finishes.
                   </td>
                 </tr>
@@ -815,6 +846,17 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
       ? format(new Date(payment.paidAt), 'MMM d, yyyy · h:mm a')
       : '-';
 
+  const method =
+    payment.deliveryMethod === 'CHECK' || payment.user.preferredPaymentMethod === 'CHECK'
+      ? 'Check'
+      : payment.deliveryMethod === 'ACH' || payment.user.preferredPaymentMethod === 'ACH'
+        ? 'ACH'
+        : '—';
+  const delivery =
+    method === 'Check' && payment.checkStatus
+      ? `${method} · ${payment.checkStatus.replace(/_/g, ' ').toLowerCase()}`
+      : method;
+
   return (
     <tr className="hover:bg-gray-50/80">
       <td className="px-4 py-3">
@@ -825,6 +867,14 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
       </td>
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-gray-600">
+        <p>{delivery}</p>
+        {payment.checkMailedAt ? (
+          <p className="text-xs text-gray-500">
+            Mailed {format(new Date(payment.checkMailedAt), 'MMM d, yyyy')}
+          </p>
+        ) : null}
+      </td>
       <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{paidLabel}</td>
     </tr>
@@ -850,10 +900,17 @@ function PendingRow({
   const hasW9 = payment.user.w9Submitted !== false;
   const canPay = hasVendor && hasW9;
   const blockReason = !hasVendor
-    ? 'No Bill.com vendor: HCP must add bank details'
+    ? 'No Bill.com vendor: HCP must complete payment setup (ACH or check)'
     : !hasW9
       ? 'W-9 not submitted: HCP must complete W-9 first'
       : null;
+
+  const methodLabel =
+    payment.user.preferredPaymentMethod === 'CHECK'
+      ? 'Check'
+      : payment.user.preferredPaymentMethod === 'ACH'
+        ? `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`
+        : '—';
 
   return (
     <tr className="hover:bg-gray-50">
@@ -865,6 +922,7 @@ function PendingRow({
       </td>
       <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-sm text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{methodLabel}</td>
       <td className="px-4 py-3 text-sm text-gray-600">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-sm text-gray-500">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">

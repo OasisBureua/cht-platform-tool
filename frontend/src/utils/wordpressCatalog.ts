@@ -6,6 +6,9 @@ export const WORDPRESS_CATALOG_STALE_MS = 30 * 60 * 1000;
 /** Admin Content page: shorter so newly published WP posts show up quickly. */
 export const ADMIN_WORDPRESS_CATALOG_STALE_MS = 5 * 60 * 1000;
 
+/** WPR-9: categories with fewer than this many posts render an empty-state on their landing page instead of the generic "no content" fallback. */
+export const WORDPRESS_LOW_COUNT_THRESHOLD = 3;
+
 export function useWordPressCatalog(): boolean {
   const flag = import.meta.env.VITE_CATALOG_WORDPRESS_ONLY;
   if (flag === 'true' || flag === '1') return true;

@@ -10,6 +10,7 @@ import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
 import { surveysApi } from '../api/surveys';
 import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
+import { getApiErrorMessage } from '../api/client';
 
 type StepKey = 'intake' | 'slot' | 'submit';
 
@@ -433,13 +434,15 @@ export default function ProgramRegisterWizard() {
             )}
 
             {submitMut.isError && (
-              <p className="text-sm text-red-700">
-                {(
-                  submitMut.error as {
-                    response?: { data?: { message?: string } };
-                  }
-                )?.response?.data?.message || 'Something went wrong. Try again.'}
-              </p>
+              <div
+                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                role="alert"
+              >
+                {getApiErrorMessage(
+                  submitMut.error,
+                  'Something went wrong. Try again.',
+                )}
+              </div>
             )}
           </div>
 

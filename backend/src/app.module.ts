@@ -2,12 +2,13 @@ import { Module, RequestMethod } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { join } from 'path';
 import { randomUUID } from 'node:crypto';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuditModule } from './audit/audit.module';
 import { HealthModule } from './health/health.module';
 import { QueueModule } from './queue/queue.module';
 import { AuthModule } from './auth/auth.module';
@@ -33,6 +34,8 @@ import { ConfigModule } from '@nestjs/config';
 
 const usePrettyLogs = process.env.LOG_PRETTY === 'true';
 
+const throttleReflector = new Reflector();
+
 /** ALB + ECS probe paths must never count toward rate limits. */
 function skipHealthProbes(context: ExecutionContext): boolean {
   const req = context.switchToHttp().getRequest<{ url?: string }>();
@@ -43,6 +46,27 @@ function skipHealthProbes(context: ExecutionContext): boolean {
     path === '/actuator' ||
     path.startsWith('/actuator/')
   );
+}
+
+/**
+ * auth / authMfa throttlers are registered globally so @Throttle({ auth }) works,
+ * but must NOT apply to normal API traffic. Only enforce when a route sets
+ * @Throttle({ auth: … }) / @Throttle({ authMfa: … }) (limit metadata present).
+ */
+function skipUnlessExplicitThrottle(throttlerName: string) {
+  return (context: ExecutionContext): boolean => {
+    const limit = throttleReflector.getAllAndOverride<number>(
+      `THROTTLER:LIMIT${throttlerName}`,
+      [context.getHandler(), context.getClass()],
+    );
+    return limit == null;
+  };
+}
+
+function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
+  return (context: ExecutionContext): boolean =>
+    skipHealthProbes(context) ||
+    skipUnlessExplicitThrottle(throttlerName)(context);
 }
 
 @Module({
@@ -88,12 +112,23 @@ function skipHealthProbes(context: ExecutionContext): boolean {
       { name: 'short', ttl: 1000, limit: 60, skipIf: skipHealthProbes },
       { name: 'medium', ttl: 10000, limit: 300, skipIf: skipHealthProbes },
       { name: 'long', ttl: 60000, limit: 1200, skipIf: skipHealthProbes },
-      // Tight limits for password / recover flows (15 min window)
-      { name: 'auth', ttl: 900_000, limit: 10, skipIf: skipHealthProbes },
-      // MFA TOTP is 6 digits — keep attempts very low (5 min window)
-      { name: 'authMfa', ttl: 300_000, limit: 5, skipIf: skipHealthProbes },
+      // Tight limits for password / recover — only when @Throttle({ auth }) is set
+      {
+        name: 'auth',
+        ttl: 900_000,
+        limit: 10,
+        skipIf: skipHealthOrUnlessAuthThrottle('auth'),
+      },
+      // MFA TOTP — only when @Throttle({ authMfa }) is set
+      {
+        name: 'authMfa',
+        ttl: 300_000,
+        limit: 5,
+        skipIf: skipHealthOrUnlessAuthThrottle('authMfa'),
+      },
     ]),
     PrismaModule,
+    AuditModule,
     HealthModule,
     QueueModule,
     AuthModule,

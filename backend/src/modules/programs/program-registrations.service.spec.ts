@@ -41,6 +41,54 @@ describe('ProgramRegistrationsService', () => {
     });
   });
 
+  describe('intervalsOverlap', () => {
+    const t = (iso: string) => new Date(iso);
+
+    it('detects identical windows as overlapping', () => {
+      expect(
+        ProgramRegistrationsService.intervalsOverlap(
+          t('2026-08-10T15:00:00.000Z'),
+          t('2026-08-10T16:00:00.000Z'),
+          t('2026-08-10T15:00:00.000Z'),
+          t('2026-08-10T16:00:00.000Z'),
+        ),
+      ).toBe(true);
+    });
+
+    it('detects partial overlap', () => {
+      expect(
+        ProgramRegistrationsService.intervalsOverlap(
+          t('2026-08-10T15:00:00.000Z'),
+          t('2026-08-10T16:00:00.000Z'),
+          t('2026-08-10T15:30:00.000Z'),
+          t('2026-08-10T16:30:00.000Z'),
+        ),
+      ).toBe(true);
+    });
+
+    it('allows back-to-back sessions that only touch at the boundary', () => {
+      expect(
+        ProgramRegistrationsService.intervalsOverlap(
+          t('2026-08-10T15:00:00.000Z'),
+          t('2026-08-10T16:00:00.000Z'),
+          t('2026-08-10T16:00:00.000Z'),
+          t('2026-08-10T17:00:00.000Z'),
+        ),
+      ).toBe(false);
+    });
+
+    it('allows fully separate sessions', () => {
+      expect(
+        ProgramRegistrationsService.intervalsOverlap(
+          t('2026-08-10T15:00:00.000Z'),
+          t('2026-08-10T16:00:00.000Z'),
+          t('2026-08-10T17:00:00.000Z'),
+          t('2026-08-10T18:00:00.000Z'),
+        ),
+      ).toBe(false);
+    });
+  });
+
   describe('adminUndoRegistrationApproval', () => {
     it('throws when registration is missing', async () => {
       prisma.programRegistration.findUnique.mockResolvedValue(null);

@@ -119,7 +119,12 @@ export default () => ({
 
   // Transactional email (Amazon SES): e.g. registration approved for Live / Office Hours
   email: {
-    from: (process.env.EMAIL_FROM || 'info@communityhealth.media').trim(),
+    // RFC-5322 mailbox format: "Display Name" <address@domain>. SESv2 accepts
+    // this form and the display name renders as the sender in the recipient's
+    // inbox instead of the bare address's local-part.
+    from:
+      (process.env.EMAIL_FROM ||
+        '"Community Health Media" <info@communityhealth.media>').trim(),
     /** Set EMAIL_ENABLED to false, 0, or no to skip sending (e.g. local dev without IAM). */
     enabled: (() => {
       const v = (process.env.EMAIL_ENABLED || 'true').toLowerCase();

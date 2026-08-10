@@ -109,11 +109,12 @@ export class BillWebhookService {
         payment.userId,
         payment.amount,
         billPaymentId,
+        payment.deliveryMethod,
       );
     } else if (FAILED_STATUSES.has(billStatus)) {
       await this.markFailed(payment.id, data.failureDescription || billStatus);
     } else if (PROCESSING_STATUSES.has(billStatus)) {
-      await this.markProcessing(payment.id);
+      await this.markProcessing(payment.id, billStatus, payment.deliveryMethod);
     } else {
       this.logger.log(
         `[Bill webhook] Unhandled status=${billStatus} for payment=${payment.id} - no action`,
@@ -126,6 +127,7 @@ export class BillWebhookService {
     userId: string,
     amountCents: number,
     billPaymentId: string,
+    deliveryMethod?: string | null,
   ): Promise<void> {
     const existing = await this.prisma.payment.findUnique({
       where: { id: paymentId },
@@ -137,11 +139,25 @@ export class BillWebhookService {
       return;
     }
 
+    const checkFields =
+      deliveryMethod === 'CHECK'
+        ? {
+            checkStatus: 'DELIVERED',
+            checkDeliveredAt: new Date(),
+            checkMailedAt: existing?.checkMailedAt ?? new Date(),
+          }
+        : {};
+
     // At this point existing?.status is guaranteed not PAID (early return above)
     await this.prisma.$transaction([
       this.prisma.payment.update({
         where: { id: paymentId },
-        data: { status: 'PAID', paidAt: new Date(), billPaymentId },
+        data: {
+          status: 'PAID',
+          paidAt: new Date(),
+          billPaymentId,
+          ...checkFields,
+        },
       }),
       this.prisma.user.update({
         where: { id: userId },
@@ -157,17 +173,45 @@ export class BillWebhookService {
   private async markFailed(paymentId: string, reason: string): Promise<void> {
     await this.prisma.payment.update({
       where: { id: paymentId },
-      data: { status: 'FAILED', failedAt: new Date(), failureReason: reason },
+      data: {
+        status: 'FAILED',
+        failedAt: new Date(),
+        failureReason: reason,
+        checkStatus: reason.toUpperCase().includes('RETURN')
+          ? 'RETURNED'
+          : undefined,
+      },
     });
     this.logger.log(`[Bill webhook] Payment ${paymentId} → FAILED: ${reason}`);
   }
 
-  private async markProcessing(paymentId: string): Promise<void> {
+  private async markProcessing(
+    paymentId: string,
+    billStatus: string,
+    deliveryMethod?: string | null,
+  ): Promise<void> {
+    const checkUpdate =
+      deliveryMethod === 'CHECK'
+        ? {
+            checkStatus:
+              billStatus === 'SENT'
+                ? 'SENT'
+                : billStatus === 'IN_TRANSIT'
+                  ? 'IN_TRANSIT'
+                  : 'PENDING_MAIL',
+            ...(billStatus === 'SENT' || billStatus === 'IN_TRANSIT'
+              ? { checkMailedAt: new Date() }
+              : {}),
+          }
+        : {};
+
     await this.prisma.payment.update({
       where: { id: paymentId },
-      data: { status: 'PROCESSING' },
+      data: { status: 'PROCESSING', ...checkUpdate },
     });
-    this.logger.log(`[Bill webhook] Payment ${paymentId} → PROCESSING`);
+    this.logger.log(
+      `[Bill webhook] Payment ${paymentId} → PROCESSING (${billStatus})`,
+    );
   }
 
   /**

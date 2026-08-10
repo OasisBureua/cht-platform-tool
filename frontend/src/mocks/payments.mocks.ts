@@ -15,7 +15,12 @@ export interface PaymentItem {
   title: string;
   amount: number;
   status: PaymentStatus;
-  method?: 'Bill.com' | 'ACH' | 'Card' | 'N/A';
+  method?: 'Bill.com' | 'ACH' | 'Check' | 'Card' | 'N/A' | string;
+  deliveryMethod?: 'ACH' | 'CHECK' | null;
+  checkStatus?: string | null;
+  checkMailedAt?: string | null;
+  checkDeliveredAt?: string | null;
+  checkTrackingInfo?: string | null;
 }
 
 export const mockPaymentSummary: PaymentSummary = {

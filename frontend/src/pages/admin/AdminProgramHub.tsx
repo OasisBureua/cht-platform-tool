@@ -3,8 +3,9 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/admin';
 import RejectRegistrationModal, { type RejectEmailReason } from '../../components/admin/RejectRegistrationModal';
+import OperationalEmailModal from '../../components/admin/OperationalEmailModal';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import { Check, ChevronLeft, Copy, Download, ExternalLink, Loader2, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, Copy, Download, ExternalLink, Loader2, Mail, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
   adminSurveyDisplayTitle,
@@ -192,6 +193,8 @@ export default function AdminProgramHub() {
   const pendingRegIds = useMemo(() => pendingRegs.map((r) => r.id), [pendingRegs]);
   const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(() => new Set());
   const [rejectModalIds, setRejectModalIds] = useState<string[] | null>(null);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailPrefillEmails, setEmailPrefillEmails] = useState<string[] | undefined>(undefined);
 
   useEffect(() => {
     const allow = new Set(pendingRegIds);
@@ -341,6 +344,21 @@ export default function AdminProgramHub() {
         isSubmitting={rejectMut.isPending}
         count={rejectModalIds?.length ?? 0}
       />
+      <OperationalEmailModal
+        open={emailModalOpen}
+        onClose={() => {
+          setEmailModalOpen(false);
+          setEmailPrefillEmails(undefined);
+        }}
+        programId={programId}
+        programTitle={title}
+        recipients={registrations.map((r) => ({
+          email: r.user.email,
+          name: [r.user.firstName, r.user.lastName].filter(Boolean).join(' ') || r.user.email,
+          status: r.status,
+        }))}
+        initialSelectedEmails={emailPrefillEmails}
+      />
       <div className="flex flex-wrap items-center gap-4">
         <Link
           to={zoomType === 'MEETING' ? '/admin/office-hours' : '/admin/programs'}
@@ -349,6 +367,17 @@ export default function AdminProgramHub() {
           <ChevronLeft className="h-4 w-4" />
           Back to list
         </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setEmailPrefillEmails(undefined);
+            setEmailModalOpen(true);
+          }}
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+        >
+          <Mail className="h-4 w-4" aria-hidden />
+          Email registrants
+        </button>
       </div>
 
       <header>
@@ -631,6 +660,20 @@ export default function AdminProgramHub() {
                           className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-800 disabled:opacity-40"
                         >
                           Reject selected
+                        </button>
+                        <button
+                          type="button"
+                          disabled={selectedPendingList.length === 0}
+                          onClick={() => {
+                            const emails = pendingRegs
+                              .filter((r) => selectedPendingIds.has(r.id))
+                              .map((r) => r.user.email);
+                            setEmailPrefillEmails(emails);
+                            setEmailModalOpen(true);
+                          }}
+                          className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs font-semibold text-gray-800 disabled:opacity-40"
+                        >
+                          Email selected
                         </button>
                       </div>
                     </div>

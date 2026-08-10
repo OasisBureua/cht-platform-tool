@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { User, LogOut, Shield, Users, DollarSign, Bell, ExternalLink } from 'lucide-react';
+import { User, LogOut, Shield, Users, DollarSign, Bell, ExternalLink, ScrollText } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { dashboardApi } from '../../api/dashboard';
 
@@ -167,6 +167,12 @@ export default function AdminSettings() {
                 href="/admin/payments"
               />
               <ControlRow
+                icon={<ScrollText className="h-4 w-4" />}
+                label="Audit log"
+                description="Mutation trail for admins and authenticated users, plus auth events"
+                href="/admin/audit-log"
+              />
+              <ControlRow
                 icon={<Bell className="h-4 w-4" />}
                 label="API Docs"
                 description="Internal Swagger documentation for all endpoints"
@@ -184,6 +190,7 @@ export default function AdminSettings() {
             <div className="space-y-2">
               <ActionButton label="Manage Users" href="/admin/users" />
               <ActionButton label="View Payments" href="/admin/payments" />
+              <ActionButton label="Audit log" href="/admin/audit-log" />
               <ActionButton label="Programs" href="/admin/programs" />
               <ActionButton label="Webinar Scheduler" href="/admin/webinar-scheduler" />
               <button
