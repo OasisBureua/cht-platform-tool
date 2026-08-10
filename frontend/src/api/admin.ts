@@ -186,6 +186,24 @@ export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
   paymentsPaidCount: number;
+  paymentsPaidCents?: number;
+  pendingPaymentsCount?: number;
+  pendingRegistrationsCount?: number;
+  publishedLiveProgramsCount?: number;
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  actorId: string;
+  actorEmail: string | null;
+  actorRole?: string | null;
+  action: string;
+  resource: string | null;
+  resourceId: string | null;
+  metadata: unknown;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
 }
 
 export interface WebhookImportedProgram {
@@ -382,6 +400,32 @@ export const adminApi = {
       }
       throw err;
     }
+  },
+
+  listAuditLogs: async (params?: {
+    limit?: number;
+    resource?: string;
+    actorId?: string;
+    actorRole?: string;
+  }): Promise<{ items: AdminAuditLogEntry[]; total: number; limit: number }> => {
+    const { data } = await apiClient.get<{
+      items: AdminAuditLogEntry[];
+      total: number;
+      limit: number;
+    }>('/admin/audit-logs', { params });
+    return data;
+  },
+
+  exportPaymentsCsv: async (params?: {
+    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL';
+    from?: string;
+    to?: string;
+  }): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>('/payments/export.csv', {
+      params,
+      responseType: 'blob',
+    });
+    return data;
   },
 
   getPrograms: async (): Promise<AdminProgram[]> => {

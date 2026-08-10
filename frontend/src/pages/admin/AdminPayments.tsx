@@ -5,16 +5,29 @@ import { adminApi, type PendingPayment, type FailedPayment, type PaidPayment, ty
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download } from 'lucide-react';
 import { BillComMark } from '../../components/branding/BillComMark';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+async function downloadPaymentsCsv(status: 'PENDING' | 'FAILED' | 'PAID' | 'ALL' = 'ALL') {
+  const blob = await adminApi.exportPaymentsCsv({ status });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cht-payments-${status.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminPayments() {
   const queryClient = useQueryClient();
   const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const { data: pending, isLoading } = useQuery({
     queryKey: ['admin', 'pending-payments'],
@@ -111,7 +124,23 @@ export default function AdminPayments() {
             through <BillComMark size="sm" className="translate-y-px" /> (ACH or check).
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={exporting}
+            onClick={() => {
+              setExporting(true);
+              void downloadPaymentsCsv('ALL')
+                .catch((err) => {
+                  window.alert(getApiErrorMessage(err, 'CSV export failed.'));
+                })
+                .finally(() => setExporting(false));
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+          >
+            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export CSV
+          </button>
           <a
             href="#pending-table"
             className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"

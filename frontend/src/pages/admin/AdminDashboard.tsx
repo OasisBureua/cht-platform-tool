@@ -1,8 +1,25 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { BarChart3, CalendarClock, Radio, Wallet2, Users } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarClock,
+  ClipboardCheck,
+  FileBarChart,
+  Radio,
+  ScrollText,
+  Wallet2,
+  Users,
+} from 'lucide-react';
 import { adminApi } from '../../api/admin';
 import { getPercentChangeLabel } from '../../utils/percentChange';
+
+function formatDollars(cents: number | undefined) {
+  const n = typeof cents === 'number' ? cents : 0;
+  return `$${(n / 100).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  })}`;
+}
 
 export default function AdminDashboard() {
   const { data: stats } = useQuery({
@@ -19,7 +36,10 @@ export default function AdminDashboard() {
     ? getPercentChangeLabel(stats.activeHcpsCount ?? 0, stats.activeHcpsCountPreviousWeek ?? 0)
     : null;
 
-  const pendingCount = pendingPayments?.length ?? 0;
+  const pendingCount = pendingPayments?.length ?? stats?.pendingPaymentsCount ?? 0;
+  const pendingRegs = stats?.pendingRegistrationsCount ?? 0;
+  const livePrograms = stats?.publishedLiveProgramsCount ?? 0;
+  const paidCents = stats?.paymentsPaidCents ?? 0;
 
   return (
     <div className="space-y-4 md:space-y-8">
@@ -27,6 +47,13 @@ export default function AdminDashboard() {
         <h1 className="text-balance text-xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-2xl">
           Admin Dashboard
         </h1>
+        <Link
+          to="/admin/audit-log"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900 dark:text-zinc-300"
+        >
+          <ScrollText className="h-4 w-4" aria-hidden />
+          Audit log
+        </Link>
       </div>
 
       <div className="rounded-2xl border border-brand-200/80 bg-gradient-to-br from-brand-50/90 to-white p-5 shadow-sm dark:border-brand-900/50 dark:from-brand-950/40 dark:to-zinc-950">
@@ -65,9 +92,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Bento: asymmetric grid: dense on small screens, full 12-col on md+ */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-12 md:gap-5">
-        {/* Hero metric */}
         <Link
           to="/admin/users"
           className="group relative col-span-2 overflow-hidden rounded-2xl bg-gradient-to-br from-sky-50 via-white to-white p-5 shadow-[0_12px_40px_-24px_rgba(14,116,188,0.2)] ring-1 ring-sky-100/80 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-28px_rgba(14,116,188,0.28)] md:col-span-5 dark:from-sky-950/40 dark:via-zinc-900 dark:to-zinc-950 dark:ring-sky-900/40"
@@ -84,21 +109,19 @@ export default function AdminDashboard() {
           <p className="mt-1 text-sm font-semibold text-sky-800 group-hover:underline dark:text-sky-300">Active HCPs</p>
         </Link>
 
-        {/* Engagement: compact tile */}
         <Link
-          to="/admin/rx-analytics"
+          to="/admin/webinar-approvals"
           className="group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-violet-50 to-white p-4 shadow-[0_10px_36px_-22px_rgba(91,33,182,0.22)] ring-1 ring-violet-100/70 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 md:col-span-4 dark:from-violet-950/35 dark:to-zinc-900 dark:ring-violet-900/30"
         >
-          <BarChart3 className="h-6 w-6 text-violet-600 dark:text-violet-400" strokeWidth={1.75} aria-hidden />
+          <ClipboardCheck className="h-6 w-6 text-violet-600 dark:text-violet-400" strokeWidth={1.75} aria-hidden />
           <div className="mt-3">
-            <p className="text-2xl font-bold text-gray-400 tabular-nums dark:text-zinc-500">#</p>
+            <p className="text-2xl font-bold tabular-nums text-gray-900 dark:text-zinc-50">{pendingRegs}</p>
             <p className="mt-0.5 text-xs font-semibold text-violet-800 group-hover:underline dark:text-violet-300">
-              Engagement
+              Pending approvals
             </p>
           </div>
         </Link>
 
-        {/* Payments snapshot */}
         <Link
           to="/admin/payments"
           className="group relative col-span-1 flex flex-col justify-between overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50 to-white p-4 shadow-[0_10px_36px_-22px_rgba(180,83,9,0.2)] ring-1 ring-amber-100/80 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 md:col-span-3 dark:from-amber-950/30 dark:to-zinc-900 dark:ring-amber-900/35"
@@ -109,58 +132,80 @@ export default function AdminDashboard() {
               {stats?.paymentsPaidCount ?? 0}
             </p>
             <p className="mt-0.5 text-xs font-semibold text-amber-800 group-hover:underline dark:text-amber-300">
-              Payments
+              Payments paid
             </p>
           </div>
         </Link>
 
-        {/* Analytics: wide */}
         <div className="col-span-2 flex min-h-[220px] flex-col justify-between rounded-2xl bg-white/90 p-5 shadow-[0_12px_44px_-28px_rgba(0,0,0,0.12)] ring-1 ring-gray-200/80 dark:bg-zinc-900/80 dark:ring-zinc-700/60 md:col-span-8 md:min-h-[280px]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-gray-900 dark:text-zinc-100 md:text-lg">Analytics</h2>
+              <h2 className="text-base font-bold text-gray-900 dark:text-zinc-100 md:text-lg">Ops snapshot</h2>
               <p className="mt-1 max-w-prose text-xs leading-relaxed text-gray-600 dark:text-zinc-400 sm:text-sm">
-                Activity mix and earnings for the current week
+                Live programs, payout volume, and queues
               </p>
             </div>
             <Link
-              to="/admin/rx-analytics"
+              to="/admin/content-hub"
               className="shrink-0 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
             >
-              View all
+              Reporting →
             </Link>
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center py-6">
-            <div
-              className="h-36 w-36 rounded-full shadow-[inset_0_2px_8px_rgba(0,0,0,0.06)] ring-8 ring-gray-100/90 dark:ring-zinc-800/90"
-              style={{
-                background:
-                  'conic-gradient(from 180deg, rgb(59 130 246 / 0.35), rgb(168 85 247 / 0.35), rgb(52 211 153 / 0.35), rgb(59 130 246 / 0.35))',
-              }}
-              aria-hidden
-            />
-            <p className="mt-3 text-center text-xs text-gray-500 dark:text-zinc-500">Placeholder breakdown</p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-zinc-800/60">
+              <Radio className="h-5 w-5 text-gray-500" aria-hidden />
+              <p className="mt-3 text-2xl font-bold tabular-nums text-gray-900 dark:text-zinc-50">
+                {livePrograms}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-gray-600 dark:text-zinc-400">
+                Published live sessions
+              </p>
+            </div>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-zinc-800/60">
+              <BarChart3 className="h-5 w-5 text-gray-500" aria-hidden />
+              <p className="mt-3 text-2xl font-bold tabular-nums text-gray-900 dark:text-zinc-50">
+                {formatDollars(paidCents)}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-gray-600 dark:text-zinc-400">
+                Total paid (all time)
+              </p>
+            </div>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-zinc-800/60">
+              <Wallet2 className="h-5 w-5 text-gray-500" aria-hidden />
+              <p className="mt-3 text-2xl font-bold tabular-nums text-gray-900 dark:text-zinc-50">
+                {pendingCount}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-gray-600 dark:text-zinc-400">
+                Pending payouts
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Stacked column: campaign + queue */}
         <div className="col-span-2 flex flex-col gap-3 md:col-span-4 md:gap-5">
-          <div className="rounded-2xl bg-white/90 p-4 shadow-[0_10px_40px_-26px_rgba(0,0,0,0.14)] ring-1 ring-gray-200/70 dark:bg-zinc-900/80 dark:ring-zinc-700/60">
+          <Link
+            to="/admin/content-hub"
+            className="rounded-2xl bg-white/90 p-4 shadow-[0_10px_40px_-26px_rgba(0,0,0,0.14)] ring-1 ring-gray-200/70 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 dark:bg-zinc-900/80 dark:ring-zinc-700/60"
+          >
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-100">Campaign</h2>
-              <Radio className="h-4 w-4 text-gray-400 dark:text-zinc-500" aria-hidden />
+              <h2 className="text-sm font-bold text-gray-900 dark:text-zinc-100">Campaign reporting</h2>
+              <FileBarChart className="h-4 w-4 text-gray-400 dark:text-zinc-500" aria-hidden />
             </div>
-            <div className="mt-3 flex min-h-[100px] items-center justify-center rounded-xl bg-gradient-to-b from-gray-50 to-gray-100/80 text-center dark:from-zinc-800/80 dark:to-zinc-900/50">
-              <p className="px-2 text-xs text-gray-500 dark:text-zinc-500">Campaign performance · coming soon</p>
-            </div>
-          </div>
+            <p className="mt-3 text-sm text-gray-600 dark:text-zinc-400">
+              Content Hub analytics, executive reports, HubSpot sync, and CSV uploads.
+            </p>
+            <p className="mt-3 text-xs font-semibold text-brand-700 dark:text-brand-400">
+              Open Content Hub →
+            </p>
+          </Link>
 
           <Link
             to="/admin/payments"
             className="group rounded-2xl bg-gradient-to-br from-amber-50/90 via-white to-white p-4 shadow-[0_12px_40px_-24px_rgba(180,83,9,0.18)] ring-1 ring-amber-100/80 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 dark:from-amber-950/25 dark:via-zinc-900 dark:to-zinc-950 dark:ring-amber-900/30"
           >
             <p className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
-              {stats?.paymentsPaidCount ?? 0}
+              {pendingCount}
             </p>
             <p className="mt-0.5 text-sm font-semibold text-amber-800 group-hover:underline dark:text-amber-300">
               Payments queue

@@ -41,7 +41,7 @@ resource "aws_cognito_user_pool" "main" {
     temporary_password_validity_days = 7
   }
 
-  # MFA: OPTIONAL at launch, flipped to ON via platform.tfvars at day 14
+  # MFA: keep OPTIONAL while the app soft-gates /mfa/setup for all roles; flip to ON after enrollments.
   mfa_configuration = var.mfa_configuration
 
   software_token_mfa_configuration {

@@ -10,7 +10,7 @@ export default function MfaSetup() {
   const location = useLocation();
   const from =
     (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
-    (user?.role === 'ADMIN' ? '/admin' : '/app/settings');
+    (user?.role === 'ADMIN' ? '/admin' : '/app/home');
 
   const [secretCode, setSecretCode] = useState<string | null>(null);
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
