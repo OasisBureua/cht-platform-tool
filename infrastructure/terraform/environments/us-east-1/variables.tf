@@ -477,7 +477,7 @@ variable "cognito_domain_prefix" {
 }
 
 variable "cognito_mfa_configuration" {
-  description = "MFA enforcement level: OPTIONAL (grace period) or ON (enforced). Flip to ON via platform.tfvars at day 14."
+  description = "MFA enforcement level: OPTIONAL (app soft-gate) or ON (required at Cognito sign-in). Flip to ON after users enroll."
   type        = string
   default     = "OPTIONAL"
 }

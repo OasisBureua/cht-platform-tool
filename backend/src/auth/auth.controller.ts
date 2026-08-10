@@ -109,15 +109,20 @@ export class AuthController {
   }
 
   /**
-   * Soft admin MFA enrollment gate (redirect to /mfa/setup).
-   * Enabled on fordev only (`CHT_ENVIRONMENT=dev`); disabled on testapp/platform
-   * until we are ready to require it there.
+   * Soft MFA enrollment gate (redirect to /mfa/setup) for all roles.
+   * Enabled in deployed Cognito environments; local NODE_ENV=development stays optional.
+   * Cognito pool MFA remains OPTIONAL until flipped to ON via Terraform.
    */
-  private isAdminMfaEnrollmentEnforced(): boolean {
+  private isMfaEnrollmentEnforced(): boolean {
     const env = (
       this.configService.get<string>('app.environment') || ''
     ).toLowerCase();
-    return env === 'dev';
+    return (
+      env === 'dev' ||
+      env === 'platform' ||
+      env === 'prod' ||
+      env === 'staging'
+    );
   }
 
   private async rejectIfLocked(
@@ -227,8 +232,8 @@ export class AuthController {
       );
     }
     const mfaEnrollmentRequired =
-      this.isAdminMfaEnrollmentEnforced() &&
-      user.role === UserRole.ADMIN &&
+      this.isMfaEnrollmentEnforced() &&
+      this.cognitoService.isConfigured() &&
       !mfaEnabled;
 
     this.attachSessionCookie(res, sessionToken);
@@ -1565,11 +1570,9 @@ export class AuthController {
       }
     }
 
-    // Soft enforce for admins on fordev only while pool MFA is OPTIONAL.
-    // Disabled on platform/testapp via isAdminMfaEnrollmentEnforced().
+    // Soft enforce for all roles in deployed Cognito envs while pool MFA is OPTIONAL.
     const mfaEnrollmentRequired =
-      this.isAdminMfaEnrollmentEnforced() &&
-      user.role === UserRole.ADMIN &&
+      this.isMfaEnrollmentEnforced() &&
       this.cognitoService.isConfigured() &&
       !mfaEnabled;
 
