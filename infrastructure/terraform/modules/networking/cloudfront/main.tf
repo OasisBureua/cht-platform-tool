@@ -78,6 +78,22 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
       override                   = true
     }
   }
+
+  # Meeting SDK (WASM / SharedArrayBuffer): COOP + COEP credentialless enable
+  # crossOriginIsolated without blocking cross-origin images that lack CORP.
+  # ZoomEmbed also sets disableCORP when isolation is unavailable.
+  custom_headers_config {
+    items {
+      header   = "Cross-Origin-Opener-Policy"
+      override = true
+      value    = "same-origin"
+    }
+    items {
+      header   = "Cross-Origin-Embedder-Policy"
+      override = true
+      value    = "credentialless"
+    }
+  }
 }
 
 resource "aws_cloudfront_distribution" "frontend" {

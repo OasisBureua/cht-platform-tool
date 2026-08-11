@@ -1073,6 +1073,7 @@ export class AdminController {
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
+    let zoomMeetingPassword: string | undefined;
     let zoomError: string | undefined;
     let zoomPanelistError: string | undefined;
     let zoomPanelistLinks: Array<{
@@ -1094,6 +1095,7 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+          zoomMeetingPassword = created.password;
         } else {
           const created = await this.zoom.createWebinar({
             topic: body.title.trim(),
@@ -1105,6 +1107,7 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+          zoomMeetingPassword = created.password;
 
           // Build panelist list: CHM Staff (fixed) + each speaker with an indexed email
           // Host does not get a personal Zoom URL, they start the session via the host start link.
@@ -1166,6 +1169,7 @@ export class AdminController {
       zoomMeetingId,
       zoomJoinUrl,
       zoomStartUrl,
+      ...(zoomMeetingPassword ? { zoomMeetingPassword } : {}),
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
@@ -1305,6 +1309,7 @@ export class AdminController {
       zoomMeetingId: zoomData.id,
       zoomJoinUrl: zoomData.joinUrl,
       zoomStartUrl: zoomData.startUrl,
+      ...(zoomData.password ? { zoomMeetingPassword: zoomData.password } : {}),
       status: 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,

@@ -19,15 +19,15 @@ Production auth is hosted on MediaHub (`https://mediahub.communityhealth.media`)
 
 ## Zoom
 
-Used for webinar/meeting creation, SDK embed, and attendance webhooks.
+Used for webinar/meeting creation, in-app Meeting SDK embed, and attendance webhooks.
 
 ### Webhook
 
 - **URL:** `https://<domain>/api/webhooks/zoom`
 - **Secret:** `ZOOM_WEBHOOK_SECRET` (from Zoom Event Subscriptions)
-- **Events:** `webinar.created`, `meeting.created`, `webinar.ended`, `meeting.ended`, `meeting.participant_joined`, `meeting.participant_left`
+- **Events:** `webinar.created`, `meeting.created`, `webinar.ended`, `meeting.ended`, `meeting.participant_joined`, `meeting.participant_left`, `webinar.participant_joined`, `webinar.participant_left`
 
-`webinar.created` / `meeting.created` auto-import DRAFT programs for admin review. Participant events link to programs by `zoomMeetingId`.
+`webinar.created` / `meeting.created` auto-import DRAFT programs for admin review. Participant events link to programs by `zoomMeetingId`. In-app Meeting SDK join/leave also writes `WebinarParticipantEvent` rows via `POST /api/webinars|:office-hours/:id/sdk-attendance`.
 
 ### API (Server-to-Server OAuth)
 
@@ -35,7 +35,14 @@ Used for webinar/meeting creation, SDK embed, and attendance webhooks.
 |----------|---------|
 | `ZOOM_ACCOUNT_ID` | Account ID |
 | `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` | OAuth app |
-| `ZOOM_SDK_KEY`, `ZOOM_SDK_SECRET` | In-meeting SDK |
+| `ZOOM_SDK_KEY`, `ZOOM_SDK_SECRET` | Meeting SDK JWT (Marketplace **Meeting SDK** app — required for in-browser embed) |
+
+### In-app embed (Meeting SDK)
+
+- Office Hours: `POST /api/office-hours/:id/meeting-sdk-auth`
+- Live Webinars: `POST /api/webinars/:id/meeting-sdk-auth`
+- Returns `{ signature, sdkKey, meetingNumber, password, userName, userEmail, tk? }` (role `0` attendee).
+- CloudFront + Vite serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` so SharedArrayBuffer / WASM can run. Confirm `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` are set in Secrets Manager for **dev and prod** (already wired in deploy workflows / ECS task defs).
 
 ## JotForm
 

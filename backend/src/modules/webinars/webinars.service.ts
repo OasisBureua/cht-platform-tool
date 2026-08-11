@@ -15,14 +15,23 @@ import { resolveLiveJoinWindow } from '../../utils/session-join-window';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { SurveyType } from '@prisma/client';
 
-export interface OfficeHoursMeetingSdkAuthDto {
+export interface MeetingSdkAuthDto {
   signature: string;
   sdkKey: string;
   meetingNumber: string;
   password: string;
   userName: string;
   userEmail: string;
+  /**
+   * Zoom registrant token (`tk` query param) when the join URL includes one.
+   * Required by Meeting SDK when Zoom-side registration is enabled.
+   */
+  tk?: string;
+  sessionKind: 'WEBINAR' | 'MEETING';
 }
+
+/** @deprecated Prefer MeetingSdkAuthDto */
+export type OfficeHoursMeetingSdkAuthDto = MeetingSdkAuthDto;
 
 export interface WebinarItem {
   id: string;
@@ -350,12 +359,13 @@ export class WebinarsService {
 
   /**
    * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
-   * Requires published office-hours program, Zoom meeting id, and enrollment.
+   * Supports WEBINAR and MEETING session types with gating that mirrors the in-app Join button.
    */
-  async getOfficeHoursMeetingSdkAuth(
+  async getMeetingSdkAuth(
     authUser: AuthUser,
     programId: string,
-  ): Promise<OfficeHoursMeetingSdkAuthDto> {
+    sessionType: 'WEBINAR' | 'MEETING',
+  ): Promise<MeetingSdkAuthDto> {
     if (!this.zoomMeetingSdk.isConfigured()) {
       throw new ServiceUnavailableException(
         'In-browser Zoom is not configured. Set ZOOM_SDK_KEY and ZOOM_SDK_SECRET from a Zoom Meeting SDK app.',
@@ -364,20 +374,27 @@ export class WebinarsService {
 
     const userId = authUser.userId;
 
-    const enrollment = await this.prisma.programEnrollment.findUnique({
-      where: { userId_programId: { userId, programId } },
+    const program = await this.prisma.program.findFirst({
+      where: { id: programId, status: 'PUBLISHED', zoomSessionType: sessionType },
     });
-    if (!enrollment) {
-      throw new ForbiddenException(
-        'Register for this session before joining in the app.',
+    if (!program?.zoomMeetingId) {
+      throw new BadRequestException(
+        sessionType === 'WEBINAR'
+          ? 'This webinar has no Zoom webinar ID yet.'
+          : 'This session has no Zoom meeting ID yet.',
       );
     }
 
-    const program = await this.prisma.program.findFirst({
-      where: { id: programId, status: 'PUBLISHED', zoomSessionType: 'MEETING' },
-    });
-    if (!program?.zoomMeetingId) {
-      throw new BadRequestException('This session has no Zoom meeting ID yet.');
+    await this.assertMeetingSdkJoinEligibility(userId, programId, sessionType);
+
+    const joinWindow = resolveLiveJoinWindow(
+      program.startDate,
+      program.duration,
+    );
+    if (!joinWindow.canJoin) {
+      throw new ForbiddenException(
+        joinWindow.reason || 'Join is not available yet for this session.',
+      );
     }
 
     const userName = (
@@ -386,9 +403,38 @@ export class WebinarsService {
       'Participant'
     ).slice(0, 200);
     const userEmail = (authUser.email || '').trim();
+    if (sessionType === 'WEBINAR' && !userEmail) {
+      throw new BadRequestException(
+        'An email address is required to join a webinar in the browser.',
+      );
+    }
 
     const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');
-    const password = program.zoomMeetingPassword?.trim() ?? '';
+    let password = program.zoomMeetingPassword?.trim() ?? '';
+    if (!password) {
+      password = passwordFromJoinUrl(program.zoomJoinUrl) || '';
+    }
+    if (!password && this.zoom.isConfigured()) {
+      try {
+        const remote =
+          sessionType === 'WEBINAR'
+            ? await this.zoom.getWebinarById(meetingNumber)
+            : await this.zoom.getMeetingById(meetingNumber);
+        if (remote?.password?.trim()) {
+          password = remote.password.trim();
+          await this.prisma.program
+            .update({
+              where: { id: program.id },
+              data: { zoomMeetingPassword: password },
+            })
+            .catch(() => undefined);
+        }
+      } catch {
+        /* best-effort password backfill */
+      }
+    }
+
+    const tk = tkFromJoinUrl(program.zoomJoinUrl) || undefined;
     const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, 0);
 
     return {
@@ -398,6 +444,136 @@ export class WebinarsService {
       password,
       userName,
       userEmail,
+      ...(tk ? { tk } : {}),
+      sessionKind: sessionType,
     };
+  }
+
+  /** Office Hours embed auth (MEETING). */
+  async getOfficeHoursMeetingSdkAuth(
+    authUser: AuthUser,
+    programId: string,
+  ): Promise<MeetingSdkAuthDto> {
+    return this.getMeetingSdkAuth(authUser, programId, 'MEETING');
+  }
+
+  /** Live webinar embed auth (WEBINAR). */
+  async getWebinarMeetingSdkAuth(
+    authUser: AuthUser,
+    programId: string,
+  ): Promise<MeetingSdkAuthDto> {
+    return this.getMeetingSdkAuth(authUser, programId, 'WEBINAR');
+  }
+
+  /**
+   * Record in-app Meeting SDK join/leave to complement Zoom webhook attendance rows.
+   */
+  async recordSdkAttendance(
+    authUser: AuthUser,
+    programId: string,
+    event: 'JOINED' | 'LEFT',
+    sessionType?: 'WEBINAR' | 'MEETING',
+  ): Promise<{ ok: true }> {
+    const userId = authUser.userId;
+    const program = await this.prisma.program.findFirst({
+      where: {
+        id: programId,
+        status: 'PUBLISHED',
+        ...(sessionType ? { zoomSessionType: sessionType } : {}),
+      },
+      select: { id: true, zoomMeetingId: true, zoomSessionType: true },
+    });
+    if (!program) {
+      throw new BadRequestException('Session not found.');
+    }
+
+    await this.assertMeetingSdkJoinEligibility(
+      userId,
+      programId,
+      program.zoomSessionType as 'WEBINAR' | 'MEETING',
+    );
+
+    await this.prisma.webinarParticipantEvent.create({
+      data: {
+        programId: program.id,
+        userId,
+        event,
+        zoomMeetingId: program.zoomMeetingId ?? undefined,
+        participantName: authUser.name?.trim() || undefined,
+        participantEmail: authUser.email?.trim() || undefined,
+        rawPayload: {
+          source: 'meeting_sdk',
+          sessionKind: program.zoomSessionType,
+        },
+      },
+    });
+
+    this.logger.log(
+      `SDK attendance ${event} program=${program.id} user=${userId}`,
+    );
+    return { ok: true };
+  }
+
+  private async assertMeetingSdkJoinEligibility(
+    userId: string,
+    programId: string,
+    sessionType: 'WEBINAR' | 'MEETING',
+  ): Promise<void> {
+    const registration = await this.prisma.programRegistration.findUnique({
+      where: { userId_programId: { userId, programId } },
+      select: { status: true },
+    });
+
+    if (
+      registration?.status === 'PENDING' ||
+      registration?.status === 'REJECTED' ||
+      registration?.status === 'SURVEY_SUBMITTED' ||
+      registration?.status === 'WAITLISTED'
+    ) {
+      throw new ForbiddenException(
+        registration.status === 'PENDING'
+          ? 'Your registration is pending approval. Join opens after an administrator approves you.'
+          : registration.status === 'REJECTED'
+            ? 'Your registration was not approved for this session.'
+            : 'Finish registration and wait for approval before joining.',
+      );
+    }
+
+    if (registration?.status === 'APPROVED') {
+      return;
+    }
+
+    const enrollment = await this.prisma.programEnrollment.findUnique({
+      where: { userId_programId: { userId, programId } },
+    });
+    if (enrollment) {
+      return;
+    }
+
+    throw new ForbiddenException(
+      sessionType === 'WEBINAR'
+        ? 'You must be registered and approved before joining this webinar in the app.'
+        : 'Register for this session before joining in the app.',
+    );
+  }
+}
+
+function passwordFromJoinUrl(joinUrl: string | null | undefined): string {
+  if (!joinUrl?.trim()) return '';
+  try {
+    const u = new URL(joinUrl);
+    return u.searchParams.get('pwd')?.trim() || '';
+  } catch {
+    return '';
+  }
+}
+
+function tkFromJoinUrl(joinUrl: string | null | undefined): string {
+  if (!joinUrl?.trim()) return '';
+  try {
+    const u = new URL(joinUrl);
+    return u.searchParams.get('tk')?.trim() || '';
+  } catch {
+    return '';
   }
 }
