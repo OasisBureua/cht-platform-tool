@@ -91,6 +91,33 @@ function panelistUrlLogLabel(joinUrl: string): string {
   }
 }
 
+/**
+ * Zoom start_time must be `yyyy-MM-ddTHH:mm:ssZ` (GMT) or `yyyy-MM-ddTHH:mm:ss` (local + timezone).
+ * Fractional seconds are unsupported and cause Zoom to mis-read GMT times as local wall-clock
+ * (e.g. 4:00 PM EDT → `20:00:00.000Z` → shown as 8:00 PM Eastern).
+ */
+export function formatZoomStartTime(startTime: string): string {
+  const trimmed = startTime.trim();
+  const withOffset = trimmed.match(
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})$/i,
+  );
+  if (withOffset) {
+    const suffix = withOffset[2].toUpperCase();
+    if (suffix === 'Z') return `${withOffset[1]}Z`;
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
+    }
+  }
+  const local = trimmed.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?$/);
+  if (local) return local[1];
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+  return trimmed;
+}
+
 @Injectable()
 export class ZoomService implements OnModuleInit {
   private readonly logger = new Logger(ZoomService.name);
@@ -354,8 +381,9 @@ export class ZoomService implements OnModuleInit {
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
+    const startTime = formatZoomStartTime(params.startTime);
     this.logger.log(
-      `Zoom: creating webinar "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`,
+      `Zoom: creating webinar "${params.topic}" at ${startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`,
     );
 
     const token = await this.getAccessToken();
@@ -365,7 +393,7 @@ export class ZoomService implements OnModuleInit {
         {
           topic: params.topic,
           agenda: params.agenda,
-          start_time: params.startTime,
+          start_time: startTime,
           duration: params.duration,
           timezone: params.timezone || 'America/New_York',
           type: 5, // Webinar type
@@ -406,7 +434,7 @@ export class ZoomService implements OnModuleInit {
     const body: Record<string, unknown> = {};
     if (params.topic) body.topic = params.topic;
     if (params.agenda !== undefined) body.agenda = params.agenda;
-    if (params.startTime) body.start_time = params.startTime;
+    if (params.startTime) body.start_time = formatZoomStartTime(params.startTime);
     if (params.duration !== undefined) body.duration = params.duration;
     if (params.timezone) body.timezone = params.timezone;
 
@@ -633,8 +661,9 @@ export class ZoomService implements OnModuleInit {
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
+    const startTime = formatZoomStartTime(params.startTime);
     this.logger.log(
-      `Zoom: creating meeting (office hours) "${params.topic}" at ${params.startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`,
+      `Zoom: creating meeting (office hours) "${params.topic}" at ${startTime} (${params.timezone ?? 'America/New_York'}, ${params.duration} min)`,
     );
 
     const token = await this.getAccessToken();
@@ -644,7 +673,7 @@ export class ZoomService implements OnModuleInit {
         {
           topic: params.topic,
           type: 2,
-          start_time: params.startTime,
+          start_time: startTime,
           duration: params.duration,
           timezone: params.timezone || 'America/New_York',
           agenda: params.agenda,
@@ -727,7 +756,7 @@ export class ZoomService implements OnModuleInit {
     const body: Record<string, unknown> = {};
     if (params.topic) body.topic = params.topic;
     if (params.agenda !== undefined) body.agenda = params.agenda;
-    if (params.startTime) body.start_time = params.startTime;
+    if (params.startTime) body.start_time = formatZoomStartTime(params.startTime);
     if (params.duration !== undefined) body.duration = params.duration;
     if (params.timezone) body.timezone = params.timezone;
 

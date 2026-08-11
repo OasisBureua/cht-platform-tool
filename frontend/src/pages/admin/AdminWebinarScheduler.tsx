@@ -5,20 +5,12 @@ import { Video, Calendar } from 'lucide-react';
 import { DateTime } from 'luxon';
 import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
 import { wallClockToUtcIso } from '../../utils/wallClockToUtcIso';
+import {
+  SCHEDULER_TIMEZONES,
+  formatTimezoneLabel,
+} from '../../utils/timezoneOptions';
 import { BillComMark } from '../../components/branding/BillComMark';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
-
-
-const TIMEZONES = [
-  'America/New_York',
-  'America/Chicago',
-  'America/Denver',
-  'America/Los_Angeles',
-  'America/Phoenix',
-  'America/Anchorage',
-  'Pacific/Honolulu',
-  'UTC',
-];
 
 export type AdminWebinarSchedulerProps = {
   /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
@@ -444,9 +436,9 @@ export default function AdminWebinarScheduler({
                 onChange={(e) => setTimezone(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               >
-                {TIMEZONES.map((tz) => (
-                  <option key={tz} value={tz}>
-                    {tz.replace('America/', '').replace('_', ' ')}
+                {SCHEDULER_TIMEZONES.map((tz) => (
+                  <option key={tz.value} value={tz.value}>
+                    {formatTimezoneLabel(tz.value, tz.name, date || undefined)}
                   </option>
                 ))}
               </select>
