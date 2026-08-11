@@ -558,6 +558,22 @@ export class AuthController {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
 
+    // SCRUM-188: block signup if this NPI already belongs to an existing user.
+    // Prisma unique constraint enforces this at the DB layer; the pre-check
+    // returns a friendly message before we touch Cognito.
+    if (npi.length === 10) {
+      const existing = await this.authService.findByNpi(npi);
+      if (existing) {
+        this.logger.log(
+          `[Auth] Cognito signup blocked for ${emailStr}: NPI ${npi} already registered`,
+        );
+        return {
+          error:
+            'An account with this NPI number already exists. Sign in to your existing account instead.',
+        };
+      }
+    }
+
     const locationError = validateRegistrationLocation({ state, zipCode });
     if (locationError) return { error: locationError };
     const stateNorm = normalizeUsStateCode(state)!;
@@ -592,6 +608,15 @@ export class AuthController {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Sign up failed.';
       this.logger.warn(`[Auth] Cognito signup failed for ${emailStr}: ${msg}`);
+      // SCRUM-188: race-condition backstop — pre-check + unique constraint
+      // both cover the common case; catch the P2002 on npiNumber if two
+      // signups collided between the pre-check and the DB write.
+      if (/Unique constraint.*npiNumber|P2002.*npiNumber/i.test(msg)) {
+        return {
+          error:
+            'An account with this NPI number already exists. Sign in to your existing account instead.',
+        };
+      }
       // Do not reveal whether the email is already registered (align with /recover).
       if (/usernameexists|already exists/i.test(msg)) {
         this.logger.log(
