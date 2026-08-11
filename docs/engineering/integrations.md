@@ -19,7 +19,7 @@ Production auth is hosted on MediaHub (`https://mediahub.communityhealth.media`)
 
 ## Zoom
 
-Used for webinar/meeting creation, in-app Meeting SDK embed, and attendance webhooks.
+Used for webinar/meeting creation, in-app Meeting SDK embed (iframe + Zoom CDN), and attendance webhooks.
 
 ### Webhook
 
@@ -42,6 +42,7 @@ Used for webinar/meeting creation, in-app Meeting SDK embed, and attendance webh
 - Office Hours: `POST /api/office-hours/:id/meeting-sdk-auth`
 - Live Webinars: `POST /api/webinars/:id/meeting-sdk-auth`
 - Returns `{ signature, sdkKey, meetingNumber, password, userName, userEmail, tk? }` (role `0` attendee).
+- The SPA hosts Zoom in a same-origin iframe (`/zoom-embed.html`) that loads Meeting SDK **4.1.0** from `source.zoom.us` with Zoom’s bundled React 18. Do **not** import `@zoom/meetingsdk` into the React 19 app (causes `ReactCurrentOwner` errors).
 - CloudFront + Vite serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` so SharedArrayBuffer / WASM can run. Confirm `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` are set in Secrets Manager for **dev and prod** (already wired in deploy workflows / ECS task defs).
 
 ## JotForm
