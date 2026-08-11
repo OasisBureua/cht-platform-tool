@@ -12,7 +12,8 @@ import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNot
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 import { getApiErrorMessage } from '../api/client';
 
-type StepKey = 'intake' | 'slot' | 'submit';
+// SCRUM-178: removed 'submit' step; last-step button fires submitRegistration directly.
+type StepKey = 'intake' | 'slot';
 
 const REGISTRATION_INTAKE_FORM_ID = 'registration-intake-survey';
 
@@ -60,7 +61,6 @@ function buildSteps(p: Program, hasSlots: boolean): StepKey[] {
     steps.push('intake');
   }
   if (hasSlots) steps.push('slot');
-  steps.push('submit');
   return steps;
 }
 
@@ -135,8 +135,8 @@ export default function ProgramRegisterWizard() {
     }
   }, [intakeMyResponse]);
 
-  // After intake answers exist but registration is not submitted yet, land on Submit
-  // (or keep a further draft step). Never auto-call submitRegistration.
+  // After intake answers exist but registration is not submitted yet, advance to
+  // the slot step when present. Never auto-call submitRegistration.
   useEffect(() => {
     if (!id || !program || steps.length === 0 || restoredFromServer.current) return;
     const intakeDone =
@@ -148,15 +148,12 @@ export default function ProgramRegisterWizard() {
     }
     if (!intakeDone) return;
 
-    const submitIdx = steps.indexOf('submit');
     const slotIdx = steps.indexOf('slot');
     const draft = readDraft(id);
     if (draft && draft.stepIndex > 0 && draft.stepIndex < steps.length) {
       setStepIndex(draft.stepIndex);
     } else if (slotIdx >= 0 && !selectedSlotId) {
       setStepIndex(slotIdx);
-    } else if (submitIdx >= 0) {
-      setStepIndex(submitIdx);
     }
     restoredFromServer.current = true;
   }, [
@@ -222,8 +219,11 @@ export default function ProgramRegisterWizard() {
     );
   }
 
-  const current = steps[stepIndex] ?? 'submit';
-  const isLastStep = stepIndex >= steps.length - 1;
+  const current: StepKey | undefined = steps[stepIndex];
+  // SCRUM-178: with 'submit' step removed, "last step" means "clicking button
+  // fires submitRegistration". Empty steps (no intake, no slot) also counts as
+  // last-step from render zero — user gets a direct Submit button immediately.
+  const isLastStep = steps.length === 0 || stepIndex >= steps.length - 1;
   const intakeRecorded =
     !!intakeSubmissionId?.trim() || !!intakeMyResponse?.submitted;
   const alreadyRegistered =
@@ -231,9 +231,20 @@ export default function ProgramRegisterWizard() {
     myRegistration?.status === 'APPROVED';
 
   const goNext = () => {
+    if (alreadyRegistered && isLastStep) {
+      navigate(`${backHref}?registered=1`);
+      return;
+    }
+
     if (current === 'intake') {
       setIntakeSubmitError(null);
+      // If intake is done AND this is the last step, submit directly.
+      // Otherwise advance to the next step (slot).
       if (intakeRecorded) {
+        if (isLastStep) {
+          submitMut.mutate();
+          return;
+        }
         setStepIndex((i) => Math.min(i + 1, steps.length - 1));
         return;
       }
@@ -251,15 +262,15 @@ export default function ProgramRegisterWizard() {
         form.requestSubmit();
         return;
       }
+      if (isLastStep) {
+        submitMut.mutate();
+        return;
+      }
       setStepIndex((i) => Math.min(i + 1, steps.length - 1));
       return;
     }
 
     if (isLastStep) {
-      if (alreadyRegistered) {
-        navigate(`${backHref}?registered=1`);
-        return;
-      }
       submitMut.mutate();
       return;
     }
@@ -303,24 +314,25 @@ export default function ProgramRegisterWizard() {
             <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
           ) : null}
 
-          <ol className="flex flex-wrap gap-2 text-xs">
-            {steps.map((s, i) => (
-              <li
-                key={`${s}-${i}`}
-                className={[
-                  'rounded-full px-3 py-1 font-semibold',
-                  i === stepIndex
-                    ? 'bg-brand-600 text-white'
-                    : i < stepIndex
-                      ? 'bg-green-100 text-green-900'
-                      : 'bg-gray-100 text-gray-600',
-                ].join(' ')}
-              >
-                {i + 1}.{' '}
-                {s === 'intake' ? 'Intake' : s === 'slot' ? 'Pick a time' : 'Submit'}
-              </li>
-            ))}
-          </ol>
+          {steps.length > 0 && (
+            <ol className="flex flex-wrap gap-2 text-xs">
+              {steps.map((s, i) => (
+                <li
+                  key={`${s}-${i}`}
+                  className={[
+                    'rounded-full px-3 py-1 font-semibold',
+                    i === stepIndex
+                      ? 'bg-brand-600 text-white'
+                      : i < stepIndex
+                        ? 'bg-green-100 text-green-900'
+                        : 'bg-gray-100 text-gray-600',
+                  ].join(' ')}
+                >
+                  {i + 1}. {s === 'intake' ? 'Intake' : 'Pick a time'}
+                </li>
+              ))}
+            </ol>
+          )}
 
           <div className="space-y-4">
             {alreadyRegistered ? (
@@ -378,8 +390,9 @@ export default function ProgramRegisterWizard() {
                 ) : null}
                 {intakeRecorded ? (
                   <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                    Your answers are saved. Continue when you are ready — registration
-                    is not submitted until the last step.
+                    Your answers are saved. {isLastStep
+                      ? 'Click Submit registration when ready.'
+                      : 'Continue when you are ready.'}
                   </p>
                 ) : null}
               </div>
@@ -402,35 +415,16 @@ export default function ProgramRegisterWizard() {
               </div>
             )}
 
-            {current === 'submit' && !alreadyRegistered && (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 space-y-2">
-                {program.registrationRequiresApproval ? (
-                  <>
-                    <p className="font-semibold text-amber-950">
-                      Ready to submit
-                    </p>
-                    <p>
-                      Your request goes to an administrator for review. Until it
-                      is approved, your registration shows as pending and you
-                      cannot join the session.
-                    </p>
-                  </>
-                ) : (
-                  <p>
-                    Submitting completes your registration
-                    {program.zoomSessionType === 'MEETING'
-                      ? ' and reserves your time slot'
-                      : ''}
-                    .
-                  </p>
-                )}
-                {program.intakeSurveyId && !intakeSubmissionId?.trim() ? (
-                  <p className="text-xs text-amber-900 bg-amber-100/80 border border-amber-200 rounded-lg px-3 py-2">
-                    You have not finished the intake form. You can submit now
-                    and complete it later from this page.
-                  </p>
-                ) : null}
-              </div>
+            {/* SCRUM-178: summary/"Ready to submit" tab removed. Submit button on the
+                last step (intake or slot) fires the mutation directly. When neither
+                intake nor slot applies (steps.length === 0), the Submit button shows
+                immediately with a brief context line. */}
+            {steps.length === 0 && !alreadyRegistered && (
+              <p className="text-sm text-gray-600">
+                {program.registrationRequiresApproval
+                  ? 'Submitting sends a registration request to an administrator for review.'
+                  : `Submitting completes your registration${program.zoomSessionType === 'MEETING' ? ' and reserves your time slot' : ''}.`}
+              </p>
             )}
 
             {submitMut.isError && (
