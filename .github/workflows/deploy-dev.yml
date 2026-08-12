@@ -434,6 +434,12 @@ jobs:
               --cache-control "public, max-age=300, must-revalidate"
           done
 
+          if [ -f dist/zoom-embed.html ]; then
+            aws s3 cp dist/zoom-embed.html "s3://${BUCKET}/zoom-embed.html" \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "text/html"
+          fi
+
           aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
             --cache-control "no-cache, no-store, must-revalidate" \
             --content-type "text/html"

@@ -42,8 +42,8 @@ Used for webinar/meeting creation, in-app Meeting SDK embed (iframe + Zoom CDN),
 - Office Hours: `POST /api/office-hours/:id/meeting-sdk-auth`
 - Live Webinars: `POST /api/webinars/:id/meeting-sdk-auth`
 - Returns `{ signature, sdkKey, meetingNumber, password, userName, userEmail, tk? }` (role `0` attendee).
-- The SPA hosts Zoom in a same-origin iframe (`/zoom-embed.html`) that loads Meeting SDK **4.1.0** from `source.zoom.us` with Zoom’s bundled React 18. Do **not** import `@zoom/meetingsdk` into the React 19 app (causes `ReactCurrentOwner` errors).
-- CloudFront must use `X-Frame-Options: SAMEORIGIN` (not `DENY`) so `/zoom-embed.html` can load in that iframe. Also serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless`.
+- The SPA hosts Zoom in a **blob:** iframe (Zoom CDN Meeting SDK **4.1.0** + React 18). Do **not** import `@zoom/meetingsdk` into the React 19 app (`ReactCurrentOwner`). Frontend S3 sync excludes `*.html` except `index.html`, so `/zoom-embed.html` used to 403 (`AccessDeniedAccess Denied`).
+- CloudFront `X-Frame-Options` should be `SAMEORIGIN`. Also serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless`.
 - In Zoom Marketplace → Meeting SDK app → **Embed** / allowed domains, add the CHT web origins (e.g. `https://testapp.communityhealth.media`, staging, localhost). Confirm `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` are from that **Meeting SDK** app (not S2S OAuth) in Secrets Manager for **dev and prod**.
 
 ## JotForm

@@ -31,7 +31,8 @@ export class ZoomMeetingSdkService {
     const sdkSecret = this.config.get<string>('zoom.sdkSecret');
     if (!sdkSecret) throw new Error('ZOOM_SDK_SECRET not configured');
 
-    const iat = Math.floor(Date.now() / 1000);
+    // Zoom requires iat slightly in the past to avoid clock-skew "invalid token" rejects.
+    const iat = Math.floor(Date.now() / 1000) - 30;
     const exp = iat + 60 * 60 * 2;
     const mn = String(meetingNumber).replace(/\s/g, '');
     const payload = {

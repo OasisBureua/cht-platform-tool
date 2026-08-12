@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, Loader2, MonitorPlay, X } from 'lucide-react';
 import type { MeetingSdkAuth } from '../../api/webinars';
+import { ZOOM_EMBED_HTML } from './zoomEmbedHtml';
 
 function isBrowserSupportedForZoomEmbed(): boolean {
   if (typeof window === 'undefined') return false;
@@ -34,9 +35,9 @@ export type ZoomEmbedProps = {
 /**
  * Shared Zoom Meeting SDK embed for Office Hours and Live Webinars.
  *
- * Runs Zoom inside a same-origin iframe (`/zoom-embed.html`) that loads the SDK from
- * Zoom's CDN with React 18. Importing `@zoom/meetingsdk` into this React 19 SPA throws
- * `Cannot read properties of undefined (reading 'ReactCurrentOwner')`.
+ * Runs Zoom inside a blob: iframe that loads the SDK from Zoom's CDN with React 18.
+ * Importing `@zoom/meetingsdk` into this React 19 SPA throws ReactCurrentOwner.
+ * Deploy excludes `*.html` except index.html, so we do not fetch `/zoom-embed.html` from S3.
  */
 export function ZoomEmbed({
   fetchAuth,
@@ -55,6 +56,20 @@ export function ZoomEmbed({
   const frameReadyRef = useRef(false);
   const joinedRef = useRef(false);
   const pendingCredsRef = useRef<MeetingSdkAuth | null>(null);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setIframeSrc(null);
+      return;
+    }
+    const blob = new Blob([ZOOM_EMBED_HTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    setIframeSrc(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [open]);
 
   const report = useCallback(
     async (event: 'JOINED' | 'LEFT') => {
@@ -71,7 +86,7 @@ export function ZoomEmbed({
   const postToFrame = useCallback((msg: object) => {
     const win = iframeRef.current?.contentWindow;
     if (!win) return;
-    win.postMessage(msg, window.location.origin);
+    win.postMessage(msg, '*');
   }, []);
 
   const sendJoinWhenReady = useCallback(
@@ -88,7 +103,14 @@ export function ZoomEmbed({
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      const fromOurFrame = event.source === iframeRef.current?.contentWindow;
+      if (!fromOurFrame) return;
+      if (
+        event.origin !== window.location.origin &&
+        event.origin !== 'null'
+      ) {
+        return;
+      }
       const data = event.data as ZoomFrameMessage | null;
       if (!data || typeof data !== 'object' || !('type' in data)) return;
 
@@ -251,18 +273,13 @@ export function ZoomEmbed({
         <p className="text-xs text-gray-500">{hint}</p>
       )}
 
-      {open ? (
+      {open && iframeSrc ? (
         <iframe
           ref={iframeRef}
           title="Zoom session"
-          src="/zoom-embed.html"
+          src={iframeSrc}
           className="min-h-[480px] w-full rounded-xl border border-gray-200 bg-black/5 overflow-hidden"
           allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
-          referrerPolicy="strict-origin-when-cross-origin"
-          onLoad={() => {
-            // Some browsers don't re-fire ready if cached; nudge after load.
-            // The iframe also posts cht-zoom-ready on boot.
-          }}
         />
       ) : null}
     </div>
