@@ -28,6 +28,7 @@ import {
 } from '../../utils/program-survey-config';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
+import { buildUserRecipientWhere } from '../admin/user-recipient-filters.util';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
@@ -1336,6 +1337,9 @@ export class ProgramRegistrationsService {
     programIds: string[];
     userIds?: string[];
     role?: 'HCP' | 'KOL';
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
   }): Promise<{
     registerUrl: string;
     programs: { id: string; title: string }[];
@@ -1371,8 +1375,17 @@ export class ProgramRegistrationsService {
 
     let userIds = opts.userIds?.length ? [...new Set(opts.userIds)] : undefined;
     if (!userIds?.length && opts.role) {
+      const cities = opts.cities?.map((v) => v.trim()).filter(Boolean);
+      const states = opts.states?.map((v) => v.trim()).filter(Boolean);
+      const institutions = opts.institutions?.map((v) => v.trim()).filter(Boolean);
       const users = await this.prisma.user.findMany({
-        where: { role: opts.role, status: 'ACTIVE' },
+        where: buildUserRecipientWhere({
+          role: opts.role,
+          status: 'ACTIVE',
+          cities: cities?.length ? cities : undefined,
+          states: states?.length ? states : undefined,
+          institutions: institutions?.length ? institutions : undefined,
+        }),
         select: { id: true },
       });
       userIds = users.map((u) => u.id);

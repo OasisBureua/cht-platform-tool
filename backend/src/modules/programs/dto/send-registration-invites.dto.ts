@@ -31,4 +31,32 @@ export class SendRegistrationInvitesDto {
   @IsOptional()
   @IsEnum(['HCP', 'KOL'])
   role?: 'HCP' | 'KOL';
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Filter role-based recipients by city (AND with other filters)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cities?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Filter role-based recipients by state (AND with other filters)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  states?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Filter role-based recipients by organization / institution (AND with other filters)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  institutions?: string[];
 }
