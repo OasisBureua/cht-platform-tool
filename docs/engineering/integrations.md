@@ -44,7 +44,8 @@ Used for webinar/meeting creation, in-app Meeting SDK embed (iframe + Zoom CDN),
 - Returns `{ signature, sdkKey, meetingNumber, password, userName, userEmail, tk? }` (role `0` attendee).
 - The SPA hosts Zoom in a **blob:** iframe (Zoom CDN Meeting SDK **4.1.0** + React 18). Do **not** import `@zoom/meetingsdk` into the React 19 app (`ReactCurrentOwner`). Frontend S3 sync excludes `*.html` except `index.html`, so `/zoom-embed.html` used to 403 (`AccessDeniedAccess Denied`).
 - CloudFront `X-Frame-Options` should be `SAMEORIGIN`. Also serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless`.
-- In Zoom Marketplace → Meeting SDK app → **Embed** / allowed domains, add the CHT web origins (e.g. `https://testapp.communityhealth.media`, staging, localhost). Confirm `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` are from that **Meeting SDK** app (not S2S OAuth) in Secrets Manager for **dev and prod**.
+- In Zoom Marketplace, use a **Meeting SDK** app (legacy) or a **General App** with Embed → Meeting SDK enabled. Add CHT origins to the embed/domain allowlist.
+- JWT `appKey` is `ZOOM_SDK_KEY` (SDK Key or Client ID) signed with `ZOOM_SDK_SECRET`. If those secrets are empty, the backend falls back to `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET`. Invalid signature usually means the key/secret are from the S2S OAuth app **without** Meeting SDK embed, or production credentials on an unpublished app (use development credentials until the app is published).
 
 ## JotForm
 

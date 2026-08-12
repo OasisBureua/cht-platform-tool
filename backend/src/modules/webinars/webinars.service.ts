@@ -409,7 +409,7 @@ export class WebinarsService {
       );
     }
 
-    const meetingNumber = String(program.zoomMeetingId).replace(/\s/g, '');
+    const meetingNumber = String(program.zoomMeetingId).replace(/\D/g, '');
     let password = program.zoomMeetingPassword?.trim() ?? '';
     if (!password) {
       password = passwordFromJoinUrl(program.zoomJoinUrl) || '';
