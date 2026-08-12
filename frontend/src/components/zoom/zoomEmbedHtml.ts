@@ -13,8 +13,15 @@ export const ZOOM_EMBED_HTML = `<!doctype html>
       html, body { margin: 0; height: 100%; background: #0b0f14; color: #e5e7eb;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
       #status { padding: 12px 14px; font-size: 13px; line-height: 1.4; }
-      #meetingSDKElement { width: 100%; height: 100%; min-height: 480px; }
-      .err { color: #fecaca; background: #7f1d1d; border-radius: 8px; margin: 12px; padding: 10px 12px; }
+      #meetingSDKElement { width: 100%; height: 100%; min-height: 640px; }
+      .waiting {
+        color: #78350f;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 8px;
+        margin: 12px;
+        padding: 10px 12px;
+      }
     </style>
     <script src="https://source.zoom.us/4.1.0/lib/vendor/react.min.js"></script>
     <script src="https://source.zoom.us/4.1.0/lib/vendor/react-dom.min.js"></script>
@@ -36,10 +43,10 @@ export const ZOOM_EMBED_HTML = `<!doctype html>
           try { return parent.location.origin; } catch (e) { return '*'; }
         })();
 
-        function setStatus(text, isError) {
+        function setStatus(text, isError, isWaiting) {
           if (!STATUS) return;
           STATUS.textContent = text || '';
-          STATUS.className = isError ? 'err' : '';
+          STATUS.className = isWaiting ? 'waiting' : isError ? 'err' : '';
           STATUS.style.display = text ? 'block' : 'none';
         }
 
@@ -108,9 +115,24 @@ export const ZOOM_EMBED_HTML = `<!doctype html>
           if (!data || typeof data !== 'object') return;
           if (data.type === 'cht-zoom-join') {
             join(data.payload || {}).catch(function (err) {
-              var message = (err && err.message) ||
+              var raw = (err && err.message) || '';
+              var lower = String(raw).toLowerCase();
+              var waiting =
+                lower.indexOf('has not started') !== -1 ||
+                lower.indexOf('not started') !== -1 ||
+                lower.indexOf('waiting for the host') !== -1 ||
+                lower.indexOf('waiting for host') !== -1 ||
+                lower.indexOf('host has not started') !== -1;
+              if (waiting) {
+                var waitMsg =
+                  'Waiting for the host to start this session. Once they start it in Zoom, click Join in browser again.';
+                setStatus(waitMsg, false, true);
+                post({ type: 'cht-zoom-error', code: 'waiting_for_host', message: waitMsg });
+                return;
+              }
+              var message = raw ||
                 'Could not start in-browser Zoom. Use Open in Zoom if needed.';
-              setStatus(message, true);
+              setStatus(message, true, false);
               post({ type: 'cht-zoom-error', message: message });
             });
             return;

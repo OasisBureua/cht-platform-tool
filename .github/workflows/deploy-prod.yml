@@ -11,6 +11,10 @@ on:
         description: 'Plan only: skip apply approval and deploy steps'
         type: boolean
         default: false
+      deploy_all:
+        description: 'Deploy all lanes (ignore change detection)'
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-platform
@@ -33,6 +37,7 @@ permissions:
   id-token: write
   contents: read
   issues: write
+  actions: read
 
 jobs:
   gate:
@@ -58,6 +63,8 @@ jobs:
       deploy_backend: ${{ steps.scope.outputs.deploy_backend }}
       deploy_frontend: ${{ steps.scope.outputs.deploy_frontend }}
       deploy_infra: ${{ steps.scope.outputs.deploy_infra }}
+      base_sha: ${{ steps.base.outputs.base_sha }}
+      base_source: ${{ steps.base.outputs.base_source }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -65,12 +72,28 @@ jobs:
           fetch-depth: 0
           ref: ${{ needs.gate.outputs.checkout_ref }}
 
+      - name: Resolve change base
+        if: github.event.inputs.deploy_all != 'true'
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x scripts/ci-resolve-deploy-base.sh
+          ./scripts/ci-resolve-deploy-base.sh \
+            "${{ github.event_name }}" \
+            "${{ github.event.before || '' }}" \
+            "deploy-prod.yml" \
+            "${{ github.ref_name }}" \
+            "origin/main"
+
       - name: Detect changed paths
-        # workflow_dispatch has no event.before; scope script deploys all lanes.
-        if: github.event_name != 'workflow_dispatch'
+        if: github.event.inputs.deploy_all != 'true' && steps.base.outputs.base_resolved == 'true'
         uses: dorny/paths-filter@v4
         id: filter
         with:
+          ref: ${{ github.sha }}
+          base: ${{ steps.base.outputs.base_sha }}
+          list-files: shell
           filters: |
             backend:
               - 'backend/**'
@@ -79,19 +102,26 @@ jobs:
               - 'frontend/**'
             infra:
               - 'infrastructure/**'
-              - 'scripts/**'
-              - '.github/workflows/deploy-dev.yml'
-              - '.github/workflows/deploy-prod.yml'
 
       - name: Set deploy scope
         id: scope
         run: |
           chmod +x scripts/ci-detect-deploy-scope.sh
+          FORCE_ALL=false
+          if [ "${{ github.event.inputs.deploy_all }}" = "true" ]; then
+            FORCE_ALL=true
+          elif [ "${{ steps.base.outputs.base_resolved || 'false' }}" != "true" ]; then
+            echo "No change base SHA; deploying all lanes."
+            FORCE_ALL=true
+          fi
           ./scripts/ci-detect-deploy-scope.sh \
-            "${{ github.event_name }}" \
+            "$FORCE_ALL" \
             "${{ steps.filter.outputs.backend || 'false' }}" \
             "${{ steps.filter.outputs.frontend || 'false' }}" \
             "${{ steps.filter.outputs.infra || 'false' }}"
+          echo "Changed backend files: ${{ steps.filter.outputs.backend_files || 'n/a' }}"
+          echo "Changed frontend files: ${{ steps.filter.outputs.frontend_files || 'n/a' }}"
+          echo "Changed infra files: ${{ steps.filter.outputs.infra_files || 'n/a' }}"
 
   test:
     name: Run tests
@@ -186,6 +216,8 @@ jobs:
           echo "| Backend (images + ECS image roll) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Infra (Terraform plan/apply) | ${{ needs.changes.outputs.deploy_infra }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Frontend (build + S3 + CloudFront) | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Change base: \`${{ needs.changes.outputs.base_sha || 'n/a' }}\` (${{ needs.changes.outputs.base_source || 'n/a' }})" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v6

@@ -15,7 +15,22 @@ type ZoomFrameMessage =
   | { type: 'cht-zoom-ready' }
   | { type: 'cht-zoom-joined' }
   | { type: 'cht-zoom-left' }
-  | { type: 'cht-zoom-error'; message?: string };
+  | { type: 'cht-zoom-error'; message?: string; code?: string };
+
+function isWaitingForHostMessage(message: string | undefined | null): boolean {
+  if (!message) return false;
+  const m = message.toLowerCase();
+  return (
+    m.includes('has not started') ||
+    m.includes('not started') ||
+    m.includes('waiting for the host') ||
+    m.includes('waiting for host') ||
+    m.includes('host has not started')
+  );
+}
+
+const WAITING_FOR_HOST_COPY =
+  'Waiting for the host to start this session. Once they start it in Zoom, click Join in browser again.';
 
 export type ZoomEmbedProps = {
   /** Fetch Meeting SDK join credentials (JWT + meeting number + password). */
@@ -51,6 +66,7 @@ export function ZoomEmbed({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [waitingForHost, setWaitingForHost] = useState(false);
   const [unsupported, setUnsupported] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const frameReadyRef = useRef(false);
@@ -128,6 +144,7 @@ export function ZoomEmbed({
         joinedRef.current = true;
         setLoading(false);
         setError(null);
+        setWaitingForHost(false);
         void report('JOINED');
         return;
       }
@@ -142,11 +159,15 @@ export function ZoomEmbed({
 
       if (data.type === 'cht-zoom-error') {
         setLoading(false);
-        setError(
-          data.message ||
-            'Could not start in-browser Zoom. Use “Open in Zoom” if needed.',
-        );
         joinedRef.current = false;
+        const raw = data.message || '';
+        if (data.code === 'waiting_for_host' || isWaitingForHostMessage(raw)) {
+          setWaitingForHost(true);
+          setError(null);
+          return;
+        }
+        setWaitingForHost(false);
+        setError(raw || 'Could not start in-browser Zoom. Use “Open in Zoom” if needed.');
       }
     };
 
@@ -165,11 +186,13 @@ export function ZoomEmbed({
     setOpen(false);
     setLoading(false);
     setError(null);
+    setWaitingForHost(false);
     frameReadyRef.current = false;
   }, [postToFrame, report]);
 
   const join = useCallback(async () => {
     setError(null);
+    setWaitingForHost(false);
     setUnsupported(false);
 
     if (!isBrowserSupportedForZoomEmbed()) {
@@ -246,6 +269,12 @@ export function ZoomEmbed({
         ) : null}
       </div>
 
+      {waitingForHost && (
+        <p className="text-sm text-amber-950 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+          {WAITING_FOR_HOST_COPY}
+        </p>
+      )}
+
       {error && (
         <p className="text-sm text-red-700 rounded-lg bg-red-50 px-3 py-2">
           {error}
@@ -278,7 +307,7 @@ export function ZoomEmbed({
           ref={iframeRef}
           title="Zoom session"
           src={iframeSrc}
-          className="min-h-[480px] w-full rounded-xl border border-gray-200 bg-black/5 overflow-hidden"
+          className="h-[75vh] min-h-[640px] w-full rounded-xl border border-gray-200 bg-black/5 overflow-hidden"
           allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
         />
       ) : null}
