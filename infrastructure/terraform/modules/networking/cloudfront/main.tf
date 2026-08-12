@@ -59,7 +59,9 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
       override = true
     }
     frame_options {
-      frame_option = "DENY"
+      # SAMEORIGIN (not DENY): Zoom Meeting SDK runs in a same-origin iframe
+      # (/zoom-embed.html). DENY blocks that embed and surfaces as Access Denied.
+      frame_option = "SAMEORIGIN"
       override     = true
     }
     referrer_policy {

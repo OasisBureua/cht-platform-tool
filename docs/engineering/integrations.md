@@ -43,7 +43,8 @@ Used for webinar/meeting creation, in-app Meeting SDK embed (iframe + Zoom CDN),
 - Live Webinars: `POST /api/webinars/:id/meeting-sdk-auth`
 - Returns `{ signature, sdkKey, meetingNumber, password, userName, userEmail, tk? }` (role `0` attendee).
 - The SPA hosts Zoom in a same-origin iframe (`/zoom-embed.html`) that loads Meeting SDK **4.1.0** from `source.zoom.us` with Zoom’s bundled React 18. Do **not** import `@zoom/meetingsdk` into the React 19 app (causes `ReactCurrentOwner` errors).
-- CloudFront + Vite serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless` so SharedArrayBuffer / WASM can run. Confirm `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` are set in Secrets Manager for **dev and prod** (already wired in deploy workflows / ECS task defs).
+- CloudFront must use `X-Frame-Options: SAMEORIGIN` (not `DENY`) so `/zoom-embed.html` can load in that iframe. Also serve `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: credentialless`.
+- In Zoom Marketplace → Meeting SDK app → **Embed** / allowed domains, add the CHT web origins (e.g. `https://testapp.communityhealth.media`, staging, localhost). Confirm `ZOOM_SDK_KEY` / `ZOOM_SDK_SECRET` are from that **Meeting SDK** app (not S2S OAuth) in Secrets Manager for **dev and prod**.
 
 ## JotForm
 
