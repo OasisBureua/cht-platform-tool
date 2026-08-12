@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Mail, Link2, Check } from 'lucide-react';
+import { pushClipShareClick, type ShareChannel } from '../lib/analytics';
 
 function IconFacebook({ className }: { className?: string }) {
   return (
@@ -20,13 +21,32 @@ function IconLinkedIn({ className }: { className?: string }) {
 /**
  * Share this page URL: social (opens platform share dialog) + copy + email.
  */
-export function ShareButtons({ title, url }: { title: string; url: string }) {
+export function ShareButtons({
+  title,
+  url,
+  analytics,
+}: {
+  title: string;
+  url: string;
+  analytics?: { clip_id: string; surface: string };
+}) {
   const [copied, setCopied] = useState(false);
+
+  const track = (channel: ShareChannel) => {
+    if (!analytics) return;
+    pushClipShareClick({
+      clip_id: analytics.clip_id,
+      clip_title: title,
+      channel,
+      surface: analytics.surface,
+    });
+  };
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      track('copy');
       setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
@@ -55,6 +75,7 @@ export function ShareButtons({ title, url }: { title: string; url: string }) {
           rel="noopener noreferrer"
           className={iconBtn}
           aria-label="Share on Facebook"
+          onClick={() => track('facebook')}
         >
           <IconFacebook className="h-5 w-5" />
         </a>
@@ -64,13 +85,14 @@ export function ShareButtons({ title, url }: { title: string; url: string }) {
           rel="noopener noreferrer"
           className={iconBtn}
           aria-label="Share on LinkedIn"
+          onClick={() => track('linkedin')}
         >
           <IconLinkedIn className="h-5 w-5" />
         </a>
         <button type="button" onClick={copy} className={iconBtn} aria-label={copied ? 'Link copied' : 'Copy link'}>
           {copied ? <Check className="h-5 w-5 text-green-600" /> : <Link2 className="h-5 w-5" />}
         </button>
-        <a href={emailHref} className={iconBtn} aria-label="Share by email">
+        <a href={emailHref} className={iconBtn} aria-label="Share by email" onClick={() => track('email')}>
           <Mail className="h-5 w-5" />
         </a>
       </div>
