@@ -1335,6 +1335,7 @@ export class ProgramRegistrationsService {
   async sendRegistrationInvites(opts: {
     programIds: string[];
     userIds?: string[];
+    emails?: string[];
     role?: 'HCP' | 'KOL';
   }): Promise<{
     registerUrl: string;
@@ -1370,6 +1371,11 @@ export class ProgramRegistrationsService {
     const registerUrl = `${base}/app/live/register-multiple?programs=${programs.map((p) => p.id).join(',')}`;
 
     let userIds = opts.userIds?.length ? [...new Set(opts.userIds)] : undefined;
+    const rawEmails = (opts.emails ?? [])
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const inviteEmails = [...new Set(rawEmails)];
+
     if (!userIds?.length && opts.role) {
       const users = await this.prisma.user.findMany({
         where: { role: opts.role, status: 'ACTIVE' },
@@ -1377,20 +1383,49 @@ export class ProgramRegistrationsService {
       });
       userIds = users.map((u) => u.id);
     }
-    if (!userIds?.length) {
+    if (!userIds?.length && !inviteEmails.length) {
       throw new BadRequestException(
-        'Select at least one recipient or choose a role (HCP / KOL).',
+        'Select at least one recipient, choose a role (HCP / KOL), or enter email addresses.',
       );
     }
 
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: userIds }, status: 'ACTIVE' },
-      select: { id: true, email: true, firstName: true },
-    });
+    const users = userIds?.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds }, status: 'ACTIVE' },
+          select: { id: true, email: true, firstName: true },
+        })
+      : [];
+
+    // Consolidate raw emails that match existing user accounts — send once with
+    // the account's firstName rather than as an unregistered invite.
+    const registeredEmailLower = new Set(
+      users.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[],
+    );
+    const matchedExistingUsers = inviteEmails.length
+      ? await this.prisma.user.findMany({
+          where: {
+            email: { in: inviteEmails, mode: 'insensitive' },
+            status: 'ACTIVE',
+          },
+          select: { id: true, email: true, firstName: true },
+        })
+      : [];
+    const usersById = new Map(users.map((u) => [u.id, u]));
+    for (const u of matchedExistingUsers) {
+      if (!usersById.has(u.id)) usersById.set(u.id, u);
+    }
+    const mergedUsers = [...usersById.values()];
+
+    const usersByEmailLower = new Set(
+      mergedUsers.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[],
+    );
+    const unregisteredEmails = inviteEmails.filter(
+      (e) => !usersByEmailLower.has(e),
+    );
 
     const skipped: { userId: string; email: string; reason: string }[] = [];
     let emailed = 0;
-    for (const user of users) {
+    for (const user of mergedUsers) {
       if (!user.email?.trim()) {
         skipped.push({
           userId: user.id,
@@ -1411,6 +1446,23 @@ export class ProgramRegistrationsService {
         skipped.push({
           userId: user.id,
           email: user.email,
+          reason: (err as Error).message,
+        });
+      }
+    }
+    for (const email of unregisteredEmails) {
+      try {
+        await this.sesEmail.sendRegistrationInviteEmail({
+          to: email,
+          firstName: '',
+          programTitles: programs.map((p) => p.title),
+          registerUrl,
+        });
+        emailed += 1;
+      } catch (err) {
+        skipped.push({
+          userId: '',
+          email,
           reason: (err as Error).message,
         });
       }

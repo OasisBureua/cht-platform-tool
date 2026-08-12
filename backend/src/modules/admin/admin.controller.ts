@@ -1466,6 +1466,7 @@ export class AdminController {
     return this.programRegistrations.sendRegistrationInvites({
       programIds: body.programIds,
       userIds: body.userIds,
+      emails: body.emails,
       role: body.role,
     });
   }
