@@ -115,6 +115,7 @@ export class ProgramsService {
     zoomMeetingId?: string;
     zoomJoinUrl?: string;
     zoomStartUrl?: string;
+    zoomMeetingPassword?: string;
     zoomSessionType?: 'WEBINAR' | 'MEETING';
     registrationRequiresApproval?: boolean;
     jotformIntakeFormUrl?: string | null;
@@ -145,6 +146,7 @@ export class ProgramsService {
         zoomMeetingId: dto.zoomMeetingId ?? null,
         zoomJoinUrl: dto.zoomJoinUrl ?? null,
         zoomStartUrl: dto.zoomStartUrl ?? null,
+        zoomMeetingPassword: dto.zoomMeetingPassword?.trim() || null,
         ...(dto.status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
         registrationRequiresApproval: dto.registrationRequiresApproval ?? true,
         ...(dto.jotformIntakeFormUrl !== undefined &&

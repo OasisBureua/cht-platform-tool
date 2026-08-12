@@ -3,8 +3,10 @@ import {
   Get,
   Post,
   Param,
+  Body,
   Logger,
   NotFoundException,
+  BadRequestException,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
@@ -13,7 +15,7 @@ import { AuthUser } from '../../auth/auth.service';
 import {
   WebinarsService,
   WebinarItem,
-  OfficeHoursMeetingSdkAuthDto,
+  MeetingSdkAuthDto,
 } from './webinars.service';
 
 @Controller('office-hours')
@@ -31,9 +33,27 @@ export class OfficeHoursController {
   async meetingSdkAuth(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
-  ): Promise<OfficeHoursMeetingSdkAuthDto> {
+  ): Promise<MeetingSdkAuthDto> {
     this.logger.log(`Meeting SDK auth for program ${id} user ${user.userId}`);
     return this.webinarsService.getOfficeHoursMeetingSdkAuth(user, id);
+  }
+
+  /**
+   * POST /api/office-hours/:id/sdk-attendance
+   * Client-side Meeting SDK join/leave → WebinarParticipantEvent.
+   */
+  @Post(':id/sdk-attendance')
+  @UseGuards(JwtAuthGuard)
+  async sdkAttendance(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Body() body: { event?: string },
+  ): Promise<{ ok: true }> {
+    const event = body?.event === 'LEFT' ? 'LEFT' : body?.event === 'JOINED' ? 'JOINED' : null;
+    if (!event) {
+      throw new BadRequestException('event must be JOINED or LEFT');
+    }
+    return this.webinarsService.recordSdkAttendance(user, id, event, 'MEETING');
   }
 
   @Get()

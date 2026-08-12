@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
+import { WebinarZoomEmbed } from '../components/zoom/WebinarZoomEmbed';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -587,17 +588,10 @@ export default function WebinarDetail() {
             </div>
           ) : null}
           {program.zoomJoinUrl?.trim() && program.canJoinSession !== false && enrolled ? (
-            <a
-              href={program.zoomJoinUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Opens Zoom as an attendee (view-only listener)"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-            >
-              <Video className="h-4 w-4" />
-              Join session
-              <ExternalLink className="h-4 w-4 opacity-90" />
-            </a>
+            <WebinarZoomEmbed
+              programId={program.id}
+              joinUrlFallback={program.zoomJoinUrl}
+            />
           ) : enrolled ? (
             <button
               type="button"

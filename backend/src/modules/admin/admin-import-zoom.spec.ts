@@ -44,9 +44,10 @@ describe('AdminController importZoomSession', () => {
       surveysService as unknown as SurveysService,
       prisma as unknown as PrismaService,
       {} as ConfigService,
-      {} as import('../auth/auth.service').AuthService,
+      {} as import('../../auth/auth.service').AuthService,
       zoom as unknown as ZoomService,
       {} as SessionHeroPresignService,
+      {} as import('../email/ses-email.service').SesEmailService,
     );
   });
 

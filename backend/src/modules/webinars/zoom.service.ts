@@ -13,6 +13,8 @@ export interface ZoomWebinar {
   joinUrl: string;
   startUrl: string;
   timezone: string;
+  /** Attendee/meeting passcode when Zoom returns one (needed for Meeting SDK join). */
+  password?: string;
   thumbnail?: string;
 }
 
@@ -62,6 +64,7 @@ interface ZoomWebinarResponse {
   join_url: string;
   start_url: string;
   timezone: string;
+  password?: string;
 }
 
 /** Zoom scheduled meeting API response (same shape as webinar for our mapping). */
@@ -75,6 +78,7 @@ interface ZoomMeetingApiResponse {
   join_url: string;
   start_url: string;
   timezone: string;
+  password?: string;
 }
 
 /** Zoom panelist URLs share the webinar path; uniqueness is in the `tk=` query param. */
@@ -364,6 +368,7 @@ export class ZoomService implements OnModuleInit {
         joinUrl: data.join_url,
         startUrl: data.start_url,
         timezone: data.timezone,
+        password: data.password?.trim() || undefined,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -415,6 +420,7 @@ export class ZoomService implements OnModuleInit {
       joinUrl: data.join_url,
       startUrl: data.start_url,
       timezone: data.timezone,
+      password: data.password?.trim() || undefined,
     };
   }
 
@@ -705,6 +711,7 @@ export class ZoomService implements OnModuleInit {
       joinUrl: data.join_url,
       startUrl: data.start_url,
       timezone: data.timezone,
+      password: data.password?.trim() || undefined,
     };
   }
 
@@ -732,6 +739,7 @@ export class ZoomService implements OnModuleInit {
         joinUrl: data.join_url,
         startUrl: data.start_url,
         timezone: data.timezone,
+        password: data.password?.trim() || undefined,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
