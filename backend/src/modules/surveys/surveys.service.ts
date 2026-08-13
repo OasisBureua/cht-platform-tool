@@ -682,6 +682,42 @@ export class SurveysService {
     };
   }
 
+  /** Compact catalog used to match Content Hub / HubSpot campaigns to CHT surveys. */
+  async listSurveysForCampaignDashboard(): Promise<
+    Array<{
+      id: string;
+      title: string;
+      type: SurveyType;
+      jotformFormId: string | null;
+      programId: string;
+      programTitle: string;
+    }>
+  > {
+    const surveys = await this.prisma.survey.findMany({
+      where: {
+        type: { in: [SurveyType.FEEDBACK, SurveyType.INTAKE] },
+      },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        jotformFormId: true,
+        programId: true,
+        program: { select: { title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return surveys.map((s) => ({
+      id: s.id,
+      title: s.title,
+      type: s.type,
+      jotformFormId: s.jotformFormId,
+      programId: s.programId,
+      programTitle: s.program.title,
+    }));
+  }
+
   /** Admin: CSV export for registration (INTAKE) or post-event (FEEDBACK) responses. */
   async buildResponsesCsvForAdmin(surveyId: string): Promise<{
     filename: string;

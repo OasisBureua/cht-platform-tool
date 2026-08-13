@@ -16,6 +16,10 @@ export class ContentHubCampaignService {
     return this.client.isAdminConfigured();
   }
 
+  getAdminBaseUrl(): string {
+    return this.client.getAdminBaseUrl();
+  }
+
   listCampaigns(q?: string): Promise<CampaignListResponse> {
     return this.client.getAdmin<CampaignListResponse>('/campaigns', { q });
   }

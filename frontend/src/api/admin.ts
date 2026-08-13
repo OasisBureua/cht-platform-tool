@@ -371,6 +371,353 @@ export interface SurveyAnalytics {
   analytics: SurveyResponseAnalytics;
 }
 
+export type CampaignMetricTotals = {
+  sessions: number;
+  influencedContacts: number;
+  newContactsFirstTouch: number;
+  newContactsLastTouch: number;
+  emailSent: number;
+  emailOpens: number;
+  emailClicks: number;
+  landingPageViews: number;
+  formSubmissions: number;
+  socialClicks: number;
+  marketingEventRegistrations: number;
+};
+
+export type HubSpotSocialPost = {
+  id: string;
+  name: string;
+  network: string | null;
+  facebookClicks: number;
+  linkedinClicks: number;
+  twitterClicks: number;
+  totalClicks: number;
+};
+
+export type CampaignVideoStat = {
+  id: string;
+  title: string;
+  platform: string | null;
+  postedAt: string | null;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  durationSeconds: number | null;
+  url: string | null;
+};
+
+export type CampaignTranscriptStat = {
+  id: string;
+  title: string;
+  shootId: string | null;
+  shootName: string | null;
+  available: boolean;
+  wordCount: number | null;
+  doctors: string[];
+};
+
+export type CampaignSurveyQuestionSummary = {
+  prompt: string;
+  kind: string;
+  summary: string;
+};
+
+export type CampaignSurveySummary = {
+  surveyId: string;
+  title: string;
+  type: string;
+  jotformFormId: string | null;
+  jotformFormUrl: string | null;
+  programId: string | null;
+  programTitle: string | null;
+  totalResponses: number;
+  uniqueRespondents: number;
+  completionRate: number | null;
+  lastResponseAt: string | null;
+  jotformSubmissionCount: number | null;
+  questions: CampaignSurveyQuestionSummary[];
+};
+
+export type CampaignDashboardRow = {
+  hubspotCampaignId: string | null;
+  name: string;
+  status: string | null;
+  contentHubCampaignId: number | null;
+  contentHubCampaignName: string | null;
+  contentHubClientSponsor: string | null;
+  contentHubCampaignStatus: string | null;
+  contentHubPlatforms: string[];
+  contentHubPlatformSnapshots: Array<{
+    platform: string;
+    status: string;
+    syncedAt: string | null;
+    rowCount: number | null;
+  }>;
+  reportingPeriodStart: string | null;
+  reportingPeriodEnd: string | null;
+  hubspotSyncedAt: string | null;
+  dataSource: 'live' | 'cached' | 'content_hub' | 'list_only';
+  metrics: CampaignMetricTotals;
+  assetCounts: Record<string, number>;
+  socialPosts: HubSpotSocialPost[];
+  videos: CampaignVideoStat[];
+  transcripts: CampaignTranscriptStat[];
+  survey: CampaignSurveySummary | null;
+  warnings: string[];
+  errors: string[];
+};
+
+export type CampaignsDashboardResponse = {
+  syncedAt: string;
+  reportingPeriodStart: string;
+  reportingPeriodEnd: string;
+  hubspot: {
+    connected: boolean;
+    accountName: string | null;
+    portalId: string | null;
+    marketingScopesGranted: boolean;
+    missingScopes: string[];
+    scopeSetupUrl: string;
+    error?: string;
+  };
+  contentHub: {
+    configured: boolean;
+    reachable: boolean;
+    error?: string;
+    totalCampaigns: number;
+    linkedCampaigns: number;
+    campaignsWithCachedHubspotData: number;
+    platformsAvailable: number;
+  };
+  summary: CampaignMetricTotals & {
+    totalHubSpotCampaigns: number;
+    campaignsWithMetricData: number;
+    campaignsFromCache: number;
+    contentHubCampaignsShown: number;
+  };
+  campaigns: CampaignDashboardRow[];
+  warnings: string[];
+  errors: string[];
+};
+
+const EMPTY_CAMPAIGN_METRICS: CampaignMetricTotals = {
+  sessions: 0,
+  influencedContacts: 0,
+  newContactsFirstTouch: 0,
+  newContactsLastTouch: 0,
+  emailSent: 0,
+  emailOpens: 0,
+  emailClicks: 0,
+  landingPageViews: 0,
+  formSubmissions: 0,
+  socialClicks: 0,
+  marketingEventRegistrations: 0,
+};
+
+const DEFAULT_HUBSPOT_MARKETING_SCOPES = [
+  'marketing.campaigns.read',
+  'marketing-email',
+] as const;
+
+const HUBSPOT_SCOPES_DOC_URL =
+  'https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/scopes';
+
+function toNullableNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeCampaignVideos(raw: unknown): CampaignVideoStat[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const row = item as Record<string, unknown>;
+      const id = typeof row.id === 'string' ? row.id : null;
+      const title = typeof row.title === 'string' ? row.title.trim() : '';
+      if (!id || !title) return null;
+      return {
+        id,
+        title,
+        platform: typeof row.platform === 'string' ? row.platform : null,
+        postedAt: typeof row.postedAt === 'string' ? row.postedAt : null,
+        views: toNullableNumber(row.views),
+        likes: toNullableNumber(row.likes),
+        comments: toNullableNumber(row.comments),
+        durationSeconds: toNullableNumber(row.durationSeconds),
+        url: typeof row.url === 'string' ? row.url : null,
+      } satisfies CampaignVideoStat;
+    })
+    .filter((item): item is CampaignVideoStat => item != null);
+}
+
+function normalizeCampaignTranscripts(raw: unknown): CampaignTranscriptStat[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => {
+      if (!item || typeof item !== 'object') return null;
+      const row = item as Record<string, unknown>;
+      const id = typeof row.id === 'string' ? row.id : null;
+      const title = typeof row.title === 'string' ? row.title.trim() : '';
+      if (!id || !title) return null;
+      return {
+        id,
+        title,
+        shootId: typeof row.shootId === 'string' ? row.shootId : null,
+        shootName: typeof row.shootName === 'string' ? row.shootName : null,
+        available: row.available === true,
+        wordCount: toNullableNumber(row.wordCount),
+        doctors: Array.isArray(row.doctors)
+          ? row.doctors.filter((d): d is string => typeof d === 'string')
+          : [],
+      } satisfies CampaignTranscriptStat;
+    })
+    .filter((item): item is CampaignTranscriptStat => item != null);
+}
+
+function normalizeCampaignMetricTotals(
+  raw: Partial<CampaignMetricTotals> | null | undefined,
+): CampaignMetricTotals {
+  return {
+    sessions: raw?.sessions ?? 0,
+    influencedContacts: raw?.influencedContacts ?? 0,
+    newContactsFirstTouch: raw?.newContactsFirstTouch ?? 0,
+    newContactsLastTouch: raw?.newContactsLastTouch ?? 0,
+    emailSent: raw?.emailSent ?? 0,
+    emailOpens: raw?.emailOpens ?? 0,
+    emailClicks: raw?.emailClicks ?? 0,
+    landingPageViews: raw?.landingPageViews ?? 0,
+    formSubmissions: raw?.formSubmissions ?? 0,
+    socialClicks: raw?.socialClicks ?? 0,
+    marketingEventRegistrations: raw?.marketingEventRegistrations ?? 0,
+  };
+}
+
+function normalizeCampaignDashboardRow(
+  raw: Partial<CampaignDashboardRow> & Record<string, unknown>,
+): CampaignDashboardRow {
+  return {
+    hubspotCampaignId:
+      typeof raw.hubspotCampaignId === 'string' ? raw.hubspotCampaignId : null,
+    name: typeof raw.name === 'string' ? raw.name : 'Campaign',
+    status: typeof raw.status === 'string' ? raw.status : null,
+    contentHubCampaignId:
+      typeof raw.contentHubCampaignId === 'number' ? raw.contentHubCampaignId : null,
+    contentHubCampaignName:
+      typeof raw.contentHubCampaignName === 'string'
+        ? raw.contentHubCampaignName
+        : null,
+    contentHubClientSponsor:
+      typeof raw.contentHubClientSponsor === 'string'
+        ? raw.contentHubClientSponsor
+        : null,
+    contentHubCampaignStatus:
+      typeof raw.contentHubCampaignStatus === 'string'
+        ? raw.contentHubCampaignStatus
+        : null,
+    contentHubPlatforms: Array.isArray(raw.contentHubPlatforms)
+      ? raw.contentHubPlatforms.filter((p): p is string => typeof p === 'string')
+      : [],
+    contentHubPlatformSnapshots: Array.isArray(raw.contentHubPlatformSnapshots)
+      ? raw.contentHubPlatformSnapshots
+      : [],
+    reportingPeriodStart:
+      typeof raw.reportingPeriodStart === 'string' ? raw.reportingPeriodStart : null,
+    reportingPeriodEnd:
+      typeof raw.reportingPeriodEnd === 'string' ? raw.reportingPeriodEnd : null,
+    hubspotSyncedAt:
+      typeof raw.hubspotSyncedAt === 'string' ? raw.hubspotSyncedAt : null,
+    dataSource:
+      raw.dataSource === 'live' ||
+      raw.dataSource === 'cached' ||
+      raw.dataSource === 'content_hub'
+        ? raw.dataSource
+        : 'list_only',
+    metrics: normalizeCampaignMetricTotals(raw.metrics),
+    assetCounts:
+      raw.assetCounts && typeof raw.assetCounts === 'object'
+        ? (raw.assetCounts as Record<string, number>)
+        : {},
+    socialPosts: Array.isArray(raw.socialPosts)
+      ? (raw.socialPosts as HubSpotSocialPost[])
+      : [],
+    videos: normalizeCampaignVideos(raw.videos),
+    transcripts: normalizeCampaignTranscripts(raw.transcripts),
+    survey:
+      raw.survey && typeof raw.survey === 'object'
+        ? (raw.survey as CampaignSurveySummary)
+        : null,
+    warnings: Array.isArray(raw.warnings) ? raw.warnings : [],
+    errors: Array.isArray(raw.errors) ? raw.errors : [],
+  };
+}
+
+function normalizeCampaignsDashboardResponse(
+  data: Partial<CampaignsDashboardResponse> & Record<string, unknown>,
+): CampaignsDashboardResponse {
+  const summary = (data.summary ?? {}) as Partial<
+    CampaignsDashboardResponse['summary']
+  > & { campaignsWithMetrics?: number };
+  const hubspot = (data.hubspot ?? {}) as Partial<
+    CampaignsDashboardResponse['hubspot']
+  >;
+  const contentHub = (data.contentHub ?? {}) as Partial<
+    CampaignsDashboardResponse['contentHub']
+  >;
+
+  return {
+    syncedAt:
+      typeof data.syncedAt === 'string' ? data.syncedAt : new Date().toISOString(),
+    reportingPeriodStart:
+      typeof data.reportingPeriodStart === 'string' ? data.reportingPeriodStart : '',
+    reportingPeriodEnd:
+      typeof data.reportingPeriodEnd === 'string' ? data.reportingPeriodEnd : '',
+    hubspot: {
+      connected: hubspot.connected ?? false,
+      accountName: hubspot.accountName ?? null,
+      portalId: hubspot.portalId ?? null,
+      marketingScopesGranted: hubspot.marketingScopesGranted ?? false,
+      missingScopes:
+        Array.isArray(hubspot.missingScopes) && hubspot.missingScopes.length > 0
+          ? hubspot.missingScopes
+          : [...DEFAULT_HUBSPOT_MARKETING_SCOPES],
+      scopeSetupUrl: hubspot.scopeSetupUrl ?? HUBSPOT_SCOPES_DOC_URL,
+      ...(hubspot.error ? { error: hubspot.error } : {}),
+    },
+    contentHub: {
+      configured: contentHub.configured ?? false,
+      reachable: contentHub.reachable ?? false,
+      ...(contentHub.error ? { error: contentHub.error } : {}),
+      totalCampaigns: contentHub.totalCampaigns ?? contentHub.linkedCampaigns ?? 0,
+      linkedCampaigns: contentHub.linkedCampaigns ?? 0,
+      campaignsWithCachedHubspotData: contentHub.campaignsWithCachedHubspotData ?? 0,
+      platformsAvailable: contentHub.platformsAvailable ?? 0,
+    },
+    summary: {
+      ...normalizeCampaignMetricTotals(summary),
+      totalHubSpotCampaigns: summary.totalHubSpotCampaigns ?? 0,
+      campaignsWithMetricData:
+        summary.campaignsWithMetricData ?? summary.campaignsWithMetrics ?? 0,
+      campaignsFromCache: summary.campaignsFromCache ?? 0,
+      contentHubCampaignsShown: summary.contentHubCampaignsShown ?? 0,
+    },
+    campaigns: Array.isArray(data.campaigns)
+      ? data.campaigns.map((row) =>
+          normalizeCampaignDashboardRow(
+            row as Partial<CampaignDashboardRow> & Record<string, unknown>,
+          ),
+        )
+      : [],
+    warnings: Array.isArray(data.warnings) ? data.warnings : [],
+    errors: Array.isArray(data.errors) ? data.errors : [],
+  };
+}
+
 export const adminApi = {
   getStats: async (): Promise<AdminStats> => {
     try {
@@ -382,6 +729,18 @@ export const adminApi = {
       }
       throw err;
     }
+  },
+
+  getCampaignsDashboard: async (params?: {
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+  }): Promise<CampaignsDashboardResponse> => {
+    const { data } = await apiClient.get<CampaignsDashboardResponse>(
+      '/admin/campaigns/dashboard',
+      { params },
+    );
+    return normalizeCampaignsDashboardResponse(data);
   },
 
   getPrograms: async (): Promise<AdminProgram[]> => {
