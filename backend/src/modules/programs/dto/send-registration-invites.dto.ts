@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
+  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
@@ -23,6 +24,17 @@ export class SendRegistrationInvitesDto {
   @ArrayMinSize(1)
   @IsString({ each: true })
   userIds?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Raw email addresses to invite (used for unregistered recipients). Duplicates of existing user emails are consolidated.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsEmail({}, { each: true })
+  emails?: string[];
 
   @ApiPropertyOptional({
     enum: ['HCP', 'KOL'],

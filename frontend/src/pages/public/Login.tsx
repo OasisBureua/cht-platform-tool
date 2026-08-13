@@ -239,6 +239,7 @@ export default function Login() {
             Don&apos;t have an account?{' '}
             <Link
               to="/join"
+              state={from ? { from: { pathname: from } } : undefined}
               className="font-medium text-gray-900 underline hover:text-gray-700"
             >
               Sign Up

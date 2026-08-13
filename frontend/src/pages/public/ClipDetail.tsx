@@ -7,6 +7,7 @@ import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { format, isValid } from 'date-fns';
 import { catalogApi } from '../../api/catalog';
 import type { MediaHubClip } from '../../api/catalog';
+import { pushClipView } from '../../lib/analytics';
 import { clipAiSummaryText } from '../../utils/mediaHubClipText';
 import { formatWordPressSeriesLabel } from '../../utils/wordpressCatalog';
 import {
@@ -101,6 +102,15 @@ export default function ClipDetail() {
   });
 
   const canonicalUrl = clip?.wordpress?.permalink;
+
+  useEffect(() => {
+    if (!clip?.id || !clip?.title) return;
+    pushClipView({
+      clip_id: clip.id,
+      clip_title: clip.title,
+      surface: 'clip_detail',
+    });
+  }, [clip?.id, clip?.title]);
 
   useEffect(() => {
     if (!canonicalUrl) return;
@@ -260,7 +270,11 @@ export default function ClipDetail() {
         </div>
 
         {/* Share */}
-        <ShareButtons title={clip.title} url={shareUrl} />
+        <ShareButtons
+          title={clip.title}
+          url={shareUrl}
+          analytics={{ clip_id: clip.id, surface: 'clip_detail' }}
+        />
 
         {/* Transcript when shoot has speech-to-text in Media Hub */}
         <div>

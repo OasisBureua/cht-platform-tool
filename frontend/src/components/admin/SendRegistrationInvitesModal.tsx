@@ -14,10 +14,11 @@ type Props = {
 
 export default function SendRegistrationInvitesModal({ webinars, open, onClose }: Props) {
   const [selectedProgramIds, setSelectedProgramIds] = useState<Set<string>>(new Set());
-  const [recipientMode, setRecipientMode] = useState<'role' | 'users'>('role');
+  const [recipientMode, setRecipientMode] = useState<'role' | 'users' | 'emails'>('role');
   const [role, setRole] = useState<'HCP' | 'KOL'>('HCP');
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [emailsInput, setEmailsInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof adminApi.sendRegistrationInvites>
@@ -58,13 +59,30 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
   const registerUrl =
     typeof window !== 'undefined' ? `${window.location.origin}${registerPath}` : registerPath;
 
+  const parsedEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          emailsInput
+            .split(/[,\s;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+        ),
+      ),
+    [emailsInput],
+  );
+  const rawEmailTokens = emailsInput.split(/[,\s;]+/).filter(Boolean);
+  const invalidEmailCount = rawEmailTokens.length - parsedEmails.length;
+
   const sendMut = useMutation({
     mutationFn: () =>
       adminApi.sendRegistrationInvites({
         programIds: [...selectedProgramIds],
         ...(recipientMode === 'role'
           ? { role }
-          : { userIds: [...selectedUserIds] }),
+          : recipientMode === 'users'
+            ? { userIds: [...selectedUserIds] }
+            : { emails: parsedEmails }),
       }),
     onSuccess: (data) => setResult(data),
   });
@@ -98,7 +116,9 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
 
   const canSend =
     selectedProgramIds.size > 0 &&
-    (recipientMode === 'role' || selectedUserIds.size > 0) &&
+    (recipientMode === 'role' ||
+      (recipientMode === 'users' && selectedUserIds.size > 0) ||
+      (recipientMode === 'emails' && parsedEmails.length > 0)) &&
     !sendMut.isPending;
 
   return (
@@ -194,6 +214,15 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                 />
                 Choose specific users
               </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="recipientMode"
+                  checked={recipientMode === 'emails'}
+                  onChange={() => setRecipientMode('emails')}
+                />
+                Email addresses (unregistered ok)
+              </label>
             </div>
 
             {recipientMode === 'role' ? (
@@ -205,6 +234,25 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                 <option value="HCP">All active HCPs</option>
                 <option value="KOL">All active KOLs</option>
               </select>
+            ) : recipientMode === 'emails' ? (
+              <div className="space-y-2">
+                <textarea
+                  value={emailsInput}
+                  onChange={(e) => setEmailsInput(e.target.value)}
+                  rows={4}
+                  placeholder="alice@example.com, bob@example.com&#10;carol@example.com"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                />
+                <p className="text-xs text-gray-500">
+                  Separate with commas, spaces, semicolons, or newlines. Recipients not yet registered will be directed to sign up when they open the link.
+                </p>
+                {parsedEmails.length > 0 || invalidEmailCount > 0 ? (
+                  <p className="text-xs text-gray-600">
+                    {parsedEmails.length} valid
+                    {invalidEmailCount > 0 ? ` · ${invalidEmailCount} invalid (skipped)` : ''}
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <div className="space-y-2">
                 <input

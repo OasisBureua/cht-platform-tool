@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Award, Check, ClipboardCheck, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
@@ -35,6 +35,13 @@ const PLATFORM_HOME = '/app/home';
 
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
+  const location = useLocation();
+  const fromLocation = (
+    location.state as { from?: { pathname: string; search?: string } } | null
+  )?.from;
+  const returnTo = fromLocation
+    ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
+    : undefined;
   const signupEnabled = cognitoAuthEnabled || !mediahubAuthDecommissioned;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -75,7 +82,7 @@ export default function Join() {
     zipOk;
 
   if (isAuthenticated) {
-    return <Navigate to={PLATFORM_HOME} replace />;
+    return <Navigate to={returnTo ?? PLATFORM_HOME} replace />;
   }
 
   const handleOAuth = async (provider: 'google') => {
@@ -86,9 +93,10 @@ export default function Join() {
     setError(null);
     setOauthLoading(provider);
     try {
+      const oauthReturn = returnTo ?? PLATFORM_HOME;
       const url = cognitoAuthEnabled
-        ? await buildCognitoAuthorizeUrl('Google', PLATFORM_HOME)
-        : buildOAuthAuthorizeUrl(provider, PLATFORM_HOME);
+        ? await buildCognitoAuthorizeUrl('Google', oauthReturn)
+        : buildOAuthAuthorizeUrl(provider, oauthReturn);
       window.location.href = url;
     } catch (err) {
       setOauthLoading(null);
@@ -180,6 +188,7 @@ export default function Join() {
                 ? `/verify-email?email=${encodeURIComponent(email.trim())}`
                 : '/login'
             }
+            state={fromLocation ? { from: fromLocation } : undefined}
             className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
           >
             {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
