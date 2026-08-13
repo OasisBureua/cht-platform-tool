@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Award, Check, ClipboardCheck, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +26,7 @@ import {
 } from '../../lib/password-rules';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 import CityTypeahead from '../../components/forms/CityTypeahead';
+import { verifyNpiNumber } from '../../api/npi';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
   i === 0 ? { ...o, label: 'Select your role' } : { ...o },
@@ -59,6 +60,12 @@ export default function Join() {
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [npiVerifying, setNpiVerifying] = useState(false);
   const [npiVerified, setNpiVerified] = useState<boolean | null>(null);
+  const [npiMeta, setNpiMeta] = useState<{
+    providerName?: string;
+    providerType?: string;
+    duplicate?: boolean;
+    error?: string;
+  } | null>(null);
 
   const requiresNpi = professionRequiresNpi(profession);
   const passwordRules = useMemo(() => evaluatePasswordRules(password), [password]);
@@ -67,7 +74,44 @@ export default function Join() {
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const stateCode = normalizeUsStateCode(state);
   const zipOk = !!normalizeUsZip5(zipCode);
-  const npiOk = !requiresNpi || (npiDigits.length === 10 && npiVerified !== false);
+  // Require a successful registry check (and no duplicate) before create.
+  const npiOk =
+    !requiresNpi ||
+    (npiDigits.length === 10 && npiVerified === true && !npiMeta?.duplicate);
+
+  const runNpiVerify = async (digits: string) => {
+    if (digits.length !== 10) return;
+    setNpiVerifying(true);
+    setNpiVerified(null);
+    setNpiMeta(null);
+    try {
+      const result = await verifyNpiNumber(digits);
+      setNpiVerified(result.valid && !result.duplicate);
+      setNpiMeta({
+        providerName: result.providerName,
+        providerType: result.providerType,
+        duplicate: result.duplicate,
+        error: result.error,
+      });
+    } catch {
+      setNpiVerified(false);
+      setNpiMeta({
+        error: 'NPI verification is temporarily unavailable. Please try again.',
+      });
+    } finally {
+      setNpiVerifying(false);
+    }
+  };
+
+  // Real-time: auto-verify once the user finishes entering 10 digits.
+  useEffect(() => {
+    if (!requiresNpi || npiDigits.length !== 10) return;
+    const t = setTimeout(() => {
+      void runNpiVerify(npiDigits);
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when digits/role change
+  }, [npiDigits, requiresNpi]);
 
   const canSubmit =
     signupEnabled &&
@@ -360,6 +404,7 @@ export default function Join() {
                       const v = e.target.value;
                       setProfession(v);
                       setNpiVerified(null);
+                      setNpiMeta(null);
                       if (!professionRequiresNpi(v)) setNpiNumber('');
                     }}
                     options={JOIN_PROFESSION_OPTIONS}
@@ -396,6 +441,7 @@ export default function Join() {
                         onChange={(e) => {
                           setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
                           setNpiVerified(null);
+                          setNpiMeta(null);
                         }}
                         required
                         maxLength={10}
@@ -405,37 +451,31 @@ export default function Join() {
                       <button
                         type="button"
                         disabled={npiDigits.length !== 10 || npiVerifying}
-                        onClick={async () => {
-                          setNpiVerifying(true);
-                          setNpiVerified(null);
-                          try {
-                            const res = await fetch(
-                              `https://npiregistry.cms.hhs.gov/api/?number=${npiDigits}&version=2.1`,
-                            );
-                            const data = await res.json();
-                            setNpiVerified(data.result_count > 0);
-                          } catch {
-                            setNpiVerified(null);
-                          } finally {
-                            setNpiVerifying(false);
-                          }
-                        }}
+                        onClick={() => void runNpiVerify(npiDigits)}
                         className="shrink-0 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
                       >
                         {npiVerifying ? 'Verifying…' : 'Verify'}
                       </button>
                     </div>
                     <p id="npi-help" className="sr-only">
-                      NPI must be exactly 10 digits.
+                      NPI must be exactly 10 digits and verified against the NPI registry.
                     </p>
-                    {npiVerified === true && (
-                      <p className="text-xs font-medium text-green-700">NPI verified successfully.</p>
-                    )}
-                    {npiVerified === false && (
-                      <p className="text-xs font-medium text-red-600">
-                        NPI not found in the NPPES registry. Please check and try again.
+                    {npiVerified === true && !npiMeta?.duplicate && (
+                      <p className="text-xs font-medium text-green-700">
+                        NPI verified
+                        {npiMeta?.providerName ? ` — ${npiMeta.providerName}` : ''}
+                        {npiMeta?.providerType ? ` (${npiMeta.providerType})` : ''}.
                       </p>
                     )}
+                    {(npiVerified === false || npiMeta?.duplicate) && (
+                      <p className="text-xs font-medium text-red-600">
+                        {npiMeta?.error ||
+                          'NPI not found in the National Provider Identifier registry. Please check and try again.'}
+                      </p>
+                    )}
+                    {npiVerifying && npiVerified === null ? (
+                      <p className="text-xs text-gray-500">Checking NPI registry…</p>
+                    ) : null}
                   </div>
                 )}
 

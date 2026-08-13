@@ -17,6 +17,7 @@ import {
   normalizeUsStateCode,
   normalizeUsZip5,
 } from '../../common/us-address';
+import { NpiRegistryService } from '../../auth/npi-registry.service';
 
 @Injectable()
 export class DashboardService {
@@ -25,6 +26,7 @@ export class DashboardService {
   constructor(
     private prisma: PrismaService,
     private outboundSync: OutboundSyncService,
+    private npiRegistry: NpiRegistryService,
   ) {}
 
   /**
@@ -188,6 +190,12 @@ export class DashboardService {
         throw new ConflictException(
           'This NPI is already registered to another account.',
         );
+      }
+
+      // SCRUM-173: verify against NIH Clinical Tables before saving.
+      const lookup = await this.npiRegistry.lookup(npi);
+      if (!lookup.valid) {
+        throw new BadRequestException(lookup.message);
       }
     }
 
