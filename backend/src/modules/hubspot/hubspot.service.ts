@@ -1,8 +1,35 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
+import {
+  parseHubSpotCampaignList,
+  type HubSpotCampaignListItem,
+} from './hubspot-campaign-metrics.util';
+import {
+  dedupeStrings,
+  HUBSPOT_CAMPAIGNS_DASHBOARD_SCOPES,
+  humanizeHubSpotPermissionError,
+  parseHubSpotApiError,
+} from './hubspot-error.util';
+
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
 const ACCOUNT_META_TTL_MS = 5 * 60 * 1000;
+const MARKETING_ACCESS_TTL_MS = 5 * 60 * 1000;
+
+/** Asset types with meaningful metrics in HubSpot campaign reporting. */
+export const HUBSPOT_CAMPAIGN_ASSET_TYPES = [
+  'MARKETING_EMAIL',
+  'LANDING_PAGE',
+  'FORM',
+  'SOCIAL_BROADCAST',
+  'SITE_PAGE',
+  'BLOG_POST',
+  'MARKETING_EVENT',
+  'WEB_INTERACTIVE',
+] as const;
+
+export type HubSpotCampaignAssetType =
+  (typeof HUBSPOT_CAMPAIGN_ASSET_TYPES)[number];
 
 export interface HubSpotContactProperties {
   email: string;
@@ -49,6 +76,19 @@ export interface HubSpotCampaignAnalyticsSnapshot {
   warnings: string[];
   errors: string[];
 }
+
+export type HubSpotMarketingAccess = {
+  canListCampaigns: boolean;
+  canReadCampaignDetails: boolean;
+  canReadMetrics: boolean;
+  canReadEmailStats: boolean;
+  missingScopes: string[];
+  messages: string[];
+};
+
+export type HubSpotCampaignAnalyticsOptions = {
+  includeEmailStatistics?: boolean;
+};
 
 /** Reject blank / placeholder secrets that would only produce HubSpot 401 noise. */
 function normalizeHubSpotToken(raw: string | undefined | null): string | null {
@@ -102,6 +142,10 @@ export class HubSpotService {
   private accountMetaCache: {
     expiresAt: number;
     value: HubSpotAccountMetadata;
+  } | null = null;
+  private marketingAccessCache: {
+    expiresAt: number;
+    value: HubSpotMarketingAccess;
   } | null = null;
 
   constructor(private readonly config: ConfigService) {
@@ -398,11 +442,97 @@ export class HubSpotService {
   }
 
   /**
+   * Probe which Marketing Hub endpoints the configured token can access.
+   * Cached briefly to avoid repeated 403 noise on dashboard refresh.
+   */
+  async probeMarketingAccess(
+    sampleCampaignId: string,
+  ): Promise<HubSpotMarketingAccess> {
+    const now = Date.now();
+    if (
+      this.marketingAccessCache &&
+      this.marketingAccessCache.expiresAt > now
+    ) {
+      return this.marketingAccessCache.value;
+    }
+
+    const missingScopes = new Set<string>();
+    const messages: string[] = [];
+    let canReadCampaignDetails = false;
+    let canReadMetrics = false;
+    let canReadEmailStats = false;
+
+    const recordFailure = (err: unknown) => {
+      const parsed = parseHubSpotApiError(err);
+      for (const scope of parsed.missingScopes) missingScopes.add(scope);
+      messages.push(humanizeHubSpotPermissionError(parsed));
+    };
+
+    const id = encodeURIComponent(sampleCampaignId);
+
+    try {
+      await this.requestJson(`/marketing/v3/campaigns/${id}`, { method: 'GET' });
+      canReadCampaignDetails = true;
+    } catch (err) {
+      recordFailure(err);
+    }
+
+    try {
+      await this.requestJson(
+        `/marketing/v3/campaigns/${id}/reports/metrics`,
+        { method: 'GET' },
+      );
+      canReadMetrics = true;
+    } catch (err) {
+      recordFailure(err);
+    }
+
+    const end = new Date();
+    const start = new Date(end);
+    start.setUTCDate(start.getUTCDate() - 7);
+    const statsQs = new URLSearchParams({
+      startTimestamp: String(start.getTime()),
+      endTimestamp: String(end.getTime()),
+    });
+    try {
+      await this.requestJson(
+        `/marketing/v3/emails/statistics/list?${statsQs}`,
+        { method: 'GET' },
+      );
+      canReadEmailStats = true;
+    } catch (err) {
+      recordFailure(err);
+    }
+
+    if (!canReadMetrics && !canReadCampaignDetails) {
+      for (const scope of HUBSPOT_CAMPAIGNS_DASHBOARD_SCOPES) {
+        missingScopes.add(scope);
+      }
+    }
+
+    const value: HubSpotMarketingAccess = {
+      canListCampaigns: true,
+      canReadCampaignDetails,
+      canReadMetrics,
+      canReadEmailStats,
+      missingScopes: [...missingScopes],
+      messages: dedupeStrings(messages),
+    };
+
+    this.marketingAccessCache = {
+      expiresAt: now + MARKETING_ACCESS_TTL_MS,
+      value,
+    };
+    return value;
+  }
+
+  /**
    * Pull campaign-scoped marketing analytics (+ period email stats) for Content Hub.
    * Partial failures are recorded in `errors` / `warnings`; caller still PATCHes Hub.
    */
   async getCampaignAnalytics(
     input: HubSpotCampaignAnalyticsInput,
+    options: HubSpotCampaignAnalyticsOptions = {},
   ): Promise<HubSpotCampaignAnalyticsSnapshot> {
     const syncedAt = new Date().toISOString();
     const hubspotCampaignId = input.hubspotCampaignId?.trim() ?? '';
@@ -411,6 +541,7 @@ export class HubSpotService {
     const reportingPeriodEnd = toIsoDate(input.reportingPeriodEnd) ?? '';
     const warnings: string[] = [];
     const errors: string[] = [];
+    const includeEmailStatistics = options.includeEmailStatistics !== false;
 
     const account = await this.getAccountMetadata();
 
@@ -424,11 +555,15 @@ export class HubSpotService {
         'No hubspotCampaignId on campaign; campaign-scoped metrics skipped.',
       );
     } else {
+      const campaignQs = new URLSearchParams();
+      if (reportingPeriodStart) campaignQs.set('startDate', reportingPeriodStart);
+      if (reportingPeriodEnd) campaignQs.set('endDate', reportingPeriodEnd);
+      const campaignPath =
+        `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}` +
+        (campaignQs.toString() ? `?${campaignQs}` : '');
+
       try {
-        campaign = await this.requestJson(
-          `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}`,
-          { method: 'GET' },
-        );
+        campaign = await this.requestJson(campaignPath, { method: 'GET' });
       } catch (err) {
         errors.push(
           `campaign: ${err instanceof Error ? err.message : String(err)}`,
@@ -450,12 +585,15 @@ export class HubSpotService {
       }
 
       try {
-        assets = await this.requestJson(
-          `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/assets/MARKETING_EMAIL?limit=50`,
-          { method: 'GET' },
+        assets = await this.getCampaignAssets(
+          hubspotCampaignId,
+          'MARKETING_EMAIL',
+          {
+            startDate: reportingPeriodStart || undefined,
+            endDate: reportingPeriodEnd || undefined,
+          },
         );
       } catch (err) {
-        // Assets endpoint may 404 or lack scope depending on portal; soft-fail.
         warnings.push(
           `assets: ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -466,7 +604,11 @@ export class HubSpotService {
       reportingPeriodStart || null,
       reportingPeriodEnd || null,
     );
-    if (startTimestamp != null && endTimestamp != null) {
+    if (
+      includeEmailStatistics &&
+      startTimestamp != null &&
+      endTimestamp != null
+    ) {
       const statsQs = new URLSearchParams({
         startTimestamp: String(startTimestamp),
         endTimestamp: String(endTimestamp),
@@ -481,7 +623,7 @@ export class HubSpotService {
           `emailStatistics: ${err instanceof Error ? err.message : String(err)}`,
         );
       }
-    } else {
+    } else if (includeEmailStatistics) {
       warnings.push(
         'Reporting period start/end missing or invalid; email statistics skipped.',
       );
@@ -503,6 +645,91 @@ export class HubSpotService {
       warnings,
       errors,
     };
+  }
+
+  /**
+   * List HubSpot marketing campaigns (paginated). Returns one page.
+   */
+  async listCampaignsPage(options: {
+    limit?: number;
+    after?: string | null;
+  } = {}): Promise<{ items: HubSpotCampaignListItem[]; after: string | null }> {
+    const limit = Math.min(Math.max(options.limit ?? 100, 1), 100);
+    const qs = new URLSearchParams({ limit: String(limit) });
+    if (options.after?.trim()) qs.set('after', options.after.trim());
+
+    const raw = await this.requestJson(
+      `/marketing/v3/campaigns?${qs}`,
+      { method: 'GET' },
+    );
+    return parseHubSpotCampaignList(raw);
+  }
+
+  /**
+   * List all HubSpot campaigns up to `maxItems` (default 200).
+   */
+  async listAllCampaigns(maxItems = 200): Promise<HubSpotCampaignListItem[]> {
+    const items: HubSpotCampaignListItem[] = [];
+    let after: string | null = null;
+
+    while (items.length < maxItems) {
+      const page = await this.listCampaignsPage({
+        limit: Math.min(100, maxItems - items.length),
+        after,
+      });
+      items.push(...page.items);
+      after = page.after;
+      if (!after || !page.items.length) break;
+    }
+
+    return items;
+  }
+
+  /** Fetch assets for a single campaign asset type. */
+  async getCampaignAssets(
+    hubspotCampaignId: string,
+    assetType: HubSpotCampaignAssetType,
+    options: { limit?: number; startDate?: string; endDate?: string } = {},
+  ): Promise<unknown> {
+    const limit = options.limit ?? 50;
+    const qs = new URLSearchParams({ limit: String(limit) });
+    if (options.startDate) qs.set('startDate', options.startDate);
+    if (options.endDate) qs.set('endDate', options.endDate);
+    return this.requestJson(
+      `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/assets/${assetType}?${qs}`,
+      { method: 'GET' },
+    );
+  }
+
+  /**
+   * Pull additional asset buckets for dashboard enrichment.
+   * Failures are soft — returns null per asset type.
+   */
+  async getCampaignAssetsBundle(
+    hubspotCampaignId: string,
+    options: { startDate?: string; endDate?: string } = {},
+  ): Promise<Record<HubSpotCampaignAssetType, unknown | null>> {
+    const entries = await Promise.all(
+      HUBSPOT_CAMPAIGN_ASSET_TYPES.filter((t) => t !== 'MARKETING_EMAIL').map(
+        async (assetType) => {
+          try {
+            const payload = await this.getCampaignAssets(
+              hubspotCampaignId,
+              assetType,
+              options,
+            );
+            return [assetType, payload] as const;
+          } catch {
+            return [assetType, null] as const;
+          }
+        },
+      ),
+    );
+
+    return Object.fromEntries(entries) as Record<
+      HubSpotCampaignAssetType,
+      unknown | null
+    >;
   }
 
   private async requestJson<T = unknown>(
