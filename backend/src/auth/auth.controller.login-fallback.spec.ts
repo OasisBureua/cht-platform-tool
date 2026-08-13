@@ -54,6 +54,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
       cognitoService,
       recaptchaService,
       lockout as never,
+      { lookup: jest.fn(), normalizeNpi: (v: string) => (v || '').replace(/\D/g, '').slice(0, 10) } as never,
       configService as never,
       audit as never,
     );

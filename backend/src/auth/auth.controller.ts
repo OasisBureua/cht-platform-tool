@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   UseGuards,
   Logger,
   Req,
@@ -17,6 +18,7 @@ import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
 import { RecaptchaService } from './recaptcha.service';
 import { AuthLockoutService } from './auth-lockout.service';
+import { NpiRegistryService } from './npi-registry.service';
 import { UserRole } from '@prisma/client';
 import {
   clearSessionCookie,
@@ -94,6 +96,7 @@ export class AuthController {
     private readonly cognitoService: CognitoService,
     private readonly recaptchaService: RecaptchaService,
     private readonly lockout: AuthLockoutService,
+    private readonly npiRegistry: NpiRegistryService,
     private readonly configService: ConfigService,
     private readonly audit: AuditService,
   ) {
@@ -497,6 +500,80 @@ export class AuthController {
   }
 
   /**
+   * GET /api/auth/npi/verify?npi=##########
+   * Real-time individual NPI check via NIH Clinical Tables (CMS NPPES).
+   * Also reports whether the NPI is already registered on CHT.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 30, ttl: 300_000 } })
+  @Get('npi/verify')
+  async verifyNpi(@Query('npi') npiRaw?: string): Promise<{
+    valid: boolean;
+    npi: string;
+    duplicate: boolean;
+    providerName?: string;
+    providerType?: string;
+    practiceAddress?: string;
+    error?: string;
+  }> {
+    const npi = this.npiRegistry.normalizeNpi(npiRaw);
+    if (npi.length !== 10) {
+      return {
+        valid: false,
+        npi,
+        duplicate: false,
+        error: 'NPI number must be exactly 10 digits.',
+      };
+    }
+
+    const existing = await this.authService.findByNpi(npi);
+    const lookup = await this.npiRegistry.lookup(npi);
+    if (!lookup.valid) {
+      return {
+        valid: false,
+        npi,
+        duplicate: Boolean(existing),
+        error: lookup.message,
+      };
+    }
+
+    return {
+      valid: true,
+      npi: lookup.npi,
+      duplicate: Boolean(existing),
+      providerName: lookup.providerName,
+      providerType: lookup.providerType,
+      practiceAddress: lookup.practiceAddress,
+      ...(existing
+        ? {
+            error:
+              'An account with this NPI number already exists. Sign in to your existing account instead.',
+          }
+        : {}),
+    };
+  }
+
+  private async assertNpiAllowedForSignup(
+    npi: string,
+  ): Promise<{ error: string } | null> {
+    if (npi.length !== 10) return null;
+
+    const existing = await this.authService.findByNpi(npi);
+    if (existing) {
+      return {
+        error:
+          'An account with this NPI number already exists. Sign in to your existing account instead.',
+      };
+    }
+
+    const lookup = await this.npiRegistry.lookup(npi);
+    if (!lookup.valid) {
+      return { error: lookup.message };
+    }
+    return null;
+  }
+
+  /**
    * POST /api/auth/cognito/signup
    * Register a Cognito user and create the CHT User row.
    */
@@ -558,19 +635,14 @@ export class AuthController {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
 
-    // SCRUM-188: block signup if this NPI already belongs to an existing user.
-    // Prisma unique constraint enforces this at the DB layer; the pre-check
-    // returns a friendly message before we touch Cognito.
+    // SCRUM-188 + SCRUM-173: block duplicate NPIs and require registry validation.
     if (npi.length === 10) {
-      const existing = await this.authService.findByNpi(npi);
-      if (existing) {
+      const npiError = await this.assertNpiAllowedForSignup(npi);
+      if (npiError) {
         this.logger.log(
-          `[Auth] Cognito signup blocked for ${emailStr}: NPI ${npi} already registered`,
+          `[Auth] Cognito signup blocked for ${emailStr}: ${npiError.error}`,
         );
-        return {
-          error:
-            'An account with this NPI number already exists. Sign in to your existing account instead.',
-        };
+        return npiError;
       }
     }
 
@@ -752,6 +824,11 @@ export class AuthController {
       return { error: 'NPI number must be 10 digits.' };
     if (npiOptional && npi.length > 0 && npi.length !== 10) {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
+    }
+
+    if (npi.length === 10) {
+      const npiError = await this.assertNpiAllowedForSignup(npi);
+      if (npiError) return npiError;
     }
 
     const locationError = validateRegistrationLocation({ state, zipCode });
