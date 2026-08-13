@@ -1717,6 +1717,9 @@ export class ProgramRegistrationsService {
       throw new NotFoundException('Enrollment not found');
     }
 
+    const REVOKED_NOTE =
+      'Enrollment removed by admin; learner may register again.';
+
     await this.prisma.$transaction(async (tx) => {
       await tx.programEnrollment.delete({ where: { id: enrollmentId } });
       const reg = await tx.programRegistration.findUnique({
@@ -1739,8 +1742,7 @@ export class ProgramRegistrationsService {
             postEventAttendanceReviewedByUserId: null,
             reviewedAt: new Date(),
             reviewedByUserId: adminUserId,
-            adminNotes:
-              'Enrollment removed by admin; learner may register again.',
+            adminNotes: REVOKED_NOTE,
           },
         });
       }
@@ -1749,6 +1751,34 @@ export class ProgramRegistrationsService {
     this.logger.log(
       `Admin ${adminUserId} removed enrollment ${enrollmentId} (program ${programId})`,
     );
+
+    // SCRUM-179: notify the learner that their approval was rescinded.
+    // Fire-and-forget after the DB commit so an SES failure never blocks the API.
+    void (async () => {
+      const [user, program] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: enrollment.userId },
+          select: { email: true, firstName: true },
+        }),
+        this.prisma.program.findUnique({
+          where: { id: enrollment.programId },
+          select: { id: true, title: true, zoomSessionType: true },
+        }),
+      ]);
+      if (!user?.email || !program?.zoomSessionType) return;
+      await this.sesEmail.sendLiveSessionRegistrationRevokedEmail({
+        to: user.email,
+        firstName: user.firstName || 'there',
+        program: { id: program.id, title: program.title },
+        sessionKind: program.zoomSessionType,
+        adminNote: REVOKED_NOTE,
+      });
+    })().catch((e: Error) =>
+      this.logger.warn(
+        `Registration-revoked email side effect: ${e.message}`,
+      ),
+    );
+
     return { removed: true };
   }
 

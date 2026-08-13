@@ -14,6 +14,7 @@ import { buildWebinarAccessEmail } from './templates/webinar-access-email';
 import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
 import { buildRegistrationInviteEmail } from './templates/registration-invite-email';
 import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
+import { buildRegistrationRevokedEmail } from './templates/registration-revoked-email';
 import { buildOperationalEmail } from './templates/operational-email';
 
 /**
@@ -217,6 +218,55 @@ export class SesEmailService {
       );
     }
   }
+
+  /**
+   * Admin removed a previously-approved learner from a program (SCRUM-179).
+   * Registration is reset to REJECTED so the learner may register again; this
+   * email tells them their access has been rescinded.
+   */
+  async sendLiveSessionRegistrationRevokedEmail(opts: {
+    to: string;
+    firstName: string;
+    program: { id: string; title: string };
+    sessionKind: ProgramZoomSessionType;
+    adminNote: string;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip registration-revoked email');
+      return;
+    }
+    const { to, firstName, program, sessionKind, adminNote } = opts;
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const appSessionUrl =
+      sessionKind === ProgramZoomSessionType.MEETING
+        ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
+        : `${base}/app/live/${encodeURIComponent(program.id)}`;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildRegistrationRevokedEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        sessionKind,
+        adminNote,
+        appSessionUrl,
+        supportEmail,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(
+        `Sent registration-revoked email to ${to} for program ${program.id}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to send registration-revoked email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
+    }
+  }
+
   /**
    * User registered for a webinar but did not attend.
    * Must NOT be called for users who attended, they enter the survey/payment workflow instead.
