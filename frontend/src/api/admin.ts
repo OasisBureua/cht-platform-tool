@@ -746,6 +746,7 @@ export const adminApi = {
   sendRegistrationInvites: async (payload: {
     programIds: string[];
     userIds?: string[];
+    emails?: string[];
     role?: 'HCP' | 'KOL';
     cities?: string[];
     states?: string[];
