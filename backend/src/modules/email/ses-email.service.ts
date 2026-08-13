@@ -3,11 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { ProgramZoomSessionType } from '@prisma/client';
 import { buildRegistrationApprovedEmail } from './templates/registration-approved-email';
-import {
-  buildApprovalEmailMimeBuffer,
-  buildLiveSessionIcs,
-  googleCalendarTemplateUrl,
-} from './live-session-calendar';
+import { googleCalendarTemplateUrl } from './live-session-calendar';
 import {
   buildRegistrationRejectedEmail,
   type RejectionEmailReason,
@@ -18,6 +14,7 @@ import { buildWebinarAccessEmail } from './templates/webinar-access-email';
 import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
 import { buildRegistrationInviteEmail } from './templates/registration-invite-email';
 import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
+import { buildRegistrationRevokedEmail } from './templates/registration-revoked-email';
 import { buildOperationalEmail } from './templates/operational-email';
 
 /**
@@ -97,84 +94,32 @@ export class SesEmailService {
           })
         : null;
 
-    const buildApproved = (calendarInviteIncluded: boolean) =>
-      buildRegistrationApprovedEmail(
-        {
-          firstName,
-          programTitle: program.title,
-          programDescription: program.description,
-          startDate: program.startDate,
-          durationMinutes: program.duration,
-          honorariumCents: null,
-          hostDisplayName: program.hostDisplayName,
-          sponsorName: program.sponsorName,
-          zoomJoinUrl: zoomTrim,
-          sessionKind,
-          appSessionUrl,
-          supportEmail,
-          googleCalendarUrl: calendarInviteIncluded ? googleCalendarUrl : null,
-          calendarInviteIncluded,
-        },
-        escapeHtml,
-      );
+    // SCRUM-185: no .ics attachment. Google Calendar link stays as an in-body
+    // "add to calendar" affordance so users can self-add without receiving
+    // an unsolicited calendar invitation.
+    const { subject, text, html } = buildRegistrationApprovedEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        programDescription: program.description,
+        startDate: program.startDate,
+        durationMinutes: program.duration,
+        honorariumCents: null,
+        hostDisplayName: program.hostDisplayName,
+        sponsorName: program.sponsorName,
+        zoomJoinUrl: zoomTrim,
+        sessionKind,
+        appSessionUrl,
+        supportEmail,
+        googleCalendarUrl,
+      },
+      escapeHtml,
+    );
 
     try {
-      if (!program.startDate) {
-        const { subject, text, html } = buildApproved(false);
-        await this.sendSimpleEmail(to, subject, text, html);
-        this.logger.log(
-          `Sent registration-approved email to ${to} for program ${program.id}`,
-        );
-        return;
-      }
-
-      const withInvite = buildApproved(true);
-      try {
-        const ics = buildLiveSessionIcs({
-          programId: program.id,
-          title: program.title,
-          description: program.description,
-          start: program.startDate,
-          durationMinutes: program.duration ?? 60,
-          appSessionUrl,
-          zoomJoinUrl: program.zoomJoinUrl,
-          organizerEmail: this.from,
-        });
-        const raw = buildApprovalEmailMimeBuffer({
-          from: this.from,
-          to,
-          subject: withInvite.subject,
-          textPlain: withInvite.text,
-          html: withInvite.html,
-          icsFilename: 'live-session.ics',
-          icsBody: ics,
-        });
-        await this.client.send(
-          new SendEmailCommand({
-            FromEmailAddress: this.from,
-            Destination: { ToAddresses: [to] },
-            Content: { Raw: { Data: raw } },
-          }),
-        );
-        this.logger.log(
-          `Sent registration-approved email (with calendar invite) to ${to} for program ${program.id}`,
-        );
-        return;
-      } catch (mimeErr) {
-        this.logger.warn(
-          `MIME registration-approved email failed for ${to} program ${program.id}, falling back to Simple: ${(mimeErr as Error).message}`,
-        );
-      }
-
-      const fallback = buildApproved(false);
-      await this.sendSimpleEmail(
-        to,
-        fallback.subject,
-        fallback.text,
-        fallback.html,
-      );
+      await this.sendSimpleEmail(to, subject, text, html);
       this.logger.log(
-        `Sent registration-approved email (simple) to ${to} for program ${program.id}`,
+        `Sent registration-approved email to ${to} for program ${program.id}`,
       );
     } catch (err) {
       this.logger.warn(
@@ -273,6 +218,55 @@ export class SesEmailService {
       );
     }
   }
+
+  /**
+   * Admin removed a previously-approved learner from a program (SCRUM-179).
+   * Registration is reset to REJECTED so the learner may register again; this
+   * email tells them their access has been rescinded.
+   */
+  async sendLiveSessionRegistrationRevokedEmail(opts: {
+    to: string;
+    firstName: string;
+    program: { id: string; title: string };
+    sessionKind: ProgramZoomSessionType;
+    adminNote: string;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip registration-revoked email');
+      return;
+    }
+    const { to, firstName, program, sessionKind, adminNote } = opts;
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const appSessionUrl =
+      sessionKind === ProgramZoomSessionType.MEETING
+        ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
+        : `${base}/app/live/${encodeURIComponent(program.id)}`;
+    const supportEmail = this.from;
+    const { subject, text, html } = buildRegistrationRevokedEmail(
+      {
+        firstName,
+        programTitle: program.title,
+        sessionKind,
+        adminNote,
+        appSessionUrl,
+        supportEmail,
+      },
+      escapeHtml,
+    );
+    try {
+      await this.sendSimpleEmail(to, subject, text, html);
+      this.logger.log(
+        `Sent registration-revoked email to ${to} for program ${program.id}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Failed to send registration-revoked email to ${to} for program ${program.id}: ${(err as Error).message}`,
+      );
+    }
+  }
+
   /**
    * User registered for a webinar but did not attend.
    * Must NOT be called for users who attended, they enter the survey/payment workflow instead.

@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import {
@@ -11,6 +17,7 @@ import {
   normalizeUsStateCode,
   normalizeUsZip5,
 } from '../../common/us-address';
+import { NpiRegistryService } from '../../auth/npi-registry.service';
 
 @Injectable()
 export class DashboardService {
@@ -19,6 +26,7 @@ export class DashboardService {
   constructor(
     private prisma: PrismaService,
     private outboundSync: OutboundSyncService,
+    private npiRegistry: NpiRegistryService,
   ) {}
 
   /**
@@ -170,25 +178,66 @@ export class DashboardService {
       }
     }
 
-    const updated = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(data.firstName !== undefined && {
-          firstName: data.firstName.trim() || 'User',
-        }),
-        ...(data.lastName !== undefined && { lastName: data.lastName.trim() }),
-        ...(data.specialty !== undefined && {
-          specialty: data.specialty.trim() || null,
-        }),
-        ...(npi !== undefined && { npiNumber: npi.length === 10 ? npi : null }),
-        ...(data.institution !== undefined && {
-          institution: data.institution.trim() || null,
-        }),
-        ...(data.city !== undefined && { city: data.city.trim() || null }),
-        ...(stateNorm !== undefined && { state: stateNorm }),
-        ...(zipNorm !== undefined && { zipCode: zipNorm }),
-      },
-    });
+    // SCRUM-188: block updates that would set the NPI to one already
+    // registered to another user. Prisma unique constraint enforces at the
+    // DB layer; the pre-check returns a friendly 409 before the write.
+    if (npi !== undefined && npi.length === 10) {
+      const existing = await this.prisma.user.findUnique({
+        where: { npiNumber: npi },
+        select: { id: true },
+      });
+      if (existing && existing.id !== userId) {
+        throw new ConflictException(
+          'This NPI is already registered to another account.',
+        );
+      }
+
+      // SCRUM-173: verify against NIH Clinical Tables before saving.
+      const lookup = await this.npiRegistry.lookup(npi);
+      if (!lookup.valid) {
+        throw new BadRequestException(lookup.message);
+      }
+    }
+
+    let updated;
+    try {
+      updated = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(data.firstName !== undefined && {
+            firstName: data.firstName.trim() || 'User',
+          }),
+          ...(data.lastName !== undefined && {
+            lastName: data.lastName.trim(),
+          }),
+          ...(data.specialty !== undefined && {
+            specialty: data.specialty.trim() || null,
+          }),
+          ...(npi !== undefined && {
+            npiNumber: npi.length === 10 ? npi : null,
+          }),
+          ...(data.institution !== undefined && {
+            institution: data.institution.trim() || null,
+          }),
+          ...(data.city !== undefined && { city: data.city.trim() || null }),
+          ...(stateNorm !== undefined && { state: stateNorm }),
+          ...(zipNorm !== undefined && { zipCode: zipNorm }),
+        },
+      });
+    } catch (err) {
+      // Race-condition backstop: two concurrent updates set the same NPI.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002' &&
+        Array.isArray((err.meta as { target?: string[] })?.target) &&
+        (err.meta as { target: string[] }).target.includes('npiNumber')
+      ) {
+        throw new ConflictException(
+          'This NPI is already registered to another account.',
+        );
+      }
+      throw err;
+    }
     this.outboundSync
       .syncUser({
         email: updated.email,

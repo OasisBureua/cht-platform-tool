@@ -142,7 +142,9 @@ export class ZoomWebhookService {
       );
     } else if (
       event === 'meeting.participant_joined' ||
-      event === 'meeting.participant_left'
+      event === 'meeting.participant_left' ||
+      event === 'webinar.participant_joined' ||
+      event === 'webinar.participant_left'
     ) {
       await this.handleParticipantEvent(event, obj, payload);
     } else {
@@ -358,7 +360,10 @@ export class ZoomWebhookService {
     }
 
     const eventType =
-      event === 'meeting.participant_joined' ? 'JOINED' : 'LEFT';
+      event === 'meeting.participant_joined' ||
+      event === 'webinar.participant_joined'
+        ? 'JOINED'
+        : 'LEFT';
 
     if (eventType === 'JOINED' && participant.email) {
       const nameParts = (participant.user_name ?? '').trim().split(/\s+/);

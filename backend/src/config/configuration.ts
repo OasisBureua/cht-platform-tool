@@ -307,4 +307,15 @@ export default () => ({
   internalCache: {
     secret: process.env.INTERNAL_CACHE_SECRET?.trim() || '',
   },
+
+  /**
+   * NIH Clinical Tables individual NPI search (CMS NPPES-backed).
+   * Public free API — no secret/API key. Override only if the endpoint moves.
+   */
+  npi: {
+    apiBaseUrl:
+      process.env.NPI_API_BASE_URL?.trim() ||
+      'https://clinicaltables.nlm.nih.gov/api/npi_idv/v3/search',
+    timeoutMs: parseInt(process.env.NPI_API_TIMEOUT_MS || '8000', 10),
+  },
 });

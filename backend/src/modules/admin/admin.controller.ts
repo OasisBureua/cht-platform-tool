@@ -58,6 +58,11 @@ import { SurveyAnalyticsDto } from './dto/survey-analytics.dto';
 import type { SurveySegmentDimension } from '../../utils/survey-analytics';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import {
+  buildUserRecipientWhere,
+  parseCsvQueryParam,
+  registrationInviteUserSelect,
+} from './user-recipient-filters.util';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 
 /** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
@@ -656,6 +661,126 @@ export class AdminController {
     res.send(body);
   }
 
+  @Get('users/registration-invite-filter-options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Distinct city, state, and organization values for active invite recipients',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: true,
+    description: 'HCP or KOL',
+  })
+  async getRegistrationInviteFilterOptions(@Query('role') role?: string) {
+    const normalizedRole = role?.toUpperCase();
+    if (!normalizedRole || !['HCP', 'KOL'].includes(normalizedRole)) {
+      throw new BadRequestException('role must be HCP or KOL');
+    }
+
+    const baseWhere = buildUserRecipientWhere({
+      role: normalizedRole as UserRole,
+      status: UserStatus.ACTIVE,
+    });
+
+    const [cityRows, stateRows, institutionRows] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { ...baseWhere, city: { not: null } },
+        distinct: ['city'],
+        select: { city: true },
+        orderBy: { city: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: { ...baseWhere, state: { not: null } },
+        distinct: ['state'],
+        select: { state: true },
+        orderBy: { state: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: { ...baseWhere, institution: { not: null } },
+        distinct: ['institution'],
+        select: { institution: true },
+        orderBy: { institution: 'asc' },
+      }),
+    ]);
+
+    return {
+      cities: cityRows
+        .map((row) => row.city?.trim())
+        .filter((value): value is string => Boolean(value)),
+      states: stateRows
+        .map((row) => row.state?.trim())
+        .filter((value): value is string => Boolean(value)),
+      institutions: institutionRows
+        .map((row) => row.institution?.trim())
+        .filter((value): value is string => Boolean(value)),
+    };
+  }
+
+  @Get('users/registration-invite-recipients')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Preview active users matching registration invite filters',
+  })
+  @ApiQuery({ name: 'role', required: true, description: 'HCP or KOL' })
+  @ApiQuery({
+    name: 'cities',
+    required: false,
+    description: 'Comma-separated city values (AND)',
+  })
+  @ApiQuery({
+    name: 'states',
+    required: false,
+    description: 'Comma-separated state values (AND)',
+  })
+  @ApiQuery({
+    name: 'institutions',
+    required: false,
+    description: 'Comma-separated organization values (AND)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max preview rows (default 200)',
+  })
+  async getRegistrationInviteRecipients(
+    @Query('role') role?: string,
+    @Query('cities') cities?: string,
+    @Query('states') states?: string,
+    @Query('institutions') institutions?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const normalizedRole = role?.toUpperCase();
+    if (!normalizedRole || !['HCP', 'KOL'].includes(normalizedRole)) {
+      throw new BadRequestException('role must be HCP or KOL');
+    }
+
+    const where = buildUserRecipientWhere({
+      role: normalizedRole as UserRole,
+      status: UserStatus.ACTIVE,
+      cities: parseCsvQueryParam(cities),
+      states: parseCsvQueryParam(states),
+      institutions: parseCsvQueryParam(institutions),
+    });
+    const take = Math.min(parseInt(limit ?? '200', 10) || 200, 500);
+
+    const [recipients, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: registrationInviteUserSelect,
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        take,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { recipients, total };
+  }
+
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -672,6 +797,26 @@ export class AdminController {
     description: 'Filter by role (HCP, KOL, ADMIN)',
   })
   @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filter by status (e.g. ACTIVE)',
+  })
+  @ApiQuery({
+    name: 'cities',
+    required: false,
+    description: 'Comma-separated city values (AND)',
+  })
+  @ApiQuery({
+    name: 'states',
+    required: false,
+    description: 'Comma-separated state values (AND)',
+  })
+  @ApiQuery({
+    name: 'institutions',
+    required: false,
+    description: 'Comma-separated organization values (AND)',
+  })
+  @ApiQuery({
     name: 'limit',
     required: false,
     description: 'Max results (default 50)',
@@ -679,36 +824,29 @@ export class AdminController {
   async getUsers(
     @Query('q') q?: string,
     @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('cities') cities?: string,
+    @Query('states') states?: string,
+    @Query('institutions') institutions?: string,
     @Query('limit') limit?: string,
   ) {
     const take = Math.min(parseInt(limit ?? '50', 10) || 50, 200);
-    const where: Record<string, unknown> = {};
-
-    if (q?.trim()) {
-      const term = q.trim();
-      where.OR = [
-        { email: { contains: term, mode: 'insensitive' } },
-        { firstName: { contains: term, mode: 'insensitive' } },
-        { lastName: { contains: term, mode: 'insensitive' } },
-      ];
-    }
-
-    if (role && ['HCP', 'KOL', 'ADMIN'].includes(role.toUpperCase())) {
-      where.role = role.toUpperCase() as UserRole;
-    }
+    const where = buildUserRecipientWhere({
+      q,
+      cities: parseCsvQueryParam(cities),
+      states: parseCsvQueryParam(states),
+      institutions: parseCsvQueryParam(institutions),
+      ...(role && ['HCP', 'KOL', 'ADMIN'].includes(role.toUpperCase())
+        ? { role: role.toUpperCase() as UserRole }
+        : {}),
+      ...(status && Object.values(UserStatus).includes(status as UserStatus)
+        ? { status: status as UserStatus }
+        : {}),
+    });
 
     const users = await this.prisma.user.findMany({
       where,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        status: true,
-        state: true,
-        createdAt: true,
-      },
+      select: registrationInviteUserSelect,
       orderBy: { createdAt: 'desc' },
       take,
     });
@@ -1073,6 +1211,7 @@ export class AdminController {
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
+    let zoomMeetingPassword: string | undefined;
     let zoomError: string | undefined;
     let zoomPanelistError: string | undefined;
     let zoomPanelistLinks: Array<{
@@ -1094,6 +1233,7 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+          zoomMeetingPassword = created.password;
         } else {
           const created = await this.zoom.createWebinar({
             topic: body.title.trim(),
@@ -1105,6 +1245,7 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+          zoomMeetingPassword = created.password;
 
           // Build panelist list: CHM Staff (fixed) + each speaker with an indexed email
           // Host does not get a personal Zoom URL, they start the session via the host start link.
@@ -1166,6 +1307,7 @@ export class AdminController {
       zoomMeetingId,
       zoomJoinUrl,
       zoomStartUrl,
+      ...(zoomMeetingPassword ? { zoomMeetingPassword } : {}),
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
@@ -1305,6 +1447,7 @@ export class AdminController {
       zoomMeetingId: zoomData.id,
       zoomJoinUrl: zoomData.joinUrl,
       zoomStartUrl: zoomData.startUrl,
+      ...(zoomData.password ? { zoomMeetingPassword: zoomData.password } : {}),
       status: 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
@@ -1466,7 +1609,11 @@ export class AdminController {
     return this.programRegistrations.sendRegistrationInvites({
       programIds: body.programIds,
       userIds: body.userIds,
+      emails: body.emails,
       role: body.role,
+      cities: body.cities,
+      states: body.states,
+      institutions: body.institutions,
     });
   }
 

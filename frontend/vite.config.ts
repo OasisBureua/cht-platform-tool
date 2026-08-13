@@ -18,6 +18,19 @@ logger.warnOnce = (msg, options) => {
 export default defineConfig({
   customLogger: logger,
   plugins: [react()],
+  server: {
+    // Local Meeting SDK / SharedArrayBuffer (mirrors CloudFront COOP+COEP).
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
+  },
+  preview: {
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'credentialless',
+    },
+  },
   build: {
     chunkSizeWarningLimit: 600,
     rollupOptions: {

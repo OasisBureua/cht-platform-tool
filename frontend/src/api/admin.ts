@@ -138,6 +138,9 @@ export interface AdminUser {
   status: string;
   /** US state or region when captured on profile */
   state?: string | null;
+  city?: string | null;
+  /** Organization / institution from profile */
+  institution?: string | null;
   createdAt: string;
 }
 
@@ -743,7 +746,11 @@ export const adminApi = {
   sendRegistrationInvites: async (payload: {
     programIds: string[];
     userIds?: string[];
+    emails?: string[];
     role?: 'HCP' | 'KOL';
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
   }) => {
     const { data } = await apiClient.post('/admin/registration-invites', payload);
     return data as {
@@ -886,8 +893,55 @@ export const adminApi = {
 
   // ─── Users ───────────────────────────────────────────────────────────────
 
-  getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {
-    const { data } = await apiClient.get<AdminUser[]>('/admin/users', { params });
+  getUsers: async (params?: {
+    q?: string;
+    role?: string;
+    status?: string;
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
+    limit?: number;
+  }): Promise<AdminUser[]> => {
+    const { cities, states, institutions, ...rest } = params ?? {};
+    const { data } = await apiClient.get<AdminUser[]>('/admin/users', {
+      params: {
+        ...rest,
+        cities: cities?.length ? cities.join(',') : undefined,
+        states: states?.length ? states.join(',') : undefined,
+        institutions: institutions?.length ? institutions.join(',') : undefined,
+      },
+    });
+    return data;
+  },
+
+  getRegistrationInviteFilterOptions: async (role: 'HCP' | 'KOL') => {
+    const { data } = await apiClient.get<{
+      cities: string[];
+      states: string[];
+      institutions: string[];
+    }>('/admin/users/registration-invite-filter-options', { params: { role } });
+    return data;
+  },
+
+  getRegistrationInviteRecipients: async (params: {
+    role: 'HCP' | 'KOL';
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
+    limit?: number;
+  }) => {
+    const { data } = await apiClient.get<{
+      recipients: AdminUser[];
+      total: number;
+    }>('/admin/users/registration-invite-recipients', {
+      params: {
+        role: params.role,
+        cities: params.cities?.length ? params.cities.join(',') : undefined,
+        states: params.states?.length ? params.states.join(',') : undefined,
+        institutions: params.institutions?.length ? params.institutions.join(',') : undefined,
+        limit: params.limit ?? 200,
+      },
+    });
     return data;
   },
 
