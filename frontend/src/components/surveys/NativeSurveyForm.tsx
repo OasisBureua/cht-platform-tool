@@ -25,6 +25,12 @@ type Props = {
   w9ProfileHref?: string;
   /** When true, show W-9 / honorarium payout reminder (post-event surveys only). */
   showPayoutNotice?: boolean;
+  /**
+   * SCRUM-186: pre-fill values keyed by question id for questions that opt
+   * into User-profile sync via `syncToProfile`. Applied once on mount; the
+   * user can overwrite values before submit.
+   */
+  profilePrefill?: Record<string, string>;
 };
 
 function draftAnswersKey(surveyId: string) {
@@ -72,6 +78,7 @@ export function NativeSurveyForm({
   onSubmit,
   w9ProfileHref = '/app/profile',
   showPayoutNotice = false,
+  profilePrefill,
 }: Props) {
   const visibleQuestions = useMemo(() => {
     const all = listNativeSurveyQuestions(questions);
@@ -82,6 +89,29 @@ export function NativeSurveyForm({
   const [answers, setAnswers] = useState<Record<string, unknown>>(() =>
     readDraftAnswers(surveyId),
   );
+
+  // SCRUM-186: merge profile pre-fill into answers once, only for fields the
+  // user hasn't already touched (draft or manual override wins). Runs when
+  // profilePrefill arrives (async fetch in parent), keyed on surveyId so a
+  // different survey re-applies.
+  useEffect(() => {
+    if (!profilePrefill) return;
+    setAnswers((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const [qid, value] of Object.entries(profilePrefill)) {
+        const existing = next[qid];
+        if (existing === undefined || existing === null || existing === '') {
+          next[qid] = value;
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // Intentionally exclude `answers` from deps: this must only run when the
+    // prefill data itself changes, not on every keystroke.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surveyId, profilePrefill]);
 
   useEffect(() => {
     writeDraftAnswers(surveyId, answers);

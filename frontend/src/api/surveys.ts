@@ -12,6 +12,12 @@ export interface SurveyQuestion {
   scaleMin?: number;
   scaleMax?: number;
   required?: boolean;
+  /**
+   * SCRUM-186: opt this question into User-profile pre-fill + write-back.
+   * Value is the User field name (firstName, lastName, specialty, npiNumber,
+   * institution, city, state, zipCode). Backend validates.
+   */
+  syncToProfile?: string;
   [key: string]: unknown;
 }
 
@@ -122,5 +128,16 @@ export const surveysApi = {
 
   putJotformResume: async (surveyId: string, sessionId: string): Promise<void> => {
     await apiClient.put(`/surveys/${surveyId}/jotform-resume`, { sessionId });
+  },
+
+  /**
+   * SCRUM-186: fetch profile pre-fill values for a survey's syncToProfile-tagged
+   * questions. Returns `{ [questionId]: currentUserValue }`.
+   */
+  getProfilePrefill: async (
+    surveyId: string,
+  ): Promise<Record<string, string>> => {
+    const { data } = await apiClient.get(`/surveys/${surveyId}/profile-prefill`);
+    return (data ?? {}) as Record<string, string>;
   },
 };
