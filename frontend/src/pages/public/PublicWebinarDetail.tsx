@@ -123,7 +123,7 @@ export default function PublicWebinarDetail() {
                 <div className="flex flex-wrap gap-3">
                   <Link
                     to="/login"
-                    state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}` : `/live/${id}` } }}
+                    state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}/register` : `/live/${id}` } }}
                     className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                   >
                     <LogIn className="h-4 w-4" />
@@ -131,7 +131,7 @@ export default function PublicWebinarDetail() {
                   </Link>
                   <Link
                     to="/join"
-                    state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}` : `/live/${id}` } }}
+                    state={{ from: { pathname: isProgram ? `/app/live/${webinar.id}/register` : `/live/${id}` } }}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                   >
                     <UserPlus className="h-4 w-4" />

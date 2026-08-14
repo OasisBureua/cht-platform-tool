@@ -464,7 +464,7 @@ export default function WebinarDetail() {
               needsRegistrationWizard && !enrolled && !userId ? (
                 <Link
                   to="/login"
-                  state={{ from: { pathname: `/app/live/${program.id}` } }}
+                  state={{ from: { pathname: `/app/live/${program.id}/register` } }}
                   className={`${registerCtaClass} bg-gray-900 text-white hover:bg-black`}
                 >
                   Sign in to register
@@ -744,7 +744,7 @@ export default function WebinarDetail() {
           ) : needsRegistrationWizard && !enrolled && !userId ? (
             <Link
               to="/login"
-              state={{ from: { pathname: `/app/live/${program.id}` } }}
+              state={{ from: { pathname: `/app/live/${program.id}/register` } }}
               className="ml-auto shrink-0 rounded-lg px-4 py-2 text-sm font-semibold bg-gray-900 text-white"
             >
               Sign in
