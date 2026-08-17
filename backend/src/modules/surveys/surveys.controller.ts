@@ -107,6 +107,25 @@ export class SurveysController {
   }
 
   /**
+   * GET /api/surveys/:id/profile-prefill
+   * SCRUM-186: return `{ [questionId]: currentUserValue }` for each survey
+   * question with a `syncToProfile` mapping. Frontend uses this to pre-fill
+   * the intake/feedback form from the User's profile.
+   */
+  @Get(':id/profile-prefill')
+  @UseGuards(JwtAuthGuard)
+  async getProfilePrefill(
+    @Param('id') surveyId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.surveysService.getProfilePrefill(
+      surveyId,
+      user.userId,
+      user.role,
+    );
+  }
+
+  /**
    * POST /api/surveys/:surveyId/responses
    * Submit a survey response (auth required).
    * Queues SURVEY_BONUS payment if configured.
