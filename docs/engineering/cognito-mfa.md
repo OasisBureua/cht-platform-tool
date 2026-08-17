@@ -1,6 +1,6 @@
 # Cognito MFA (authenticator apps)
 
-**Last updated:** July 2026
+**Last updated:** August 2026
 
 ## Pool settings (console)
 
@@ -17,10 +17,13 @@ Terraform sets `cognito_mfa_configuration = "OPTIONAL"` and enables `software_to
 
 ## App behavior
 
-1. **Login challenge** — If the user already has software MFA, Cognito returns `SOFTWARE_TOKEN_MFA`; client completes via `POST /auth/cognito/mfa`.
-2. **Enrollment** — Signed-in user calls `POST /auth/mfa/setup` → secret + `otpauth://` URI, then `POST /auth/mfa/verify` with a 6-digit code. Cognito `AssociateSoftwareToken` → `VerifySoftwareToken` → `SetUserMFAPreference`.
-3. **Soft admin gate** — While the pool is Optional, `/auth/me` and Cognito login responses include `mfaEnabled` and `mfaEnrollmentRequired` (`true` for `ADMIN` without MFA). Admin routes redirect to `/mfa/setup` until enrolled.
-4. **Settings** — Security tab links to `/mfa/setup` when MFA is not yet enabled.
+1. **Login challenge (already enrolled)** — If the user already has software MFA, Cognito returns `SOFTWARE_TOKEN_MFA`; client completes via `POST /auth/cognito/mfa`.
+2. **Login challenge (MFA required, not enrolled)** — If the pool is **Require MFA** (`ON`) and the user has no TOTP, Cognito returns `MFA_SETUP` (no tokens). `POST /auth/cognito/login` associates a software token and returns a QR secret; the client finishes via `POST /auth/cognito/mfa/setup`. Do not use signed-in `POST /auth/mfa/setup` for this path — that endpoint needs an access token that does not exist yet.
+3. **Enrollment after login (pool Optional)** — Signed-in user calls `POST /auth/mfa/setup` → secret + `otpauth://` URI, then `POST /auth/mfa/verify` with a 6-digit code. Cognito `AssociateSoftwareToken` → `VerifySoftwareToken` → `SetUserMFAPreference`.
+4. **Soft admin gate** — While the pool is Optional, `/auth/me` and Cognito login responses include `mfaEnabled` and `mfaEnrollmentRequired`. Protected routes redirect to `/mfa/setup` until enrolled.
+5. **Settings** — Security tab links to `/mfa/setup` when MFA is not yet enabled.
+
+Unhandled Cognito challenges and SDK exceptions are mapped to user-facing copy. Server logs include the exception name and `ChallengeName` so new Cognito states are visible without reproducing from the UI.
 
 ## OAuth scope for enrollment
 
@@ -40,6 +43,6 @@ Configured on the Cognito app client and requested in `buildCognitoAuthorizeUrl`
 
 ## Related
 
-- `backend/src/auth/cognito.service.ts` — Associate / Verify / preference helpers
-- `backend/src/auth/auth.controller.ts` — `/auth/mfa/setup`, `/auth/mfa/verify`, `/auth/me`
-- `frontend/src/pages/public/MfaSetup.tsx`, `ProtectedRoute.tsx`
+- `backend/src/auth/cognito.service.ts` — Associate / Verify / preference helpers; `MFA_SETUP` login
+- `backend/src/auth/auth.controller.ts` — `/auth/cognito/login`, `/auth/cognito/mfa`, `/auth/cognito/mfa/setup`, `/auth/mfa/setup`, `/auth/mfa/verify`, `/auth/me`
+- `frontend/src/pages/public/Login.tsx`, `MfaSetup.tsx`, `ProtectedRoute.tsx`
