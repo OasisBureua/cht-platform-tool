@@ -44,6 +44,11 @@ import { ProgramRegistrationsService } from '../programs/program-registrations.s
 import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
+import {
+  DEFAULT_ZOOM_WEBINAR_SETTINGS,
+  isZoomAccountLockedSettingsError,
+  parseZoomWebinarSettings,
+} from '../webinars/zoom-webinar-settings';
 import { SesEmailService } from '../email/ses-email.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
@@ -1159,6 +1164,11 @@ export class AdminController {
           description:
             'Optional. HTTPS URL for a banner image on session detail / registration (admin-hosted CDN or public bucket).',
         },
+        zoomSettings: {
+          type: 'object',
+          description:
+            'Optional (WEBINAR). Zoom webinar toggles. Omitted fields use CHT defaults (Q&A on, Backstage off, HD screen share on, 1080p off, email in report off, cloud recording on).',
+        },
       },
     },
   })
@@ -1185,6 +1195,8 @@ export class AdminController {
       sessionDisclaimer?: string;
       /** Optional. Banner image URL for learners (HTTPS). */
       sessionHeroImageUrl?: string;
+      /** Optional. Zoom webinar settings (Q&A, Backstage, HD, recording). Ignored for MEETING. */
+      zoomSettings?: Record<string, unknown>;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -1241,6 +1253,7 @@ export class AdminController {
             startTime: body.startDate,
             duration: body.duration,
             timezone: body.timezone,
+            settings: parseZoomWebinarSettings(body.zoomSettings),
           });
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
@@ -2203,6 +2216,50 @@ export class AdminController {
     return this.programRegistrations.deleteFormLink(linkId);
   }
 
+  @Get('webinars/:id/zoom-settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Read Zoom webinar settings (Q&A, Backstage, HD, recording)',
+  })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  async getAdminWebinarZoomSettings(@Param('id') id: string) {
+    const existing = await this.prisma.program.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        zoomSessionType: true,
+        zoomMeetingId: true,
+      },
+    });
+    if (!existing) throw new NotFoundException('Webinar not found');
+    if (existing.zoomSessionType === 'MEETING') {
+      throw new BadRequestException(
+        'Zoom webinar settings apply only to Zoom Webinars, not Office Hours meetings.',
+      );
+    }
+    if (!existing.zoomMeetingId || !this.zoom.isConfigured()) {
+      return {
+        settings: DEFAULT_ZOOM_WEBINAR_SETTINGS,
+        source: 'defaults' as const,
+      };
+    }
+    const webinar = await this.zoom.getWebinarById(existing.zoomMeetingId);
+    if (!webinar) {
+      return {
+        settings: DEFAULT_ZOOM_WEBINAR_SETTINGS,
+        source: 'defaults' as const,
+        warning:
+          'Could not load settings from Zoom. Showing defaults; save will write these values to Zoom.',
+      };
+    }
+    return {
+      settings: webinar.settings ?? DEFAULT_ZOOM_WEBINAR_SETTINGS,
+      source: 'zoom' as const,
+    };
+  }
+
   @Patch('webinars/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -2228,6 +2285,8 @@ export class AdminController {
       speakers?: string[];
       sessionDisclaimer?: string | null;
       sessionHeroImageUrl?: string | null;
+      /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
+      zoomSettings?: Record<string, unknown>;
     },
   ) {
     const existing = await this.prisma.program.findUnique({
@@ -2283,27 +2342,55 @@ export class AdminController {
       !!body.title?.trim() ||
       body.description !== undefined ||
       body.startDate !== undefined ||
-      body.duration !== undefined;
+      body.duration !== undefined ||
+      body.zoomSettings !== undefined;
 
     const shouldSyncZoom =
       !!(existing.zoomMeetingId && this.zoom.isConfigured()) &&
       shouldPatchZoomFields;
 
     if (shouldSyncZoom && existing.zoomMeetingId) {
-      if (nextZoomSessionType === 'MEETING') {
-        await this.zoom.updateMeeting(existing.zoomMeetingId, {
-          topic: body.title?.trim() || undefined,
-          agenda: body.description,
-          startTime: body.startDate,
-          duration: body.duration,
-        });
-      } else {
-        await this.zoom.updateWebinar(existing.zoomMeetingId, {
-          topic: body.title?.trim() || undefined,
-          agenda: body.description,
-          startTime: body.startDate,
-          duration: body.duration,
-        });
+      try {
+        if (nextZoomSessionType === 'MEETING') {
+          if (body.zoomSettings !== undefined) {
+            throw new BadRequestException(
+              'Zoom webinar settings (Q&A, Backstage, HD, recording) apply only to Zoom Webinars, not Office Hours meetings.',
+            );
+          }
+          await this.zoom.updateMeeting(existing.zoomMeetingId, {
+            topic: body.title?.trim() || undefined,
+            agenda: body.description,
+            startTime: body.startDate,
+            duration: body.duration,
+          });
+        } else {
+          await this.zoom.updateWebinar(existing.zoomMeetingId, {
+            topic: body.title?.trim() || undefined,
+            agenda: body.description,
+            startTime: body.startDate,
+            duration: body.duration,
+            settings:
+              body.zoomSettings !== undefined
+                ? parseZoomWebinarSettings(body.zoomSettings)
+                : undefined,
+          });
+        }
+      } catch (err) {
+        if (
+          nextZoomSessionType === 'WEBINAR' &&
+          isZoomAccountLockedSettingsError(err)
+        ) {
+          this.logger.error(
+            `Zoom webinar ${existing.zoomMeetingId} settings were account-locked; program ${id} was still saved: ${err instanceof Error ? err.message : String(err)}`,
+            err instanceof Error ? err.stack : undefined,
+          );
+        } else {
+          this.logger.error(
+            `Zoom sync failed for program ${id} webinar ${existing.zoomMeetingId}: ${err instanceof Error ? err.message : String(err)}`,
+            err instanceof Error ? err.stack : undefined,
+          );
+          throw err;
+        }
       }
     }
 

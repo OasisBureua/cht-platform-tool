@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Video, Calendar } from 'lucide-react';
 import { DateTime } from 'luxon';
-import { adminApi, type CreateWebinarPayload, type ZoomSessionType } from '../../api/admin';
+import { adminApi, type CreateWebinarPayload, type ZoomSessionType, type ZoomWebinarSettings } from '../../api/admin';
 import { wallClockToUtcIso } from '../../utils/wallClockToUtcIso';
 import {
   SCHEDULER_TIMEZONES,
@@ -11,6 +11,9 @@ import {
 } from '../../utils/timezoneOptions';
 import { BillComMark } from '../../components/branding/BillComMark';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
+import ZoomWebinarSettingsFields, {
+  DEFAULT_ZOOM_WEBINAR_SETTINGS,
+} from '../../components/admin/ZoomWebinarSettingsFields';
 
 export type AdminWebinarSchedulerProps = {
   /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
@@ -41,6 +44,9 @@ export default function AdminWebinarScheduler({
   const [duration, setDuration] = useState('60');
   const [sessionHeroImageUrl, setSessionHeroImageUrl] = useState('');
   const [sessionDisclaimer, setSessionDisclaimer] = useState('');
+  const [zoomSettings, setZoomSettings] = useState<ZoomWebinarSettings>(
+    DEFAULT_ZOOM_WEBINAR_SETTINGS,
+  );
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
@@ -147,6 +153,7 @@ export default function AdminWebinarScheduler({
       ...(cleanSpeakers.length > 0 ? { speakers: cleanSpeakers } : {}),
       ...(sessionHeroImageUrl.trim() ? { sessionHeroImageUrl: sessionHeroImageUrl.trim() } : {}),
       ...(sessionDisclaimer.trim() ? { sessionDisclaimer: sessionDisclaimer.trim() } : {}),
+      ...(isWebinar ? { zoomSettings } : {}),
     };
 
     createMutation.mutate(payload);
@@ -461,6 +468,10 @@ export default function AdminWebinarScheduler({
             Date and time use the timezone you select above; we save the instant in UTC so the app and Zoom show the same
             local time (fixes wrong times when the server runs in UTC).
           </p>
+
+          {isWebinar ? (
+            <ZoomWebinarSettingsFields value={zoomSettings} onChange={setZoomSettings} />
+          ) : null}
 
           {isWebinar ? (
             <div>

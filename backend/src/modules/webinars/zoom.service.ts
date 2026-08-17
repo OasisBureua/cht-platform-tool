@@ -2,6 +2,15 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import {
+  DEFAULT_ZOOM_WEBINAR_SETTINGS,
+  fromZoomWebinarSettingsApi,
+  isZoomAccountLockedSettingsError,
+  omitAccountLockedWebinarSettings,
+  toZoomWebinarSettingsApi,
+  type ZoomWebinarSettings,
+  type ZoomWebinarSettingsApiPayload,
+} from './zoom-webinar-settings';
 
 export interface ZoomWebinar {
   id: string;
@@ -16,6 +25,8 @@ export interface ZoomWebinar {
   /** Attendee/meeting passcode when Zoom returns one (needed for Meeting SDK join). */
   password?: string;
   thumbnail?: string;
+  /** Webinar-only Zoom settings (Q&A, Backstage, HD, recording). */
+  settings?: ZoomWebinarSettings;
 }
 
 interface ZoomTokenResponse {
@@ -65,6 +76,14 @@ interface ZoomWebinarResponse {
   start_url: string;
   timezone: string;
   password?: string;
+  settings?: {
+    practice_session?: boolean;
+    hd_video?: boolean;
+    send_1080p_video_to_attendees?: boolean;
+    email_in_attendee_report?: boolean;
+    auto_recording?: string;
+    question_and_answer?: { enable?: boolean };
+  };
 }
 
 /** Zoom scheduled meeting API response (same shape as webinar for our mapping). */
@@ -161,6 +180,66 @@ export class ZoomService implements OnModuleInit {
     const detail = body?.data ? JSON.stringify(body.data) : '';
     const status = body?.status ? ` HTTP ${body.status}` : '';
     return `${base}${status}${detail ? `: ${detail}` : ''}`;
+  }
+
+  /**
+   * Create/update webinars with settings. If Zoom rejects HD / 1080p / cloud
+   * recording (account-locked), retry without those fields so the rest of the
+   * write still succeeds and the admin UI does not show Zoom's error.
+   * Every Zoom rejection is logged at error with HTTP status + response body.
+   */
+  private async requestWithSettingsFallback<T>(
+    send: (body: Record<string, unknown>) => Promise<{ data: T }>,
+    body: Record<string, unknown>,
+    context: string,
+  ): Promise<{ data: T }> {
+    try {
+      return await send(body);
+    } catch (err) {
+      this.logger.error(
+        `Zoom ${context}: request failed: ${this.zoomErrorMessage(err)}`,
+        err instanceof Error ? err.stack : undefined,
+      );
+      if (!body.settings || !isZoomAccountLockedSettingsError(err)) {
+        throw err;
+      }
+      this.logger.error(
+        `Zoom ${context}: treating as account-locked HD/1080p/cloud recording; retrying without those fields`,
+      );
+      try {
+        return await send({
+          ...body,
+          settings: omitAccountLockedWebinarSettings(
+            body.settings as ZoomWebinarSettingsApiPayload,
+          ),
+        });
+      } catch (err2) {
+        this.logger.error(
+          `Zoom ${context}: retry without HD/recording failed: ${this.zoomErrorMessage(err2)}`,
+          err2 instanceof Error ? err2.stack : undefined,
+        );
+        if (!isZoomAccountLockedSettingsError(err2)) throw err2;
+        this.logger.error(
+          `Zoom ${context}: treating as account-locked settings; retrying without any settings object`,
+        );
+        const { settings: _omit, ...withoutSettings } = body;
+        if (Object.keys(withoutSettings).length === 0) {
+          this.logger.error(
+            `Zoom ${context}: settings-only write skipped after Zoom rejected all setting payloads`,
+          );
+          return { data: undefined as T };
+        }
+        try {
+          return await send(withoutSettings);
+        } catch (err3) {
+          this.logger.error(
+            `Zoom ${context}: retry without settings failed: ${this.zoomErrorMessage(err3)}`,
+            err3 instanceof Error ? err3.stack : undefined,
+          );
+          throw err3;
+        }
+      }
+    }
   }
 
   /** Upcoming sessions within this many months (inclusive) from today. */
@@ -369,6 +448,7 @@ export class ZoomService implements OnModuleInit {
         startUrl: data.start_url,
         timezone: data.timezone,
         password: data.password?.trim() || undefined,
+        settings: fromZoomWebinarSettingsApi(data.settings),
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -383,6 +463,7 @@ export class ZoomService implements OnModuleInit {
     startTime: string;
     duration: number;
     timezone?: string;
+    settings?: ZoomWebinarSettings;
   }): Promise<ZoomWebinar> {
     if (!this.isConfigured()) throw new Error('Zoom not configured');
 
@@ -392,19 +473,27 @@ export class ZoomService implements OnModuleInit {
     );
 
     const token = await this.getAccessToken();
-    const { data } = await firstValueFrom(
-      this.http.post<ZoomWebinarResponse>(
-        'https://api.zoom.us/v2/users/me/webinars',
-        {
-          topic: params.topic,
-          agenda: params.agenda,
-          start_time: startTime,
-          duration: params.duration,
-          timezone: params.timezone || 'America/New_York',
-          type: 5, // Webinar type
-        },
-        { headers: { Authorization: `Bearer ${token}` } },
-      ),
+    const { data } = await this.requestWithSettingsFallback<ZoomWebinarResponse>(
+      (payload) =>
+        firstValueFrom(
+          this.http.post<ZoomWebinarResponse>(
+            'https://api.zoom.us/v2/users/me/webinars',
+            payload,
+            { headers: { Authorization: `Bearer ${token}` } },
+          ),
+        ),
+      {
+        topic: params.topic,
+        agenda: params.agenda,
+        start_time: startTime,
+        duration: params.duration,
+        timezone: params.timezone || 'America/New_York',
+        type: 5,
+        settings: toZoomWebinarSettingsApi(
+          params.settings ?? DEFAULT_ZOOM_WEBINAR_SETTINGS,
+        ),
+      },
+      `create webinar "${params.topic}"`,
     );
 
     this.logger.log(
@@ -421,6 +510,7 @@ export class ZoomService implements OnModuleInit {
       startUrl: data.start_url,
       timezone: data.timezone,
       password: data.password?.trim() || undefined,
+      settings: fromZoomWebinarSettingsApi(data.settings),
     };
   }
 
@@ -432,6 +522,7 @@ export class ZoomService implements OnModuleInit {
       startTime?: string;
       duration?: number;
       timezone?: string;
+      settings?: ZoomWebinarSettings;
     },
   ): Promise<void> {
     if (!this.isConfigured()) return;
@@ -443,11 +534,20 @@ export class ZoomService implements OnModuleInit {
     if (params.startTime) body.start_time = formatZoomStartTime(params.startTime);
     if (params.duration !== undefined) body.duration = params.duration;
     if (params.timezone) body.timezone = params.timezone;
+    if (params.settings) {
+      body.settings = toZoomWebinarSettingsApi(params.settings);
+    }
+    if (Object.keys(body).length === 0) return;
 
-    await firstValueFrom(
-      this.http.patch(`https://api.zoom.us/v2/webinars/${webinarId}`, body, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
+    await this.requestWithSettingsFallback(
+      (payload) =>
+        firstValueFrom(
+          this.http.patch(`https://api.zoom.us/v2/webinars/${webinarId}`, payload, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ),
+      body,
+      `update webinar ${webinarId}`,
     );
     this.logger.log(`Zoom: updated webinar ${webinarId}`);
   }
