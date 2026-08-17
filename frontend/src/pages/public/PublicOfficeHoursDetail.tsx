@@ -135,7 +135,7 @@ export default function PublicOfficeHoursDetail() {
                   <Link
                     to="/login"
                     state={{
-                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}` : `/chm-office-hours/${id}` },
+                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}/register` : `/chm-office-hours/${id}` },
                     }}
                     className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                   >
@@ -145,7 +145,7 @@ export default function PublicOfficeHoursDetail() {
                   <Link
                     to="/join"
                     state={{
-                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}` : `/chm-office-hours/${id}` },
+                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}/register` : `/chm-office-hours/${id}` },
                     }}
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                   >
