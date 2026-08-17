@@ -13,7 +13,12 @@ import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 export default function Login() {
   const location = useLocation();
   const { user, isAuthenticated, isLoading, login, completeMfaLogin } = useAuth();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+  const fromLocation = (
+    location.state as { from?: { pathname: string; search?: string } } | null
+  )?.from;
+  const from = fromLocation
+    ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
+    : undefined;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -239,7 +244,7 @@ export default function Login() {
             Don&apos;t have an account?{' '}
             <Link
               to="/join"
-              state={from ? { from: { pathname: from } } : undefined}
+              state={fromLocation ? { from: fromLocation } : undefined}
               className="font-medium text-gray-900 underline hover:text-gray-700"
             >
               Sign Up

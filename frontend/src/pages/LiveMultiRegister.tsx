@@ -305,12 +305,26 @@ export default function LiveMultiRegister() {
   const allowAccess = hasInviteContext;
 
   if (!user?.userId) {
+    const returnLocation = { pathname: location.pathname, search: location.search };
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
         <p className="text-gray-700">Sign in to register for live webinars.</p>
-        <Link to="/login" className="mt-4 inline-block font-semibold text-brand-600 underline">
-          Sign in
-        </Link>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Link
+            to="/login"
+            state={{ from: returnLocation }}
+            className="inline-block font-semibold text-brand-600 underline"
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/join"
+            state={{ from: returnLocation }}
+            className="inline-block font-semibold text-brand-600 underline"
+          >
+            Create account
+          </Link>
+        </div>
       </div>
     );
   }

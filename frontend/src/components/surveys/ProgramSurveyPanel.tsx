@@ -53,6 +53,13 @@ export function ProgramSurveyPanel({
     enabled: Boolean(surveyId && userId),
   });
 
+  // SCRUM-186: fetch pre-fill for questions with syncToProfile. Auth-only.
+  const { data: profilePrefill } = useQuery({
+    queryKey: ['survey', surveyId, 'profile-prefill'],
+    queryFn: () => surveysApi.getProfilePrefill(surveyId),
+    enabled: Boolean(surveyId && userId && authenticated),
+  });
+
   const submitMut = useMutation({
     mutationFn: (answers: Record<string, unknown>) =>
       surveysApi.submitResponse(surveyId, { answers }),
@@ -109,6 +116,7 @@ export function ProgramSurveyPanel({
       hideSubmitButton={hideSubmitButton}
       formId={formId}
       showPayoutNotice={survey.type === 'FEEDBACK'}
+      profilePrefill={profilePrefill}
       onSubmit={(answers) => submitMut.mutate(answers)}
     />
   );
