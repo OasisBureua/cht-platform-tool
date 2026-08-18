@@ -62,6 +62,22 @@ export function pushClipShareClick(params: {
   });
 }
 
+export function pushKolPlaylistClick(params: {
+  kol_id: string;
+  playlist_id: string;
+  playlist_title: string;
+}): void {
+  if (typeof window === 'undefined') return;
+  window.dataLayer = window.dataLayer || [];
+  window.dataLayer.push({
+    event: 'kol_playlist_click',
+    kol_id: params.kol_id,
+    playlist_id: params.playlist_id,
+    playlist_title: params.playlist_title,
+    surface: 'kol_profile_engagement',
+  });
+}
+
 export function pushChapterClick(params: {
   clip_id: string;
   clip_title: string;

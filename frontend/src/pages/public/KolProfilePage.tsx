@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
+import { KolEngagementStats } from '../../components/kol/KolEngagementStats';
 import { KolPlaylistSection } from '../../components/kol/KolPlaylistSection';
 import { KolPublicationsSection } from '../../components/kol/KolPublicationsSection';
 import { useKolProfile } from '../../hooks/useKolProfile';
@@ -356,6 +357,7 @@ export default function KolProfilePage() {
 
             {tab === 'engagement' ? (
               <div className="space-y-4">
+                <KolEngagementStats entry={entry} />
                 <KolPlaylistSection entry={entry} />
                 <KolCatalogContentSection entry={entry} variant="engagement" limit={12} />
               </div>

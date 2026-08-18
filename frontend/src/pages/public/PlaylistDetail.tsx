@@ -9,6 +9,7 @@ import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNav
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 import { pushClipView } from '../../lib/analytics';
+import { PlaylistFeaturedPhysicians } from '../../components/kol/PlaylistFeaturedPhysicians';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -127,6 +128,8 @@ export default function PlaylistDetail() {
         </Link>
 
         <h1 className="text-4xl md:text-5xl font-bold text-gray-900">{playlist.title}</h1>
+
+        {playlistId ? <PlaylistFeaturedPhysicians playlistId={playlistId} /> : null}
 
         {/* Main content: Video player + Recommended sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">

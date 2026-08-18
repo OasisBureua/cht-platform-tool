@@ -139,6 +139,19 @@ async function main() {
     sortedMap[key] = map[key].sort((a, b) => a.title.localeCompare(b.title));
   }
 
+  // Reverse map: playlistId → [doctor slugs featured]
+  const reverse = {};
+  for (const [slug, refs] of Object.entries(sortedMap)) {
+    for (const ref of refs) {
+      if (!reverse[ref.id]) reverse[ref.id] = [];
+      if (!reverse[ref.id].includes(slug)) reverse[ref.id].push(slug);
+    }
+  }
+  const sortedReverse = {};
+  for (const key of Object.keys(reverse).sort()) {
+    sortedReverse[key] = reverse[key].sort();
+  }
+
   const generatedAt = new Date().toISOString();
   const totalPlaylists = playlists.length;
   const kolsWithPlaylists = Object.keys(sortedMap).length;
@@ -176,6 +189,12 @@ export interface KolPlaylistRef {
  * Same slug shape returned by GET /api/catalog/doctors.
  */
 export const KOL_PLAYLISTS: Record<string, KolPlaylistRef[]> = ${JSON.stringify(sortedMap, null, 2)};
+
+/**
+ * Reverse index: playlist id → list of doctor slugs featured in it.
+ * Used by /catalog/playlist/:id to render "Featured physicians" strip.
+ */
+export const PLAYLIST_KOLS: Record<string, string[]> = ${JSON.stringify(sortedReverse, null, 2)};
 `;
 
   writeFileSync(OUT_PATH, banner, 'utf8');

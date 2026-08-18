@@ -3,6 +3,7 @@ import { ArrowRight, ListVideo } from 'lucide-react';
 import type { DolEntry } from '../../data/dol-network';
 import { KOL_PLAYLISTS, type KolPlaylistRef } from '../../data/kol-playlists.generated';
 import { kolCatalogDoctorSlugs } from '../../utils/kol-catalog-link';
+import { pushKolPlaylistClick } from '../../lib/analytics';
 
 type Props = {
   entry: Pick<DolEntry, 'id' | 'name' | 'intel'>;
@@ -37,6 +38,13 @@ export function KolPlaylistSection({ entry, limit = 8 }: Props) {
           <li key={pl.id}>
             <Link
               to={`/catalog/playlist/${encodeURIComponent(pl.id)}`}
+              onClick={() =>
+                pushKolPlaylistClick({
+                  kol_id: entry.id,
+                  playlist_id: pl.id,
+                  playlist_title: pl.title,
+                })
+              }
               className="group flex h-full flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition hover:border-brand-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950 dark:hover:border-brand-700"
             >
               <div className="relative aspect-video w-full overflow-hidden bg-zinc-100 dark:bg-zinc-900">
