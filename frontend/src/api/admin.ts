@@ -138,6 +138,9 @@ export interface AdminUser {
   status: string;
   /** US state or region when captured on profile */
   state?: string | null;
+  city?: string | null;
+  /** Organization / institution from profile */
+  institution?: string | null;
   createdAt: string;
 }
 
@@ -161,6 +164,11 @@ export interface PendingPayment {
   status: string;
   description: string | null;
   createdAt: string;
+  deliveryMethod?: 'ACH' | 'CHECK' | null;
+  checkStatus?: string | null;
+  checkMailedAt?: string | null;
+  checkDeliveredAt?: string | null;
+  checkTrackingInfo?: string | null;
   user: {
     id: string;
     email: string;
@@ -168,6 +176,8 @@ export interface PendingPayment {
     lastName: string;
     billVendorId: string | null;
     w9Submitted?: boolean;
+    preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
+    bankAccountLast4?: string | null;
   };
   program: { id: string; title: string } | null;
 }
@@ -186,6 +196,24 @@ export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
   paymentsPaidCount: number;
+  paymentsPaidCents?: number;
+  pendingPaymentsCount?: number;
+  pendingRegistrationsCount?: number;
+  publishedLiveProgramsCount?: number;
+}
+
+export interface AdminAuditLogEntry {
+  id: string;
+  actorId: string;
+  actorEmail: string | null;
+  actorRole?: string | null;
+  action: string;
+  resource: string | null;
+  resourceId: string | null;
+  metadata: unknown;
+  ipAddress: string | null;
+  userAgent: string | null;
+  createdAt: string;
 }
 
 export interface WebhookImportedProgram {
@@ -743,6 +771,33 @@ export const adminApi = {
     return normalizeCampaignsDashboardResponse(data);
   },
 
+  listAuditLogs: async (params?: {
+    limit?: number;
+    resource?: string;
+    actorId?: string;
+    actorRole?: string;
+  }): Promise<{ items: AdminAuditLogEntry[]; total: number; limit: number }> => {
+    const { data } = await apiClient.get<{
+      items: AdminAuditLogEntry[];
+      total: number;
+      limit: number;
+    }>('/admin/audit-logs', { params });
+    return data;
+  },
+
+  exportPaymentsCsv: async (params?: {
+    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL';
+    from?: string;
+    to?: string;
+  }): Promise<Blob> => {
+    const { data } = await apiClient.get<Blob>('/payments/export.csv', {
+      params,
+      responseType: 'blob',
+    });
+    return data;
+  },
+
+
   getPrograms: async (): Promise<AdminProgram[]> => {
     try {
       const { data } = await apiClient.get<AdminProgram[]>('/admin/programs');
@@ -1051,7 +1106,11 @@ export const adminApi = {
   sendRegistrationInvites: async (payload: {
     programIds: string[];
     userIds?: string[];
+    emails?: string[];
     role?: 'HCP' | 'KOL';
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
   }) => {
     const { data } = await apiClient.post('/admin/registration-invites', payload);
     return data as {
@@ -1059,6 +1118,22 @@ export const adminApi = {
       programs: { id: string; title: string }[];
       emailed: number;
       skipped: { userId: string; email: string; reason: string }[];
+    };
+  },
+
+  sendProgramOperationalEmail: async (
+    programId: string,
+    payload: { to: string[]; subject: string; body: string },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/operational-email`,
+      payload,
+    );
+    return data as {
+      programId: string;
+      sent: number;
+      failed: { email: string; error: string }[];
+      extras: string[];
     };
   },
 
@@ -1178,8 +1253,55 @@ export const adminApi = {
 
   // ─── Users ───────────────────────────────────────────────────────────────
 
-  getUsers: async (params?: { q?: string; role?: string; limit?: number }): Promise<AdminUser[]> => {
-    const { data } = await apiClient.get<AdminUser[]>('/admin/users', { params });
+  getUsers: async (params?: {
+    q?: string;
+    role?: string;
+    status?: string;
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
+    limit?: number;
+  }): Promise<AdminUser[]> => {
+    const { cities, states, institutions, ...rest } = params ?? {};
+    const { data } = await apiClient.get<AdminUser[]>('/admin/users', {
+      params: {
+        ...rest,
+        cities: cities?.length ? cities.join(',') : undefined,
+        states: states?.length ? states.join(',') : undefined,
+        institutions: institutions?.length ? institutions.join(',') : undefined,
+      },
+    });
+    return data;
+  },
+
+  getRegistrationInviteFilterOptions: async (role: 'HCP' | 'KOL') => {
+    const { data } = await apiClient.get<{
+      cities: string[];
+      states: string[];
+      institutions: string[];
+    }>('/admin/users/registration-invite-filter-options', { params: { role } });
+    return data;
+  },
+
+  getRegistrationInviteRecipients: async (params: {
+    role: 'HCP' | 'KOL';
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
+    limit?: number;
+  }) => {
+    const { data } = await apiClient.get<{
+      recipients: AdminUser[];
+      total: number;
+    }>('/admin/users/registration-invite-recipients', {
+      params: {
+        role: params.role,
+        cities: params.cities?.length ? params.cities.join(',') : undefined,
+        states: params.states?.length ? params.states.join(',') : undefined,
+        institutions: params.institutions?.length ? params.institutions.join(',') : undefined,
+        limit: params.limit ?? 200,
+      },
+    });
     return data;
   },
 

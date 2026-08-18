@@ -22,6 +22,7 @@ import {
 import { UserRole } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import type { JwksClient, SigningKey } from 'jwks-rsa';
+import { CognitoUnhandledChallengeError } from './cognito-login-errors';
 
 /** Cognito groups defined in infrastructure/terraform/modules/security/cognito/main.tf */
 export const COGNITO_GROUP_HCP = 'cht-hcp';
@@ -64,7 +65,8 @@ export interface CognitoAccessTokenClaims {
 
 export type CognitoLoginResult =
   | { kind: 'tokens'; tokens: CognitoTokens }
-  | { kind: 'mfa'; challenge: 'SOFTWARE_TOKEN_MFA'; session: string };
+  | { kind: 'mfa'; challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+  | { kind: 'mfa_setup'; session: string; secretCode: string };
 
 @Injectable()
 export class CognitoService {
@@ -304,22 +306,61 @@ export class CognitoService {
       { abortSignal: this.cognitoAbortSignal() },
     );
 
-    if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
-      if (!response.Session) {
-        throw new Error('MFA challenge missing session');
-      }
-      return {
-        kind: 'mfa',
-        challenge: 'SOFTWARE_TOKEN_MFA',
-        session: response.Session,
-      };
+    return this.interpretAuthResponse(response, email.trim().toLowerCase());
+  }
+
+  /**
+   * Complete TOTP enrollment started from an MFA_SETUP login challenge
+   * (AssociateSoftwareToken already ran; session is from that call).
+   */
+  async completeMfaSetupChallenge(
+    session: string,
+    code: string,
+    email: string,
+  ): Promise<CognitoTokens> {
+    const username = email.trim().toLowerCase();
+    const verify = await this.client.send(
+      new VerifySoftwareTokenCommand({
+        Session: session,
+        UserCode: code.trim(),
+        FriendlyDeviceName: 'Authenticator app',
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+    if (verify.Status && verify.Status !== 'SUCCESS') {
+      throw new Error('MFA code verification failed');
+    }
+    if (!verify.Session) {
+      throw new Error(
+        'This sign-in step expired. Enter your email and password again.',
+      );
     }
 
+    const response = await this.client.send(
+      new RespondToAuthChallengeCommand({
+        ClientId: this.clientId,
+        ChallengeName: 'MFA_SETUP',
+        Session: verify.Session,
+        ChallengeResponses: {
+          USERNAME: username,
+        },
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+
     const tokens = this.toTokens(response.AuthenticationResult);
-    if (!tokens) {
-      throw new Error('Cognito login did not return tokens');
+    if (tokens) return tokens;
+
+    if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA' && response.Session) {
+      return this.respondToMfaChallenge(response.Session, code, username);
     }
-    return { kind: 'tokens', tokens };
+
+    this.logger.warn(
+      `[Cognito] MFA_SETUP did not return tokens challenge=${response.ChallengeName ?? '(none)'} username=${username}`,
+    );
+    throw new CognitoUnhandledChallengeError(
+      response.ChallengeName ?? '(none)',
+    );
   }
 
   async respondToMfaChallenge(
@@ -342,9 +383,85 @@ export class CognitoService {
 
     const tokens = this.toTokens(response.AuthenticationResult);
     if (!tokens) {
-      throw new Error('MFA verification did not return tokens');
+      if (response.ChallengeName) {
+        this.logger.warn(
+          `[Cognito] MFA challenge did not return tokens challenge=${response.ChallengeName}`,
+        );
+        throw new CognitoUnhandledChallengeError(response.ChallengeName);
+      }
+      this.logger.warn('[Cognito] MFA challenge did not return tokens');
+      throw new CognitoUnhandledChallengeError('(none)');
     }
     return tokens;
+  }
+
+  private async interpretAuthResponse(
+    response: {
+      ChallengeName?: string;
+      Session?: string;
+      AuthenticationResult?: AuthenticationResultType;
+    },
+    username: string,
+  ): Promise<CognitoLoginResult> {
+    if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+      if (!response.Session) {
+        throw new Error('MFA challenge missing session');
+      }
+      return {
+        kind: 'mfa',
+        challenge: 'SOFTWARE_TOKEN_MFA',
+        session: response.Session,
+      };
+    }
+
+    if (response.ChallengeName === 'MFA_SETUP') {
+      return this.beginMfaSetupChallenge(response.Session, username);
+    }
+
+    if (response.ChallengeName) {
+      this.logger.warn(
+        `[Cognito] Unhandled login challenge=${response.ChallengeName} username=${username}`,
+      );
+      throw new CognitoUnhandledChallengeError(response.ChallengeName);
+    }
+
+    const tokens = this.toTokens(response.AuthenticationResult);
+    if (!tokens) {
+      this.logger.warn(
+        `[Cognito] Login returned no tokens and no challenge username=${username}`,
+      );
+      throw new CognitoUnhandledChallengeError('(none)');
+    }
+    return { kind: 'tokens', tokens };
+  }
+
+  private async beginMfaSetupChallenge(
+    session: string | undefined,
+    username: string,
+  ): Promise<CognitoLoginResult> {
+    if (!session) {
+      this.logger.warn(
+        `[Cognito] MFA_SETUP missing session username=${username}`,
+      );
+      throw new CognitoUnhandledChallengeError('MFA_SETUP');
+    }
+
+    const associated = await this.client.send(
+      new AssociateSoftwareTokenCommand({ Session: session }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+    if (!associated.SecretCode || !associated.Session) {
+      this.logger.warn(
+        `[Cognito] AssociateSoftwareToken incomplete during MFA_SETUP username=${username}`,
+      );
+      throw new CognitoUnhandledChallengeError('MFA_SETUP');
+    }
+
+    return {
+      kind: 'mfa_setup',
+      session: associated.Session,
+      secretCode: associated.SecretCode,
+    };
   }
 
   async signUp(

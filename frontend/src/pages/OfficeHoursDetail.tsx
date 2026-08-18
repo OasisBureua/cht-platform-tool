@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
+import { OfficeHoursZoomEmbed } from '../components/zoom/OfficeHoursZoomEmbed';
 
 export default function OfficeHoursDetail() {
   const { id } = useParams<{ id: string }>();
@@ -191,16 +192,10 @@ export default function OfficeHoursDetail() {
 
             {session.joinUrl ? (
               enrolled ? (
-                <a
-                  href={session.joinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-                >
-                  <Video className="h-4 w-4" />
-                  Join session
-                  <ExternalLink className="h-4 w-4 opacity-90" />
-                </a>
+                <OfficeHoursZoomEmbed
+                  programId={id!}
+                  joinUrlFallback={session.joinUrl}
+                />
               ) : registrationPendingApproval ? (
                 <button
                   type="button"

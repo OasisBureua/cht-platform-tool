@@ -141,6 +141,70 @@ export class CatalogController {
     }
   }
 
+  @Get('wordpress/series')
+  async getWordPressSeries(@Query('fresh') fresh?: string) {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getWordPressSeries({
+        skipCache: fresh === '1' || fresh === 'true',
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 404) {
+        this.logger.warn(
+          `[Catalog] ContentHub ${status} on /wordpress/series - returning empty.`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  @Get('wordpress/series/:slug')
+  async getWordPressSeriesDetail(
+    @Param('slug') slug: string,
+    @Query('fresh') fresh?: string,
+  ) {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return null;
+    }
+    try {
+      return await this.mediahub.getWordPressSeriesDetail(slug, {
+        skipCache: fresh === '1' || fresh === 'true',
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 404) return null;
+      throw err;
+    }
+  }
+
+  @Get('wordpress/tags')
+  async getWordPressTags(@Query('fresh') fresh?: string) {
+    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+      return { items: [], total: 0 };
+    }
+    try {
+      return await this.mediahub.getWordPressTags({
+        skipCache: fresh === '1' || fresh === 'true',
+      });
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 401 || status === 404) {
+        this.logger.warn(
+          `[Catalog] ContentHub ${status} on /wordpress/tags - returning empty.`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
   /**
    * GET /api/catalog/wordpress
    * ContentHub: latest WordPress editorial posts (view-only for admin Content tab).
@@ -299,10 +363,96 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/playlists/:id
-   * YouTube: Playlist details + videos for Playlist detail page.
+   * Accepts a YouTube playlist ID (starts with `PL`, ~34 chars) OR a WordPress
+   * series slug. Series slugs resolve through ContentHub's Layer 2 mirror; the
+   * response is normalized into the same shape as YT-backed playlists so
+   * PlaylistDetail renders either identifier without branching.
+   *
+   * Match strategy for series slugs, in order:
+   *   1. clip.wordpress.post_id ∈ series.post_ids (authoritative WP join)
+   *   2. clip has doctor:* tags that cover the series slug's doctor pair
+   *      (fallback for when ContentHub's inline wordpress field is empty)
    */
   @Get('playlists/:id')
   async getPlaylist(@Param('id') id: string) {
+    const looksLikeYouTubePlaylistId = /^PL[A-Za-z0-9_-]{16,}$/.test(id);
+    if (!looksLikeYouTubePlaylistId && this.mediahub.usesContentHubCatalog()) {
+      const series = await this.mediahub.getWordPressSeriesDetail(id);
+      if (series) {
+        const postIdSet = new Set(series.post_ids);
+        // Series slugs look like "gadi-yan" / "bardia-callahan" / "dr-joyce-oshaughnessy" —
+        // most tokens are doctor last names that appear in clip tags as "doctor:Yan" etc.
+        // Some series slugs include first names ("joyce") or the "dr" prefix; those
+        // won't match any doctor tag and get dropped from the required-match set.
+        const rawTokens = series.slug
+          .split('-')
+          .map((t) => t.trim().toLowerCase())
+          .filter((t) => t.length >= 3 && t !== 'dr' && t !== 'the');
+
+        const clipsPage = await this.mediahub.getClips({
+          limit: 200,
+          has_wordpress: true,
+        });
+        const clipItems = clipsPage.items ?? [];
+
+        // Normalize apostrophes + case for slug<->tag matching. WP series
+        // slugs strip apostrophes (`odea`) but doctor tags keep them
+        // (`doctor:O'Dea`); normalize both sides to compare.
+        const norm = (s: string): string =>
+          s.toLowerCase().replace(/['’]/g, '');
+
+        // Collect every doctor last name that appears anywhere in the clip
+        // corpus, so we can drop series-slug tokens that don't correspond to
+        // any real doctor tag (typically first names or unrelated words).
+        const knownDoctors = new Set<string>();
+        for (const c of clipItems) {
+          for (const t of c.tags ?? []) {
+            if (t.toLowerCase().startsWith('doctor:')) {
+              knownDoctors.add(norm(t.slice('doctor:'.length).trim()));
+            }
+          }
+        }
+        const doctorTokens = rawTokens.filter((tok) =>
+          Array.from(knownDoctors).some((doc) => doc.includes(tok)),
+        );
+
+        const matchByPostId = (c: (typeof clipItems)[number]) =>
+          !!c.wordpress?.post_id && postIdSet.has(c.wordpress.post_id);
+
+        const matchByDoctorTags = (c: (typeof clipItems)[number]) => {
+          if (doctorTokens.length === 0) return false;
+          const clipDoctors = (c.tags ?? [])
+            .filter((t) => t.toLowerCase().startsWith('doctor:'))
+            .map((t) => norm(t.slice('doctor:'.length).trim()));
+          if (clipDoctors.length === 0) return false;
+          // Every recognized doctor token in the series slug must appear as
+          // (or within) at least one clip doctor tag.
+          return doctorTokens.every((token) =>
+            clipDoctors.some((doc) => doc.includes(token)),
+          );
+        };
+
+        const videos = clipItems
+          .filter((c) => matchByPostId(c) || matchByDoctorTags(c))
+          .map((c) => ({
+            id: c.id,
+            title: c.title,
+            thumbnailUrl: c.thumbnail_url,
+            youtubeUrl: c.youtube_url,
+          }));
+        return {
+          playlist: {
+            id: series.slug,
+            title: series.name,
+            thumbnailUrl: videos[0]?.thumbnailUrl ?? '',
+            videoNames: videos.map((v) => v.title),
+            videoCount: videos.length,
+          },
+          videos,
+          series: { slug: series.slug, wp_term_id: series.wp_term_id },
+        };
+      }
+    }
     return this.catalogService.getPlaylistVideos(id);
   }
 

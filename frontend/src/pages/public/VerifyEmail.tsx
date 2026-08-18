@@ -6,10 +6,14 @@ import AuthFormCard from './components/AuthFormCard';
 export default function VerifyEmail() {
   const navigate = useNavigate();
   const location = useLocation();
+  const stateData = location.state as
+    | { email?: string; from?: { pathname: string; search?: string } }
+    | null;
   const initialEmail =
-    (location.state as { email?: string } | null)?.email ||
+    stateData?.email ||
     new URLSearchParams(location.search).get('email') ||
     '';
+  const fromLocation = stateData?.from;
   const { confirmEmailSignup, resendEmailVerificationCode } = useAuth();
 
   const [email, setEmail] = useState(initialEmail);
@@ -42,7 +46,11 @@ export default function VerifyEmail() {
     }
     navigate('/login', {
       replace: true,
-      state: { email: email.trim(), verified: true },
+      state: {
+        email: email.trim(),
+        verified: true,
+        ...(fromLocation && { from: fromLocation }),
+      },
     });
   };
 

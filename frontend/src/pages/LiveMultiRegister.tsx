@@ -46,6 +46,30 @@ function hasIntakeForm(w: WebinarItem): boolean {
   return !!(w.intakeSurveyId?.trim() || w.hasIntakeSurvey);
 }
 
+function sessionWindowMs(w: WebinarItem): { start: number; end: number } | null {
+  if (!w.startTime) return null;
+  const start = new Date(w.startTime).getTime();
+  if (Number.isNaN(start)) return null;
+  const end = start + (w.duration ?? 60) * 60_000;
+  return { start, end };
+}
+
+/** First pair of selected webinars whose scheduled windows overlap, if any. */
+function findOverlappingPair(items: WebinarItem[]): [WebinarItem, WebinarItem] | null {
+  for (let i = 0; i < items.length; i++) {
+    const a = sessionWindowMs(items[i]);
+    if (!a) continue;
+    for (let j = i + 1; j < items.length; j++) {
+      const b = sessionWindowMs(items[j]);
+      if (!b) continue;
+      if (a.start < b.end && b.start < a.end) {
+        return [items[i], items[j]];
+      }
+    }
+  }
+  return null;
+}
+
 export default function LiveMultiRegister() {
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -107,6 +131,15 @@ export default function LiveMultiRegister() {
         .filter((w): w is WebinarItem => !!w),
     [selected, webinarById],
   );
+
+  const selectionOverlap = useMemo(
+    () => findOverlappingPair(selectedWebinars),
+    [selectedWebinars],
+  );
+
+  const selectionOverlapMessage = selectionOverlap
+    ? `Scheduling conflict: "${selectionOverlap[0].title}" and "${selectionOverlap[1].title}" overlap. Deselect one before submitting.`
+    : null;
 
   const intakePrograms = useMemo(
     () => selectedWebinars.filter(hasIntakeForm),
@@ -209,6 +242,7 @@ export default function LiveMultiRegister() {
 
   const continueFromSelect = () => {
     if (selected.size === 0) return;
+    if (selectionOverlapMessage) return;
     if (intakePrograms.length === 0) {
       setPhase('review');
       return;
@@ -271,12 +305,26 @@ export default function LiveMultiRegister() {
   const allowAccess = hasInviteContext;
 
   if (!user?.userId) {
+    const returnLocation = { pathname: location.pathname, search: location.search };
     return (
       <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
         <p className="text-gray-700">Sign in to register for live webinars.</p>
-        <Link to="/login" className="mt-4 inline-block font-semibold text-brand-600 underline">
-          Sign in
-        </Link>
+        <div className="mt-4 flex flex-wrap justify-center gap-3">
+          <Link
+            to="/login"
+            state={{ from: returnLocation }}
+            className="inline-block font-semibold text-brand-600 underline"
+          >
+            Sign in
+          </Link>
+          <Link
+            to="/join"
+            state={{ from: returnLocation }}
+            className="inline-block font-semibold text-brand-600 underline"
+          >
+            Create account
+          </Link>
+        </div>
       </div>
     );
   }
@@ -485,9 +533,18 @@ export default function LiveMultiRegister() {
                 ))}
               </ul>
 
+              {selectionOverlapMessage ? (
+                <div
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                  role="alert"
+                >
+                  {selectionOverlapMessage}
+                </div>
+              ) : null}
+
               <button
                 type="button"
-                disabled={selected.size === 0}
+                disabled={selected.size === 0 || !!selectionOverlapMessage}
                 onClick={continueFromSelect}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
               >
@@ -626,13 +683,31 @@ export default function LiveMultiRegister() {
             </p>
           ) : null}
 
+          {selectionOverlapMessage ? (
+            <div
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+              role="alert"
+            >
+              {selectionOverlapMessage}
+            </div>
+          ) : null}
+
           {submitMut.isError ? (
-            <p className="text-sm text-red-600">{getApiErrorMessage(submitMut.error)}</p>
+            <div
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+              role="alert"
+            >
+              {getApiErrorMessage(submitMut.error)}
+            </div>
           ) : null}
 
           <button
             type="button"
-            disabled={selected.size === 0 || submitMut.isPending}
+            disabled={
+              selected.size === 0 ||
+              submitMut.isPending ||
+              !!selectionOverlapMessage
+            }
             onClick={() => submitMut.mutate()}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >

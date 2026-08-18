@@ -20,6 +20,7 @@ jest.mock('jwks-rsa', () => {
 });
 
 import { CognitoService } from './cognito.service';
+import { CognitoUnhandledChallengeError } from './cognito-login-errors';
 
 describe('CognitoService token verification', () => {
   const region = 'us-east-1';
@@ -195,5 +196,123 @@ describe('CognitoService token verification', () => {
     expect(uri).toContain('secret=SECRET123');
     expect(uri).toContain('issuer=Community%20Health');
     expect(uri.toLowerCase()).toContain(encodeURIComponent('CHT:admin@example.com').toLowerCase());
+  });
+});
+
+describe('CognitoService password login challenges', () => {
+  const region = 'us-east-1';
+  const userPoolId = 'us-east-1_TestPool';
+  const clientId = 'test-client-id';
+
+  let service: CognitoService;
+  let send: jest.Mock;
+
+  beforeEach(() => {
+    const config = {
+      get: (key: string) => {
+        const map: Record<string, string> = {
+          'cognito.userPoolId': userPoolId,
+          'cognito.clientId': clientId,
+          'cognito.region': region,
+          'aws.region': region,
+        };
+        return map[key];
+      },
+    } as unknown as ConfigService;
+
+    service = new CognitoService(config);
+    send = jest.fn();
+    (service as unknown as { client: { send: jest.Mock } }).client = { send };
+  });
+
+  it('returns SOFTWARE_TOKEN_MFA when the user already has TOTP', async () => {
+    send.mockResolvedValueOnce({
+      ChallengeName: 'SOFTWARE_TOKEN_MFA',
+      Session: 'mfa-session',
+    });
+
+    await expect(
+      service.loginWithPassword('user@example.com', 'password1!'),
+    ).resolves.toEqual({
+      kind: 'mfa',
+      challenge: 'SOFTWARE_TOKEN_MFA',
+      session: 'mfa-session',
+    });
+  });
+
+  it('associates a software token on MFA_SETUP instead of throwing', async () => {
+    send
+      .mockResolvedValueOnce({
+        ChallengeName: 'MFA_SETUP',
+        Session: 'setup-session',
+      })
+      .mockResolvedValueOnce({
+        SecretCode: 'SECRETBASE32',
+        Session: 'assoc-session',
+      });
+
+    await expect(
+      service.loginWithPassword('user@example.com', 'password1!'),
+    ).resolves.toEqual({
+      kind: 'mfa_setup',
+      session: 'assoc-session',
+      secretCode: 'SECRETBASE32',
+    });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns tokens when InitiateAuth succeeds with no challenge', async () => {
+    send.mockResolvedValueOnce({
+      AuthenticationResult: {
+        IdToken: 'id-token',
+        AccessToken: 'access-token',
+      },
+    });
+
+    await expect(
+      service.loginWithPassword('user@example.com', 'password1!'),
+    ).resolves.toEqual({
+      kind: 'tokens',
+      tokens: { idToken: 'id-token', accessToken: 'access-token' },
+    });
+  });
+
+  it('throws CognitoUnhandledChallengeError with the challenge name', async () => {
+    send.mockResolvedValue({
+      ChallengeName: 'SMS_MFA',
+      Session: 'sms-session',
+    });
+
+    await expect(
+      service.loginWithPassword('user@example.com', 'password1!'),
+    ).rejects.toBeInstanceOf(CognitoUnhandledChallengeError);
+    await expect(
+      service.loginWithPassword('user@example.com', 'password1!'),
+    ).rejects.toMatchObject({ challengeName: 'SMS_MFA' });
+  });
+
+  it('completeMfaSetupChallenge verifies TOTP then returns tokens', async () => {
+    send
+      .mockResolvedValueOnce({
+        Status: 'SUCCESS',
+        Session: 'verified-session',
+      })
+      .mockResolvedValueOnce({
+        AuthenticationResult: {
+          IdToken: 'id-token',
+          AccessToken: 'access-token',
+        },
+      });
+
+    await expect(
+      service.completeMfaSetupChallenge(
+        'assoc-session',
+        '123456',
+        'user@example.com',
+      ),
+    ).resolves.toEqual({
+      idToken: 'id-token',
+      accessToken: 'access-token',
+    });
   });
 });

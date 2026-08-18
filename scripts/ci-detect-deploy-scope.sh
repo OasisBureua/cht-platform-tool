@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
-# Set deploy_backend / deploy_frontend / deploy_infra for GitHub Actions (dorny/paths-filter).
+# Set deploy_backend / deploy_frontend / deploy_infra for GitHub Actions.
 #
-# Lanes are independent:
-#   - backend  → backend/** or worker/** only (images + ECS image roll)
-#   - frontend → frontend/** only
-#   - infra    → infrastructure/** (and related CI/scripts paths) only
+# Lanes are independent and only turn on when that tree actually changed:
+#   - backend  → backend/** or worker/** (images + ECS image roll)
+#   - frontend → frontend/**
+#   - infra    → infrastructure/**
 #
-# Usage: ci-detect-deploy-scope.sh <event_name> <backend_changed> <frontend_changed> <infra_changed>
+# force_all=true is the escape hatch (manual "deploy all", or when the change
+# base SHA cannot be resolved). workflow_dispatch does NOT imply force_all.
+#
+# Usage: ci-detect-deploy-scope.sh <force_all> <backend_changed> <frontend_changed> <infra_changed>
 set -euo pipefail
 
-EVENT_NAME="${1:?event name required}"
+FORCE_ALL="${1:-false}"
 BACKEND_CHANGED="${2:-false}"
 FRONTEND_CHANGED="${3:-false}"
 INFRA_CHANGED="${4:-false}"
@@ -18,8 +21,7 @@ DEPLOY_BACKEND=false
 DEPLOY_FRONTEND=false
 DEPLOY_INFRA=false
 
-if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-  # Manual runs deploy everything unless/until dispatch inputs are added.
+if [ "$FORCE_ALL" = "true" ]; then
   DEPLOY_BACKEND=true
   DEPLOY_FRONTEND=true
   DEPLOY_INFRA=true
@@ -41,4 +43,4 @@ fi
   echo "deploy_infra=$DEPLOY_INFRA"
 } >> "${GITHUB_OUTPUT:?GITHUB_OUTPUT not set}"
 
-echo "Deploy scope: backend=$DEPLOY_BACKEND frontend=$DEPLOY_FRONTEND infra=$DEPLOY_INFRA"
+echo "Deploy scope: backend=$DEPLOY_BACKEND frontend=$DEPLOY_FRONTEND infra=$DEPLOY_INFRA (force_all=$FORCE_ALL)"

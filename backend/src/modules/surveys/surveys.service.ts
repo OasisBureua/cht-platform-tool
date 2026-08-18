@@ -39,6 +39,10 @@ import {
 } from '../../utils/survey-answer-sanitizer';
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 import {
+  buildProfilePrefill,
+  extractProfileUpdatesFromAnswers,
+} from './profile-sync';
+import {
   findUnsafeAnsweredQuestionChanges,
   nextNativeSchemaVersion,
   validateNativeSurveySchema,
@@ -1352,6 +1356,12 @@ export class SurveysService {
       await this.formJotformProgress
         .clear(userId, FormJotformScope.SURVEY, surveyId)
         .catch(() => {});
+      await this.writeProfileFromSurveyAnswers(
+        userId,
+        surveyId,
+        survey.questions,
+        answers,
+      );
       this.logger.log(
         `Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt schemaVersion=${survey.schemaVersion}`,
       );
@@ -1371,6 +1381,13 @@ export class SurveysService {
       await this.formJotformProgress
         .clear(userId, FormJotformScope.SURVEY, surveyId)
         .catch(() => {});
+
+      await this.writeProfileFromSurveyAnswers(
+        userId,
+        surveyId,
+        survey.questions,
+        answers,
+      );
 
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
@@ -1494,5 +1511,69 @@ export class SurveysService {
       submissionId: response.submissionId ?? undefined,
       submittedAt: response.submittedAt.toISOString(),
     };
+  }
+
+  /**
+   * SCRUM-186: mirror survey answers back to the User profile for any
+   * question that opts in via `syncToProfile`. Fires on both first submit
+   * and re-submit. Never fails the survey submit itself.
+   */
+  private async writeProfileFromSurveyAnswers(
+    userId: string,
+    surveyId: string,
+    questions: unknown,
+    answers: Record<string, unknown>,
+  ): Promise<void> {
+    try {
+      const profileUpdates = extractProfileUpdatesFromAnswers(
+        questions,
+        answers,
+      );
+      if (Object.keys(profileUpdates).length === 0) return;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: profileUpdates,
+      });
+      this.logger.log(
+        `Survey ${surveyId}: wrote back ${Object.keys(profileUpdates).length} profile field(s) for user ${userId}`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `[Surveys] profile write-back failed for user ${userId} survey ${surveyId}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * SCRUM-186: return the pre-fill map for a survey. Reads the current
+   * User profile and returns `{ [questionId]: currentValue }` for each
+   * question with a `syncToProfile` mapping whose target field is set.
+   */
+  async getProfilePrefill(
+    surveyId: string,
+    userId: string,
+    role: UserRole,
+  ): Promise<Record<string, string>> {
+    await this.ensureUserCanAccessSurvey(surveyId, userId, role);
+    const survey = await this.prisma.survey.findUnique({
+      where: { id: surveyId },
+      select: { questions: true },
+    });
+    if (!survey) throw new NotFoundException('Survey not found');
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        firstName: true,
+        lastName: true,
+        specialty: true,
+        npiNumber: true,
+        institution: true,
+        city: true,
+        state: true,
+        zipCode: true,
+      },
+    });
+    if (!user) return {};
+    return buildProfilePrefill(survey.questions, user);
   }
 }

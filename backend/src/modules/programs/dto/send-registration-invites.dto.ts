@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   ArrayMinSize,
   IsArray,
+  IsEmail,
   IsEnum,
   IsOptional,
   IsString,
@@ -25,10 +26,49 @@ export class SendRegistrationInvitesDto {
   userIds?: string[];
 
   @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Raw email addresses to invite (used for unregistered recipients). Duplicates of existing user emails are consolidated.',
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsEmail({}, { each: true })
+  emails?: string[];
+
+  @ApiPropertyOptional({
     enum: ['HCP', 'KOL'],
     description: 'Email all active users with this role when userIds omitted',
   })
   @IsOptional()
   @IsEnum(['HCP', 'KOL'])
   role?: 'HCP' | 'KOL';
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Filter role-based recipients by city (AND with other filters)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cities?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Filter role-based recipients by state (AND with other filters)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  states?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Filter role-based recipients by organization / institution (AND with other filters)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  institutions?: string[];
 }

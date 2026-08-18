@@ -10,7 +10,6 @@ import {
   Post,
   Query,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
 import { isAxiosError } from 'axios';
 import {
@@ -27,7 +26,6 @@ import type { AuthUser } from '../../auth/auth.service';
 import { UserRole } from '@prisma/client';
 import { CacheClearService } from '../../cache/cache-clear.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
-import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import { ContentHubKolService } from './content-hub-kol.service';
 import { MediaHubService } from '../catalog/mediahub.service';
 import { KolIntelService } from './kol-intel.service';
@@ -67,7 +65,6 @@ export type AdminKolNetworkList = {
 @Controller('admin/kol-network')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
-@UseInterceptors(AdminAuditInterceptor)
 export class AdminKolNetworkController {
   private readonly logger = new Logger(AdminKolNetworkController.name);
 

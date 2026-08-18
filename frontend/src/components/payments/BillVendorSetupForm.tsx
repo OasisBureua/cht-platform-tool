@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { paymentsApi } from '../../api/payments';
 import { getApiErrorMessage } from '../../api/client';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Building2, Mail } from 'lucide-react';
 import { BillComMark } from '../branding/BillComMark';
 
 /** ABA routing number checksum: 3(d1+d4+d7) + 7(d2+d5+d8) + (d3+d6+d9) ≡ 0 mod 10 */
@@ -22,6 +22,8 @@ function validateAccountNumber(raw: string): string | null {
   return null;
 }
 
+export type PaymentMethodChoice = 'ACH' | 'CHECK';
+
 export function BillVendorSetupForm(props: {
   userId: string;
   onSuccess: () => void;
@@ -29,8 +31,12 @@ export function BillVendorSetupForm(props: {
   variant?: 'create' | 'update';
   /** When true, form is read-only and submit is blocked (e.g. profession/NPI missing). */
   locked?: boolean;
+  initialMethod?: PaymentMethodChoice | null;
 }) {
-  const { userId, onSuccess, variant = 'create', locked = false } = props;
+  const { userId, onSuccess, variant = 'create', locked = false, initialMethod = null } = props;
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice | null>(
+    initialMethod === 'ACH' || initialMethod === 'CHECK' ? initialMethod : null,
+  );
   const [form, setForm] = useState({
     payeeName: '',
     addressLine1: '',
@@ -61,6 +67,7 @@ export function BillVendorSetupForm(props: {
 
   const mutation = useMutation({
     mutationFn: () => {
+      if (!paymentMethod) throw new Error('Select ACH or Check.');
       const zipDigits = form.zipCode.replace(/\D/g, '');
       return paymentsApi.createConnectAccount(userId, {
         payeeName: form.payeeName.trim(),
@@ -68,9 +75,14 @@ export function BillVendorSetupForm(props: {
         city: form.city.trim(),
         state: form.state.trim().toUpperCase().slice(0, 2),
         zipCode: zipDigits,
-        nameOnAccount: form.nameOnAccount.trim(),
-        accountNumber: form.accountNumber.trim(),
-        routingNumber: form.routingNumber.replace(/\D/g, ''),
+        paymentMethod,
+        ...(paymentMethod === 'ACH'
+          ? {
+              nameOnAccount: form.nameOnAccount.trim(),
+              accountNumber: form.accountNumber.trim(),
+              routingNumber: form.routingNumber.replace(/\D/g, ''),
+            }
+          : {}),
       });
     },
     onSuccess: () => onSuccess(),
@@ -82,7 +94,6 @@ export function BillVendorSetupForm(props: {
   function set(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
       let value = e.target.value;
-      // Strip non-digits for numeric banking fields
       if (field === 'routingNumber') value = value.replace(/\D/g, '').slice(0, 9);
       if (field === 'accountNumber') value = value.replace(/\D/g, '').slice(0, 17);
       setForm((prev) => ({ ...prev, [field]: value }));
@@ -93,17 +104,26 @@ export function BillVendorSetupForm(props: {
     e.preventDefault();
     setError(null);
     if (locked) return setError('Complete your profession and NPI under Settings first.');
+    if (!paymentMethod) return setError('Select ACH or Check as your payment method.');
     if (!form.payeeName.trim()) return setError('Payee name is required.');
     if (!form.addressLine1.trim()) return setError('Address is required.');
     if (!form.city.trim()) return setError('City is required.');
     if (!form.state.trim()) return setError('State is required.');
     const zipDigits = form.zipCode.replace(/\D/g, '');
-    if (zipDigits.length !== 5 && zipDigits.length !== 9) return setError('Enter a valid ZIP code (5 or 9 digits).');
-    if (!form.nameOnAccount.trim()) return setError('Name on account is required.');
-    if (routingDigits.length !== 9) return setError('Routing number must be exactly 9 digits.');
-    if (!isValidRoutingNumber(routingDigits)) return setError('Invalid routing number: please double-check the 9-digit ABA number on your check.');
-    const accountErr = validateAccountNumber(form.accountNumber);
-    if (accountErr) return setError(accountErr);
+    if (zipDigits.length !== 5 && zipDigits.length !== 9) {
+      return setError('Enter a valid ZIP code (5 or 9 digits).');
+    }
+    if (paymentMethod === 'ACH') {
+      if (!form.nameOnAccount.trim()) return setError('Name on account is required.');
+      if (routingDigits.length !== 9) return setError('Routing number must be exactly 9 digits.');
+      if (!isValidRoutingNumber(routingDigits)) {
+        return setError(
+          'Invalid routing number: please double-check the 9-digit ABA number on your check.',
+        );
+      }
+      const accountErr = validateAccountNumber(form.accountNumber);
+      if (accountErr) return setError(accountErr);
+    }
     mutation.mutate();
   }
 
@@ -139,44 +159,136 @@ export function BillVendorSetupForm(props: {
           can save payment details.
         </p>
       ) : null}
-      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed flex flex-wrap items-center gap-x-1 gap-y-1">
-        <strong className="text-slate-900 shrink-0">Security:</strong>
-        <span>
-          Payment credentials are transmitted securely and processed by{' '}
-          <BillComMark size="xs" className="translate-y-px mx-0.5" />
-          . CHM does not retain complete bank account or card numbers on its own servers; protect your login and only use
-          trusted devices when entering financial or tax information.
-        </span>
-      </div>
+
       <div>
         <h2 className="text-base font-semibold text-gray-900">
           {isUpdate ? 'Update payment details' : 'Set up your payment account'}
         </h2>
-        <p className="mt-0.5 text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
-          {isUpdate ? (
-            <>
-              Re-enter your payee name, mailing address, and bank account. This replaces what is stored in your{' '}
-              <BillComMark size="xs" className="translate-y-px" /> vendor profile (W-9 sync from{' '}
-              <BillComMark size="xs" className="translate-y-px" /> is unchanged).
-            </>
-          ) : (
-            <>
-              Enter your US bank details for your{' '}
-              <BillComMark size="xs" className="translate-y-px" /> vendor profile (ACH payouts from{' '}
-              <BillComMark size="xs" className="translate-y-px" />
-              ).
-            </>
-          )}
+        <p className="mt-0.5 text-sm text-gray-600">
+          Choose how you want to receive honoraria, then enter payee and mailing details
+          {paymentMethod === 'ACH' ? ' plus bank account for ACH' : ''}.
+        </p>
+      </div>
+
+      <div
+        className="rounded-xl border border-brand-200 bg-brand-50/80 px-4 py-3 text-sm text-brand-950 leading-relaxed"
+        role="note"
+      >
+        <p className="font-semibold text-brand-900">Official payee of record</p>
+        <p className="mt-1 text-brand-950/90">
+          The information you enter in this section establishes the <strong>official payee of record</strong> for
+          honoraria and other payouts. Checks and ACH deposits are issued to this payee name and mailing address.
+        </p>
+        <p className="mt-2 text-brand-950/90">
+          If payments should go to an organization (for example an <strong>LLC</strong> or other business entity) rather
+          than you as an individual, enter the <strong>legal business name</strong> as the payee, use that entity&apos;s
+          mailing address, and complete the W-9 with the entity&apos;s <strong>EIN</strong> and matching tax details.
+          Do not use your personal name if the business is the intended payee.
         </p>
       </div>
 
       <fieldset className="space-y-3">
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          Payment method
+        </legend>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label
+            className={[
+              'flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors',
+              paymentMethod === 'ACH'
+                ? 'border-brand-600 bg-brand-50'
+                : 'border-gray-200 bg-white hover:bg-gray-50',
+              locked ? 'opacity-60 pointer-events-none' : '',
+            ].join(' ')}
+          >
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              checked={paymentMethod === 'ACH'}
+              onChange={() => setPaymentMethod('ACH')}
+              disabled={mutation.isPending || locked}
+            />
+            <span>
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Building2 className="h-4 w-4" aria-hidden />
+                ACH (direct deposit)
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-600">
+                Deposit to your US bank account. Fastest for most payouts.
+              </span>
+            </span>
+          </label>
+          <label
+            className={[
+              'flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors',
+              paymentMethod === 'CHECK'
+                ? 'border-brand-600 bg-brand-50'
+                : 'border-gray-200 bg-white hover:bg-gray-50',
+              locked ? 'opacity-60 pointer-events-none' : '',
+            ].join(' ')}
+          >
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              checked={paymentMethod === 'CHECK'}
+              onChange={() => setPaymentMethod('CHECK')}
+              disabled={mutation.isPending || locked}
+            />
+            <span>
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                <Mail className="h-4 w-4" aria-hidden />
+                Check (mail)
+              </span>
+              <span className="mt-0.5 block text-xs text-gray-600">
+                Paper check mailed to the address below. You can track delivery status after payout.
+              </span>
+            </span>
+          </label>
+        </div>
+      </fieldset>
+
+      {paymentMethod === 'ACH' ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed flex flex-wrap items-center gap-x-1 gap-y-1">
+          <strong className="text-slate-900 shrink-0">Security:</strong>
+          <span>
+            Bank credentials are transmitted securely and processed by{' '}
+            <BillComMark size="xs" className="translate-y-px mx-0.5" />
+            . CHM does not retain complete bank account numbers on its own servers; protect your login and only use
+            trusted devices when entering financial information.
+          </span>
+        </div>
+      ) : null}
+
+      {paymentMethod === 'CHECK' ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 leading-relaxed">
+          <strong>Check delivery:</strong> Checks are mailed to the US address you enter below. Confirm it is current.
+          Delivery status (mailed / in transit / delivered) appears on your Payments page and for admins after payout.
+        </div>
+      ) : null}
+
+      <fieldset className="space-y-3">
         <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payee information</legend>
-        {field('Payee name (as it appears on checks)', 'payeeName', { placeholder: 'Dr. Jane Smith' })}
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-semibold text-gray-700">
+            Payee name (legal name of the payee of record)
+          </label>
+          <input
+            type="text"
+            value={form.payeeName}
+            onChange={set('payeeName')}
+            placeholder="e.g., Jane Smith, MD or Smith Medical Consulting LLC"
+            className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            disabled={mutation.isPending || locked}
+          />
+          <p className="text-xs text-gray-500">
+            Use your personal legal name for individual payments, or the exact LLC / business legal name if the
+            organization is the payee. This name appears on checks and tax reporting.
+          </p>
+        </div>
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">US address</legend>
+        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">US mailing address</legend>
         {field('Street address', 'addressLine1', { placeholder: '123 Main St' })}
         <div className="grid grid-cols-2 gap-3">
           {field('City', 'city', { placeholder: 'New York' })}
@@ -185,75 +297,87 @@ export function BillVendorSetupForm(props: {
         {field('ZIP code', 'zipCode', { placeholder: '10001', maxLength: 10 })}
       </fieldset>
 
-      <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex flex-wrap items-center gap-2">
-          <BillComMark size="xs" />
-          <span>Bank account (ACH)</span>
-        </legend>
-        {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
+      {paymentMethod === 'ACH' ? (
+        <fieldset className="space-y-3">
+          <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex flex-wrap items-center gap-2">
+            <BillComMark size="xs" />
+            <span>Bank account (ACH)</span>
+          </legend>
+          {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
 
-        {/* Routing number with live hint */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-700">Routing number</label>
-          <input
-            type="text"
-            inputMode="numeric"
-            value={form.routingNumber}
-            onChange={set('routingNumber')}
-            placeholder="9-digit ABA number"
-            maxLength={9}
-            className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
-            disabled={mutation.isPending || locked}
-          />
-          {routingHint && (
-            <p className={`text-xs ${routingHint.startsWith('✓') ? 'text-green-700' : routingHint.includes('Invalid') ? 'text-red-600' : 'text-gray-500'}`}>
-              {routingHint}
-            </p>
-          )}
-        </div>
-
-        {/* Account number with show/hide toggle and live hint */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-700">Account number</label>
-          <div className="relative">
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-700">Routing number</label>
             <input
-              type={showAccount ? 'text' : 'password'}
+              type="text"
               inputMode="numeric"
-              value={form.accountNumber}
-              onChange={set('accountNumber')}
-              placeholder="Checking or savings (4–17 digits)"
-              maxLength={17}
-              className="w-full rounded-xl border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              value={form.routingNumber}
+              onChange={set('routingNumber')}
+              placeholder="9-digit ABA number"
+              maxLength={9}
+              className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
               disabled={mutation.isPending || locked}
             />
-            <button
-              type="button"
-              onClick={() => setShowAccount((v) => !v)}
-              className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
-              aria-label={showAccount ? 'Hide account number' : 'Show account number'}
-              tabIndex={-1}
-            >
-              {showAccount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
+            {routingHint && (
+              <p
+                className={`text-xs ${
+                  routingHint.startsWith('✓')
+                    ? 'text-green-700'
+                    : routingHint.includes('Invalid')
+                      ? 'text-red-600'
+                      : 'text-gray-500'
+                }`}
+              >
+                {routingHint}
+              </p>
+            )}
           </div>
-          {accountHint && (
-            <p className={`text-xs ${accountHint.includes('✓') ? 'text-green-700' : 'text-amber-700'}`}>
-              {accountHint}
-            </p>
-          )}
-          <p className="text-xs text-gray-400">4–17 digits. Numbers only: no spaces or dashes.</p>
-        </div>
-      </fieldset>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-700">Account number</label>
+            <div className="relative">
+              <input
+                type={showAccount ? 'text' : 'password'}
+                inputMode="numeric"
+                value={form.accountNumber}
+                onChange={set('accountNumber')}
+                placeholder="Checking or savings (4–17 digits)"
+                maxLength={17}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                disabled={mutation.isPending || locked}
+              />
+              <button
+                type="button"
+                onClick={() => setShowAccount((v) => !v)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
+                aria-label={showAccount ? 'Hide account number' : 'Show account number'}
+                tabIndex={-1}
+              >
+                {showAccount ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {accountHint && (
+              <p className={`text-xs ${accountHint.includes('✓') ? 'text-green-700' : 'text-amber-700'}`}>
+                {accountHint}
+              </p>
+            )}
+            <p className="text-xs text-gray-400">4–17 digits. Numbers only: no spaces or dashes.</p>
+          </div>
+        </fieldset>
+      ) : null}
 
       {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
 
       <button
         type="submit"
-        disabled={mutation.isPending || locked}
+        disabled={mutation.isPending || locked || !paymentMethod}
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-800 active:scale-[0.96] disabled:opacity-60"
       >
         {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        {mutation.isPending ? 'Saving…' : isUpdate ? 'Save updated payment details' : 'Save payment details'}
+        {mutation.isPending
+          ? 'Saving…'
+          : isUpdate
+            ? 'Save updated payment details'
+            : 'Save payment details'}
       </button>
     </form>
   );

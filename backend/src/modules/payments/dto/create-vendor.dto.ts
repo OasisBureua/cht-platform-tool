@@ -2,7 +2,9 @@ import {
   IsString,
   IsOptional,
   IsObject,
+  IsIn,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -33,7 +35,12 @@ export class CreateVendorDto {
   @IsString()
   zipCode: string;
 
-  @IsOptional()
+  /** ACH or CHECK — required for explicit payment method selection. */
+  @IsString()
+  @IsIn(['ACH', 'CHECK'])
+  paymentMethod!: 'ACH' | 'CHECK';
+
+  @ValidateIf((o: CreateVendorDto) => o.paymentMethod === 'ACH')
   @IsObject()
   @ValidateNested()
   @Type(() => BankAccountDto)

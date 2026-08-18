@@ -144,6 +144,22 @@ export class AuthService {
     ]);
   }
   /**
+   * SCRUM-188: return the user (id + email) that owns a given NPI, or null.
+   * Used by signup + profile-update to block duplicate NPI registration
+   * before hitting the DB unique constraint.
+   */
+  async findByNpi(
+    npiNumber: string,
+  ): Promise<{ id: string; email: string } | null> {
+    const digits = npiNumber.replace(/\D/g, '');
+    if (digits.length !== 10) return null;
+    return this.prisma.user.findUnique({
+      where: { npiNumber: digits },
+      select: { id: true, email: true },
+    });
+  }
+
+  /**
    * Find or create user by Auth0 sub (authId).
    * For existing users, we never overwrite firstName/lastName from OAuth metadata;
    * those values are managed via Settings PATCH and must persist across login/logout.

@@ -3,7 +3,7 @@ export type PlaylistFocus = 'her2' | 'hr' | 'her2-low' | 'tnbc' | 'high-risk';
 
 const VALID_FOCUS = new Set<string>(['her2', 'hr', 'her2-low', 'tnbc', 'high-risk']);
 
-/** Curated section labels in `_generated-catalog-playlists.json` → `playlistFocus` param. */
+/** Section labels (chip text) → `playlistFocus` URL param. */
 export const CATALOG_SECTION_TO_FOCUS: Record<string, PlaylistFocus> = {
   'HER2+ Conversations': 'her2',
   'HER2-Low / Ultra-Low': 'her2-low',

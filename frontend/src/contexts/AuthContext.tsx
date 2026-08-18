@@ -42,6 +42,7 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
 
 interface AuthError {
   message?: string;
+  code?: string;
 }
 
 interface AuthContextValue {
@@ -54,7 +55,11 @@ interface AuthContextValue {
     email: string,
     password: string,
     recaptchaToken?: string,
-  ) => Promise<{ error?: AuthError; mfa?: { session: string } }>;
+  ) => Promise<{
+    error?: AuthError;
+    mfa?: { session: string };
+    mfaSetup?: { session: string; secretCode: string; otpauthUri: string };
+  }>;
   /** Legacy GoTrue OAuth access_token exchange. Use completeCognitoCallback for Cognito PKCE. */
   loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
   /** Exchange Cognito authorization code (PKCE) for CHT session cookie. */
@@ -65,6 +70,12 @@ interface AuthContextValue {
   ) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
   /** Complete Cognito SOFTWARE_TOKEN_MFA after login returns a challenge. */
   completeMfaLogin: (
+    email: string,
+    session: string,
+    code: string,
+  ) => Promise<{ error?: AuthError }>;
+  /** Complete Cognito MFA_SETUP (enroll TOTP) after login returns a secret. */
+  completeMfaSetupLogin: (
     email: string,
     session: string,
     code: string,
@@ -145,6 +156,9 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeCognitoCallback: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeMfaLogin: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      completeMfaSetupLogin: async () => ({
+        error: { message: DISABLE_AUTH_FEATURE_MSG },
+      }),
       signUp: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       confirmEmailSignup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       resendEmailVerificationCode: async () => ({
@@ -356,11 +370,26 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       const data = await res.json().catch(() => ({}));
 
       if (data.error) {
-        return { error: { message: data.error } };
+        return { error: { message: data.error, code: data.code as string | undefined } };
       }
 
       if (data.challenge === 'SOFTWARE_TOKEN_MFA' && data.session) {
         return { mfa: { session: data.session as string } };
+      }
+
+      if (
+        data.challenge === 'MFA_SETUP' &&
+        data.session &&
+        data.secretCode &&
+        data.otpauthUri
+      ) {
+        return {
+          mfaSetup: {
+            session: data.session as string,
+            secretCode: data.secretCode as string,
+            otpauthUri: data.otpauthUri as string,
+          },
+        };
       }
 
       if (applyLoginSuccess(data)) {
@@ -384,12 +413,35 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json().catch(() => ({}));
       if (data.error) {
-        return { error: { message: data.error } };
+        return { error: { message: data.error, code: data.code as string | undefined } };
       }
       if (applyLoginSuccess(data)) {
         return {};
       }
       return { error: { message: 'MFA login failed.' } };
+    },
+    [apiUrl, applyLoginSuccess],
+  );
+
+  const completeMfaSetupLogin = useCallback(
+    async (email: string, session: string, code: string) => {
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/mfa/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (email || '').trim(),
+          session,
+          code: (code || '').trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.error) {
+        return { error: { message: data.error, code: data.code as string | undefined } };
+      }
+      if (applyLoginSuccess(data)) {
+        return {};
+      }
+      return { error: { message: 'MFA setup failed.' } };
     },
     [apiUrl, applyLoginSuccess],
   );
@@ -695,6 +747,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     loginOAuth,
     completeCognitoCallback,
     completeMfaLogin,
+    completeMfaSetupLogin,
     signUp,
     confirmEmailSignup,
     resendEmailVerificationCode,

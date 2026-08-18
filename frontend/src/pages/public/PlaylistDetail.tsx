@@ -8,6 +8,7 @@ import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNavItems';
 import { clipDisplaySummary } from '../../utils/mediaHubClipText';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
+import { pushClipView } from '../../lib/analytics';
 
 export default function PlaylistDetail() {
   const { playlistId } = useParams<{ playlistId: string }>();
@@ -49,6 +50,16 @@ export default function PlaylistDetail() {
       setSelectedVideoIndex(Math.max(0, videos.length - 1));
     }
   }, [videos.length, selectedVideoIndex]);
+
+  useEffect(() => {
+    if (!selectedVideo?.id || !selectedVideo?.title) return;
+    pushClipView({
+      clip_id: selectedVideo.id,
+      clip_title: selectedVideo.title,
+      surface: 'playlist_detail',
+      playlist_id: playlistId,
+    });
+  }, [selectedVideo?.id, selectedVideo?.title, playlistId]);
 
   // All hooks must come before any early returns (Rules of Hooks)
   const { data: clipDetail } = useQuery({
@@ -154,7 +165,11 @@ export default function PlaylistDetail() {
                 </div>
 
                 {/* Share buttons */}
-                <ShareButtons title={selectedVideo.title} url={shareUrl} />
+                <ShareButtons
+                  title={selectedVideo.title}
+                  url={shareUrl}
+                  analytics={{ clip_id: selectedVideo.id, surface: 'playlist_detail' }}
+                />
 
                 {/* Transcript */}
                 <div>

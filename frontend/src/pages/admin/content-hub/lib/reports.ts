@@ -157,12 +157,33 @@ export function buildAnalyticsReport(
   const ytViews = yt ? sumColumn(yt.rows, ['view']) : 0;
   const totalImpressions = liImpr + meImpr;
 
-  const hasAnyData = uploads.length > 0 || connected;
+  const hasAnyData = uploads.length > 0 || connected || Boolean(campaign.hubspotRawData);
+
+  const hs = (campaign.hubspotRawData ?? null) as Record<string, unknown> | null;
+  const hsMetrics = (hs?.metrics && typeof hs.metrics === 'object'
+    ? (hs.metrics as Record<string, unknown>)
+    : null);
+  const hsEmail = (hs?.emailStatistics && typeof hs.emailStatistics === 'object'
+    ? (hs.emailStatistics as Record<string, unknown>)
+    : null);
+  const hsContacts = hsMetrics?.contacts ?? hsMetrics?.numContacts ?? null;
+  const hsForms = hsMetrics?.formSubmissions ?? hsMetrics?.submissions ?? null;
+  const hsSynced = Boolean(hs) || Boolean(campaign.hubspotSyncedAt);
 
   const kpiTiles = [
     { label: 'Total Impressions', value: totalImpressions ? fmt(totalImpressions) : '-', source: totalImpressions ? 'csv' : 'unavailable', note: totalImpressions ? 'LinkedIn + Meta CSV' : 'Upload platform CSVs' },
-    { label: 'HubSpot Contacts', value: '-', source: 'unavailable', note: 'Connect HubSpot' },
-    { label: 'Form Submissions', value: '-', source: 'unavailable', note: 'Connect HubSpot' },
+    {
+      label: 'HubSpot Contacts',
+      value: hsContacts != null ? fmt(Number(hsContacts) || 0) : '-',
+      source: hsContacts != null ? 'hubspot' : 'unavailable',
+      note: hsSynced ? (campaign.hubspotSyncedAt ? `Synced ${campaign.hubspotSyncedAt}` : 'HubSpot snapshot') : 'Connect HubSpot and Sync Now',
+    },
+    {
+      label: 'Form Submissions',
+      value: hsForms != null ? fmt(Number(hsForms) || 0) : '-',
+      source: hsForms != null ? 'hubspot' : 'unavailable',
+      note: hsSynced ? 'HubSpot campaign metrics' : 'Connect HubSpot',
+    },
     { label: 'LinkedIn Video Views', value: li ? fmt(sumColumn(li.rows, ['video view', 'views'])) : '-', source: li ? 'csv' : 'unavailable', note: li ? li.filename : 'Upload LinkedIn CSV' },
     { label: 'Meta CTR', value: '-', source: me ? 'csv' : 'unavailable', note: me ? me.filename : 'Upload Meta CSV' },
     { label: 'Meta Link Clicks', value: me ? fmt(sumColumn(me.rows, ['click'])) : '-', source: me ? 'csv' : 'unavailable', note: me ? me.filename : 'Upload Meta CSV' },
@@ -173,7 +194,7 @@ export function buildAnalyticsReport(
   ];
 
   const dataGaps: string[] = [];
-  if (!connected) dataGaps.push('HubSpot not connected: contact activity, form submissions, landing page analytics, email performance, HCP lifecycle stage, and funnel data are unavailable.');
+  if (!connected && !hsSynced) dataGaps.push('HubSpot not connected: contact activity, form submissions, landing page analytics, email performance, HCP lifecycle stage, and funnel data are unavailable.');
   if (!li) dataGaps.push('LinkedIn performance data not uploaded: video views, dwell time, completion rates, and creative-level CTR are unavailable.');
   if (!me) dataGaps.push('Meta performance data not uploaded: regional breakdowns, audience demographics, and CTR benchmarking are unavailable.');
   if (!yt) dataGaps.push('YouTube performance data not uploaded: video-level views, engaged views, and watch time are unavailable.');
@@ -184,20 +205,57 @@ export function buildAnalyticsReport(
     ? `The ${campaign.name} campaign delivered across ${(campaign.platforms ?? []).join(', ')} during the reporting period ${campaign.reportingPeriodStart} – ${campaign.reportingPeriodEnd}. This report summarizes aggregate performance, channel breakdowns, and strategic recommendations based on the connected data sources.`
     : `The ${campaign.name} campaign report is configured for data entry. Connect HubSpot and upload platform CSV exports to generate a full performance summary. Platforms: ${(campaign.platforms ?? []).join(', ')}.`;
 
+  const hubspotOverview = hsSynced
+    ? {
+        phase: hs?.phase ?? 'campaign-analytics',
+        syncedAt: campaign.hubspotSyncedAt ?? hs?.syncedAt ?? null,
+        portalId: hs?.portalId ?? null,
+        accountName: hs?.accountName ?? null,
+        hubspotCampaignId: hs?.hubspotCampaignId ?? campaign.hubspotCampaignId ?? null,
+        campaign: hs?.campaign ?? null,
+        metrics: hs?.metrics ?? null,
+        emailStatistics: hs?.emailStatistics ?? null,
+        warnings: hs?.warnings ?? [],
+        errors: hs?.errors ?? [],
+      }
+    : null;
+
   return {
     campaign,
     generatedAt: new Date().toISOString(),
-    hubspotData: null,
+    hubspotData: hubspotOverview,
     csvData: uploads.map((u) => ({ platform: u.platform, filename: u.filename, rowCount: u.rows?.length ?? 0 })),
     sections: {
       executiveSummary,
       crossChannelSnapshot: { rows: [] },
       kpiTiles,
-      hubspotOverview: null,
-      landingPageAnalytics: { source: 'hubspot', available: false, note: 'Connect HubSpot to access landing page analytics.' },
-      hcpEngagement: { source: 'hubspot', available: false, note: 'Connect HubSpot for HCP contact-level data and NPI tracking.' },
-      funnelConversion: { available: false, note: 'Connect HubSpot for funnel stage and conversion tracking.' },
-      emailPerformance: { available: false, note: 'Connect HubSpot and specify a HubSpot Campaign ID to pull email performance.' },
+      hubspotOverview,
+      landingPageAnalytics: {
+        source: 'hubspot',
+        available: hsSynced,
+        note: hsSynced
+          ? 'HubSpot campaign analytics snapshot'
+          : 'Connect HubSpot to access landing page analytics.',
+      },
+      hcpEngagement: {
+        source: 'hubspot',
+        available: hsSynced,
+        note: hsSynced
+          ? 'HubSpot campaign analytics snapshot'
+          : 'Connect HubSpot for HCP contact-level data and NPI tracking.',
+      },
+      funnelConversion: {
+        available: hsSynced,
+        note: hsSynced
+          ? 'HubSpot campaign analytics snapshot'
+          : 'Connect HubSpot for funnel stage and conversion tracking.',
+      },
+      emailPerformance: {
+        available: Boolean(hsEmail),
+        note: hsEmail
+          ? 'HubSpot email statistics for reporting period'
+          : 'Connect HubSpot and specify a HubSpot Campaign ID to pull email performance.',
+      },
       linkedinData: li ? { filename: li.filename, rowCount: li.rows?.length ?? 0 } : null,
       metaData: me ? { filename: me.filename, rowCount: me.rows?.length ?? 0 } : null,
       youtubeData: yt ? { filename: yt.filename, rowCount: yt.rows?.length ?? 0 } : null,
@@ -226,7 +284,7 @@ export function buildAnalyticsReport(
       glossary: GLOSSARY,
       aiInsights: campaign.aiInsights ?? null,
     },
-    dataValidation: buildDataValidation(campaign, uploads, connected),
+    dataValidation: buildDataValidation(campaign, uploads, connected || hsSynced),
   };
 }
 

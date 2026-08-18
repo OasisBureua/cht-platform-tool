@@ -71,6 +71,34 @@ export interface WordPressCategoriesResponse {
   total: number;
 }
 
+/** Term row from CH `PublicWordPressTerm` — shared by series + tags list responses. */
+export interface WordPressTermItem {
+  slug: string;
+  name: string;
+  description?: string | null;
+  parent_slug?: string | null;
+  wp_term_id?: number | null;
+  post_count: number;
+  /** Present on /tags responses: `biomarker:HER2+` etc, or `wp:<slug>` fallback. */
+  namespaced_tag?: string | null;
+}
+
+export interface WordPressTermsResponse {
+  items: WordPressTermItem[];
+  total: number;
+}
+
+/** Series detail — `PublicWordPressSeriesDetail`. Post IDs are WP post_id ints. */
+export interface WordPressSeriesDetail {
+  slug: string;
+  name: string;
+  description?: string | null;
+  parent_slug?: string | null;
+  wp_term_id?: number | null;
+  post_count: number;
+  post_ids: number[];
+}
+
 export interface WordPressPostItem {
   post_id: number;
   slug: string;
@@ -421,6 +449,90 @@ export class MediaHubService {
       if (status === 404 || status === 401) {
         this.logger.warn(
           `ContentHub /wordpress/categories unavailable (${status ?? 'error'}): returning empty`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  async getWordPressSeries(params?: {
+    skipCache?: boolean;
+  }): Promise<WordPressTermsResponse> {
+    if (!this.useContentHub) {
+      return { items: [], total: 0 };
+    }
+    try {
+      const key = this.cacheKey('wordpress-series', {});
+      return await this.cachedGet(
+        key,
+        () => this.getPublic<WordPressTermsResponse>('/wordpress/series'),
+        this.wordpressCacheTtlSeconds,
+        params?.skipCache,
+      );
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404 || status === 401) {
+        this.logger.warn(
+          `ContentHub /wordpress/series unavailable (${status ?? 'error'}): returning empty`,
+        );
+        return { items: [], total: 0 };
+      }
+      throw err;
+    }
+  }
+
+  async getWordPressSeriesDetail(
+    slug: string,
+    params?: { skipCache?: boolean },
+  ): Promise<WordPressSeriesDetail | null> {
+    if (!this.useContentHub) return null;
+    try {
+      const key = this.cacheKey('wordpress-series-detail', { slug });
+      return await this.cachedGet(
+        key,
+        () =>
+          this.getPublic<WordPressSeriesDetail>(
+            `/wordpress/series/${encodeURIComponent(slug)}`,
+          ),
+        this.wordpressCacheTtlSeconds,
+        params?.skipCache,
+      );
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404) return null;
+      if (status === 401) {
+        this.logger.warn(
+          `ContentHub /wordpress/series/${slug} 401 — returning null`,
+        );
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  async getWordPressTags(params?: {
+    skipCache?: boolean;
+  }): Promise<WordPressTermsResponse> {
+    if (!this.useContentHub) {
+      return { items: [], total: 0 };
+    }
+    try {
+      const key = this.cacheKey('wordpress-tags', {});
+      return await this.cachedGet(
+        key,
+        () => this.getPublic<WordPressTermsResponse>('/wordpress/tags'),
+        this.wordpressCacheTtlSeconds,
+        params?.skipCache,
+      );
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status === 404 || status === 401) {
+        this.logger.warn(
+          `ContentHub /wordpress/tags unavailable (${status ?? 'error'}): returning empty`,
         );
         return { items: [], total: 0 };
       }

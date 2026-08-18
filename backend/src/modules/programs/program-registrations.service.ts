@@ -28,6 +28,7 @@ import {
 } from '../../utils/program-survey-config';
 import { buildProgramSessionIcs } from '../../utils/ics-calendar';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
+import { buildUserRecipientWhere } from '../admin/user-recipient-filters.util';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
@@ -53,6 +54,16 @@ export class ProgramRegistrationsService {
     if (!startDate) return null;
     const mins = durationMinutes ?? 60;
     return new Date(startDate.getTime() + mins * 60 * 1000);
+  }
+
+  /** True when half-open intervals [aStart, aEnd) and [bStart, bEnd) overlap. */
+  static intervalsOverlap(
+    aStart: Date,
+    aEnd: Date,
+    bStart: Date,
+    bEnd: Date,
+  ): boolean {
+    return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
   }
 
   /** True while the registration should appear in the admin "Recently approved" section. */
@@ -650,6 +661,12 @@ export class ProgramRegistrationsService {
       if (used >= slot.maxAttendees) {
         throw new BadRequestException('This time slot is full');
       }
+      await this.assertNoOverlappingLiveRegistration(userId, program, {
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+      });
+    } else {
+      await this.assertNoOverlappingLiveRegistration(userId, program);
     }
 
     const requiresApproval = program.registrationRequiresApproval;
@@ -914,7 +931,8 @@ export class ProgramRegistrationsService {
 
         if (
           normalized.toLowerCase().includes('already enrolled') ||
-          normalized.toLowerCase().includes('time slot')
+          normalized.toLowerCase().includes('time slot') ||
+          normalized.toLowerCase().includes('scheduling conflict')
         ) {
           skipped.push({ programId, title, reason: normalized });
         } else {
@@ -1081,6 +1099,107 @@ export class ProgramRegistrationsService {
     return true;
   }
 
+  /**
+   * Block PENDING/APPROVED live-session registrations whose scheduled windows overlap.
+   * Uses office-hours slot times when provided; otherwise program startDate + duration.
+   */
+  private async assertNoOverlappingLiveRegistration(
+    userId: string,
+    program: {
+      id: string;
+      title: string;
+      startDate: Date | null;
+      duration: number | null;
+      zoomSessionType: ProgramZoomSessionType | null;
+    },
+    slotWindow?: { startsAt: Date; endsAt: Date },
+  ): Promise<void> {
+    if (
+      program.zoomSessionType !== ProgramZoomSessionType.WEBINAR &&
+      program.zoomSessionType !== ProgramZoomSessionType.MEETING
+    ) {
+      return;
+    }
+
+    const candidateStart = slotWindow?.startsAt ?? program.startDate ?? null;
+    const candidateEnd =
+      slotWindow?.endsAt ??
+      ProgramRegistrationsService.sessionEndsAt(
+        program.startDate,
+        program.duration,
+      );
+    if (!candidateStart || !candidateEnd) {
+      return;
+    }
+    if (candidateEnd.getTime() <= candidateStart.getTime()) {
+      return;
+    }
+
+    const others = await this.prisma.programRegistration.findMany({
+      where: {
+        userId,
+        programId: { not: program.id },
+        status: {
+          in: [
+            ProgramRegistrationStatus.PENDING,
+            ProgramRegistrationStatus.APPROVED,
+          ],
+        },
+        program: {
+          zoomSessionType: {
+            in: [
+              ProgramZoomSessionType.WEBINAR,
+              ProgramZoomSessionType.MEETING,
+            ],
+          },
+        },
+      },
+      select: {
+        status: true,
+        program: {
+          select: {
+            id: true,
+            title: true,
+            startDate: true,
+            duration: true,
+          },
+        },
+        slot: {
+          select: {
+            startsAt: true,
+            endsAt: true,
+          },
+        },
+      },
+    });
+
+    for (const reg of others) {
+      const otherStart = reg.slot?.startsAt ?? reg.program.startDate ?? null;
+      const otherEnd =
+        reg.slot?.endsAt ??
+        ProgramRegistrationsService.sessionEndsAt(
+          reg.program.startDate,
+          reg.program.duration,
+        );
+      if (!otherStart || !otherEnd) continue;
+      if (
+        !ProgramRegistrationsService.intervalsOverlap(
+          candidateStart,
+          candidateEnd,
+          otherStart,
+          otherEnd,
+        )
+      ) {
+        continue;
+      }
+
+      const conflictTitle = reg.program.title?.trim() || 'another session';
+      throw new BadRequestException(
+        `Scheduling conflict: you are already registered for "${conflictTitle}", which overlaps this session. Choose a different session or wait until that registration is no longer pending/approved.`,
+      );
+    }
+  }
+
   private async ensureEnrollment(userId: string, programId: string) {
     await this.prisma.programEnrollment.upsert({
       where: { userId_programId: { userId, programId } },
@@ -1217,7 +1336,11 @@ export class ProgramRegistrationsService {
   async sendRegistrationInvites(opts: {
     programIds: string[];
     userIds?: string[];
+    emails?: string[];
     role?: 'HCP' | 'KOL';
+    cities?: string[];
+    states?: string[];
+    institutions?: string[];
   }): Promise<{
     registerUrl: string;
     programs: { id: string; title: string }[];
@@ -1252,27 +1375,70 @@ export class ProgramRegistrationsService {
     const registerUrl = `${base}/app/live/register-multiple?programs=${programs.map((p) => p.id).join(',')}`;
 
     let userIds = opts.userIds?.length ? [...new Set(opts.userIds)] : undefined;
+    const rawEmails = (opts.emails ?? [])
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const inviteEmails = [...new Set(rawEmails)];
+
     if (!userIds?.length && opts.role) {
+      const cities = opts.cities?.map((v) => v.trim()).filter(Boolean);
+      const states = opts.states?.map((v) => v.trim()).filter(Boolean);
+      const institutions = opts.institutions?.map((v) => v.trim()).filter(Boolean);
       const users = await this.prisma.user.findMany({
-        where: { role: opts.role, status: 'ACTIVE' },
+        where: buildUserRecipientWhere({
+          role: opts.role,
+          status: 'ACTIVE',
+          cities: cities?.length ? cities : undefined,
+          states: states?.length ? states : undefined,
+          institutions: institutions?.length ? institutions : undefined,
+        }),
         select: { id: true },
       });
       userIds = users.map((u) => u.id);
     }
-    if (!userIds?.length) {
+    if (!userIds?.length && !inviteEmails.length) {
       throw new BadRequestException(
-        'Select at least one recipient or choose a role (HCP / KOL).',
+        'Select at least one recipient, choose a role (HCP / KOL), or enter email addresses.',
       );
     }
 
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: userIds }, status: 'ACTIVE' },
-      select: { id: true, email: true, firstName: true },
-    });
+    const users = userIds?.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds }, status: 'ACTIVE' },
+          select: { id: true, email: true, firstName: true },
+        })
+      : [];
+
+    // Consolidate raw emails that match existing user accounts — send once with
+    // the account's firstName rather than as an unregistered invite.
+    const registeredEmailLower = new Set(
+      users.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[],
+    );
+    const matchedExistingUsers = inviteEmails.length
+      ? await this.prisma.user.findMany({
+          where: {
+            email: { in: inviteEmails, mode: 'insensitive' },
+            status: 'ACTIVE',
+          },
+          select: { id: true, email: true, firstName: true },
+        })
+      : [];
+    const usersById = new Map(users.map((u) => [u.id, u]));
+    for (const u of matchedExistingUsers) {
+      if (!usersById.has(u.id)) usersById.set(u.id, u);
+    }
+    const mergedUsers = [...usersById.values()];
+
+    const usersByEmailLower = new Set(
+      mergedUsers.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[],
+    );
+    const unregisteredEmails = inviteEmails.filter(
+      (e) => !usersByEmailLower.has(e),
+    );
 
     const skipped: { userId: string; email: string; reason: string }[] = [];
     let emailed = 0;
-    for (const user of users) {
+    for (const user of mergedUsers) {
       if (!user.email?.trim()) {
         skipped.push({
           userId: user.id,
@@ -1293,6 +1459,23 @@ export class ProgramRegistrationsService {
         skipped.push({
           userId: user.id,
           email: user.email,
+          reason: (err as Error).message,
+        });
+      }
+    }
+    for (const email of unregisteredEmails) {
+      try {
+        await this.sesEmail.sendRegistrationInviteEmail({
+          to: email,
+          firstName: '',
+          programTitles: programs.map((p) => p.title),
+          registerUrl,
+        });
+        emailed += 1;
+      } catch (err) {
+        skipped.push({
+          userId: '',
+          email,
           reason: (err as Error).message,
         });
       }
@@ -1547,6 +1730,9 @@ export class ProgramRegistrationsService {
       throw new NotFoundException('Enrollment not found');
     }
 
+    const REVOKED_NOTE =
+      'Enrollment removed by admin; learner may register again.';
+
     await this.prisma.$transaction(async (tx) => {
       await tx.programEnrollment.delete({ where: { id: enrollmentId } });
       const reg = await tx.programRegistration.findUnique({
@@ -1569,8 +1755,7 @@ export class ProgramRegistrationsService {
             postEventAttendanceReviewedByUserId: null,
             reviewedAt: new Date(),
             reviewedByUserId: adminUserId,
-            adminNotes:
-              'Enrollment removed by admin; learner may register again.',
+            adminNotes: REVOKED_NOTE,
           },
         });
       }
@@ -1579,6 +1764,34 @@ export class ProgramRegistrationsService {
     this.logger.log(
       `Admin ${adminUserId} removed enrollment ${enrollmentId} (program ${programId})`,
     );
+
+    // SCRUM-179: notify the learner that their approval was rescinded.
+    // Fire-and-forget after the DB commit so an SES failure never blocks the API.
+    void (async () => {
+      const [user, program] = await Promise.all([
+        this.prisma.user.findUnique({
+          where: { id: enrollment.userId },
+          select: { email: true, firstName: true },
+        }),
+        this.prisma.program.findUnique({
+          where: { id: enrollment.programId },
+          select: { id: true, title: true, zoomSessionType: true },
+        }),
+      ]);
+      if (!user?.email || !program?.zoomSessionType) return;
+      await this.sesEmail.sendLiveSessionRegistrationRevokedEmail({
+        to: user.email,
+        firstName: user.firstName || 'there',
+        program: { id: program.id, title: program.title },
+        sessionKind: program.zoomSessionType,
+        adminNote: REVOKED_NOTE,
+      });
+    })().catch((e: Error) =>
+      this.logger.warn(
+        `Registration-revoked email side effect: ${e.message}`,
+      ),
+    );
+
     return { removed: true };
   }
 

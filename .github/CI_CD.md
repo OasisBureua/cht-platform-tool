@@ -15,6 +15,25 @@ Dependabot and CodeQL config files are removed for now. Optional: disable GitHub
 
 Docs-only changes under `docs/**` do not trigger dev deploy.
 
+## Deploy scope
+
+`deploy-dev.yml` and `deploy-prod.yml` deploy **only the lanes whose trees changed** since the last relevant SHA:
+
+| Lane | Paths | What runs |
+|------|--------|-----------|
+| Backend | `backend/**`, `worker/**` | Images + ECS image roll (Terraform plan/apply for task defs) |
+| Frontend | `frontend/**` | Build + S3 + CloudFront |
+| Infra | `infrastructure/**` | Terraform plan/apply |
+
+Change base:
+
+- **Push:** previous tip (`github.event.before`)
+- **Manual run:** last successful run of that workflow on the same branch
+- **Fallback:** merge-base with `develop` (dev) or `main` (platform)
+- If no base can be resolved, all lanes run (safe first deploy)
+
+Manual **Run workflow** has `deploy_all` (default off) to force every lane. Changing `scripts/**` or workflow YAML no longer deploys infra by itself.
+
 ## Branch flow (main ← release or hotfix)
 
 GitHub **rulesets alone cannot** restrict which source branch merges into `main`. Use **rulesets + required status check**:

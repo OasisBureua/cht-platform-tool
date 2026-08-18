@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   UseGuards,
-  UseInterceptors,
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -28,6 +27,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import {
   UserRole,
   UserStatus,
@@ -44,19 +44,25 @@ import { ProgramRegistrationsService } from '../programs/program-registrations.s
 import { SurveysService } from '../surveys/surveys.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
+import { SesEmailService } from '../email/ses-email.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
-import { AdminAuditInterceptor } from './admin-audit.interceptor';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
 import { CreateSurveyFromJotformDto } from './dto/create-survey-from-jotform.dto';
 import { UpdateProgramStatusDto } from './dto/update-program-status.dto';
 import { SendRegistrationInvitesDto } from '../programs/dto/send-registration-invites.dto';
+import { SendProgramOperationalEmailDto } from './dto/send-program-operational-email.dto';
 import { UpdateSurveyDto } from './dto/update-survey.dto';
 import { SurveyAnalyticsDto } from './dto/survey-analytics.dto';
 import type { SurveySegmentDimension } from '../../utils/survey-analytics';
 import { buildJotformIntakeSubmissionViewUrl } from '../../utils/jotform-intake-view-url';
 import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
+import {
+  buildUserRecipientWhere,
+  parseCsvQueryParam,
+  registrationInviteUserSelect,
+} from './user-recipient-filters.util';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 
 /** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
@@ -76,7 +82,6 @@ function lastProgramRegistrationSubmittedAtIso(r: {
 
 @ApiTags('Admin')
 @Controller('admin')
-@UseInterceptors(AdminAuditInterceptor)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
@@ -89,6 +94,7 @@ export class AdminController {
     private authService: AuthService,
     private zoom: ZoomService,
     private sessionHeroPresign: SessionHeroPresignService,
+    private sesEmail: SesEmailService,
   ) {}
 
   // ─── Bootstrap (no auth - first-admin setup) ─────────────────────────────
@@ -258,7 +264,7 @@ export class AdminController {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount] =
+    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount, paymentsPaidCents, pendingPaymentsCount, pendingRegistrationsCount, publishedLiveProgramsCount] =
       await Promise.all([
         this.prisma.user.count({
           where: {
@@ -276,6 +282,29 @@ export class AdminController {
         this.prisma.payment.count({
           where: { status: PaymentStatus.PAID },
         }),
+        this.prisma.payment.aggregate({
+          where: { status: PaymentStatus.PAID },
+          _sum: { amount: true },
+        }),
+        this.prisma.payment.count({
+          where: { status: PaymentStatus.PENDING },
+        }),
+        this.prisma.programRegistration.count({
+          where: {
+            status: ProgramRegistrationStatus.PENDING,
+            program: {
+              status: 'PUBLISHED',
+              zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+              registrationRequiresApproval: true,
+            },
+          },
+        }),
+        this.prisma.program.count({
+          where: {
+            status: 'PUBLISHED',
+            zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+          },
+        }),
       ]);
     const pct =
       activeHcpsCountPreviousWeek === 0
@@ -286,7 +315,50 @@ export class AdminController {
     this.logger.debug(
       `[Admin] stats: activeHcps=${activeHcpsCount} activeHcpsPrevWeek=${activeHcpsCountPreviousWeek} change=${pct}`,
     );
-    return { activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount };
+    return {
+      activeHcpsCount,
+      activeHcpsCountPreviousWeek,
+      paymentsPaidCount,
+      paymentsPaidCents: paymentsPaidCents._sum.amount ?? 0,
+      pendingPaymentsCount,
+      pendingRegistrationsCount,
+      publishedLiveProgramsCount,
+    };
+  }
+
+  @Get('audit-logs')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List recent admin audit log entries' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max rows (1–500, default 100)' })
+  @ApiQuery({ name: 'resource', required: false })
+  @ApiQuery({ name: 'actorId', required: false })
+  @ApiQuery({ name: 'actorRole', required: false, description: 'ADMIN | HCP | anonymous' })
+  async listAuditLogs(
+    @Query('limit') limit?: string,
+    @Query('resource') resource?: string,
+    @Query('actorId') actorId?: string,
+    @Query('actorRole') actorRole?: string,
+  ) {
+    const take = Math.min(
+      Math.max(Number.parseInt(limit ?? '100', 10) || 100, 1),
+      500,
+    );
+    const where = {
+      ...(resource?.trim() ? { resource: resource.trim() } : {}),
+      ...(actorId?.trim() ? { actorId: actorId.trim() } : {}),
+      ...(actorRole?.trim() ? { actorRole: actorRole.trim() } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.adminAuditLog.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+      }),
+      this.prisma.adminAuditLog.count({ where }),
+    ]);
+    return { items, total, limit: take };
   }
 
   @Get('programs')
@@ -589,6 +661,126 @@ export class AdminController {
     res.send(body);
   }
 
+  @Get('users/registration-invite-filter-options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Distinct city, state, and organization values for active invite recipients',
+  })
+  @ApiQuery({
+    name: 'role',
+    required: true,
+    description: 'HCP or KOL',
+  })
+  async getRegistrationInviteFilterOptions(@Query('role') role?: string) {
+    const normalizedRole = role?.toUpperCase();
+    if (!normalizedRole || !['HCP', 'KOL'].includes(normalizedRole)) {
+      throw new BadRequestException('role must be HCP or KOL');
+    }
+
+    const baseWhere = buildUserRecipientWhere({
+      role: normalizedRole as UserRole,
+      status: UserStatus.ACTIVE,
+    });
+
+    const [cityRows, stateRows, institutionRows] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { ...baseWhere, city: { not: null } },
+        distinct: ['city'],
+        select: { city: true },
+        orderBy: { city: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: { ...baseWhere, state: { not: null } },
+        distinct: ['state'],
+        select: { state: true },
+        orderBy: { state: 'asc' },
+      }),
+      this.prisma.user.findMany({
+        where: { ...baseWhere, institution: { not: null } },
+        distinct: ['institution'],
+        select: { institution: true },
+        orderBy: { institution: 'asc' },
+      }),
+    ]);
+
+    return {
+      cities: cityRows
+        .map((row) => row.city?.trim())
+        .filter((value): value is string => Boolean(value)),
+      states: stateRows
+        .map((row) => row.state?.trim())
+        .filter((value): value is string => Boolean(value)),
+      institutions: institutionRows
+        .map((row) => row.institution?.trim())
+        .filter((value): value is string => Boolean(value)),
+    };
+  }
+
+  @Get('users/registration-invite-recipients')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Preview active users matching registration invite filters',
+  })
+  @ApiQuery({ name: 'role', required: true, description: 'HCP or KOL' })
+  @ApiQuery({
+    name: 'cities',
+    required: false,
+    description: 'Comma-separated city values (AND)',
+  })
+  @ApiQuery({
+    name: 'states',
+    required: false,
+    description: 'Comma-separated state values (AND)',
+  })
+  @ApiQuery({
+    name: 'institutions',
+    required: false,
+    description: 'Comma-separated organization values (AND)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max preview rows (default 200)',
+  })
+  async getRegistrationInviteRecipients(
+    @Query('role') role?: string,
+    @Query('cities') cities?: string,
+    @Query('states') states?: string,
+    @Query('institutions') institutions?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const normalizedRole = role?.toUpperCase();
+    if (!normalizedRole || !['HCP', 'KOL'].includes(normalizedRole)) {
+      throw new BadRequestException('role must be HCP or KOL');
+    }
+
+    const where = buildUserRecipientWhere({
+      role: normalizedRole as UserRole,
+      status: UserStatus.ACTIVE,
+      cities: parseCsvQueryParam(cities),
+      states: parseCsvQueryParam(states),
+      institutions: parseCsvQueryParam(institutions),
+    });
+    const take = Math.min(parseInt(limit ?? '200', 10) || 200, 500);
+
+    const [recipients, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: registrationInviteUserSelect,
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        take,
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { recipients, total };
+  }
+
   @Get('users')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -605,6 +797,26 @@ export class AdminController {
     description: 'Filter by role (HCP, KOL, ADMIN)',
   })
   @ApiQuery({
+    name: 'status',
+    required: false,
+    description: 'Filter by status (e.g. ACTIVE)',
+  })
+  @ApiQuery({
+    name: 'cities',
+    required: false,
+    description: 'Comma-separated city values (AND)',
+  })
+  @ApiQuery({
+    name: 'states',
+    required: false,
+    description: 'Comma-separated state values (AND)',
+  })
+  @ApiQuery({
+    name: 'institutions',
+    required: false,
+    description: 'Comma-separated organization values (AND)',
+  })
+  @ApiQuery({
     name: 'limit',
     required: false,
     description: 'Max results (default 50)',
@@ -612,36 +824,29 @@ export class AdminController {
   async getUsers(
     @Query('q') q?: string,
     @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('cities') cities?: string,
+    @Query('states') states?: string,
+    @Query('institutions') institutions?: string,
     @Query('limit') limit?: string,
   ) {
     const take = Math.min(parseInt(limit ?? '50', 10) || 50, 200);
-    const where: Record<string, unknown> = {};
-
-    if (q?.trim()) {
-      const term = q.trim();
-      where.OR = [
-        { email: { contains: term, mode: 'insensitive' } },
-        { firstName: { contains: term, mode: 'insensitive' } },
-        { lastName: { contains: term, mode: 'insensitive' } },
-      ];
-    }
-
-    if (role && ['HCP', 'KOL', 'ADMIN'].includes(role.toUpperCase())) {
-      where.role = role.toUpperCase() as UserRole;
-    }
+    const where = buildUserRecipientWhere({
+      q,
+      cities: parseCsvQueryParam(cities),
+      states: parseCsvQueryParam(states),
+      institutions: parseCsvQueryParam(institutions),
+      ...(role && ['HCP', 'KOL', 'ADMIN'].includes(role.toUpperCase())
+        ? { role: role.toUpperCase() as UserRole }
+        : {}),
+      ...(status && Object.values(UserStatus).includes(status as UserStatus)
+        ? { status: status as UserStatus }
+        : {}),
+    });
 
     const users = await this.prisma.user.findMany({
       where,
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        status: true,
-        state: true,
-        createdAt: true,
-      },
+      select: registrationInviteUserSelect,
       orderBy: { createdAt: 'desc' },
       take,
     });
@@ -1006,6 +1211,7 @@ export class AdminController {
     let zoomMeetingId: string | undefined;
     let zoomJoinUrl: string | undefined;
     let zoomStartUrl: string | undefined;
+    let zoomMeetingPassword: string | undefined;
     let zoomError: string | undefined;
     let zoomPanelistError: string | undefined;
     let zoomPanelistLinks: Array<{
@@ -1027,6 +1233,7 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+          zoomMeetingPassword = created.password;
         } else {
           const created = await this.zoom.createWebinar({
             topic: body.title.trim(),
@@ -1038,6 +1245,7 @@ export class AdminController {
           zoomMeetingId = created.id;
           zoomJoinUrl = created.joinUrl;
           zoomStartUrl = created.startUrl;
+          zoomMeetingPassword = created.password;
 
           // Build panelist list: CHM Staff (fixed) + each speaker with an indexed email
           // Host does not get a personal Zoom URL, they start the session via the host start link.
@@ -1099,6 +1307,7 @@ export class AdminController {
       zoomMeetingId,
       zoomJoinUrl,
       zoomStartUrl,
+      ...(zoomMeetingPassword ? { zoomMeetingPassword } : {}),
       status: body.status ?? 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
@@ -1238,6 +1447,7 @@ export class AdminController {
       zoomMeetingId: zoomData.id,
       zoomJoinUrl: zoomData.joinUrl,
       zoomStartUrl: zoomData.startUrl,
+      ...(zoomData.password ? { zoomMeetingPassword: zoomData.password } : {}),
       status: 'PUBLISHED',
       zoomSessionType: sessionType,
       registrationRequiresApproval: true,
@@ -1399,8 +1609,94 @@ export class AdminController {
     return this.programRegistrations.sendRegistrationInvites({
       programIds: body.programIds,
       userIds: body.userIds,
+      emails: body.emails,
       role: body.role,
+      cities: body.cities,
+      states: body.states,
+      institutions: body.institutions,
     });
+  }
+
+  @Post('programs/:id/operational-email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @SkipThrottle({ short: true, long: true, auth: true, authMfa: true })
+  @Throttle({ medium: { limit: 20, ttl: 600_000 } })
+  @ApiOperation({
+    summary:
+      'Send a freeform operational email to program registrants (From: SES info@)',
+  })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  async sendProgramOperationalEmail(
+    @Param('id') id: string,
+    @Body() body: SendProgramOperationalEmailDto,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const program = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true, title: true },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+
+    const recipients = [
+      ...new Set(
+        body.to
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.length > 0),
+      ),
+    ];
+    if (recipients.length === 0) {
+      throw new BadRequestException('At least one recipient email is required.');
+    }
+    if (recipients.length > 50) {
+      throw new BadRequestException('At most 50 recipients per send.');
+    }
+
+    const subject = body.subject.trim();
+    const textBody = body.body.trim();
+    if (!subject || !textBody) {
+      throw new BadRequestException('Subject and body are required.');
+    }
+
+    const regs = await this.prisma.programRegistration.findMany({
+      where: { programId: id },
+      select: { user: { select: { email: true } } },
+    });
+    const registrantEmails = new Set(
+      regs.map((r) => r.user.email.trim().toLowerCase()),
+    );
+    const extras = recipients.filter((e) => !registrantEmails.has(e));
+
+    this.logger.log(
+      `[Admin] operational-email program=${id} by=${admin.userId} recipients=${recipients.length} extras=${extras.length}`,
+    );
+
+    const failed: { email: string; error: string }[] = [];
+    let sent = 0;
+    for (const email of recipients) {
+      try {
+        await this.sesEmail.sendOperationalEmail({
+          to: email,
+          subject,
+          textBody,
+          programTitle: program.title,
+        });
+        sent += 1;
+      } catch (err) {
+        failed.push({
+          email,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+
+    return {
+      programId: id,
+      sent,
+      failed,
+      extras,
+    };
   }
 
   @Get('webinar-registrations/recently-approved')

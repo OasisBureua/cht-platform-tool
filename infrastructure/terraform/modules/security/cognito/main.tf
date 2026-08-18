@@ -41,7 +41,7 @@ resource "aws_cognito_user_pool" "main" {
     temporary_password_validity_days = 7
   }
 
-  # MFA: OPTIONAL at launch, flipped to ON via platform.tfvars at day 14
+  # MFA: keep OPTIONAL while the app soft-gates /mfa/setup for all roles; flip to ON after enrollments.
   mfa_configuration = var.mfa_configuration
 
   software_token_mfa_configuration {
@@ -100,6 +100,8 @@ resource "aws_cognito_user_pool" "main" {
   # Cognito UpdateUserPool resets omitted fields. MRR-enabled pools also require
   # KeyConfiguration on every update; AWS provider 5.x cannot send it. Ignore in-place
   # pool setting changes here and apply them via scripts/cognito-sync-pool-config.sh.
+  # mfa_configuration is ignored: live pool MFA (ON vs OPTIONAL) can drift from tfvars
+  # and terraform apply will not correct it. Change MFA in the console or the sync script.
   lifecycle {
     prevent_destroy = true
     ignore_changes = [

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Body,
+  Query,
   UseGuards,
   Logger,
   Req,
@@ -15,15 +16,47 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
+import {
+  cognitoErrorLogFields,
+  mapCognitoLoginException,
+  type MappedCognitoLoginError,
+} from './cognito-login-errors';
 import { RecaptchaService } from './recaptcha.service';
 import { AuthLockoutService } from './auth-lockout.service';
+import { NpiRegistryService } from './npi-registry.service';
 import { UserRole } from '@prisma/client';
 import {
   clearSessionCookie,
   getSessionTokenFromRequest,
   setSessionCookie,
 } from './session-cookie';
+import {
+  normalizeUsStateCode,
+  normalizeUsZip5,
+  validateRegistrationLocation,
+} from '../common/us-address';
+
+function passwordMeetsSignupPolicy(password: string): string | null {
+  if (!password || password.length < 8) {
+    return 'Password must be at least 8 characters.';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'Password must include at least one capital letter.';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'Password must include at least one lowercase letter.';
+  }
+  if (!/\d/.test(password)) {
+    return 'Password must include at least one number.';
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    return 'Password must include at least one symbol.';
+  }
+  return null;
+}
 import { isProductionEnv } from '../utils/is-production-env';
+import { AuditService } from '../audit/audit.service';
+import type { Prisma } from '@prisma/client';
 
 /** Supabase/GoTrue external call timeout (ms). Prevents login hanging on slow/unreachable auth. */
 const SUPABASE_FETCH_TIMEOUT_MS = 15000;
@@ -68,7 +101,9 @@ export class AuthController {
     private readonly cognitoService: CognitoService,
     private readonly recaptchaService: RecaptchaService,
     private readonly lockout: AuthLockoutService,
+    private readonly npiRegistry: NpiRegistryService,
     private readonly configService: ConfigService,
+    private readonly audit: AuditService,
   ) {
     this.supabaseAuthDecommissioned =
       this.configService.get<boolean>('supabase.authDecommissioned') ?? true;
@@ -78,16 +113,48 @@ export class AuthController {
     return (req.ip || '').trim() || 'unknown';
   }
 
+  private requestUserAgent(req: Request): string | null {
+    const ua = req.headers?.['user-agent'];
+    return typeof ua === 'string' ? ua : null;
+  }
+
+  private auditAuthEvent(
+    req: Request,
+    action: string,
+    actor?: {
+      userId?: string | null;
+      email?: string | null;
+      role?: string | null;
+    },
+    metadata?: Record<string, unknown>,
+  ): void {
+    this.audit.record({
+      actorId: actor?.userId?.trim() || 'anonymous',
+      actorEmail: actor?.email ?? null,
+      actorRole: actor?.role ?? (actor?.userId ? null : 'anonymous'),
+      action,
+      resource: 'auth',
+      metadata: metadata as Prisma.InputJsonValue | undefined,
+      ipAddress: this.clientIp(req),
+      userAgent: this.requestUserAgent(req),
+    });
+  }
+
   /**
-   * Soft admin MFA enrollment gate (redirect to /mfa/setup).
-   * Enabled on fordev only (`CHT_ENVIRONMENT=dev`); disabled on testapp/platform
-   * until we are ready to require it there.
+   * Soft MFA enrollment gate (redirect to /mfa/setup) for all roles.
+   * Enabled in deployed Cognito environments; local NODE_ENV=development stays optional.
+   * Cognito pool MFA remains OPTIONAL until flipped to ON via Terraform.
    */
-  private isAdminMfaEnrollmentEnforced(): boolean {
+  private isMfaEnrollmentEnforced(): boolean {
     const env = (
       this.configService.get<string>('app.environment') || ''
     ).toLowerCase();
-    return env === 'dev';
+    return (
+      env === 'dev' ||
+      env === 'platform' ||
+      env === 'prod' ||
+      env === 'staging'
+    );
   }
 
   private async rejectIfLocked(
@@ -197,8 +264,8 @@ export class AuthController {
       );
     }
     const mfaEnrollmentRequired =
-      this.isAdminMfaEnrollmentEnforced() &&
-      user.role === UserRole.ADMIN &&
+      this.isMfaEnrollmentEnforced() &&
+      this.cognitoService.isConfigured() &&
       !mfaEnabled;
 
     this.attachSessionCookie(res, sessionToken);
@@ -232,8 +299,15 @@ export class AuthController {
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<
     | LoginSuccess
+    | MappedCognitoLoginError
     | { error: string }
     | { challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+    | {
+        challenge: 'MFA_SETUP';
+        session: string;
+        secretCode: string;
+        otpauthUri: string;
+      }
   > {
     const loginStart = Date.now();
     const emailStr = (email || '').trim();
@@ -285,6 +359,21 @@ export class AuthController {
           session: result.session,
         };
       }
+      if (result.kind === 'mfa_setup') {
+        await this.lockout.recordSuccess('login', emailStr, ip);
+        this.logger.log(
+          `[Auth] Cognito MFA_SETUP for ${emailStr} in ${Date.now() - cognitoStart}ms`,
+        );
+        return {
+          challenge: 'MFA_SETUP',
+          session: result.session,
+          secretCode: result.secretCode,
+          otpauthUri: this.cognitoService.buildOtpauthUri(
+            result.secretCode,
+            emailStr,
+          ),
+        };
+      }
       const sessionStart = Date.now();
       const loginResult = await this.sessionFromCognitoTokens(
         result.tokens,
@@ -301,25 +390,28 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito login success: userId=${loginResult.userId} email=${loginResult.email} total=${Date.now() - loginStart}ms`,
       );
+      this.auditAuthEvent(req, 'auth.login', {
+        userId: loginResult.userId,
+        email: loginResult.email,
+        role: loginResult.role,
+      }, { method: 'cognito' });
       return loginResult;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Login failed.';
+      const fields = cognitoErrorLogFields(err);
       this.logger.warn(
-        `[Auth] Cognito login failed for ${emailStr} after ${Date.now() - loginStart}ms: ${msg}`,
+        `[Auth] Cognito login failed for ${emailStr} after ${Date.now() - loginStart}ms` +
+          ` name=${fields.name}` +
+          (fields.challenge ? ` challenge=${fields.challenge}` : '') +
+          ` msg=${fields.message}`,
       );
       const lock = await this.lockout.recordFailure('login', emailStr, ip);
       if (lock.locked) {
-        return { error: lock.message || 'Too many attempts. Please try again later.' };
-      }
-      if (/not authorized|incorrect username or password/i.test(msg)) {
-        return { error: 'Invalid email or password.' };
-      }
-      if (/aborted|timeout|TimeoutError/i.test(msg)) {
         return {
-          error: 'Login timed out. Please try again.',
+          error: lock.message || 'Too many attempts. Please try again later.',
+          code: 'RATE_LIMITED',
         };
       }
-      return { error: msg };
+      return mapCognitoLoginException(err);
     }
   }
 
@@ -367,16 +459,89 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email}`,
       );
+      this.auditAuthEvent(req, 'auth.mfa_login', {
+        userId: loginResult.userId,
+        email: loginResult.email,
+        role: loginResult.role,
+      }, { method: 'cognito' });
       return loginResult;
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'MFA verification failed.';
-      this.logger.warn(`[Auth] Cognito MFA failed for ${emailStr}: ${msg}`);
+      const fields = cognitoErrorLogFields(err);
+      this.logger.warn(
+        `[Auth] Cognito MFA failed for ${emailStr} name=${fields.name}` +
+          (fields.challenge ? ` challenge=${fields.challenge}` : '') +
+          ` msg=${fields.message}`,
+      );
       const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
       if (lock.locked) {
         return { error: lock.message || 'Too many attempts. Please try again later.' };
       }
-      return { error: msg };
+      return mapCognitoLoginException(err);
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/mfa/setup
+   * Complete MFA_SETUP after cognito/login returned a TOTP secret (no session yet).
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('cognito/mfa/setup')
+  async cognitoMfaSetup(
+    @Body('email') email: string,
+    @Body('session') session: string,
+    @Body('code') code: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<LoginSuccess | MappedCognitoLoginError | { error: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Cognito login is not configured.' };
+    }
+
+    const emailStr = (email || '').trim();
+    const sessionStr = (session || '').trim();
+    const codeStr = (code || '').trim();
+    const ip = this.clientIp(req);
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!sessionStr) return { error: 'MFA session is required.' };
+    if (!codeStr) return { error: 'MFA code is required.' };
+
+    const locked = await this.rejectIfLocked('mfa', emailStr, ip);
+    if (locked) return locked;
+
+    try {
+      const tokens = await this.cognitoService.completeMfaSetupChallenge(
+        sessionStr,
+        codeStr,
+        emailStr,
+      );
+      const loginResult = await this.sessionFromCognitoTokens(tokens, res);
+      if ('error' in loginResult) {
+        await this.lockout.recordFailure('mfa', emailStr, ip);
+        return loginResult;
+      }
+      await this.lockout.recordSuccess('mfa', emailStr, ip);
+      this.logger.log(
+        `[Auth] Cognito MFA_SETUP login success: userId=${loginResult.userId} email=${loginResult.email}`,
+      );
+      this.auditAuthEvent(req, 'auth.mfa_setup_login', {
+        userId: loginResult.userId,
+        email: loginResult.email,
+        role: loginResult.role,
+      }, { method: 'cognito' });
+      return loginResult;
+    } catch (err) {
+      const fields = cognitoErrorLogFields(err);
+      this.logger.warn(
+        `[Auth] Cognito MFA_SETUP failed for ${emailStr} name=${fields.name}` +
+          (fields.challenge ? ` challenge=${fields.challenge}` : '') +
+          ` msg=${fields.message}`,
+      );
+      const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
+      if (lock.locked) {
+        return { error: lock.message || 'Too many attempts. Please try again later.' };
+      }
+      return mapCognitoLoginException(err);
     }
   }
 
@@ -389,6 +554,7 @@ export class AuthController {
     @Body('code') code: string,
     @Body('redirect_uri') redirectUri: string,
     @Body('code_verifier') codeVerifier: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
     if (!this.cognitoService.isConfigured()) {
@@ -413,12 +579,91 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito OAuth login success: userId=${loginResult.userId} email=${loginResult.email}`,
       );
+      this.auditAuthEvent(req, 'auth.login', {
+        userId: loginResult.userId,
+        email: loginResult.email,
+        role: loginResult.role,
+      }, { method: 'cognito_oauth' });
       return loginResult;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'OAuth login failed.';
       this.logger.warn(`[Auth] Cognito callback failed: ${msg}`);
       return { error: msg };
     }
+  }
+
+  /**
+   * GET /api/auth/npi/verify?npi=##########
+   * Real-time individual NPI check via NIH Clinical Tables (CMS NPPES).
+   * Also reports whether the NPI is already registered on CHT.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
+  @Throttle({ auth: { limit: 30, ttl: 300_000 } })
+  @Get('npi/verify')
+  async verifyNpi(@Query('npi') npiRaw?: string): Promise<{
+    valid: boolean;
+    npi: string;
+    duplicate: boolean;
+    providerName?: string;
+    providerType?: string;
+    practiceAddress?: string;
+    error?: string;
+  }> {
+    const npi = this.npiRegistry.normalizeNpi(npiRaw);
+    if (npi.length !== 10) {
+      return {
+        valid: false,
+        npi,
+        duplicate: false,
+        error: 'NPI number must be exactly 10 digits.',
+      };
+    }
+
+    const existing = await this.authService.findByNpi(npi);
+    const lookup = await this.npiRegistry.lookup(npi);
+    if (!lookup.valid) {
+      return {
+        valid: false,
+        npi,
+        duplicate: Boolean(existing),
+        error: lookup.message,
+      };
+    }
+
+    return {
+      valid: true,
+      npi: lookup.npi,
+      duplicate: Boolean(existing),
+      providerName: lookup.providerName,
+      providerType: lookup.providerType,
+      practiceAddress: lookup.practiceAddress,
+      ...(existing
+        ? {
+            error:
+              'An account with this NPI number already exists. Sign in to your existing account instead.',
+          }
+        : {}),
+    };
+  }
+
+  private async assertNpiAllowedForSignup(
+    npi: string,
+  ): Promise<{ error: string } | null> {
+    if (npi.length !== 10) return null;
+
+    const existing = await this.authService.findByNpi(npi);
+    if (existing) {
+      return {
+        error:
+          'An account with this NPI number already exists. Sign in to your existing account instead.',
+      };
+    }
+
+    const lookup = await this.npiRegistry.lookup(npi);
+    if (!lookup.valid) {
+      return { error: lookup.message };
+    }
+    return null;
   }
 
   /**
@@ -459,9 +704,8 @@ export class AuthController {
       return { error: 'Please enter a valid email address.' };
     }
     if (!password) return { error: 'Password is required.' };
-    if (password.length < 8) {
-      return { error: 'Password must be at least 8 characters.' };
-    }
+    const passwordError = passwordMeetsSignupPolicy(password);
+    if (passwordError) return { error: passwordError };
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
@@ -484,6 +728,23 @@ export class AuthController {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
 
+    // SCRUM-188 + SCRUM-173: block duplicate NPIs and require registry validation.
+    if (npi.length === 10) {
+      const npiError = await this.assertNpiAllowedForSignup(npi);
+      if (npiError) {
+        this.logger.log(
+          `[Auth] Cognito signup blocked for ${emailStr}: ${npiError.error}`,
+        );
+        return npiError;
+      }
+    }
+
+    const locationError = validateRegistrationLocation({ state, zipCode });
+    if (locationError) return { error: locationError };
+    const stateNorm = normalizeUsStateCode(state)!;
+    const zipNorm = normalizeUsZip5(zipCode)!;
+    const cityNorm = (city || '').trim() || null;
+
     try {
       const signup = await this.cognitoService.signUp(
         emailStr,
@@ -500,9 +761,9 @@ export class AuthController {
         npiOptional ? npi || null : npi,
         professionTrim,
         institution || null,
-        city || null,
-        state || null,
-        zipCode || null,
+        cityNorm,
+        stateNorm,
+        zipNorm,
       );
 
       await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
@@ -512,6 +773,15 @@ export class AuthController {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Sign up failed.';
       this.logger.warn(`[Auth] Cognito signup failed for ${emailStr}: ${msg}`);
+      // SCRUM-188: race-condition backstop — pre-check + unique constraint
+      // both cover the common case; catch the P2002 on npiNumber if two
+      // signups collided between the pre-check and the DB write.
+      if (/Unique constraint.*npiNumber|P2002.*npiNumber/i.test(msg)) {
+        return {
+          error:
+            'An account with this NPI number already exists. Sign in to your existing account instead.',
+        };
+      }
       // Do not reveal whether the email is already registered (align with /recover).
       if (/usernameexists|already exists/i.test(msg)) {
         this.logger.log(
@@ -625,8 +895,8 @@ export class AuthController {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
       return { error: 'Please enter a valid email address.' };
     if (!password) return { error: 'Password is required.' };
-    if (password.length < 8)
-      return { error: 'Password must be at least 8 characters.' };
+    const passwordError = passwordMeetsSignupPolicy(password);
+    if (passwordError) return { error: passwordError };
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
@@ -648,6 +918,17 @@ export class AuthController {
     if (npiOptional && npi.length > 0 && npi.length !== 10) {
       return { error: 'If provided, NPI must be exactly 10 digits.' };
     }
+
+    if (npi.length === 10) {
+      const npiError = await this.assertNpiAllowedForSignup(npi);
+      if (npiError) return npiError;
+    }
+
+    const locationError = validateRegistrationLocation({ state, zipCode });
+    if (locationError) return { error: locationError };
+    const stateNorm = normalizeUsStateCode(state)!;
+    const zipNorm = normalizeUsZip5(zipCode)!;
+    const cityNorm = (city || '').trim() || undefined;
 
     const supabaseUrl = this.configService.get<string>('supabase.url');
     const supabaseAnon = this.configService.get<string>('supabase.anonKey');
@@ -681,9 +962,9 @@ export class AuthController {
               profession,
               npi_number: npiOptional ? npi || undefined : npi,
               institution: (institution || '').trim() || undefined,
-              city: (city || '').trim() || undefined,
-              state: (state || '').trim() || undefined,
-              zip_code: (zipCode || '').trim() || undefined,
+              city: cityNorm,
+              state: stateNorm,
+              zip_code: zipNorm,
             },
           }),
         },
@@ -751,6 +1032,7 @@ export class AuthController {
   @Post('login-oauth')
   async loginOAuth(
     @Body('access_token') accessToken: string,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
     if (this.supabaseAuthDecommissioned) {
@@ -839,6 +1121,11 @@ export class AuthController {
       `[Auth] OAuth login success: userId=${user.userId} email=${user.email}`,
     );
     this.attachSessionCookie(res, sessionToken);
+    this.auditAuthEvent(req, 'auth.login', {
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+    }, { method: 'oauth' });
     return {
       session_token: sessionToken,
       access_token: token,
@@ -984,6 +1271,11 @@ export class AuthController {
       );
       await this.lockout.recordSuccess('login', emailStr, ip);
       this.attachSessionCookie(expressRes, sessionToken);
+      this.auditAuthEvent(req, 'auth.login', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      }, { method: 'supabase' });
       return {
         session_token: sessionToken,
         access_token: data.access_token,
@@ -1028,6 +1320,11 @@ export class AuthController {
     );
     await this.lockout.recordSuccess('login', emailStr, ip);
     this.attachSessionCookie(expressRes, sessionToken);
+    this.auditAuthEvent(req, 'auth.login', {
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+    }, { method: 'dev_fallback' });
     return {
       session_token: sessionToken,
       userId: user.userId,
@@ -1062,6 +1359,9 @@ export class AuthController {
         this.logger.log(`[Auth] Cognito recover email sent to ${emailStr}`);
         // Count every recover attempt (success or fail) to limit email bombing.
         await this.lockout.recordFailure('recover', emailStr, ip);
+        this.auditAuthEvent(req, 'auth.recover_requested', {
+          email: emailStr,
+        }, { method: 'cognito' });
         return {};
       } catch (err) {
         const msg =
@@ -1146,6 +1446,7 @@ export class AuthController {
     @Body('email') email: string,
     @Body('code') code: string,
     @Body('password') password: string,
+    @Req() req: Request,
   ): Promise<{ error?: string }> {
     const emailStr = (email || '').trim();
     const codeStr = (code || '').trim();
@@ -1180,6 +1481,11 @@ export class AuthController {
             `[Auth] Cognito password reset confirmed for ${emailStr} in ${Date.now() - confirmStart}ms (no CHT user row yet)`,
           );
         }
+        this.auditAuthEvent(req, 'auth.recover_confirmed', {
+          userId: user?.userId,
+          email: emailStr,
+          role: user?.role,
+        }, { method: 'cognito' });
         return {};
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Password reset failed.';
@@ -1259,6 +1565,11 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito password changed for ${user.email}; revokedSessions=${revoked}`,
       );
+      this.auditAuthEvent(req, 'auth.password_changed', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
       return { ok: true };
     } catch (err) {
       const msg =
@@ -1321,6 +1632,11 @@ export class AuthController {
         user.email,
       );
       this.logger.log(`[Auth] MFA setup started for ${user.email}`);
+      this.auditAuthEvent(req, 'auth.mfa_setup', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
       return { secretCode, otpauthUri };
     } catch (err) {
       const msg =
@@ -1381,6 +1697,11 @@ export class AuthController {
       );
       await this.lockout.recordSuccess('mfa', user.email, ip);
       this.logger.log(`[Auth] MFA enabled for ${user.email}`);
+      this.auditAuthEvent(req, 'auth.mfa_enabled', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
       return { ok: true };
     } catch (err) {
       const msg =
@@ -1405,10 +1726,17 @@ export class AuthController {
     @Res({ passthrough: true }) res: ExpressResponse,
   ) {
     const sessionToken = getSessionTokenFromRequest(req);
+    let actor: AuthUser | null = null;
     if (sessionToken) {
+      actor = await this.authService.getSession(sessionToken);
       await this.authService.revokeSession(sessionToken);
     }
     clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
+    this.auditAuthEvent(req, 'auth.logout', {
+      userId: actor?.userId,
+      email: actor?.email,
+      role: actor?.role,
+    });
     return { ok: true };
   }
 
@@ -1472,11 +1800,9 @@ export class AuthController {
       }
     }
 
-    // Soft enforce for admins on fordev only while pool MFA is OPTIONAL.
-    // Disabled on platform/testapp via isAdminMfaEnrollmentEnforced().
+    // Soft enforce for all roles in deployed Cognito envs while pool MFA is OPTIONAL.
     const mfaEnrollmentRequired =
-      this.isAdminMfaEnrollmentEnforced() &&
-      user.role === UserRole.ADMIN &&
+      this.isMfaEnrollmentEnforced() &&
       this.cognitoService.isConfigured() &&
       !mfaEnabled;
 

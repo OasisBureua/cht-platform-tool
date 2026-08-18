@@ -5,6 +5,7 @@ import { Copy, Loader2, Mail, X } from 'lucide-react';
 import { adminApi, type AdminWebinar } from '../../api/admin';
 import { buildMultiRegisterHref } from '../../utils/intake-return';
 import { getApiErrorMessage } from '../../api/client';
+import { usStateLabel } from '../../data/us-states';
 
 type Props = {
   webinars: AdminWebinar[];
@@ -12,16 +13,105 @@ type Props = {
   onClose: () => void;
 };
 
+type MultiSelectFilterProps = {
+  label: string;
+  options: string[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+  formatOption?: (value: string) => string;
+  emptyMessage?: string;
+};
+
+function MultiSelectFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  formatOption,
+  emptyMessage = 'No values on file',
+}: MultiSelectFilterProps) {
+  const toggle = (value: string) => {
+    const next = new Set(selected);
+    if (next.has(value)) next.delete(value);
+    else next.add(value);
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold text-gray-700">{label}</p>
+        {selected.size > 0 ? (
+          <button
+            type="button"
+            onClick={() => onChange(new Set())}
+            className="text-xs font-medium text-brand-700 hover:text-brand-800"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+      {options.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-500">
+          {emptyMessage}
+        </p>
+      ) : (
+        <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+          {options.map((option) => (
+            <label
+              key={option}
+              className="flex cursor-pointer items-start gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                checked={selected.has(option)}
+                onChange={() => toggle(option)}
+              />
+              <span className="min-w-0 text-gray-800">
+                {formatOption ? formatOption(option) : option}
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatLocationBits(user: {
+  city?: string | null;
+  state?: string | null;
+  institution?: string | null;
+}) {
+  const parts = [
+    user.city?.trim(),
+    user.state?.trim() ? usStateLabel(user.state) : null,
+    user.institution?.trim(),
+  ].filter(Boolean);
+  return parts.length > 0 ? parts.join(' · ') : 'Location not on file';
+}
+
 export default function SendRegistrationInvitesModal({ webinars, open, onClose }: Props) {
   const [selectedProgramIds, setSelectedProgramIds] = useState<Set<string>>(new Set());
-  const [recipientMode, setRecipientMode] = useState<'role' | 'users'>('role');
+  const [recipientMode, setRecipientMode] = useState<'role' | 'users' | 'emails'>('role');
   const [role, setRole] = useState<'HCP' | 'KOL'>('HCP');
+  const [selectedCities, setSelectedCities] = useState<Set<string>>(new Set());
+  const [selectedStates, setSelectedStates] = useState<Set<string>>(new Set());
+  const [selectedInstitutions, setSelectedInstitutions] = useState<Set<string>>(new Set());
   const [userSearch, setUserSearch] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
+  const [emailsInput, setEmailsInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [result, setResult] = useState<Awaited<
     ReturnType<typeof adminApi.sendRegistrationInvites>
   > | null>(null);
+
+  const cityFilters = useMemo(() => [...selectedCities], [selectedCities]);
+  const stateFilters = useMemo(() => [...selectedStates], [selectedStates]);
+  const institutionFilters = useMemo(() => [...selectedInstitutions], [selectedInstitutions]);
+  const hasLocationFilters =
+    cityFilters.length > 0 || stateFilters.length > 0 || institutionFilters.length > 0;
 
   const upcoming = useMemo(
     () =>
@@ -35,6 +125,33 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
         }),
     [webinars],
   );
+
+  const { data: filterOptions, isLoading: filterOptionsLoading } = useQuery({
+    queryKey: ['admin', 'registration-invite-filter-options', role],
+    queryFn: () => adminApi.getRegistrationInviteFilterOptions(role),
+    enabled: open && recipientMode === 'role',
+    staleTime: 60_000,
+  });
+
+  const { data: roleRecipients, isFetching: roleRecipientsLoading } = useQuery({
+    queryKey: [
+      'admin',
+      'registration-invite-recipients',
+      role,
+      cityFilters,
+      stateFilters,
+      institutionFilters,
+    ],
+    queryFn: () =>
+      adminApi.getRegistrationInviteRecipients({
+        role,
+        cities: cityFilters,
+        states: stateFilters,
+        institutions: institutionFilters,
+      }),
+    enabled: open && recipientMode === 'role',
+    staleTime: 10_000,
+  });
 
   const { data: searchUsers = [], isFetching: usersLoading } = useQuery({
     queryKey: ['admin', 'users', 'invite-search', userSearch],
@@ -58,13 +175,35 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
   const registerUrl =
     typeof window !== 'undefined' ? `${window.location.origin}${registerPath}` : registerPath;
 
+  const parsedEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          emailsInput
+            .split(/[,\s;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+        ),
+      ),
+    [emailsInput],
+  );
+  const rawEmailTokens = emailsInput.split(/[,\s;]+/).filter(Boolean);
+  const invalidEmailCount = rawEmailTokens.length - parsedEmails.length;
+
   const sendMut = useMutation({
     mutationFn: () =>
       adminApi.sendRegistrationInvites({
         programIds: [...selectedProgramIds],
         ...(recipientMode === 'role'
-          ? { role }
-          : { userIds: [...selectedUserIds] }),
+          ? {
+              role,
+              ...(cityFilters.length ? { cities: cityFilters } : {}),
+              ...(stateFilters.length ? { states: stateFilters } : {}),
+              ...(institutionFilters.length ? { institutions: institutionFilters } : {}),
+            }
+          : recipientMode === 'users'
+            ? { userIds: [...selectedUserIds] }
+            : { emails: parsedEmails }),
       }),
     onSuccess: (data) => setResult(data),
   });
@@ -89,6 +228,17 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
     });
   };
 
+  const clearLocationFilters = () => {
+    setSelectedCities(new Set());
+    setSelectedStates(new Set());
+    setSelectedInstitutions(new Set());
+  };
+
+  const handleRoleChange = (nextRole: 'HCP' | 'KOL') => {
+    setRole(nextRole);
+    clearLocationFilters();
+  };
+
   const copyLink = async () => {
     if (selectedProgramIds.size === 0) return;
     await navigator.clipboard.writeText(registerUrl);
@@ -96,9 +246,16 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const roleRecipientTotal = roleRecipients?.total ?? 0;
+  const roleRecipientPreview = roleRecipients?.recipients ?? [];
+
   const canSend =
     selectedProgramIds.size > 0 &&
-    (recipientMode === 'role' || selectedUserIds.size > 0) &&
+    (recipientMode === 'role'
+      ? roleRecipientTotal > 0 && !roleRecipientsLoading
+      : recipientMode === 'users'
+        ? selectedUserIds.size > 0
+        : parsedEmails.length > 0) &&
     !sendMut.isPending;
 
   return (
@@ -194,17 +351,144 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                 />
                 Choose specific users
               </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="recipientMode"
+                  checked={recipientMode === 'emails'}
+                  onChange={() => setRecipientMode('emails')}
+                />
+                Email addresses (unregistered ok)
+              </label>
             </div>
 
             {recipientMode === 'role' ? (
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as 'HCP' | 'KOL')}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
-              >
-                <option value="HCP">All active HCPs</option>
-                <option value="KOL">All active KOLs</option>
-              </select>
+              <div className="space-y-4">
+                <select
+                  value={role}
+                  onChange={(e) => handleRoleChange(e.target.value as 'HCP' | 'KOL')}
+                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                >
+                  <option value="HCP">All active HCPs</option>
+                  <option value="KOL">All active KOLs</option>
+                </select>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Target by location and organization</p>
+                      <p className="mt-0.5 text-xs text-gray-600">
+                        Select one or more values in each filter. Multiple filters combine with AND logic.
+                      </p>
+                    </div>
+                    {hasLocationFilters ? (
+                      <button
+                        type="button"
+                        onClick={clearLocationFilters}
+                        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                      >
+                        Clear all filters
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {filterOptionsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading filter options…
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <MultiSelectFilter
+                        label="City"
+                        options={filterOptions?.cities ?? []}
+                        selected={selectedCities}
+                        onChange={setSelectedCities}
+                        emptyMessage="No cities on file for this role"
+                      />
+                      <MultiSelectFilter
+                        label="State"
+                        options={filterOptions?.states ?? []}
+                        selected={selectedStates}
+                        onChange={setSelectedStates}
+                        formatOption={(value) => usStateLabel(value)}
+                        emptyMessage="No states on file for this role"
+                      />
+                      <MultiSelectFilter
+                        label="Organization"
+                        options={filterOptions?.institutions ?? []}
+                        selected={selectedInstitutions}
+                        onChange={setSelectedInstitutions}
+                        emptyMessage="No organizations on file for this role"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-gray-900">Matching recipients</p>
+                    {roleRecipientsLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    ) : (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                        {roleRecipientTotal}
+                      </span>
+                    )}
+                  </div>
+
+                  {roleRecipientTotal === 0 && !roleRecipientsLoading ? (
+                    <p className="text-sm text-amber-800 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                      No active users match the selected role and filters.
+                    </p>
+                  ) : null}
+
+                  {roleRecipientPreview.length > 0 ? (
+                    <ul className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
+                      {roleRecipientPreview.map((u) => (
+                        <li key={u.id} className="px-3 py-2 text-sm">
+                          <p className="font-medium text-gray-900">
+                            {u.firstName} {u.lastName}
+                            <span className="font-normal text-gray-500"> · {u.email}</span>
+                          </p>
+                          <p className="mt-0.5 text-xs text-gray-500">{formatLocationBits(u)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  {roleRecipientTotal > roleRecipientPreview.length ? (
+                    <p className="text-xs text-gray-500">
+                      Showing first {roleRecipientPreview.length} of {roleRecipientTotal} matching recipients.
+                    </p>
+                  ) : roleRecipientTotal > 0 ? (
+                    <p className="text-xs text-gray-500">
+                      {hasLocationFilters
+                        ? 'Filtered active users shown above.'
+                        : 'All active users in this role are included.'}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            ) : recipientMode === 'emails' ? (
+              <div className="space-y-2">
+                <textarea
+                  value={emailsInput}
+                  onChange={(e) => setEmailsInput(e.target.value)}
+                  rows={4}
+                  placeholder="alice@example.com, bob@example.com&#10;carol@example.com"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                />
+                <p className="text-xs text-gray-500">
+                  Separate with commas, spaces, semicolons, or newlines. Recipients not yet registered will be directed to sign up when they open the link.
+                </p>
+                {parsedEmails.length > 0 || invalidEmailCount > 0 ? (
+                  <p className="text-xs text-gray-600">
+                    {parsedEmails.length} valid
+                    {invalidEmailCount > 0 ? ` · ${invalidEmailCount} invalid (skipped)` : ''}
+                  </p>
+                ) : null}
+              </div>
             ) : (
               <div className="space-y-2">
                 <input
