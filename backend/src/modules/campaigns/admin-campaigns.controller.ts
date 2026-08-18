@@ -1,10 +1,9 @@
-import { Controller, Get, Query, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
-import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import {
   CampaignsDashboardService,
   type CampaignsDashboardQuery,
@@ -15,7 +14,6 @@ import {
 @Controller('admin/campaigns')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
-@UseInterceptors(AdminAuditInterceptor)
 export class AdminCampaignsController {
   constructor(private readonly dashboard: CampaignsDashboardService) {}
 

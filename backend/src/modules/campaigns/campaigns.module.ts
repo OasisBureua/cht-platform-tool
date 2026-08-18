@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../auth/auth.module';
-import { AdminAuditInterceptor } from '../admin/admin-audit.interceptor';
 import { AdminContentHubModule } from '../content-hub/admin-content-hub.module';
 import { HubSpotModule } from '../hubspot/hubspot.module';
 import { SurveysModule } from '../surveys/surveys.module';
@@ -17,6 +16,6 @@ import { CampaignsDashboardService } from './campaigns-dashboard.service';
     JotformModule,
   ],
   controllers: [AdminCampaignsController],
-  providers: [CampaignsDashboardService, AdminAuditInterceptor],
+  providers: [CampaignsDashboardService],
 })
 export class CampaignsModule {}
