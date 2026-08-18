@@ -131,6 +131,39 @@ export class JotformService {
   }
 
   /**
+   * Submission count for a Jotform form.
+   * @see https://api.jotform.com/docs/#form-id
+   */
+  async getFormSubmissionCount(formId: string): Promise<number | null> {
+    const id = formId.trim();
+    if (!id) return null;
+    const url = `${this.getBaseUrl()}/form/${encodeURIComponent(id)}`;
+    const res = await fetch(url, { headers: this.apiKeyHeaders() });
+    const raw = await res.text();
+    let data: { responseCode?: number; content?: Record<string, unknown> };
+    try {
+      data = JSON.parse(raw) as {
+        responseCode?: number;
+        content?: Record<string, unknown>;
+      };
+    } catch {
+      throw new Error(`Jotform form lookup returned invalid JSON (HTTP ${res.status})`);
+    }
+    if (!this.isJotformSuccess(data?.responseCode) || !data.content) {
+      throw new Error(
+        `Jotform form lookup failed: HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
+      );
+    }
+    const count = data.content.count ?? data.content.new;
+    if (typeof count === 'number' && Number.isFinite(count)) return count;
+    if (typeof count === 'string' && count.trim()) {
+      const parsed = Number(count);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  /**
    * Test Jotform API connectivity using the /user endpoint.
    * Returns user info if the API key is valid.
    * @see https://api.jotform.com/docs/#user

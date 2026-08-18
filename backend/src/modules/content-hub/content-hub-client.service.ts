@@ -42,6 +42,8 @@ export class ContentHubClientService {
       this.logger.warn(
         'CONTENTHUB_API_KEY not configured, Content Hub calls disabled',
       );
+    } else if (this.adminBaseUrl) {
+      this.logger.log(`Content Hub admin API: ${this.adminBaseUrl}`);
     }
   }
 
@@ -51,6 +53,10 @@ export class ContentHubClientService {
 
   isAdminConfigured(): boolean {
     return !!(this.adminBaseUrl && this.apiKey);
+  }
+
+  getAdminBaseUrl(): string {
+    return this.adminBaseUrl;
   }
 
   private buildHeaders(requestId: string): Record<string, string> {
