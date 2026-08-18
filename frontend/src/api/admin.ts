@@ -17,6 +17,16 @@ export interface AdminProgram {
 
 export type ZoomSessionType = 'WEBINAR' | 'MEETING';
 
+/** Zoom webinar options sent to POST/PATCH /admin/webinars (maps to Zoom API settings). */
+export type ZoomWebinarSettings = {
+  questionAndAnswer: boolean;
+  backstage: boolean;
+  hdVideoScreenShare: boolean;
+  hdVideo1080p: boolean;
+  emailInAttendeeReport: boolean;
+  autoRecordCloud: boolean;
+};
+
 export interface ZoomPanelistLink {
   name: string;
   email: string;
@@ -85,6 +95,8 @@ export interface CreateWebinarPayload {
   sessionDisclaimer?: string;
   /** Optional HTTPS image URL for session branding. */
   sessionHeroImageUrl?: string;
+  /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
+  zoomSettings?: ZoomWebinarSettings;
 }
 
 export interface UpdateWebinarPayload {
@@ -103,6 +115,8 @@ export interface UpdateWebinarPayload {
   speakers?: string[];
   sessionDisclaimer?: string | null;
   sessionHeroImageUrl?: string | null;
+  /** WEBINAR only. Written to the linked Zoom webinar. */
+  zoomSettings?: ZoomWebinarSettings;
 }
 
 export interface CreateProgramPayload {
@@ -909,6 +923,21 @@ export const adminApi = {
 
   updateWebinar: async (id: string, payload: UpdateWebinarPayload): Promise<AdminWebinar> => {
     const { data } = await apiClient.patch<AdminWebinar>(`/admin/webinars/${id}`, payload);
+    return data;
+  },
+
+  getWebinarZoomSettings: async (
+    id: string,
+  ): Promise<{
+    settings: ZoomWebinarSettings;
+    source: 'zoom' | 'defaults';
+    warning?: string;
+  }> => {
+    const { data } = await apiClient.get<{
+      settings: ZoomWebinarSettings;
+      source: 'zoom' | 'defaults';
+      warning?: string;
+    }>(`/admin/webinars/${encodeURIComponent(id)}/zoom-settings`);
     return data;
   },
 
