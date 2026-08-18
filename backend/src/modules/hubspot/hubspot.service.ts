@@ -69,10 +69,10 @@ export interface HubSpotCampaignAnalyticsSnapshot {
   phase: 'campaign-analytics';
   portalId: string | null;
   accountName: string | null;
-  campaign: unknown | null;
-  metrics: unknown | null;
-  assets: unknown | null;
-  emailStatistics: unknown | null;
+  campaign: unknown;
+  metrics: unknown;
+  assets: unknown;
+  emailStatistics: unknown;
   warnings: string[];
   errors: string[];
 }
@@ -88,6 +88,14 @@ export type HubSpotMarketingAccess = {
 
 export type HubSpotCampaignAnalyticsOptions = {
   includeEmailStatistics?: boolean;
+  /**
+   * Prefetched account-period email statistics. When set, skips the HubSpot
+   * email statistics request so callers can reuse one fetch across campaigns.
+   */
+  emailStatisticsPrefetch?: {
+    data: unknown;
+    warning?: string;
+  };
 };
 
 /** Reject blank / placeholder secrets that would only produce HubSpot 401 noise. */
@@ -110,25 +118,24 @@ function toIsoDate(value: string | null | undefined): string | null {
   return match?.[1] ?? null;
 }
 
-function dayBoundsMs(startYmd: string | null, endYmd: string | null): {
+function dayBoundsMs(
+  startYmd: string | null,
+  endYmd: string | null,
+): {
   startTimestamp: number | null;
   endTimestamp: number | null;
 } {
   const startTimestamp = startYmd
     ? Date.parse(`${startYmd}T00:00:00.000Z`)
     : null;
-  const endTimestamp = endYmd
-    ? Date.parse(`${endYmd}T23:59:59.999Z`)
-    : null;
+  const endTimestamp = endYmd ? Date.parse(`${endYmd}T23:59:59.999Z`) : null;
   return {
     startTimestamp:
       startTimestamp != null && !Number.isNaN(startTimestamp)
         ? startTimestamp
         : null,
     endTimestamp:
-      endTimestamp != null && !Number.isNaN(endTimestamp)
-        ? endTimestamp
-        : null,
+      endTimestamp != null && !Number.isNaN(endTimestamp) ? endTimestamp : null,
   };
 }
 
@@ -272,9 +279,7 @@ export class HubSpotService {
         {
           method: 'POST',
           body: {
-            inputs: [
-              { id: email, idProperty: 'email', properties },
-            ],
+            inputs: [{ id: email, idProperty: 'email', properties }],
           },
         },
         { swallowAuth: true },
@@ -294,7 +299,10 @@ export class HubSpotService {
         await upsert(identityProps);
       } catch (err2) {
         if (this.authDisabled) return;
-        this.logger.error(`[HubSpot] Contact upsert failed for ${email}:`, err2);
+        this.logger.error(
+          `[HubSpot] Contact upsert failed for ${email}:`,
+          err2,
+        );
         return;
       }
     }
@@ -360,7 +368,9 @@ export class HubSpotService {
    * with "must have the correct format" even when the token is valid.
    * Cached briefly so Integrations / status polls stay cheap.
    */
-  async getAccountMetadata(forceRefresh = false): Promise<HubSpotAccountMetadata> {
+  async getAccountMetadata(
+    forceRefresh = false,
+  ): Promise<HubSpotAccountMetadata> {
     if (!this.isConfigured() || !this.accessToken) {
       return {
         connected: false,
@@ -368,8 +378,7 @@ export class HubSpotService {
         portalId: null,
         hubDomain: null,
         scopes: [],
-        error:
-          'HUBSPOT_ACCESS_TOKEN not configured in platform secrets.',
+        error: 'HUBSPOT_ACCESS_TOKEN not configured in platform secrets.',
       };
     }
 
@@ -404,8 +413,7 @@ export class HubSpotService {
           ? data.hubDomain.trim()
           : null);
       const accountName =
-        hubDomain ||
-        (portalId ? `HubSpot portal ${portalId}` : 'HubSpot');
+        hubDomain || (portalId ? `HubSpot portal ${portalId}` : 'HubSpot');
 
       const value: HubSpotAccountMetadata = {
         connected: true,
@@ -471,17 +479,18 @@ export class HubSpotService {
     const id = encodeURIComponent(sampleCampaignId);
 
     try {
-      await this.requestJson(`/marketing/v3/campaigns/${id}`, { method: 'GET' });
+      await this.requestJson(`/marketing/v3/campaigns/${id}`, {
+        method: 'GET',
+      });
       canReadCampaignDetails = true;
     } catch (err) {
       recordFailure(err);
     }
 
     try {
-      await this.requestJson(
-        `/marketing/v3/campaigns/${id}/reports/metrics`,
-        { method: 'GET' },
-      );
+      await this.requestJson(`/marketing/v3/campaigns/${id}/reports/metrics`, {
+        method: 'GET',
+      });
       canReadMetrics = true;
     } catch (err) {
       recordFailure(err);
@@ -527,6 +536,49 @@ export class HubSpotService {
   }
 
   /**
+   * Account-wide marketing email statistics for a reporting window.
+   * Callers that enrich many campaigns for the same window should fetch once
+   * and pass `emailStatisticsPrefetch` into getCampaignAnalytics.
+   */
+  async getEmailStatisticsForPeriod(
+    reportingPeriodStart: string | null | undefined,
+    reportingPeriodEnd: string | null | undefined,
+  ): Promise<{ data: unknown; warning?: string }> {
+    const start = toIsoDate(reportingPeriodStart) ?? '';
+    const end = toIsoDate(reportingPeriodEnd) ?? '';
+    const { startTimestamp, endTimestamp } = dayBoundsMs(
+      start || null,
+      end || null,
+    );
+    if (startTimestamp == null || endTimestamp == null) {
+      return {
+        data: null,
+        warning:
+          'Reporting period start/end missing or invalid; email statistics skipped.',
+      };
+    }
+
+    const statsQs = new URLSearchParams({
+      startTimestamp: String(startTimestamp),
+      endTimestamp: String(endTimestamp),
+    });
+    try {
+      const data = await this.requestJson(
+        `/marketing/v3/emails/statistics/list?${statsQs}`,
+        { method: 'GET' },
+      );
+      return { data };
+    } catch (err) {
+      return {
+        data: null,
+        warning: `emailStatistics: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      };
+    }
+  }
+
+  /**
    * Pull campaign-scoped marketing analytics (+ period email stats) for Content Hub.
    * Partial failures are recorded in `errors` / `warnings`; caller still PATCHes Hub.
    */
@@ -536,19 +588,19 @@ export class HubSpotService {
   ): Promise<HubSpotCampaignAnalyticsSnapshot> {
     const syncedAt = new Date().toISOString();
     const hubspotCampaignId = input.hubspotCampaignId?.trim() ?? '';
-    const reportingPeriodStart =
-      toIsoDate(input.reportingPeriodStart) ?? '';
+    const reportingPeriodStart = toIsoDate(input.reportingPeriodStart) ?? '';
     const reportingPeriodEnd = toIsoDate(input.reportingPeriodEnd) ?? '';
     const warnings: string[] = [];
     const errors: string[] = [];
     const includeEmailStatistics = options.includeEmailStatistics !== false;
+    const emailPrefetch = options.emailStatisticsPrefetch;
 
     const account = await this.getAccountMetadata();
 
-    let campaign: unknown | null = null;
-    let metrics: unknown | null = null;
-    let assets: unknown | null = null;
-    let emailStatistics: unknown | null = null;
+    let campaign: unknown = null;
+    let metrics: unknown = null;
+    let assets: unknown = null;
+    let emailStatistics: unknown = null;
 
     if (!hubspotCampaignId) {
       warnings.push(
@@ -556,77 +608,85 @@ export class HubSpotService {
       );
     } else {
       const campaignQs = new URLSearchParams();
-      if (reportingPeriodStart) campaignQs.set('startDate', reportingPeriodStart);
+      if (reportingPeriodStart)
+        campaignQs.set('startDate', reportingPeriodStart);
       if (reportingPeriodEnd) campaignQs.set('endDate', reportingPeriodEnd);
       const campaignPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}` +
         (campaignQs.toString() ? `?${campaignQs}` : '');
 
-      try {
-        campaign = await this.requestJson(campaignPath, { method: 'GET' });
-      } catch (err) {
-        errors.push(
-          `campaign: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-
-      const qs = new URLSearchParams();
-      if (reportingPeriodStart) qs.set('startDate', reportingPeriodStart);
-      if (reportingPeriodEnd) qs.set('endDate', reportingPeriodEnd);
+      const metricsQs = new URLSearchParams();
+      if (reportingPeriodStart)
+        metricsQs.set('startDate', reportingPeriodStart);
+      if (reportingPeriodEnd) metricsQs.set('endDate', reportingPeriodEnd);
       const metricsPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/reports/metrics` +
-        (qs.toString() ? `?${qs}` : '');
-      try {
-        metrics = await this.requestJson(metricsPath, { method: 'GET' });
-      } catch (err) {
+        (metricsQs.toString() ? `?${metricsQs}` : '');
+
+      const [campaignResult, metricsResult, assetsResult] = await Promise.all([
+        this.requestJson(campaignPath, { method: 'GET' })
+          .then((value) => ({ ok: true as const, value }))
+          .catch((err: unknown) => ({ ok: false as const, err })),
+        this.requestJson(metricsPath, { method: 'GET' })
+          .then((value) => ({ ok: true as const, value }))
+          .catch((err: unknown) => ({ ok: false as const, err })),
+        this.getCampaignAssets(hubspotCampaignId, 'MARKETING_EMAIL', {
+          startDate: reportingPeriodStart || undefined,
+          endDate: reportingPeriodEnd || undefined,
+        })
+          .then((value) => ({ ok: true as const, value }))
+          .catch((err: unknown) => ({ ok: false as const, err })),
+      ]);
+
+      if (campaignResult.ok) {
+        campaign = campaignResult.value;
+      } else {
         errors.push(
-          `metrics: ${err instanceof Error ? err.message : String(err)}`,
+          `campaign: ${
+            campaignResult.err instanceof Error
+              ? campaignResult.err.message
+              : String(campaignResult.err)
+          }`,
         );
       }
 
-      try {
-        assets = await this.getCampaignAssets(
-          hubspotCampaignId,
-          'MARKETING_EMAIL',
-          {
-            startDate: reportingPeriodStart || undefined,
-            endDate: reportingPeriodEnd || undefined,
-          },
+      if (metricsResult.ok) {
+        metrics = metricsResult.value;
+      } else {
+        errors.push(
+          `metrics: ${
+            metricsResult.err instanceof Error
+              ? metricsResult.err.message
+              : String(metricsResult.err)
+          }`,
         );
-      } catch (err) {
+      }
+
+      if (assetsResult.ok) {
+        assets = assetsResult.value;
+      } else {
         warnings.push(
-          `assets: ${err instanceof Error ? err.message : String(err)}`,
+          `assets: ${
+            assetsResult.err instanceof Error
+              ? assetsResult.err.message
+              : String(assetsResult.err)
+          }`,
         );
       }
     }
 
-    const { startTimestamp, endTimestamp } = dayBoundsMs(
-      reportingPeriodStart || null,
-      reportingPeriodEnd || null,
-    );
-    if (
-      includeEmailStatistics &&
-      startTimestamp != null &&
-      endTimestamp != null
-    ) {
-      const statsQs = new URLSearchParams({
-        startTimestamp: String(startTimestamp),
-        endTimestamp: String(endTimestamp),
-      });
-      try {
-        emailStatistics = await this.requestJson(
-          `/marketing/v3/emails/statistics/list?${statsQs}`,
-          { method: 'GET' },
-        );
-      } catch (err) {
-        warnings.push(
-          `emailStatistics: ${err instanceof Error ? err.message : String(err)}`,
-        );
+    if (emailPrefetch) {
+      emailStatistics = emailPrefetch.data;
+      if (emailPrefetch.warning) {
+        warnings.push(emailPrefetch.warning);
       }
     } else if (includeEmailStatistics) {
-      warnings.push(
-        'Reporting period start/end missing or invalid; email statistics skipped.',
+      const emailStats = await this.getEmailStatisticsForPeriod(
+        reportingPeriodStart,
+        reportingPeriodEnd,
       );
+      emailStatistics = emailStats.data;
+      if (emailStats.warning) warnings.push(emailStats.warning);
     }
 
     return {
@@ -650,18 +710,19 @@ export class HubSpotService {
   /**
    * List HubSpot marketing campaigns (paginated). Returns one page.
    */
-  async listCampaignsPage(options: {
-    limit?: number;
-    after?: string | null;
-  } = {}): Promise<{ items: HubSpotCampaignListItem[]; after: string | null }> {
+  async listCampaignsPage(
+    options: {
+      limit?: number;
+      after?: string | null;
+    } = {},
+  ): Promise<{ items: HubSpotCampaignListItem[]; after: string | null }> {
     const limit = Math.min(Math.max(options.limit ?? 100, 1), 100);
     const qs = new URLSearchParams({ limit: String(limit) });
     if (options.after?.trim()) qs.set('after', options.after.trim());
 
-    const raw = await this.requestJson(
-      `/marketing/v3/campaigns?${qs}`,
-      { method: 'GET' },
-    );
+    const raw = await this.requestJson(`/marketing/v3/campaigns?${qs}`, {
+      method: 'GET',
+    });
     return parseHubSpotCampaignList(raw);
   }
 
@@ -708,7 +769,7 @@ export class HubSpotService {
   async getCampaignAssetsBundle(
     hubspotCampaignId: string,
     options: { startDate?: string; endDate?: string } = {},
-  ): Promise<Record<HubSpotCampaignAssetType, unknown | null>> {
+  ): Promise<Record<HubSpotCampaignAssetType, unknown>> {
     const entries = await Promise.all(
       HUBSPOT_CAMPAIGN_ASSET_TYPES.filter((t) => t !== 'MARKETING_EMAIL').map(
         async (assetType) => {
@@ -728,7 +789,7 @@ export class HubSpotService {
 
     return Object.fromEntries(entries) as Record<
       HubSpotCampaignAssetType,
-      unknown | null
+      unknown
     >;
   }
 
