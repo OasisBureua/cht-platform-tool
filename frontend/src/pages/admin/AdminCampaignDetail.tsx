@@ -21,7 +21,7 @@ import { AdminMetricCard } from '../../components/admin/AdminMetricCard';
 import {
   dataSourceBadgeClass,
   dataSourceLabel,
-} from '../../components/admin/campaigns/CampaignsHubSpotSetupBanner';
+} from '../../components/admin/campaigns/campaignDataSource';
 import {
   InfoTile,
   PlatformsTable,
@@ -29,9 +29,11 @@ import {
   SurveysTable,
   TranscriptsTable,
   VideosTable,
+} from '../../components/admin/campaigns/CampaignDetailSections';
+import {
   formatCount,
   formatDate,
-} from '../../components/admin/campaigns/CampaignDetailSections';
+} from '../../components/admin/campaigns/campaignDashboardFormat';
 import { findCampaignByDashboardId } from '../../components/admin/campaigns/campaignDashboardPath';
 
 const DETAIL_METRICS: Array<{

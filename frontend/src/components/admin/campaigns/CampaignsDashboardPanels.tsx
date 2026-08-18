@@ -15,15 +15,12 @@ import type {
   CampaignsDashboardResponse,
 } from '../../../api/admin';
 import { AdminMetricCard } from '../AdminMetricCard';
-import { dataSourceBadgeClass, dataSourceLabel } from './CampaignsHubSpotSetupBanner';
+import { dataSourceBadgeClass, dataSourceLabel } from './campaignDataSource';
+import { formatCount } from './campaignDashboardFormat';
 import {
   campaignDashboardId,
   campaignDashboardPath,
 } from './campaignDashboardPath';
-
-function formatCount(value: number): string {
-  return value.toLocaleString();
-}
 
 const SUMMARY_METRICS: Array<{
   key: keyof CampaignMetricTotals;

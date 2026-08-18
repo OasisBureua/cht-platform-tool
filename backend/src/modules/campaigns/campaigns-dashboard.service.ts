@@ -38,7 +38,11 @@ export type CampaignsDashboardQuery = {
   limit?: number;
 };
 
-export type CampaignDataSource = 'live' | 'cached' | 'content_hub' | 'list_only';
+export type CampaignDataSource =
+  | 'live'
+  | 'cached'
+  | 'content_hub'
+  | 'list_only';
 
 export type CampaignSurveyQuestionSummary = {
   prompt: string;
@@ -237,7 +241,9 @@ export class CampaignsDashboardService {
         this.logger.warn(`HubSpot campaign list failed: ${message}`);
       }
     } else if (!this.hubspot.isConfigured()) {
-      warnings.push('HUBSPOT_ACCESS_TOKEN not configured; live metrics unavailable.');
+      warnings.push(
+        'HUBSPOT_ACCESS_TOKEN not configured; live metrics unavailable.',
+      );
     } else if (account.error) {
       warnings.push(`HubSpot connection error: ${account.error}`);
     }
@@ -281,25 +287,42 @@ export class CampaignsDashboardService {
     const canFetchLive =
       hubspotConnected && marketingScopesGranted && marketingAccess != null;
 
+    let sharedEmailStatistics: { data: unknown; warning?: string } | undefined;
+    if (canFetchLive && marketingAccess!.canReadEmailStats) {
+      const emailStats = await this.hubspot.getEmailStatisticsForPeriod(
+        reportingPeriodStart,
+        reportingPeriodEnd,
+      );
+      sharedEmailStatistics = {
+        data: emailStats.data,
+        ...(emailStats.warning ? { warning: emailStats.warning } : {}),
+      };
+    }
+
     const rows = canFetchLive
       ? await mapPool(campaignsToEnrich, 4, async (target) =>
           this.enrichCampaignRowLive(
             target,
-            target.hubspotId ? linkByHubspotId.get(target.hubspotId) ?? null : null,
+            target.hubspotId
+              ? (linkByHubspotId.get(target.hubspotId) ?? null)
+              : null,
             target.contentHubId
-              ? linkByContentHubId.get(target.contentHubId) ?? null
+              ? (linkByContentHubId.get(target.contentHubId) ?? null)
               : null,
             reportingPeriodStart,
             reportingPeriodEnd,
             marketingAccess!,
+            sharedEmailStatistics,
           ),
         )
       : campaignsToEnrich.map((target) =>
           this.enrichCampaignRowFromCache(
             target,
-            target.hubspotId ? linkByHubspotId.get(target.hubspotId) ?? null : null,
+            target.hubspotId
+              ? (linkByHubspotId.get(target.hubspotId) ?? null)
+              : null,
             target.contentHubId
-              ? linkByContentHubId.get(target.contentHubId) ?? null
+              ? (linkByContentHubId.get(target.contentHubId) ?? null)
               : null,
             reportingPeriodStart,
             reportingPeriodEnd,
@@ -346,10 +369,12 @@ export class CampaignsDashboardService {
         campaignsWithMetricData: rowsWithSurveys.filter((row) =>
           hasAnyMetricData(row.metrics),
         ).length,
-        campaignsFromCache: rowsWithSurveys.filter((row) => row.dataSource === 'cached')
-          .length,
-        contentHubCampaignsShown: rowsWithSurveys.filter((r) => r.contentHubCampaignId)
-          .length,
+        campaignsFromCache: rowsWithSurveys.filter(
+          (row) => row.dataSource === 'cached',
+        ).length,
+        contentHubCampaignsShown: rowsWithSurveys.filter(
+          (r) => r.contentHubCampaignId,
+        ).length,
       },
       campaigns: rowsWithSurveys,
       warnings: dedupeStrings(warnings),
@@ -396,7 +421,8 @@ export class CampaignsDashboardService {
       return { campaigns: withPlatformData, reachable: true };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      const target = this.contentHubCampaigns.getAdminBaseUrl() || 'unconfigured';
+      const target =
+        this.contentHubCampaigns.getAdminBaseUrl() || 'unconfigured';
       this.logger.warn(
         `Content Hub campaign list failed (${target}): ${message}`,
       );
@@ -438,8 +464,14 @@ export class CampaignsDashboardService {
       });
     }
 
+    const linkedHubspotIds = new Set(
+      contentHubCampaigns
+        .map((c) => c.hubspotCampaignId)
+        .filter((id): id is string => !!id),
+    );
+
     for (const hs of hubspotCampaigns) {
-      if (!contentHubCampaigns.some((c) => c.hubspotCampaignId === hs.id)) {
+      if (!linkedHubspotIds.has(hs.id)) {
         push({
           hubspotId: hs.id,
           contentHubId: null,
@@ -548,6 +580,7 @@ export class CampaignsDashboardService {
     defaultStart: string,
     defaultEnd: string,
     marketingAccess: HubSpotMarketingAccess,
+    sharedEmailStatistics?: { data: unknown; warning?: string },
   ): Promise<CampaignDashboardRow> {
     const ch = chRecord ?? link;
     const hubFields = this.contentHubFields(ch);
@@ -572,7 +605,15 @@ export class CampaignsDashboardService {
         reportingPeriodStart: periodStart,
         reportingPeriodEnd: periodEnd,
       },
-      { includeEmailStatistics: marketingAccess.canReadEmailStats },
+      {
+        includeEmailStatistics: marketingAccess.canReadEmailStats,
+        // Reuse dashboard-period fetch only when this row uses the same window.
+        ...(sharedEmailStatistics &&
+        periodStart === defaultStart &&
+        periodEnd === defaultEnd
+          ? { emailStatisticsPrefetch: sharedEmailStatistics }
+          : {}),
+      },
     );
 
     const metrics = mergeMetricTotals(
@@ -582,7 +623,7 @@ export class CampaignsDashboardService {
       accumulateMetricsFromUnknown(snapshot.emailStatistics),
     );
 
-    const assetsByType: Record<string, unknown | null> = {};
+    const assetsByType: Record<string, unknown> = {};
     if (snapshot.assets && typeof snapshot.assets === 'object') {
       assetsByType.MARKETING_EMAIL = snapshot.assets;
     }
@@ -617,7 +658,9 @@ export class CampaignsDashboardService {
           dataSource: 'cached',
           metrics: cached.metrics,
           assetCounts: cached.assetCounts,
-          socialPosts: cached.socialPosts.length ? cached.socialPosts : socialPosts,
+          socialPosts: cached.socialPosts.length
+            ? cached.socialPosts
+            : socialPosts,
           videos: [],
           transcripts: [],
           survey: null,
@@ -694,14 +737,45 @@ export class CampaignsDashboardService {
 
     const chById = new Map(contentHubCampaigns.map((c) => [c.id, c]));
 
+    type AnalyticsPayload = Awaited<
+      ReturnType<SurveysService['getResponseAnalyticsForAdmin']>
+    >;
+    const analyticsBySurveyId = new Map<string, Promise<AnalyticsPayload>>();
+    const jotformCountByFormId = new Map<string, Promise<number | null>>();
+
+    const loadAnalytics = (surveyId: string) => {
+      let pending = analyticsBySurveyId.get(surveyId);
+      if (!pending) {
+        pending = this.surveys.getResponseAnalyticsForAdmin(surveyId);
+        analyticsBySurveyId.set(surveyId, pending);
+      }
+      return pending;
+    };
+
+    const loadJotformCount = (formId: string) => {
+      let pending = jotformCountByFormId.get(formId);
+      if (!pending) {
+        pending = this.jotform.getFormSubmissionCount(formId).catch((err) => {
+          this.logger.debug(
+            `Jotform count for ${formId} failed: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+          return null;
+        });
+        jotformCountByFormId.set(formId, pending);
+      }
+      return pending;
+    };
+
     return mapPool(rows, 4, async (row) => {
       const ch =
         row.contentHubCampaignId != null
-          ? chById.get(row.contentHubCampaignId) ?? null
+          ? (chById.get(row.contentHubCampaignId) ?? null)
           : null;
 
       let match = ch?.surveySourceId
-        ? byId.get(ch.surveySourceId) ?? null
+        ? (byId.get(ch.surveySourceId) ?? null)
         : null;
       if (!match && ch?.programName) {
         match = pick(
@@ -714,23 +788,10 @@ export class CampaignsDashboardService {
       if (!match) return row;
 
       try {
-        const payload = await this.surveys.getResponseAnalyticsForAdmin(
-          match.id,
-        );
-        let jotformSubmissionCount: number | null = null;
-        if (match.jotformFormId) {
-          try {
-            jotformSubmissionCount = await this.jotform.getFormSubmissionCount(
-              match.jotformFormId,
-            );
-          } catch (err) {
-            this.logger.debug(
-              `Jotform count for ${match.jotformFormId} failed: ${
-                err instanceof Error ? err.message : String(err)
-              }`,
-            );
-          }
-        }
+        const payload = await loadAnalytics(match.id);
+        const jotformSubmissionCount = match.jotformFormId
+          ? await loadJotformCount(match.jotformFormId)
+          : null;
 
         const totals = payload.analytics.totals;
         return {
@@ -778,8 +839,7 @@ function summarizeSurveyQuestion(question: {
   if (question.kind === 'choice' && Array.isArray(question.options)) {
     const total = question.options.reduce((sum, o) => sum + o.count, 0);
     const top = [...question.options].sort((a, b) => b.count - a.count)[0];
-    const pct =
-      top && total > 0 ? Math.round((top.count / total) * 100) : null;
+    const pct = top && total > 0 ? Math.round((top.count / total) * 100) : null;
     return {
       prompt: question.prompt,
       kind: question.kind,
