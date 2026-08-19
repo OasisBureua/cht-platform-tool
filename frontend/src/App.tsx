@@ -86,6 +86,8 @@ const AdminProgramHub       = lazy(() => import('./pages/admin/AdminProgramHub')
 const AdminWebinarApprovals = lazy(() => import('./pages/admin/AdminWebinarApprovals'));
 const AdminKolDirectory     = lazy(() => import('./pages/admin/kol-network/AdminKolDirectory'));
 const AdminHcpIntel         = lazy(() => import('./pages/admin/kol-network/AdminHcpIntel'));
+const AdminCampaignsDashboard = lazy(() => import('./pages/admin/AdminCampaignsDashboard'));
+const AdminCampaignDetail = lazy(() => import('./pages/admin/AdminCampaignDetail'));
 
 // ── Content Hub (admin report generator, lazy) ───────────────────────────────
 const ContentHubLayout          = lazy(() => import('./pages/admin/content-hub/components/ContentHubLayout'));
@@ -288,6 +290,9 @@ function App() {
               <Route path="kol-network" element={<AdminKolDirectory />} />
               <Route path="kol-network/hcps/:id" element={<AdminHcpIntel />} />
 
+
+              <Route path="campaigns-dashboard" element={<AdminCampaignsDashboard />} />
+              <Route path="campaigns-dashboard/:campaignId" element={<AdminCampaignDetail />} />
 
               {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
               <Route path="content-hub" element={<ContentHubLayout />}>

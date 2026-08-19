@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
+import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
@@ -12,7 +13,7 @@ import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function Login() {
   const location = useLocation();
-  const { user, isAuthenticated, isLoading, login, completeMfaLogin } = useAuth();
+  const { user, isAuthenticated, isLoading, login, completeMfaLogin, completeMfaSetupLogin } = useAuth();
   const fromLocation = (
     location.state as { from?: { pathname: string; search?: string } } | null
   )?.from;
@@ -23,10 +24,17 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [mfaSession, setMfaSession] = useState<string | null>(null);
   const [mfaCode, setMfaCode] = useState('');
+  const [mfaSetup, setMfaSetup] = useState<{
+    session: string;
+    secretCode: string;
+    otpauthUri: string;
+  } | null>(null);
+  const [showManualKey, setShowManualKey] = useState(false);
 
   const handleOAuth = async (provider: 'google') => {
     if (!googleOAuthEnabled) {
@@ -56,6 +64,7 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setErrorCode(null);
 
     if (!email.trim()) { setError('Email address is required.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
@@ -72,13 +81,19 @@ export default function Login() {
         // Runs in the browser before any API call, if this hangs, backend logs stay empty.
         recaptchaToken = await executeRecaptcha('login');
       }
-      const { error: err, mfa } = await login(email, password, recaptchaToken);
+      const { error: err, mfa, mfaSetup: setup } = await login(email, password, recaptchaToken);
+      if (setup) {
+        setMfaSetup(setup);
+        setShowManualKey(false);
+        return;
+      }
       if (mfa?.session) {
         setMfaSession(mfa.session);
         return;
       }
       if (err) {
         setError(err.message || 'Login failed. Please check your credentials.');
+        setErrorCode(err.code || null);
         return;
       }
     } catch (captchaErr) {
@@ -96,12 +111,37 @@ export default function Login() {
     e.preventDefault();
     if (!mfaSession) return;
     setError(null);
+    setErrorCode(null);
     setSubmitting(true);
     const { error: err } = await completeMfaLogin(email, mfaSession, mfaCode);
     setSubmitting(false);
     if (err) {
       setError(err.message || 'MFA verification failed.');
+      setErrorCode(err.code || null);
     }
+  };
+
+  const handleMfaSetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaSetup) return;
+    setError(null);
+    setErrorCode(null);
+    setSubmitting(true);
+    const { error: err } = await completeMfaSetupLogin(email, mfaSetup.session, mfaCode);
+    setSubmitting(false);
+    if (err) {
+      setError(err.message || 'MFA setup failed.');
+      setErrorCode(err.code || null);
+    }
+  };
+
+  const backToPassword = () => {
+    setMfaSession(null);
+    setMfaSetup(null);
+    setMfaCode('');
+    setError(null);
+    setErrorCode(null);
+    setShowManualKey(false);
   };
 
   // Show loading after successful login while validating session
@@ -131,18 +171,80 @@ export default function Login() {
 
         {/* Form section */}
         <div className="p-6">
-          {!mfaSession ? (
+          {!mfaSession && !mfaSetup ? (
             <div className="mb-4">
               <AuthMigrationNotice variant="login" />
             </div>
           ) : null}
-          <form className="space-y-4" onSubmit={mfaSession ? handleMfaSubmit : handleLogin}>
+          <form
+            className="space-y-4"
+            onSubmit={
+              mfaSetup
+                ? handleMfaSetupSubmit
+                : mfaSession
+                  ? handleMfaSubmit
+                  : handleLogin
+            }
+          >
             {error && (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
+                <p>{error}</p>
+                {errorCode === 'EMAIL_NOT_VERIFIED' ? (
+                  <p className="mt-2">
+                    <Link
+                      to={`/verify-email?email=${encodeURIComponent(email.trim())}`}
+                      className="font-medium text-gray-900 underline hover:text-gray-700"
+                    >
+                      Verify your email
+                    </Link>
+                  </p>
+                ) : null}
               </div>
             )}
-            {mfaSession ? (
+            {mfaSetup ? (
+              <>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                  <p className="font-medium text-gray-900">Set up authenticator MFA</p>
+                  <p className="mt-1">
+                    Scan the QR code with an authenticator app, then enter the 6-digit code to finish signing in.
+                  </p>
+                  <div className="mt-4 flex justify-center rounded-lg bg-white p-4">
+                    <QRCodeSVG
+                      value={mfaSetup.otpauthUri}
+                      size={180}
+                      level="M"
+                      marginSize={1}
+                      title="MFA setup QR code"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowManualKey((v) => !v)}
+                      className="text-xs font-medium text-gray-900 underline hover:no-underline"
+                    >
+                      {showManualKey ? 'Hide manual key' : 'Can’t scan? Enter key manually'}
+                    </button>
+                    {showManualKey && (
+                      <p className="mt-2 break-all rounded bg-white px-2 py-1.5 font-mono text-xs text-gray-800">
+                        {mfaSetup.secretCode}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Input
+                  id="mfaSetupCode"
+                  label="Authentication code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="123456"
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                />
+              </>
+            ) : mfaSession ? (
               <>
                 <p className="text-sm text-gray-600">
                   Enter the 6-digit code from your authenticator app.
@@ -182,6 +284,7 @@ export default function Login() {
               </>
             )}
 
+            {!mfaSession && !mfaSetup ? (
             <div className="flex items-center justify-between">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -197,17 +300,32 @@ export default function Login() {
                 Forgot Password?
               </Link>
             </div>
+            ) : (
+              <button
+                type="button"
+                onClick={backToPassword}
+                className="text-sm font-medium text-gray-900 underline hover:text-gray-700"
+              >
+                Use a different account
+              </button>
+            )}
 
             <button
               type="submit"
               disabled={submitting}
               className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
             >
-              {submitting ? 'Signing in...' : mfaSession ? 'Verify code' : 'Login'}
+              {submitting
+                ? 'Signing in...'
+                : mfaSetup
+                  ? 'Verify and continue'
+                  : mfaSession
+                    ? 'Verify code'
+                    : 'Login'}
             </button>
           </form>
 
-          {googleOAuthEnabled && !mfaSession ? (
+          {googleOAuthEnabled && !mfaSession && !mfaSetup ? (
             <div className="mt-6 space-y-3">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -232,7 +350,7 @@ export default function Login() {
               </button>
               <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
             </div>
-          ) : !mfaSession ? (
+          ) : !mfaSession && !mfaSetup ? (
             <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {googleOAuthMigrationMessage}
             </p>

@@ -28,6 +28,7 @@ import { ContactModule } from './modules/contact/contact.module';
 import { CacheModule } from './cache/cache.module';
 import { InternalModule } from './modules/internal/internal.module';
 import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ConfigModule } from '@nestjs/config';
@@ -97,7 +98,14 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     }),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: [join(__dirname, '..', '..', '.env'), '.env'],
+      // First file wins (dotenv does not override). Prefer backend/.env
+      // whether cwd is backend/ or the repo root.
+      envFilePath: [
+        join(__dirname, '..', '.env'),
+        join(process.cwd(), 'backend', '.env'),
+        join(process.cwd(), '.env'),
+        '.env',
+      ],
       load: [configuration],
       validationSchema,
       validationOptions: {
@@ -147,6 +155,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     ContactModule,
     InternalModule,
     AdminContentHubModule,
+    CampaignsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

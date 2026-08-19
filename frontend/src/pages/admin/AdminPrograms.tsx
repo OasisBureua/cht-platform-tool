@@ -14,10 +14,13 @@ import {
   Loader2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType } from '../../api/admin';
+import { adminApi, type AdminWebinar, type UpdateWebinarPayload, type ZoomSessionType, type ZoomWebinarSettings } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
+import ZoomWebinarSettingsFields, {
+  DEFAULT_ZOOM_WEBINAR_SETTINGS,
+} from '../../components/admin/ZoomWebinarSettingsFields';
 import SendRegistrationInvitesModal from '../../components/admin/SendRegistrationInvitesModal';
 
 export default function AdminPrograms() {
@@ -597,7 +600,27 @@ function EditWebinarModal({
   const [speakers, setSpeakers] = useState<string[]>(webinar.speakers ?? []);
   const [sessionHeroImageUrl, setSessionHeroImageUrl] = useState(webinar.sessionHeroImageUrl ?? '');
   const [sessionDisclaimer, setSessionDisclaimer] = useState(webinar.sessionDisclaimer ?? '');
+  const [zoomSettings, setZoomSettings] = useState<ZoomWebinarSettings>(
+    DEFAULT_ZOOM_WEBINAR_SETTINGS,
+  );
+  const [zoomSettingsWarning, setZoomSettingsWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const isWebinarSession = sessionKind === 'WEBINAR';
+
+  const zoomSettingsQuery = useQuery({
+    queryKey: ['admin', 'webinars', webinar.id, 'zoom-settings'],
+    queryFn: () => adminApi.getWebinarZoomSettings(webinar.id),
+    enabled: isWebinarSession && !!webinar.zoomMeetingId,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (!zoomSettingsQuery.data) return;
+    setZoomSettings(zoomSettingsQuery.data.settings);
+    setZoomSettingsWarning(zoomSettingsQuery.data.warning ?? null);
+  }, [zoomSettingsQuery.data]);
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),
@@ -655,13 +678,14 @@ function EditWebinarModal({
       speakers: speakers.map((s) => s.trim()).filter(Boolean),
       sessionHeroImageUrl: sessionHeroImageUrl.trim() || null,
       sessionDisclaimer: sessionDisclaimer.trim() || null,
+      ...(sessionKind === 'WEBINAR' ? { zoomSettings } : {}),
     };
     updateMutation.mutate(payload);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="font-semibold text-gray-900">
@@ -866,9 +890,29 @@ function EditWebinarModal({
             </>
           ) : null}
 
+          {sessionKind === 'WEBINAR' ? (
+            <div>
+              {zoomSettingsQuery.isFetching && !zoomSettingsQuery.data ? (
+                <p className="text-xs text-gray-500">Loading Zoom webinar settings…</p>
+              ) : (
+                <ZoomWebinarSettingsFields
+                  value={zoomSettings}
+                  onChange={setZoomSettings}
+                  disabled={zoomSettingsQuery.isFetching}
+                  warning={
+                    zoomSettingsWarning ??
+                    (!webinar.zoomMeetingId
+                      ? 'This program has no Zoom webinar yet. Settings will apply after a Zoom webinar is linked.'
+                      : null)
+                  }
+                />
+              )}
+            </div>
+          ) : null}
+
           {webinar.zoomMeetingId && (
             <p className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-2">
-              Changes to title, date, and duration will also be synced to Zoom{' '}
+              Changes to title, date, duration, and Zoom webinar settings will also be synced to Zoom{' '}
               {sessionKind === 'MEETING' ? 'Meeting' : 'webinar'} #{webinar.zoomMeetingId}.
             </p>
           )}

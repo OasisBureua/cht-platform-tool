@@ -16,6 +16,11 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
+import {
+  cognitoErrorLogFields,
+  mapCognitoLoginException,
+  type MappedCognitoLoginError,
+} from './cognito-login-errors';
 import { RecaptchaService } from './recaptcha.service';
 import { AuthLockoutService } from './auth-lockout.service';
 import { NpiRegistryService } from './npi-registry.service';
@@ -294,8 +299,15 @@ export class AuthController {
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<
     | LoginSuccess
+    | MappedCognitoLoginError
     | { error: string }
     | { challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+    | {
+        challenge: 'MFA_SETUP';
+        session: string;
+        secretCode: string;
+        otpauthUri: string;
+      }
   > {
     const loginStart = Date.now();
     const emailStr = (email || '').trim();
@@ -347,6 +359,21 @@ export class AuthController {
           session: result.session,
         };
       }
+      if (result.kind === 'mfa_setup') {
+        await this.lockout.recordSuccess('login', emailStr, ip);
+        this.logger.log(
+          `[Auth] Cognito MFA_SETUP for ${emailStr} in ${Date.now() - cognitoStart}ms`,
+        );
+        return {
+          challenge: 'MFA_SETUP',
+          session: result.session,
+          secretCode: result.secretCode,
+          otpauthUri: this.cognitoService.buildOtpauthUri(
+            result.secretCode,
+            emailStr,
+          ),
+        };
+      }
       const sessionStart = Date.now();
       const loginResult = await this.sessionFromCognitoTokens(
         result.tokens,
@@ -370,23 +397,21 @@ export class AuthController {
       }, { method: 'cognito' });
       return loginResult;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Login failed.';
+      const fields = cognitoErrorLogFields(err);
       this.logger.warn(
-        `[Auth] Cognito login failed for ${emailStr} after ${Date.now() - loginStart}ms: ${msg}`,
+        `[Auth] Cognito login failed for ${emailStr} after ${Date.now() - loginStart}ms` +
+          ` name=${fields.name}` +
+          (fields.challenge ? ` challenge=${fields.challenge}` : '') +
+          ` msg=${fields.message}`,
       );
       const lock = await this.lockout.recordFailure('login', emailStr, ip);
       if (lock.locked) {
-        return { error: lock.message || 'Too many attempts. Please try again later.' };
-      }
-      if (/not authorized|incorrect username or password/i.test(msg)) {
-        return { error: 'Invalid email or password.' };
-      }
-      if (/aborted|timeout|TimeoutError/i.test(msg)) {
         return {
-          error: 'Login timed out. Please try again.',
+          error: lock.message || 'Too many attempts. Please try again later.',
+          code: 'RATE_LIMITED',
         };
       }
-      return { error: msg };
+      return mapCognitoLoginException(err);
     }
   }
 
@@ -441,14 +466,82 @@ export class AuthController {
       }, { method: 'cognito' });
       return loginResult;
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'MFA verification failed.';
-      this.logger.warn(`[Auth] Cognito MFA failed for ${emailStr}: ${msg}`);
+      const fields = cognitoErrorLogFields(err);
+      this.logger.warn(
+        `[Auth] Cognito MFA failed for ${emailStr} name=${fields.name}` +
+          (fields.challenge ? ` challenge=${fields.challenge}` : '') +
+          ` msg=${fields.message}`,
+      );
       const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
       if (lock.locked) {
         return { error: lock.message || 'Too many attempts. Please try again later.' };
       }
-      return { error: msg };
+      return mapCognitoLoginException(err);
+    }
+  }
+
+  /**
+   * POST /api/auth/cognito/mfa/setup
+   * Complete MFA_SETUP after cognito/login returned a TOTP secret (no session yet).
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('cognito/mfa/setup')
+  async cognitoMfaSetup(
+    @Body('email') email: string,
+    @Body('session') session: string,
+    @Body('code') code: string,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<LoginSuccess | MappedCognitoLoginError | { error: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'Cognito login is not configured.' };
+    }
+
+    const emailStr = (email || '').trim();
+    const sessionStr = (session || '').trim();
+    const codeStr = (code || '').trim();
+    const ip = this.clientIp(req);
+    if (!emailStr) return { error: 'Email is required.' };
+    if (!sessionStr) return { error: 'MFA session is required.' };
+    if (!codeStr) return { error: 'MFA code is required.' };
+
+    const locked = await this.rejectIfLocked('mfa', emailStr, ip);
+    if (locked) return locked;
+
+    try {
+      const tokens = await this.cognitoService.completeMfaSetupChallenge(
+        sessionStr,
+        codeStr,
+        emailStr,
+      );
+      const loginResult = await this.sessionFromCognitoTokens(tokens, res);
+      if ('error' in loginResult) {
+        await this.lockout.recordFailure('mfa', emailStr, ip);
+        return loginResult;
+      }
+      await this.lockout.recordSuccess('mfa', emailStr, ip);
+      this.logger.log(
+        `[Auth] Cognito MFA_SETUP login success: userId=${loginResult.userId} email=${loginResult.email}`,
+      );
+      this.auditAuthEvent(req, 'auth.mfa_setup_login', {
+        userId: loginResult.userId,
+        email: loginResult.email,
+        role: loginResult.role,
+      }, { method: 'cognito' });
+      return loginResult;
+    } catch (err) {
+      const fields = cognitoErrorLogFields(err);
+      this.logger.warn(
+        `[Auth] Cognito MFA_SETUP failed for ${emailStr} name=${fields.name}` +
+          (fields.challenge ? ` challenge=${fields.challenge}` : '') +
+          ` msg=${fields.message}`,
+      );
+      const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
+      if (lock.locked) {
+        return { error: lock.message || 'Too many attempts. Please try again later.' };
+      }
+      return mapCognitoLoginException(err);
     }
   }
 
