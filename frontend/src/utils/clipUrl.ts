@@ -7,7 +7,9 @@
  */
 export function extractYoutubeVideoIdFromUrl(url: string | undefined | null): string | null {
   if (url == null || typeof url !== 'string' || !url.trim()) return null;
-  const m = url.trim().match(/(?:v=|\/embed\/|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|&|$|\/)/);
+  const m = url
+    .trim()
+    .match(/(?:v=|\/embed\/|\/shorts\/|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\?|&|$|\/)/);
   if (m) return m[1];
   const bare = url.trim().match(/^[a-zA-Z0-9_-]{11}$/);
   return bare ? bare[0] : null;

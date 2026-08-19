@@ -4,6 +4,7 @@ import type { DolEntry } from '../../data/dol-network';
 import { useKolCatalogClips } from '../../hooks/useKolCatalogClips';
 import { kolCatalogBrowseHref, kolCatalogClipHref } from '../../utils/kol-catalog-link';
 import { ConversationsClipCard } from '../content/ConversationsClipCard';
+import { ConversationRow } from '../home/ConversationRow';
 
 type Props = {
   entry: DolEntry;
@@ -50,6 +51,25 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
           Browse all catalog content
           <ArrowRight className="h-4 w-4" aria-hidden />
         </Link>
+      </article>
+    );
+  }
+
+  if (variant === 'engagement') {
+    return (
+      <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 sm:p-5">
+        <ConversationRow
+          title="CHM catalog content"
+          subtitle={shootLabel ?? undefined}
+          seeAllHref={browseHref}
+          seeAllLabel="View all"
+        >
+          {clips.map((clip) => (
+            <div key={clip.id} className="w-56 shrink-0 sm:w-64" style={{ scrollSnapAlign: 'start' }}>
+              <ConversationsClipCard item={clip} href={kolCatalogClipHref(clip.id)} />
+            </div>
+          ))}
+        </ConversationRow>
       </article>
     );
   }

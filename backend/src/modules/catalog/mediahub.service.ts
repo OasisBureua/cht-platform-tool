@@ -142,7 +142,9 @@ export class MediaHubService {
     private cache: RedisCacheService,
   ) {
     this.useContentHub = !!this.config.get<boolean>('catalog.useContentHub');
-    this.wordpressOnlyDefault = !!this.config.get<boolean>('catalog.wordpressOnly');
+    this.wordpressOnlyDefault = !!this.config.get<boolean>(
+      'catalog.wordpressOnly',
+    );
     this.clipsCacheTtlSeconds =
       this.config.get<number>('catalog.clipsCacheTtlSeconds') ?? 1800;
     this.wordpressCacheTtlSeconds =
@@ -150,8 +152,7 @@ export class MediaHubService {
 
     if (this.useContentHub) {
       this.publicBaseUrl =
-        this.config.get<string>('contenthub.baseUrl')?.replace(/\/$/, '') ||
-        '';
+        this.config.get<string>('contenthub.baseUrl')?.replace(/\/$/, '') || '';
       this.publicApiKey = this.config.get<string>('contenthub.apiKey') || null;
       this.logger.log(
         `Catalog upstream: ContentHub (${this.publicBaseUrl || 'missing URL'})`,
@@ -185,10 +186,7 @@ export class MediaHubService {
     };
   }
 
-  private cacheKey(
-    prefix: string,
-    params?: Record<string, unknown>,
-  ): string {
+  private cacheKey(prefix: string, params?: Record<string, unknown>): string {
     const upstream = this.useContentHub ? 'contenthub' : 'mediahub';
     const hash = createHash('sha256')
       .update(JSON.stringify(params ?? {}))
@@ -317,6 +315,52 @@ export class MediaHubService {
     );
   }
 
+  /**
+   * Extract a surname from a KOL display name for use as a `doctor:` tag value.
+   * "Dr. Aditya Bardia" → "Bardia"; "Dr. Ana Garrido-Castro" → "Garrido-Castro";
+   * "Dr. Anne O'Dea" → "O'Dea". Preserves apostrophes and hyphens.
+   */
+  private surnameFromDisplayName(name: string): string | null {
+    const stripped = name.replace(/^Dr\.?\s*/i, '').trim();
+    if (!stripped) return null;
+    const parts = stripped.split(/\s+/).filter(Boolean);
+    const last = parts[parts.length - 1];
+    return last?.replace(/[.,;]/g, '').trim() || null;
+  }
+
+  /**
+   * SCRUM-148: The `/doctors` list returns lowercase slugs (`bardia`), but
+   * clip tags are stored capitalized (`doctor:Bardia`). The upstream `?doctor=`
+   * filter is case-sensitive. Callers pass slugs by convention (from
+   * `/kols`/`/doctors`); this resolves them to the tag-cased surname so the
+   * clip filter matches. Bypasses the lookup for already-capitalized input
+   * (backwards-compat: existing `?doctor=Bardia` callers keep working).
+   */
+  async resolveDoctorTagFromSlug(input: string): Promise<string> {
+    const trimmed = input.trim();
+    if (!trimmed) return trimmed;
+    // Already looks tag-cased (starts uppercase); pass through.
+    if (/^[A-Z]/.test(trimmed)) return trimmed;
+    // Try the slug as-is, then with a `dr-` prefix stripped (some upstreams
+    // return `dr-bardia` while the /kols index keys on `bardia`).
+    const candidates = [trimmed];
+    if (trimmed.startsWith('dr-')) candidates.push(trimmed.slice(3));
+    for (const candidate of candidates) {
+      try {
+        const kol = await this.getKol(candidate);
+        const surname = kol?.name
+          ? this.surnameFromDisplayName(kol.name)
+          : null;
+        if (surname) return surname;
+      } catch {
+        // Try next candidate.
+      }
+    }
+    // No KOL matched; fall back to the raw slug rather than throwing. The
+    // upstream filter will simply return no results, matching pre-fix behavior.
+    return trimmed;
+  }
+
   async getClips(params?: {
     q?: string;
     tag?: string;
@@ -333,7 +377,9 @@ export class MediaHubService {
     const searchParams: Record<string, string | number> = {};
     if (params?.q) searchParams.q = params.q;
     if (params?.tag) searchParams.tag = params.tag;
-    if (params?.doctor) searchParams.doctor = params.doctor;
+    if (params?.doctor) {
+      searchParams.doctor = await this.resolveDoctorTagFromSlug(params.doctor);
+    }
 
     const platform =
       params?.platform === undefined ? 'youtube' : params.platform;
@@ -366,7 +412,10 @@ export class MediaHubService {
     }
 
     const value = await this.fetchClipsFromUpstream(searchParams);
-    if ((value.items?.length ?? 0) > 0 || searchParams.has_wordpress !== 'true') {
+    if (
+      (value.items?.length ?? 0) > 0 ||
+      searchParams.has_wordpress !== 'true'
+    ) {
       await this.cache.setJson(key, value, this.clipsCacheTtlSeconds);
     }
     if (value.items?.length) {
@@ -445,7 +494,8 @@ export class MediaHubService {
         params?.skipCache,
       );
     } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 404 || status === 401) {
         this.logger.warn(
           `ContentHub /wordpress/categories unavailable (${status ?? 'error'}): returning empty`,
@@ -561,7 +611,10 @@ export class MediaHubService {
     if (params?.q) searchParams.q = params.q;
     if (params?.category) searchParams.category = params.category;
 
-    const key = this.cacheKey('wordpress-posts', { ...searchParams, hideProbe: true });
+    const key = this.cacheKey('wordpress-posts', {
+      ...searchParams,
+      hideProbe: true,
+    });
     try {
       return await this.cachedGet(
         key,
@@ -590,7 +643,8 @@ export class MediaHubService {
         params?.skipCache,
       );
     } catch (err) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 404 || status === 401) {
         this.logger.warn(
           `ContentHub /wordpress unavailable (${status ?? 'error'}): returning empty`,
@@ -625,13 +679,11 @@ export class MediaHubService {
     if (params?.limit != null) searchParams.limit = params.limit;
     if (params?.offset != null) searchParams.offset = params.offset;
 
-    return this.cachedGet(
-      this.cacheKey('playlists', searchParams),
-      () =>
-        this.getPublic<MediaHubPlaylistTagList>(
-          '/playlists',
-          Object.keys(searchParams).length > 0 ? searchParams : undefined,
-        ),
+    return this.cachedGet(this.cacheKey('playlists', searchParams), () =>
+      this.getPublic<MediaHubPlaylistTagList>(
+        '/playlists',
+        Object.keys(searchParams).length > 0 ? searchParams : undefined,
+      ),
     );
   }
 
@@ -673,9 +725,8 @@ export class MediaHubService {
    */
   async getDoctors(): Promise<MediaHubDoctor[]> {
     if (this.useContentHub) {
-      return this.cachedGet(
-        this.cacheKey('doctors', { source: 'kols' }),
-        () => this.doctorsFromContentHubKols(),
+      return this.cachedGet(this.cacheKey('doctors', { source: 'kols' }), () =>
+        this.doctorsFromContentHubKols(),
       );
     }
     return this.cachedGet(this.cacheKey('doctors', {}), async () => {
@@ -716,19 +767,22 @@ export class MediaHubService {
     slug: string,
   ): Promise<MediaHubDoctor & { clips?: MediaHubClip[] }> {
     if (this.useContentHub) {
-      return this.cachedGet(this.cacheKey('doctor', { slug, source: 'kol' }), async () => {
-        const kol = await this.getKol(slug);
-        const clips = await this.getClips({
-          doctor: slug,
-          limit: 50,
-          has_wordpress: false,
-        });
-        return {
-          slug: kol.slug,
-          shoot_count: kol.shoot_count,
-          clips: clips.items ?? [],
-        };
-      });
+      return this.cachedGet(
+        this.cacheKey('doctor', { slug, source: 'kol' }),
+        async () => {
+          const kol = await this.getKol(slug);
+          const clips = await this.getClips({
+            doctor: slug,
+            limit: 50,
+            has_wordpress: false,
+          });
+          return {
+            slug: kol.slug,
+            shoot_count: kol.shoot_count,
+            clips: clips.items ?? [],
+          };
+        },
+      );
     }
     return this.cachedGet(this.cacheKey('doctor', { slug }), () =>
       this.getPublic(`/doctors/${slug}`),
