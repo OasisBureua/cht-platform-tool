@@ -134,9 +134,9 @@ describe('SurveyAnalyticsView', () => {
       />,
     );
 
-    expect(screen.queryByText('Great session')).not.toBeInTheDocument();
+    expect(screen.getByText('Great session')).not.toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: /view sample responses/i }));
-    expect(screen.getByText('Great session')).toBeInTheDocument();
+    expect(screen.getByText('Great session')).toBeVisible();
     expect(screen.getByText('Loved it')).toBeInTheDocument();
   });
 

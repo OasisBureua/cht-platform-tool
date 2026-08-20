@@ -49,7 +49,9 @@ describe('printSurveyAnalyticsPdf', () => {
     expect(write).toHaveBeenCalledOnce();
     const html = String(write.mock.calls[0]?.[0] ?? '');
     expect(html).toContain('Program One / Feedback');
-    expect(html).toContain('Survey analytics');
+    expect(html).toContain('Survey analytics report');
+    expect(html).toContain('size: portrait');
+    expect(html).toContain('Generated');
     expect(html).toContain('TOTAL RESPONSES 1');
     expect(html).toContain('<svg');
     expect(html).not.toContain('Segment by');
