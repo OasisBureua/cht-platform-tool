@@ -94,7 +94,7 @@ function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalyt
       badge={question.multiSelect ? 'Multi-select' : 'Single-select'}
     >
       {canPie ? (
-        <div className="mb-2 flex justify-end">
+        <div className="mb-2 flex justify-end" data-print-hide>
           <ChartTypeToggle value={chartType} onChange={setChartType} />
         </div>
       ) : null}
@@ -155,6 +155,7 @@ function TextSamples({ q }: { q: SurveyTextQuestionAnalytics }) {
     <div>
       <button
         type="button"
+        data-print-hide
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
         aria-expanded={open}
@@ -162,25 +163,32 @@ function TextSamples({ q }: { q: SurveyTextQuestionAnalytics }) {
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         {open ? 'Hide sample responses' : 'View sample responses'}
       </button>
-      {open ? (
-        hasSamples ? (
-          <ul className="mt-2 space-y-2">
-            {q.samples.map((sample, i) => (
-              <li
-                key={i}
-                className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700"
-              >
-                {sample}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="mt-2 text-sm text-gray-500">
-            No sample responses available. Free-text samples are redacted and shown only on
-            request.
-          </p>
-        )
-      ) : null}
+      {hasSamples ? (
+        <ul
+          data-print-show
+          style={open ? undefined : { display: 'none' }}
+          className="mt-2 space-y-2"
+        >
+          {q.samples.map((sample, i) => (
+            <li
+              key={i}
+              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+            >
+              {sample}
+            </li>
+          ))}
+        </ul>
+      ) : open ? (
+        <p className="mt-2 text-sm text-gray-500">
+          No sample responses available. Free-text samples are redacted and shown only on
+          request.
+        </p>
+      ) : (
+        <p data-print-show hidden className="mt-2 text-sm text-gray-500">
+          No sample responses available. Free-text samples are redacted and shown only on
+          request.
+        </p>
+      )}
     </div>
   );
 }
