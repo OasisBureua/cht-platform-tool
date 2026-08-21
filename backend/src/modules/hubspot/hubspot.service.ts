@@ -45,6 +45,15 @@ export interface HubSpotContactProperties {
   [key: string]: string | undefined;
 }
 
+/** Soft-read contact match used by funnel HCP drill-down. */
+export type HubSpotContactMatch = {
+  id: string;
+  email: string | null;
+  npiNumber: string | null;
+  firstName: string | null;
+  lastName: string | null;
+};
+
 export interface HubSpotAccountMetadata {
   connected: boolean;
   accountName: string | null;
@@ -362,6 +371,99 @@ export class HubSpotService {
   }
 
   /**
+   * Look up a HubSpot contact by email (soft-fail). Used by funnel HCP drill-down.
+   */
+  async findContactByEmail(email: string): Promise<HubSpotContactMatch | null> {
+    const normalized = email?.trim()?.toLowerCase();
+    if (!normalized || !this.isConfigured() || !this.accessToken) return null;
+
+    try {
+      const contact = await this.requestJson<{
+        id?: string;
+        properties?: Record<string, string | null | undefined>;
+      }>(
+        `/crm/v3/objects/contacts/${encodeURIComponent(normalized)}?idProperty=email&properties=email,firstname,lastname,npi_number`,
+        { method: 'GET' },
+        { swallowAuth: true },
+      );
+      if (!contact?.id) return null;
+      return {
+        id: contact.id,
+        email: contact.properties?.email?.trim()?.toLowerCase() || normalized,
+        npiNumber: contact.properties?.npi_number?.trim() || null,
+        firstName: contact.properties?.firstname?.trim() || null,
+        lastName: contact.properties?.lastname?.trim() || null,
+      };
+    } catch (err) {
+      if (this.authDisabled) return null;
+      const message = err instanceof Error ? err.message : String(err);
+      if (/HubSpot 404\b/.test(message)) return null;
+      this.logger.warn(
+        `[HubSpot] findContactByEmail failed for ${normalized}: ${message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Look up a HubSpot contact by custom property `npi_number` (soft-fail).
+   * Secondary match after email for funnel HCP drill-down.
+   */
+  async findContactByNpi(npiNumber: string): Promise<HubSpotContactMatch | null> {
+    const digits = (npiNumber || '').replace(/\D/g, '');
+    if (digits.length !== 10 || !this.isConfigured() || !this.accessToken) {
+      return null;
+    }
+
+    try {
+      const result = await this.requestJson<{
+        results?: Array<{
+          id?: string;
+          properties?: Record<string, string | null | undefined>;
+        }>;
+      }>(
+        '/crm/v3/objects/contacts/search',
+        {
+          method: 'POST',
+          body: {
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: 'npi_number',
+                    operator: 'EQ',
+                    value: digits,
+                  },
+                ],
+              },
+            ],
+            properties: ['email', 'firstname', 'lastname', 'npi_number'],
+            limit: 1,
+          },
+        },
+        { swallowAuth: true },
+      );
+
+      const contact = result?.results?.[0];
+      if (!contact?.id) return null;
+      return {
+        id: contact.id,
+        email: contact.properties?.email?.trim()?.toLowerCase() || null,
+        npiNumber: contact.properties?.npi_number?.trim() || digits,
+        firstName: contact.properties?.firstname?.trim() || null,
+        lastName: contact.properties?.lastname?.trim() || null,
+      };
+    } catch (err) {
+      if (this.authDisabled) return null;
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `[HubSpot] findContactByNpi failed for ${digits}: ${message}`,
+      );
+      return null;
+    }
+  }
+
+  /**
    * Resolve portal metadata for the configured private-app token.
    * Uses GET /integrations/v1/me — OAuth token introspection
    * (`/oauth/v1/access-tokens/{token}`) rejects private-app `pat-…` tokens
@@ -608,12 +710,22 @@ export class HubSpotService {
       );
     } else {
       const campaignQs = new URLSearchParams();
+      campaignQs.set(
+        'properties',
+        [
+          'hs_name',
+          'hs_campaign_status',
+          'hs_start_date',
+          'hs_end_date',
+          'hs_notes',
+        ].join(','),
+      );
       if (reportingPeriodStart)
         campaignQs.set('startDate', reportingPeriodStart);
       if (reportingPeriodEnd) campaignQs.set('endDate', reportingPeriodEnd);
       const campaignPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}` +
-        (campaignQs.toString() ? `?${campaignQs}` : '');
+        `?${campaignQs}`;
 
       const metricsQs = new URLSearchParams();
       if (reportingPeriodStart)
@@ -709,6 +821,8 @@ export class HubSpotService {
 
   /**
    * List HubSpot marketing campaigns (paginated). Returns one page.
+   * Must request `properties` — HubSpot returns an empty properties map otherwise,
+   * which forces our fallback name `Campaign {id.slice(0,8)}`.
    */
   async listCampaignsPage(
     options: {
@@ -717,7 +831,17 @@ export class HubSpotService {
     } = {},
   ): Promise<{ items: HubSpotCampaignListItem[]; after: string | null }> {
     const limit = Math.min(Math.max(options.limit ?? 100, 1), 100);
-    const qs = new URLSearchParams({ limit: String(limit) });
+    const qs = new URLSearchParams({
+      limit: String(limit),
+      // Comma-separated; HubSpot docs: empty properties → empty properties map
+      properties: [
+        'hs_name',
+        'hs_campaign_status',
+        'hs_start_date',
+        'hs_end_date',
+        'hs_notes',
+      ].join(','),
+    });
     if (options.after?.trim()) qs.set('after', options.after.trim());
 
     const raw = await this.requestJson(`/marketing/v3/campaigns?${qs}`, {

@@ -6,6 +6,7 @@ import { SurveysModule } from '../surveys/surveys.module';
 import { JotformModule } from '../jotform/jotform.module';
 import { AdminCampaignsController } from './admin-campaigns.controller';
 import { CampaignsDashboardService } from './campaigns-dashboard.service';
+import { CampaignsFunnelService } from './campaigns-funnel.service';
 
 @Module({
   imports: [
@@ -16,6 +17,6 @@ import { CampaignsDashboardService } from './campaigns-dashboard.service';
     JotformModule,
   ],
   controllers: [AdminCampaignsController],
-  providers: [CampaignsDashboardService],
+  providers: [CampaignsDashboardService, CampaignsFunnelService],
 })
 export class CampaignsModule {}
