@@ -367,8 +367,22 @@ export function CampaignsDashboardTable({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-400 dark:text-zinc-500">
-                    <ChevronRight className="ml-auto h-4 w-4" aria-hidden />
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {campaign.hubspotCampaignId ? (
+                        <Link
+                          to={`/admin/campaigns-dashboard/funnel?campaign=${encodeURIComponent(campaign.hubspotCampaignId)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                        >
+                          Funnel
+                        </Link>
+                      ) : null}
+                      <ChevronRight
+                        className="h-4 w-4 text-gray-400 dark:text-zinc-500"
+                        aria-hidden
+                      />
+                    </div>
                   </td>
                 </tr>
               );

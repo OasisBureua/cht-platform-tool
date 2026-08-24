@@ -543,6 +543,113 @@ export type CampaignsDashboardResponse = {
   errors: string[];
 };
 
+export type FunnelStageKey =
+  | 'aware'
+  | 'engaged'
+  | 'captured'
+  | 'registered'
+  | 'attended'
+  | 'converted';
+
+export type FunnelStageSummary = {
+  key: FunnelStageKey;
+  label: string;
+  count: number;
+  dropOffFromPreviousPct: number | null;
+  source: string;
+  peopleAvailable: boolean;
+};
+
+export type CampaignsFunnelResponse = {
+  syncedAt: string;
+  reportingPeriodStart: string | null;
+  reportingPeriodEnd: string | null;
+  stages: FunnelStageSummary[];
+  clientRollup: Array<{
+    clientSponsor: string | null;
+    linked: boolean;
+    campaignCount: number;
+    countsByStage: Record<FunnelStageKey, number>;
+  }>;
+  filters: {
+    campaigns: Array<{ id: string; name: string }>;
+    clients: string[];
+    programs: Array<{ id: string; title: string }>;
+  };
+  warnings: string[];
+  hubspot: {
+    connected: boolean;
+    marketingScopesGranted: boolean;
+    missingScopes: string[];
+  };
+  contentHub: {
+    configured: boolean;
+    reachable: boolean;
+  };
+};
+
+export type CampaignsFunnelQuery = {
+  startDate?: string;
+  endDate?: string;
+  campaignId?: string;
+  clientSponsor?: string;
+  programId?: string;
+};
+
+export type FunnelPersonRow = {
+  userId: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  npiNumber: string | null;
+  programId: string | null;
+  programTitle: string | null;
+  campaignId: string | null;
+  campaignName: string | null;
+  clientSponsor: string | null;
+  stageEnteredAt: string | null;
+};
+
+export type CampaignsFunnelPeopleResponse = {
+  stage: FunnelStageKey;
+  peopleAvailable: boolean;
+  items: FunnelPersonRow[];
+  total: number;
+  limit: number;
+  offset: number;
+  warnings: string[];
+};
+
+export type CampaignsFunnelPeopleQuery = CampaignsFunnelQuery & {
+  stage: FunnelStageKey;
+  limit?: number;
+  offset?: number;
+};
+
+export type CampaignsFunnelHcpResponse = {
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  npiNumber: string | null;
+  match: {
+    matched: boolean;
+    method: 'email' | 'npi' | null;
+  };
+  lastCampaign: {
+    id: string | null;
+    name: string | null;
+    clientSponsor: string | null;
+  } | null;
+  lastChtActivity: Array<{
+    type: 'register' | 'attend' | 'survey';
+    at: string | null;
+    programId: string | null;
+    programTitle: string | null;
+  }>;
+  warnings: string[];
+};
+
 const EMPTY_CAMPAIGN_METRICS: CampaignMetricTotals = {
   sessions: 0,
   influencedContacts: 0,
@@ -783,6 +890,35 @@ export const adminApi = {
       { params },
     );
     return normalizeCampaignsDashboardResponse(data);
+  },
+
+  getCampaignsFunnel: async (
+    params?: CampaignsFunnelQuery,
+  ): Promise<CampaignsFunnelResponse> => {
+    const { data } = await apiClient.get<CampaignsFunnelResponse>(
+      '/admin/campaigns/funnel',
+      { params },
+    );
+    return data;
+  },
+
+  getCampaignsFunnelPeople: async (
+    params: CampaignsFunnelPeopleQuery,
+  ): Promise<CampaignsFunnelPeopleResponse> => {
+    const { data } = await apiClient.get<CampaignsFunnelPeopleResponse>(
+      '/admin/campaigns/funnel/people',
+      { params },
+    );
+    return data;
+  },
+
+  getCampaignsFunnelHcp: async (
+    userId: string,
+  ): Promise<CampaignsFunnelHcpResponse> => {
+    const { data } = await apiClient.get<CampaignsFunnelHcpResponse>(
+      `/admin/campaigns/funnel/hcp/${encodeURIComponent(userId)}`,
+    );
+    return data;
   },
 
   listAuditLogs: async (params?: {

@@ -20,15 +20,7 @@ export default function AdminCampaignsDashboard() {
 
   return (
     <div className="space-y-4 md:space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-balance text-xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-2xl">
-            Campaigns Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">
-            Live HubSpot campaign metrics merged with Content Hub campaign links.
-          </p>
-        </div>
+      <div className="flex flex-wrap items-end justify-end gap-3">
         <button
           type="button"
           onClick={() => refetch()}
