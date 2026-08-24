@@ -54,6 +54,46 @@ export type HubSpotContactMatch = {
   lastName: string | null;
 };
 
+/**
+ * Logical HubSpot campaign contact cohorts (MetricsCounters / attribution).
+ * Path contactType strings vary; listCampaignContactIds tries aliases.
+ */
+export type HubSpotCampaignContactReportType =
+  | 'influencedContacts'
+  | 'newContactsFirstTouch'
+  | 'newContactsLastTouch';
+
+const HUBSPOT_CONTACT_TYPE_CANDIDATES: Record<
+  HubSpotCampaignContactReportType,
+  string[]
+> = {
+  influencedContacts: [
+    'influencedContacts',
+    'CONTACTS_INFLUENCED',
+    'influenced',
+    'CONTACT_INFLUENCED',
+  ],
+  newContactsFirstTouch: [
+    'newContactsFirstTouch',
+    'CONTACTS_FIRST_TOUCH',
+    'contactFirstTouch',
+    'firstTouch',
+  ],
+  newContactsLastTouch: [
+    'newContactsLastTouch',
+    'CONTACTS_LAST_TOUCH',
+    'contactLastTouch',
+    'lastTouch',
+  ],
+};
+
+/** Prefer dated campaigns reports path; fall back to v3 / beta. */
+const HUBSPOT_CAMPAIGN_CONTACT_PATH_PREFIXES = [
+  '/marketing/campaigns/2026-03/',
+  '/marketing/v3/campaigns/',
+  '/marketing/campaigns/2026-09-beta/',
+] as const;
+
 export interface HubSpotAccountMetadata {
   connected: boolean;
   accountName: string | null;
@@ -151,6 +191,11 @@ function dayBoundsMs(
 @Injectable()
 export class HubSpotService {
   private readonly logger = new Logger(HubSpotService.name);
+  /** Remember which path+contactType worked per campaign/cohort. */
+  private readonly campaignContactRouteCache = new Map<
+    string,
+    { prefix: string; type: string }
+  >();
   private accessToken: string | null;
   /** After INVALID_AUTHENTICATION, stop calling HubSpot for this process. */
   private authDisabled = false;
@@ -868,6 +913,192 @@ export class HubSpotService {
     }
 
     return items;
+  }
+
+  /**
+   * List HubSpot contact IDs attributed to a campaign for a contact cohort.
+   * Tries dated + v3 path prefixes and several contactType aliases until one works
+   * (HubSpot docs leave the enum loosely specified). Soft-fails to empty.
+   */
+  async listCampaignContactIds(
+    campaignGuid: string,
+    contactType: HubSpotCampaignContactReportType,
+    options: {
+      startDate?: string;
+      endDate?: string;
+      maxItems?: number;
+    } = {},
+  ): Promise<{ ids: string[]; contactTypeUsed: string | null; warnings: string[] }> {
+    const warnings: string[] = [];
+    const guid = campaignGuid?.trim();
+    if (!guid || !this.isConfigured() || !this.accessToken) {
+      return { ids: [], contactTypeUsed: null, warnings };
+    }
+
+    const maxItems = Math.min(Math.max(options.maxItems ?? 200, 1), 500);
+    const candidates =
+      HUBSPOT_CONTACT_TYPE_CANDIDATES[contactType] ?? [contactType];
+    const cacheKey = `${guid}:${contactType}`;
+    const cached = this.campaignContactRouteCache.get(cacheKey);
+
+    const tryFetchPage = async (
+      pathPrefix: string,
+      type: string,
+      after: string | null,
+      pageLimit: number,
+    ): Promise<{
+      ids: string[];
+      after: string | null;
+    }> => {
+      const qs = new URLSearchParams({ limit: String(pageLimit) });
+      if (options.startDate) qs.set('startDate', options.startDate);
+      if (options.endDate) qs.set('endDate', options.endDate);
+      if (after) qs.set('after', after);
+      const path =
+        `${pathPrefix}${encodeURIComponent(guid)}/reports/contacts/${encodeURIComponent(type)}` +
+        `?${qs}`;
+      const raw = await this.requestJson<{
+        results?: Array<{ id?: string }>;
+        paging?: { next?: { after?: string } };
+      }>(path, { method: 'GET' }, { swallowAuth: true });
+      const ids = (raw?.results ?? [])
+        .map((r) => (typeof r?.id === 'string' ? r.id.trim() : ''))
+        .filter(Boolean);
+      return {
+        ids,
+        after: raw?.paging?.next?.after?.trim() || null,
+      };
+    };
+
+    const routeAttempts: Array<{ prefix: string; type: string }> = [];
+    if (cached) {
+      routeAttempts.push(cached);
+    } else {
+      for (const type of candidates) {
+        for (const prefix of HUBSPOT_CAMPAIGN_CONTACT_PATH_PREFIXES) {
+          routeAttempts.push({ prefix, type });
+        }
+      }
+    }
+
+    let contactTypeUsed: string | null = null;
+    let pathPrefixUsed: string | null = null;
+    let lastError: string | null = null;
+
+    for (const attempt of routeAttempts) {
+      try {
+        const first = await tryFetchPage(
+          attempt.prefix,
+          attempt.type,
+          null,
+          Math.min(100, maxItems),
+        );
+        contactTypeUsed = attempt.type;
+        pathPrefixUsed = attempt.prefix;
+        this.campaignContactRouteCache.set(cacheKey, attempt);
+
+        const ids: string[] = [...first.ids];
+        let after = first.after;
+        while (after && ids.length < maxItems) {
+          const page = await tryFetchPage(
+            attempt.prefix,
+            attempt.type,
+            after,
+            Math.min(100, maxItems - ids.length),
+          );
+          ids.push(...page.ids);
+          after = page.after;
+          if (!page.ids.length) break;
+        }
+
+        return {
+          ids: ids.slice(0, maxItems),
+          contactTypeUsed,
+          warnings,
+        };
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        if (this.authDisabled) {
+          warnings.push('HubSpot auth failed while listing campaign contacts.');
+          return { ids: [], contactTypeUsed: null, warnings };
+        }
+        // Try next path/type combination.
+      }
+    }
+
+    if (lastError) {
+      this.logger.warn(
+        `[HubSpot] listCampaignContactIds failed for ${guid}/${contactType}: ${lastError}`,
+      );
+      warnings.push(
+        `Could not load HubSpot contacts for campaign (${contactType}): ${lastError}`,
+      );
+    }
+    return {
+      ids: [],
+      contactTypeUsed: pathPrefixUsed ? contactTypeUsed : null,
+      warnings,
+    };
+  }
+
+  /**
+   * Batch-read CRM contacts by id (chunks of 100). Soft-fails per chunk.
+   */
+  async batchReadContacts(
+    contactIds: string[],
+    properties: string[] = [
+      'email',
+      'firstname',
+      'lastname',
+      'npi_number',
+    ],
+  ): Promise<HubSpotContactMatch[]> {
+    const ids = [
+      ...new Set(
+        contactIds.map((id) => id?.trim()).filter((id): id is string => !!id),
+      ),
+    ];
+    if (!ids.length || !this.isConfigured() || !this.accessToken) return [];
+
+    const out: HubSpotContactMatch[] = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      try {
+        const raw = await this.requestJson<{
+          results?: Array<{
+            id?: string;
+            properties?: Record<string, string | null | undefined>;
+          }>;
+        }>(
+          '/crm/v3/objects/contacts/batch/read',
+          {
+            method: 'POST',
+            body: {
+              properties,
+              inputs: chunk.map((id) => ({ id })),
+            },
+          },
+          { swallowAuth: true },
+        );
+        for (const row of raw?.results ?? []) {
+          if (!row?.id) continue;
+          out.push({
+            id: row.id,
+            email: row.properties?.email?.trim()?.toLowerCase() || null,
+            npiNumber: row.properties?.npi_number?.trim() || null,
+            firstName: row.properties?.firstname?.trim() || null,
+            lastName: row.properties?.lastname?.trim() || null,
+          });
+        }
+      } catch (err) {
+        if (this.authDisabled) break;
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `[HubSpot] batchReadContacts failed for ${chunk.length} ids: ${message}`,
+        );
+      }
+    }
+    return out;
   }
 
   /** Fetch assets for a single campaign asset type. */

@@ -14,7 +14,10 @@ export function isFunnelStageKey(value: string): value is FunnelStageKey {
   return (FUNNEL_STAGE_KEYS as readonly string[]).includes(value);
 }
 
-/** HubSpot stages are aggregate-only in V1 (Chunk 0). */
+/**
+ * HubSpot stages: counts only. Sessions / LP views / form submissions are not
+ * person-level; named people stay on CHT stages (Registered / Attended / Converted).
+ */
 export const FUNNEL_STAGE_PEOPLE_AVAILABLE: Record<FunnelStageKey, boolean> = {
   aware: false,
   engaged: false,
@@ -23,6 +26,13 @@ export const FUNNEL_STAGE_PEOPLE_AVAILABLE: Record<FunnelStageKey, boolean> = {
   attended: true,
   converted: true,
 };
+
+/** Stages whose people list would come from HubSpot (disabled in UI until product locks a cohort). */
+export const HUBSPOT_FUNNEL_PEOPLE_STAGES: ReadonlySet<FunnelStageKey> = new Set([
+  'aware',
+  'engaged',
+  'captured',
+]);
 
 export const FUNNEL_STAGE_LABELS: Record<FunnelStageKey, string> = {
   aware: 'Aware',

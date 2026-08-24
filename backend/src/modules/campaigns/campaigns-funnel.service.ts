@@ -29,12 +29,15 @@ import { HubSpotService } from '../hubspot/hubspot.service';
 import {
   FUNNEL_STAGE_KEYS,
   FUNNEL_STAGE_PEOPLE_AVAILABLE,
+  HUBSPOT_FUNNEL_PEOPLE_STAGES,
   type CampaignsFunnelHcpResponse,
   type CampaignsFunnelPeopleQuery,
   type CampaignsFunnelPeopleResponse,
   type CampaignsFunnelQuery,
   type CampaignsFunnelResponse,
+  type FunnelClientRollupRow,
   type FunnelFilterOptions,
+  type FunnelPersonRow,
   type FunnelStageKey,
   isFunnelStageKey,
 } from './campaigns-funnel.types';
@@ -46,16 +49,41 @@ import {
   toIsoDate,
   utcDayBounds,
 } from './campaigns-funnel.util';
+import type { HubSpotCampaignContactReportType } from '../hubspot/hubspot.service';
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DEFAULT_PEOPLE_LIMIT = 50;
 const MAX_PEOPLE_LIMIT = 200;
-const HUBSPOT_LIST_PAGE_SIZE = 100;
+const HUBSPOT_LIST_PAGE_SIZE = 200;
 const HUBSPOT_METRICS_CONCURRENCY = 4;
 /** Soft cap so funnel aggregation stays responsive. */
-const MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE = 50;
+const MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE = 100;
+/** Max HubSpot contacts collected across campaigns for a people list. */
+const MAX_HUBSPOT_CONTACTS_FOR_PEOPLE = 200;
 /** Max register/attend/survey events returned on HCP drill-down. */
 const MAX_HCP_ACTIVITY_EVENTS = 12;
+
+const HUBSPOT_STAGE_CONTACT_TYPE: Record<
+  'aware' | 'engaged' | 'captured',
+  HubSpotCampaignContactReportType
+> = {
+  // Sessions / LP views are not person-level; closest named HubSpot cohorts:
+  aware: 'influencedContacts',
+  engaged: 'newContactsFirstTouch',
+  captured: 'newContactsLastTouch',
+};
+
+const HUBSPOT_STAGE_PEOPLE_BASIS: Record<
+  'aware' | 'engaged' | 'captured',
+  string
+> = {
+  aware:
+    'Aware people use HubSpot influenced contacts (sessions are not person-level).',
+  engaged:
+    'Engaged people use HubSpot first-touch new contacts (landing page views are not person-level).',
+  captured:
+    'Captured people use HubSpot last-touch new contacts (closest named cohort to form submissions).',
+};
 
 type FunnelChCampaign = Omit<ContentHubCampaignRecord, 'platformSnapshots'>;
 
@@ -67,7 +95,7 @@ type ResolvedScope = {
 };
 
 /**
- * Funnel aggregation, people lists, and HCP drill-down (Chunks 2–5).
+ * Funnel aggregation, people lists, HCP drill-down, and client rollup (Chunks 2–6).
  */
 @Injectable()
 export class CampaignsFunnelService {
@@ -174,17 +202,44 @@ export class CampaignsFunnelService {
     counts.attended = chtCounts.attended;
     counts.converted = chtCounts.converted;
 
+    warnings.push(
+      ...this.buildProductionLinkWarnings(
+        contentHubLoad.campaigns,
+        scope,
+        hubspotCampaigns.length,
+      ),
+    );
+
+    const clientRollup = await this.buildClientRollup({
+      query,
+      hubspotCampaigns,
+      contentHubCampaigns: contentHubLoad.campaigns,
+      metricsByCampaignId: hubspotTotals.byCampaignId,
+      reportingPeriodStart,
+      reportingPeriodEnd,
+      scopedHubspotIds: new Set(scope.hubspotCampaignIds),
+    });
+
     const filters = await this.buildFilterOptions(
       hubspotCampaigns,
       contentHubLoad.campaigns,
     );
+
+    if (
+      !contentHubLoad.campaigns.some((c) => c.clientSponsor?.trim()) &&
+      contentHubLoad.configured
+    ) {
+      warnings.push(
+        'No Content Hub clientSponsor values found; client filter/rollup will show Not linked until sponsors are set on linked campaigns.',
+      );
+    }
 
     return {
       syncedAt: new Date().toISOString(),
       reportingPeriodStart,
       reportingPeriodEnd,
       stages: buildStagesFromCounts(counts),
-      clientRollup: [],
+      clientRollup,
       filters,
       warnings: [...new Set(warnings.filter((w) => w.trim()))],
       hubspot: {
@@ -226,7 +281,7 @@ export class CampaignsFunnelService {
         limit,
         offset,
         warnings: [
-          `Stage "${stage}" is HubSpot aggregate-only in V1; named people are not available.`,
+          `Stage "${stage}" is HubSpot count-only; named people are not available (sessions / landing page views / form submissions are not person-level lists).`,
         ],
       };
     }
@@ -238,10 +293,40 @@ export class CampaignsFunnelService {
     const warnings: string[] = [];
 
     const contentHubLoad = await this.loadContentHubCampaigns();
+    // Need HubSpot campaign ids so HubSpot-only campaign filters resolve like getFunnel.
+    let hubspotCampaigns: HubSpotCampaignListItem[] = [];
+    if (this.hubspot.isConfigured()) {
+      try {
+        hubspotCampaigns = await this.hubspot.listAllCampaigns(
+          HUBSPOT_LIST_PAGE_SIZE,
+        );
+      } catch (err) {
+        this.logger.debug(
+          `Funnel people HubSpot list failed: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+    const hubspotCampaignIds = hubspotCampaigns.map((c) => c.id);
     const scope = this.resolveScope(query, contentHubLoad.campaigns, {
-      hubspotCampaignIds: [],
+      hubspotCampaignIds,
     });
     warnings.push(...scope.warnings);
+
+    if (HUBSPOT_FUNNEL_PEOPLE_STAGES.has(stage)) {
+      return this.getHubSpotStagePeople({
+        stage: stage as 'aware' | 'engaged' | 'captured',
+        scope,
+        hubspotCampaigns,
+        contentHubCampaigns: contentHubLoad.campaigns,
+        reportingPeriodStart,
+        reportingPeriodEnd,
+        limit,
+        offset,
+        warnings,
+      });
+    }
 
     if (Array.isArray(scope.programIds) && scope.programIds.length === 0) {
       return {
@@ -339,6 +424,201 @@ export class CampaignsFunnelService {
           : null,
       };
     });
+
+    return {
+      stage,
+      peopleAvailable: true,
+      items,
+      total,
+      limit,
+      offset,
+      warnings: [...new Set(warnings.filter((w) => w.trim()))],
+    };
+  }
+
+  /**
+   * Named people for Aware / Engaged / Captured via HubSpot campaign contact IDs.
+   * Counts remain sessions / LP views / form submissions; people use the closest
+   * attribution cohort HubSpot exposes as contact IDs.
+   */
+  private async getHubSpotStagePeople(input: {
+    stage: 'aware' | 'engaged' | 'captured';
+    scope: ResolvedScope;
+    hubspotCampaigns: HubSpotCampaignListItem[];
+    contentHubCampaigns: FunnelChCampaign[];
+    reportingPeriodStart: string;
+    reportingPeriodEnd: string;
+    limit: number;
+    offset: number;
+    warnings: string[];
+  }): Promise<CampaignsFunnelPeopleResponse> {
+    const {
+      stage,
+      scope,
+      hubspotCampaigns,
+      contentHubCampaigns,
+      reportingPeriodStart,
+      reportingPeriodEnd,
+      limit,
+      offset,
+    } = input;
+    const warnings = [...input.warnings, HUBSPOT_STAGE_PEOPLE_BASIS[stage]];
+
+    if (!this.hubspot.isConfigured()) {
+      return {
+        stage,
+        peopleAvailable: true,
+        items: [],
+        total: 0,
+        limit,
+        offset,
+        warnings: [
+          ...warnings,
+          'HubSpot is not connected; Aware/Engaged/Captured people lists are empty.',
+        ],
+      };
+    }
+
+    let campaignIds = scope.hubspotCampaignIds;
+    if (campaignIds.length > MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE) {
+      warnings.push(
+        `HubSpot people list capped to first ${MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE} campaigns in scope.`,
+      );
+      campaignIds = campaignIds.slice(0, MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE);
+    }
+
+    if (campaignIds.length === 0) {
+      return {
+        stage,
+        peopleAvailable: true,
+        items: [],
+        total: 0,
+        limit,
+        offset,
+        warnings: [
+          ...warnings,
+          'No HubSpot campaigns in scope for this filter; people list is empty.',
+        ],
+      };
+    }
+
+    const contactType = HUBSPOT_STAGE_CONTACT_TYPE[stage];
+    const campaignNameById = new Map<string, string>();
+    for (const c of hubspotCampaigns) {
+      if (c.id) campaignNameById.set(c.id, c.name || `Campaign ${c.id.slice(0, 8)}`);
+    }
+    const chByHubspotId = new Map<string, FunnelChCampaign>();
+    for (const ch of contentHubCampaigns) {
+      if (ch.hubspotCampaignId) chByHubspotId.set(ch.hubspotCampaignId, ch);
+    }
+
+    const contactToCampaign = new Map<string, string>();
+    for (const campaignId of campaignIds) {
+      if (contactToCampaign.size >= MAX_HUBSPOT_CONTACTS_FOR_PEOPLE) break;
+      const remaining = MAX_HUBSPOT_CONTACTS_FOR_PEOPLE - contactToCampaign.size;
+      const listed = await this.hubspot.listCampaignContactIds(
+        campaignId,
+        contactType,
+        {
+          startDate: reportingPeriodStart,
+          endDate: reportingPeriodEnd,
+          maxItems: remaining,
+        },
+      );
+      warnings.push(...listed.warnings);
+      for (const id of listed.ids) {
+        if (!contactToCampaign.has(id)) {
+          contactToCampaign.set(id, campaignId);
+        }
+      }
+    }
+
+    if (contactToCampaign.size >= MAX_HUBSPOT_CONTACTS_FOR_PEOPLE) {
+      warnings.push(
+        `HubSpot people list capped at ${MAX_HUBSPOT_CONTACTS_FOR_PEOPLE} contacts.`,
+      );
+    }
+
+    const contactIds = [...contactToCampaign.keys()];
+    const contacts = await this.hubspot.batchReadContacts(contactIds);
+    const contactById = new Map(contacts.map((c) => [c.id, c]));
+
+    const emails = contacts
+      .map((c) => c.email)
+      .filter((e): e is string => !!e);
+    const npis = contacts
+      .map((c) => (c.npiNumber || '').replace(/\D/g, ''))
+      .filter((n) => n.length === 10);
+
+    const chtUsers =
+      emails.length || npis.length
+        ? await this.prisma.user.findMany({
+            where: {
+              OR: [
+                ...(emails.length
+                  ? [{ email: { in: emails, mode: 'insensitive' as const } }]
+                  : []),
+                ...(npis.length ? [{ npiNumber: { in: npis } }] : []),
+              ],
+            },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              npiNumber: true,
+            },
+          })
+        : [];
+
+    const userByEmail = new Map(
+      chtUsers
+        .filter((u) => u.email)
+        .map((u) => [u.email!.trim().toLowerCase(), u]),
+    );
+    const userByNpi = new Map(
+      chtUsers
+        .filter((u) => (u.npiNumber || '').replace(/\D/g, '').length === 10)
+        .map((u) => [(u.npiNumber || '').replace(/\D/g, ''), u]),
+    );
+
+    const allItems: FunnelPersonRow[] = contactIds.map((contactId) => {
+      const campaignId = contactToCampaign.get(contactId) ?? null;
+      const contact = contactById.get(contactId);
+      const email = contact?.email ?? null;
+      const npi = contact?.npiNumber?.replace(/\D/g, '') || null;
+      const cht =
+        (email ? userByEmail.get(email) : undefined) ??
+        (npi && npi.length === 10 ? userByNpi.get(npi) : undefined) ??
+        null;
+      const ch = campaignId ? chByHubspotId.get(campaignId) : undefined;
+
+      return {
+        userId: cht?.id ?? null,
+        firstName: cht?.firstName ?? contact?.firstName ?? null,
+        lastName: cht?.lastName ?? contact?.lastName ?? null,
+        email: cht?.email ?? email,
+        npiNumber: cht?.npiNumber ?? contact?.npiNumber ?? null,
+        programId: ch?.surveySourceProgramId ?? null,
+        programTitle: null,
+        campaignId,
+        campaignName:
+          ch?.name ??
+          (campaignId ? campaignNameById.get(campaignId) ?? null : null),
+        clientSponsor: ch?.clientSponsor ?? null,
+        stageEnteredAt: null,
+      };
+    });
+
+    // Prefer rows with names/emails first for paging quality.
+    allItems.sort((a, b) => {
+      const aKey = `${a.lastName ?? ''}${a.firstName ?? ''}${a.email ?? ''}`;
+      const bKey = `${b.lastName ?? ''}${b.firstName ?? ''}${b.email ?? ''}`;
+      return aKey.localeCompare(bKey);
+    });
+
+    const total = allItems.length;
+    const items = allItems.slice(offset, offset + limit);
 
     return {
       stage,
@@ -570,13 +850,14 @@ export class CampaignsFunnelService {
     ) {
       return {
         hubspotCampaignIds: [campaignId],
-        programIds: hasProgramFilter ? [programId] : null,
+        // No CH program link → don't attribute all CHT programs to this campaign
+        programIds: hasProgramFilter ? [programId] : [],
         contentHubCampaignsInScope: [],
-        warnings: hasProgramFilter
-          ? []
-          : [
-              'Campaign is HubSpot-only (not linked in Content Hub); CHT Registered/Attended/Converted use all programs unless programId is set.',
-            ],
+        warnings: [
+          hasProgramFilter
+            ? 'Campaign is HubSpot-only (not linked in Content Hub); CHT stages use the selected program filter only.'
+            : 'Campaign is HubSpot-only (not linked in Content Hub); CHT Registered/Attended/Converted are zero until a Content Hub program link exists (or set a program filter).',
+        ],
       };
     }
 
@@ -668,6 +949,14 @@ export class CampaignsFunnelService {
         );
         programIds = [];
       }
+    } else {
+      // Unfiltered: all CHT programs (ticket: still works when Content Hub is empty).
+      // HubSpot stages may cover a capped campaign set — warn for comparable reading.
+      if (hubspotUniverse.hubspotCampaignIds.length > 0) {
+        warnings.push(
+          'Unfiltered view: HubSpot stages aggregate listed campaigns (soft-capped); CHT stages include all programs in the date range. Filter by campaign, client, or program for attributable HubSpot↔CHT comparison.',
+        );
+      }
     }
 
     return {
@@ -685,8 +974,13 @@ export class CampaignsFunnelService {
     reportingPeriodEnd: string;
     hubspotConnected: boolean;
     marketingScopesGranted: boolean;
-  }): Promise<{ metrics: CampaignMetricTotals; warnings: string[] }> {
+  }): Promise<{
+    metrics: CampaignMetricTotals;
+    byCampaignId: Map<string, CampaignMetricTotals>;
+    warnings: string[];
+  }> {
     const warnings: string[] = [];
+    const byCampaignId = new Map<string, CampaignMetricTotals>();
     let ids = input.hubspotCampaignIds;
     if (ids.length > MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE) {
       warnings.push(
@@ -696,7 +990,11 @@ export class CampaignsFunnelService {
     }
 
     if (!ids.length) {
-      return { metrics: { ...EMPTY_CAMPAIGN_METRIC_TOTALS }, warnings };
+      return {
+        metrics: { ...EMPTY_CAMPAIGN_METRIC_TOTALS },
+        byCampaignId,
+        warnings,
+      };
     }
 
     const cacheByHubspotId = new Map(
@@ -709,7 +1007,14 @@ export class CampaignsFunnelService {
       ids,
       HUBSPOT_METRICS_CONCURRENCY,
       async (hubspotCampaignId) => {
+        let metrics: CampaignMetricTotals = {
+          ...EMPTY_CAMPAIGN_METRIC_TOTALS,
+        };
+        let liveAttempted = false;
+        let liveSucceeded = false;
+
         if (input.hubspotConnected && input.marketingScopesGranted) {
+          liveAttempted = true;
           try {
             const snapshot = await this.hubspot.getCampaignAnalytics(
               {
@@ -719,11 +1024,12 @@ export class CampaignsFunnelService {
               },
               { includeEmailStatistics: false },
             );
-            return mergeMetricTotals(
+            metrics = mergeMetricTotals(
               accumulateMetricsFromUnknown(snapshot.metrics),
               accumulateMetricsFromUnknown(snapshot.campaign),
               accumulateMetricsFromUnknown(snapshot.assets),
             );
+            liveSucceeded = true;
           } catch (err) {
             this.logger.debug(
               `Funnel live metrics failed for ${hubspotCampaignId}: ${
@@ -733,27 +1039,245 @@ export class CampaignsFunnelService {
           }
         }
 
-        const cached = cacheByHubspotId.get(hubspotCampaignId);
-        if (cached?.hubspotRawData) {
-          return metricsFromHubspotSnapshot(cached.hubspotRawData).metrics;
+        // Use Content Hub cache only when live metrics were unavailable
+        // (missing scopes / live fetch failed) — never overwrite a legitimate period zero.
+        const useCache =
+          (liveAttempted && !liveSucceeded) ||
+          (!liveAttempted && !input.marketingScopesGranted);
+        let usedCache = false;
+        if (useCache) {
+          const cached = cacheByHubspotId.get(hubspotCampaignId);
+          if (cached?.hubspotRawData) {
+            metrics = metricsFromHubspotSnapshot(cached.hubspotRawData).metrics;
+            usedCache = true;
+          }
         }
-        return { ...EMPTY_CAMPAIGN_METRIC_TOTALS };
+
+        return { hubspotCampaignId, metrics, usedCache };
       },
     );
 
-    const usedCacheOnly =
-      !input.marketingScopesGranted &&
-      ids.some((id) => cacheByHubspotId.has(id));
-    if (usedCacheOnly) {
+    for (const row of perCampaign) {
+      byCampaignId.set(row.hubspotCampaignId, row.metrics);
+    }
+
+    if (perCampaign.some((r) => r.usedCache)) {
       warnings.push(
-        'Aware/Engaged/Captured include Content Hub cached HubSpot snapshots where live metrics were unavailable.',
+        'Aware/Engaged/Captured include Content Hub cached HubSpot snapshots where live metrics were unavailable (not used for period zeros).',
       );
     }
 
     return {
-      metrics: mergeMetricTotals(...perCampaign),
+      metrics: mergeMetricTotals(...perCampaign.map((r) => r.metrics)),
+      byCampaignId,
       warnings,
     };
+  }
+
+  /** Warn when prod-ready Content Hub links are incomplete. */
+  private buildProductionLinkWarnings(
+    contentHubCampaigns: FunnelChCampaign[],
+    scope: ResolvedScope,
+    hubspotListedCount: number,
+  ): string[] {
+    const warnings: string[] = [];
+
+    if (hubspotListedCount >= HUBSPOT_LIST_PAGE_SIZE) {
+      warnings.push(
+        `HubSpot campaign list is capped at ${HUBSPOT_LIST_PAGE_SIZE}; additional campaigns are not included until you filter.`,
+      );
+    }
+
+    if (
+      !scope.warnings.some((w) => /Aggregating HubSpot metrics/i.test(w)) &&
+      scope.hubspotCampaignIds.length > MAX_HUBSPOT_CAMPAIGNS_TO_AGGREGATE
+    ) {
+      // aggregateHubSpot already warns when truncating
+    }
+
+    if (!contentHubCampaigns.length) {
+      return warnings;
+    }
+
+    const missingSponsor = contentHubCampaigns.filter(
+      (c) => !c.clientSponsor?.trim(),
+    ).length;
+    const missingHs = contentHubCampaigns.filter(
+      (c) => !c.hubspotCampaignId?.trim(),
+    ).length;
+    const missingProgram = contentHubCampaigns.filter(
+      (c) => !c.surveySourceProgramId?.trim(),
+    ).length;
+
+    if (missingSponsor || missingHs || missingProgram) {
+      warnings.push(
+        `Content Hub link gaps: ${missingSponsor} missing clientSponsor, ${missingHs} missing hubspotCampaignId, ${missingProgram} missing surveySourceProgramId. Client filter, campaign→CHT attribution, and rollup need all three for each campaign.`,
+      );
+    }
+
+    return warnings;
+  }
+
+  /**
+   * Group funnel activity by Content Hub clientSponsor.
+   * HubSpot-only (unlinked) campaigns become a single "Not linked" row.
+   */
+  private async buildClientRollup(input: {
+    query: CampaignsFunnelQuery;
+    hubspotCampaigns: HubSpotCampaignListItem[];
+    contentHubCampaigns: FunnelChCampaign[];
+    metricsByCampaignId: Map<string, CampaignMetricTotals>;
+    reportingPeriodStart: string;
+    reportingPeriodEnd: string;
+    scopedHubspotIds: Set<string>;
+  }): Promise<FunnelClientRollupRow[]> {
+    const clientFilter = input.query.clientSponsor?.trim().toLowerCase() || '';
+    const campaignFilter = input.query.campaignId?.trim() || '';
+    const programFilter = input.query.programId?.trim() || '';
+
+    let chRows = [...input.contentHubCampaigns];
+    if (clientFilter) {
+      chRows = chRows.filter(
+        (c) => (c.clientSponsor ?? '').toLowerCase() === clientFilter,
+      );
+    }
+    if (campaignFilter) {
+      const asNumber = Number(campaignFilter);
+      chRows = chRows.filter(
+        (c) =>
+          c.hubspotCampaignId === campaignFilter ||
+          (Number.isFinite(asNumber) && c.id === asNumber),
+      );
+    }
+    if (programFilter) {
+      chRows = chRows.filter((c) => c.surveySourceProgramId === programFilter);
+    }
+
+    type SponsorBucket = {
+      clientSponsor: string | null;
+      linked: boolean;
+      hubspotIds: Set<string>;
+      programIds: Set<string>;
+      campaignKeys: Set<string>;
+    };
+
+    const buckets = new Map<string, SponsorBucket>();
+
+    const ensureBucket = (
+      key: string,
+      clientSponsor: string | null,
+      linked: boolean,
+    ): SponsorBucket => {
+      let bucket = buckets.get(key);
+      if (!bucket) {
+        bucket = {
+          clientSponsor,
+          linked,
+          hubspotIds: new Set(),
+          programIds: new Set(),
+          campaignKeys: new Set(),
+        };
+        buckets.set(key, bucket);
+      }
+      return bucket;
+    };
+
+    for (const ch of chRows) {
+      const sponsor = ch.clientSponsor?.trim() || null;
+      const key = sponsor
+        ? `linked:${sponsor.toLowerCase()}`
+        : `linked:unnamed:${ch.id}`;
+      const bucket = ensureBucket(key, sponsor, true);
+      bucket.campaignKeys.add(ch.hubspotCampaignId ?? `ch:${ch.id}`);
+      if (ch.hubspotCampaignId) bucket.hubspotIds.add(ch.hubspotCampaignId);
+      if (ch.surveySourceProgramId) {
+        bucket.programIds.add(ch.surveySourceProgramId);
+      }
+    }
+
+    const linkedHubspotIds = new Set(
+      input.contentHubCampaigns
+        .map((c) => c.hubspotCampaignId)
+        .filter((id): id is string => !!id),
+    );
+
+    // Unlinked HubSpot campaigns (still in overall funnel when not filtered away)
+    const unlinkedIds = input.hubspotCampaigns
+      .map((c) => c.id)
+      .filter((id) => {
+        if (linkedHubspotIds.has(id)) return false;
+        if (input.scopedHubspotIds.size && !input.scopedHubspotIds.has(id)) {
+          return false;
+        }
+        if (campaignFilter && id !== campaignFilter) return false;
+        // Client/program filters imply CH linkage — skip unlinked row
+        if (clientFilter || programFilter) return false;
+        return true;
+      });
+
+    if (unlinkedIds.length) {
+      const bucket = ensureBucket('unlinked', null, false);
+      for (const id of unlinkedIds) {
+        bucket.hubspotIds.add(id);
+        bucket.campaignKeys.add(id);
+      }
+    }
+
+    const rows: FunnelClientRollupRow[] = [];
+    const bucketList = [...buckets.values()].slice(0, 40);
+
+    for (const bucket of bucketList) {
+      const counts = emptyCountsByStage();
+      const metricList = [...bucket.hubspotIds].map(
+        (id) =>
+          input.metricsByCampaignId.get(id) ?? {
+            ...EMPTY_CAMPAIGN_METRIC_TOTALS,
+          },
+      );
+      const merged = mergeMetricTotals(...metricList);
+      counts.aware = merged.sessions;
+      counts.engaged = merged.landingPageViews;
+      counts.captured = merged.formSubmissions;
+
+      const programIds = programFilter
+        ? [programFilter]
+        : bucket.linked
+          ? [...bucket.programIds]
+          : [];
+
+      const cht = await this.countChtStages({
+        programIds: bucket.linked
+          ? programIds.length
+            ? programIds
+            : []
+          : programFilter
+            ? [programFilter]
+            : [],
+        reportingPeriodStart: input.reportingPeriodStart,
+        reportingPeriodEnd: input.reportingPeriodEnd,
+      });
+      counts.registered = cht.registered;
+      counts.attended = cht.attended;
+      counts.converted = cht.converted;
+
+      rows.push({
+        clientSponsor: bucket.linked
+          ? bucket.clientSponsor
+          : null,
+        linked: bucket.linked,
+        campaignCount: bucket.campaignKeys.size,
+        countsByStage: counts,
+      });
+    }
+
+    rows.sort((a, b) => {
+      if (a.linked !== b.linked) return a.linked ? -1 : 1;
+      const aName = (a.clientSponsor ?? '').toLowerCase();
+      const bName = (b.clientSponsor ?? '').toLowerCase();
+      return aName.localeCompare(bName);
+    });
+
+    return rows;
   }
 
   private async countChtStages(input: {
@@ -924,7 +1448,7 @@ export class CampaignsFunnelService {
     const programs = await this.prisma.program.findMany({
       select: { id: true, title: true },
       orderBy: { title: 'asc' },
-      take: 200,
+      take: 500,
     });
 
     return {

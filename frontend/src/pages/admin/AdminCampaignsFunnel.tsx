@@ -1,6 +1,8 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
+  AlertTriangle,
   Building2,
   ChevronRight,
   Filter,
@@ -16,6 +18,9 @@ import {
   type FunnelStageSummary,
 } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+
+const HUBSPOT_SCOPES_DOC =
+  'https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/scopes';
 
 const selectClassName =
   'mt-1.5 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:disabled:bg-zinc-800/80 dark:disabled:text-zinc-500';
@@ -55,6 +60,25 @@ function defaultDraft(): FilterDraft {
   };
 }
 
+function draftFromSearchParams(params: URLSearchParams): FilterDraft {
+  const base = defaultDraft();
+  const campaignId = params.get('campaign')?.trim() || '';
+  const clientSponsor = params.get('client')?.trim() || '';
+  const programId = params.get('program')?.trim() || '';
+  const startDate = params.get('startDate')?.trim() || '';
+  const endDate = params.get('endDate')?.trim() || '';
+  const hasCustomDates = Boolean(startDate && endDate);
+  return {
+    ...base,
+    campaignId,
+    clientSponsor,
+    programId,
+    ...(hasCustomDates
+      ? { datePreset: 'custom' as const, startDate, endDate }
+      : {}),
+  };
+}
+
 function draftToQuery(draft: FilterDraft): CampaignsFunnelQuery {
   let startDate = draft.startDate;
   let endDate = draft.endDate;
@@ -72,6 +96,16 @@ function draftToQuery(draft: FilterDraft): CampaignsFunnelQuery {
     clientSponsor: draft.clientSponsor || undefined,
     programId: draft.programId || undefined,
   };
+}
+
+function queriesEqual(a: CampaignsFunnelQuery, b: CampaignsFunnelQuery): boolean {
+  return (
+    (a.startDate ?? '') === (b.startDate ?? '') &&
+    (a.endDate ?? '') === (b.endDate ?? '') &&
+    (a.campaignId ?? '') === (b.campaignId ?? '') &&
+    (a.clientSponsor ?? '') === (b.clientSponsor ?? '') &&
+    (a.programId ?? '') === (b.programId ?? '')
+  );
 }
 
 function formatCount(n: number): string {
@@ -100,18 +134,31 @@ function activityTypeLabel(type: 'register' | 'attend' | 'survey'): string {
 }
 
 /**
- * Campaigns Dashboard → Funnel tab.
- * Chunk 5: HCP drill-down from stage people list.
+ * Campaigns Dashboard → Funnel tab (Chunks 3–7).
  */
 export default function AdminCampaignsFunnel() {
-  const [draft, setDraft] = useState<FilterDraft>(() => defaultDraft());
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [draft, setDraft] = useState<FilterDraft>(() =>
+    draftFromSearchParams(searchParams),
+  );
   const [applied, setApplied] = useState<CampaignsFunnelQuery>(() =>
-    draftToQuery(defaultDraft()),
+    draftToQuery(draftFromSearchParams(searchParams)),
   );
   const [selectedStageKey, setSelectedStageKey] =
     useState<FunnelStageKey | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const peoplePanelRef = useRef<HTMLElement | null>(null);
+  const urlHydrated = useRef(false);
+
+  useEffect(() => {
+    if (urlHydrated.current) return;
+    urlHydrated.current = true;
+    const fromUrl = draftFromSearchParams(searchParams);
+    setDraft(fromUrl);
+    setApplied(draftToQuery(fromUrl));
+  }, [searchParams]);
+
+  const filtersDirty = !queriesEqual(draftToQuery(draft), applied);
 
   const selectStage = (key: FunnelStageKey) => {
     setSelectedStageKey(key);
@@ -134,6 +181,9 @@ export default function AdminCampaignsFunnel() {
   const stages: FunnelStageSummary[] = data?.stages ?? [];
   const selectedStage =
     stages.find((s) => s.key === selectedStageKey) ?? null;
+  const clientRollup = data?.clientRollup ?? [];
+  const allStagesZero =
+    stages.length > 0 && stages.every((s) => s.count === 0);
 
   const {
     data: peopleData,
@@ -170,22 +220,52 @@ export default function AdminCampaignsFunnel() {
     return `${data.reportingPeriodStart} → ${data.reportingPeriodEnd}`;
   }, [data?.reportingPeriodStart, data?.reportingPeriodEnd]);
 
-  const applyFilters = () => {
-    setApplied(draftToQuery(draft));
+  const syncUrlFromDraft = (next: FilterDraft) => {
+    const params = new URLSearchParams();
+    if (next.campaignId) params.set('campaign', next.campaignId);
+    if (next.clientSponsor) params.set('client', next.clientSponsor);
+    if (next.programId) params.set('program', next.programId);
+    if (next.datePreset === 'custom') {
+      if (next.startDate) params.set('startDate', next.startDate);
+      if (next.endDate) params.set('endDate', next.endDate);
+    }
+    setSearchParams(params, { replace: true });
+  };
+
+  const clearPeopleSelection = () => {
+    setSelectedStageKey(null);
     setSelectedUserId(null);
+  };
+
+  const applyFilters = (override?: FilterDraft) => {
+    const next = override ?? draft;
+    if (override) setDraft(override);
+    setApplied(draftToQuery(next));
+    clearPeopleSelection();
+    syncUrlFromDraft(next);
   };
 
   const resetFilters = () => {
     const next = defaultDraft();
     setDraft(next);
     setApplied(draftToQuery(next));
-    setSelectedUserId(null);
+    clearPeopleSelection();
+    setSearchParams({}, { replace: true });
   };
 
   const hcpName = hcpData
     ? [hcpData.firstName, hcpData.lastName].filter(Boolean).join(' ').trim() ||
       '—'
     : null;
+
+  const hubspotDisconnected = data != null && !data.hubspot.connected;
+  const hubspotScopesMissing =
+    data != null &&
+    data.hubspot.connected &&
+    !data.hubspot.marketingScopesGranted;
+  const contentHubUnavailable =
+    data != null &&
+    (!data.contentHub.configured || !data.contentHub.reachable);
 
   return (
     <div className="space-y-8 md:space-y-10">
@@ -236,10 +316,70 @@ export default function AdminCampaignsFunnel() {
           <span className="font-semibold text-gray-800 dark:text-zinc-200">
             Converted
           </span>{' '}
-          in this view means attended and completed the post-event survey — not
-          a HubSpot deal.
+          means attended and completed the post-event survey — not a HubSpot
+          deal. Drop-off across HubSpot → CHT is directional (different systems),
+          not a single nested people cohort.
         </p>
       </section>
+
+      {hubspotDisconnected ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
+          <div className="flex gap-3">
+            <AlertTriangle
+              className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300"
+              aria-hidden
+            />
+            <div className="text-sm text-amber-950 dark:text-amber-100">
+              <p className="font-semibold">HubSpot is not connected</p>
+              <p className="mt-1">
+                Aware / Engaged / Captured will stay at zero until{' '}
+                <code className="font-mono text-xs">HUBSPOT_ACCESS_TOKEN</code>{' '}
+                is configured. Registered / Attended / Converted still load from
+                CHT.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {hubspotScopesMissing ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
+          <div className="flex gap-3">
+            <AlertTriangle
+              className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300"
+              aria-hidden
+            />
+            <div className="space-y-2 text-sm text-amber-950 dark:text-amber-100">
+              <p className="font-semibold">
+                HubSpot marketing scopes are missing
+              </p>
+              <p>
+                Live Aware / Engaged / Captured metrics need campaign scopes
+                {(data.hubspot.missingScopes ?? []).length
+                  ? `: ${(data.hubspot.missingScopes ?? []).join(', ')}`
+                  : ' (marketing.campaigns.read and related).'}
+              </p>
+              <a
+                href={HUBSPOT_SCOPES_DOC}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex font-medium underline underline-offset-2"
+              >
+                HubSpot scopes documentation
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {contentHubUnavailable ? (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-zinc-700 dark:bg-zinc-900/40 dark:text-zinc-300">
+          Content Hub is{' '}
+          {!data!.contentHub.configured ? 'not configured' : 'unreachable'}.
+          The funnel still works with HubSpot + CHT; client filter/rollup will be
+          limited until Content Hub campaigns are linked.
+        </div>
+      ) : null}
 
       {/* Filters */}
       <section
@@ -258,7 +398,9 @@ export default function AdminCampaignsFunnel() {
             </h3>
           </div>
           <p className="text-xs text-gray-500 dark:text-zinc-400">
-            Apply to refresh funnel counts
+            {filtersDirty
+              ? 'Filters changed — click Apply to refresh'
+              : 'Apply to refresh funnel counts'}
           </p>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -307,6 +449,7 @@ export default function AdminCampaignsFunnel() {
             <select
               className={selectClassName}
               value={draft.clientSponsor}
+              disabled={(data?.filters.clients.length ?? 0) === 0}
               onChange={(e) =>
                 setDraft((prev) => ({
                   ...prev,
@@ -369,8 +512,13 @@ export default function AdminCampaignsFunnel() {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={applyFilters}
-            className="inline-flex items-center rounded-lg bg-gray-900 px-3 py-2 text-sm font-semibold text-white dark:bg-zinc-100 dark:text-zinc-900"
+            onClick={() => applyFilters()}
+            className={[
+              'inline-flex items-center rounded-lg px-3 py-2 text-sm font-semibold text-white dark:text-zinc-900',
+              filtersDirty
+                ? 'bg-blue-700 dark:bg-blue-300'
+                : 'bg-gray-900 dark:bg-zinc-100',
+            ].join(' ')}
           >
             Apply filters
           </button>
@@ -381,6 +529,12 @@ export default function AdminCampaignsFunnel() {
           >
             Reset
           </button>
+          {(data?.filters.clients.length ?? 0) === 0 ? (
+            <p className="text-xs text-gray-500 dark:text-zinc-400">
+              Client list is empty until Content Hub campaigns have a sponsor.
+              Program filter still works for CHT stages.
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -388,7 +542,17 @@ export default function AdminCampaignsFunnel() {
 
       {isError ? (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
-          {(error as Error)?.message ?? 'Failed to load funnel.'}
+          <p className="font-medium">
+            {(error as Error)?.message ?? 'Failed to load funnel.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
+          >
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+            Retry
+          </button>
         </div>
       ) : null}
 
@@ -505,6 +669,14 @@ export default function AdminCampaignsFunnel() {
             </ol>
           </div>
         ) : null}
+
+        {data && allStagesZero ? (
+          <p className="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-4 py-3 text-sm text-gray-600 dark:border-zinc-600 dark:bg-zinc-900/40 dark:text-zinc-400">
+            All stage counts are zero for this date range and filters. Try a wider
+            date range, clear filters, or confirm HubSpot / CHT data exists for
+            this environment.
+          </p>
+        ) : null}
       </section>
 
       {/* 3. People + HCP — immediately under stages so View people is obvious */}
@@ -558,6 +730,10 @@ export default function AdminCampaignsFunnel() {
               <p className="text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Select Registered, Attended, or Converted
               </p>
+              <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                Aware, Engaged, and Captured are HubSpot counts only (not named
+                people lists).
+              </p>
             </div>
           ) : (
             <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-700">
@@ -565,7 +741,9 @@ export default function AdminCampaignsFunnel() {
                 <p className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
                   {selectedStage?.label ?? selectedStageKey}
                   {peopleData != null
-                    ? ` · ${peopleData.total.toLocaleString()} people`
+                    ? peopleData.total > peopleData.items.length
+                      ? ` · showing ${peopleData.items.length.toLocaleString()} of ${peopleData.total.toLocaleString()}`
+                      : ` · ${peopleData.total.toLocaleString()} people`
                     : ''}
                 </p>
               </div>
@@ -587,8 +765,7 @@ export default function AdminCampaignsFunnel() {
                     No people in this stage
                   </p>
                   <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                    There are no matching CHT registrations for the current date
-                    range and filters
+                    No matching people for the current date range and filters
                     {selectedStage
                       ? ` (stage count is ${formatCount(selectedStage.count)})`
                       : ''}
@@ -617,7 +794,7 @@ export default function AdminCampaignsFunnel() {
                           canSelect && person.userId === selectedUserId;
                         return (
                           <tr
-                            key={`${person.userId}-${person.programId}`}
+                            key={`${person.userId ?? person.email ?? 'hs'}-${person.campaignId ?? ''}-${person.programId ?? ''}-${person.npiNumber ?? ''}`}
                             className={[
                               'text-gray-800 dark:text-zinc-200',
                               canSelect
@@ -825,7 +1002,7 @@ export default function AdminCampaignsFunnel() {
         </div>
       </section>
 
-      {/* 4. Client rollup — Chunk 6 */}
+      {/* 4. Client rollup */}
       <section className="space-y-3" aria-label="Client rollup">
         <div className="flex items-start gap-2">
           <Building2
@@ -839,8 +1016,8 @@ export default function AdminCampaignsFunnel() {
             </h2>
             <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">
               Group funnel activity by Content Hub sponsor when campaigns are
-              linked. Unlinked campaigns still appear in the funnel above with an
-              explicit note.
+              linked. Unlinked HubSpot campaigns appear as Not linked. Click a
+              linked row to filter the funnel by that client.
             </p>
           </div>
         </div>
@@ -851,49 +1028,103 @@ export default function AdminCampaignsFunnel() {
               Client / sponsor → funnel → HCPs
             </p>
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 dark:bg-zinc-700 dark:text-zinc-300">
-              Coming soon
+              {clientRollup.length} row{clientRollup.length === 1 ? '' : 's'}
             </span>
           </div>
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-zinc-900/50 dark:text-zinc-400">
-              <tr>
-                <th className="px-4 py-2.5 font-semibold">Client / sponsor</th>
-                <th className="px-4 py-2.5 font-semibold">Campaigns</th>
-                <th className="px-4 py-2.5 font-semibold">In funnel</th>
-                <th className="px-4 py-2.5 font-semibold">Converted</th>
-                <th className="px-4 py-2.5 font-semibold">
-                  <span className="sr-only">Open</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-zinc-700">
-              {[0, 1, 2].map((row) => (
-                <tr key={row} className="text-gray-400 dark:text-zinc-500">
-                  <td className="px-4 py-3">
-                    <div className="h-3.5 w-36 max-w-full rounded bg-gray-100 dark:bg-zinc-700" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-3.5 w-8 rounded bg-gray-100 dark:bg-zinc-700" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-3.5 w-10 rounded bg-gray-100 dark:bg-zinc-700" />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="h-3.5 w-10 rounded bg-gray-100 dark:bg-zinc-700" />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <ChevronRight
-                      className="ml-auto h-4 w-4 opacity-40"
-                      aria-hidden
-                    />
-                  </td>
+          {clientRollup.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-gray-500 dark:text-zinc-400">
+              No client rollup rows for the current filters. Link HubSpot
+              campaigns in Content Hub (with clientSponsor) to populate linked
+              rows.
+            </p>
+          ) : (
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-gray-50 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:bg-zinc-900/50 dark:text-zinc-400">
+                <tr>
+                  <th className="px-4 py-2.5 font-semibold">Client / sponsor</th>
+                  <th className="px-4 py-2.5 font-semibold">Campaigns</th>
+                  <th className="px-4 py-2.5 font-semibold">Aware</th>
+                  <th className="px-4 py-2.5 font-semibold">Captured</th>
+                  <th className="px-4 py-2.5 font-semibold">Registered</th>
+                  <th className="px-4 py-2.5 font-semibold">Attended</th>
+                  <th className="px-4 py-2.5 font-semibold">Converted</th>
+                  <th className="px-4 py-2.5 font-semibold">
+                    <span className="sr-only">Open</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-zinc-700">
+                {clientRollup.map((row) => {
+                  const label = row.linked
+                    ? row.clientSponsor?.trim() || 'Linked (no sponsor name)'
+                    : 'Not linked';
+                  const canFilter = row.linked && Boolean(row.clientSponsor);
+                  const isActive =
+                    canFilter &&
+                    applied.clientSponsor?.toLowerCase() ===
+                      row.clientSponsor!.toLowerCase();
+                  return (
+                    <tr
+                      key={`${row.linked ? 'l' : 'u'}-${label}-${row.campaignCount}`}
+                      className={[
+                        'text-gray-800 dark:text-zinc-200',
+                        canFilter
+                          ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900/40'
+                          : '',
+                        isActive ? 'bg-blue-50/70 dark:bg-blue-950/20' : '',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
+                      onClick={() => {
+                        if (!canFilter || !row.clientSponsor) return;
+                        applyFilters({
+                          ...draft,
+                          clientSponsor: row.clientSponsor,
+                          campaignId: '',
+                        });
+                      }}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="font-medium">{label}</div>
+                        <div className="mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
+                          {row.linked ? 'Content Hub linked' : 'HubSpot only'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatCount(row.campaignCount)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatCount(row.countsByStage.aware)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatCount(row.countsByStage.captured)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatCount(row.countsByStage.registered)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums">
+                        {formatCount(row.countsByStage.attended)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums font-medium">
+                        {formatCount(row.countsByStage.converted)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {canFilter ? (
+                          <ChevronRight
+                            className="ml-auto h-4 w-4 text-gray-400"
+                            aria-hidden
+                          />
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
           <p className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500 dark:border-zinc-700 dark:text-zinc-400">
-            Client rollup will be filled in a later chunk. Stage counts above are
-            live.
+            Stage counts above remain the filtered funnel total. Rollup rows
+            split that activity by sponsor when Content Hub links exist.
           </p>
         </div>
       </section>

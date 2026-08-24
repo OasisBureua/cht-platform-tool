@@ -68,7 +68,7 @@ export class AdminCampaignsController {
   @Get('funnel/people')
   @ApiOperation({
     summary:
-      'People in a funnel stage (CHT stages; HubSpot stages are aggregate-only in V1)',
+      'People in a funnel stage (CHT Registered/Attended/Converted; HubSpot stages are count-only)',
   })
   async getFunnelPeople(
     @Query('stage') stage?: string,

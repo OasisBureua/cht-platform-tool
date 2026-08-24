@@ -21,6 +21,12 @@ function mockHubspot(overrides: Partial<{
   canReadMetrics: boolean;
   findContactByEmail: unknown | null;
   findContactByNpi: unknown | null;
+  listCampaignContactIds: {
+    ids: string[];
+    contactTypeUsed: string | null;
+    warnings: string[];
+  };
+  batchReadContacts: unknown[];
 }> = {}) {
   return {
     isConfigured: jest.fn().mockReturnValue(overrides.isConfigured ?? true),
@@ -65,6 +71,16 @@ function mockHubspot(overrides: Partial<{
           ? null
           : overrides.findContactByNpi,
       ),
+    listCampaignContactIds: jest.fn().mockResolvedValue(
+      overrides.listCampaignContactIds ?? {
+        ids: [],
+        contactTypeUsed: null,
+        warnings: [],
+      },
+    ),
+    batchReadContacts: jest
+      .fn()
+      .mockResolvedValue(overrides.batchReadContacts ?? []),
   };
 }
 
@@ -221,7 +237,8 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
 
       expect(result.hubspot.connected).toBe(true);
       expect(result.hubspot.marketingScopesGranted).toBe(true);
-      expect(result.clientRollup).toEqual([]);
+      expect(result.clientRollup.length).toBeGreaterThanOrEqual(1);
+      expect(result.clientRollup.some((r) => !r.linked)).toBe(true);
       expect(result.filters.programs).toEqual([
         { id: 'prog-1', title: 'Program One' },
       ]);
@@ -269,6 +286,206 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       expect(result.stages.find((s) => s.key === 'registered')?.count).toBe(4);
       expect(result.stages.find((s) => s.key === 'aware')?.count).toBe(100);
     });
+
+    it('builds client rollup with linked sponsor and Not linked HubSpot campaigns', async () => {
+      const hubspot = mockHubspot({
+        listAllCampaigns: [
+          { id: 'hs-linked', name: 'Linked Camp', status: 'active' },
+          { id: 'hs-only', name: 'Orphan Camp', status: 'active' },
+        ],
+      });
+      const service = new CampaignsFunnelService(
+        hubspot as never,
+        mockContentHub({
+          configured: true,
+          items: [
+            {
+              id: 1,
+              name: 'CH Linked',
+              hubspotCampaignId: 'hs-linked',
+              clientSponsor: 'Pfizer',
+              surveySourceProgramId: 'prog-1',
+            },
+          ],
+        }) as never,
+        mockPrisma({
+          registered: 3,
+          attended: 2,
+          converted: 1,
+        }) as never,
+      );
+
+      const result = await service.getFunnel({
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+      });
+
+      expect(result.clientRollup.length).toBeGreaterThanOrEqual(2);
+      const pfizer = result.clientRollup.find(
+        (r) => r.linked && r.clientSponsor === 'Pfizer',
+      );
+      const unlinked = result.clientRollup.find((r) => !r.linked);
+      expect(pfizer).toBeTruthy();
+      expect(pfizer!.campaignCount).toBe(1);
+      expect(unlinked).toBeTruthy();
+      expect(unlinked!.campaignCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it('zeros CHT stages when filtering a HubSpot-only campaign without program link', async () => {
+      const hubspot = mockHubspot({
+        listAllCampaigns: [
+          { id: 'hs-only', name: 'Orphan', status: 'active' },
+        ],
+      });
+      const service = new CampaignsFunnelService(
+        hubspot as never,
+        mockContentHub({ configured: true, items: [] }) as never,
+        mockPrisma({
+          registered: 9,
+          attended: 9,
+          converted: 9,
+        }) as never,
+      );
+
+      const result = await service.getFunnel({
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+        campaignId: 'hs-only',
+      });
+
+      expect(result.stages.find((s) => s.key === 'registered')?.count).toBe(0);
+      expect(result.stages.find((s) => s.key === 'attended')?.count).toBe(0);
+      expect(result.stages.find((s) => s.key === 'converted')?.count).toBe(0);
+      expect(
+        result.warnings.some((w) => /HubSpot-only/i.test(w)),
+      ).toBe(true);
+    });
+
+    it('scopes CHT counts to program filter even without Content Hub link', async () => {
+      const prisma = mockPrisma({
+        registered: 2,
+        attended: 1,
+        converted: 1,
+      });
+      const service = new CampaignsFunnelService(
+        mockHubspot({ listAllCampaigns: [] }) as never,
+        mockContentHub({ configured: true, items: [] }) as never,
+        prisma as never,
+      );
+
+      const result = await service.getFunnel({
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+        programId: 'prog-1',
+      });
+
+      expect(result.stages.find((s) => s.key === 'registered')?.count).toBe(2);
+      expect(prisma.programRegistration.count).toHaveBeenCalled();
+      const countArgs = prisma.programRegistration.count.mock.calls[0][0];
+      expect(countArgs.where.programId).toEqual({ in: ['prog-1'] });
+    });
+
+    it('filters by clientSponsor and exposes that client in filter options', async () => {
+      const hubspot = mockHubspot({
+        listAllCampaigns: [
+          { id: 'hs-pfizer', name: 'Pfizer Camp', status: 'active' },
+          { id: 'hs-other', name: 'Other Camp', status: 'active' },
+        ],
+      });
+      const service = new CampaignsFunnelService(
+        hubspot as never,
+        mockContentHub({
+          configured: true,
+          items: [
+            {
+              id: 1,
+              name: 'Pfizer CH',
+              hubspotCampaignId: 'hs-pfizer',
+              clientSponsor: 'Pfizer',
+              surveySourceProgramId: 'prog-1',
+            },
+            {
+              id: 2,
+              name: 'Other CH',
+              hubspotCampaignId: 'hs-other',
+              clientSponsor: 'OtherCo',
+              surveySourceProgramId: 'prog-2',
+            },
+          ],
+        }) as never,
+        mockPrisma({ registered: 2, attended: 1, converted: 1 }) as never,
+      );
+
+      const result = await service.getFunnel({
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+        clientSponsor: 'Pfizer',
+      });
+
+      expect(result.filters.clients).toEqual(
+        expect.arrayContaining(['Pfizer', 'OtherCo']),
+      );
+      expect(result.clientRollup.every((r) => r.linked)).toBe(true);
+      expect(
+        result.clientRollup.every((r) => r.clientSponsor === 'Pfizer'),
+      ).toBe(true);
+      expect(hubspot.getCampaignAnalytics).toHaveBeenCalledWith(
+        expect.objectContaining({ hubspotCampaignId: 'hs-pfizer' }),
+        expect.anything(),
+      );
+      const calledIds = hubspot.getCampaignAnalytics.mock.calls.map(
+        (c: unknown[]) => (c[0] as { hubspotCampaignId: string }).hubspotCampaignId,
+      );
+      expect(calledIds).toContain('hs-pfizer');
+      expect(calledIds).not.toContain('hs-other');
+    });
+
+    it('keeps CHT rollup at zero on Not linked HubSpot-only rows', async () => {
+      const hubspot = mockHubspot({
+        listAllCampaigns: [
+          { id: 'hs-linked', name: 'Linked Camp', status: 'active' },
+          { id: 'hs-only', name: 'Orphan Camp', status: 'active' },
+        ],
+      });
+      const service = new CampaignsFunnelService(
+        hubspot as never,
+        mockContentHub({
+          configured: true,
+          items: [
+            {
+              id: 1,
+              name: 'CH Linked',
+              hubspotCampaignId: 'hs-linked',
+              clientSponsor: 'Pfizer',
+              surveySourceProgramId: 'prog-1',
+            },
+          ],
+        }) as never,
+        mockPrisma({
+          registered: 3,
+          attended: 2,
+          converted: 1,
+        }) as never,
+      );
+
+      const result = await service.getFunnel({
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+      });
+
+      const pfizer = result.clientRollup.find(
+        (r) => r.linked && r.clientSponsor === 'Pfizer',
+      );
+      const unlinked = result.clientRollup.find((r) => !r.linked);
+      expect(pfizer?.countsByStage.registered).toBe(3);
+      expect(pfizer?.countsByStage.attended).toBe(2);
+      expect(pfizer?.countsByStage.converted).toBe(1);
+      expect(unlinked?.countsByStage.registered).toBe(0);
+      expect(unlinked?.countsByStage.attended).toBe(0);
+      expect(unlinked?.countsByStage.converted).toBe(0);
+      // HubSpot metrics still attributed to the unlinked row
+      expect(unlinked!.countsByStage.aware).toBeGreaterThan(0);
+    });
   });
 
   describe('getPeople / getHcp', () => {
@@ -283,7 +500,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
-    it('returns empty items for HubSpot aggregate stages without DB query', async () => {
+    it('returns empty items for HubSpot count-only stages without DB query', async () => {
       const prisma = mockPrisma();
       const service = new CampaignsFunnelService(
         mockHubspot() as never,
@@ -294,9 +511,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       expect(result.peopleAvailable).toBe(false);
       expect(result.items).toEqual([]);
       expect(result.total).toBe(0);
-      expect(result.warnings.some((w) => /aggregate-only/i.test(w))).toBe(
-        true,
-      );
+      expect(result.warnings.some((w) => /count-only/i.test(w))).toBe(true);
       expect(prisma.programRegistration.findMany).not.toHaveBeenCalled();
     });
 
@@ -353,6 +568,101 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
         programTitle: 'Program One',
       });
       expect(prisma.programRegistration.findMany).toHaveBeenCalled();
+    });
+
+    it('queries Attended people with VERIFIED attendance status', async () => {
+      const attendAt = new Date('2026-06-20T12:00:00.000Z');
+      const prisma = {
+        programRegistration: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([
+            {
+              programId: 'prog-1',
+              reviewedAt: attendAt,
+              updatedAt: attendAt,
+              postEventAttendanceReviewedAt: attendAt,
+              postEventSurveyAcknowledgedAt: null,
+              user: {
+                id: 'user-2',
+                firstName: 'Avery',
+                lastName: 'Attended',
+                email: 'avery@example.com',
+                npiNumber: null,
+              },
+              program: { id: 'prog-1', title: 'Program One' },
+            },
+          ]),
+        },
+        program: { findMany: jest.fn().mockResolvedValue([]) },
+      };
+      const service = new CampaignsFunnelService(
+        mockHubspot() as never,
+        mockContentHub({ configured: true, items: [] }) as never,
+        prisma as never,
+      );
+
+      const result = await service.getPeople({
+        stage: 'attended',
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+      });
+
+      expect(result.peopleAvailable).toBe(true);
+      expect(result.items[0]?.userId).toBe('user-2');
+      const where = prisma.programRegistration.findMany.mock.calls[0][0].where;
+      expect(where.status).toBe(ProgramRegistrationStatus.APPROVED);
+      expect(where.postEventAttendanceStatus).toBe(
+        PostEventAttendanceStatus.VERIFIED,
+      );
+      expect(where.postEventSurveyAcknowledgedAt).toBeUndefined();
+    });
+
+    it('queries Converted people with VERIFIED attendance and survey completed', async () => {
+      const surveyAt = new Date('2026-06-21T12:00:00.000Z');
+      const prisma = {
+        programRegistration: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([
+            {
+              programId: 'prog-1',
+              reviewedAt: surveyAt,
+              updatedAt: surveyAt,
+              postEventAttendanceReviewedAt: surveyAt,
+              postEventSurveyAcknowledgedAt: surveyAt,
+              user: {
+                id: 'user-3',
+                firstName: 'Casey',
+                lastName: 'Converted',
+                email: 'casey@example.com',
+                npiNumber: null,
+              },
+              program: { id: 'prog-1', title: 'Program One' },
+            },
+          ]),
+        },
+        program: { findMany: jest.fn().mockResolvedValue([]) },
+      };
+      const service = new CampaignsFunnelService(
+        mockHubspot() as never,
+        mockContentHub({ configured: true, items: [] }) as never,
+        prisma as never,
+      );
+
+      const result = await service.getPeople({
+        stage: 'converted',
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+      });
+
+      expect(result.peopleAvailable).toBe(true);
+      expect(result.items[0]?.userId).toBe('user-3');
+      const where = prisma.programRegistration.findMany.mock.calls[0][0].where;
+      expect(where.postEventAttendanceStatus).toBe(
+        PostEventAttendanceStatus.VERIFIED,
+      );
+      expect(where.postEventSurveyAcknowledgedAt).toEqual(
+        expect.objectContaining({ not: null }),
+      );
     });
 
     it('rejects empty userId', async () => {
@@ -460,25 +770,33 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       ]);
     });
 
-    it('falls back to NPI match when email is not in HubSpot', async () => {
+    it('rejects invalid people limit and offset', async () => {
+      const service = new CampaignsFunnelService(
+        mockHubspot() as never,
+        mockContentHub() as never,
+        mockPrisma() as never,
+      );
+      await expect(
+        service.getPeople({ stage: 'registered', limit: 0 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        service.getPeople({ stage: 'registered', offset: -1 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('returns unmatched HubSpot warning when contact is not found', async () => {
       const hubspot = mockHubspot({
         findContactByEmail: null,
-        findContactByNpi: {
-          id: 'hs-2',
-          email: 'other@example.com',
-          npiNumber: '1234567890',
-          firstName: 'Ada',
-          lastName: 'Lovelace',
-        },
+        findContactByNpi: null,
       });
       const prisma = {
         user: {
           findUnique: jest.fn().mockResolvedValue({
             id: 'user-1',
-            firstName: 'Ada',
-            lastName: 'Lovelace',
-            email: 'ada@example.com',
-            npiNumber: '1234567890',
+            firstName: 'No',
+            lastName: 'Match',
+            email: 'nomatch@example.com',
+            npiNumber: '1999999999',
           }),
         },
         programRegistration: {
@@ -488,6 +806,46 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
         program: {
           findMany: jest.fn().mockResolvedValue([]),
         },
+      };
+      const service = new CampaignsFunnelService(
+        hubspot as never,
+        mockContentHub({ configured: true, items: [] }) as never,
+        prisma as never,
+      );
+
+      const result = await service.getHcp('user-1');
+      expect(result.match).toEqual({ matched: false, method: null });
+      expect(
+        result.warnings.some((w) => /No matching HubSpot contact/i.test(w)),
+      ).toBe(true);
+    });
+
+    it('falls back to NPI HubSpot match when email does not match', async () => {
+      const hubspot = mockHubspot({
+        findContactByEmail: null,
+        findContactByNpi: {
+          id: 'hs-npi',
+          email: 'other@example.com',
+          npiNumber: '1234567890',
+          firstName: 'Ada',
+          lastName: 'Npi',
+        },
+      });
+      const prisma = {
+        user: {
+          findUnique: jest.fn().mockResolvedValue({
+            id: 'user-1',
+            firstName: 'Ada',
+            lastName: 'Npi',
+            email: 'ada-local@example.com',
+            npiNumber: '1234567890',
+          }),
+        },
+        programRegistration: {
+          count: jest.fn().mockResolvedValue(0),
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        program: { findMany: jest.fn().mockResolvedValue([]) },
       };
       const service = new CampaignsFunnelService(
         hubspot as never,
