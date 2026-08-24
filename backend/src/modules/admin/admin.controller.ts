@@ -1860,6 +1860,8 @@ export class AdminController {
     });
     if (!exists) throw new NotFoundException('Program not found');
     const rows = await this.programRegistrations.listRegistrationsForAdmin(id);
+    const zoomPresence =
+      await this.programRegistrations.zoomJoinPresenceByUserId(id);
     const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
       undefined;
@@ -1987,6 +1989,9 @@ export class AdminController {
         postEventSurveyAcknowledgedAt:
           r.postEventSurveyAcknowledgedAt?.toISOString(),
         honorariumRequestedAt: r.honorariumRequestedAt?.toISOString(),
+        zoomJoined: zoomPresence.get(r.userId)?.zoomJoined ?? false,
+        zoomParticipantEmail:
+          zoomPresence.get(r.userId)?.zoomParticipantEmail ?? null,
       };
     };
 

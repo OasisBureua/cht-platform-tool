@@ -36,7 +36,7 @@ resource "aws_sns_topic_policy" "alerts" {
         }
       },
       {
-        Sid    = "AllowEventBridgeGuardDuty"
+        Sid    = "AllowEventBridgePublish"
         Effect = "Allow"
         Principal = {
           Service = "events.amazonaws.com"

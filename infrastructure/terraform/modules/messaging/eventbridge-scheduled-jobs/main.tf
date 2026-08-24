@@ -51,16 +51,16 @@ resource "aws_sqs_queue_policy" "eventbridge_to_sqs" {
 }
 
 # ── EventBridge rule: Bill.com MFA rememberMeId expiry reminder ───────────────
-# Bill.com's MFA-trusted session (rememberMeId) always expires 30 days after it
-# is set, and there is no way to renew it without a human completing an MFA
-# challenge (an OTP is sent to a device). So we cannot fully automate the refresh
-#: instead we fire a reminder ~20 days out (10-day buffer) to the alerts topic.
+# rememberMeId expires ~30 days after MFA validate. Fire every 20 days (~10-day
+# buffer). rate(N days) first runs N days after the rule is created/updated, not
+# immediately. SNS topic is CMK-encrypted; EventBridge must be on the KMS key.
 resource "aws_cloudwatch_event_rule" "bill_mfa_reminder" {
-  count = var.enable_bill_mfa_reminder ? 1 : 0
+  count = var.enable_bill_mfa_reminder && var.alerts_topic_arn != "" ? 1 : 0
 
   name                = "${local.prefix}-bill-mfa-reminder"
   schedule_expression = var.bill_mfa_reminder_schedule
-  description         = "Reminder to refresh the Bill.com MFA rememberMeId before its 30-day expiry"
+  description         = "Every 20 days: refresh Bill.com MFA rememberMeId before 30-day expiry"
+  state               = "ENABLED"
 
   tags = {
     Name        = "${local.prefix}-bill-mfa-reminder-rule"
@@ -68,12 +68,51 @@ resource "aws_cloudwatch_event_rule" "bill_mfa_reminder" {
   }
 }
 
+resource "aws_iam_role" "bill_mfa_reminder_events" {
+  count = var.enable_bill_mfa_reminder && var.alerts_topic_arn != "" ? 1 : 0
+
+  name = "${local.prefix}-bill-mfa-reminder-events"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "events.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = {
+    Name        = "${local.prefix}-bill-mfa-reminder-events"
+    Environment = var.environment
+  }
+}
+
+resource "aws_iam_role_policy" "bill_mfa_reminder_events" {
+  count = var.enable_bill_mfa_reminder && var.alerts_topic_arn != "" ? 1 : 0
+
+  name = "sns-publish"
+  role = aws_iam_role.bill_mfa_reminder_events[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "sns:Publish"
+        Resource = var.alerts_topic_arn
+      }
+    ]
+  })
+}
+
 resource "aws_cloudwatch_event_target" "bill_mfa_reminder" {
-  count = var.enable_bill_mfa_reminder ? 1 : 0
+  count = var.enable_bill_mfa_reminder && var.alerts_topic_arn != "" ? 1 : 0
 
   rule      = aws_cloudwatch_event_rule.bill_mfa_reminder[0].name
   target_id = "BillMfaReminderSns"
   arn       = var.alerts_topic_arn
+  role_arn  = aws_iam_role.bill_mfa_reminder_events[0].arn
 
   # Constant JSON string payload (jsonencode escapes newlines). EventBridge rejects
   # multi-line InputTemplate strings with raw newlines (ValidationException).
