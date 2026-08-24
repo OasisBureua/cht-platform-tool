@@ -458,7 +458,7 @@ variable "enable_bill_mfa_reminder" {
 }
 
 variable "bill_mfa_reminder_schedule" {
-  description = "Schedule for the Bill.com MFA rememberMeId refresh reminder. Fire before the 30-day expiry (default: every 20 days)."
+  description = "EventBridge schedule for the Bill.com MFA rememberMeId refresh reminder. Default rate(20 days) first fires 20 days after apply."
   type        = string
   default     = "rate(20 days)"
 }

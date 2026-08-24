@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { SurveysService } from '../surveys/surveys.service';
 import { ZoomService } from './zoom.service';
+import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { createHmac } from 'crypto';
 
 /**
@@ -67,6 +68,7 @@ export class ZoomWebhookService {
     private readonly hubspot: HubSpotService,
     private readonly surveys: SurveysService,
     private readonly zoom: ZoomService,
+    private readonly programRegistrations: ProgramRegistrationsService,
   ) {
     this.webhookSecret = this.config.get<string>('zoom.webhookSecret') || null;
     if (!this.webhookSecret) {
@@ -205,6 +207,23 @@ export class ZoomWebhookService {
     this.logger.log(
       `[Zoom webhook] ${eventNorm} → program ${program.id} zoomSessionEndedAt=${endAt.toISOString()}`,
     );
+
+    try {
+      const result =
+        await this.programRegistrations.autoVerifyAttendanceFromZoomJoins(
+          program.id,
+        );
+      if (result.verifiedCount > 0) {
+        this.logger.log(
+          `[Zoom webhook] ${eventNorm}: auto-verified ${result.verifiedCount} registration(s) from Zoom joins for program ${program.id}`,
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(
+        `[Zoom webhook] ${eventNorm}: auto-verify attendance failed for program ${program.id}: ${msg}`,
+      );
+    }
   }
 
   /**

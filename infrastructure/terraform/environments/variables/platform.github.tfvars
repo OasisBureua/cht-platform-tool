@@ -61,6 +61,7 @@ alarm_notification_emails = [
 ]
 session_reminders_schedule_expression = "cron(0 0/6 * * ? *)"
 enable_bill_mfa_reminder              = true
+bill_mfa_reminder_schedule            = "rate(20 days)"
 enable_cognito_pools                = true
 cognito_domain_prefix               = "chm-platform"
 cognito_user_pool_tier              = "ESSENTIALS"

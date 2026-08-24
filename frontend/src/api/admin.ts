@@ -260,6 +260,10 @@ export interface ProgramRegistrationAdminRow {
   postEventSurveyAcknowledgedAt?: string | null;
   postEventAttendanceStatus?: string | null;
   postEventAttendanceReviewedAt?: string | null;
+  /** True when a Zoom/Meeting SDK JOINED event matched this learner. */
+  zoomJoined?: boolean;
+  /** Email Zoom reported on join (may differ from platform email). */
+  zoomParticipantEmail?: string | null;
   user: { id: string; email: string; firstName: string; lastName: string };
   slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
 }

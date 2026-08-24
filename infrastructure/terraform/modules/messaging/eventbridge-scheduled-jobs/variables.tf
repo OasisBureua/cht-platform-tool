@@ -38,7 +38,12 @@ variable "alerts_topic_arn" {
 }
 
 variable "bill_mfa_reminder_schedule" {
-  description = "EventBridge schedule expression for the Bill.com MFA reminder. rememberMeId expires ~30 days after it is set, so fire well before that (default: every 20 days)."
+  description = "EventBridge schedule for the Bill.com MFA reminder. Default rate(20 days) first fires 20 days after the rule is applied."
   type        = string
   default     = "rate(20 days)"
+
+  validation {
+    condition     = can(regex("^rate\\(20 days\\)$|^cron\\(.+\\)$", var.bill_mfa_reminder_schedule))
+    error_message = "bill_mfa_reminder_schedule must be rate(20 days) or a cron(...) expression."
+  }
 }

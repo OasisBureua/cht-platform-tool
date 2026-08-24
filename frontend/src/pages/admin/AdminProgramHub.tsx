@@ -704,6 +704,7 @@ export default function AdminProgramHub() {
                           </th>
                           <th className="py-2 pr-4">User</th>
                           <th className="py-2 pr-4">Registration</th>
+                          <th className="py-2 pr-4">Seen in Zoom</th>
                           <th className="py-2 pr-4">Attendance</th>
                           <th className="py-2 pr-4">Actions</th>
                         </tr>
@@ -739,6 +740,29 @@ export default function AdminProgramHub() {
                               >
                                 {registrationStatusLabel(r.status)}
                               </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              {r.zoomJoined ? (
+                                <div>
+                                  <span className="inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
+                                    Yes
+                                  </span>
+                                  {r.zoomParticipantEmail &&
+                                  r.zoomParticipantEmail.trim().toLowerCase() !==
+                                    r.user.email.trim().toLowerCase() ? (
+                                    <div
+                                      className="mt-0.5 text-[11px] text-gray-500"
+                                      title="Email Zoom reported on join"
+                                    >
+                                      Zoom: {r.zoomParticipantEmail}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
+                                  No
+                                </span>
+                              )}
                             </td>
                             <td className="py-2 pr-4">
                               <div className="space-y-1.5">
@@ -979,6 +1003,7 @@ export default function AdminProgramHub() {
                         <thead>
                           <tr className="border-b border-gray-200 text-left text-gray-600">
                             <th className="py-2 pr-4">User</th>
+                            <th className="py-2 pr-4">Seen in Zoom</th>
                             <th className="py-2 pr-4">Attendance</th>
                             <th className="py-2 pr-4">Submitted</th>
                             <th className="py-2 pr-4">Responses</th>
@@ -993,6 +1018,26 @@ export default function AdminProgramHub() {
                                 <td className="py-2 pr-4 align-top">
                                   {r.user.firstName} {r.user.lastName}
                                   <div className="text-xs text-gray-500">{r.user.email}</div>
+                                </td>
+                                <td className="py-2 pr-4 align-top">
+                                  {r.zoomJoined ? (
+                                    <div>
+                                      <span className="inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
+                                        Yes
+                                      </span>
+                                      {r.zoomParticipantEmail &&
+                                      r.zoomParticipantEmail.trim().toLowerCase() !==
+                                        r.user.email.trim().toLowerCase() ? (
+                                        <div className="mt-0.5 text-[11px] text-gray-500">
+                                          Zoom: {r.zoomParticipantEmail}
+                                        </div>
+                                      ) : null}
+                                    </div>
+                                  ) : (
+                                    <span className="inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">
+                                      No
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-2 pr-4 align-top">
                                   <div className="space-y-1">

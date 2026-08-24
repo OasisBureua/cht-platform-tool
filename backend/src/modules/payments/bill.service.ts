@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  isBillProcessDateRetryable,
+  twoUsWeekdaysOutIsoDate,
+} from './bill-process-date';
 
 const BILL_STAGE_URL = 'https://gateway.stage.bill.com/connect/v3';
 const BILL_PROD_URL = 'https://gateway.prod.bill.com/connect/v3';
@@ -18,6 +22,14 @@ export interface BillPayment {
   status: string;
 }
 
+export type BillPayByType = 'ACH' | 'CHECK';
+
+export interface VendorBankAccountInput {
+  nameOnAccount: string;
+  accountNumber: string;
+  routingNumber: string;
+}
+
 export interface CreateVendorInput {
   name: string;
   email: string;
@@ -27,13 +39,11 @@ export interface CreateVendorInput {
     stateOrProvince?: string;
     zipOrPostalCode: string;
   };
+  /** Preferred payout method. Bill derives ACH from a bank account; CHECK when none. */
+  paymentMethod?: BillPayByType;
   paymentInformation?: {
     payeeName: string;
-    bankAccount?: {
-      nameOnAccount: string;
-      accountNumber: string;
-      routingNumber: string;
-    };
+    bankAccount?: VendorBankAccountInput;
   };
 }
 
@@ -542,13 +552,18 @@ export class BillService {
   }
 
   /**
-   * Update vendor address and ACH details (Connect v3 PATCH). Requires at least one recognized top-level field.
+   * Update vendor name/address/payee, then sync ACH vs CHECK via dedicated bank-account APIs.
+   * Bill no longer accepts bank updates on PATCH /vendors — use POST/DELETE /vendors/{id}/bank-account.
+   * Deleting the bank account makes Bill pay by CHECK; creating one enables ACH.
    */
   async updateVendorPaymentAndAddress(
     vendorId: string,
     input: CreateVendorInput,
   ): Promise<BillVendor> {
-    this.logger.log(`Updating Bill.com vendor payment/address: ${vendorId}`);
+    const paymentMethod = input.paymentMethod ?? 'CHECK';
+    this.logger.log(
+      `Updating Bill.com vendor payment/address: ${vendorId} method=${paymentMethod}`,
+    );
     const payload: Record<string, unknown> = {
       name: input.name,
       email: input.email,
@@ -562,24 +577,152 @@ export class BillService {
       },
       billCurrency: 'USD',
     };
-    if (input.paymentInformation) {
+    if (input.paymentInformation?.payeeName) {
       payload.paymentInformation = {
         payeeName: input.paymentInformation.payeeName,
-        ...(input.paymentInformation.bankAccount
-          ? {
-              bankAccount: {
-                nameOnAccount:
-                  input.paymentInformation.bankAccount.nameOnAccount,
-                accountNumber:
-                  input.paymentInformation.bankAccount.accountNumber,
-                routingNumber:
-                  input.paymentInformation.bankAccount.routingNumber,
-              },
-            }
-          : {}),
       };
     }
-    return this.request<BillVendor>('PATCH', `/vendors/${vendorId}`, payload);
+    const vendor = await this.request<BillVendor>(
+      'PATCH',
+      `/vendors/${vendorId}`,
+      payload,
+    );
+
+    await this.syncVendorPaymentMethod(
+      vendorId,
+      paymentMethod,
+      input.paymentInformation?.bankAccount,
+    );
+
+    return vendor;
+  }
+
+  /**
+   * Align Bill vendor bank state with ACH vs CHECK.
+   * CHECK → delete bank account (Bill defaults to check).
+   * ACH → replace bank account (delete existing, then create).
+   */
+  async syncVendorPaymentMethod(
+    vendorId: string,
+    paymentMethod: BillPayByType,
+    bankAccount?: VendorBankAccountInput,
+  ): Promise<void> {
+    if (paymentMethod === 'CHECK') {
+      await this.deleteVendorBankAccountIfPresent(vendorId);
+      this.logger.log(
+        `Bill.com vendor ${vendorId}: bank removed → payByType CHECK`,
+      );
+      return;
+    }
+
+    if (!bankAccount?.accountNumber || !bankAccount.routingNumber) {
+      throw new Error(
+        'Bank account details are required to switch a Bill.com vendor to ACH.',
+      );
+    }
+
+    await this.deleteVendorBankAccountIfPresent(vendorId);
+    await this.createVendorBankAccount(vendorId, bankAccount);
+    this.logger.log(
+      `Bill.com vendor ${vendorId}: bank account set → payByType ACH`,
+    );
+  }
+
+  /**
+   * Verify Bill.com vendor bank state matches the HCP's preferred ACH/CHECK method.
+   * Does not mutate Bill — used before Pay now so we never pay with a stale method.
+   */
+  async ensureVendorPaymentMethodMatches(
+    vendorId: string,
+    paymentMethod: BillPayByType,
+  ): Promise<void> {
+    const bank = await this.getVendorBankAccount(vendorId);
+    const hasBank = !!bank;
+    if (paymentMethod === 'ACH' && !hasBank) {
+      throw new Error(`Vendor ${vendorId} is ACH but has no Bill.com bank account`);
+    }
+    if (paymentMethod === 'CHECK' && hasBank) {
+      throw new Error(
+        `Vendor ${vendorId} is CHECK but still has a Bill.com bank account`,
+      );
+    }
+  }
+
+  async getVendorBankAccount(
+    vendorId: string,
+  ): Promise<Record<string, unknown> | null> {
+    return this.requestOrNull<Record<string, unknown>>(
+      'GET',
+      `/vendors/${vendorId}/bank-account`,
+    );
+  }
+
+  async createVendorBankAccount(
+    vendorId: string,
+    bank: VendorBankAccountInput,
+  ): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(
+      'POST',
+      `/vendors/${vendorId}/bank-account`,
+      {
+        nameOnAccount: bank.nameOnAccount,
+        accountNumber: bank.accountNumber,
+        routingNumber: bank.routingNumber,
+        type: 'CHECKING',
+        ownerType: 'PERSONAL',
+        paymentCurrency: 'USD',
+      },
+    );
+  }
+
+  /** Idempotent: 404 means already no bank (CHECK-ready). */
+  async deleteVendorBankAccountIfPresent(vendorId: string): Promise<boolean> {
+    const existing = await this.getVendorBankAccount(vendorId);
+    if (!existing) return false;
+    await this.requestOrNull('DELETE', `/vendors/${vendorId}/bank-account`);
+    return true;
+  }
+
+  /** Like request(), but returns null on 404 instead of throwing. */
+  private async requestOrNull<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    retryOnSessionFailure = true,
+  ): Promise<T | null> {
+    const sessionId = await this.ensureSession();
+    const url = `${this.baseUrl}${path}`;
+
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        devKey: this.devKey,
+        sessionId,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const text = await res.text();
+
+    const canPasswordLogin = !!(this.username && this.password && this.orgId);
+    if (
+      retryOnSessionFailure &&
+      canPasswordLogin &&
+      this.billSessionRetryable(res.status, text)
+    ) {
+      this.logger.warn(
+        `Bill.com session rejected (${res.status}), re-logging in`,
+      );
+      this.clearInMemoryBillSession();
+      return this.requestOrNull<T>(method, path, body, false);
+    }
+
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(`Bill.com API error (${res.status}): ${text}`);
+    }
+    return text ? (JSON.parse(text) as T) : ({} as T);
   }
 
   /**
@@ -642,15 +785,10 @@ export class BillService {
       throw new Error('Bill.com funding account ID not configured');
     }
 
-    const processDate = new Date();
-    processDate.setDate(processDate.getDate() + 1);
-    const processDateStr = processDate.toISOString().split('T')[0];
-
-    const payload = {
+    const payload: Record<string, unknown> = {
       vendorId,
       amount: amountDollars,
       description: description || 'Honorarium payment',
-      processDate: processDateStr,
       fundingAccount: {
         type: 'BANK_ACCOUNT',
         id: fundingAccountId,
@@ -661,12 +799,28 @@ export class BillService {
       },
     };
 
-    const payment = await this.request<BillPayment>(
-      'POST',
-      '/payments',
-      payload,
-    );
-    this.logger.log(`Bill.com payment created: ${payment.id}`);
-    return payment;
+    try {
+      const payment = await this.request<BillPayment>(
+        'POST',
+        '/payments',
+        payload,
+      );
+      this.logger.log(`Bill.com payment created: ${payment.id}`);
+      return payment;
+    } catch (err) {
+      if (!isBillProcessDateRetryable(err)) {
+        throw err;
+      }
+      const processDate = twoUsWeekdaysOutIsoDate();
+      this.logger.warn(
+        `Bill.com rejected payment without processDate (${err instanceof Error ? err.message : String(err)}); retrying with processDate=${processDate}`,
+      );
+      const retry = await this.request<BillPayment>('POST', '/payments', {
+        ...payload,
+        processDate,
+      });
+      this.logger.log(`Bill.com payment created: ${retry.id}`);
+      return retry;
+    }
   }
 }

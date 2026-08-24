@@ -26,6 +26,7 @@ import { AccountStatusDto } from './dto/account-status.dto';
 import { validateTaxId, sanitizeCompanyName } from './w9-validation';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { programHasPostEventSurvey } from '../../utils/program-survey-config';
+import { summarizeBillError } from './bill-process-date';
 
 @Injectable()
 export class PaymentsService {
@@ -279,6 +280,7 @@ export class PaymentsService {
     const vendorInput = {
       name: `${user.firstName} ${user.lastName}`,
       email: user.email,
+      paymentMethod,
       address: {
         line1: addressLine1,
         city,
@@ -929,25 +931,54 @@ export class PaymentsService {
       );
     }
 
-    const deliveryMethod =
-      user.preferredPaymentMethod === 'CHECK'
-        ? 'CHECK'
-        : user.preferredPaymentMethod === 'ACH'
-          ? 'ACH'
-          : null;
+    if (
+      user.preferredPaymentMethod !== 'CHECK' &&
+      user.preferredPaymentMethod !== 'ACH'
+    ) {
+      this.logger.warn(
+        `Pay now blocked: user ${user.id} has no preferred payment method`,
+      );
+      throw new BadRequestException(
+        'HCP has not chosen ACH or Check. Ask them to finish Settings → Payment, then try Pay now again.',
+      );
+    }
+
+    const deliveryMethod = user.preferredPaymentMethod;
+
+    // Bill.com pays by ACH when a vendor bank exists and by CHECK when it does not.
+    // Heal CHECK (delete stale bank). For ACH, require bank already on file.
+    try {
+      if (deliveryMethod === 'CHECK') {
+        await this.billService.syncVendorPaymentMethod(
+          user.billVendorId,
+          'CHECK',
+        );
+      } else {
+        await this.billService.ensureVendorPaymentMethodMatches(
+          user.billVendorId,
+          'ACH',
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Pay now blocked: Bill.com payment method mismatch for user ${user.id}: ${msg}`,
+      );
+      throw new BadRequestException(
+        deliveryMethod === 'ACH'
+          ? 'HCP selected ACH but Bill.com has no bank account on file. Ask them to re-save ACH details in Settings → Payment.'
+          : 'Could not switch Bill.com vendor to Check. Ask the HCP to re-save Check as their payment method in Settings → Payment.',
+      );
+    }
 
     const locked = await this.prisma.payment.updateMany({
       where: { id: paymentId, status: 'PENDING' },
       data: {
         status: 'PROCESSING',
-        ...(deliveryMethod
-          ? {
-              deliveryMethod,
-              ...(deliveryMethod === 'CHECK'
-                ? { checkStatus: 'PENDING_MAIL' }
-                : { checkStatus: null }),
-            }
-          : {}),
+        deliveryMethod,
+        ...(deliveryMethod === 'CHECK'
+          ? { checkStatus: 'PENDING_MAIL' }
+          : { checkStatus: null }),
       },
     });
 
@@ -995,18 +1026,20 @@ export class PaymentsService {
         transferId: billPayment.id,
       };
     } catch (error) {
-      this.logger.error(`Pay now failed: ${error.message}`);
+      const err = error as Error;
+      this.logger.error(`Pay now failed: ${err.message}`);
+      const summary = summarizeBillError(err);
 
       await this.prisma.payment.update({
         where: { id: paymentId },
         data: {
           status: 'FAILED',
           failedAt: new Date(),
-          failureReason: error.message,
+          failureReason: summary,
         },
       });
 
-      throw new BadRequestException(`Pay now failed: ${error.message}`);
+      throw new BadRequestException(`Pay now failed: ${summary}`);
     }
   }
 
@@ -1165,6 +1198,55 @@ export class PaymentsService {
       throw new ConflictException('Could not start payout processing.');
     }
 
+    const deliveryMethod =
+      user.preferredPaymentMethod === 'CHECK' ||
+      user.preferredPaymentMethod === 'ACH'
+        ? user.preferredPaymentMethod
+        : null;
+
+    if (!deliveryMethod) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          failureReason: 'HCP has not chosen ACH or Check',
+        },
+      });
+      throw new BadRequestException(
+        'HCP has not chosen ACH or Check. Ask them to finish Settings → Payment first.',
+      );
+    }
+
+    try {
+      if (deliveryMethod === 'CHECK') {
+        await this.billService.syncVendorPaymentMethod(
+          user.billVendorId,
+          'CHECK',
+        );
+      } else {
+        await this.billService.ensureVendorPaymentMethodMatches(
+          user.billVendorId,
+          'ACH',
+        );
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          failureReason: msg,
+        },
+      });
+      throw new BadRequestException(
+        deliveryMethod === 'ACH'
+          ? 'HCP selected ACH but Bill.com has no bank account on file. Ask them to re-save ACH details in Settings → Payment.'
+          : 'Could not switch Bill.com vendor to Check. Ask the HCP to re-save Check as their payment method in Settings → Payment.',
+      );
+    }
+
     try {
       const billPayment = await this.billService.createPayment(
         user.billVendorId,
@@ -1178,6 +1260,13 @@ export class PaymentsService {
           status: 'PAID',
           billPaymentId: billPayment.id,
           paidAt: new Date(),
+          deliveryMethod,
+          ...(deliveryMethod === 'CHECK'
+            ? {
+                checkStatus: 'SENT',
+                checkMailedAt: new Date(),
+              }
+            : { checkStatus: null }),
         },
       });
 
@@ -1197,20 +1286,20 @@ export class PaymentsService {
         transferId: billPayment.id,
       };
     } catch (error) {
-      this.logger.error(`Payout failed: ${error.message}`);
+      const err = error as Error;
+      this.logger.error(`Payout failed: ${err.message}`);
+      const summary = summarizeBillError(err);
 
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
           status: 'FAILED',
           failedAt: new Date(),
-          failureReason: (error as Error).message,
+          failureReason: summary,
         },
       });
 
-      throw new BadRequestException(
-        `Payout failed: ${(error as Error).message}`,
-      );
+      throw new BadRequestException(`Payout failed: ${summary}`);
     }
   }
 

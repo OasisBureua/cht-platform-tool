@@ -32,6 +32,11 @@ import { buildUserRecipientWhere } from '../admin/user-recipient-filters.util';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
+import {
+  matchRegistrationsToZoomJoins,
+  zoomPresenceForRegistration,
+  type ZoomJoinEvidence,
+} from '../webinars/zoom-attendance-match';
 
 @Injectable()
 export class ProgramRegistrationsService {
@@ -1238,6 +1243,156 @@ export class ProgramRegistrationsService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  /** JOINED Zoom / Meeting SDK rows for a program (attendance match + admin hub). */
+  async listZoomJoinEvidenceForProgram(
+    programId: string,
+  ): Promise<ZoomJoinEvidence[]> {
+    const rows = await this.prisma.webinarParticipantEvent.findMany({
+      where: { programId, event: 'JOINED' },
+      select: { userId: true, participantEmail: true },
+    });
+    return rows.map((r) => ({
+      userId: r.userId,
+      participantEmail: r.participantEmail,
+    }));
+  }
+
+  /**
+   * After webinar/meeting ended: auto-VERIFY approved registrations whose
+   * platform email (or userId) appears in Zoom JOINED events. Does not override
+   * DENIED / already VERIFIED / NOT_REQUIRED. Sends post-event survey email.
+   */
+  async autoVerifyAttendanceFromZoomJoins(
+    programId: string,
+  ): Promise<{ verifiedCount: number; matchedRegistrationIds: string[] }> {
+    const [pending, joinEvents] = await Promise.all([
+      this.prisma.programRegistration.findMany({
+        where: {
+          programId,
+          status: ProgramRegistrationStatus.APPROVED,
+          postEventAttendanceStatus:
+            PostEventAttendanceStatus.PENDING_VERIFICATION,
+        },
+        select: {
+          id: true,
+          userId: true,
+          user: { select: { email: true, firstName: true } },
+          program: {
+            select: {
+              id: true,
+              title: true,
+              sponsorName: true,
+              honorariumAmount: true,
+              zoomSessionType: true,
+            },
+          },
+        },
+      }),
+      this.listZoomJoinEvidenceForProgram(programId),
+    ]);
+
+    if (pending.length === 0 || joinEvents.length === 0) {
+      return { verifiedCount: 0, matchedRegistrationIds: [] };
+    }
+
+    const matches = matchRegistrationsToZoomJoins(
+      pending.map((r) => ({
+        id: r.id,
+        userId: r.userId,
+        userEmail: r.user.email,
+      })),
+      joinEvents,
+    );
+
+    const matchedIds: string[] = [];
+    const now = new Date();
+
+    for (const match of matches) {
+      const reg = pending.find((r) => r.id === match.registrationId);
+      if (!reg) continue;
+
+      const updated = await this.prisma.programRegistration.updateMany({
+        where: {
+          id: reg.id,
+          postEventAttendanceStatus:
+            PostEventAttendanceStatus.PENDING_VERIFICATION,
+        },
+        data: {
+          postEventAttendanceStatus: PostEventAttendanceStatus.VERIFIED,
+          postEventAttendanceReviewedAt: now,
+          postEventAttendanceReviewedByUserId: null,
+        },
+      });
+      if (updated.count !== 1) continue;
+
+      matchedIds.push(reg.id);
+      await this.ensureEnrollment(reg.userId, programId);
+
+      if (reg.user.email) {
+        const feedbackSurvey = await this.prisma.survey.findFirst({
+          where: { programId, type: SurveyType.FEEDBACK },
+          select: { id: true },
+          orderBy: { createdAt: 'desc' },
+        });
+
+        this.sesEmail
+          .sendPostWebinarSurveyEmail({
+            to: reg.user.email,
+            firstName: reg.user.firstName ?? '',
+            program: {
+              id: reg.program.id,
+              title: reg.program.title,
+              sponsorName: reg.program.sponsorName,
+              honorariumAmount: reg.program.honorariumAmount,
+              zoomSessionType:
+                reg.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
+            },
+            surveyUrl: null,
+            feedbackSurveyId: feedbackSurvey?.id ?? null,
+          })
+          .catch((err: Error) =>
+            this.logger.warn(
+              `Failed to send post-webinar survey email after Zoom auto-verify for ${reg.id}: ${err.message}`,
+            ),
+          );
+      }
+
+      this.logger.log(
+        `Zoom auto-verified attendance for registration ${reg.id} (matchedBy=${match.matchedBy})`,
+      );
+    }
+
+    return {
+      verifiedCount: matchedIds.length,
+      matchedRegistrationIds: matchedIds,
+    };
+  }
+
+  /** Admin hub: map userId → Zoom join presence for a program. */
+  async zoomJoinPresenceByUserId(programId: string): Promise<
+    Map<
+      string,
+      { zoomJoined: boolean; zoomParticipantEmail: string | null }
+    >
+  > {
+    const events = await this.listZoomJoinEvidenceForProgram(programId);
+    const regs = await this.prisma.programRegistration.findMany({
+      where: { programId },
+      select: { userId: true, user: { select: { email: true } } },
+    });
+    const map = new Map<
+      string,
+      { zoomJoined: boolean; zoomParticipantEmail: string | null }
+    >();
+    for (const r of regs) {
+      map.set(
+        r.userId,
+        zoomPresenceForRegistration(r.userId, r.user.email, events),
+      );
+    }
+    return map;
   }
 
   /** All pending registrations for published LIVE webinars and office hours (cross-program admin queue). */
