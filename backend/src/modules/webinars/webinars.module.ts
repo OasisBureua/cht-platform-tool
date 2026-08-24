@@ -11,6 +11,7 @@ import { OfficeHoursController } from './office-hours.controller';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { HubSpotModule } from '../hubspot/hubspot.module';
 import { SurveysModule } from '../surveys/surveys.module';
+import { ProgramsModule } from '../programs/programs.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { SurveysModule } from '../surveys/surveys.module';
     HubSpotModule,
     AuthModule,
     SurveysModule,
+    ProgramsModule,
   ],
   controllers: [
     WebinarsController,

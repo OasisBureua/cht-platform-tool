@@ -22,6 +22,9 @@ describe('ZoomWebhookService', () => {
     getMeetingById: jest.Mock;
   };
   let surveys: { attachJotformFormsFromConfig: jest.Mock };
+  let programRegistrations: {
+    autoVerifyAttendanceFromZoomJoins: jest.Mock;
+  };
 
   beforeEach(() => {
     prisma = {
@@ -41,6 +44,11 @@ describe('ZoomWebhookService', () => {
     surveys = {
       attachJotformFormsFromConfig: jest.fn().mockResolvedValue(undefined),
     };
+    programRegistrations = {
+      autoVerifyAttendanceFromZoomJoins: jest
+        .fn()
+        .mockResolvedValue({ verifiedCount: 0, matchedRegistrationIds: [] }),
+    };
 
     service = new ZoomWebhookService(
       prisma as unknown as PrismaService,
@@ -50,6 +58,7 @@ describe('ZoomWebhookService', () => {
       {} as HubSpotService,
       surveys as unknown as SurveysService,
       zoom as unknown as ZoomService,
+      programRegistrations as unknown as import('../programs/program-registrations.service').ProgramRegistrationsService,
     );
   });
 
@@ -149,6 +158,68 @@ describe('ZoomWebhookService', () => {
       expect(result.plainToken).toBe('plain-token-123');
       expect(result.encryptedToken).toEqual(expect.any(String));
       expect(String(result.encryptedToken).length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('webinar.ended attendance auto-verify', () => {
+    it('sets zoomSessionEndedAt and auto-verifies matching registrations', async () => {
+      prisma.program.findFirst.mockResolvedValue({
+        id: 'prog-1',
+        zoomSessionEndedAt: null,
+      });
+      prisma.program.update.mockResolvedValue({});
+      programRegistrations.autoVerifyAttendanceFromZoomJoins.mockResolvedValue({
+        verifiedCount: 2,
+        matchedRegistrationIds: ['r1', 'r2'],
+      });
+
+      await service.processWebhook(
+        {
+          event: 'webinar.ended',
+          payload: {
+            object: {
+              id: 81517150352,
+              end_time: '2026-06-01T19:00:00Z',
+            },
+          },
+        },
+        '',
+        '',
+      );
+
+      expect(prisma.program.update).toHaveBeenCalledWith({
+        where: { id: 'prog-1' },
+        data: { zoomSessionEndedAt: new Date('2026-06-01T19:00:00Z') },
+      });
+      expect(
+        programRegistrations.autoVerifyAttendanceFromZoomJoins,
+      ).toHaveBeenCalledWith('prog-1');
+    });
+
+    it('skips auto-verify when end_time is not newer than stored value', async () => {
+      prisma.program.findFirst.mockResolvedValue({
+        id: 'prog-1',
+        zoomSessionEndedAt: new Date('2026-06-01T19:00:00Z'),
+      });
+
+      await service.processWebhook(
+        {
+          event: 'webinar.ended',
+          payload: {
+            object: {
+              id: 81517150352,
+              end_time: '2026-06-01T18:30:00Z',
+            },
+          },
+        },
+        '',
+        '',
+      );
+
+      expect(prisma.program.update).not.toHaveBeenCalled();
+      expect(
+        programRegistrations.autoVerifyAttendanceFromZoomJoins,
+      ).not.toHaveBeenCalled();
     });
   });
 });
