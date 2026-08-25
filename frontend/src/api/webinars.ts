@@ -32,6 +32,9 @@ export type MeetingSdkAuth = {
   userEmail?: string;
   /** Zoom registrant token when required (`tk` on the join URL). */
   tk?: string;
+  /** Required when starting as host (role 1). */
+  zak?: string;
+  role?: 0 | 1;
   sessionKind?: 'WEBINAR' | 'MEETING';
 };
 
@@ -58,19 +61,25 @@ export const webinarsApi = {
   },
 
   /** Zoom Meeting SDK - office hours (MEETING); requires ZOOM_SDK_KEY / ZOOM_SDK_SECRET. */
-  getMeetingSdkAuth: async (programId: string): Promise<MeetingSdkAuth> => {
+  getMeetingSdkAuth: async (
+    programId: string,
+    opts?: { asHost?: boolean },
+  ): Promise<MeetingSdkAuth> => {
     const { data } = await apiClient.post<MeetingSdkAuth>(
       `/office-hours/${encodeURIComponent(programId)}/meeting-sdk-auth`,
-      {},
+      { asHost: !!opts?.asHost },
     );
     return data;
   },
 
-  /** Zoom Meeting SDK - live webinar (WEBINAR); approved/enrolled learners only. */
-  getWebinarMeetingSdkAuth: async (programId: string): Promise<MeetingSdkAuth> => {
+  /** Zoom Meeting SDK - live webinar (WEBINAR); approved/enrolled learners only (or admin host). */
+  getWebinarMeetingSdkAuth: async (
+    programId: string,
+    opts?: { asHost?: boolean },
+  ): Promise<MeetingSdkAuth> => {
     const { data } = await apiClient.post<MeetingSdkAuth>(
       `/webinars/${encodeURIComponent(programId)}/meeting-sdk-auth`,
-      {},
+      { asHost: !!opts?.asHost },
     );
     return data;
   },

@@ -15,6 +15,7 @@ import {
   Circle,
   DollarSign,
   ExternalLink,
+  MonitorPlay,
   Video,
   Calendar,
   Clock,
@@ -22,7 +23,6 @@ import {
 } from 'lucide-react';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
-import { WebinarZoomEmbed } from '../components/zoom/WebinarZoomEmbed';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -588,10 +588,24 @@ export default function WebinarDetail() {
             </div>
           ) : null}
           {program.zoomJoinUrl?.trim() && program.canJoinSession !== false && enrolled ? (
-            <WebinarZoomEmbed
-              programId={program.id}
-              joinUrlFallback={program.zoomJoinUrl}
-            />
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to={`/app/live/${program.id}/session`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+              >
+                <MonitorPlay className="h-4 w-4" />
+                Join in browser
+              </Link>
+              <a
+                href={program.zoomJoinUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                Open in Zoom
+                <ExternalLink className="h-4 w-4 opacity-80" />
+              </a>
+            </div>
           ) : enrolled ? (
             <button
               type="button"
@@ -627,23 +641,35 @@ export default function WebinarDetail() {
               webinar is linked to this program.
             </p>
           )}
-          {isAdmin && program.zoomStartUrl?.trim() ? (
+          {isAdmin &&
+          (program.zoomSessionType === 'WEBINAR' ||
+            program.zoomSessionType === 'MEETING') ? (
             <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
               <p className="text-xs font-semibold text-violet-900">Admin: start as Zoom host</p>
               <p className="text-xs text-violet-800">
-                Learners use <strong>Join session</strong> above. This link opens Zoom as the webinar host (use the host
-                Zoom account).
+                Learners use <strong>Join in browser</strong> above. Start the session here so they can join.
               </p>
-              <a
-                href={program.zoomStartUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
-              >
-                <Video className="h-4 w-4" />
-                Open host start link
-                <ExternalLink className="h-4 w-4 opacity-90" />
-              </a>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  to={`/app/live/${program.id}/session?host=1`}
+                  className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
+                >
+                  <MonitorPlay className="h-4 w-4" />
+                  Start as host in browser
+                </Link>
+                {program.zoomStartUrl?.trim() ? (
+                  <a
+                    href={program.zoomStartUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-200 bg-violet-100/50 px-4 py-2 text-sm font-semibold text-violet-900 hover:bg-violet-100"
+                  >
+                    <Video className="h-4 w-4" />
+                    Open host start link
+                    <ExternalLink className="h-4 w-4 opacity-90" />
+                  </a>
+                ) : null}
+              </div>
             </div>
           ) : null}
         </section>

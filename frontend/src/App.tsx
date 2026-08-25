@@ -52,6 +52,7 @@ const Webinars              = lazy(() => import('./pages/Webinars'));
 const WebinarDetail         = lazy(() => import('./pages/WebinarDetail'));
 const OfficeHours           = lazy(() => import('./pages/OfficeHours'));
 const OfficeHoursDetail     = lazy(() => import('./pages/OfficeHoursDetail'));
+const ZoomSessionPage       = lazy(() => import('./pages/ZoomSessionPage'));
 const ProgramRegisterWizard = lazy(() => import('./pages/ProgramRegisterWizard'));
 const LiveMultiRegister     = lazy(() => import('./pages/LiveMultiRegister'));
 const Surveys               = lazy(() => import('./pages/Surveys'));
@@ -200,16 +201,20 @@ function App() {
               <Route path="live" element={<Webinars />} />
               <Route path="live/register-multiple" element={<LiveMultiRegister />} />
               <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="live/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
               <Route path="live/:id" element={<WebinarDetail />} />
               <Route path="webinars" element={<Navigate to="/app/live" replace />} />
               <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="webinars/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
               <Route path="webinars/:id" element={<WebinarDetail />} />
 
               <Route path="chm-office-hours" element={<OfficeHours />} />
               <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="chm-office-hours/:id/session" element={<ZoomSessionPage sessionKind="MEETING" />} />
               <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
               <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
               <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
+              <Route path="office-hours/:id/session" element={<ZoomSessionPage sessionKind="MEETING" />} />
               <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
               <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />

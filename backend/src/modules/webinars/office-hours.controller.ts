@@ -33,9 +33,15 @@ export class OfficeHoursController {
   async meetingSdkAuth(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
+    @Body() body?: { asHost?: boolean },
   ): Promise<MeetingSdkAuthDto> {
-    this.logger.log(`Meeting SDK auth for program ${id} user ${user.userId}`);
-    return this.webinarsService.getOfficeHoursMeetingSdkAuth(user, id);
+    const asHost = !!body?.asHost;
+    this.logger.log(
+      `Meeting SDK auth for program ${id} user ${user.userId} asHost=${asHost}`,
+    );
+    return this.webinarsService.getOfficeHoursMeetingSdkAuth(user, id, {
+      asHost,
+    });
   }
 
   /**
