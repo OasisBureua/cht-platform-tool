@@ -98,6 +98,7 @@ export const ZOOM_EMBED_HTML = `<!doctype html>
           };
           if (creds.sdkKey) joinArgs.sdkKey = creds.sdkKey;
           if (creds.tk) joinArgs.tk = creds.tk;
+          if (creds.zak) joinArgs.zak = creds.zak;
 
           var joinResult = await client.join(joinArgs);
           if (isSdkFailure(joinResult)) {

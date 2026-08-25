@@ -45,6 +45,13 @@ export type ZoomEmbedProps = {
   leaveLabel?: string;
   /** Hint under controls */
   hint?: string;
+  /**
+   * `inline` — card on a detail page.
+   * `fill` — nearly full viewport (session page); iframe stretches to parent.
+   */
+  layout?: 'inline' | 'fill';
+  /** Start joining as soon as the component mounts (session page). */
+  autoJoin?: boolean;
 };
 
 /**
@@ -62,7 +69,10 @@ export function ZoomEmbed({
   joinLabel = 'Join in browser',
   leaveLabel = 'Leave session',
   hint = "Runs Zoom's embedded web client inside this page. First load may take a few seconds. Use Open in Zoom if your browser is unsupported.",
+  layout = 'inline',
+  autoJoin = false,
 }: ZoomEmbedProps) {
+  const fill = layout === 'fill';
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +83,7 @@ export function ZoomEmbed({
   const joinedRef = useRef(false);
   const pendingCredsRef = useRef<MeetingSdkAuth | null>(null);
   const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const autoJoinStartedRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
@@ -211,7 +222,6 @@ export function ZoomEmbed({
     setOpen(true);
     try {
       const creds = await fetchAuth();
-      // Iframe mounts after setOpen(true); wait a tick then send (or queue until ready).
       await new Promise((r) => setTimeout(r, 0));
       sendJoinWhenReady(creds);
     } catch (e: unknown) {
@@ -234,49 +244,90 @@ export function ZoomEmbed({
     }
   }, [fetchAuth, leave, open, sendJoinWhenReady]);
 
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+  useEffect(() => {
+    if (!autoJoin || autoJoinStartedRef.current || disabled) return;
+    autoJoinStartedRef.current = true;
+    void join();
+    // Intentionally once on mount for session pages.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoJoin, disabled]);
+
+  const controls = (
+    <div className={fill ? 'flex flex-wrap items-center gap-2' : 'flex flex-wrap gap-2'}>
+      {!autoJoin || error || waitingForHost || unsupported ? (
         <button
           type="button"
           disabled={disabled || loading}
           onClick={() => void join()}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+          className={
+            fill
+              ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-50'
+              : 'inline-flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50'
+          }
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MonitorPlay className="h-4 w-4" />}
           {open && !loading ? 'Rejoin in browser' : joinLabel}
         </button>
-        {open && (
-          <button
-            type="button"
-            onClick={() => void leave()}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            <X className="h-4 w-4" />
-            {leaveLabel}
-          </button>
-        )}
-        {joinUrlFallback ? (
-          <a
-            href={joinUrlFallback}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Open in Zoom
-            <ExternalLink className="h-4 w-4 opacity-80" />
-          </a>
-        ) : null}
-      </div>
+      ) : loading ? (
+        <span className="inline-flex items-center gap-2 text-sm text-gray-300">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Connecting…
+        </span>
+      ) : null}
+      {open && (
+        <button
+          type="button"
+          onClick={() => void leave()}
+          className={
+            fill
+              ? 'inline-flex items-center gap-2 rounded-lg border border-white/20 bg-transparent px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10'
+              : 'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
+          }
+        >
+          <X className="h-4 w-4" />
+          {leaveLabel}
+        </button>
+      )}
+      {joinUrlFallback ? (
+        <a
+          href={joinUrlFallback}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={
+            fill
+              ? 'inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10'
+              : 'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
+          }
+        >
+          Open in Zoom
+          <ExternalLink className="h-4 w-4 opacity-80" />
+        </a>
+      ) : null}
+    </div>
+  );
 
+  const statusBlocks = (
+    <>
       {waitingForHost && (
-        <p className="text-sm text-amber-950 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+        <p
+          className={
+            fill
+              ? 'text-sm text-amber-100 rounded-lg bg-amber-950/80 border border-amber-700/50 px-3 py-2'
+              : 'text-sm text-amber-950 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2'
+          }
+        >
           {WAITING_FOR_HOST_COPY}
         </p>
       )}
 
       {error && (
-        <p className="text-sm text-red-700 rounded-lg bg-red-50 px-3 py-2">
+        <p
+          className={
+            fill
+              ? 'text-sm text-red-100 rounded-lg bg-red-950/80 border border-red-700/50 px-3 py-2'
+              : 'text-sm text-red-700 rounded-lg bg-red-50 px-3 py-2'
+          }
+        >
           {error}
           {joinUrlFallback ? (
             <>
@@ -294,23 +345,50 @@ export function ZoomEmbed({
         </p>
       )}
 
-      {unsupported ? (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-          Unsupported browser or device for the embedded Zoom client. Use Open in Zoom to continue.
-        </p>
-      ) : (
-        <p className="text-xs text-gray-500">{hint}</p>
-      )}
+      {!fill &&
+        (unsupported ? (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            Unsupported browser or device for the embedded Zoom client. Use Open in Zoom to continue.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500">{hint}</p>
+        ))}
+    </>
+  );
 
-      {open && iframeSrc ? (
-        <iframe
-          ref={iframeRef}
-          title="Zoom session"
-          src={iframeSrc}
-          className="h-[75vh] min-h-[640px] w-full rounded-xl border border-gray-200 bg-black/5 overflow-hidden"
-          allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
-        />
-      ) : null}
+  const iframe = open && iframeSrc ? (
+    <iframe
+      ref={iframeRef}
+      title="Zoom session"
+      src={iframeSrc}
+      className={
+        fill
+          ? 'h-full w-full border-0 bg-black'
+          : 'h-[75vh] min-h-[640px] w-full rounded-xl border border-gray-200 bg-black/5 overflow-hidden'
+      }
+      allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
+    />
+  ) : null;
+
+  if (fill) {
+    return (
+      <div className="flex h-full min-h-0 flex-col gap-2">
+        <div className="shrink-0 space-y-2 px-1">
+          {controls}
+          {statusBlocks}
+        </div>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black">
+          {iframe}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {controls}
+      {statusBlocks}
+      {iframe}
     </div>
   );
 }

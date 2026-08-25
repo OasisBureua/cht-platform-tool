@@ -1425,7 +1425,7 @@ function ZoomLinksSection({
   const isWebinar = String(pr.zoomSessionType || '') === 'WEBINAR';
   const hasMeetingId = !!pr.zoomMeetingId;
 
-  if (!startUrl && !joinUrl && links.length === 0) return null;
+  if (!startUrl && !joinUrl && links.length === 0 && !hasMeetingId) return null;
 
   return (
     <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
@@ -1460,23 +1460,39 @@ function ZoomLinksSection({
 
       <div className="flex flex-col gap-3">
 
-        {/* Host start link */}
-        {startUrl && (
+        {/* Host start — in-browser embed preferred; Zoom start URL as fallback */}
+        {(startUrl || hasMeetingId) && (
           <div className="flex items-center justify-between gap-4 rounded-lg border border-violet-100 bg-violet-50 px-4 py-3">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-violet-900">Host start link</p>
-              <p className="mt-0.5 text-xs text-violet-700">Use this to start the session as the host.</p>
+              <p className="text-sm font-semibold text-violet-900">Host start</p>
+              <p className="mt-0.5 text-xs text-violet-700">
+                Start in the browser (full screen) or open Zoom&apos;s host link.
+              </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <CopyButton url={startUrl} />
-              <a
-                href={startUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                to={
+                  isWebinar
+                    ? `/app/live/${pr.id}/session?host=1`
+                    : `/app/chm-office-hours/${pr.id}/session?host=1`
+                }
                 className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition-colors"
               >
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Open
-              </a>
+                Start in browser
+              </Link>
+              {startUrl ? (
+                <>
+                  <CopyButton url={startUrl} />
+                  <a
+                    href={startUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100 transition-colors"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden /> Zoom link
+                  </a>
+                </>
+              ) : null}
             </div>
           </div>
         )}

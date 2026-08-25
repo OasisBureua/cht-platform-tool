@@ -27,6 +27,8 @@ export interface ZoomWebinar {
   thumbnail?: string;
   /** Webinar-only Zoom settings (Q&A, Backstage, HD, recording). */
   settings?: ZoomWebinarSettings;
+  /** Zoom user id of the host (for Meeting SDK host ZAK). */
+  hostId?: string;
 }
 
 interface ZoomTokenResponse {
@@ -76,6 +78,7 @@ interface ZoomWebinarResponse {
   start_url: string;
   timezone: string;
   password?: string;
+  host_id?: string;
   settings?: {
     practice_session?: boolean;
     hd_video?: boolean;
@@ -98,6 +101,7 @@ interface ZoomMeetingApiResponse {
   start_url: string;
   timezone: string;
   password?: string;
+  host_id?: string;
 }
 
 /** Zoom panelist URLs share the webinar path; uniqueness is in the `tk=` query param. */
@@ -448,6 +452,7 @@ export class ZoomService implements OnModuleInit {
         startUrl: data.start_url,
         timezone: data.timezone,
         password: data.password?.trim() || undefined,
+        hostId: data.host_id?.trim() || undefined,
         settings: fromZoomWebinarSettingsApi(data.settings),
       };
     } catch (err) {
@@ -840,12 +845,54 @@ export class ZoomService implements OnModuleInit {
         startUrl: data.start_url,
         timezone: data.timezone,
         password: data.password?.trim() || undefined,
+        hostId: data.host_id?.trim() || undefined,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Zoom getMeeting ${meetingId} failed: ${msg}`);
       return null;
     }
+  }
+
+  /**
+   * Zoom Access Key for hosting via Meeting SDK (role=1).
+   * Requires Server-to-Server OAuth scope user:read:token:admin (or equivalent).
+   */
+  async getZakToken(zoomUserId: string): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom not configured');
+    }
+    const uid = zoomUserId?.trim();
+    if (!uid) {
+      throw new Error('Zoom host user id is required for ZAK');
+    }
+    const token = await this.getAccessToken();
+    const { data } = await firstValueFrom(
+      this.http.get<{ token?: string }>(
+        `https://api.zoom.us/v2/users/${encodeURIComponent(uid)}/token`,
+        {
+          params: { type: 'zak' },
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
+    const zak = data?.token?.trim();
+    if (!zak) {
+      throw new Error('Zoom did not return a ZAK token for the host user');
+    }
+    return zak;
+  }
+
+  /** Resolve host Zoom user id for a webinar or meeting (for Meeting SDK host start). */
+  async getSessionHostId(
+    sessionType: 'WEBINAR' | 'MEETING',
+    meetingNumber: string,
+  ): Promise<string | null> {
+    const remote =
+      sessionType === 'WEBINAR'
+        ? await this.getWebinarById(meetingNumber)
+        : await this.getMeetingById(meetingNumber);
+    return remote?.hostId?.trim() || null;
   }
 
   async updateMeeting(

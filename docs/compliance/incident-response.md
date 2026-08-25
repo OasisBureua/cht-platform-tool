@@ -40,6 +40,7 @@ Document substitutes when primary contacts are unavailable.
 - **Scope:** One detector per account **per region**.
 - **us-east-1:** Managed by platform Terraform (`cht-platform-guardduty-findings` → `cht-platform-alerts`).
 - **us-east-2:** Managed by DR Terraform (`cht-platform-dr-use2-*-guardduty-findings` → regional alerts topic).
+- **Email filter:** EventBridge only publishes findings with severity **≥ 4.0 (Medium+)**. Low findings (e.g. internet port probes on public EC2, routine root-console API use) stay in the GuardDuty console and are not emailed. Updated findings re-notify at most every **6 hours**. Emails use a short human-readable body (not raw JSON).
 - **Action:** Open [GuardDuty console](https://console.aws.amazon.com/guardduty/) → switch region → Findings.
 
 ### Amazon CloudWatch alarms
