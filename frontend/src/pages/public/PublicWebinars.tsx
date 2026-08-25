@@ -2,8 +2,9 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock } from 'lucide-react';
-import { format, isPast, isFuture, formatDistanceToNow } from 'date-fns';
+import { format, isFuture, formatDistanceToNow } from 'date-fns';
 import { webinarsApi } from '../../api/webinars';
+import { isSessionExpired } from '../../utils/live-session-timing';
 
 type WebinarRow = {
   id: string;
@@ -22,11 +23,11 @@ export default function PublicWebinars() {
 
   const { upcoming, recent } = useMemo(() => {
     const upcomingList = webinars
-      .filter((w) => w.startTime && isFuture(new Date(w.startTime)))
+      .filter((w) => w.startTime && !isSessionExpired(w.startTime, w.duration))
       .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime());
 
     const recentPast = webinars
-      .filter((w) => w.startTime && isPast(new Date(w.startTime)))
+      .filter((w) => w.startTime && isSessionExpired(w.startTime, w.duration))
       .sort((a, b) => new Date(b.startTime!).getTime() - new Date(a.startTime!).getTime())
       .slice(0, 5);
 

@@ -67,6 +67,7 @@ export default function AdminProgramHub() {
   const feedbackQuestions = registrationPayload?.surveys?.feedback?.questions;
   const intakeSurveyId = registrationPayload?.surveys?.intake?.id;
   const feedbackSurveyId = registrationPayload?.surveys?.feedback?.id;
+  const linkedSurveys = registrationPayload?.surveys?.all ?? [];
   const [csvDownloading, setCsvDownloading] = useState<'intake' | 'feedback' | null>(null);
 
   const downloadSurveyCsv = async (surveyId: string, kind: 'intake' | 'feedback') => {
@@ -540,6 +541,78 @@ export default function AdminProgramHub() {
           </ul>
         </section>
       )}
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Linked surveys</h2>
+            <p className="text-sm text-gray-600">
+              Every native survey on this program (intake, post-event, and any legacy rows). Open edit, responses, or the
+              learner survey URL.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={confirmEnsureNativeSurveys}
+            disabled={ensureNativeSurveysMut.isPending}
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw
+              className={['h-3.5 w-3.5', ensureNativeSurveysMut.isPending ? 'animate-spin' : ''].join(' ')}
+            />
+            {ensureNativeSurveysMut.isPending ? 'Checking…' : 'Ensure native surveys'}
+          </button>
+        </div>
+        {rLoading ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : linkedSurveys.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No surveys linked yet. Use <strong>Ensure native surveys</strong> to attach intake and post-event templates
+            without changing existing responses.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {linkedSurveys.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 px-3 py-2.5 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{s.title}</p>
+                  <p className="text-xs text-gray-500">
+                    {s.type}
+                    {s.isCustomized ? ' · customized' : ''}
+                    {s.jotformFormId ? ` · Jotform ${s.jotformFormId}` : ' · native'}
+                    {' · '}
+                    {format(parseISO(s.createdAt), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2 shrink-0">
+                  <Link
+                    to={`/admin/surveys/${s.id}/edit`}
+                    className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    Edit
+                  </Link>
+                  <Link
+                    to={`/admin/surveys/${s.id}/responses`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50"
+                  >
+                    Responses
+                  </Link>
+                  <Link
+                    to={`/app/surveys/${s.id}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50"
+                  >
+                    Learner link
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Self-serve form links</h2>
@@ -1473,8 +1546,8 @@ function ZoomLinksSection({
               <Link
                 to={
                   isWebinar
-                    ? `/app/live/${pr.id}/session?host=1`
-                    : `/app/chm-office-hours/${pr.id}/session?host=1`
+                    ? `/app/live/${pr.id}/session?host=1&returnTo=${encodeURIComponent(`/admin/programs/${pr.id}/hub`)}`
+                    : `/app/chm-office-hours/${pr.id}/session?host=1&returnTo=${encodeURIComponent(`/admin/programs/${pr.id}/hub`)}`
                 }
                 className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition-colors"
               >

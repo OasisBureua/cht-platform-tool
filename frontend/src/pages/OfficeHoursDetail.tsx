@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
+import { isRegistrationClosed } from '../utils/live-session-timing';
 
 export default function OfficeHoursDetail() {
   const { id } = useParams<{ id: string }>();
@@ -98,6 +99,7 @@ export default function OfficeHoursDetail() {
   }
 
   const start = session.startTime ? new Date(session.startTime) : null;
+  const registrationClosed = isRegistrationClosed(session.startTime);
 
   return (
     <div className="space-y-8 pb-24 md:pb-0">
@@ -171,6 +173,13 @@ export default function OfficeHoursDetail() {
                   </div>
                 </div>
               </div>
+            ) : registrationClosed ? (
+              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
+                <p className="text-sm font-semibold text-gray-900">Registration closed</p>
+                <p className="mt-0.5 text-sm text-gray-700">
+                  This session has already started. New registrations are no longer accepted.
+                </p>
+              </div>
             ) : needsRegistrationWizard ? (
               <Link
                 to={`/app/chm-office-hours/${id}/register`}
@@ -193,7 +202,7 @@ export default function OfficeHoursDetail() {
               enrolled ? (
                 <div className="flex flex-wrap gap-2">
                   <Link
-                    to={`/app/chm-office-hours/${id}/session`}
+                    to={`/app/chm-office-hours/${id}/session?returnTo=${encodeURIComponent(`/app/chm-office-hours/${id}`)}`}
                     className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                   >
                     <MonitorPlay className="h-4 w-4" />
@@ -228,7 +237,7 @@ export default function OfficeHoursDetail() {
               <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
                 <p className="text-xs font-semibold text-violet-900">Admin: start as Zoom host</p>
                 <Link
-                  to={`/app/chm-office-hours/${id}/session?host=1`}
+                  to={`/app/chm-office-hours/${id}/session?host=1&returnTo=${encodeURIComponent(`/app/chm-office-hours/${id}`)}`}
                   className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
                 >
                   <MonitorPlay className="h-4 w-4" />
