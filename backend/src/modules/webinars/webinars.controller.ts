@@ -44,9 +44,13 @@ export class WebinarsController {
   async meetingSdkAuth(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
+    @Body() body?: { asHost?: boolean },
   ): Promise<MeetingSdkAuthDto> {
-    this.logger.log(`Webinar Meeting SDK auth for program ${id} user ${user.userId}`);
-    return this.webinarsService.getWebinarMeetingSdkAuth(user, id);
+    const asHost = !!body?.asHost;
+    this.logger.log(
+      `Webinar Meeting SDK auth for program ${id} user ${user.userId} asHost=${asHost}`,
+    );
+    return this.webinarsService.getWebinarMeetingSdkAuth(user, id, { asHost });
   }
 
   /**

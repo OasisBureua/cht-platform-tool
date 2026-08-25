@@ -5,12 +5,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { programsApi } from '../api/programs';
 import { webinarsApi } from '../api/webinars';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { ChevronLeft, Video, ExternalLink } from 'lucide-react';
+import { ChevronLeft, Video, ExternalLink, MonitorPlay } from 'lucide-react';
 import { format } from 'date-fns';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
-import { OfficeHoursZoomEmbed } from '../components/zoom/OfficeHoursZoomEmbed';
 
 export default function OfficeHoursDetail() {
   const { id } = useParams<{ id: string }>();
@@ -192,10 +191,24 @@ export default function OfficeHoursDetail() {
 
             {session.joinUrl ? (
               enrolled ? (
-                <OfficeHoursZoomEmbed
-                  programId={id!}
-                  joinUrlFallback={session.joinUrl}
-                />
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to={`/app/chm-office-hours/${id}/session`}
+                    className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                  >
+                    <MonitorPlay className="h-4 w-4" />
+                    Join in browser
+                  </Link>
+                  <a
+                    href={session.joinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Open in Zoom
+                    <ExternalLink className="h-4 w-4 opacity-80" />
+                  </a>
+                </div>
               ) : registrationPendingApproval ? (
                 <button
                   type="button"
@@ -211,6 +224,18 @@ export default function OfficeHoursDetail() {
             ) : (
               <p className="text-sm text-gray-500">Join link will appear here when available.</p>
             )}
+            {user?.role === 'ADMIN' && id ? (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
+                <p className="text-xs font-semibold text-violet-900">Admin: start as Zoom host</p>
+                <Link
+                  to={`/app/chm-office-hours/${id}/session?host=1`}
+                  className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
+                >
+                  <MonitorPlay className="h-4 w-4" />
+                  Start as host in browser
+                </Link>
+              </div>
+            ) : null}
           </div>
         )}
 
