@@ -987,18 +987,30 @@ export const adminApi = {
           surveys?: {
             intake?: { id: string; questions: unknown } | null;
             feedback?: { id: string; questions: unknown } | null;
+            all?: Array<{
+              id: string;
+              title: string;
+              type: string;
+              createdAt: string;
+              jotformFormId?: string | null;
+              isCustomized?: boolean;
+            }>;
           };
         }
       | ProgramRegistrationAdminRow[];
     if (Array.isArray(payload)) {
       return {
         registrations: payload,
-        surveys: { intake: null, feedback: null },
+        surveys: { intake: null, feedback: null, all: [] },
       };
     }
     return {
       registrations: payload.registrations ?? [],
-      surveys: payload.surveys ?? { intake: null, feedback: null },
+      surveys: {
+        intake: payload.surveys?.intake ?? null,
+        feedback: payload.surveys?.feedback ?? null,
+        all: payload.surveys?.all ?? [],
+      },
     };
   },
 

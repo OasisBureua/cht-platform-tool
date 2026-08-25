@@ -13,7 +13,8 @@ import {
   Activity,
   ClipboardCheck,
 } from 'lucide-react';
-import { format, isPast } from 'date-fns';
+import { format } from 'date-fns';
+import { isSessionExpired } from '../utils/live-session-timing';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { surveysApi } from '../api/surveys';
 import { dashboardApi } from '../api/dashboard';
@@ -879,7 +880,7 @@ export default function Dashboard() {
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
                 description={
                   w.startTime
-                    ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
+                    ? `${isSessionExpired(w.startTime, w.duration) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Medical education'
                 }
               />
@@ -911,7 +912,7 @@ export default function Dashboard() {
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
                 description={
                   w.startTime
-                    ? `${isPast(new Date(w.startTime)) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
+                    ? `${isSessionExpired(w.startTime, w.duration) ? 'Past' : 'Upcoming'} · ${format(new Date(w.startTime), 'MMM d, yyyy')}`
                     : 'Office Hours'
                 }
               />

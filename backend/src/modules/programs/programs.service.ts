@@ -390,6 +390,15 @@ export class ProgramsService {
     if (!user) throw new NotFoundException('User not found');
     if (!program) throw new NotFoundException('Program not found');
 
+    if (
+      program.startDate &&
+      Date.now() >= program.startDate.getTime()
+    ) {
+      throw new BadRequestException(
+        'Registration closed when this session started. Join is only available if you were already approved.',
+      );
+    }
+
     // Create enrollment
     const enrollment = await this.prisma.programEnrollment.create({
       data: {

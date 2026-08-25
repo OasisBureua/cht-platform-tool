@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import ScrollToTop from './components/ScrollToTop';
@@ -182,68 +182,79 @@ function App() {
 
             {/* =======================
                 APP ROUTES (UNDER /app)
+                Session pages sit outside Layout so Welcome chrome never shows.
                 ======================= */}
             <Route
               path="/app"
               element={
                 <ProtectedRoute>
-                  <Layout />
+                  <Outlet />
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/app/home" replace />} />
-
-              <Route path="home" element={<Dashboard />} />
-              <Route path="search" element={<ExploreOpportunities />} />
-
-              <Route path="live" element={<Webinars />} />
-              <Route path="live/register-multiple" element={<LiveMultiRegister />} />
-              <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
+              {/* Full-screen Zoom — declared before Layout so they outrank live/:id */}
               <Route path="live/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
-              <Route path="live/:id" element={<WebinarDetail />} />
-              <Route path="webinars" element={<Navigate to="/app/live" replace />} />
-              <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
               <Route path="webinars/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
-              <Route path="webinars/:id" element={<WebinarDetail />} />
+              <Route
+                path="chm-office-hours/:id/session"
+                element={<ZoomSessionPage sessionKind="MEETING" />}
+              />
+              <Route
+                path="office-hours/:id/session"
+                element={<ZoomSessionPage sessionKind="MEETING" />}
+              />
 
-              <Route path="chm-office-hours" element={<OfficeHours />} />
-              <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
-              <Route path="chm-office-hours/:id/session" element={<ZoomSessionPage sessionKind="MEETING" />} />
-              <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
-              <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
-              <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
-              <Route path="office-hours/:id/session" element={<ZoomSessionPage sessionKind="MEETING" />} />
-              <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
+              <Route element={<Layout />}>
+                <Route index element={<Navigate to="/app/home" replace />} />
 
-              <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
-              <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
+                <Route path="home" element={<Dashboard />} />
+                <Route path="search" element={<ExploreOpportunities />} />
 
-              <Route path="surveys" element={<Surveys />} />
-              <Route path="surveys/:id" element={<SurveyDetail />} />
+                <Route path="live" element={<Webinars />} />
+                <Route path="live/register-multiple" element={<LiveMultiRegister />} />
+                <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="live/:id" element={<WebinarDetail />} />
+                <Route path="webinars" element={<Navigate to="/app/live" replace />} />
+                <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="webinars/:id" element={<WebinarDetail />} />
 
-              <Route path="podcasts" element={<Podcasts />} />
-              <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
-              <Route path="podcasts/:showId" element={<PodcastShow />} />
+                <Route path="chm-office-hours" element={<OfficeHours />} />
+                <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
+                <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
+                <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
-              <Route path="watch/:videoId" element={<WatchVideo />} />
-              <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
+                <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
+                <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
 
-              <Route path="clip/:id" element={<ClipDetail />} />
-              {/* Legacy in-app links used /app/catalog/clip/:id, keep working */}
-              <Route path="catalog/clip/:id" element={<ClipDetail />} />
+                <Route path="surveys" element={<Surveys />} />
+                <Route path="surveys/:id" element={<SurveyDetail />} />
 
-              <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
-              <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
-              <Route path="catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
-              <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
-              <Route path="catalog" element={<VideosPage />} />
+                <Route path="podcasts" element={<Podcasts />} />
+                <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
+                <Route path="podcasts/:showId" element={<PodcastShow />} />
 
-              <Route path="earnings" element={<Earnings />} />
-              <Route path="chatbot" element={<ChatBot />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="payments" element={<Payments />} />
+                <Route path="watch/:videoId" element={<WatchVideo />} />
+                <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
 
-              <Route path="*" element={<Navigate to="/app/home" replace />} />
+                <Route path="clip/:id" element={<ClipDetail />} />
+                {/* Legacy in-app links used /app/catalog/clip/:id, keep working */}
+                <Route path="catalog/clip/:id" element={<ClipDetail />} />
+
+                <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
+                <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+                <Route path="catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
+                <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
+                <Route path="catalog" element={<VideosPage />} />
+
+                <Route path="earnings" element={<Earnings />} />
+                <Route path="chatbot" element={<ChatBot />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="payments" element={<Payments />} />
+
+                <Route path="*" element={<Navigate to="/app/home" replace />} />
+              </Route>
             </Route>
 
             {/* =======================

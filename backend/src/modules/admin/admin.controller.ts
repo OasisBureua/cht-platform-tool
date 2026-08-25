@@ -1875,6 +1875,18 @@ export class AdminController {
       orderBy: { createdAt: 'desc' },
       select: { id: true, questions: true },
     });
+    const allSurveys = await this.prisma.survey.findMany({
+      where: { programId: id },
+      orderBy: [{ type: 'asc' }, { createdAt: 'desc' }],
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        createdAt: true,
+        jotformFormId: true,
+        isCustomized: true,
+      },
+    });
     const userIds = rows.map((r) => r.userId);
     const postEventResponses = feedbackSurvey
       ? await this.prisma.surveyResponse.findMany({
@@ -2003,6 +2015,15 @@ export class AdminController {
         feedback: feedbackSurvey
           ? { id: feedbackSurvey.id, questions: feedbackSurvey.questions }
           : null,
+        /** Every survey on this program (incl. legacy / extra native rows). */
+        all: allSurveys.map((s) => ({
+          id: s.id,
+          title: s.title,
+          type: s.type,
+          createdAt: s.createdAt.toISOString(),
+          jotformFormId: s.jotformFormId,
+          isCustomized: s.isCustomized,
+        })),
       },
       registrations: rows.map(mapRegistrationRow),
     };

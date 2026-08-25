@@ -2,9 +2,10 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock } from 'lucide-react';
-import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../../api/webinars';
 import { catalogApi, type CatalogItem } from '../../api/catalog';
+import { isSessionExpired } from '../../utils/live-session-timing';
 
 const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
 
@@ -41,7 +42,7 @@ const FALLBACK_HR: Treatment[] = [
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
-  return isPast(new Date(w.startTime));
+  return isSessionExpired(w.startTime, w.duration);
 }
 
 function formatDuration(minutes?: number): string {

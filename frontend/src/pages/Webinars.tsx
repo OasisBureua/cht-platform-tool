@@ -2,12 +2,13 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight, Radio } from 'lucide-react';
-import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { BillComMark } from '../components/branding/BillComMark';
+import { isSessionExpired } from '../utils/live-session-timing';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -19,8 +20,7 @@ const WEBINAR_PLACEHOLDER_IMAGES = [
 ];
 
 function isExpired(w: WebinarItem): boolean {
-  if (!w.startTime) return false;
-  return isPast(new Date(w.startTime));
+  return isSessionExpired(w.startTime, w.duration);
 }
 
 function formatDuration(minutes?: number): string {
