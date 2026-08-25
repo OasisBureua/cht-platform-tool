@@ -622,6 +622,15 @@ export class ProgramRegistrationsService {
       throw new BadRequestException('Program is not open for registration');
     }
 
+    if (
+      program.startDate &&
+      Date.now() >= program.startDate.getTime()
+    ) {
+      throw new BadRequestException(
+        'Registration closed when this session started. Join is only available if you were already approved.',
+      );
+    }
+
     const existingEnrollment = await this.prisma.programEnrollment.findUnique({
       where: { userId_programId: { userId, programId } },
     });

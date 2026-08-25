@@ -11,6 +11,7 @@ import { surveysApi } from '../api/surveys';
 import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNotice';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 import { getApiErrorMessage } from '../api/client';
+import { isRegistrationClosed } from '../utils/live-session-timing';
 
 // SCRUM-178: removed 'submit' step; last-step button fires submitRegistration directly.
 type StepKey = 'intake' | 'slot';
@@ -278,6 +279,8 @@ export default function ProgramRegisterWizard() {
   };
 
   const sessionCoverUrl = getSessionCoverUrl(program);
+  const registrationClosed =
+    !alreadyRegistered && isRegistrationClosed(program.startDate);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-8">
@@ -310,11 +313,27 @@ export default function ProgramRegisterWizard() {
             {program.title}
           </h1>
 
-          {program.sessionDisclaimer?.trim() ? (
+          {registrationClosed ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-800 space-y-2">
+              <p className="font-semibold">Registration closed</p>
+              <p>
+                This session has already started. New registrations are no longer accepted.
+                Join is only available if you were already approved.
+              </p>
+              <Link
+                to={backHref}
+                className="inline-flex w-fit items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+              >
+                Back to session
+              </Link>
+            </div>
+          ) : null}
+
+          {program.sessionDisclaimer?.trim() && !registrationClosed ? (
             <SessionDisclaimerNotice text={program.sessionDisclaimer.trim()} />
           ) : null}
 
-          {steps.length > 0 && (
+          {!registrationClosed && steps.length > 0 && (
             <ol className="flex flex-wrap gap-2 text-xs">
               {steps.map((s, i) => (
                 <li
@@ -334,142 +353,147 @@ export default function ProgramRegisterWizard() {
             </ol>
           )}
 
-          <div className="space-y-4">
-            {alreadyRegistered ? (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 space-y-1">
-                <p className="font-semibold">Registration already submitted</p>
-                <p>
-                  {myRegistration?.status === 'PENDING'
-                    ? 'Your request is pending administrator review. Join opens after approval, when the live session starts.'
-                    : 'You are registered for this session. Join opens closer to the live start time.'}
-                </p>
-              </div>
-            ) : myRegistration?.status === 'SURVEY_SUBMITTED' ? (
-              <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 space-y-1">
-                <p className="font-semibold">Survey submitted</p>
-                <p>
-                  Your intake survey was saved. Continue to submit registration so an administrator can approve you.
-                </p>
-              </div>
-            ) : null}
-
-            {current === 'intake' && program.intakeSurveyId ? (
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-gray-900">
-                  Your information
-                </p>
-                <ProgramSurveyPanel
-                  surveyId={program.intakeSurveyId}
-                  userId={userId ?? ''}
-                  programId={program.id}
-                  authenticated={!!userId}
-                  userSummary={{
-                    firstName: user?.firstName,
-                    lastName: user?.lastName,
-                    email: user?.email,
-                  }}
-                  hideSubmitButton
-                  formId={REGISTRATION_INTAKE_FORM_ID}
-                  onSubmittingChange={setIntakeSubmitting}
-                  onSubmitError={() => {
-                    setIntakeSubmitting(false);
-                    setIntakeSubmitError(
-                      'Could not save intake. Check your connection and try again.',
-                    );
-                  }}
-                  onSubmitted={(submissionId) => {
-                    setIntakeSubmitting(false);
-                    setIntakeSubmitError(null);
-                    setIntakeSubmissionId(submissionId);
-                    // Advance to the next wizard step only — do not register yet.
-                    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
-                  }}
-                />
-                {intakeSubmitError ? (
-                  <p className="text-sm text-red-700">{intakeSubmitError}</p>
+          {!registrationClosed ? (
+            <>
+              <div className="space-y-4">
+                {alreadyRegistered ? (
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 space-y-1">
+                    <p className="font-semibold">Registration already submitted</p>
+                    <p>
+                      {myRegistration?.status === 'PENDING'
+                        ? 'Your request is pending administrator review. Join opens after approval, when the live session starts.'
+                        : 'You are registered for this session. Join opens closer to the live start time.'}
+                    </p>
+                  </div>
+                ) : myRegistration?.status === 'SURVEY_SUBMITTED' ? (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 space-y-1">
+                    <p className="font-semibold">Survey submitted</p>
+                    <p>
+                      Your intake survey was saved. Continue to submit registration so an administrator can approve you.
+                    </p>
+                  </div>
                 ) : null}
-                {intakeRecorded ? (
-                  <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                    Your answers are saved. {isLastStep
-                      ? 'Click Submit registration when ready.'
-                      : 'Continue when you are ready.'}
+
+                {current === 'intake' && program.intakeSurveyId ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Your information
+                    </p>
+                    <ProgramSurveyPanel
+                      surveyId={program.intakeSurveyId}
+                      userId={userId ?? ''}
+                      programId={program.id}
+                      authenticated={!!userId}
+                      userSummary={{
+                        firstName: user?.firstName,
+                        lastName: user?.lastName,
+                        email: user?.email,
+                      }}
+                      hideSubmitButton
+                      formId={REGISTRATION_INTAKE_FORM_ID}
+                      onSubmittingChange={setIntakeSubmitting}
+                      onSubmitError={() => {
+                        setIntakeSubmitting(false);
+                        setIntakeSubmitError(
+                          'Could not save intake. Check your connection and try again.',
+                        );
+                      }}
+                      onSubmitted={(submissionId) => {
+                        setIntakeSubmitting(false);
+                        setIntakeSubmitError(null);
+                        setIntakeSubmissionId(submissionId);
+                        // Advance to the next wizard step only — do not register yet.
+                        setStepIndex((i) => Math.min(i + 1, steps.length - 1));
+                      }}
+                    />
+                    {intakeSubmitError ? (
+                      <p className="text-sm text-red-700">{intakeSubmitError}</p>
+                    ) : null}
+                    {intakeRecorded ? (
+                      <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                        Your answers are saved.{' '}
+                        {isLastStep
+                          ? 'Click Submit registration when ready.'
+                          : 'Continue when you are ready.'}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {current === 'intake' && !program.intakeSurveyId ? (
+                  <p className="text-sm text-gray-600">
+                    No native intake survey is configured for this session yet.
                   </p>
                 ) : null}
-              </div>
-            ) : null}
 
-            {current === 'intake' && !program.intakeSurveyId ? (
-              <p className="text-sm text-gray-600">
-                No native intake survey is configured for this session yet.
-              </p>
-            ) : null}
+                {current === 'slot' && (
+                  <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
+                    <OfficeHoursSlotPicker
+                      slots={slots}
+                      selectedId={selectedSlotId}
+                      onSelect={setSelectedSlotId}
+                      subtitle="The session is split into 10-minute windows (six per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
+                    />
+                  </div>
+                )}
 
-            {current === 'slot' && (
-              <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
-                <OfficeHoursSlotPicker
-                  slots={slots}
-                  selectedId={selectedSlotId}
-                  onSelect={setSelectedSlotId}
-                  subtitle="The session is split into 10-minute windows (six per hour). Pick one, then continue. After registration, join from this app using the same Zoom meeting link the host shared."
-                />
-              </div>
-            )}
+                {/* SCRUM-178: summary/"Ready to submit" tab removed. Submit button on the
+                    last step (intake or slot) fires the mutation directly. When neither
+                    intake nor slot applies (steps.length === 0), the Submit button shows
+                    immediately with a brief context line. */}
+                {steps.length === 0 && !alreadyRegistered && (
+                  <p className="text-sm text-gray-600">
+                    {program.registrationRequiresApproval
+                      ? 'Submitting sends a registration request to an administrator for review.'
+                      : `Submitting completes your registration${program.zoomSessionType === 'MEETING' ? ' and reserves your time slot' : ''}.`}
+                  </p>
+                )}
 
-            {/* SCRUM-178: summary/"Ready to submit" tab removed. Submit button on the
-                last step (intake or slot) fires the mutation directly. When neither
-                intake nor slot applies (steps.length === 0), the Submit button shows
-                immediately with a brief context line. */}
-            {steps.length === 0 && !alreadyRegistered && (
-              <p className="text-sm text-gray-600">
-                {program.registrationRequiresApproval
-                  ? 'Submitting sends a registration request to an administrator for review.'
-                  : `Submitting completes your registration${program.zoomSessionType === 'MEETING' ? ' and reserves your time slot' : ''}.`}
-              </p>
-            )}
-
-            {submitMut.isError && (
-              <div
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
-                role="alert"
-              >
-                {getApiErrorMessage(
-                  submitMut.error,
-                  'Something went wrong. Try again.',
+                {submitMut.isError && (
+                  <div
+                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                    role="alert"
+                  >
+                    {getApiErrorMessage(
+                      submitMut.error,
+                      'Something went wrong. Try again.',
+                    )}
+                  </div>
                 )}
               </div>
-            )}
-          </div>
 
-          <div className="mt-8 flex flex-wrap justify-end gap-3">
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={
-                submitMut.isPending ||
-                (current === 'intake' && intakeSubmitting) ||
-                (current === 'slot' && slots.length > 0 && !selectedSlotId)
-              }
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
-            >
-              {submitMut.isPending && isLastStep ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Submitting…
-                </>
-              ) : intakeSubmitting && current === 'intake' ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : alreadyRegistered && isLastStep ? (
-                'Back to session'
-              ) : isLastStep ? (
-                'Submit registration'
-              ) : (
-                'Continue'
-              )}
-            </button>
-          </div>
+              <div className="mt-8 flex flex-wrap justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={goNext}
+                  disabled={
+                    submitMut.isPending ||
+                    (current === 'intake' && intakeSubmitting) ||
+                    (current === 'slot' && slots.length > 0 && !selectedSlotId)
+                  }
+                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
+                >
+                  {submitMut.isPending && isLastStep ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Submitting…
+                    </>
+                  ) : intakeSubmitting && current === 'intake' ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving…
+                    </>
+                  ) : alreadyRegistered && isLastStep ? (
+                    'Back to session'
+                  ) : isLastStep ? (
+                    'Submit registration'
+                  ) : (
+                    'Continue'
+                  )}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
     </div>

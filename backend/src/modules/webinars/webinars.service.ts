@@ -391,7 +391,13 @@ export class WebinarsService {
     const userId = authUser.userId;
 
     const program = await this.prisma.program.findFirst({
-      where: { id: programId, status: 'PUBLISHED', zoomSessionType: sessionType },
+      where: {
+        id: programId,
+        zoomSessionType: sessionType,
+        ...(asHost
+          ? { status: { in: ['PUBLISHED', 'DRAFT'] } }
+          : { status: 'PUBLISHED' }),
+      },
     });
     if (!program?.zoomMeetingId) {
       throw new BadRequestException(

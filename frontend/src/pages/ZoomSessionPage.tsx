@@ -11,7 +11,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 /**
  * Full-viewport Zoom Meeting SDK session (participant or admin host).
  * Query: `?host=1` starts as Zoom host (ADMIN only).
- * Path kind from route: live → WEBINAR, chm-office-hours → MEETING.
+ * Optional `?returnTo=` absolute path for Back (e.g. Program Hub).
  */
 export default function ZoomSessionPage({
   sessionKind,
@@ -21,16 +21,21 @@ export default function ZoomSessionPage({
   const { id } = useParams<{ id: string }>();
   const [search] = useSearchParams();
   const asHost = search.get('host') === '1' || search.get('host') === 'true';
+  const returnTo = search.get('returnTo')?.trim() || '';
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const isAdmin = user?.role === 'ADMIN';
   const hostRequested = asHost && isAdmin;
 
-  const backTo =
+  const defaultBack =
     sessionKind === 'MEETING'
       ? `/app/chm-office-hours/${id}`
       : `/app/live/${id}`;
+  const backTo =
+    returnTo.startsWith('/') && !returnTo.startsWith('//')
+      ? returnTo
+      : defaultBack;
 
   const programQuery = useQuery({
     queryKey: ['programs', 'detail', id],
@@ -48,6 +53,11 @@ export default function ZoomSessionPage({
     if (hostRequested && p.zoomStartUrl?.trim()) return p.zoomStartUrl.trim();
     return p.zoomJoinUrl?.trim() || undefined;
   }, [programQuery.data, hostRequested]);
+
+  const goBack = () => {
+    // Prefer an explicit in-app return path so Back never lands on a blank history entry.
+    navigate(backTo, { replace: true });
+  };
 
   if (!id) {
     return (
@@ -81,7 +91,7 @@ export default function ZoomSessionPage({
       <header className="flex h-12 shrink-0 items-center gap-3 border-b border-white/10 px-3 sm:px-4">
         <button
           type="button"
-          onClick={() => navigate(backTo)}
+          onClick={goBack}
           className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-200 hover:bg-white/10"
         >
           <ArrowLeft className="h-4 w-4" />

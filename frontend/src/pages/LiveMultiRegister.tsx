@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { format, isPast } from 'date-fns';
+import { format } from 'date-fns';
 import { ChevronLeft, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
@@ -9,6 +9,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getApiErrorMessage } from '../api/client';
 import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
+import { isRegistrationClosed, isSessionExpired } from '../utils/live-session-timing';
 
 import {
   clearMultiRegisterState,
@@ -26,13 +27,15 @@ const MULTI_REGISTER_INTAKE_FORM_ID = 'multi-register-intake-survey';
 
 function isExpired(w: WebinarItem): boolean {
   if (!w.startTime) return false;
-  return isPast(new Date(w.startTime));
+  return isSessionExpired(w.startTime, w.duration);
 }
 
 function canBulkRegister(
   programId: string,
   statusByProgramId: Map<string, { enrolled: boolean; registrationStatus: string | null }>,
+  webinar?: WebinarItem,
 ): boolean {
+  if (webinar && isRegistrationClosed(webinar.startTime)) return false;
   const s = statusByProgramId.get(programId);
   if (!s) return true;
   if (s.enrolled) return false;
@@ -110,7 +113,7 @@ export default function LiveMultiRegister() {
   const upcoming = useMemo(() => {
     return webinars
       .filter((w) => !isExpired(w))
-      .filter((w) => canBulkRegister(w.id, statusByProgramId))
+      .filter((w) => canBulkRegister(w.id, statusByProgramId, w))
       .sort((a, b) => {
         const ta = a.startTime ? new Date(a.startTime).getTime() : 0;
         const tb = b.startTime ? new Date(b.startTime).getTime() : 0;

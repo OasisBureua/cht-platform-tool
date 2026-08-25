@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
+import { isRegistrationClosed } from '../utils/live-session-timing';
 
 function formatMoney(value?: number | null) {
   if (!value) return '$0';
@@ -316,14 +317,19 @@ export default function WebinarDetail() {
           !!program.intakeSurveyId ||
           !!program.registrationRequiresApproval)));
 
+  const registrationClosed = isRegistrationClosed(program.startDate);
+
   const ctaLabel = enrolled
     ? 'Registered'
+    : registrationClosed
+      ? 'Registration closed'
     : enrollMutation.isPending
     ? 'Registering…'
     : 'Register Now';
 
   const ctaDisabled =
     enrolled ||
+    registrationClosed ||
     enrollMutation.isPending ||
     myRegistration?.status === 'PENDING';
 
@@ -461,7 +467,15 @@ export default function WebinarDetail() {
             </div>
 
             {myRegistration?.status !== 'PENDING' ? (
-              needsRegistrationWizard && !enrolled && !userId ? (
+              registrationClosed && !enrolled ? (
+                <button
+                  type="button"
+                  disabled
+                  className={`${registerCtaClass} cursor-not-allowed bg-gray-200 text-gray-600`}
+                >
+                  Registration closed
+                </button>
+              ) : needsRegistrationWizard && !enrolled && !userId ? (
                 <Link
                   to="/login"
                   state={{ from: { pathname: `/app/live/${program.id}/register` } }}
@@ -590,7 +604,7 @@ export default function WebinarDetail() {
           {program.zoomJoinUrl?.trim() && program.canJoinSession !== false && enrolled ? (
             <div className="flex flex-wrap gap-2">
               <Link
-                to={`/app/live/${program.id}/session`}
+                to={`/app/live/${program.id}/session?returnTo=${encodeURIComponent(`/app/live/${program.id}`)}`}
                 className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
               >
                 <MonitorPlay className="h-4 w-4" />
@@ -651,7 +665,7 @@ export default function WebinarDetail() {
               </p>
               <div className="flex flex-wrap gap-2">
                 <Link
-                  to={`/app/live/${program.id}/session?host=1`}
+                  to={`/app/live/${program.id}/session?host=1&returnTo=${encodeURIComponent(`/app/live/${program.id}`)}`}
                   className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
                 >
                   <MonitorPlay className="h-4 w-4" />
@@ -767,6 +781,8 @@ export default function WebinarDetail() {
 
           {myRegistration?.status === 'PENDING' ? (
             <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
+          ) : registrationClosed && !enrolled ? (
+            <span className="ml-auto text-xs font-medium text-gray-600">Registration closed</span>
           ) : needsRegistrationWizard && !enrolled && !userId ? (
             <Link
               to="/login"

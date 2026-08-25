@@ -252,6 +252,22 @@ export function ZoomEmbed({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoJoin, disabled]);
 
+  // Tear down Zoom on unmount so Back does not leave a blank/white overlay.
+  useEffect(() => {
+    return () => {
+      joinedRef.current = false;
+      pendingCredsRef.current = null;
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
+          { type: 'cht-zoom-leave' },
+          '*',
+        );
+      } catch {
+        /* ignore */
+      }
+    };
+  }, []);
+
   const controls = (
     <div className={fill ? 'flex flex-wrap items-center gap-2' : 'flex flex-wrap gap-2'}>
       {!autoJoin || error || waitingForHost || unsupported ? (
