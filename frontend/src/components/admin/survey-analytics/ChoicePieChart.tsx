@@ -2,6 +2,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import type { SurveyChoiceOptionCount } from '../../../api/admin';
 import { seriesColor } from './chartTheme';
+import { choicePieHeightPx } from './chartSizing';
 
 interface ChoicePieChartProps {
   options: SurveyChoiceOptionCount[];
@@ -41,24 +42,36 @@ export function ChoicePieChart({ options }: ChoicePieChartProps) {
     return <p className="py-6 text-center text-sm text-gray-500">No answers recorded.</p>;
   }
 
+  // Zero-count options contribute no visible slice (Recharts omits them).
+  const nonZeroSlices = options.filter((o) => o.count > 0).length;
+  const height = choicePieHeightPx(nonZeroSlices);
+  const slices = options
+    .map((option, colorIndex) => ({ ...option, colorIndex }))
+    .filter((option) => option.count > 0);
+
   return (
-    <div style={{ height: 220 }} className="w-full" data-testid="choice-pie-chart">
+    <div
+      style={{ height }}
+      className="w-full"
+      data-testid="choice-pie-chart"
+      data-nonzero-slices={nonZeroSlices}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={options}
+            data={slices}
             dataKey="count"
             nameKey="label"
             innerRadius="55%"
             outerRadius="80%"
-            paddingAngle={2}
+            paddingAngle={0}
             stroke="#fff"
-            strokeWidth={2}
+            strokeWidth={1}
             isAnimationActive
             animationDuration={600}
           >
-            {options.map((entry, i) => (
-              <Cell key={entry.label} fill={seriesColor(i)} />
+            {slices.map((entry) => (
+              <Cell key={entry.label} fill={seriesColor(entry.colorIndex)} />
             ))}
           </Pie>
           <Tooltip content={<PieTooltip />} />

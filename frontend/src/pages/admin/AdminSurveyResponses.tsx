@@ -109,15 +109,22 @@ export default function AdminSurveyResponses() {
           </p>
         </div>
         {tab === 'analytics' ? (
-          <button
-            type="button"
-            onClick={downloadAnalyticsPdf}
-            disabled={responses.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Download PDF
-          </button>
+          <div className="flex flex-col items-stretch gap-1 sm:items-end">
+            <button
+              type="button"
+              onClick={downloadAnalyticsPdf}
+              disabled={responses.length === 0}
+              title="Opens print preview. For a clean PDF, uncheck Headers and footers in the print dialog."
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </button>
+            <p className="max-w-xs text-right text-[11px] leading-snug text-gray-400">
+              Tip: uncheck <span className="font-medium text-gray-500">Headers and footers</span> in
+              the print dialog to hide browser date/URL lines.
+            </p>
+          </div>
         ) : (
           <button
             type="button"

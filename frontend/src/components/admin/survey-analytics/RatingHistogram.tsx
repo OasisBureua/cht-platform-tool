@@ -10,6 +10,7 @@ import {
 
 import type { SurveyHistogramBucket } from '../../../api/admin';
 import { MUTED, TEAL } from './chartTheme';
+import { ratingHistogramHeightPx } from './chartSizing';
 
 interface RatingHistogramProps {
   histogram: SurveyHistogramBucket[];
@@ -42,8 +43,16 @@ export function RatingHistogram({ histogram }: RatingHistogramProps) {
     return <p className="py-6 text-center text-sm text-gray-500">No ratings recorded.</p>;
   }
 
+  const nonZeroBuckets = histogram.filter((b) => b.count > 0).length;
+  const height = ratingHistogramHeightPx(nonZeroBuckets);
+
   return (
-    <div className="h-44 w-full" data-testid="rating-histogram">
+    <div
+      style={{ height }}
+      className="w-full"
+      data-testid="rating-histogram"
+      data-nonzero-buckets={nonZeroBuckets}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={histogram} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid vertical={false} stroke={MUTED} strokeOpacity={0.16} strokeDasharray="3 6" />

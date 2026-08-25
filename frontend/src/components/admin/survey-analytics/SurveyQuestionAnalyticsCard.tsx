@@ -105,16 +105,16 @@ function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalyt
         <ChoiceDistributionChart options={question.options} multiSelect={question.multiSelect} />
       )}
 
-      <ul className="mt-2 space-y-1">
+      <ul className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
         {question.options.map((o, i) => (
-          <li key={o.label} className="flex items-center justify-between text-xs text-gray-600">
-            <span className="flex min-w-0 items-center gap-2 pr-2">
+          <li key={o.label} className="flex items-start justify-between gap-3 text-xs text-gray-600">
+            <span className="flex min-w-0 items-start gap-2 pr-2">
               <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: showPie ? seriesColor(i) : TEAL }}
                 aria-hidden
               />
-              <span className="truncate">{o.label}</span>
+              <span className="break-words">{o.label}</span>
             </span>
             <span className="shrink-0 font-mono tabular-nums text-gray-500">
               {o.count.toLocaleString()} · {o.percentage.toFixed(0)}%

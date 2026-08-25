@@ -59,7 +59,12 @@ export function ChoiceDistributionChart({ options }: ChoiceDistributionChartProp
   const height = Math.max(120, data.length * 44);
 
   return (
-    <div style={{ height }} className="w-full" data-testid="choice-distribution-chart">
+    <div
+      style={{ height }}
+      className="w-full"
+      data-testid="choice-distribution-chart"
+      data-option-count={data.length}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}

@@ -8,7 +8,10 @@ interface SummaryCardProps {
 
 function SummaryCard({ label, value, hint }: SummaryCardProps) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
+    <div
+      className="rounded-2xl border border-gray-200 bg-white p-4"
+      data-print-kpi
+    >
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
       <p className="mt-1 text-2xl font-bold tabular-nums text-gray-900">{value}</p>
       {hint ? <p className="mt-0.5 text-xs text-gray-400">{hint}</p> : null}
@@ -26,7 +29,11 @@ export function SurveyAnalyticsSummaryCards({ totals }: { totals: SurveyAnalytic
     : 'Not applicable';
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div
+      className="grid grid-cols-1 gap-4 sm:grid-cols-3"
+      data-testid="survey-analytics-summary"
+      data-print-section="summary"
+    >
       <SummaryCard label="Total responses" value={totals.totalResponses.toLocaleString()} />
       <SummaryCard
         label="Unique respondents"
