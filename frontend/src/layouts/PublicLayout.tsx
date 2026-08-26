@@ -9,10 +9,9 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
+import { ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import ChatBubble from '../components/ChatBubble';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
-import { Field } from '../components/ui';
 import { useTheme } from '../contexts/ThemeContext';
 import DISEASE_AREAS from '../data/disease-areas';
 import { CHM_PODCAST_PLATFORM_LINKS, PODCAST_SHOWS } from '../data/podcastsCatalog';
@@ -30,7 +29,7 @@ const destinations = [
   ...nav,
   { to: '/about', label: 'About CHM' },
   { to: '/what-we-do', label: 'What we do' },
-  { to: '/contact', label: 'Contact the editorial team' },
+  { to: '/contact', label: 'Contact' },
 ];
 
 /* The suggestions are the real tokens /catalog matches on, taken from
@@ -60,7 +59,6 @@ export default function PublicLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState('');
-  const [newsletterEmail, setNewsletterEmail] = useState('');
 
   /* One navigation closes every transient surface. Adjusting during
      render rather than in an effect means the panel is never painted
@@ -109,15 +107,18 @@ export default function PublicLayout() {
     else navigate('/catalog');
   };
 
-  /* No subscription endpoint exists, so the form hands off to the real
-     contact route rather than pretending to have signed anyone up. The
-     address travels in router state, never in the URL. */
-  const submitNewsletter = (e: FormEvent) => {
-    e.preventDefault();
-    const email = newsletterEmail.trim();
-    setNewsletterEmail('');
-    navigate('/contact', email ? { state: { email } } : undefined);
-  };
+
+  /* Auth pages are a single decision on one screen. A footer under
+     them adds a scroll to a page that is meant to fit the frame, and
+     offers twenty exits from a form we just asked someone to finish. */
+  const AUTH_ROUTES = [
+    '/login', '/join', '/admin/login', '/forgot-password',
+    '/reset-password/confirm', '/mfa/setup', '/verify-email',
+    '/complete-profile', '/auth/callback',
+  ];
+  const isAuthRoute = AUTH_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + '/'),
+  );
 
   const drawerLinks = [
     ...nav,
@@ -279,45 +280,7 @@ export default function PublicLayout() {
       </main>
       <ChatBubble />
 
-      <section aria-labelledby="newsletter-heading">
-        <div className="rail grid gap-8 py-14 md:grid-cols-[1fr_auto] md:items-end">
-          <div>
-            <h2 id="newsletter-heading" className="display text-display-m text-text">
-              New sessions, every week
-            </h2>
-            <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
-              One email. Faculty, formats, and what changed in the guidelines.
-            </p>
-          </div>
-
-          <form
-            onSubmit={submitNewsletter}
-            className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          >
-            <Field
-              label="Work email"
-              id="newsletter-email"
-              type="email"
-              name="email"
-              required
-              autoComplete="email"
-              placeholder="you@hospital.org"
-              value={newsletterEmail}
-              onChange={(e) => setNewsletterEmail(e.target.value)}
-              className="sm:w-[19rem]"
-            />
-            <button
-              type="submit"
-              className="press inline-flex h-12 shrink-0 items-center gap-2 rounded-[6px] bg-cta px-6 font-mono text-[0.875rem] tracking-[-0.011em] text-ground hover:bg-cta-deep"
-            >
-              Subscribe
-              <ArrowRight className="size-4" strokeWidth={1.75} />
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <SiteFooter />
+      {!isAuthRoute && <SiteFooter />}
 
       {searchOpen ? (
         <SearchDialog
@@ -697,7 +660,7 @@ const columns: { label: string; links: FooterLink[] }[] = [
       { to: '/about', label: 'About CHM' },
       { to: '/what-we-do', label: 'What we do' },
       { to: '/kol-network', label: 'KOL network' },
-      { to: '/contact', label: 'Contact the editorial team' },
+      { to: '/contact', label: 'Contact' },
     ],
   },
   {

@@ -120,7 +120,13 @@ function SectionHead({
         ) : null}
       </div>
       {sub ? (
-        <p className="prose-lede mt-4 max-w-[52ch] text-body-m text-muted2 md:ms-[8.5rem]">{sub}</p>
+        <p
+          className={`prose-lede mt-4 max-w-[52ch] text-body-m text-muted2 ${
+            index ? 'md:ms-[8.5rem]' : ''
+          }`}
+        >
+          {sub}
+        </p>
       ) : null}
     </div>
   );
@@ -309,18 +315,6 @@ const AREA_TONES: Record<string, { tone: string; mix?: string }> = {
   'weight-loss': { tone: 'var(--color-metabolic)', mix: 'var(--color-metabolic-mix)' },
 };
 
-/**
- * The biomarker vocabulary. Labels and counts are the design's; each
- * chip filters the real catalog on the namespaced MediaHub tag the
- * platform files that biomarker under.
- */
-const BIOMARKERS = [
-  { label: 'HER2+', count: 12, tag: 'biomarker:HER2+' },
-  { label: 'HR+', count: 12, tag: 'biomarker:HR+' },
-  { label: 'HER2-Low / Ultra-Low', count: 9, tag: 'biomarker:HER2-low,biomarker:HER2-ultralow' },
-  { label: 'Triple Negative', count: 11, tag: 'biomarker:TNBC' },
-  { label: 'High Risk', count: 7, tag: 'biomarker:High-Risk / CNS' },
-];
 
 /** The video cut of the session, shown as the document in front. */
 
@@ -493,10 +487,10 @@ export default function Home() {
             sub="Each cluster is sized by what the area actually holds."
           />
         <div className="mt-12">
-          {/* overflow-x-auto clips vertically too, so the hover lift needs
-              headroom inside the scroller rather than margin outside it. */}
-          <div className="-my-5">
-            <div className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-3 overflow-x-auto py-5">
+          {/* A grid, not a scroller: seven areas fit in two rows, and the
+              page already carries enough horizontal scrollers. */}
+          <div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {areas.map((a) => (
                 <DiseaseClusterCard
                   key={a.slug}
@@ -510,19 +504,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-          <div className="mt-8 flex flex-wrap gap-2">
-            {BIOMARKERS.map((b) => (
-              <Link
-                key={b.label}
-                to={`/catalog?tag=${encodeURIComponent(b.tag)}`}
-                className="press inline-flex h-9 items-center gap-2 rounded-[6px] px-4 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                {b.label}
-                <span className="meta text-faint">{b.count}</span>
-              </Link>
-            ))}
-          </div>
         </Band>
       </>
     ),
@@ -661,9 +642,16 @@ export default function Home() {
             sub="Practising specialists who bring their own audiences."
             seeAll={{ noun: 'profiles', to: '/kol-network' }}
           />
-          <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
+          <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-6">
             {faculty.map((k, i) => (
-              <Reveal as="li" key={k.id} delay={i * 50}>
+              <Reveal
+                as="li"
+                key={k.id}
+                delay={i * 50}
+                /* 3 up top, 2 below: the first three take two of six
+                   columns each, the last two take three. */
+                className={i < 3 ? 'sm:col-span-2' : 'sm:col-span-3'}
+              >
                 <Link
                   to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
                   className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -780,11 +768,11 @@ export default function Home() {
               <Reveal as="li" key={a.slug} delay={i * 45}>
                 <Link
                   to="/catalog"
-                  className="press group grid items-baseline gap-x-8 gap-y-2 py-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
+                  className="press group -mx-4 grid items-baseline gap-x-8 gap-y-2 rounded-[8px] px-4 py-7 transition-[background-color] duration-150 hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
                 >
                   <span className="eyebrow text-amber-ink">{a.kicker}</span>
                   <span>
-                    <h3 className="display text-display-s text-text">{a.title}</h3>
+                    <h3 className="display text-display-s text-text transition-colors duration-150 group-hover:text-anchor">{a.title}</h3>
                     <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
                   </span>
                   <span className="meta text-faint md:text-end">{a.read}</span>

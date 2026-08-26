@@ -186,7 +186,7 @@ export function HomeHero({
         </h1>
 
         <p
-          className="rise prose-lede mt-7 max-w-[48ch] text-body-l text-muted2"
+          className="rise prose-lede mt-7 max-w-[70ch] text-body-l text-muted2"
           style={{ animationDelay: '100ms' }}
         >
           Expert video, podcasts and editorial for oncology, organised by disease state and by

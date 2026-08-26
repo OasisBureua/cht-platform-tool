@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon, SlidersHorizontal, X, Loader2, ArrowRight } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
-import { getShortClipId, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 import { Button, Card, Chip, chipKind, SectionHead } from '../../components/ui';
 import { cn } from '../../lib/cn';
@@ -15,6 +15,7 @@ type SearchResult = {
   title: string;
   subtitle: string;
   type: ResultType;
+  image?: string;
   tag?: string;
   href: string;
 };
@@ -107,6 +108,7 @@ export default function Search() {
         type: 'Video' as const,
         tag: Array.isArray(clip.tags) ? clip.tags[0] : undefined,
         href: `/catalog/clip/${getShortClipId(clip.id)}`,
+        image: getMediaHubThumbnail(clip),
       }));
   }, [searchData]);
 
@@ -309,27 +311,35 @@ export default function Search() {
           </Reveal>
 
           {filtered.length > 0 ? (
-            <ul className="mt-10 grid gap-3 lg:grid-cols-2">
+            <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((r, i) => (
                 // The stagger caps out so a 40-result page does not
                 // spend two seconds arriving.
                 <Reveal as="li" key={r.id} delay={Math.min(i, 8) * 60} className="h-full">
-                  <Card to={r.href} className="group h-full p-5">
-                    <div className="flex items-start justify-between gap-5">
-                      <div className="min-w-0">
-                        <h3 className="line-clamp-2 text-base font-medium text-foreground">{r.title}</h3>
-                        <p className="mt-1 truncate text-sm text-muted-foreground">{r.subtitle}</p>
+                  <Card to={r.href} className="group flex h-full flex-col overflow-hidden p-3">
+                    {/* The poster is why a result is recognisable at a
+                        glance; a title-only row made every hit look the
+                        same. Falls back to a plain tile when a clip has
+                        no usable thumbnail. */}
+                    <div className="relative aspect-video w-full overflow-hidden rounded-[6px] bg-surface-2">
+                      {r.image ? (
+                        <img
+                          src={r.image}
+                          alt=""
+                          loading="lazy"
+                          className="absolute inset-0 size-full object-cover transition-[scale] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.04]"
+                        />
+                      ) : null}
+                    </div>
 
-                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                          <Chip kind="neutral">{r.type}</Chip>
-                          {r.tag ? <Chip kind={chipKind(r.tag)}>{r.tag}</Chip> : null}
-                        </div>
+                    <div className="mt-3 flex min-w-0 flex-1 flex-col">
+                      <h3 className="line-clamp-2 text-base font-medium text-foreground">{r.title}</h3>
+                      <p className="mt-1 truncate text-sm text-muted-foreground">{r.subtitle}</p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                        <Chip kind="neutral">{r.type}</Chip>
+                        {r.tag ? <Chip kind={chipKind(r.tag)}>{r.tag}</Chip> : null}
                       </div>
-
-                      <ArrowRight
-                        aria-hidden
-                        className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
-                      />
                     </div>
                   </Card>
                 </Reveal>

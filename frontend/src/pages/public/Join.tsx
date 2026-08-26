@@ -580,23 +580,23 @@ function AuthShell({
   return (
     <div className="bg-ground lg:grid lg:h-[calc(100dvh-4rem)] lg:grid-cols-2 lg:overflow-hidden">
       {/* ── form ─────────────────────────────────────────── */}
-      <div className="flex flex-col px-5 py-14 sm:px-10 lg:min-h-0 lg:overflow-y-auto lg:px-14 xl:px-20">
+      <div className="flex flex-col px-5 py-10 sm:px-10 lg:min-h-0 lg:overflow-y-auto lg:py-8 lg:px-12 xl:px-16">
         {/* `my-auto` rather than justify-center: a centred flex child in
             a scroll container puts its own overflow out of reach. */}
         <div className="mx-auto my-auto w-full max-w-[25rem]">
           <Link to="/home" aria-label="CHM home" className="press -ms-2 block w-fit rounded-[6px] p-2">
-            <ChmMark className="size-9 text-anchor" />
+            <ChmMark className="size-7 text-anchor" />
           </Link>
 
           <Link
             to="/home"
-            className="press mt-8 inline-flex w-fit items-center gap-1.5 rounded-[6px] py-1 text-body-s text-muted2 hover:text-text"
+            className="press mt-5 inline-flex w-fit items-center gap-1.5 rounded-[6px] py-1 text-body-s text-muted2 hover:text-text"
           >
             <ArrowLeft className="size-4" strokeWidth={1.75} />
             Back
           </Link>
 
-          <h1 className="display display-tight mt-5 text-[2.125rem] leading-[1.08] text-text">
+          <h1 className="display display-tight mt-4 text-[1.875rem] leading-[1.08] text-text">
             {heading}
           </h1>
           <p className="prose-lede mt-3 text-body-m text-muted2">{sub}</p>

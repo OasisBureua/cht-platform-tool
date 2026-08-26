@@ -46,15 +46,17 @@ export function DiseaseClusterCard({
     let motes: Mote[] = [];
 
     const seed = () => {
-      const n = Math.round(70 + Math.max(0, Math.min(1, weight)) * 520);
+      // Floor of 260 so an area with no library still reads as a
+      // cluster rather than a smudge; a full one roughly triples it.
+      const n = Math.round(260 + Math.max(0, Math.min(1, weight)) * 700);
       motes = Array.from({ length: n }, () => {
         const b = Math.random();
         return {
           a: Math.random() * Math.PI * 2,
-          r: b < 0.4 ? 5 + Math.random() * 18 : b < 0.75 ? 20 + Math.random() * 24 : 40 + Math.random() * 34,
+          r: b < 0.4 ? 5 + Math.random() * 20 : b < 0.75 ? 22 + Math.random() * 28 : 46 + Math.random() * 40,
           sp: (b < 0.4 ? 0.0038 : 0.0018) + Math.random() * 0.0024,
-          o: (b < 0.4 ? 0.42 : 0.19) + Math.random() * 0.4,
-          z: b < 0.4 ? 2 : 1.4,
+          o: (b < 0.4 ? 0.72 : 0.36) + Math.random() * 0.4,
+          z: b < 0.4 ? 2.6 : 1.9,
         };
       });
     };
@@ -132,7 +134,7 @@ export function DiseaseClusterCard({
   );
 
   const shell =
-    'card relative flex h-40 w-60 shrink-0 snap-start flex-col justify-end overflow-hidden p-4';
+    'card relative flex h-40 flex-col justify-end overflow-hidden p-4';
 
   // An area with no library yet is not a link. It still shows, because
   // the queue is worth seeing; it just does not pretend to go anywhere.
@@ -144,6 +146,8 @@ export function DiseaseClusterCard({
       {body}
     </Link>
   ) : (
-    <div className={`${shell} opacity-60`}>{body}</div>
+    // Not a link, but not dimmed either: the density already says the
+    // area is thin, and a blanket 60% was washing the hue out with it.
+    <div className={shell}>{body}</div>
   );
 }

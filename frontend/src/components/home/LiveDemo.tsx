@@ -125,7 +125,7 @@ export function LiveDemo() {
             key={c}
             type="button"
             onClick={() => search(c)}
-            className="press inline-flex h-8 items-center rounded-[6px] bg-surface px-3 text-[0.8125rem] text-dim transition-[background-color,color] duration-150 hover:bg-surface-2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="press inline-flex h-8 items-center rounded-[6px] bg-surface px-3 text-[0.8125rem] text-dim transition-[background-color,color] duration-150 hover:bg-[color-mix(in_oklab,var(--color-anchor)_12%,transparent)] hover:text-anchor focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             {c}
           </button>
