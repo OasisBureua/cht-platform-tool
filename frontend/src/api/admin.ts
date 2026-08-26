@@ -1198,9 +1198,11 @@ export const adminApi = {
   getProgramZoomRecordingDownloadUrl: async (
     programId: string,
     recordingId: string,
+    disposition: 'inline' | 'attachment' = 'attachment',
   ) => {
     const { data } = await apiClient.get(
       `/admin/programs/${encodeURIComponent(programId)}/recordings/${encodeURIComponent(recordingId)}/download-url`,
+      { params: { disposition } },
     );
     return data as {
       url: string;

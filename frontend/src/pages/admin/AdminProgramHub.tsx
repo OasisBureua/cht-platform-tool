@@ -1510,13 +1510,13 @@ function ZoomRecordingsSection({
       const { url, recording } = await adminApi.getProgramZoomRecordingDownloadUrl(
         programId,
         recordingId,
+        mode === 'view' ? 'inline' : 'attachment',
       );
       if (mode === 'download') {
         const a = document.createElement('a');
         a.href = url;
         a.download = `${recording.fileType.toLowerCase()}-${recording.zoomRecordingFileId}.${recording.fileExtension || 'bin'}`;
         a.rel = 'noopener';
-        a.target = '_blank';
         a.click();
       } else {
         window.open(url, '_blank', 'noopener,noreferrer');
@@ -1620,8 +1620,16 @@ function ZoomRecordingsSection({
                   {r.recordingType ? (
                     <span className="font-normal text-gray-500"> · {r.recordingType}</span>
                   ) : null}
+                  {['TRANSCRIPT', 'CC'].includes(r.fileType.toUpperCase()) ? (
+                    <span className="ml-2 inline-flex rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                      Transcript
+                    </span>
+                  ) : null}
                 </p>
                 <p className="text-xs text-gray-500">
+                  {r.recordingStart
+                    ? `${format(parseISO(r.recordingStart), 'MMM d, yyyy h:mm a')} · `
+                    : ''}
                   {r.fileSizeBytes != null
                     ? `${Math.max(1, Math.round(r.fileSizeBytes / 1024))} KB · `
                     : ''}
