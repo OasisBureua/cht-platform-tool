@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Loader2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isToday } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../../api/webinars';
 import { isSessionExpired } from '../../utils/live-session-timing';
 import { AbstractFigure, Button, Reveal } from '../../components/ui';
@@ -98,7 +98,7 @@ export default function PublicWebinars() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { next, done } = useMemo(() => {
+  const { today, upcoming } = useMemo(() => {
     // The feed is only trusted once it is actually a list. When the API is
     // unreachable the request resolves against the SPA fallback and hands
     // back an HTML string, which used to take the whole route down with
@@ -109,16 +109,20 @@ export default function PublicWebinars() {
     // placed on the schedule and cannot be judged expired.
     const dated = rows.filter((w): w is Session => Boolean(w.startTime));
 
+    // Past sessions are deliberately not shown. A live page that opens
+    // with what already happened reads as an archive; replays belong in
+    // the library, filed under their disease state.
+    const live = dated
+      .filter((w) => !isSessionExpired(w.startTime, w.duration))
+      .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+
     return {
-      next: dated
-        .filter((w) => !isSessionExpired(w.startTime, w.duration))
-        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
-      done: dated
-        .filter((w) => isSessionExpired(w.startTime, w.duration))
-        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-        .slice(0, 5),
+      today: live.filter((w) => isToday(new Date(w.startTime))),
+      upcoming: live.filter((w) => !isToday(new Date(w.startTime))),
     };
   }, [webinars]);
+
+  const nextUp = today[0] ?? upcoming[0];
 
   return (
     <div className="min-h-screen bg-ground">
@@ -126,23 +130,24 @@ export default function PublicWebinars() {
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
           <div>
             <p className="eyebrow text-muted2">Live</p>
-            <h1 className="display mt-6 max-w-[16ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
-              Live and upcoming sessions
+            <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+              Ask the faculty, while the case is still open
             </h1>
-            <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
-              Click any session to register and join. Replays are chaptered and filed under their
-              disease state within a week.
+            <p className="prose-lede mt-6 max-w-[52ch] text-body-l text-muted2">
+              Every session is two clinicians working a real case in front of you, without the
+              answer agreed in advance. Bring the one you are stuck on. Registration is free and
+              takes an account, so we know who is in the room.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
-              {/* With nothing on the schedule the design sends people to
-                  the library instead, so the empty feed needs no separate
+              {/* With nothing on the schedule the page sends people to the
+                  library instead, so an empty feed needs no separate
                   treatment. */}
-              <Button to={next.length ? `/live/${next[0].id}` : '/catalog'} variant="cta">
-                {next.length ? 'Register for the next session' : 'Browse the library'}
+              <Button to={nextUp ? `/live/${nextUp.id}` : '/join'} variant="cta">
+                {nextUp ? 'Register for the next session' : 'Create a free account'}
                 <ArrowRight className="size-4" strokeWidth={1.75} />
               </Button>
-              <Button to="/chm-office-hours" variant="outline">
-                CHM Office Hours
+              <Button to="/catalog" variant="outline">
+                Browse past replays
               </Button>
             </div>
           </div>
@@ -157,13 +162,13 @@ export default function PublicWebinars() {
         </div>
       ) : (
         <>
-          {next.length > 0 ? (
-            <section aria-labelledby="upcoming-heading" className="rail pb-14">
-              <h2 id="upcoming-heading" className="eyebrow text-faint">
-                Upcoming · {next.length}
+          {today.length > 0 ? (
+            <section aria-labelledby="today-heading" className="rail pb-12">
+              <h2 id="today-heading" className="eyebrow text-ink-coral">
+                Today · {today.length}
               </h2>
               <ul className="mt-5 space-y-3">
-                {next.map((s, i) => (
+                {today.map((s, i) => (
                   <Reveal as="li" key={s.id} delay={i * 50}>
                     <SessionRow s={s} isPast={false} />
                   </Reveal>
@@ -172,22 +177,85 @@ export default function PublicWebinars() {
             </section>
           ) : null}
 
-          {done.length > 0 ? (
-            <section aria-labelledby="past-heading" className="rail pb-24">
-              <h2 id="past-heading" className="eyebrow text-faint">
-                Past · last {done.length}
+          {upcoming.length > 0 ? (
+            <section aria-labelledby="upcoming-heading" className="rail pb-14">
+              <h2 id="upcoming-heading" className="eyebrow text-faint">
+                Upcoming · {upcoming.length}
               </h2>
               <ul className="mt-5 space-y-3">
-                {done.map((s, i) => (
+                {upcoming.map((s, i) => (
                   <Reveal as="li" key={s.id} delay={i * 50}>
-                    <SessionRow s={s} isPast />
+                    <SessionRow s={s} isPast={false} />
                   </Reveal>
                 ))}
               </ul>
             </section>
           ) : null}
+
+          {today.length === 0 && upcoming.length === 0 ? (
+            <section className="rail pb-14">
+              <div className="rounded-[8px] bg-surface px-8 py-14 text-center shadow-card">
+                <p className="display text-display-s text-text">Nothing on the schedule yet</p>
+                <p className="prose-lede mx-auto mt-3 max-w-[42ch] text-body-m text-muted2">
+                  New sessions are announced a fortnight ahead. An account puts them in front of
+                  you as they are scheduled.
+                </p>
+              </div>
+            </section>
+          ) : null}
         </>
       )}
+
+      {/* ── What a session actually is ─────────────────── */}
+      <section aria-labelledby="how-heading" className="rail pb-16">
+        <h2 id="how-heading" className="display text-display-m text-text">
+          How a session runs
+        </h2>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {[
+            [
+              'You send the case',
+              'Registration asks what you are stuck on. The faculty see the questions before they go on, and the ones that come up most set the running order.',
+            ],
+            [
+              'Two clinicians work it live',
+              'No slides agreed in advance and no single right answer. Where they disagree, they say so, which is usually the most useful part.',
+            ],
+            [
+              'It is filed within a week',
+              'Chaptered, transcribed and filed under its disease state, so the answer is findable long after the room empties.',
+            ],
+          ].map(([title, body]) => (
+            <div key={title} className="card p-6">
+              <p className="display text-body-m text-text">{title}</p>
+              <p className="prose-lede mt-2 text-body-s text-muted2">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Free, and it stays free ────────────────────── */}
+      <section aria-labelledby="join-heading" className="rail pb-24">
+        <div className="flex flex-col gap-6 rounded-[8px] bg-surface px-8 py-12 shadow-card md:flex-row md:items-center md:justify-between md:px-12">
+          <div>
+            <h2 id="join-heading" className="display text-display-m text-text">
+              Free for clinicians
+            </h2>
+            <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
+              An account is what lets us seat the room and send the replay. It stays free.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button to="/join" variant="cta">
+              Create an account
+              <ArrowRight className="size-4" strokeWidth={1.75} />
+            </Button>
+            <Button to="/for-hcps" variant="outline">
+              What you get
+            </Button>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
