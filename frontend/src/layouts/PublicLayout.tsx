@@ -108,7 +108,7 @@ export default function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-foreground ">
+    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-foreground">
       <header className="sticky top-0 z-50 nav-liquid-glass">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
           {/* Center: quick entry to content library (filters live on /catalog) */}

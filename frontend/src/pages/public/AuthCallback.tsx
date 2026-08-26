@@ -94,7 +94,7 @@ export default function AuthCallback() {
   if (error) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-card px-4 py-8">
-        <div className="max-w-md rounded-card border border-red-200 bg-red-50 px-6 py-8 text-center shadow-sm">
+        <div className="max-w-md rounded-card border border-red-200 bg-red-50 px-6 py-8 text-center shadow-card">
           <p className="text-lg font-semibold text-red-800">Sign-in didn’t finish</p>
           <p className="mt-2 text-sm text-destructive">{error}</p>
           <Link

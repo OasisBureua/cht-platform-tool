@@ -111,7 +111,7 @@ export function ConversationRow({
             type="button"
             aria-label="Scroll left"
             onClick={() => scroll(-1)}
-            className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground opacity-0 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 group-hover/row:opacity-100 md:flex "
+            className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground opacity-0 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 group-hover/row:opacity-100 md:flex"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
@@ -130,7 +130,7 @@ export function ConversationRow({
             type="button"
             aria-label="Scroll right"
             onClick={() => scroll(1)}
-            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 md:opacity-0 md:transition-opacity md:group-hover/row:opacity-100 "
+            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 md:opacity-0 md:transition-opacity md:group-hover/row:opacity-100"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>

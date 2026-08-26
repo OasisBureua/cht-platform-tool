@@ -125,7 +125,7 @@ export default function ExecutiveReport() {
       <style>{DECK_CSS}</style>
 
       {/* ---- Toolbar ---- */}
-      <div className="no-print sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-[#1e2433] px-5 py-2.5 text-white shadow-xl">
+      <div className="no-print sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-[#1e2433] px-5 py-2.5 text-white shadow-card-hover">
         <div className="flex items-center gap-3">
           <Link to="/admin/content-hub">
             <button aria-label="Back to Content Hub" className="rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white">

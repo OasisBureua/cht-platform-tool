@@ -185,7 +185,7 @@ export default function PublicSurveys() {
               </div>
             </div>
 
-            <ul className="divide-y divide-gray-100 ">
+            <ul className="divide-y divide-gray-100">
               {sorted.map((survey, idx) => (
                 <li key={survey.id}>
                   <Link
@@ -241,7 +241,7 @@ export default function PublicSurveys() {
                 loading="lazy"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 ring-1 ring-black/5 /40 ">
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50 /40">
                 <span className="text-sm font-bold tracking-[0.2em] text-muted-foreground">Soon</span>
               </div>
             </div>
@@ -252,7 +252,7 @@ export default function PublicSurveys() {
               </p>
               <Link
                 to="/app/surveys"
-                className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-border hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] dark:hover:border-zinc-600 dark:hover:bg-muted"
+                className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-card transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-border hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] dark:hover:border-zinc-600 dark:hover:bg-muted"
               >
                 <Bell className="h-4 w-4 shrink-0" aria-hidden />
                 View app surveys

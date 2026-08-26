@@ -245,15 +245,15 @@ export default function Home() {
             className="home-enter grid grid-cols-1 gap-6 sm:grid-cols-3"
             style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
           >
-            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] ">
+            <div className="rounded-card bg-card p-6 shadow-card">
               <p className="mb-2 font-semibold text-foreground">HCPs</p>
               <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Beyond conferences and CME, where they actually consume content</p>
             </div>
-            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] ">
+            <div className="rounded-card bg-card p-6 shadow-card">
               <p className="mb-2 font-semibold text-foreground">Patients</p>
               <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Pre or active treatment, searching for credible information</p>
             </div>
-            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] ">
+            <div className="rounded-card bg-card p-6 shadow-card">
               <p className="mb-2 font-semibold text-foreground">Caregivers</p>
               <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Making decisions, seeking guidance, needing support</p>
             </div>
@@ -280,7 +280,7 @@ export default function Home() {
               <Link
                 key={r.id}
                 to={r.href}
-                className="group relative block min-h-[140px] overflow-hidden rounded-card bg-gray-700 shadow-[0_10px_28px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.08] transition-[transform] active:scale-[0.96] md:min-h-[160px]"
+                className="group relative block min-h-[140px] overflow-hidden rounded-card bg-gray-700 shadow-card transition-[transform] active:scale-[0.96] md:min-h-[160px]"
               >
                 <img
                   src={r.imageUrl}
@@ -515,7 +515,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
             const inner = (
               <div
                 data-disease-card
-                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-[20px] shadow-[0_16px_40px_-16px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.12] sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px] "
+                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-[20px] shadow-[0_16px_40px_-16px_rgba(0,0,0,0.45)] sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px]"
               >
                 <img
                   src={area.image}

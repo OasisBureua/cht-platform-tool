@@ -82,7 +82,7 @@ export default function PodcastEpisodeWatch() {
         </div>
       </div>
 
-      <article className="overflow-hidden rounded-card bg-zinc-950 shadow-xl ring-1 ring-zinc-800">
+      <article className="overflow-hidden rounded-card bg-zinc-950 shadow-card-hover ring-1 ring-zinc-800">
         <YouTubePlayer
           key={episode.videoId}
           youtubeUrl={episode.youtubeUrl}

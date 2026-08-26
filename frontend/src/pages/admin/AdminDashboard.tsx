@@ -48,7 +48,7 @@ export default function AdminDashboard() {
         </h1>
       </div>
 
-      <div className="rounded-card border border-brand-200/80 bg-gradient-to-br from-brand-50/90 to-white p-5 shadow-sm dark:border-brand-900/50 dark:from-brand-950/40 dark:to-zinc-950">
+      <div className="rounded-card border border-brand-200/80 bg-gradient-to-br from-brand-50/90 to-white p-5 shadow-card dark:border-brand-900/50 dark:from-brand-950/40 dark:to-zinc-950">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-800 dark:bg-brand-900/60 dark:text-brand-100">
@@ -90,7 +90,7 @@ export default function AdminDashboard() {
           className="group relative col-span-2 overflow-hidden rounded-card bg-gradient-to-br from-sky-50 via-white to-white p-5 shadow-[0_12px_40px_-24px_rgba(14,116,188,0.2)] ring-1 ring-sky-100/80 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_48px_-28px_rgba(14,116,188,0.28)] md:col-span-5 dark:from-sky-950/40 dark:via-zinc-900 dark:to-zinc-950 dark:ring-sky-900/40"
         >
           <span
-            className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-xs ${activeHcpsChange?.colorClass ?? 'bg-white/80 text-gray-600 shadow-sm dark:bg-zinc-800 dark:text-zinc-300'}`}
+            className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide sm:text-xs ${activeHcpsChange?.colorClass ?? 'bg-white/80 text-gray-600 shadow-card dark:bg-zinc-800 dark:text-zinc-300'}`}
           >
             {activeHcpsChange?.label ?? '-'}
           </span>

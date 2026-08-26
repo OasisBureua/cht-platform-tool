@@ -52,7 +52,7 @@ export function W9Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div
-        className="bg-card rounded-card shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-card shadow-card-hover max-w-md w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6">

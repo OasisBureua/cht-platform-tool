@@ -24,7 +24,7 @@ export function KolPublicationsSection({ kolId, limit = 10 }: Props) {
 
   if (isLoading) {
     return (
-      <article className="rounded-card border border-border bg-card p-4 shadow-sm ">
+      <article className="rounded-card border border-border bg-card p-4 shadow-card">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
           Loading publications…
@@ -38,7 +38,7 @@ export function KolPublicationsSection({ kolId, limit = 10 }: Props) {
   }
 
   return (
-    <article className="rounded-card border border-border bg-card p-4 shadow-sm ">
+    <article className="rounded-card border border-border bg-card p-4 shadow-card">
       <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
         <BookOpen className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden />
         Publications
@@ -56,7 +56,7 @@ export function KolPublicationsSection({ kolId, limit = 10 }: Props) {
             .join(' · ');
           const meta = [pub.journal, formatPubDate(pub.published_at), authorship].filter(Boolean).join(' · ');
           return (
-            <li key={`${pub.title}-${idx}`} className="border-b border-zinc-100 pb-3 last:border-0 last:pb-0 ">
+            <li key={`${pub.title}-${idx}`} className="border-b border-zinc-100 pb-3 last:border-0 last:pb-0">
               {pub.url ? (
                 <a
                   href={pub.url}

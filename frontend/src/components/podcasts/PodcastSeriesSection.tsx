@@ -222,7 +222,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
           <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Episodes</h3>
           {show.remoteEpisodes ? (
             <div
-              className="inline-flex rounded-full bg-card p-0.5 shadow-sm"
+              className="inline-flex rounded-full bg-card p-0.5 shadow-card"
               role="tablist"
               aria-label="Sort episodes"
             >

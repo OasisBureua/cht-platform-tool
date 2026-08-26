@@ -215,7 +215,7 @@ export default function AdminLayout() {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6 ">
+          <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-6">
             <Outlet />
           </main>
         </div>

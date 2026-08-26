@@ -704,7 +704,7 @@ export default function Dashboard() {
                         <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
                         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
                         <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white sm:p-7 md:p-8">
-                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-chm-sharing drop-shadow-sm">
+                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-chm-sharing drop-shadow-card">
                             {slide.eyebrow}
                           </p>
                           <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">

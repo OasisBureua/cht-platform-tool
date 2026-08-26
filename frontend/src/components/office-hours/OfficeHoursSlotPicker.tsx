@@ -72,7 +72,7 @@ export function OfficeHoursSlotPicker({
                 const v = e.target.value;
                 if (v) onSelect(v);
               }}
-              className="w-full rounded-[6px] border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-sm focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
+              className="w-full rounded-[6px] border border-border bg-card px-4 py-3 text-sm font-medium text-foreground shadow-card focus:border-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/20"
             >
               <option value="">Choose a time…</option>
               {daySlots.map((s) => {

@@ -9,7 +9,7 @@ export default function ChatBubble() {
   return (
     <>
       {open && (
-        <div className="fixed bottom-20 right-4 z-[70] w-[370px] h-[520px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-8rem)] rounded-card shadow-2xl border border-border bg-card overflow-hidden flex flex-col">
+        <div className="fixed bottom-20 right-4 z-[70] w-[370px] h-[520px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-8rem)] rounded-card shadow-card-hover border border-border bg-card overflow-hidden flex flex-col">
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-gray-100 bg-muted">
             <span className="text-sm font-semibold text-foreground">CHM Assistant</span>
             <button onClick={() => setOpen(false)} className="p-1 rounded-[6px] hover:bg-gray-200 text-muted-foreground" aria-label="Close chat">

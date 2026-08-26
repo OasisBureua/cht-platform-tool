@@ -70,7 +70,7 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-muted">
-      <div className="w-full max-w-md overflow-hidden rounded-card border border-border bg-card shadow-xl">
+      <div className="w-full max-w-md overflow-hidden rounded-card border border-border bg-card shadow-card-hover">
         <div className="bg-brand-600 px-6 py-8 text-center">
           <Shield className="mx-auto h-12 w-12 text-white/90" />
           <h1 className="mt-4 text-xl font-semibold text-white md:text-2xl">

@@ -23,10 +23,10 @@ const HUBSPOT_SCOPES_DOC =
   'https://developers.hubspot.com/docs/apps/developer-platform/build-apps/authentication/scopes';
 
 const selectClassName =
-  'mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground';
+  'mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-card disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground';
 
 const inputClassName =
-  'mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-sm';
+  'mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground shadow-card';
 
 type DatePreset = '30' | '90' | 'custom';
 

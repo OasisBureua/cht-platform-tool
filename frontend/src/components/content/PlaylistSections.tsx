@@ -38,7 +38,7 @@ export function PlaylistSections({ playlists, isInApp }: PlaylistSectionsProps) 
           className="space-y-4"
           aria-labelledby={`playlist-section-${section.id}`}
         >
-          <div className="min-w-0 space-y-1 border-b border-border pb-3 ">
+          <div className="min-w-0 space-y-1 border-b border-border pb-3">
             <h3
               id={`playlist-section-${section.id}`}
               className="text-lg font-bold tracking-tight text-foreground sm:text-xl"

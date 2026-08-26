@@ -155,7 +155,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
         </header>
 
         <div
-          className="rounded-card border border-black/[0.08] bg-card p-4 sm:p-5 shadow-sm mb-10 space-y-4"
+          className="rounded-card border border-black/[0.08] bg-card p-4 sm:p-5 shadow-card mb-10 space-y-4"
           role="search"
           aria-label="Filter and sort KOL directory"
         >
@@ -342,7 +342,7 @@ function KolCard({ k }: { k: FlatKol }) {
   const showBadge = Boolean(k.intel?.rosterOnly ?? k.isNew);
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-card border border-border bg-card shadow-sm transition-[box-shadow,transform] hover:shadow-md">
+    <article className="flex h-full flex-col overflow-hidden rounded-card border border-border bg-card shadow-card transition-[box-shadow,transform] hover:shadow-md">
       <div className="border-b border-border p-3">
         <div className="flex items-center gap-2.5">
           <div className="relative h-[4.75rem] w-[4.75rem] shrink-0 sm:h-[5.25rem] sm:w-[5.25rem]">
@@ -355,7 +355,7 @@ function KolCard({ k }: { k: FlatKol }) {
             />
             {k.featured ? (
               <span
-                className="absolute -right-0.5 -top-0.5 rounded-full bg-brand-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm"
+                className="absolute -right-0.5 -top-0.5 rounded-full bg-brand-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-card"
                 title="Curator-featured KOL"
               >
                 ★
@@ -365,8 +365,8 @@ function KolCard({ k }: { k: FlatKol }) {
               <span
                 className={
                   k.featured
-                    ? 'absolute -left-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm'
-                    : 'absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm'
+                    ? 'absolute -left-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-card'
+                    : 'absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-card'
                 }
               >
                 New

@@ -160,12 +160,12 @@ export default function KolProfilePage() {
               className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
             />
             <div className="flex flex-col items-end gap-2 pt-20 sm:pt-24">
-              <span className="inline-flex items-center rounded-[6px] border border-zinc-200 bg-card px-3 py-1 text-xs font-semibold text-brand-900 shadow-sm dark:text-brand-200">
+              <span className="inline-flex items-center rounded-[6px] border border-zinc-200 bg-card px-3 py-1 text-xs font-semibold text-brand-900 shadow-card dark:text-brand-200">
                 CHM Network
               </span>
               <Link
                 to={catalogHref}
-                className="inline-flex min-h-[36px] items-center gap-1 rounded-[6px] border border-zinc-200 bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition hover:bg-muted dark:hover:bg-muted"
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-[6px] border border-zinc-200 bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-card transition hover:bg-muted dark:hover:bg-muted"
               >
                 Catalog videos
                 <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
@@ -240,7 +240,7 @@ export default function KolProfilePage() {
           </div>
 
           {/* Tabs */}
-          <nav className="mt-5 flex border-b border-zinc-200 " aria-label="Profile sections">
+          <nav className="mt-5 flex border-b border-zinc-200" aria-label="Profile sections">
             {(
               [
                 ['overview', 'Overview'],
@@ -270,8 +270,8 @@ export default function KolProfilePage() {
             {tab === 'overview' ? (
               <>
                 {displayBrief ? (
-                  <article className="overflow-hidden rounded-card border border-zinc-200/90 bg-card shadow-sm ">
-                    <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 ">
+                  <article className="overflow-hidden rounded-card border border-zinc-200/90 bg-card shadow-card">
+                    <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3">
                       <Sparkles
                         className={`h-4 w-4 ${displayBrief.isAiGenerated ? 'text-amber-500' : 'text-muted-foreground'}`}
                         aria-hidden
@@ -302,7 +302,7 @@ export default function KolProfilePage() {
                       ) : null}
                     </div>
                     {displayBrief.isAiGenerated ? (
-                      <div className="border-t border-zinc-100 px-4 py-3 ">
+                      <div className="border-t border-zinc-100 px-4 py-3">
                         <p className="text-[10px] leading-snug text-muted-foreground">
                           AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
                           important details against primary sources.
@@ -314,7 +314,7 @@ export default function KolProfilePage() {
 
                 <KolPublicationsSection kolId={entry.id} />
 
-                <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm ">
+                <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
                   <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
                     <Briefcase className="h-4 w-4" aria-hidden />
                     Role
@@ -329,19 +329,19 @@ export default function KolProfilePage() {
             {tab === 'background' ? (
               <div className="space-y-4">
                 {showBioOnBackground ? (
-                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm ">
+                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
                     <h2 className="text-sm font-bold text-foreground">Summary</h2>
                     <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{entry.bio}</p>
                   </article>
                 ) : null}
                 {vm.researchHighlights ? (
-                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm ">
+                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
                     <h2 className="text-sm font-bold text-foreground">Research highlights</h2>
                     <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{vm.researchHighlights}</p>
                   </article>
                 ) : null}
                 {vm.awards && vm.awards.length > 0 ? (
-                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm ">
+                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
                     <h2 className="text-sm font-bold text-foreground">Recognition</h2>
                     <ul className="mt-3 list-inside list-disc space-y-1 text-[15px] text-muted-foreground">
                       {vm.awards.map((a) => (
@@ -371,7 +371,7 @@ function SocialIcon({ href, label, children }: { href?: string; label: string; c
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-zinc-200 bg-card text-muted-foreground shadow-sm transition-[color,transform] hover:text-brand-700 active:scale-95 "
+      className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-zinc-200 bg-card text-muted-foreground shadow-card transition-[color,transform] hover:text-brand-700 active:scale-95"
     >
       {children}
     </a>

@@ -405,7 +405,7 @@ export default function AdminPayments() {
 
       {deleteConfirmPaymentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-card bg-card p-6 shadow-xl space-y-4">
+          <div className="w-full max-w-sm rounded-card bg-card p-6 shadow-card-hover space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-semibold text-foreground">Delete payment?</h2>
@@ -694,7 +694,7 @@ function ManualPaymentForm() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="manual-pay-eligibility-title"
-            className="w-full max-w-md rounded-card bg-card p-6 shadow-xl space-y-4"
+            className="w-full max-w-md rounded-card bg-card p-6 shadow-card-hover space-y-4"
           >
             <div className="flex items-start gap-3">
               <AlertCircle className="h-5 w-5 shrink-0 text-warning mt-0.5" aria-hidden />

@@ -534,7 +534,7 @@ export default function WebinarDetail() {
 
             {/* Session cover: right rail, stretches with card height */}
             <div className="flex w-[6.5rem] shrink-0 self-stretch min-[400px]:w-[7.25rem] min-[480px]:w-[8.5rem] sm:w-36 md:w-[11.5rem]">
-              <div className="relative min-h-[8rem] w-full flex-1 overflow-hidden rounded-card border border-gray-200 bg-gradient-to-br from-sky-100/90 via-zinc-50 to-teal-100/70 shadow-sm">
+              <div className="relative min-h-[8rem] w-full flex-1 overflow-hidden rounded-card border border-gray-200 bg-gradient-to-br from-sky-100/90 via-zinc-50 to-teal-100/70 shadow-card">
                 {sessionCoverUrl ? (
                   <img
                     src={sessionCoverUrl}

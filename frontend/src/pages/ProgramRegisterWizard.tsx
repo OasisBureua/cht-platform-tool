@@ -292,7 +292,7 @@ export default function ProgramRegisterWizard() {
         Back to session
       </Link>
 
-      <div className="rounded-card border border-border bg-card shadow-sm overflow-hidden">
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
         {sessionCoverUrl ? (
           <div className="border-b border-gray-100 bg-gray-50">
             <img

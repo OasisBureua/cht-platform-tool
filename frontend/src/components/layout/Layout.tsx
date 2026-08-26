@@ -63,7 +63,7 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-chm-surface text-foreground md:flex-row ">
+    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-chm-surface text-foreground md:flex-row">
       <AppSidebar />
       <AppBottomNav />
 
@@ -135,7 +135,7 @@ export default function Layout() {
             {' · '}
             <button
               type="button"
-              className="font-semibold text-muted-foreground hover:underline "
+              className="font-semibold text-muted-foreground hover:underline"
               onClick={() => {
                 setMobileDrawerOpen(false);
                 logout();

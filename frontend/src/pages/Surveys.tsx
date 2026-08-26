@@ -242,7 +242,7 @@ function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUr
   return (
     <Link
       to={`/app/surveys/${survey.id}`}
-      className="group block min-w-0 overflow-hidden rounded-[6px] border border-border/80 bg-card opacity-90 shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md active:scale-[0.96]"
+      className="group block min-w-0 overflow-hidden rounded-[6px] border border-border/80 bg-card opacity-90 shadow-card transition-[transform,box-shadow] duration-200 hover:shadow-md active:scale-[0.96]"
     >
       <div className="relative aspect-[249/140] w-full overflow-hidden">
         <img

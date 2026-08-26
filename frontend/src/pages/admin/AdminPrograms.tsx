@@ -170,7 +170,7 @@ export default function AdminPrograms() {
       {deleteConfirmId &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="w-full max-w-sm rounded-card bg-card p-6 shadow-xl space-y-4">
+            <div className="w-full max-w-sm rounded-card bg-card p-6 shadow-card-hover space-y-4">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="font-semibold text-foreground">
@@ -685,7 +685,7 @@ function EditWebinarModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl rounded-card bg-card shadow-xl flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-xl rounded-card bg-card shadow-card-hover flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
           <h2 className="font-semibold text-foreground">
