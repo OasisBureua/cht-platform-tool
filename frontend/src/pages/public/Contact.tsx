@@ -72,7 +72,7 @@ export default function Contact() {
               ) : (
                 <form className="space-y-5" onSubmit={handleSubmit}>
                   {error && (
-                    <p className="text-base text-destructive bg-red-50 px-4 py-3 rounded-card">
+                    <p className="text-base text-destructive bg-destructive/10 px-4 py-3 rounded-card">
                       {error}
                     </p>
                   )}

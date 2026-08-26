@@ -34,13 +34,13 @@ function EmptyState() {
 
 function JotformNotice() {
   return (
-    <div className="flex items-start gap-3 rounded-card border border-amber-200 bg-amber-50 p-4">
+    <div className="flex items-start gap-3 rounded-card border border-warning/25 bg-warning/10 p-4">
       <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
       <div>
         <p className="text-sm font-semibold text-amber-900">
           Per-question analytics aren&rsquo;t available for this survey
         </p>
-        <p className="mt-0.5 text-sm text-amber-800">
+        <p className="mt-0.5 text-sm text-warning">
           Responses were collected through Jotform, which doesn&rsquo;t expose a native question
           schema. Totals and submission trends are still available above; export the CSV for the
           full answer detail.

@@ -392,7 +392,7 @@ export default function LiveMultiRegister() {
         <div className="rounded-card border border-border bg-card p-6 space-y-4">
           <h2 className="font-semibold text-foreground">Registration summary</h2>
           {result.submitted.length > 0 ? (
-            <div className="rounded-card bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-950">
+            <div className="rounded-card bg-success/10 border border-success/25 px-4 py-3 text-sm text-green-950">
               <p className="font-semibold flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 {result.submitted.length} request{result.submitted.length === 1 ? '' : 's'} submitted
@@ -411,7 +411,7 @@ export default function LiveMultiRegister() {
             </div>
           ) : null}
           {result.skipped.length > 0 ? (
-            <div className="rounded-card bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-950">
+            <div className="rounded-card bg-warning/10 border border-warning/25 px-4 py-3 text-sm text-amber-950">
               <p className="font-semibold">Skipped</p>
               <ul className="mt-2 list-disc pl-5 space-y-1">
                 {result.skipped.map((r) => (
@@ -423,7 +423,7 @@ export default function LiveMultiRegister() {
             </div>
           ) : null}
           {result.failed.length > 0 ? (
-            <div className="rounded-card bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-950">
+            <div className="rounded-card bg-destructive/10 border border-destructive/25 px-4 py-3 text-sm text-red-950">
               <p className="font-semibold flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
                 Could not submit
@@ -521,12 +521,12 @@ export default function LiveMultiRegister() {
                           </span>
                         ) : null}
                         {hasIntakeForm(w) ? (
-                          <span className="mt-1 inline-block text-xs font-medium text-amber-800">
+                          <span className="mt-1 inline-block text-xs font-medium text-warning">
                             Intake form required before submit
                           </span>
                         ) : null}
                         {w.registrationRequiresApproval ? (
-                          <span className="mt-1 ml-2 inline-block text-xs font-medium text-amber-800">
+                          <span className="mt-1 ml-2 inline-block text-xs font-medium text-warning">
                             Requires admin approval
                           </span>
                         ) : null}
@@ -538,7 +538,7 @@ export default function LiveMultiRegister() {
 
               {selectionOverlapMessage ? (
                 <div
-                  className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                  className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                   role="alert"
                 >
                   {selectionOverlapMessage}
@@ -578,13 +578,13 @@ export default function LiveMultiRegister() {
           </p>
 
           {currentIntakeSubmissionId ? (
-            <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-[6px] px-3 py-2">
+            <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-[6px] px-3 py-2">
               Intake submission recorded for this session. Click <strong>Continue</strong> to proceed to the next step.
             </p>
           ) : null}
 
           {intakeIndex <= maxIntakeIndexCompleted ? (
-            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-[6px] px-3 py-2">
+            <p className="text-xs text-amber-900 bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
               You already continued past this intake step. Answers are locked. Complete the remaining steps below.
             </p>
           ) : currentIntakeProgram.intakeSurveyId ? (
@@ -668,7 +668,7 @@ export default function LiveMultiRegister() {
                     <p
                       className={[
                         'mt-1 text-xs font-medium',
-                        intakeDone ? 'text-green-800' : 'text-amber-800',
+                        intakeDone ? 'text-success' : 'text-warning',
                       ].join(' ')}
                     >
                       {intakeDone ? 'Intake completed' : 'Intake not completed: you can still submit'}
@@ -680,7 +680,7 @@ export default function LiveMultiRegister() {
           </ul>
 
           {intakePrograms.some((w) => !intakeByProgramId[w.id]?.trim()) ? (
-            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-[6px] px-3 py-2">
+            <p className="text-xs text-amber-900 bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
               Some sessions are missing intake submissions. You can submit anyway, but complete intake when possible
               so your answers stay on file.
             </p>
@@ -688,7 +688,7 @@ export default function LiveMultiRegister() {
 
           {selectionOverlapMessage ? (
             <div
-              className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+              className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
               role="alert"
             >
               {selectionOverlapMessage}
@@ -697,7 +697,7 @@ export default function LiveMultiRegister() {
 
           {submitMut.isError ? (
             <div
-              className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+              className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
               role="alert"
             >
               {getApiErrorMessage(submitMut.error)}

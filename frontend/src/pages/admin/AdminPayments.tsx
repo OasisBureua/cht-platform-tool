@@ -170,7 +170,7 @@ export default function AdminPayments() {
       {/* Pending table */}
       <section id="pending-table" className="rounded-card border border-border bg-card overflow-hidden">
         {(payNowMutation.isError || deleteMutation.isError) && (
-          <div className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="flex items-start gap-2 border-b border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Pay now failed</p>
@@ -243,9 +243,9 @@ export default function AdminPayments() {
       </section>
 
       {/* Successful payouts (recent) */}
-      <section className="rounded-card border border-green-200 bg-green-50/40 overflow-hidden">
-        <div className="flex items-start gap-3 px-6 pt-5 pb-3 border-b border-green-100 bg-green-50/80">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-700 mt-0.5" aria-hidden />
+      <section className="rounded-card border border-success/25 bg-success/10/40 overflow-hidden">
+        <div className="flex items-start gap-3 px-6 pt-5 pb-3 border-b border-green-100 bg-success/10/80">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" aria-hidden />
           <div>
             <h2 className="text-base font-semibold text-green-950">Successful payments</h2>
             <p className="mt-0.5 text-sm text-green-900">
@@ -255,7 +255,7 @@ export default function AdminPayments() {
         </div>
         <div className="overflow-x-auto bg-white">
           <table className="min-w-full divide-y divide-green-100 text-sm">
-            <thead className="bg-green-50/60">
+            <thead className="bg-success/10/60">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">User</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Amount</th>
@@ -288,12 +288,12 @@ export default function AdminPayments() {
 
       {/* Failed payments */}
       {failed.length > 0 && (
-        <section className="rounded-card border border-red-200 bg-red-50 overflow-hidden">
+        <section className="rounded-card border border-destructive/25 bg-destructive/10 overflow-hidden">
           <div className="flex items-start gap-3 px-6 pt-5 pb-3">
             <XCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-red-900">Failed payments</h2>
-              <p className="mt-0.5 text-sm text-red-800 flex flex-wrap items-center gap-x-1 gap-y-1">
+              <p className="mt-0.5 text-sm text-destructive flex flex-wrap items-center gap-x-1 gap-y-1">
                 These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to try
                 again through <BillComMark size="xs" className="translate-y-px" />.
               </p>
@@ -303,12 +303,12 @@ export default function AdminPayments() {
             <table className="min-w-full divide-y divide-red-200 text-sm">
               <thead className="bg-red-100/60">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Failed at</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Reason</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-red-800 uppercase whitespace-nowrap">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Failed at</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Reason</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-destructive uppercase whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               {failedByProgram.map((group) => (
@@ -316,7 +316,7 @@ export default function AdminPayments() {
                     <tr className="bg-red-100/40">
                       <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-red-900 tracking-wide uppercase">
                         {group.title}
-                        <span className="ml-2 font-normal text-red-700 normal-case">
+                        <span className="ml-2 font-normal text-destructive normal-case">
                           ({group.payments.length} failed)
                         </span>
                       </td>
@@ -336,7 +336,7 @@ export default function AdminPayments() {
             </table>
           </div>
           {retryMutation.isError && (
-            <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-red-800">
+            <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {getApiErrorMessage(retryMutation.error, 'Retry failed.')}
             </div>
@@ -346,12 +346,12 @@ export default function AdminPayments() {
 
       {/* Eligible but not yet submitted for payment */}
       {eligibleNotSubmitted.length > 0 && (
-        <section className="rounded-card border border-amber-200 bg-amber-50 overflow-hidden">
+        <section className="rounded-card border border-warning/25 bg-warning/10 overflow-hidden">
           <div className="flex items-start gap-3 px-6 pt-5 pb-3">
             <Clock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-amber-900">Not yet submitted for payment</h2>
-              <p className="mt-0.5 text-sm text-amber-800">
+              <p className="mt-0.5 text-sm text-warning">
                 These users attended their session and completed the post-event survey, but have not submitted a payment request. Follow up or open their program hub to initiate.
               </p>
             </div>
@@ -360,11 +360,11 @@ export default function AdminPayments() {
             <table className="min-w-full divide-y divide-amber-200 text-sm">
               <thead className="bg-amber-100/60">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Program</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Honorarium</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Survey completed</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Program</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Honorarium</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Survey completed</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">
@@ -390,7 +390,7 @@ export default function AdminPayments() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/admin/programs/${r.program.id}/hub`}
-                        className="text-xs font-semibold text-amber-900 underline hover:text-amber-700"
+                        className="text-xs font-semibold text-amber-900 underline hover:text-warning"
                       >
                         Open program hub
                       </Link>
@@ -608,7 +608,7 @@ function ManualPaymentForm() {
             </ul>
           ) : null}
           {selectedUser ? (
-            <p className="text-xs text-green-800">Selected: {selectedUser.email}</p>
+            <p className="text-xs text-success">Selected: {selectedUser.email}</p>
           ) : null}
         </div>
 
@@ -753,16 +753,16 @@ function StatCard({
 }) {
   const shell =
     variant === 'danger'
-      ? 'border-red-200 bg-red-50'
+      ? 'border-destructive/25 bg-destructive/10'
       : variant === 'success'
-        ? 'border-green-200 bg-green-50/80'
+        ? 'border-success/25 bg-success/10/80'
         : 'border-gray-200 bg-white';
   const labelCls =
-    variant === 'danger' ? 'text-red-700' : variant === 'success' ? 'text-green-800' : 'text-gray-600';
+    variant === 'danger' ? 'text-destructive' : variant === 'success' ? 'text-success' : 'text-gray-600';
   const valueCls =
     variant === 'danger' ? 'text-red-900' : variant === 'success' ? 'text-green-950' : 'text-gray-900';
   const subCls =
-    variant === 'danger' ? 'text-red-700' : variant === 'success' ? 'text-green-800' : 'text-gray-600';
+    variant === 'danger' ? 'text-destructive' : variant === 'success' ? 'text-success' : 'text-gray-600';
 
   return (
     <div className={['rounded-card border p-6', shell].join(' ')}>
@@ -799,7 +799,7 @@ function FailedRow({
       <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
         {payment.failedAt ? format(new Date(payment.failedAt), 'MMM d, yyyy') : '-'}
       </td>
-      <td className="px-4 py-3 text-xs text-red-700 max-w-xs">
+      <td className="px-4 py-3 text-xs text-destructive max-w-xs">
         <span className="line-clamp-2" title={payment.failureReason ?? undefined}>
           {payment.failureReason ?? '-'}
         </span>

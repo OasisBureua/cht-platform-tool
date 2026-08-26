@@ -154,7 +154,7 @@ export function BillVendorSetupForm(props: {
       className="rounded-card border border-border bg-card p-6 space-y-6 min-w-0 overflow-hidden"
     >
       {locked ? (
-        <p className="rounded-[6px] border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+        <p className="rounded-[6px] border border-warning/25 bg-warning/10 px-3 py-2 text-sm text-amber-950">
           Complete your <strong>profession</strong> and <strong>NPI</strong> (when required) under Settings before you
           can save payment details.
         </p>
@@ -260,7 +260,7 @@ export function BillVendorSetupForm(props: {
       ) : null}
 
       {paymentMethod === 'CHECK' ? (
-        <div className="rounded-[6px] border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 leading-relaxed">
+        <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-3 py-2.5 text-xs text-amber-950 leading-relaxed">
           <strong>Check delivery:</strong> Checks are mailed to the US address you enter below. Confirm it is current.
           Delivery status (mailed / in transit / delivered) appears on your Payments page and for admins after payout.
         </div>

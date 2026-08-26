@@ -17,9 +17,9 @@ import {
 } from '../../utils/admin-survey-display';
 
 function attendanceBadgeClass(att: string | null | undefined): string {
-  if (att === 'VERIFIED') return 'bg-green-100 text-green-800';
-  if (att === 'DENIED') return 'bg-red-100 text-red-800';
-  if (att === 'PENDING_VERIFICATION') return 'bg-amber-50 text-amber-800';
+  if (att === 'VERIFIED') return 'bg-green-100 text-success';
+  if (att === 'DENIED') return 'bg-red-100 text-destructive';
+  if (att === 'PENDING_VERIFICATION') return 'bg-warning/10 text-warning';
   return 'bg-gray-100 text-gray-500';
 }
 
@@ -48,7 +48,7 @@ export default function AdminSurveyResponses() {
 
   if (isError || !data) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
+      <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
         Failed to load survey responses.
       </div>
     );

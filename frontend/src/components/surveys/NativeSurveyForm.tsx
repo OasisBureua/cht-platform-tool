@@ -186,7 +186,7 @@ export function NativeSurveyForm({
       ))}
 
       {showPayoutNotice ? (
-        <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+        <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-3 text-xs text-amber-950">
           W-9 and honorarium payout details are managed in your{' '}
           <Link to={w9ProfileHref} className="font-semibold underline">
             profile &amp; payments

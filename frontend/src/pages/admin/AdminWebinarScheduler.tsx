@@ -181,7 +181,7 @@ export default function AdminWebinarScheduler({
 
       {/* Post-submit: session saved but Zoom was not available */}
       {zoomWarning && (
-        <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
+        <div className="flex items-start gap-3 rounded-xl bg-warning/10 border border-yellow-300 px-4 py-3">
           <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-yellow-800">Session saved, no Zoom meeting created</p>
@@ -244,7 +244,7 @@ export default function AdminWebinarScheduler({
       )}
 
       {validationError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {validationError}
         </div>
       )}
@@ -401,7 +401,7 @@ export default function AdminWebinarScheduler({
                     <button
                       type="button"
                       onClick={() => setSpeakers((prev) => prev.filter((_, i) => i !== idx))}
-                      className="shrink-0 text-xs font-semibold text-destructive hover:text-red-800"
+                      className="shrink-0 text-xs font-semibold text-destructive hover:text-destructive"
                       aria-label={`Remove speaker ${idx + 1}`}
                     >
                       Remove
@@ -515,7 +515,7 @@ export default function AdminWebinarScheduler({
         </div>
 
         {createMutation.isError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive text-sm">
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive text-sm">
             Failed to schedule. Please check the details and try again.
           </div>
         )}

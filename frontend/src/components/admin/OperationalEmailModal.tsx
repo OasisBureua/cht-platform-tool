@@ -274,7 +274,7 @@ export default function OperationalEmailModal({
           ) : null}
 
           {result ? (
-            <div className="rounded-[6px] border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+            <div className="rounded-[6px] border border-success/25 bg-success/10 px-4 py-3 text-sm text-green-900">
               Sent {result.sent} email{result.sent === 1 ? '' : 's'}
               {result.failed.length > 0
                 ? `; ${result.failed.length} failed (${result.failed.map((f) => f.email).join(', ')})`

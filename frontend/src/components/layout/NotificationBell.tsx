@@ -91,7 +91,7 @@ export function NotificationBell() {
           </p>
 
           {profileIncomplete ? (
-            <div className="border-b border-amber-200/80 bg-amber-50/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
+            <div className="border-b border-warning/25/80 bg-warning/10/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
               <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Add your profession and NPI</p>
               <p className="mt-1.5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                 You can use the app, but you must add your <strong>profession</strong> and <strong>NPI</strong> (where

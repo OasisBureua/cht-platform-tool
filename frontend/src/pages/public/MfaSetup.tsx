@@ -62,13 +62,13 @@ export default function MfaSetup() {
     >
       <div className="space-y-4">
         {error && (
-          <div className="rounded-[6px] bg-red-50 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
         {success && (
           <div className="space-y-3">
-            <div className="rounded-[6px] bg-green-50 px-4 py-3 text-sm text-success">
+            <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">
               MFA is now enabled for your account.
             </div>
             <button

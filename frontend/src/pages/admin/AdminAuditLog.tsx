@@ -74,7 +74,7 @@ export default function AdminAuditLog() {
       </header>
 
       {isError ? (
-        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error instanceof Error ? error.message : 'Failed to load audit log.'}
         </p>
       ) : null}

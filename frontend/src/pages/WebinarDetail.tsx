@@ -206,7 +206,7 @@ export default function WebinarDetail() {
         <div className="bg-card border border-border rounded-card p-6 space-y-4">
           <h1 className="text-2xl font-bold text-foreground">{zoomWebinar.title}</h1>
           <p className="mt-3 text-muted-foreground">{zoomWebinar.description}</p>
-          <div className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-950">
             <p className="font-semibold">Use a scheduled Live webinar in the app</p>
             <p className="mt-1 text-amber-900">
               CME registration, admin approval, and honorarium payouts run through platform webinars. Raw Zoom-only
@@ -373,7 +373,7 @@ export default function WebinarDetail() {
       ) : null}
 
       {showPostEventReminderBanner ? (
-        <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-950">
           <p className="font-semibold">Post-event follow-up</p>
           <p className="mt-1 text-amber-900">
             Complete remaining steps on this page after the session (survey and/or honorarium confirmation). You can also
@@ -459,7 +459,7 @@ export default function WebinarDetail() {
                 </span>
               ) : null}
               {program.honorariumAmount ? (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-[6px] px-2.5 py-1">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-success/10 border border-success/25 rounded-[6px] px-2.5 py-1">
                   <DollarSign className="h-3.5 w-3.5" aria-hidden />
                   {program.honorariumAmount.toLocaleString()} honorarium
                 </span>
@@ -525,7 +525,7 @@ export default function WebinarDetail() {
 
             {pendingRegistrationMessage ? (
               <div className="mt-auto w-full max-w-xl pt-1">
-                <p className="text-pretty rounded-[6px] border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 sm:text-sm">
+                <p className="text-pretty rounded-[6px] border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-medium text-amber-900 sm:text-sm">
                   {pendingRegistrationMessage}
                 </p>
               </div>
@@ -557,14 +557,14 @@ export default function WebinarDetail() {
           <h2 className="text-base font-semibold text-foreground">Live webinar</h2>
 
           {registrationPendingApproval && !enrolled ? (
-            <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-4">
+            <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-4">
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-amber-400 flex items-center justify-center">
                   <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-amber-900">Registration submitted, pending approval</p>
-                  <p className="mt-0.5 text-sm text-amber-800">
+                  <p className="mt-0.5 text-sm text-warning">
                     Your request has been received. An administrator will review it shortly. Your join link will activate here automatically after approval, when the live session opens.
                   </p>
                 </div>
@@ -585,7 +585,7 @@ export default function WebinarDetail() {
               </div>
             </div>
           ) : enrolled ? (
-            <div className="rounded-card border border-green-200 bg-green-50 px-4 py-3">
+            <div className="rounded-card border border-success/25 bg-success/10 px-4 py-3">
               <div className="flex items-center gap-3">
                 <svg className="h-5 w-5 shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -650,7 +650,7 @@ export default function WebinarDetail() {
                 <ExternalLink className="h-4 w-4 opacity-60" />
               </button>
           ) : (
-            <p className="text-sm text-amber-900 bg-amber-50 border border-amber-200 rounded-[6px] px-3 py-2">
+            <p className="text-sm text-amber-900 bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
               A join link is not available yet. If this persists, contact support so an admin can confirm the Zoom
               webinar is linked to this program.
             </p>
@@ -734,7 +734,7 @@ export default function WebinarDetail() {
             </div>
           ) : null}
           {!enrolled && registrationPendingApproval ? (
-            <div className="mt-5 rounded-[6px] border border-amber-200 bg-amber-50 p-3">
+            <div className="mt-5 rounded-[6px] border border-warning/25 bg-warning/10 p-3">
               <p className="text-xs text-amber-900">
                 You&apos;re registered, waiting for admin approval. Conversations and surveys unlock after approval.
               </p>
@@ -780,7 +780,7 @@ export default function WebinarDetail() {
           </div>
 
           {myRegistration?.status === 'PENDING' ? (
-            <span className="ml-auto text-xs font-medium text-amber-800">Pending approval</span>
+            <span className="ml-auto text-xs font-medium text-warning">Pending approval</span>
           ) : registrationClosed && !enrolled ? (
             <span className="ml-auto text-xs font-medium text-muted-foreground">Registration closed</span>
           ) : needsRegistrationWizard && !enrolled && !userId ? (
@@ -845,7 +845,7 @@ function RequirementRow(props: {
         </span>
       </div>
       {done ? (
-        <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-[6px] px-2 py-1">
+        <span className="text-xs font-semibold text-success bg-success/10 border border-success/25 rounded-[6px] px-2 py-1">
           Done
         </span>
       ) : inProgress ? (
@@ -853,7 +853,7 @@ function RequirementRow(props: {
           In progress
         </span>
       ) : pendingApproval ? (
-        <span className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-[6px] px-2 py-1">
+        <span className="text-xs font-semibold text-warning bg-warning/10 border border-warning/25 rounded-[6px] px-2 py-1">
           Pending approval
         </span>
       ) : locked ? (

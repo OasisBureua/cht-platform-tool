@@ -261,7 +261,7 @@ export default function AdminContent() {
       </div>
 
       {isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive dark:border-red-900/50 dark:bg-red-950/40">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive dark:border-red-900/50 dark:bg-red-950/40">
           {(() => {
             const status = (error as { response?: { status?: number } } | null)
               ?.response?.status;
@@ -344,7 +344,7 @@ function PostRow({ post }: { post: WordPressPostItem }) {
               href={`https://www.youtube.com/watch?v=${post.youtube_video_id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300"
+              className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-semibold text-destructive hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300"
             >
               <Youtube className="h-3.5 w-3.5" aria-hidden />
               {post.youtube_video_id}

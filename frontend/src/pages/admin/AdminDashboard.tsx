@@ -123,7 +123,7 @@ export default function AdminDashboard() {
             <p className="text-2xl font-bold tabular-nums text-gray-900 dark:text-zinc-50">
               {stats?.paymentsPaidCount ?? 0}
             </p>
-            <p className="mt-0.5 text-xs font-semibold text-amber-800 group-hover:underline dark:text-amber-300">
+            <p className="mt-0.5 text-xs font-semibold text-warning group-hover:underline dark:text-amber-300">
               Payments paid
             </p>
           </div>
@@ -199,21 +199,21 @@ export default function AdminDashboard() {
             <p className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
               {pendingCount}
             </p>
-            <p className="mt-0.5 text-sm font-semibold text-amber-800 group-hover:underline dark:text-amber-300">
+            <p className="mt-0.5 text-sm font-semibold text-warning group-hover:underline dark:text-amber-300">
               Payments queue
             </p>
             <div className="mt-3 rounded-xl bg-white/80 p-3 shadow-inner dark:bg-zinc-800/50">
               <p className="text-xs text-gray-600 dark:text-zinc-400">
                 {pendingCount > 0 ? (
                   <>
-                    <span className="font-semibold tabular-nums text-amber-700 dark:text-amber-400">{pendingCount}</span>{' '}
+                    <span className="font-semibold tabular-nums text-warning dark:text-amber-400">{pendingCount}</span>{' '}
                     pending
                   </>
                 ) : (
                   'All caught up'
                 )}
               </p>
-              <p className="mt-1 text-xs font-medium text-amber-700 group-hover:underline dark:text-amber-400">
+              <p className="mt-1 text-xs font-medium text-warning group-hover:underline dark:text-amber-400">
                 Open payments →
               </p>
             </div>

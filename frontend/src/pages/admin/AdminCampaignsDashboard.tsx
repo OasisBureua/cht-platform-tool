@@ -38,7 +38,7 @@ export default function AdminCampaignsDashboard() {
       {isLoading ? <LoadingSpinner /> : null}
 
       {isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
           {(error as Error)?.message ?? 'Failed to load campaign metrics.'}
         </div>
       ) : null}

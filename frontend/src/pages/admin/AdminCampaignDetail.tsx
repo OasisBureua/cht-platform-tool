@@ -101,7 +101,7 @@ export default function AdminCampaignDetail() {
 
   if (isError) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+      <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
         {(error as Error)?.message ?? 'Failed to load campaign details.'}
       </div>
     );
@@ -363,7 +363,7 @@ export default function AdminCampaignDetail() {
           {campaign.warnings.map((warning) => (
             <div
               key={warning}
-              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+              className="rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
             >
               {warning}
             </div>
@@ -371,7 +371,7 @@ export default function AdminCampaignDetail() {
           {campaign.errors.map((item) => (
             <div
               key={item}
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
+              className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
             >
               {item}
             </div>

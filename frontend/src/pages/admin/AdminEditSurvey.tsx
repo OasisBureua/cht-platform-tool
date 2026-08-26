@@ -172,7 +172,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
         </div>
 
         {survey.responseCount ? (
-          <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="flex items-start gap-3 rounded-xl border border-warning/25 bg-warning/10 p-4 text-sm text-amber-900">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
               <p className="font-semibold">
@@ -210,7 +210,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
         </div>
 
         {survey.jotformFormId ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 text-sm text-amber-900">
             <p className="font-semibold">Legacy Jotform survey</p>
             <p className="mt-1">
               Saving native questions will detach Jotform form{' '}
@@ -221,7 +221,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
         ) : null}
 
         {saveError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive text-sm">
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive text-sm">
             {saveError}
           </div>
         )}

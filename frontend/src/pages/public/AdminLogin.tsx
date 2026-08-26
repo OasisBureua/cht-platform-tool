@@ -87,7 +87,7 @@ export default function AdminLogin() {
           </div>
           <form className="space-y-4" onSubmit={handleLogin}>
             {error && (
-              <div className="rounded-[6px] bg-red-50 px-4 py-3 text-sm text-destructive">
+              <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -142,7 +142,7 @@ export default function AdminLogin() {
                 <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
               </>
             ) : (
-              <p className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-warning">
                 {googleOAuthMigrationMessage}
               </p>
             )}

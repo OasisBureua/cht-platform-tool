@@ -454,13 +454,13 @@ export default function Settings() {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Activities Completed</span>
-                <span className="rounded-[6px] bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">
+                <span className="rounded-[6px] bg-green-100 px-3 py-1 text-sm font-semibold text-success">
                   {profile?.activitiesCompleted ?? 0}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Profile Completion</span>
-                <span className="rounded-[6px] bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">
+                <span className="rounded-[6px] bg-green-100 px-3 py-1 text-sm font-semibold text-success">
                   {completionRate}%
                 </span>
               </div>
@@ -490,7 +490,7 @@ export default function Settings() {
               ) : null}
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 rounded-[6px] border border-border px-4 py-3 text-sm font-medium text-destructive hover:bg-red-50"
+                className="flex w-full items-center gap-2 rounded-[6px] border border-border px-4 py-3 text-sm font-medium text-destructive hover:bg-destructive/10"
               >
                 <LogOut className="h-4 w-4" /> Logout
               </button>
@@ -604,7 +604,7 @@ function PaymentSettingsSection({
       </p>
 
       {profileIncomplete ? (
-        <div className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 mb-4">
+        <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-950 mb-4">
           <p className="font-semibold">Complete your profile first</p>
           <p className="mt-1 text-amber-900/90">
             Add your profession and NPI (when required) in the <strong>Profile</strong> tab before saving payment details
@@ -615,14 +615,14 @@ function PaymentSettingsSection({
 
       {hasAccount ? (
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-[6px] border border-green-200 bg-green-50 px-4 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-[6px] border border-success/25 bg-success/10 px-4 py-3">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
               <div>
                 <p className="font-medium text-green-900 inline-flex flex-wrap items-center gap-2">
                   <BillComMark size="sm" /> vendor connected
                 </p>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-success">
                   Preferred method:{' '}
                   <strong>
                     {preferredMethod === 'CHECK'
@@ -666,15 +666,15 @@ function PaymentSettingsSection({
             />
           ) : null}
           {syncMessage.ok && <p className="text-sm text-success">{syncMessage.ok}</p>}
-          {syncMessage.err && <p className="text-sm text-red-600 bg-red-50 rounded-[6px] px-3 py-2">{syncMessage.err}</p>}
+          {syncMessage.err && <p className="text-sm text-red-600 bg-destructive/10 rounded-[6px] px-3 py-2">{syncMessage.err}</p>}
 
           {!w9Submitted ? (
-            <div className="rounded-[6px] border border-amber-200 bg-amber-50 p-4">
+            <div className="rounded-[6px] border border-warning/25 bg-warning/10 p-4">
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="font-medium text-amber-900">W-9 required</p>
-                  <p className="text-sm text-amber-800 mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
+                  <p className="text-sm text-warning mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
                     Complete the W-9 in <BillComMark size="xs" className="translate-y-px" /> so admins can issue payouts.
                   </p>
                   <button

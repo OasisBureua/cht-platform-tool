@@ -438,7 +438,7 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                   </div>
 
                   {roleRecipientTotal === 0 && !roleRecipientsLoading ? (
-                    <p className="text-sm text-amber-800 rounded-[6px] bg-amber-50 border border-amber-200 px-3 py-2">
+                    <p className="text-sm text-warning rounded-[6px] bg-warning/10 border border-warning/25 px-3 py-2">
                       No active users match the selected role and filters.
                     </p>
                   ) : null}
@@ -530,7 +530,7 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
           </section>
 
           {result ? (
-            <div className="rounded-card border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-950 space-y-1">
+            <div className="rounded-card border border-success/25 bg-success/10 px-4 py-3 text-sm text-green-950 space-y-1">
               <p className="font-semibold">Sent {result.emailed} email(s)</p>
               {result.skipped.length > 0 ? (
                 <p className="text-xs">{result.skipped.length} skipped (see server logs)</p>

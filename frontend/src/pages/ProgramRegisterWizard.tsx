@@ -357,7 +357,7 @@ export default function ProgramRegisterWizard() {
             <>
               <div className="space-y-4">
                 {alreadyRegistered ? (
-                  <div className="rounded-card border border-green-200 bg-green-50 p-4 text-sm text-green-950 space-y-1">
+                  <div className="rounded-card border border-success/25 bg-success/10 p-4 text-sm text-green-950 space-y-1">
                     <p className="font-semibold">Registration already submitted</p>
                     <p>
                       {myRegistration?.status === 'PENDING'
@@ -410,7 +410,7 @@ export default function ProgramRegisterWizard() {
                       <p className="text-sm text-destructive">{intakeSubmitError}</p>
                     ) : null}
                     {intakeRecorded ? (
-                      <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-[6px] px-3 py-2">
+                      <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-[6px] px-3 py-2">
                         Your answers are saved.{' '}
                         {isLastStep
                           ? 'Click Submit registration when ready.'
@@ -451,7 +451,7 @@ export default function ProgramRegisterWizard() {
 
                 {submitMut.isError && (
                   <div
-                    className="rounded-[6px] border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                    className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                     role="alert"
                   >
                     {getApiErrorMessage(

@@ -120,7 +120,7 @@ export default function PublicOfficeHoursDetail() {
 
             <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{session.description}</p>
 
-            <div className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-900">
               <strong>How it works:</strong> After registration, join the session directly from the platform when
               it&apos;s time.
             </div>

@@ -312,7 +312,7 @@ export default function Join() {
                 <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
               </div>
             ) : (
-              <div className="mt-4 rounded-card border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <div className="mt-4 rounded-card border border-warning/25 bg-warning/10 px-3 py-2.5 text-sm text-warning">
                 {googleOAuthMigrationMessage}
               </div>
             )}
@@ -330,7 +330,7 @@ export default function Join() {
 
             <form className="mt-4" onSubmit={handleSubmit} noValidate>
               {error && (
-                <div className="mb-3 rounded-card border border-red-100 bg-red-50/90 px-3 py-2.5 text-sm text-red-800 shadow-[inset_0_0_0_1px_rgba(254,202,202,0.6)]">
+                <div className="mb-3 rounded-card border border-red-100 bg-destructive/10/90 px-3 py-2.5 text-sm text-destructive shadow-[inset_0_0_0_1px_rgba(254,202,202,0.6)]">
                   {error}
                 </div>
               )}
@@ -387,7 +387,7 @@ export default function Join() {
                           >
                             <Check className="h-2.5 w-2.5" strokeWidth={3} />
                           </span>
-                          <span className={ok ? 'text-green-800' : 'text-muted-foreground'}>
+                          <span className={ok ? 'text-success' : 'text-muted-foreground'}>
                             {rule.label}
                           </span>
                         </li>

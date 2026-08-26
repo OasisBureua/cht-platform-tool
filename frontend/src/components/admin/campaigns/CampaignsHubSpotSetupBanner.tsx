@@ -12,10 +12,10 @@ export function CampaignsHubSpotSetupBanner({
     'marketing.campaigns.read, marketing-email';
 
   return (
-    <div className="rounded-card border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
+    <div className="rounded-card border border-warning/25 bg-warning/10 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
       <div className="flex gap-3">
         <AlertTriangle
-          className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300"
+          className="mt-0.5 h-5 w-5 shrink-0 text-warning dark:text-amber-300"
           aria-hidden
         />
         <div className="space-y-2 text-sm text-amber-950 dark:text-amber-100">
@@ -68,7 +68,7 @@ export function CampaignsDashboardAlerts({
       {warnings.map((warning) => (
         <div
           key={warning}
-          className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+          className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
         >
           {warning}
         </div>

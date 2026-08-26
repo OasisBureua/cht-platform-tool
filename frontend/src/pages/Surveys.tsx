@@ -215,11 +215,11 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
         ) : null}
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
             <AlertCircle className="h-3 w-3" aria-hidden />
             {survey.required ? 'Survey Required' : 'Optional'}
           </span>
-          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-medium text-rose-700 tabular-nums">
+          <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-medium text-rose-700 tabular-nums">
             {remainingDays <= 0 ? 'Expired' : `${remainingDays}d remaining`}
           </span>
         </div>
@@ -270,7 +270,7 @@ function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUr
         ) : null}
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
             <CheckCircle2 className="h-3 w-3" aria-hidden />
             Completed
           </span>

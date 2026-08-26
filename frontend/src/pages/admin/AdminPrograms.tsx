@@ -71,7 +71,7 @@ export default function AdminPrograms() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
+      <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
         Failed to load {isOfficeHours ? 'Office Hours' : 'webinars'}. Please try again.
       </div>
     );
@@ -85,7 +85,7 @@ export default function AdminPrograms() {
   return (
     <div className="space-y-6">
       {scheduleWarningFlash ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <span>{scheduleWarningFlash}</span>
           <button
             type="button"
@@ -192,7 +192,7 @@ export default function AdminPrograms() {
                 </button>
               </div>
               {deleteError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
+                <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   {deleteError}
                 </p>
               ) : null}
@@ -394,11 +394,11 @@ function WebinarRow({
 
   if (webinar.unlinkedFromZoom) {
     return (
-      <tr className="bg-amber-50/60 hover:bg-amber-50">
+      <tr className="bg-warning/10/60 hover:bg-warning/10">
         <td className="px-4 py-3">
           <p className="font-medium text-foreground line-clamp-1">{webinar.title}</p>
           {durationStr && <p className="text-xs text-muted-foreground mt-0.5">{durationStr}</p>}
-          <p className="text-xs font-medium text-amber-800 mt-1">
+          <p className="text-xs font-medium text-warning mt-1">
             In Zoom only: schedule or publish in the platform to show on LIVE
           </p>
         </td>
@@ -556,7 +556,7 @@ function WebinarRow({
                   setMenuOpen(false);
                   onDelete();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-red-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete
               </button>
@@ -918,7 +918,7 @@ function EditWebinarModal({
           )}
 
           {error && (
-            <p className="text-sm text-destructive bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
           )}
         </div>
 
@@ -952,8 +952,8 @@ function EditWebinarModal({
 
 function StatusBadge({ status }: { status: AdminWebinar['status'] }) {
   const map: Record<AdminWebinar['status'], { label: string; cls: string }> = {
-    PUBLISHED: { label: 'Live', cls: 'bg-green-50 text-success border-green-200' },
-    DRAFT:     { label: 'Draft', cls: 'bg-amber-50 text-warning border-amber-200' },
+    PUBLISHED: { label: 'Live', cls: 'bg-success/10 text-success border-success/25' },
+    DRAFT:     { label: 'Draft', cls: 'bg-warning/10 text-warning border-warning/25' },
     ARCHIVED:  { label: 'Archived', cls: 'bg-muted text-muted-foreground border-gray-200' },
   };
   const { label, cls } = map[status] ?? { label: status, cls: 'bg-muted text-muted-foreground border-gray-200' };

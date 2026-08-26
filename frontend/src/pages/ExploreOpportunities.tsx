@@ -273,9 +273,9 @@ export default function ExploreOpportunities() {
 
       {/* Content grid */}
       {showClipsError ? (
-        <div className="rounded-card border border-amber-200 bg-amber-50 p-12 text-center">
-          <p className="text-amber-800 font-medium mb-2">Search temporarily unavailable</p>
-          <p className="text-sm text-amber-700">Try a shorter search term or try again in a moment.</p>
+        <div className="rounded-card border border-warning/25 bg-warning/10 p-12 text-center">
+          <p className="text-warning font-medium mb-2">Search temporarily unavailable</p>
+          <p className="text-sm text-warning">Try a shorter search term or try again in a moment.</p>
         </div>
       ) : isLoading ? (
         <div className="flex justify-center py-16">
@@ -324,7 +324,7 @@ export default function ExploreOpportunities() {
                 <div className="mt-1 flex flex-wrap items-center gap-2">
                   <h3 className="line-clamp-2 text-balance font-bold text-foreground flex-1 min-w-[8rem]">{item.title}</h3>
                   {webinarBadge ? (
-                    <span className="shrink-0 rounded-[6px] border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+                    <span className="shrink-0 rounded-[6px] border border-success/25 bg-success/10 px-2 py-0.5 text-xs font-semibold text-green-900">
                       {webinarBadge}
                     </span>
                   ) : null}

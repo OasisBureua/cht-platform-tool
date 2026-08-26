@@ -162,9 +162,9 @@ export default function PostEventParticipantFlow(props: {
 
   if (attendanceDenied) {
     return (
-      <section className="rounded-card border border-red-200 bg-red-50 p-6 space-y-2">
+      <section className="rounded-card border border-destructive/25 bg-destructive/10 p-6 space-y-2">
         <h2 className="text-base font-semibold text-red-900">Attendance not verified</h2>
-        <p className="text-sm text-red-800">
+        <p className="text-sm text-destructive">
           Your attendance could not be verified for this session. If you believe this is a mistake, contact support.
         </p>
       </section>
@@ -260,7 +260,7 @@ export default function PostEventParticipantFlow(props: {
                 <span
                   className={[
                     'mt-1 text-[11px] font-semibold text-center whitespace-nowrap',
-                    done ? 'text-green-700' : current ? 'text-gray-900' : 'text-gray-400',
+                    done ? 'text-success' : current ? 'text-gray-900' : 'text-gray-400',
                   ].join(' ')}
                 >
                   {step.label}

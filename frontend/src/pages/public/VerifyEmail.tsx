@@ -78,12 +78,12 @@ export default function VerifyEmail() {
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         {error && (
-          <div className="rounded-[6px] bg-red-50 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
         {info && (
-          <div className="rounded-[6px] bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">
             {info}
           </div>
         )}

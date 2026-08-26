@@ -65,7 +65,7 @@ export default function OfficeHours() {
         </p>
       </header>
 
-      <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="note">
+      <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-900" role="note">
         <strong>Confidentiality notice:</strong> CHM Office Hours are not conducted over a HIPAA-enabled environment.
         Please do not disclose patient-identifiable information during these sessions.
       </div>
@@ -162,7 +162,7 @@ function SessionRow({
             {w.title}
           </p>
           {listBadge ? (
-            <span className="shrink-0 rounded-[6px] border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+            <span className="shrink-0 rounded-[6px] border border-success/25 bg-success/10 px-2 py-0.5 text-xs font-semibold text-green-900">
               {listBadge}
             </span>
           ) : null}

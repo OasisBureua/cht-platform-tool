@@ -202,7 +202,7 @@ export default function AdminCreateSurvey() {
               <button
                 type="button"
                 onClick={() => removeQuestion(i)}
-                className="self-end rounded-lg border border-red-200 px-3 py-2 text-sm text-destructive hover:bg-red-50"
+                className="self-end rounded-lg border border-destructive/25 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
               >
                 Remove
               </button>
@@ -211,7 +211,7 @@ export default function AdminCreateSurvey() {
         </div>
 
         {createMutation.isError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive text-sm">
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive text-sm">
             Failed to create survey. Please try again.
           </div>
         )}

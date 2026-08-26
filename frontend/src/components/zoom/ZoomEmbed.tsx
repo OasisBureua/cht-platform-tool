@@ -329,7 +329,7 @@ export function ZoomEmbed({
           className={
             fill
               ? 'text-sm text-amber-100 rounded-[6px] bg-amber-950/80 border border-amber-700/50 px-3 py-2'
-              : 'text-sm text-amber-950 rounded-[6px] bg-amber-50 border border-amber-200 px-3 py-2'
+              : 'text-sm text-amber-950 rounded-[6px] bg-warning/10 border border-warning/25 px-3 py-2'
           }
         >
           {WAITING_FOR_HOST_COPY}
@@ -341,7 +341,7 @@ export function ZoomEmbed({
           className={
             fill
               ? 'text-sm text-red-100 rounded-[6px] bg-red-950/80 border border-red-700/50 px-3 py-2'
-              : 'text-sm text-red-700 rounded-[6px] bg-red-50 px-3 py-2'
+              : 'text-sm text-destructive rounded-[6px] bg-destructive/10 px-3 py-2'
           }
         >
           {error}
@@ -363,7 +363,7 @@ export function ZoomEmbed({
 
       {!fill &&
         (unsupported ? (
-          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-[6px] px-3 py-2">
+          <p className="text-xs text-warning bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
             Unsupported browser or device for the embedded Zoom client. Use Open in Zoom to continue.
           </p>
         ) : (

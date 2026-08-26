@@ -54,8 +54,8 @@ function hcpLabel(specialty?: string | null): string {
 function hcpBadgeClass(specialty?: string | null): string {
   if (!specialty) return 'bg-gray-100 text-gray-500';
   return HCP_PROFESSIONS.has(specialty)
-    ? 'bg-green-50 text-green-800 border border-green-200'
-    : 'bg-amber-50 text-amber-800 border border-amber-200';
+    ? 'bg-success/10 text-success border border-success/25'
+    : 'bg-warning/10 text-warning border border-warning/25';
 }
 
 export default function AdminWebinarApprovals() {
@@ -391,7 +391,7 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'registrations' && isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
           Failed to load pending registrations.
         </div>
       ) : null}
@@ -403,7 +403,7 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'attendance' && attendanceError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
           Failed to load attendance verification queue.
         </div>
       ) : null}
@@ -510,11 +510,11 @@ export default function AdminWebinarApprovals() {
                       className={[
                         'inline-block rounded-full px-2 py-0.5 text-xs font-semibold',
                         att === 'VERIFIED'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-100 text-success'
                           : att === 'DENIED'
-                            ? 'bg-red-100 text-red-800'
+                            ? 'bg-red-100 text-destructive'
                             : att === 'PENDING_VERIFICATION'
-                              ? 'bg-amber-50 text-amber-800'
+                              ? 'bg-warning/10 text-warning'
                               : 'bg-muted text-muted-foreground',
                       ].join(' ')}
                     >
@@ -566,8 +566,8 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'registrations' && !recentlyApprovedLoading && visibleRecentlyApproved.length > 0 ? (
-        <section className="overflow-x-auto rounded-card border border-amber-200 bg-amber-50/60">
-          <div className="border-b border-amber-200 px-4 py-3">
+        <section className="overflow-x-auto rounded-card border border-warning/25 bg-warning/10/60">
+          <div className="border-b border-warning/25 px-4 py-3">
             <h2 className="text-sm font-semibold text-amber-950">Recently approved</h2>
             <p className="mt-0.5 text-xs text-amber-900">
               Shown until each session ends plus one hour. Undo is available for{' '}
@@ -615,7 +615,7 @@ export default function AdminWebinarApprovals() {
                         type="button"
                         disabled={busy || remaining <= 0}
                         onClick={() => undoMut.mutate(r.id)}
-                        className="rounded-lg border border-amber-300 bg-card px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50 disabled:opacity-40"
+                        className="rounded-lg border border-amber-300 bg-card px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-warning/10 disabled:opacity-40"
                       >
                         Undo approval
                       </button>

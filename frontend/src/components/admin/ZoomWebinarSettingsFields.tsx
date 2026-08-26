@@ -80,7 +80,7 @@ export default function ZoomWebinarSettingsFields({
         </p>
       </div>
       {warning ? (
-        <p className="rounded-[6px] bg-amber-50 px-3 py-2 text-xs text-amber-800">{warning}</p>
+        <p className="rounded-[6px] bg-warning/10 px-3 py-2 text-xs text-warning">{warning}</p>
       ) : null}
       <ul className="divide-y divide-gray-100">
         {ROWS.map((row) => {

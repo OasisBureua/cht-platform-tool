@@ -184,7 +184,7 @@ export default function SurveyDetail() {
           {/* Start / Embed */}
           <div className="rounded-card border border-border bg-card p-6">
             {formLocked || surveySaved ? (
-              <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-card px-4 py-3">
+              <p className="text-sm font-medium text-success bg-success/10 border border-success/25 rounded-card px-4 py-3">
                 {formLocked || isPostEventFeedback
                   ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
                   : 'Your responses are saved. Thank you for completing this survey.'}

@@ -14,13 +14,13 @@ function getInitials(firstName: string, lastName: string, email: string): string
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-purple-100 text-purple-800',
   KOL: 'bg-blue-100 text-blue-800',
-  HCP: 'bg-green-100 text-green-800',
+  HCP: 'bg-green-100 text-success',
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-green-100 text-green-800',
+  ACTIVE: 'bg-green-100 text-success',
   INACTIVE: 'bg-gray-100 text-gray-600',
-  SUSPENDED: 'bg-red-100 text-red-700',
+  SUSPENDED: 'bg-red-100 text-destructive',
 };
 
 const ROLES = ['All', 'HCP', 'KOL', 'ADMIN'];
@@ -156,7 +156,7 @@ export default function AdminHcpExplorer() {
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : isError ? (
-        <div className="rounded-card border border-red-200 bg-red-50 p-8 text-center">
+        <div className="rounded-card border border-destructive/25 bg-destructive/10 p-8 text-center">
           <p className="font-semibold text-destructive">Failed to load users</p>
           <p className="text-sm text-destructive mt-1">Check your connection or try refreshing.</p>
         </div>

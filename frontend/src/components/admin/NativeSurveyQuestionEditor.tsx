@@ -110,7 +110,7 @@ export function NativeSurveyQuestionEditor({
                     ),
                   })
                 }
-                className="rounded-[6px] p-2 text-muted-foreground hover:bg-red-50 hover:text-destructive"
+                className="rounded-[6px] p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 aria-label="Delete empty section"
               >
                 <Trash2 className="h-4 w-4" />
@@ -133,7 +133,7 @@ export function NativeSurveyQuestionEditor({
                     {question.id}
                   </span>
                   {locked ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-warning">
                       Has response mapping
                     </span>
                   ) : null}
@@ -171,7 +171,7 @@ export function NativeSurveyQuestionEditor({
                         }))
                       }
                       disabled={locked}
-                      className="rounded p-1.5 text-muted-foreground hover:bg-red-50 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
                       aria-label="Delete question"
                       title={
                         locked

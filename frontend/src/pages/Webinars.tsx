@@ -192,7 +192,7 @@ function WebinarRow({
             </span>
           ) : null}
           {listBadge ? (
-            <span className="shrink-0 rounded-[6px] border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+            <span className="shrink-0 rounded-[6px] border border-success/25 bg-success/10 px-2 py-0.5 text-xs font-semibold text-green-900">
               {listBadge}
             </span>
           ) : null}
@@ -245,7 +245,7 @@ function WebinarRow({
         <span
           className={[
             'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-            expired ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-50 text-amber-800',
+            expired ? 'bg-zinc-100 text-zinc-500' : 'bg-warning/10 text-warning',
           ].join(' ')}
         >
           {expired ? 'Session passed' : 'Survey required'}

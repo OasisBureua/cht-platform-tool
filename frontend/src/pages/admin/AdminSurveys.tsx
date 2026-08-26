@@ -58,7 +58,7 @@ export default function AdminSurveys() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
+      <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
         Failed to load surveys. Please try again.
       </div>
     );
@@ -67,7 +67,7 @@ export default function AdminSurveys() {
   return (
     <div className="space-y-6">
       {deleteMutation.isError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive flex items-center justify-between">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive flex items-center justify-between">
           <span>Failed to delete survey. Please try again.</span>
           <button
             type="button"

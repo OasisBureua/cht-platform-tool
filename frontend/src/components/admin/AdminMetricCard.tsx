@@ -13,17 +13,17 @@ const VARIANT_STYLES: Record<
     sub: 'text-muted-foreground',
   },
   danger: {
-    shell: 'border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30',
-    label: 'text-red-700 dark:text-red-300',
+    shell: 'border-destructive/25 bg-destructive/10 dark:border-red-900/50 dark:bg-red-950/30',
+    label: 'text-destructive dark:text-red-300',
     value: 'text-red-900 dark:text-red-100',
-    sub: 'text-red-700 dark:text-red-300',
+    sub: 'text-destructive dark:text-red-300',
   },
   success: {
     shell:
-      'border-green-200 bg-green-50/80 dark:border-green-900/50 dark:bg-green-950/25',
-    label: 'text-green-800 dark:text-green-300',
+      'border-success/25 bg-success/10/80 dark:border-green-900/50 dark:bg-green-950/25',
+    label: 'text-success dark:text-green-300',
     value: 'text-green-950 dark:text-green-100',
-    sub: 'text-green-800 dark:text-green-300',
+    sub: 'text-success dark:text-green-300',
   },
   brand: {
     shell:

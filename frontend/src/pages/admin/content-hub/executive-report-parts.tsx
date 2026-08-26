@@ -77,7 +77,7 @@ export function Slide({
     <section
       id={id}
       className={`exec-slide relative flex w-full flex-col overflow-hidden ${
-        dark ? 'bg-[#373737] text-white' : 'bg-white text-[#373737]'
+        dark ? 'bg-[#373737] text-white' : 'bg-[#ffffff] text-[#373737]'
       } ${extra}`}
       style={{ minHeight: '56.25vw', breakAfter: 'page', fontFamily: 'Geist, sans-serif' }}
     >
@@ -140,7 +140,7 @@ export function PlatformTile({
       <DecoPanel className="h-14 flex-shrink-0 items-end px-4 pb-2" style={{ backgroundColor: color }} markColor="#ffffff">
         <div className="text-sm font-black uppercase tracking-widest text-white">{platform}</div>
       </DecoPanel>
-      <div className="flex flex-col gap-4 bg-white p-5">
+      <div className="flex flex-col gap-4 bg-[#ffffff] p-5">
         <div>
           <div className="text-5xl font-black leading-none text-[#373737]">{fmt(totalViews)}</div>
           <div className="mt-2 text-sm font-semibold uppercase tracking-wide text-[#5c5c5c]">Total Views</div>

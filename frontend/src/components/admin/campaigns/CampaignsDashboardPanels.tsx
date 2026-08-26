@@ -330,7 +330,7 @@ export function CampaignsDashboardTable({
                               className={[
                                 'rounded-full px-2 py-0.5 text-[10px] font-medium uppercase',
                                 ok
-                                  ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
+                                  ? 'bg-green-100 text-success dark:bg-green-950/40 dark:text-green-300'
                                   : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400',
                               ].join(' ')}
                               title={

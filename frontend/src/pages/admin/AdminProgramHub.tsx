@@ -454,7 +454,7 @@ export default function AdminProgramHub() {
           </p>
         )}
         {settingsMessage.err && (
-          <p className="text-sm text-destructive bg-red-50 rounded-lg px-3 py-2" role="alert">
+          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2" role="alert">
             {settingsMessage.err}
           </p>
         )}
@@ -530,7 +530,7 @@ export default function AdminProgramHub() {
                 <button
                   type="button"
                   onClick={() => deleteSlotMut.mutate(s.id)}
-                  className="text-destructive hover:text-red-800 p-1"
+                  className="text-destructive hover:text-destructive p-1"
                   aria-label="Delete slot"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -843,11 +843,11 @@ export default function AdminProgramHub() {
                                   className={[
                                     'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
                                     att === 'VERIFIED'
-                                      ? 'bg-green-100 text-green-800'
+                                      ? 'bg-green-100 text-success'
                                       : att === 'DENIED'
-                                        ? 'bg-red-100 text-red-800'
+                                        ? 'bg-red-100 text-destructive'
                                         : att === 'PENDING_VERIFICATION'
-                                          ? 'bg-amber-50 text-amber-800'
+                                          ? 'bg-warning/10 text-warning'
                                           : 'bg-gray-100 text-gray-500',
                                   ].join(' ')}
                                 >
@@ -947,12 +947,12 @@ export default function AdminProgramHub() {
                 </button>
               </div>
               {ensureNativeSurveysMut.isSuccess ? (
-                <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
+                <p className="rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-xs text-success">
                   Native surveys are present. Existing surveys and responses were left unchanged.
                 </p>
               ) : null}
               {ensureNativeSurveysMut.isError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+                <p className="rounded-lg border border-destructive/25 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                   Could not ensure native surveys. No existing survey or response was changed.
                 </p>
               ) : null}
@@ -1118,11 +1118,11 @@ export default function AdminProgramHub() {
                                       className={[
                                         'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
                                         att === 'VERIFIED'
-                                          ? 'bg-green-100 text-green-800'
+                                          ? 'bg-green-100 text-success'
                                           : att === 'DENIED'
-                                            ? 'bg-red-100 text-red-800'
+                                            ? 'bg-red-100 text-destructive'
                                             : att === 'PENDING_VERIFICATION'
-                                              ? 'bg-amber-50 text-amber-800'
+                                              ? 'bg-warning/10 text-warning'
                                               : 'bg-gray-100 text-gray-500',
                                       ].join(' ')}
                                     >
@@ -1247,7 +1247,7 @@ export default function AdminProgramHub() {
                                 }
                                 removeEnrollmentMut.mutate({ enrollmentId: row.id });
                               }}
-                              className="text-xs font-semibold text-destructive hover:text-red-800 disabled:opacity-50"
+                              className="text-xs font-semibold text-destructive hover:text-destructive disabled:opacity-50"
                             >
                               Remove enrollment
                             </button>
@@ -1410,7 +1410,7 @@ export default function AdminProgramHub() {
                               }
                               removeEnrollmentMut.mutate({ enrollmentId: row.id });
                             }}
-                            className="text-xs font-semibold text-destructive hover:text-red-800 disabled:opacity-50"
+                            className="text-xs font-semibold text-destructive hover:text-destructive disabled:opacity-50"
                           >
                             Remove enrollment
                           </button>
@@ -1519,14 +1519,14 @@ function ZoomLinksSection({
       </div>
 
       {refreshedCount !== null && (
-        <p className="text-xs font-medium text-success bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+        <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-lg px-3 py-2">
           {refreshedCount > 0
             ? `✓ Refreshed ${refreshedCount} panelist link${refreshedCount === 1 ? '' : 's'} from Zoom.`
             : 'No panelist links found on Zoom. Make sure panelists have been added to the webinar in Zoom.'}
         </p>
       )}
       {refreshError && (
-        <p className="text-xs font-medium text-destructive bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <p className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/25 rounded-lg px-3 py-2">
           {refreshError}
         </p>
       )}

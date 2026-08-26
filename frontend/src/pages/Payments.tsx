@@ -16,10 +16,10 @@ function formatMoney(value: number) {
 
 function statusChip(status: PaymentStatus) {
   const base = 'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold';
-  if (status === 'PAID') return `${base} border-green-200 bg-green-50 text-green-800`;
+  if (status === 'PAID') return `${base} border-success/25 bg-success/10 text-success`;
   if (status === 'PROCESSING') return `${base} border-blue-200 bg-blue-50 text-blue-800`;
-  if (status === 'PENDING') return `${base} border-yellow-200 bg-yellow-50 text-yellow-800`;
-  return `${base} border-red-200 bg-red-50 text-red-800`;
+  if (status === 'PENDING') return `${base} border-warning/25 bg-warning/10 text-yellow-800`;
+  return `${base} border-destructive/25 bg-destructive/10 text-destructive`;
 }
 
 function statusIcon(status: PaymentStatus) {
@@ -93,7 +93,7 @@ export default function Payments() {
       </header>
 
       {profileIncomplete ? (
-        <div className="rounded-card border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div className="rounded-card border border-warning/25 bg-warning/10 p-4 text-sm text-amber-950">
           <p className="font-semibold">Complete your profile first</p>
           <p className="mt-1 text-amber-900/90">
             Add your <strong>profession</strong> and <strong>NPI</strong> (when required) under Settings before you can
@@ -124,10 +124,10 @@ export default function Payments() {
         />
       ) : (
         <div className="space-y-3">
-          <div className="rounded-card border border-green-200 bg-green-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="rounded-card border border-success/25 bg-success/10/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-              <p className="text-sm font-medium text-green-800 inline-flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
                 <BillComMark size="sm" /> vendor on file. You can receive payouts.
               </p>
             </div>
@@ -164,12 +164,12 @@ export default function Payments() {
             />
           ) : null}
           {needsW9 && (
-            <div className="rounded-card border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-4">
+            <div className="rounded-card border border-warning/25 bg-warning/10 p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <AlertCircle className="h-6 w-6 text-amber-600 shrink-0" />
                 <div>
                   <p className="font-semibold text-amber-900">W-9 required</p>
-                  <p className="text-sm text-amber-800">Complete the W-9 form to receive payouts.</p>
+                  <p className="text-sm text-warning">Complete the W-9 form to receive payouts.</p>
                 </div>
               </div>
               <button
@@ -207,7 +207,7 @@ export default function Payments() {
             <button
               type="button"
               onClick={() => setW9ModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+              className="inline-flex items-center gap-2 rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
             >
               <AlertCircle className="h-4 w-4" />
               Complete W-9 to receive payouts

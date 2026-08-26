@@ -26,9 +26,9 @@ export function PostEventAttendanceMessage(props: {
   }
   if (att === 'DENIED') {
     return (
-      <section className="rounded-card border border-red-200 bg-red-50 p-6 space-y-2">
+      <section className="rounded-card border border-destructive/25 bg-destructive/10 p-6 space-y-2">
         <h2 className="text-base font-semibold text-red-900">Attendance not verified</h2>
-        <p className="text-sm text-red-800">
+        <p className="text-sm text-destructive">
           Your attendance could not be verified for this session. If you believe this is a mistake, contact support.
         </p>
       </section>

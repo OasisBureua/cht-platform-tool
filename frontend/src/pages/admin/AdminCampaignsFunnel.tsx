@@ -323,7 +323,7 @@ export default function AdminCampaignsFunnel() {
       </section>
 
       {hubspotDisconnected ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
+        <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
           <div className="flex gap-3">
             <AlertTriangle
               className="mt-0.5 h-5 w-5 shrink-0 text-warning"
@@ -343,7 +343,7 @@ export default function AdminCampaignsFunnel() {
       ) : null}
 
       {hubspotScopesMissing ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
+        <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 dark:border-amber-900/50 dark:bg-amber-950/25">
           <div className="flex gap-3">
             <AlertTriangle
               className="mt-0.5 h-5 w-5 shrink-0 text-warning"
@@ -541,14 +541,14 @@ export default function AdminCampaignsFunnel() {
       {isLoading ? <LoadingSpinner /> : null}
 
       {isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
           <p className="font-medium">
             {(error as Error)?.message ?? 'Failed to load funnel.'}
           </p>
           <button
             type="button"
             onClick={() => refetch()}
-            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-card px-3 py-1.5 text-xs font-semibold text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-red-300 bg-card px-3 py-1.5 text-xs font-semibold text-destructive dark:border-red-800 dark:bg-red-950/40 dark:text-red-100"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden />
             Retry
@@ -561,7 +561,7 @@ export default function AdminCampaignsFunnel() {
           {data.warnings.map((warning) => (
             <div
               key={warning}
-              className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100"
+              className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100"
             >
               {warning}
             </div>
@@ -721,7 +721,7 @@ export default function AdminCampaignsFunnel() {
               <LoadingSpinner />
             </div>
           ) : peopleError ? (
-            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+            <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
               {(peopleErrorObj as Error)?.message ??
                 'Failed to load people for this stage.'}
             </div>
@@ -748,7 +748,7 @@ export default function AdminCampaignsFunnel() {
                 </p>
               </div>
               {(peopleData?.warnings?.length ?? 0) > 0 ? (
-                <div className="space-y-1 border-b border-amber-100 bg-amber-50 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/30">
+                <div className="space-y-1 border-b border-amber-100 bg-warning/10 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/30">
                   {peopleData!.warnings.map((w) => (
                     <p
                       key={w}
@@ -883,7 +883,7 @@ export default function AdminCampaignsFunnel() {
               <LoadingSpinner />
             </div>
           ) : hcpError ? (
-            <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+            <div className="mt-4 rounded-xl border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
               {(hcpErrorObj as Error)?.message ??
                 'Failed to load HCP drill-down.'}
             </div>
@@ -911,7 +911,7 @@ export default function AdminCampaignsFunnel() {
               </div>
 
               {(hcpData.warnings?.length ?? 0) > 0 ? (
-                <div className="space-y-1 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/30">
+                <div className="space-y-1 rounded-lg border border-amber-100 bg-warning/10 px-3 py-2 dark:border-amber-900/40 dark:bg-amber-950/30">
                   {hcpData.warnings.map((w) => (
                     <p
                       key={w}

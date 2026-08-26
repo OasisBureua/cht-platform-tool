@@ -195,7 +195,7 @@ export default function AdminSettings() {
               <ActionButton label="Webinar Scheduler" href="/admin/webinar-scheduler" />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-destructive hover:bg-red-50 transition-colors"
+                className="flex w-full items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <LogOut className="h-4 w-4" /> Sign Out
               </button>

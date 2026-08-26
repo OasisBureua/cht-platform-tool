@@ -278,7 +278,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
               Loading KOL directory…
             </p>
           ) : directory.loadState === 'error' ? (
-            <p className="text-center rounded-card border border-red-200 bg-red-50 py-14 px-6 text-destructive">
+            <p className="text-center rounded-card border border-destructive/25 bg-destructive/10 py-14 px-6 text-destructive">
               Couldn't load the KOL directory. Refresh to try again.
             </p>
           ) : sorted.length === 0 ? (

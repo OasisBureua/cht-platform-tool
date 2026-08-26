@@ -70,7 +70,7 @@ export default function DiseaseAreas() {
                     <div className="flex items-center gap-2">
                       <h2 className="text-xl font-bold text-foreground">{area.title}</h2>
                       {area.active ? (
-                        <span className="rounded-full bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 uppercase">
+                        <span className="rounded-full bg-green-100 text-success text-[10px] font-bold px-2 py-0.5 uppercase">
                           Active
                         </span>
                       ) : (

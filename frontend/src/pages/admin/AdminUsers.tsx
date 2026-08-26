@@ -7,7 +7,7 @@ import { Search, Trash2, X, Loader2 } from 'lucide-react';
 const ROLE_COLORS: Record<string, string> = {
   HCP: 'bg-blue-100 text-blue-800',
   KOL: 'bg-purple-100 text-purple-800',
-  ADMIN: 'bg-amber-100 text-amber-800',
+  ADMIN: 'bg-amber-100 text-warning',
 };
 
 export default function AdminUsers() {
@@ -177,7 +177,7 @@ function UserRow({
               disabled={isUpdating || isDeleting}
               title="Permanently delete this user and related enrollments, registrations, and activity"
               onClick={() => onDeleteRequest()}
-              className="inline-flex items-center justify-center rounded-lg border border-red-200 bg-red-50 p-2 text-red-800 hover:bg-red-100 disabled:opacity-50"
+              className="inline-flex items-center justify-center rounded-lg border border-destructive/25 bg-destructive/10 p-2 text-destructive hover:bg-red-100 disabled:opacity-50"
               aria-label={`Delete user ${user.email}`}
             >
               <Trash2 className="h-4 w-4" />
