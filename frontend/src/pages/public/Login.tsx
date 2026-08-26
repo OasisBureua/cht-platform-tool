@@ -10,6 +10,9 @@ import { executeRecaptcha } from '../../lib/recaptcha';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
+import { AuthLayout } from '../../components/auth/AuthLayout';
+import { Button } from '../../components/ui/Button';
+import { Field } from '../../components/ui/Field';
 
 export default function Login() {
   const location = useLocation();
@@ -147,30 +150,33 @@ export default function Login() {
   // Show loading after successful login while validating session
   if (isAuthenticated && isLoading) {
     return (
-      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-white">
+      <div className="flex min-h-[calc(100dvh-4rem)] flex-col items-center justify-center bg-background px-4 py-12">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mb-4" />
-          <p className="text-gray-600">Signing you in...</p>
+          <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-brand-600" />
+          <p role="status" className="text-muted-foreground">Signing you in…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-white">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200/10 bg-white shadow-xl">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-6 py-8 text-center">
-          <h1 className="text-xl font-semibold text-gray-900 md:text-2xl">
-            Welcome back.
-          </h1>
-          <p className="mt-2 text-sm text-gray-600">
-            Your clinical library is waiting.
-          </p>
-        </div>
-
-        {/* Form section */}
-        <div className="p-6">
+    <AuthLayout
+      heading="Welcome back"
+      sub="Your clinical library is waiting."
+      footer={
+        <>
+          Don&apos;t have an account?{' '}
+          <Link
+            to="/join"
+            state={fromLocation ? { from: fromLocation } : undefined}
+            className="font-medium text-brand-600 hover:text-brand-700"
+          >
+            Sign up
+          </Link>
+        </>
+      }
+    >
+      <div className="mt-8">
           {!mfaSession && !mfaSetup ? (
             <div className="mb-4">
               <AuthMigrationNotice variant="login" />
@@ -187,13 +193,13 @@ export default function Login() {
             }
           >
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div role="alert" className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 <p>{error}</p>
                 {errorCode === 'EMAIL_NOT_VERIFIED' ? (
                   <p className="mt-2">
                     <Link
                       to={`/verify-email?email=${encodeURIComponent(email.trim())}`}
-                      className="font-medium text-gray-900 underline hover:text-gray-700"
+                      className="font-medium underline hover:no-underline"
                     >
                       Verify your email
                     </Link>
@@ -203,12 +209,12 @@ export default function Login() {
             )}
             {mfaSetup ? (
               <>
-                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                  <p className="font-medium text-gray-900">Set up authenticator MFA</p>
+                <div className="rounded-card bg-card px-4 py-4 text-sm text-muted-foreground shadow-card">
+                  <p className="font-medium text-foreground">Set up authenticator MFA</p>
                   <p className="mt-1">
                     Scan the QR code with an authenticator app, then enter the 6-digit code to finish signing in.
                   </p>
-                  <div className="mt-4 flex justify-center rounded-lg bg-white p-4">
+                  <div className="mt-4 flex justify-center rounded-[6px] bg-white p-4">
                     <QRCodeSVG
                       value={mfaSetup.otpauthUri}
                       size={180}
@@ -221,18 +227,18 @@ export default function Login() {
                     <button
                       type="button"
                       onClick={() => setShowManualKey((v) => !v)}
-                      className="text-xs font-medium text-gray-900 underline hover:no-underline"
+                      className="rounded-[6px] text-xs font-medium text-brand-600 underline hover:no-underline"
                     >
                       {showManualKey ? 'Hide manual key' : 'Can’t scan? Enter key manually'}
                     </button>
                     {showManualKey && (
-                      <p className="mt-2 break-all rounded bg-white px-2 py-1.5 font-mono text-xs text-gray-800">
+                      <p className="mt-2 break-all rounded-[6px] bg-muted px-2 py-1.5 font-mono text-xs text-foreground">
                         {mfaSetup.secretCode}
                       </p>
                     )}
                   </div>
                 </div>
-                <Input
+                <Field
                   id="mfaSetupCode"
                   label="Authentication code"
                   type="text"
@@ -246,10 +252,10 @@ export default function Login() {
               </>
             ) : mfaSession ? (
               <>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   Enter the 6-digit code from your authenticator app.
                 </p>
-                <Input
+                <Field
                   id="mfaCode"
                   label="Authentication code"
                   type="text"
@@ -263,7 +269,7 @@ export default function Login() {
               </>
             ) : (
               <>
-            <Input
+            <Field
               id="email"
               label="Email address"
               type="email"
@@ -272,7 +278,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <Input
+            <Field
               id="password"
               label="Password"
               type="password"
@@ -289,88 +295,73 @@ export default function Login() {
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
+                  className="size-4 rounded-[3px] accent-brand-600"
                 />
-                <span className="text-sm text-gray-700">Remember me</span>
+                <span className="text-sm text-muted-foreground">Remember me</span>
               </label>
               <Link
                 to="/forgot-password"
-                className="font-medium text-gray-900 underline hover:text-gray-700 text-sm"
+                className="rounded-[6px] text-sm font-medium text-brand-600 hover:text-brand-700"
               >
-                Forgot Password?
+                Forgot password?
               </Link>
             </div>
             ) : (
               <button
                 type="button"
                 onClick={backToPassword}
-                className="text-sm font-medium text-gray-900 underline hover:text-gray-700"
+                className="rounded-[6px] text-sm font-medium text-brand-600 hover:text-brand-700"
               >
                 Use a different account
               </button>
             )}
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
-            >
+            <Button type="submit" size="lg" disabled={submitting} className="w-full">
               {submitting
                 ? 'Signing in...'
                 : mfaSetup
                   ? 'Verify and continue'
                   : mfaSession
                     ? 'Verify code'
-                    : 'Login'}
-            </button>
+                    : 'Sign in'}
+            </Button>
           </form>
 
           {googleOAuthEnabled && !mfaSession && !mfaSetup ? (
             <div className="mt-6 space-y-3">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200" />
+                  <div className="h-px w-full bg-border" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                  <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => handleOAuth('google')}
                 disabled={!!oauthLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-card text-sm font-medium text-foreground shadow-card transition-[box-shadow,background-color,scale] duration-150 hover:bg-muted hover:shadow-card-hover motion-safe:active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50"
               >
                 {oauthLoading === 'google' ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  <span className="size-4 animate-spin rounded-full border-2 border-muted border-t-brand-600" />
                 ) : (
                   <GoogleIcon />
                 )}
                 Continue with Google
               </button>
-              <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
+              <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
             </div>
           ) : !mfaSession && !mfaSetup ? (
-            <p className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="mt-6 rounded-[6px] bg-warning/10 px-4 py-3 text-sm text-warning">
               {googleOAuthMigrationMessage}
             </p>
           ) : null}
 
           {/* Footer */}
           <RecaptchaNotice />
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Don&apos;t have an account?{' '}
-            <Link
-              to="/join"
-              state={fromLocation ? { from: fromLocation } : undefined}
-              className="font-medium text-gray-900 underline hover:text-gray-700"
-            >
-              Sign Up
-            </Link>
-          </p>
-        </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }
 
@@ -382,44 +373,5 @@ function GoogleIcon() {
       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
       <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
     </svg>
-  );
-}
-
-function Input({
-  id,
-  label,
-  type = 'text',
-  placeholder,
-  value,
-  onChange,
-  required,
-  inputMode,
-  autoComplete,
-}: {
-  id?: string;
-  label: string;
-  type?: string;
-  placeholder?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  required?: boolean;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
-  autoComplete?: string;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-gray-700">{label}</label>
-      <input
-        id={id}
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        required={required}
-        inputMode={inputMode}
-        autoComplete={autoComplete}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-      />
-    </div>
   );
 }
