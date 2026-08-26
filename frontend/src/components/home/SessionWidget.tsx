@@ -156,7 +156,7 @@ function PodcastTrack({ meta }: { meta: string }) {
           <span
             key={i}
             style={{ height: `${h}%` }}
-            className="w-full rounded-[6px] bg-amber/45 transition-[height] duration-200 ease-out"
+            className="w-full rounded-[6px] bg-ink-pink/45 transition-[height] duration-200 ease-out"
           />
         ))}
       </div>

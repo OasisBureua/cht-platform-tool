@@ -37,7 +37,7 @@ function Card({
   to,
   accent,
   className = '',
-  height = 'h-[25rem]',
+  height = 'h-[21.25rem]',
   span = 'md:col-span-4',
   children,
 }: {
@@ -60,7 +60,7 @@ function Card({
       className={`group card lift press flex flex-col overflow-hidden p-4 ${height} ${span} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
     >
       <div className="flex items-center justify-between">
-        <span className={`eyebrow ${accent ? 'text-amber' : 'text-faint'}`}>{label}</span>
+        <span className={`eyebrow ${accent ? 'text-ink-pink' : 'text-faint'}`}>{label}</span>
         <span className="meta tabular-nums text-faint">{meta}</span>
       </div>
       <div className="my-3 min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -99,7 +99,7 @@ function Wave() {
         <span
           key={i}
           style={{ height: `${h}%` }}
-          className="w-full rounded-[6px] bg-amber/45 transition-[height] duration-200 ease-out"
+          className="w-full rounded-[6px] bg-ink-pink/45 transition-[height] duration-200 ease-out"
         />
       ))}
     </div>
