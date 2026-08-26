@@ -63,12 +63,16 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-chm-surface text-foreground md:flex-row">
+    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">
       <AppSidebar />
       <AppBottomNav />
 
+      {/* One field for the whole shell. This carried a hard `#18181b`
+          below md, which painted a dark strip into the light appearance
+          whenever the drawer was mid-slide; the token follows the
+          appearance instead. */}
       <div
-        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-chm-surface max-md:bg-[#18181b] md:overflow-visible"
+        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-app-ground md:overflow-visible"
         onClick={(e) => {
           if (!mobileDrawerOpen) return;
           const front = mobileFrontRef.current;
@@ -91,7 +95,7 @@ export default function Layout() {
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
           </Link>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
-            {APP_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
               <li key={to}>
                 <NavLink
                   to={to}
@@ -112,7 +116,7 @@ export default function Layout() {
                         className={
                           isActive
                             ? 'h-5 w-5 shrink-0 text-steel-950 dark:text-white'
-                            : 'h-5 w-5 shrink-0 text-steel-600 dark:text-steel-400'
+                            : `h-5 w-5 shrink-0 ${iconTone}`
                         }
                         strokeWidth={2}
                         aria-hidden
@@ -152,7 +156,7 @@ export default function Layout() {
           data-drawer-front
           className={[
             // Avoid translate-x-0 when closed: it breaks position:fixed descendants.
-            'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-muted motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none ',
+            'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-app-ground motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none ',
             mobileDrawerOpen
               ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]'
               : 'shadow-none',

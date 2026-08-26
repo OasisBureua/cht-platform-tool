@@ -535,6 +535,14 @@
   --surface-1: 40 24% 96.5%;
   --surface-2: 40 18% 92.4%;
 
+  /* The signed-in app shell's own field. The marketing pages sit on the
+     white `ground`; the app sits on this instead, so a `.card` at 96.5%
+     reads as a raised panel rather than as an invisible white-on-white
+     rectangle. It is the cool CHM chrome tint the shell carried before
+     the token sweep replaced it with the flat neutral `muted`, taken
+     down two points of lightness so the card actually separates. */
+  --app-ground: 220 28% 94.5%;
+
   /* text ramp: 14.7 / 9.1 / 5.9 / 4.7 on white. Kept near-neutral with
      the faintest warm cast so it sits on the warm surfaces without
      reading as two different greys. */
@@ -593,6 +601,11 @@
   --surface-1: 0 0% 8.3%;
   --surface-2: 0 0% 10.7%;
 
+  /* Same job in the dark appearance: a cool near-black field that sits
+     below the 8.3% card, so the ramp (shell → card) reads the same way
+     round in both appearances. */
+  --app-ground: 220 16% 5.1%;
+
   /* 19.8 / 13.9 / 7.4 / 5.1 on the ground */
   --text: 0 0% 100%;
   --dim: 0 0% 86.3%;
@@ -633,6 +646,7 @@
 :root,
 .dark {
   --color-ground: hsl(var(--ground));
+  --color-app-ground: hsl(var(--app-ground));
   --color-surface-2: hsl(var(--surface-2));
   --color-text: hsl(var(--text));
   --color-dim: hsl(var(--dim));

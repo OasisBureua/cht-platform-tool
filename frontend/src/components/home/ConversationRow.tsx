@@ -6,6 +6,7 @@ import {
   catalogConversationBrowseFingerFromLocation,
 } from '../../utils/catalogBrowseLocation';
 import { nextCatalogThumbnailFallback } from '../../utils/clipUrl';
+import { Thumb } from '../ui/Thumb';
 
 export type ConversationRowProps = {
   title: string;
@@ -76,11 +77,11 @@ export function ConversationRow({
     <section className={`group/row relative ${className}`.trim()}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-baseline gap-2">
-          <h2 className="text-balance text-[17px] font-bold tracking-tight text-foreground md:text-lg">
+          <h2 className="display text-display-s text-text">
             {title}
           </h2>
           {subtitle ? (
-            <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums md:text-sm">{subtitle}</span>
+            <span className="meta shrink-0 tabular-nums text-muted2">{subtitle}</span>
           ) : null}
         </div>
         {seeAllExternal ? (
@@ -88,7 +89,7 @@ export function ConversationRow({
             href={seeAllHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-[6px] px-1 text-sm font-semibold text-steel-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-steel-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-steel-400 dark:hover:text-steel-300"
+            className="press inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-[6px] px-1 text-body-s font-medium text-anchor hover:text-cta focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:min-h-0 sm:px-0"
           >
             <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {seeAllLabel}
@@ -97,7 +98,7 @@ export function ConversationRow({
           <Link
             to={seeAllHref}
             onClick={handleCatalogSeeAllClick}
-            className="inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-[6px] px-1 text-sm font-semibold text-steel-700 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-steel-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 sm:min-h-0 sm:px-0 active:scale-[0.96] dark:text-steel-400 dark:hover:text-steel-300"
+            className="press inline-flex min-h-[44px] min-w-0 items-center gap-1.5 rounded-[6px] px-1 text-body-s font-medium text-anchor hover:text-cta focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:min-h-0 sm:px-0"
           >
             <List className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {seeAllLabel}
@@ -111,7 +112,7 @@ export function ConversationRow({
             type="button"
             aria-label="Scroll left"
             onClick={() => scroll(-1)}
-            className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground opacity-0 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 group-hover/row:opacity-100 md:flex"
+            className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-muted2 opacity-0 shadow-card transition-[opacity,transform,box-shadow,color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-text hover:shadow-card-hover focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring group-hover/row:opacity-100 md:flex"
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
@@ -130,7 +131,7 @@ export function ConversationRow({
             type="button"
             aria-label="Scroll right"
             onClick={() => scroll(1)}
-            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 md:opacity-0 md:transition-opacity md:group-hover/row:opacity-100"
+            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface text-muted2 shadow-card transition-[opacity,transform,box-shadow,color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:text-text hover:shadow-card-hover focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:opacity-0 md:transition-opacity md:group-hover/row:opacity-100"
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
@@ -165,19 +166,28 @@ export type StripCardProps = {
   onThumbnailError?: () => void;
 };
 
+/**
+ * Strip card surface. `.card` carries the surface, the elevation and the
+ * 2px hover lift, so the four shells below no longer hand-roll an rgba
+ * shadow per appearance. Widths are unchanged, so the row keeps its
+ * rhythm; what changed is the treatment inside it.
+ *
+ * The bare `group` sits alongside `group/card` because `<Thumb>` scales
+ * its poster on an unnamed `group-hover`.
+ */
 const stripCardShell =
-  'group/card flex min-h-0 min-w-0 w-[226px] flex-col overflow-hidden rounded-card bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[250px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'card group group/card flex min-h-0 min-w-0 w-[226px] flex-col p-3 text-left sm:w-[250px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]';
 
 /** Homepage compact card: +25% width vs default shell; inner media aspect tuned ~+15% taller vs prior 16/13 */
 const stripCardShellHomepage =
-  'group/card flex min-h-0 min-w-0 w-[311px] flex-col overflow-hidden rounded-card bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[344px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'card group group/card flex min-h-0 min-w-0 w-[311px] flex-col p-3.5 text-left sm:w-[344px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]';
 
 const thumbnailOnlyShell =
-  'group/card relative block w-[226px] shrink-0 overflow-hidden rounded-card bg-muted shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[259px] aspect-video hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'card group group/card relative block w-[226px] shrink-0 overflow-hidden bg-surface-2 sm:w-[259px] aspect-video focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]';
 
 /** +25% width vs thumbnailOnlyShell; aspect ~15% taller media vs prior 16/11.7 */
 const thumbnailOnlyShellHomepage =
-  'group/card relative block w-[311px] shrink-0 overflow-hidden rounded-card bg-muted shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[356px] aspect-[16/13.5] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'card group group/card relative block w-[311px] shrink-0 overflow-hidden bg-surface-2 sm:w-[356px] aspect-[16/13.5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]';
 
 function isYoutubeMissingPoster(img: HTMLImageElement): boolean {
   return img.naturalWidth > 0 && img.naturalWidth <= 120 && img.naturalHeight <= 90;
@@ -225,44 +235,27 @@ function StripCardInner({
 
   return (
     <>
-      <div
-        className={
-          home
-            ? 'relative aspect-[16/15] w-full shrink-0 overflow-hidden bg-muted '
-            : 'relative aspect-[16/10] w-full shrink-0 overflow-hidden bg-muted '
-        }
-      >
-        <img
-          src={imageUrl}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          draggable={false}
-          onError={onThumbnailError}
-          onLoad={onLoadCheck}
-        />
-      </div>
-      <div className={home ? 'flex min-w-0 flex-col px-2.5 pb-2.5 pt-2' : 'flex min-w-0 flex-col px-2 pb-2 pt-1.5'}>
+      {/* The poster is the shared `Thumb`: rounded, ringed, with the mark
+          and its own scrim burned into the foot. */}
+      <Thumb
+        src={imageUrl}
+        className={home ? 'aspect-[16/15] w-full shrink-0' : 'aspect-[16/10] w-full shrink-0'}
+        onError={onThumbnailError}
+        onLoad={onLoadCheck}
+      />
+      <div className={home ? 'flex min-w-0 flex-col px-0.5 pt-3' : 'flex min-w-0 flex-col px-0.5 pt-2.5'}>
         <p
           className={
             home
-              ? 'truncate text-left text-[13px] font-semibold leading-snug text-foreground'
-              : 'truncate text-left text-[12px] font-semibold leading-snug text-foreground'
+              ? 'display truncate text-left text-body-m text-text'
+              : 'display truncate text-left text-body-s text-text'
           }
           title={title}
         >
           {title}
         </p>
         {line1 ? (
-          <p
-            className={
-              home
-                ? 'mt-1 truncate text-left text-[11px] leading-snug text-muted-foreground'
-                : 'mt-0.5 truncate text-left text-[10px] leading-snug text-muted-foreground'
-            }
-            title={line1}
-          >
+          <p className="meta mt-1 truncate text-left text-muted2" title={line1}>
             {line1}
           </p>
         ) : null}
@@ -270,8 +263,8 @@ function StripCardInner({
           <span
             className={
               home
-                ? 'mt-1.5 inline-flex w-fit max-w-full items-center rounded-[6px] bg-brand-100 px-2 py-0.5 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100'
-                : 'mt-1 inline-flex w-fit max-w-full items-center rounded-[6px] bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100'
+                ? 'meta mt-2 inline-flex w-fit max-w-full items-center rounded-[6px] bg-surface-2 px-2 py-0.5 tabular-nums text-dim'
+                : 'meta mt-1.5 inline-flex w-fit max-w-full items-center rounded-[6px] bg-surface-2 px-1.5 py-0.5 tabular-nums text-dim'
             }
           >
             {videoLabel}
@@ -391,17 +384,18 @@ export function StripCard({
 }
 
 function RowSkeleton({ homepage }: { homepage?: boolean }) {
+  /** Mirrors the live card: `.card` surface, padded, rounded poster. */
   const shell = homepage
-    ? 'flex w-[311px] shrink-0 snap-start flex-col overflow-hidden rounded-card bg-muted/90 sm:w-[344px] /80'
-    : 'flex w-[226px] shrink-0 snap-start flex-col overflow-hidden rounded-card bg-muted/90 sm:w-[250px] /80';
+    ? 'card flex w-[311px] shrink-0 snap-start flex-col p-3.5 sm:w-[344px]'
+    : 'card flex w-[226px] shrink-0 snap-start flex-col p-3 sm:w-[250px]';
   const imgAspect = homepage ? 'aspect-[16/15]' : 'aspect-[16/10]';
   return (
     <div className={shell}>
-      <div className={`${imgAspect} w-full animate-pulse bg-zinc-200/90 dark:bg-zinc-700/80`} />
-      <div className={homepage ? 'space-y-1.5 px-2.5 pb-2.5 pt-2' : 'space-y-1 px-2 pb-2 pt-1.5'}>
-        <div className={`animate-pulse rounded bg-zinc-200/80 ${homepage ? 'h-3.5 w-[92%]' : 'h-3 w-[92%]'}`} />
-        <div className={`animate-pulse rounded bg-zinc-200/70 ${homepage ? 'h-3 w-[75%]' : 'h-2.5 w-[75%]'}`} />
-        <div className={`animate-pulse rounded-[6px] bg-zinc-200/70 ${homepage ? 'mt-1.5 h-6 w-16' : 'mt-1 h-5 w-14'}`} />
+      <div className={`${imgAspect} w-full animate-pulse rounded-[6px] bg-surface-2`} />
+      <div className={homepage ? 'space-y-1.5 px-0.5 pt-3' : 'space-y-1 px-0.5 pt-2.5'}>
+        <div className={`animate-pulse rounded bg-surface-2 ${homepage ? 'h-3.5 w-[92%]' : 'h-3 w-[92%]'}`} />
+        <div className={`animate-pulse rounded bg-surface-2 ${homepage ? 'h-3 w-[75%]' : 'h-2.5 w-[75%]'}`} />
+        <div className={`animate-pulse rounded-[6px] bg-surface-2 ${homepage ? 'mt-1.5 h-6 w-16' : 'mt-1 h-5 w-14'}`} />
       </div>
     </div>
   );
@@ -426,7 +420,7 @@ export function StripRowLoadingThumbnails({ homepage }: { homepage?: boolean }) 
       {Array.from({ length: 6 }).map((_, i) => (
         <div
           key={i}
-          className={`${aspect} ${w} shrink-0 snap-start animate-pulse overflow-hidden rounded-card bg-zinc-200/90 dark:bg-zinc-700/70`}
+          className={`${aspect} ${w} shrink-0 snap-start animate-pulse overflow-hidden rounded-card bg-surface-2`}
           style={{ scrollSnapAlign: 'start' }}
         />
       ))}

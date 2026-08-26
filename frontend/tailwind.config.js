@@ -193,6 +193,9 @@ export default {
          * Rewrite the design's `text-muted` to `text-muted2`.
          * ============================================================ */
         ground: 'hsl(var(--ground) / <alpha-value>)',
+        /* The signed-in shell's field. Distinct from `ground`, which is
+           the marketing pages' white; see --app-ground in index.css. */
+        'app-ground': 'hsl(var(--app-ground) / <alpha-value>)',
         surface: 'hsl(var(--surface-1) / <alpha-value>)',
         'surface-2': 'hsl(var(--surface-2) / <alpha-value>)',
         text: 'hsl(var(--text) / <alpha-value>)',

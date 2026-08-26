@@ -19,7 +19,7 @@ export default function AppSidebar() {
         className="app-sidebar-nav flex flex-1 flex-col items-center justify-between gap-1 overflow-hidden px-1.5 py-3"
         aria-label="Primary"
       >
-        {APP_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+        {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -35,11 +35,14 @@ export default function AppSidebar() {
           >
             {({ isActive }) => (
               <>
+                {/* Resting icon carries the destination's own hue; the active
+                    chip is a steel fill, so there the icon inherits the row's
+                    high-contrast colour rather than fighting it. */}
                 <Icon
                   className={
                     isActive
                       ? 'h-5 w-5 shrink-0 text-steel-950 dark:text-white'
-                      : 'h-5 w-5 shrink-0 text-steel-600 dark:text-steel-400'
+                      : `h-5 w-5 shrink-0 ${iconTone}`
                   }
                   strokeWidth={2}
                   aria-hidden

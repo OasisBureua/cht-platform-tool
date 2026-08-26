@@ -1,19 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { ArrowRight, Loader2, Play, Search } from 'lucide-react';
-import { catalogApi, type MediaHubClip } from '../../api/catalog';
+import { ArrowRight, ListVideo, Loader2, Play, Search } from 'lucide-react';
+import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
 import { ChmMark } from '../../components/brand/ChmMark';
-import { Button } from '../../components/ui';
+import { Button, Chip } from '../../components/ui';
+import {
+  ConversationsHero,
+  ConversationsHeroSkeleton,
+} from '../../components/content/ConversationsHero';
+import { CatalogRow, CatalogSessionCard } from '../../components/content/CatalogRow';
+import {
+  BIOMARKER_CAROUSEL_IDS,
+  BiomarkerConversationRow,
+} from '../../components/content/BiomarkerConversationRow';
+import {
+  APP_CATALOG_CLIPS_GRID,
+  APP_CATALOG_PLAYLISTS_BROWSE,
+} from '../../components/navigation/appNavItems';
 import DISEASE_AREAS from '../../data/disease-areas';
 import {
   extractYoutubeVideoIdFromUrl,
   getMediaHubThumbnail,
   getShortClipId,
   nextCatalogThumbnailFallback,
+  normalizeCatalogThumbnailUrl,
   shouldSurfaceCatalogClip,
 } from '../../utils/clipUrl';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
+import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
+import { extractPlaylistSpeakers, playlistDisplayTitle } from '../../utils/playlistWpSections';
 import {
   WORDPRESS_CATALOG_STALE_MS,
   formatWordPressCategoryLabel,
@@ -55,6 +71,10 @@ type SortByParam = 'views' | 'likes' | 'posted' | 'recorded_at';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const CLIPS_PAGE_SIZE = 24;
+/** How many tiles the "Recently added" rail carries before "see all". */
+const RECENT_RAIL_LIMIT = 14;
+/** Playlist tiles in the rail beside it. */
+const PLAYLIST_RAIL_LIMIT = 12;
 
 /**
  * Collapse equivalent tag values to a single canonical form so the chip
@@ -161,6 +181,140 @@ function FormatBadge({ clip }: { clip: MediaHubClip }) {
     <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
       {clip.is_short ? 'clip' : 'video'}
     </span>
+  );
+}
+
+/* ── playlists ─────────────────────────────────────────────────────────
+   A playlist is a set, not a single video, so the card says so twice: a
+   second sheet peeks out behind the poster, and the count sits in the
+   foot where a clip poster carries its runtime. Same grammar as the clip
+   card above it, one different fact. */
+
+/** One tint per playlist, so a wall of cover-less sets is not one block. */
+const PLAYLIST_TINTS = [
+  'from-cerebral-cyan/40 to-cerebral-blue/10',
+  'from-cerebral-pink/40 to-cerebral-purple/10',
+  'from-cerebral-green/40 to-cerebral-cyan/10',
+  'from-cerebral-purple/40 to-cerebral-pink/10',
+  'from-cerebral-coral/40 to-cerebral-pink/10',
+  'from-cerebral-blue/35 to-cerebral-cyan/10',
+] as const;
+
+/** Keyed off the id, so the tint does not shuffle when the order does. */
+function playlistTint(id: string): string {
+  let sum = 0;
+  for (let i = 0; i < id.length; i += 1) sum = (sum + id.charCodeAt(i)) % 4096;
+  return PLAYLIST_TINTS[sum % PLAYLIST_TINTS.length];
+}
+
+/** YouTube's playlist poster is its first video's poster, so the id it
+    carries lets us walk the same size ladder the clip Thumb walks. */
+function playlistPosterVideoId(url: string): string | null {
+  return url.match(/\/vi\/([a-zA-Z0-9_-]{11})\//)?.[1] ?? null;
+}
+
+function videoCountOf(item: CatalogItem): number {
+  return item.videoCount || item.videoNames?.length || 0;
+}
+
+/**
+ * The playlist poster. Steps down the YouTube sizes on a 404. When the
+ * ladder runs out, or ContentHub sent no cover at all, the frame becomes
+ * a tinted surface carrying the count rather than a broken image. The
+ * foot is permanently dark under the gradient, so the label there takes
+ * a fixed bright fill instead of the page-following tokens.
+ */
+function PlaylistPoster({ item }: { item: CatalogItem }) {
+  const given = item.thumbnailUrl?.trim() ?? '';
+  const videoId = playlistPosterVideoId(given);
+  /* The walked-down size lives in state, and a new cover from the API
+     has to restart the ladder rather than inherit a stale rung. The
+     caller keys this component on the URL, so that reset is the remount
+     and there is no effect to sync it. */
+  const [src, setSrc] = useState(() => (given ? normalizeCatalogThumbnailUrl(given, videoId) : ''));
+
+  /** An exhausted ladder returns null, which drops the frame to the tint. */
+  const advance = (current: string) => setSrc(nextCatalogThumbnailFallback(current, videoId) ?? '');
+
+  const count = videoCountOf(item);
+
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-[6px] bg-surface-2">
+      {src ? (
+        <img
+          src={src}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          draggable={false}
+          onError={() => advance(src)}
+          onLoad={(e) => {
+            if (isYoutubeMissingPoster(e.currentTarget)) advance(src);
+          }}
+          className="absolute inset-0 size-full object-cover opacity-90 transition-[scale,opacity] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.03] group-hover:opacity-100"
+        />
+      ) : (
+        <>
+          <span
+            aria-hidden
+            className={`absolute inset-0 bg-gradient-to-br ${playlistTint(item.id)}`}
+          />
+          <ListVideo
+            aria-hidden
+            className="absolute inset-0 m-auto size-7 text-muted2"
+            strokeWidth={1.25}
+          />
+        </>
+      )}
+      {/* Seats the count on a dark strip whether the fill is a still or
+          the tint, which is what keeps the two versions one component. */}
+      <span
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"
+      />
+      <span className="img-ring absolute inset-0 rounded-[inherit]" />
+      {/* Sits on the permanently dark foot, so the fill and the label here
+          are fixed rather than page-following: a token pair would resolve
+          to dark-on-dark in one of the two appearances. */}
+      {count > 0 ? (
+        <Chip className="absolute bottom-2.5 start-2.5 bg-black/55 text-white ring-1 ring-inset ring-white/20 backdrop-blur-md">
+          {count} video{count === 1 ? '' : 's'}
+        </Chip>
+      ) : null}
+    </div>
+  );
+}
+
+function PlaylistCard({ item, href }: { item: CatalogItem; href: string }) {
+  /* The title carries the faculty inline ("… with Drs. Rugo & Hurvitz");
+     split it so the name row is its own step rather than eating the two
+     lines the topic needs. Both helpers already back the /catalog cards. */
+  const title = playlistDisplayTitle(item.title ?? '');
+  const faculty = extractPlaylistSpeakers(item.title ?? '');
+
+  return (
+    <Link
+      to={href}
+      className="card group flex h-full flex-col p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-4"
+    >
+      <div className="relative">
+        {/* The sheet behind: a set, not a single video. The ring is what
+            makes a 6px sliver read as an edge rather than a smudge. */}
+        <span
+          aria-hidden
+          className="img-ring absolute inset-x-3 -top-1.5 h-3 rounded-t-[6px] bg-surface-2"
+        />
+        <PlaylistPoster key={item.thumbnailUrl ?? ''} item={item} />
+      </div>
+      <div className="flex flex-1 flex-col px-1 pt-3.5 pb-1">
+        <h3 className="display line-clamp-2 text-body-s text-text group-hover:text-anchor sm:text-body-m">
+          {title}
+        </h3>
+        {faculty ? (
+          <p className="meta mt-auto line-clamp-1 pt-3 text-faint">{faculty}</p>
+        ) : null}
+      </div>
+    </Link>
   );
 }
 
@@ -570,64 +724,103 @@ export default function VideosPage() {
 
   const isFirstLoad = clipsLoading && clipsPageCount === 0;
 
+  /* ── the Conversations tab's own composition ──────────────────────────
+     Inside the app the tab opens on one featured conversation and then a
+     set of themed rails, which is how it read before the token sweep
+     flattened it into the public library's filter grid. The controls
+     still sit under the hero, and the moment one of them is touched the
+     rails give way to the results grid, so nothing here is a second copy
+     of the filter state. */
+  const heroClip = featured[0] ?? null;
+  const heroLoading = !featuredData;
+  const showRails = isInApp && !filtersActive;
+
+  const railItems = useMemo(() => {
+    const withoutHero = heroClip ? results.filter((c) => c.id !== heroClip.id) : results;
+    return withoutHero.slice(0, RECENT_RAIL_LIMIT);
+  }, [results, heroClip]);
+
   return (
     <div className={`min-h-screen min-w-0 ${isInApp ? 'bg-transparent' : 'bg-ground'}`}>
-      <section aria-labelledby="library-heading" className={`${RAIL} pt-14 pb-12 md:pt-16 md:pb-16`}>
-        <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
-          <div>
-            <p className="eyebrow text-muted2">Content library</p>
-            <h1
-              id="library-heading"
-              className="display mt-6 max-w-[16ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l"
-            >
-              Every conversation, every cut
-            </h1>
-            <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
-              Filter by format and disease state at the same time. Every session exists as
-              long-form video, an audio cut, a written explainer and a set of clips.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              {/* Inside the app shell the reader is already signed in, so
-                  the join CTA is the one thing the hero drops. */}
-              {!isInApp ? (
+      {isInApp ? (
+        /* Full bleed: cancels the outlet's gutter and its top padding so
+           the poster runs edge to edge and passes under the frosted
+           header, which is what made this read as a featured strip
+           rather than as one more card. */
+        <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6 lg:-mx-8 lg:-mt-8">
+          {heroLoading ? (
+            <ConversationsHeroSkeleton />
+          ) : heroClip ? (
+            <ConversationsHero clip={heroClip} isInApp />
+          ) : null}
+        </div>
+      ) : (
+        <section aria-labelledby="library-heading" className={`${RAIL} pt-14 pb-12 md:pt-16 md:pb-16`}>
+          <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
+            <div>
+              <p className="eyebrow text-muted2">Content library</p>
+              <h1
+                id="library-heading"
+                className="display mt-6 max-w-[16ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l"
+              >
+                Every conversation, every cut
+              </h1>
+              <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
+                Filter by format and disease state at the same time. Every session exists as
+                long-form video, an audio cut, a written explainer and a set of clips.
+              </p>
+              <div className="mt-9 flex flex-wrap gap-3">
                 <Button to="/join" variant="cta" className={BTN}>
                   Start watching free
                   <ArrowRight className="size-4" strokeWidth={1.75} />
                 </Button>
-              ) : null}
-              <Button
-                to="/kol-network"
-                variant="outline"
-                className={`${BTN} bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
-              >
-                Browse by faculty
-              </Button>
+                <Button
+                  to="/kol-network"
+                  variant="outline"
+                  className={`${BTN} bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
+                >
+                  Browse by faculty
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <FeaturedCarousel clips={featured} hrefFor={clipHref} />
-        </div>
-      </section>
+            <FeaturedCarousel clips={featured} hrefFor={clipHref} />
+          </div>
+        </section>
+      )}
 
       {/* ── search ─────────────────────────────────────── */}
-      <div className={RAIL}>
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute start-5 top-1/2 size-5 -translate-y-1/2 text-faint"
-            strokeWidth={1.5}
-            aria-hidden
-          />
-          <label htmlFor="library-search" className="sr-only">
-            Search the content library
-          </label>
-          <input
-            id="library-search"
-            type="search"
-            value={query}
-            onChange={(e) => setFilters({ q: e.target.value })}
-            placeholder="Search sessions, trials, faculty"
-            className="h-14 w-full rounded-[6px] bg-surface ps-14 pe-5 text-base text-text shadow-card outline-none placeholder:text-faint focus:bg-ground focus:shadow-card-hover"
-          />
+      <div className={`${RAIL} ${isInApp ? 'pt-10 md:pt-12' : ''}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search
+              className="pointer-events-none absolute start-5 top-1/2 size-5 -translate-y-1/2 text-faint"
+              strokeWidth={1.5}
+              aria-hidden
+            />
+            <label htmlFor="library-search" className="sr-only">
+              Search the content library
+            </label>
+            <input
+              id="library-search"
+              type="search"
+              value={query}
+              onChange={(e) => setFilters({ q: e.target.value })}
+              placeholder="Search sessions, trials, faculty"
+              className="h-14 w-full rounded-[6px] bg-surface ps-14 pe-5 text-base text-text shadow-card outline-none placeholder:text-faint focus:bg-ground focus:shadow-card-hover"
+            />
+          </div>
+          {/* The public hero carries this; inside the app the hero is the
+              poster, so the faculty route lives beside the search. */}
+          {isInApp ? (
+            <Button
+              to="/kol-network"
+              variant="outline"
+              className={`${BTN} h-14 shrink-0 bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
+            >
+              Browse by faculty
+            </Button>
+          ) : null}
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -705,7 +898,7 @@ export default function VideosPage() {
         </div>
       </div>
 
-      {/* ── grid ───────────────────────────────────────── */}
+      {/* ── rails (app, unfiltered) / grid ─────────────── */}
       <div className={`${RAIL} pt-12 pb-20`}>
         {isFirstLoad ? (
           <div className="flex items-center justify-center py-16" aria-busy="true">
@@ -736,6 +929,60 @@ export default function VideosPage() {
               </Button>
             </div>
           </div>
+        ) : showRails ? (
+          <div className="space-y-14 md:space-y-16">
+            {railItems.length > 0 ? (
+              <CatalogRow
+                title="Recently added"
+                subtitle={`${railItems.length} video${railItems.length !== 1 ? 's' : ''}`}
+                seeAllHref={APP_CATALOG_CLIPS_GRID}
+                seeAllLabel="See all in library"
+              >
+                {railItems.map((item) => (
+                  <CatalogSessionCard
+                    key={`recent-${item.id}`}
+                    clip={item}
+                    to={clipHref(item)}
+                    title={item.title}
+                    imageUrl={getMediaHubThumbnail(item)}
+                    duration={clipDuration(item.duration_seconds)}
+                    description={
+                      item.doctors?.[0]
+                        ? doctorLabelFromSlug(item.doctors[0])
+                        : clipStripeSubtitle(item) || 'Conversation'
+                    }
+                  />
+                ))}
+              </CatalogRow>
+            ) : null}
+
+            {playlists.length > 0 ? (
+              <CatalogRow
+                title="Playlists"
+                subtitle={`${playlists.length} curated ${playlists.length === 1 ? 'list' : 'lists'}`}
+                seeAllHref={APP_CATALOG_PLAYLISTS_BROWSE}
+                seeAllLabel="See all playlists"
+              >
+                {/* The same playlist card the grid below uses, so a set
+                    reads identically in the rail and in the wall. */}
+                {playlists.slice(0, PLAYLIST_RAIL_LIMIT).map((p) => (
+                  <li
+                    key={`playlist-${p.id}`}
+                    className="w-[15.5rem] shrink-0 snap-start sm:w-[17.5rem]"
+                  >
+                    <PlaylistCard item={p} href={`/app/catalog/playlist/${p.id}`} />
+                  </li>
+                ))}
+              </CatalogRow>
+            ) : null}
+
+            {/* The themed lanes, driven by `carousels.config.ts`. Same
+                contract as the dashboard's rows; `catalog` only swaps the
+                presentation onto the design's cards and type. */}
+            {BIOMARKER_CAROUSEL_IDS.map((id) => (
+              <BiomarkerConversationRow key={id} carouselId={id} isInApp variant="catalog" />
+            ))}
+          </div>
         ) : (
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {results.map((item) => {
@@ -764,29 +1011,34 @@ export default function VideosPage() {
           </ul>
         )}
 
-        <div ref={loadMoreRef} className="flex justify-center py-10">
-          {isFetchingNextPage ? (
-            <Loader2 className="size-8 animate-spin text-faint" aria-hidden />
-          ) : null}
-        </div>
+        {/* The sentinel belongs to the grid. Mounting it under the rails
+            would page the whole catalogue in behind a view that only ever
+            shows the first fourteen. */}
+        {!showRails ? (
+          <div ref={loadMoreRef} className="flex justify-center py-10">
+            {isFetchingNextPage ? (
+              <Loader2 className="size-8 animate-spin text-faint" aria-hidden />
+            ) : null}
+          </div>
+        ) : null}
 
-        {playlists.length > 0 ? (
-          <div className="mt-16">
-            <h2 className="display text-display-s text-text">Featured playlists</h2>
-            <ul className="mt-6 flex flex-wrap gap-3">
+        {playlists.length > 0 && !showRails ? (
+          <section aria-labelledby="featured-playlists" className="mt-16">
+            <p className="eyebrow text-muted2">Collections</p>
+            <h2 id="featured-playlists" className="display mt-3 text-display-s text-text">
+              Featured playlists
+            </h2>
+            <ul className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
               {playlists.slice(0, 12).map((p) => (
-                <li key={p.id}>
-                  <Link
-                    to={`${isInApp ? '/app' : ''}/catalog/playlist/${p.id}`}
-                    className="press inline-flex h-11 items-center gap-3 rounded-[6px] bg-surface px-5 text-body-s text-dim shadow-card hover:bg-ground hover:text-text hover:shadow-card-hover"
-                  >
-                    {p.title}
-                    {p.videoCount ? <span className="meta text-faint">{p.videoCount}</span> : null}
-                  </Link>
+                <li key={p.id} className="min-w-0">
+                  <PlaylistCard
+                    item={p}
+                    href={`${isInApp ? '/app' : ''}/catalog/playlist/${p.id}`}
+                  />
                 </li>
               ))}
             </ul>
-          </div>
+          </section>
         ) : null}
       </div>
     </div>

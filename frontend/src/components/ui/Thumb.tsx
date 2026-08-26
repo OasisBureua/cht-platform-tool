@@ -1,3 +1,4 @@
+import type { SyntheticEvent } from 'react';
 import { ChmMark } from '../brand/ChmMark';
 
 /**
@@ -11,11 +12,15 @@ export function Thumb({
   duration,
   className = '',
   onError,
+  onLoad,
 }: {
   src: string;
   duration?: string;
   className?: string;
   onError?: () => void;
+  /** Lets a caller inspect the decoded image (e.g. spot a provider's
+      grey "missing poster" placeholder, which loads rather than 404s). */
+  onLoad?: (e: SyntheticEvent<HTMLImageElement>) => void;
 }) {
   return (
     <div className={`relative overflow-hidden rounded-[6px] bg-surface-2 ${className}`}>
@@ -25,6 +30,7 @@ export function Thumb({
         loading="lazy"
         referrerPolicy="no-referrer"
         onError={onError}
+        onLoad={onLoad}
         className="absolute inset-0 size-full object-cover opacity-90 transition-[scale,opacity] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.03] group-hover:opacity-100"
       />
       {/* Under the scrim this is a permanently dark strip, so the mark

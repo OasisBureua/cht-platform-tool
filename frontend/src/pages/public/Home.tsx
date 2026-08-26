@@ -262,6 +262,7 @@ const SHOWS: {
     episodes: 4,
     tone: 'var(--color-cta)',
     cover: '/img/thumb-patina.jpg',
+    podcastId: 'big-c-energy',
   },
   {
     slug: 'tetalks',
@@ -271,6 +272,7 @@ const SHOWS: {
     episodes: 2,
     tone: 'var(--color-lung)',
     cover: '/img/thumb-db09.jpg',
+    podcastId: 'tetalks',
     spanish: true,
   },
 ];

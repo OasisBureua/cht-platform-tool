@@ -8,6 +8,7 @@ import {
   HCP_CAROUSELS,
 } from '../../data/carousels.config';
 import { ConversationRow, StripCard, StripRowLoading } from '../home/ConversationRow';
+import { CatalogRow, CatalogRowSkeleton, CatalogSessionCard } from './CatalogRow';
 import {
   VIEW_PLAYLIST_LABEL,
   buildCatalogSectionPlaylistsHref,
@@ -22,20 +23,28 @@ import {
  *
  * Behavior states:
  * - loading → skeleton strip
- * - clips returned → one `StripCard` per clip, linking to clip detail
+ * - clips returned → one card per clip, linking to clip detail
  * - empty / all posters broken → renders nothing
+ *
+ * `variant` picks the presentation only; the contract above is identical
+ * either way. `strip` is the dashboard / signed-out row. `catalog` is the
+ * token-era row the Conversations tab uses: `.card` tiles, the shared
+ * `Thumb`, and the design's type scale.
  */
 export function BiomarkerConversationRow({
   carouselId,
   isInApp,
   /** When false, keep cards even if the poster fails (legacy). Default: hide broken posters. */
   hideBrokenCatalogThumbnails = true,
+  variant = 'strip',
 }: {
   /** Identifier matching a row in `carousels.config.ts`. */
   carouselId: string;
   isInApp: boolean;
   /** When true (default), omit tiles whose poster 404s or is YouTube's gray placeholder. */
   hideBrokenCatalogThumbnails?: boolean;
+  /** Presentation only. See the note above. */
+  variant?: 'strip' | 'catalog';
 }) {
   const config: CarouselConfig | undefined = getCarousel(carouselId);
   const [brokenThumbIds, setBrokenThumbIds] = useState<Set<string>>(() => new Set());
@@ -95,7 +104,11 @@ export function BiomarkerConversationRow({
   );
 
   if (isLoading) {
-    return (
+    return variant === 'catalog' ? (
+      <CatalogRow title={config.label} seeAllHref={seeAllHref} seeAllLabel={VIEW_PLAYLIST_LABEL}>
+        <CatalogRowSkeleton />
+      </CatalogRow>
+    ) : (
       <ConversationRow
         title={config.label}
         seeAllHref={seeAllHref}
@@ -109,6 +122,38 @@ export function BiomarkerConversationRow({
   if (clips.length === 0) return null;
 
   const subtitle = `${clips.length} video${clips.length !== 1 ? 's' : ''}`;
+
+  if (variant === 'catalog') {
+    return (
+      <CatalogRow
+        title={config.label}
+        subtitle={subtitle}
+        seeAllHref={seeAllHref}
+        seeAllLabel={VIEW_PLAYLIST_LABEL}
+      >
+        {clips.map((c) => (
+          <CatalogSessionCard
+            key={c.id}
+            clip={c}
+            hideOnBrokenPoster={hideBrokenCatalogThumbnails}
+            onPosterFailed={hideBrokenCatalogThumbnails ? () => markBroken(c.id) : undefined}
+            to={
+              isInApp
+                ? `/app/clip/${getShortClipId(c.id)}`
+                : `/catalog/clip/${getShortClipId(c.id)}`
+            }
+            title={c.title}
+            imageUrl={getMediaHubThumbnail(c)}
+            description={
+              c.doctors && c.doctors.length > 0
+                ? c.doctors.slice(0, 2).join(' · ')
+                : c.shoot_name || ''
+            }
+          />
+        ))}
+      </CatalogRow>
+    );
+  }
 
   return (
     <ConversationRow

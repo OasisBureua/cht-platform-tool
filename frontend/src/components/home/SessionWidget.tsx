@@ -106,7 +106,7 @@ export function SessionWidget({ poster }: { poster: string }) {
         id={`${uid}-panel-${track.key}`}
         aria-labelledby={`${uid}-tab-${track.key}`}
         tabIndex={0}
-        className="relative rounded-[6px] bg-ground p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
+        className="relative h-[16.125rem] overflow-hidden rounded-[6px] bg-ground p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
       >
         {active === 'video' && <VideoTrack poster={poster} meta={track.meta} />}
         {active === 'podcast' && <PodcastTrack meta={track.meta} />}
@@ -118,10 +118,10 @@ export function SessionWidget({ poster }: { poster: string }) {
 
 function VideoTrack({ poster, meta }: { poster: string; meta: string }) {
   return (
-    <>
+    <div className="flex h-full flex-col">
       <Thumb src={poster} duration={meta} className="aspect-video w-full" />
       <h3 className="sr-only">Chapters</h3>
-      <ol className="scrollbar-none mt-2 max-h-[8.5rem] overflow-y-auto overscroll-contain px-1">
+      <ol className="scrollbar-none mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1">
         {CHAPTERS.map(([t, label], i) => (
           <li key={t} className="flex items-center gap-3 py-1.5">
             <span className="meta w-12 shrink-0 tabular-nums text-anchor">{t}</span>
@@ -131,7 +131,7 @@ function VideoTrack({ poster, meta }: { poster: string; meta: string }) {
           </li>
         ))}
       </ol>
-    </>
+    </div>
   );
 }
 
@@ -150,7 +150,7 @@ function PodcastTrack({ meta }: { meta: string }) {
   );
 
   return (
-    <div className="flex h-[15.5rem] flex-col justify-between p-2">
+    <div className="flex h-full flex-col justify-between p-2">
       <div className="flex h-32 items-end gap-[3px]" aria-hidden>
         {bars.map((h, i) => (
           <span
@@ -183,7 +183,7 @@ function EditorialTrack({ meta }: { meta: string }) {
   }, []);
 
   return (
-    <div className="flex h-[15.5rem] flex-col p-2">
+    <div className="flex h-full flex-col p-2">
       <div
         className="relative min-h-0 flex-1 overflow-hidden"
         style={{

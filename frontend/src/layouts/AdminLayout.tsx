@@ -62,7 +62,7 @@ export default function AdminLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen min-w-0 flex-col bg-muted text-foreground md:flex-row">
+    <div className="flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">
       <AdminSidebar />
 
       <div
@@ -89,7 +89,7 @@ export default function AdminLayout() {
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
           </Link>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
-            {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
               <li key={`${to}-${label}`}>
                 <NavLink
                   to={to}
@@ -104,8 +104,19 @@ export default function AdminLayout() {
                     ].join(' ')
                   }
                 >
-                  <Icon className="h-5 w-5 shrink-0" strokeWidth={2} aria-hidden />
-                  <span className="truncate">{label}</span>
+                  {({ isActive }) => (
+                    <>
+                      {/* The active row is a solid `brand-600` fill, so the icon
+                          drops its hue there and inherits the row's label
+                          colour; a resting hue on that fill is unreadable. */}
+                      <Icon
+                        className={isActive ? 'h-5 w-5 shrink-0' : `h-5 w-5 shrink-0 ${iconTone}`}
+                        strokeWidth={2}
+                        aria-hidden
+                      />
+                      <span className="truncate">{label}</span>
+                    </>
+                  )}
                 </NavLink>
               </li>
             ))}
@@ -128,7 +139,7 @@ export default function AdminLayout() {
           className={[
             // Do not apply transform when closed, translate-x-0 still creates a containing
             // block and breaks position:fixed modals (delete/edit appear mid-page / bottom).
-            'relative z-[1] flex min-h-[100dvh] min-w-0 flex-1 flex-col bg-muted motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none ',
+            'relative z-[1] flex min-h-[100dvh] min-w-0 flex-1 flex-col bg-app-ground motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none ',
             mobileDrawerOpen
               ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]'
               : 'shadow-none',

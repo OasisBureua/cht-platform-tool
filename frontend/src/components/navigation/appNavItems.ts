@@ -8,11 +8,14 @@ import {
   Banknote,
   Bot,
 } from 'lucide-react';
+import type { NavIconTone } from './navIconTones';
 
 export type AppNavItem = {
   to: string;
   label: string;
   icon: LucideIcon;
+  /** Resting colour of the ICON. Stable per destination — see navIconTones. */
+  iconTone: NavIconTone;
   end?: boolean;
 };
 
@@ -25,13 +28,21 @@ export const APP_CATALOG_CLIPS_GRID = '/app/catalog?view=clips';
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
 export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
 
-/** Primary app destinations: desktop sidebar + mobile slide-reveal drawer (Search lives in header) */
+/**
+ * Primary app destinations: desktop sidebar + mobile slide-reveal drawer
+ * (Search lives in header).
+ *
+ * `iconTone` runs coral → purple → cyan → pink → blue → green → amber down the
+ * rail: seven distinct hues in the light appearance, none repeated, and the two
+ * that converge in dark (coral and amber) sit at opposite ends. Destinations
+ * that also exist in the admin shell keep the same hue there.
+ */
 export const APP_NAV_ITEMS: AppNavItem[] = [
-  { to: '/app/live', label: 'LIVE', icon: Radio, end: false },
-  { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, end: false },
-  { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, end: false },
-  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, end: false },
-  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, end: false },
-  { to: '/app/earnings', label: 'Earnings', icon: Banknote, end: false },
-  { to: '/app/chatbot', label: 'Chatbot', icon: Bot, end: false },
+  { to: '/app/live', label: 'LIVE', icon: Radio, iconTone: 'text-ink-coral', end: false },
+  { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, iconTone: 'text-ink-purple', end: false },
+  { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, iconTone: 'text-ink-cyan', end: false },
+  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, iconTone: 'text-ink-pink', end: false },
+  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-anchor', end: false },
+  { to: '/app/earnings', label: 'Earnings', icon: Banknote, iconTone: 'text-ink-green', end: false },
+  { to: '/app/chatbot', label: 'Chatbot', icon: Bot, iconTone: 'text-amber', end: false },
 ];

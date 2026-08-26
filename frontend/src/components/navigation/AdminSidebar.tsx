@@ -16,7 +16,7 @@ export default function AdminSidebar() {
 
       {/* Pack items at the top with clearer size + spacing */}
       <nav className="flex flex-col items-center gap-2.5 px-1.5 pb-4 pt-2">
-        {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+        {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
           <NavLink
             key={`${to}-${label}`}
             to={to}
@@ -30,10 +30,21 @@ export default function AdminSidebar() {
               ].join(' ')
             }
           >
-            <Icon className="h-6 w-6 shrink-0" strokeWidth={2} aria-hidden />
-            <span className="max-w-full px-0.5 text-[11px] font-semibold leading-snug [overflow-wrap:anywhere]">
-              {label}
-            </span>
+            {({ isActive }) => (
+              <>
+                {/* Resting icon carries the destination's own hue. The active
+                    row already tints itself `primary` end to end, so there the
+                    icon inherits that instead of competing with it. */}
+                <Icon
+                  className={isActive ? 'h-6 w-6 shrink-0' : `h-6 w-6 shrink-0 ${iconTone}`}
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <span className="max-w-full px-0.5 text-[11px] font-semibold leading-snug [overflow-wrap:anywhere]">
+                  {label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
