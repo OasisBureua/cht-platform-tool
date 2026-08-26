@@ -14,6 +14,7 @@ import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavIte
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Home                  = lazy(() => import('./pages/public/Home'));
+const HomeBento             = lazy(() => import('./pages/public/HomeBento'));
 const ClipDetail            = lazy(() => import('./pages/public/ClipDetail'));
 const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail'));
 const About                 = lazy(() => import('./pages/public/About'));
@@ -139,6 +140,7 @@ function App() {
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/home" element={<Home />} />
+              <Route path="/home-bento" element={<HomeBento />} />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
