@@ -1,3 +1,4 @@
+import { ProfileBanner } from '../../components/kol/ProfileBanner';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
@@ -106,7 +107,7 @@ export default function KolProfilePage() {
 
   if (profile.loadState === 'loading') {
     return (
-      <div className="min-h-screen w-full bg-muted px-6 py-20 text-center text-muted-foreground dark:bg-black dark:text-muted-foreground">
+      <div className="min-h-screen w-full bg-ground px-6 py-20 text-center text-muted2">
         Loading profile…
       </div>
     );
@@ -123,19 +124,19 @@ export default function KolProfilePage() {
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
   return (
-    <div className="min-h-screen w-full bg-muted pb-20 text-foreground dark:bg-black">
-      <div className="sticky top-0 z-30 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur-md /90">
+    <div className="min-h-screen w-full bg-ground pb-20 text-text">
+      <div className="sticky top-16 z-30 w-full bg-[color-mix(in_oklab,var(--color-surface)_88%,transparent)] backdrop-blur-2xl backdrop-saturate-150">
         <div className="flex w-full max-w-none items-center gap-1 px-4 py-2 sm:px-6 lg:px-8">
           <Link
             to="/kol-network"
-            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-zinc-700 hover:bg-muted dark:hover:bg-muted"
+            className="press grid size-11 shrink-0 place-items-center rounded-[6px] text-dim hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             aria-label="Back to KOL directory"
           >
             <ArrowLeft className="h-5 w-5" strokeWidth={2} />
           </Link>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-bold leading-tight">{vm.displayName}</p>
-            <p className="truncate text-[13px] text-muted-foreground">
+            <p className="display truncate text-body-m leading-tight text-text">{vm.displayName}</p>
+            <p className="truncate text-body-s text-muted2">
               {(entry.role.split(/[.;]/)[0]?.trim() ?? '').slice(0, 56)}
               {(entry.role.split(/[.;]/)[0]?.trim() ?? '').length > 56 ? '…' : ''}
             </p>
@@ -145,27 +146,32 @@ export default function KolProfilePage() {
 
       <div className="w-full max-w-none">
         {/* Banner: full viewport width */}
-        <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 via-brand-900 to-zinc-950 sm:h-48">
+        {/* A banner rather than a slab: the cluster motif seeded from
+            this profile, so the page reads as part of the site instead
+            of a stock gradient. A supplied banner image still wins. */}
+        <div className="relative h-40 w-full overflow-hidden bg-surface sm:h-52">
           {vm.bannerImageUrl ? (
-            <img src={vm.bannerImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-          ) : null}
+            <img src={vm.bannerImageUrl} alt="" className="size-full object-cover" loading="lazy" />
+          ) : (
+            <ProfileBanner seed={entry.id} />
+          )}
         </div>
 
-        <div className="relative px-4 pb-4 sm:px-6 lg:px-8">
+        <div className="rail relative pb-6">
           {/* Avatar overlap */}
           <div className="relative -mt-16 flex justify-between sm:-mt-[4.25rem]">
             <img
               src={entry.photoUrl || avatarUrl(entry.name)}
               alt=""
-              className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
+              className="size-28 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-32"
             />
             <div className="flex flex-col items-end gap-2 pt-20 sm:pt-24">
-              <span className="inline-flex items-center rounded-[6px] border border-zinc-200 bg-card px-3 py-1 text-xs font-semibold text-brand-900 shadow-card dark:text-brand-200">
+              <span className="eyebrow inline-flex items-center rounded-[6px] bg-surface px-3 py-1.5 text-anchor shadow-card">
                 CHM Network
               </span>
               <Link
                 to={catalogHref}
-                className="inline-flex min-h-[36px] items-center gap-1 rounded-[6px] border border-zinc-200 bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-card transition hover:bg-muted dark:hover:bg-muted"
+                className="press inline-flex h-10 items-center gap-2 rounded-[6px] bg-cta px-4 text-body-s font-medium text-ground hover:bg-cta-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 Catalog videos
                 <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
@@ -176,10 +182,12 @@ export default function KolProfilePage() {
           <div className="mt-3 space-y-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{vm.displayName}</h1>
+                <h1 className="display text-[2rem] leading-[1.04] tracking-[-0.03em] text-text sm:text-[2.6rem]">
+                  {vm.displayName}
+                </h1>
                 {entry.featured ? (
                   <span
-                    className="rounded bg-brand-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
+                    className="eyebrow rounded-[5px] bg-cta px-2 py-1 text-ground"
                     title="Curator-featured KOL"
                   >
                     ★ Featured
@@ -188,30 +196,30 @@ export default function KolProfilePage() {
               </div>
               {vm.rosterOnly ? (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-teal-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-teal-900 dark:bg-teal-950/60 dark:text-teal-200">
+                  <span className="eyebrow rounded-[5px] bg-surface-2 px-2 py-1 text-muted2">
                     Roster
                   </span>
                 </div>
               ) : null}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 text-[14px]">
+            <div className="mt-6 grid gap-x-10 gap-y-4 border-t border-hairline pt-6 text-body-s sm:grid-cols-2">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Specialty</p>
-                <p className="mt-1 text-foreground">{vm.specialty}</p>
+                <p className="eyebrow text-faint">Specialty</p>
+                <p className="mt-1.5 text-dim">{vm.specialty}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">State</p>
-                <p className="mt-1 text-foreground">{vm.stateName}</p>
+                <p className="eyebrow text-faint">State</p>
+                <p className="mt-1.5 text-dim">{vm.stateName}</p>
               </div>
               <div className="sm:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Institution</p>
-                <p className="mt-1 text-foreground">{vm.institution}</p>
+                <p className="eyebrow text-faint">Institution</p>
+                <p className="mt-1.5 text-dim">{vm.institution}</p>
               </div>
               {entry.education?.trim() ? (
                 <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Education & training</p>
-                  <p className="mt-1 text-[15px] leading-relaxed text-foreground">{entry.education}</p>
+                  <p className="eyebrow text-faint">Education &amp; training</p>
+                  <p className="prose-lede mt-1.5 text-dim">{entry.education}</p>
                 </div>
               ) : null}
             </div>
@@ -221,7 +229,7 @@ export default function KolProfilePage() {
                 {vm.phone ? (
                   <a
                     href={`tel:${vm.phone.replace(/\D/g, '')}`}
-                    className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
+                    className="press inline-flex h-9 items-center rounded-[6px] text-body-s text-anchor hover:brightness-110"
                   >
                     {vm.phone}
                   </a>
@@ -240,7 +248,7 @@ export default function KolProfilePage() {
           </div>
 
           {/* Tabs */}
-          <nav className="mt-5 flex border-b border-zinc-200" aria-label="Profile sections">
+          <nav className="mt-9 flex gap-1 border-b border-hairline" aria-label="Profile sections">
             {(
               [
                 ['overview', 'Overview'],
@@ -255,55 +263,58 @@ export default function KolProfilePage() {
                 aria-selected={tab === id}
                 onClick={() => setTab(id)}
                 className={[
-                  'min-h-[44px] flex-1 border-b-[3px] py-3 text-sm font-semibold transition-colors',
-                  tab === id
-                    ? 'border-brand-600 text-foreground dark:border-brand-400 dark:text-white'
-                    : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground dark:text-muted-foreground dark:hover:bg-muted/80',
+                  'press relative min-h-[44px] rounded-t-[6px] px-4 pb-3 pt-2 text-body-m transition-colors duration-150',
+                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor',
+                  tab === id ? 'font-medium text-text' : 'text-muted2 hover:text-text',
                 ].join(' ')}
               >
                 {label}
+                {tab === id ? (
+                  <span
+                    aria-hidden
+                    className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-anchor"
+                  />
+                ) : null}
               </button>
             ))}
           </nav>
 
-          <div className="mt-4 space-y-4" role="tabpanel">
+          <div className="mt-8 space-y-4" role="tabpanel">
             {tab === 'overview' ? (
               <>
                 {displayBrief ? (
-                  <article className="overflow-hidden rounded-card border border-zinc-200/90 bg-card shadow-card">
-                    <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3">
+                  <article className="card overflow-hidden p-0">
+                    <div className="flex items-center gap-2 border-b border-hairline px-6 py-4">
                       <Sparkles
-                        className={`h-4 w-4 ${displayBrief.isAiGenerated ? 'text-amber-500' : 'text-muted-foreground'}`}
+                        className={`size-4 ${displayBrief.isAiGenerated ? 'text-anchor' : 'text-faint'}`}
                         aria-hidden
                       />
-                      <span className="text-sm font-bold text-foreground">Intel summary</span>
-                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      <span className="display text-body-m text-text">Intel summary</span>
+                      <span className="eyebrow ms-auto text-faint">
                         {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
                       </span>
                     </div>
-                    <div className="space-y-4 px-4 py-4 text-[15px] leading-relaxed text-muted-foreground">
+                    <div className="space-y-5 px-6 py-5 text-body-s leading-relaxed text-muted2">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Who they are</p>
-                        <p className="mt-1">{displayBrief.whoTheyAre}</p>
+                        <p className="eyebrow text-faint">Who they are</p>
+                        <p className="mt-2">{displayBrief.whoTheyAre}</p>
                       </div>
                       {displayBrief.focus ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
-                            What they focus on
-                          </p>
-                          <p className="mt-1">{displayBrief.focus}</p>
+                          <p className="eyebrow text-faint">What they focus on</p>
+                          <p className="mt-2">{displayBrief.focus}</p>
                         </div>
                       ) : null}
                       {displayBrief.chmContext ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">CHM context</p>
-                          <p className="mt-1">{displayBrief.chmContext}</p>
+                          <p className="eyebrow text-faint">CHM context</p>
+                          <p className="mt-2">{displayBrief.chmContext}</p>
                         </div>
                       ) : null}
                     </div>
                     {displayBrief.isAiGenerated ? (
-                      <div className="border-t border-zinc-100 px-4 py-3">
-                        <p className="text-[10px] leading-snug text-muted-foreground">
+                      <div className="border-t border-hairline px-6 py-4">
+                        <p className="text-body-s leading-snug text-faint">
                           AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
                           important details against primary sources.
                         </p>
@@ -314,12 +325,12 @@ export default function KolProfilePage() {
 
                 <KolPublicationsSection kolId={entry.id} />
 
-                <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
-                  <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <article className="card p-6">
+                  <h2 className="display flex items-center gap-2 text-body-m text-text">
                     <Briefcase className="h-4 w-4" aria-hidden />
                     Role
                   </h2>
-                  <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{entry.role}</p>
+                  <p className="prose-lede mt-3 text-body-s text-muted2">{entry.role}</p>
                 </article>
 
                 <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
@@ -329,21 +340,21 @@ export default function KolProfilePage() {
             {tab === 'background' ? (
               <div className="space-y-4">
                 {showBioOnBackground ? (
-                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
-                    <h2 className="text-sm font-bold text-foreground">Summary</h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{entry.bio}</p>
+                  <article className="card p-6">
+                    <h2 className="display text-body-m text-text">Summary</h2>
+                    <p className="prose-lede mt-3 text-body-s text-muted2">{entry.bio}</p>
                   </article>
                 ) : null}
                 {vm.researchHighlights ? (
-                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
-                    <h2 className="text-sm font-bold text-foreground">Research highlights</h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{vm.researchHighlights}</p>
+                  <article className="card p-6">
+                    <h2 className="display text-body-m text-text">Research highlights</h2>
+                    <p className="prose-lede mt-3 text-body-s text-muted2">{vm.researchHighlights}</p>
                   </article>
                 ) : null}
                 {vm.awards && vm.awards.length > 0 ? (
-                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-card">
-                    <h2 className="text-sm font-bold text-foreground">Recognition</h2>
-                    <ul className="mt-3 list-inside list-disc space-y-1 text-[15px] text-muted-foreground">
+                  <article className="card p-6">
+                    <h2 className="display text-body-m text-text">Recognition</h2>
+                    <ul className="mt-3 list-inside list-disc space-y-1.5 text-body-s text-muted2">
                       {vm.awards.map((a) => (
                         <li key={a}>{a}</li>
                       ))}
@@ -371,7 +382,7 @@ function SocialIcon({ href, label, children }: { href?: string; label: string; c
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-zinc-200 bg-card text-muted-foreground shadow-card transition-[color,transform] hover:text-brand-700 active:scale-95"
+      className="press grid size-10 place-items-center rounded-[6px] bg-surface text-muted2 shadow-card transition-colors duration-150 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       {children}
     </a>
