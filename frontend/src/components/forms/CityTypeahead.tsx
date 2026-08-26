@@ -49,12 +49,12 @@ export default function CityTypeahead({
 
   return (
     <div className="relative space-y-1.5" ref={rootRef}>
-      <label className="text-sm font-semibold text-gray-900">
+      <label className="text-sm font-semibold text-foreground">
         {label}
         {optional ? (
-          <span className="ml-1 font-normal text-gray-500">(optional)</span>
+          <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
         ) : (
-          <span className="ml-1 text-red-600" aria-hidden>
+          <span className="ml-1 text-destructive" aria-hidden>
             *
           </span>
         )}
@@ -91,13 +91,13 @@ export default function CityTypeahead({
             setOpen(false);
           }
         }}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:opacity-60"
+        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:opacity-60"
       />
       {open && suggestions.length > 0 ? (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg"
+          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-card border border-border bg-card py-1 shadow-lg"
         >
           {suggestions.map((city, i) => (
             <li key={city} role="option" aria-selected={i === highlight}>
@@ -105,7 +105,7 @@ export default function CityTypeahead({
                 type="button"
                 className={[
                   'block w-full px-3 py-2 text-left text-sm',
-                  i === highlight ? 'bg-brand-50 text-brand-900' : 'text-gray-800 hover:bg-gray-50',
+                  i === highlight ? 'bg-brand-50 text-brand-900' : 'text-gray-800 hover:bg-muted',
                 ].join(' ')}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(e) => {
@@ -120,7 +120,7 @@ export default function CityTypeahead({
         </ul>
       ) : null}
       {!stateCode && value.trim() ? (
-        <p className="text-xs text-gray-500">Select a state to narrow city suggestions.</p>
+        <p className="text-xs text-muted-foreground">Select a state to narrow city suggestions.</p>
       ) : null}
     </div>
   );

@@ -59,23 +59,23 @@ export default function PublicWatch() {
   const data = getPageData();
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-card min-h-screen">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
         {/* Breadcrumb */}
-        <Link to="/catalog" className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+        <Link to="/catalog" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
           <User className="h-4 w-4" />
           {data.breadcrumb}
         </Link>
 
         {/* Page title + metadata */}
         <header className="space-y-4">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
             {data.title}
           </h1>
-          <p className="text-base text-gray-600 leading-relaxed max-w-3xl">
+          <p className="text-base text-muted-foreground leading-relaxed max-w-3xl">
             {data.subtitle}
           </p>
-          <div className="flex flex-wrap gap-6 text-sm text-gray-600">
+          <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <Calendar className="h-4 w-4" />
               Study Duration: {data.studyDuration}
@@ -95,27 +95,27 @@ export default function PublicWatch() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Main Study Presentation */}
           <div className="lg:col-span-8 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900">Main Study Presentation</h2>
-            <div className="relative rounded-2xl overflow-hidden border border-gray-200 bg-black aspect-video">
+            <h2 className="text-lg font-bold text-foreground">Main Study Presentation</h2>
+            <div className="relative rounded-card overflow-hidden border border-border bg-black aspect-video">
               <img src={STOCK_IMAGE} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20">
-                <button className="h-20 w-20 rounded-full bg-white/90 flex items-center justify-center hover:bg-white transition-colors">
-                  <Play className="h-10 w-10 text-gray-900 ml-1" fill="currentColor" />
+                <button className="h-20 w-20 rounded-full bg-white/90 flex items-center justify-center hover:bg-card transition-colors">
+                  <Play className="h-10 w-10 text-foreground ml-1" fill="currentColor" />
                 </button>
               </div>
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-base font-semibold text-gray-900">{data.videoTitle}</p>
-              <span className="text-sm text-gray-600">Duration: {data.videoDuration}</span>
+              <p className="text-base font-semibold text-foreground">{data.videoTitle}</p>
+              <span className="text-sm text-muted-foreground">Duration: {data.videoDuration}</span>
             </div>
             <div className="flex items-center gap-4">
-              <button className="inline-flex items-center gap-2 rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+              <button className="inline-flex items-center gap-2 rounded-[6px] bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
                 <Play className="h-4 w-4" /> Play
               </button>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50">
+              <button className="inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted">
                 <Bookmark className="h-4 w-4" /> Save
               </button>
-              <span className="flex items-center gap-1.5 text-sm text-gray-600 ml-auto">
+              <span className="flex items-center gap-1.5 text-sm text-muted-foreground ml-auto">
                 <Eye className="h-4 w-4" /> {data.views}
               </span>
             </div>
@@ -123,17 +123,17 @@ export default function PublicWatch() {
 
           {/* Video Information sidebar */}
           <div className="lg:col-span-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 space-y-4 sticky top-24">
-              <h3 className="font-bold text-gray-900">Video Information</h3>
+            <div className="rounded-card border border-border bg-muted p-6 space-y-4 sticky top-24">
+              <h3 className="font-bold text-foreground">Video Information</h3>
               <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Summary</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{data.description}</p>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Summary</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{data.description}</p>
               </div>
-              <div className="space-y-2 pt-2 border-t border-gray-200">
-                <p className="text-sm"><span className="font-semibold text-gray-900">Research Focus:</span> <span className="text-gray-600">{data.researchFocus}</span></p>
-                <p className="text-sm"><span className="font-semibold text-gray-900">Institution:</span> <span className="text-gray-600">{data.institution}</span></p>
-                <p className="text-sm"><span className="font-semibold text-gray-900">Publication Date:</span> <span className="text-gray-600">{data.publicationDate}</span></p>
-                <p className="text-sm"><span className="font-semibold text-gray-900">Status:</span> <span className="text-gray-600">{data.status}</span></p>
+              <div className="space-y-2 pt-2 border-t border-border">
+                <p className="text-sm"><span className="font-semibold text-foreground">Research Focus:</span> <span className="text-muted-foreground">{data.researchFocus}</span></p>
+                <p className="text-sm"><span className="font-semibold text-foreground">Institution:</span> <span className="text-muted-foreground">{data.institution}</span></p>
+                <p className="text-sm"><span className="font-semibold text-foreground">Publication Date:</span> <span className="text-muted-foreground">{data.publicationDate}</span></p>
+                <p className="text-sm"><span className="font-semibold text-foreground">Status:</span> <span className="text-muted-foreground">{data.status}</span></p>
               </div>
             </div>
           </div>
@@ -141,26 +141,26 @@ export default function PublicWatch() {
 
         {/* Study Video Collections */}
         <section className="space-y-6">
-          <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
             Study Video Collections
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {STUDY_COLLECTIONS.map((col) => (
-              <div key={col.key} className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+              <div key={col.key} className="rounded-card border border-border bg-card overflow-hidden">
                 <div className="p-5">
-                  <h4 className="font-bold text-gray-900">{col.title}</h4>
-                  <p className="mt-0.5 text-sm text-gray-600 tabular-nums">{col.count} videos</p>
+                  <h4 className="font-bold text-foreground">{col.title}</h4>
+                  <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">{col.count} videos</p>
                   <ul className="mt-4 space-y-2">
                     {col.items.map((item, i) => (
                       <li key={i} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-900">{item.title}</span>
-                        <span className="text-gray-500 tabular-nums">{item.duration}</span>
+                        <span className="text-foreground">{item.title}</span>
+                        <span className="text-muted-foreground tabular-nums">{item.duration}</span>
                       </li>
                     ))}
                   </ul>
                   <Link
                     to="/catalog"
-                    className="mt-4 inline-flex rounded-lg bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+                    className="mt-4 inline-flex rounded-[6px] bg-[#000000] px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
                   >
                     View All Videos
                   </Link>
@@ -171,7 +171,7 @@ export default function PublicWatch() {
         </section>
 
         <div className="pt-4">
-          <Link to="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700">
+          <Link to="/catalog" className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:text-muted-foreground">
             ← Back to Catalogue
           </Link>
         </div>

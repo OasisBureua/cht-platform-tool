@@ -106,7 +106,7 @@ export default function KolProfilePage() {
 
   if (profile.loadState === 'loading') {
     return (
-      <div className="min-h-screen w-full bg-zinc-50 px-6 py-20 text-center text-zinc-500 dark:bg-black dark:text-zinc-400">
+      <div className="min-h-screen w-full bg-zinc-50 px-6 py-20 text-center text-muted-foreground dark:bg-black dark:text-muted-foreground">
         Loading profile…
       </div>
     );
@@ -123,7 +123,7 @@ export default function KolProfilePage() {
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
   return (
-    <div className="min-h-screen w-full bg-zinc-50 pb-20 text-zinc-900 dark:bg-black dark:text-zinc-100">
+    <div className="min-h-screen w-full bg-zinc-50 pb-20 text-foreground dark:bg-black dark:text-zinc-100">
       <div className="sticky top-0 z-30 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
         <div className="flex w-full max-w-none items-center gap-1 px-4 py-2 sm:px-6 lg:px-8">
           <Link
@@ -135,7 +135,7 @@ export default function KolProfilePage() {
           </Link>
           <div className="min-w-0 flex-1">
             <p className="truncate text-[15px] font-bold leading-tight">{vm.displayName}</p>
-            <p className="truncate text-[13px] text-zinc-500 dark:text-zinc-400">
+            <p className="truncate text-[13px] text-muted-foreground">
               {(entry.role.split(/[.;]/)[0]?.trim() ?? '').slice(0, 56)}
               {(entry.role.split(/[.;]/)[0]?.trim() ?? '').length > 56 ? '…' : ''}
             </p>
@@ -160,12 +160,12 @@ export default function KolProfilePage() {
               className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:bg-zinc-800 dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
             />
             <div className="flex flex-col items-end gap-2 pt-20 sm:pt-24">
-              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-brand-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-brand-200">
+              <span className="inline-flex items-center rounded-[6px] border border-zinc-200 bg-card px-3 py-1 text-xs font-semibold text-brand-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-brand-200">
                 CHM Network
               </span>
               <Link
                 to={catalogHref}
-                className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                className="inline-flex min-h-[36px] items-center gap-1 rounded-[6px] border border-zinc-200 bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
                 Catalog videos
                 <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
@@ -197,21 +197,21 @@ export default function KolProfilePage() {
 
             <div className="grid gap-3 sm:grid-cols-2 text-[14px]">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Specialty</p>
-                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.specialty}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Specialty</p>
+                <p className="mt-1 text-foreground">{vm.specialty}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">State</p>
-                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.stateName}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">State</p>
+                <p className="mt-1 text-foreground">{vm.stateName}</p>
               </div>
               <div className="sm:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Institution</p>
-                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.institution}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Institution</p>
+                <p className="mt-1 text-foreground">{vm.institution}</p>
               </div>
               {entry.education?.trim() ? (
                 <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Education & training</p>
-                  <p className="mt-1 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.education}</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Education & training</p>
+                  <p className="mt-1 text-[15px] leading-relaxed text-foreground">{entry.education}</p>
                 </div>
               ) : null}
             </div>
@@ -257,8 +257,8 @@ export default function KolProfilePage() {
                 className={[
                   'min-h-[44px] flex-1 border-b-[3px] py-3 text-sm font-semibold transition-colors',
                   tab === id
-                    ? 'border-brand-600 text-zinc-900 dark:border-brand-400 dark:text-white'
-                    : 'border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900/80',
+                    ? 'border-brand-600 text-foreground dark:border-brand-400 dark:text-white'
+                    : 'border-transparent text-muted-foreground hover:bg-zinc-50 hover:text-foreground dark:text-muted-foreground dark:hover:bg-zinc-900/80',
                 ].join(' ')}
               >
                 {label}
@@ -270,25 +270,25 @@ export default function KolProfilePage() {
             {tab === 'overview' ? (
               <>
                 {displayBrief ? (
-                  <article className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                  <article className="overflow-hidden rounded-card border border-zinc-200/90 bg-card shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                     <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
                       <Sparkles
-                        className={`h-4 w-4 ${displayBrief.isAiGenerated ? 'text-amber-500' : 'text-zinc-400'}`}
+                        className={`h-4 w-4 ${displayBrief.isAiGenerated ? 'text-amber-500' : 'text-muted-foreground'}`}
                         aria-hidden
                       />
-                      <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Intel summary</span>
-                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                      <span className="text-sm font-bold text-foreground">Intel summary</span>
+                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                         {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
                       </span>
                     </div>
-                    <div className="space-y-4 px-4 py-4 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    <div className="space-y-4 px-4 py-4 text-[15px] leading-relaxed text-muted-foreground">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Who they are</p>
+                        <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Who they are</p>
                         <p className="mt-1">{displayBrief.whoTheyAre}</p>
                       </div>
                       {displayBrief.focus ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                             What they focus on
                           </p>
                           <p className="mt-1">{displayBrief.focus}</p>
@@ -296,14 +296,14 @@ export default function KolProfilePage() {
                       ) : null}
                       {displayBrief.chmContext ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">CHM context</p>
+                          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">CHM context</p>
                           <p className="mt-1">{displayBrief.chmContext}</p>
                         </div>
                       ) : null}
                     </div>
                     {displayBrief.isAiGenerated ? (
                       <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
-                        <p className="text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
+                        <p className="text-[10px] leading-snug text-muted-foreground">
                           AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
                           important details against primary sources.
                         </p>
@@ -314,12 +314,12 @@ export default function KolProfilePage() {
 
                 <KolPublicationsSection kolId={entry.id} />
 
-                <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                  <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                  <h2 className="flex items-center gap-2 text-sm font-bold text-foreground">
                     <Briefcase className="h-4 w-4" aria-hidden />
                     Role
                   </h2>
-                  <p className="mt-2 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.role}</p>
+                  <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{entry.role}</p>
                 </article>
 
                 <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
@@ -329,21 +329,21 @@ export default function KolProfilePage() {
             {tab === 'background' ? (
               <div className="space-y-4">
                 {showBioOnBackground ? (
-                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Summary</h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.bio}</p>
+                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                    <h2 className="text-sm font-bold text-foreground">Summary</h2>
+                    <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{entry.bio}</p>
                   </article>
                 ) : null}
                 {vm.researchHighlights ? (
-                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Research highlights</h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{vm.researchHighlights}</p>
+                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                    <h2 className="text-sm font-bold text-foreground">Research highlights</h2>
+                    <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{vm.researchHighlights}</p>
                   </article>
                 ) : null}
                 {vm.awards && vm.awards.length > 0 ? (
-                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Recognition</h2>
-                    <ul className="mt-3 list-inside list-disc space-y-1 text-[15px] text-zinc-700 dark:text-zinc-300">
+                  <article className="rounded-card border border-zinc-200 bg-card p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                    <h2 className="text-sm font-bold text-foreground">Recognition</h2>
+                    <ul className="mt-3 list-inside list-disc space-y-1 text-[15px] text-muted-foreground">
                       {vm.awards.map((a) => (
                         <li key={a}>{a}</li>
                       ))}
@@ -371,7 +371,7 @@ function SocialIcon({ href, label, children }: { href?: string; label: string; c
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition-[color,transform] hover:text-brand-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+      className="flex h-9 w-9 items-center justify-center rounded-[6px] border border-zinc-200 bg-card text-muted-foreground shadow-sm transition-[color,transform] hover:text-brand-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
     >
       {children}
     </a>

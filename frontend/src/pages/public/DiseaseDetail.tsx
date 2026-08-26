@@ -125,13 +125,13 @@ export default function DiseaseDetail() {
 
   if (isUnknownDisease) {
     return (
-      <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-white min-h-screen'}>
+      <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-card min-h-screen'}>
         <div className={isApp ? '' : 'mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-8'}>
           <WordPressCategoryNav basePath={basePath} />
           <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{title}</h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground">{title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">
                 {wpMode
                   ? 'Category not found or has no published clips yet.'
                   : legacyArea
@@ -141,15 +141,15 @@ export default function DiseaseDetail() {
             </div>
             <Link
               to={`${basePath}/catalog`}
-              className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 w-fit"
+              className="rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-gray-200 w-fit"
             >
               All Content
             </Link>
           </header>
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
+          <div className="rounded-card border border-border bg-muted p-12 text-center">
             <Link
               to={`${basePath}/catalog`}
-              className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+              className="mt-4 inline-flex rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
             >
               Browse Library
             </Link>
@@ -162,14 +162,14 @@ export default function DiseaseDetail() {
   const isInitialLoading = (playlistsLoading || clipsLoading) && allClips.length === 0;
 
   return (
-    <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-white min-h-screen'}>
+    <div className={isApp ? 'space-y-8 pb-24 md:pb-0' : 'bg-card min-h-screen'}>
       <div className={isApp ? '' : 'mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 space-y-8'}>
         <WordPressCategoryNav basePath={basePath} activeSlug={diseaseSlug} />
 
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-gray-900">{title}</h1>
-            <p className="text-sm text-gray-600 mt-1">
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground">{title}</h1>
+            <p className="text-sm text-muted-foreground mt-1">
               {wpMode
                 ? `${wpCategory?.post_count ?? allClips.length} editorial clips`
                 : legacyArea?.description}
@@ -177,7 +177,7 @@ export default function DiseaseDetail() {
           </div>
           <Link
             to={`${basePath}/catalog`}
-            className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-200 w-fit"
+            className="rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-gray-200 w-fit"
           >
             All Content
           </Link>
@@ -185,7 +185,7 @@ export default function DiseaseDetail() {
 
         {isInitialLoading && (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
           </div>
         )}
 
@@ -194,8 +194,8 @@ export default function DiseaseDetail() {
             {webinars.length > 0 && (
               <section className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">Live Sessions</h2>
-                  <Link to={`${basePath}/live`} className="text-sm font-semibold text-gray-600 hover:text-gray-900 inline-flex items-center gap-1">
+                  <h2 className="text-xl font-bold text-foreground">Live Sessions</h2>
+                  <Link to={`${basePath}/live`} className="text-sm font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
                     View all <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -204,9 +204,9 @@ export default function DiseaseDetail() {
                     <Link
                       key={w.id}
                       to={isApp ? `/app/live/${w.id}` : `/live/${w.id}`}
-                      className="rounded-2xl border border-gray-200 bg-white p-5 hover:shadow-md"
+                      className="rounded-card border border-border bg-card p-5 hover:shadow-md"
                     >
-                      <p className="font-bold text-gray-900 line-clamp-2">{w.title}</p>
+                      <p className="font-bold text-foreground line-clamp-2">{w.title}</p>
                     </Link>
                   ))}
                 </div>
@@ -215,7 +215,7 @@ export default function DiseaseDetail() {
 
             {allClips.length > 0 && (
               <section className="space-y-4">
-                <h2 className="text-xl font-bold text-gray-900">Conversations</h2>
+                <h2 className="text-xl font-bold text-foreground">Conversations</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                   {allClips.map((c) => (
                     <Link
@@ -225,18 +225,18 @@ export default function DiseaseDetail() {
                           ? `/app/clip/${getShortClipId(c.id)}`
                           : `/catalog/clip/${getShortClipId(c.id)}`
                       }
-                      className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:shadow-md group"
+                      className="rounded-card border border-border bg-card overflow-hidden hover:shadow-md group"
                     >
-                      <div className="aspect-video bg-gray-100 relative">
+                      <div className="aspect-video bg-muted relative">
                         <img src={c.thumbnail_url} alt={c.title} className="h-full w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
                           <Play className="h-8 w-8 text-white" fill="white" />
                         </div>
                       </div>
                       <div className="p-2.5">
-                        <p className="font-medium text-gray-900 text-xs line-clamp-2">{c.title}</p>
+                        <p className="font-medium text-foreground text-xs line-clamp-2">{c.title}</p>
                         {c.wordpress?.series?.[0] ? (
-                          <p className="mt-1 text-[10px] text-gray-500 line-clamp-1">
+                          <p className="mt-1 text-[10px] text-muted-foreground line-clamp-1">
                             {c.wordpress.series[0].replace(/-/g, ' ')}
                           </p>
                         ) : null}
@@ -250,7 +250,7 @@ export default function DiseaseDetail() {
                       type="button"
                       disabled={clipsFetching}
                       onClick={() => setClipsOffset(clipsOffset + CLIPS_PAGE_SIZE)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold disabled:opacity-60"
                     >
                       {clipsFetching && <Loader2 className="h-4 w-4 animate-spin" />}
                       Load more
@@ -261,18 +261,18 @@ export default function DiseaseDetail() {
             )}
 
             {webinars.length === 0 && allClips.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
+              <div className="rounded-card border border-border bg-muted p-12 text-center">
                 {wpMode && (wpCategory?.post_count ?? 0) < WORDPRESS_LOW_COUNT_THRESHOLD ? (
                   <>
-                    <p className="font-semibold text-gray-900">Coverage for {title} is growing</p>
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="font-semibold text-foreground">Coverage for {title} is growing</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
                       New editorial segments are added weekly. Check back soon or browse the full library.
                     </p>
                   </>
                 ) : (
-                  <p className="font-semibold text-gray-900">No content available yet for {title}</p>
+                  <p className="font-semibold text-foreground">No content available yet for {title}</p>
                 )}
-                <Link to={`${basePath}/catalog`} className="mt-4 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
+                <Link to={`${basePath}/catalog`} className="mt-4 inline-flex rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white">
                   Browse Library
                 </Link>
               </div>

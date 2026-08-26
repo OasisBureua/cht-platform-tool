@@ -24,7 +24,7 @@ const nav = [
 export default function AdminBottomNav() {
   return (
     <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-card border-t border-border"
       aria-label="Admin navigation"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }}
     >
@@ -37,7 +37,7 @@ export default function AdminBottomNav() {
             className={({ isActive }) =>
               [
                 'flex flex-col items-center justify-center gap-0.5 flex-1 min-w-0 py-2 px-1 transition-colors touch-manipulation',
-                isActive ? 'text-gray-900' : 'text-gray-500 active:text-gray-900',
+                isActive ? 'text-foreground' : 'text-muted-foreground active:text-foreground',
               ].join(' ')
             }
           >

@@ -59,18 +59,18 @@ export default function AdminLogin() {
 
   if (isAuthenticated && isLoading) {
     return (
-      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-gray-50">
+      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-muted">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mb-4" />
-          <p className="text-gray-600">Signing you in...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-gray-900 mb-4" />
+          <p className="text-muted-foreground">Signing you in...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-gray-50">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl">
+    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-12 bg-muted">
+      <div className="w-full max-w-md overflow-hidden rounded-card border border-border bg-card shadow-xl">
         <div className="bg-brand-600 px-6 py-8 text-center">
           <Shield className="mx-auto h-12 w-12 text-white/90" />
           <h1 className="mt-4 text-xl font-semibold text-white md:text-2xl">
@@ -87,7 +87,7 @@ export default function AdminLogin() {
           </div>
           <form className="space-y-4" onSubmit={handleLogin}>
             {error && (
-              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+              <div className="rounded-[6px] bg-red-50 px-4 py-3 text-sm text-destructive">
                 {error}
               </div>
             )}
@@ -111,7 +111,7 @@ export default function AdminLogin() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+              className="w-full rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
             >
               {submitting ? 'Signing in...' : 'Sign in'}
             </button>
@@ -120,37 +120,37 @@ export default function AdminLogin() {
               <>
                 <div className="relative mt-4">
                   <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
+                    <div className="w-full border-t border-border" />
                   </div>
                   <div className="relative flex justify-center text-sm">
-                    <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                    <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={!!oauthLoading}
-                  className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2 rounded-[6px] border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   {oauthLoading === 'google' ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-gray-600" />
                   ) : (
                     <GoogleIcon />
                   )}
                   Google
                 </button>
-                <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
+                <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
               </>
             ) : (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <p className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                 {googleOAuthMigrationMessage}
               </p>
             )}
           </form>
 
-          <p className="mt-6 text-center text-sm text-gray-500">
+          <p className="mt-6 text-center text-sm text-muted-foreground">
             Not an admin?{' '}
-            <Link to="/login" className="font-medium text-gray-900 hover:underline">
+            <Link to="/login" className="font-medium text-foreground hover:underline">
               HCP Login
             </Link>
           </p>
@@ -188,14 +188,14 @@ function Input({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label className="text-sm font-medium text-muted-foreground">{label}</label>
       <input
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
       />
     </div>
   );

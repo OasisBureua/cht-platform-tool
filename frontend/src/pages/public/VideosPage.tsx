@@ -428,9 +428,9 @@ export default function VideosPage() {
         ].join(' ')}
       >
         {effectiveLibraryView === 'clips' && !isInApp ? (
-          <div className="flex items-center gap-2.5 pt-2 text-zinc-900 sm:pt-4">
+          <div className="flex items-center gap-2.5 pt-2 text-foreground sm:pt-4">
             <MonitorPlay className="h-5 w-5 shrink-0 text-steel-700 dark:text-steel-400" strokeWidth={2} aria-hidden />
-            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
+            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               Explore our catalogue
             </h1>
           </div>
@@ -444,14 +444,14 @@ export default function VideosPage() {
           <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
             <div className="relative min-w-[200px] flex-1">
               <Search
-                className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500"
+                className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
                 aria-hidden
               />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search..."
-                className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full rounded-card border border-border bg-card py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
 
@@ -460,7 +460,7 @@ export default function VideosPage() {
                 <select
                   value={tagFilter}
                   onChange={(e) => setTagFilter(e.target.value)}
-                  className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                  className="min-w-[160px] rounded-card border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
                 >
                   <option value="">All tags</option>
                   {tagGroups.map((group) => (
@@ -477,7 +477,7 @@ export default function VideosPage() {
                 <select
                   value={doctorFilter}
                   onChange={(e) => setDoctorFilter(e.target.value)}
-                  className="min-w-[160px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                  className="min-w-[160px] rounded-card border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
                 >
                   <option value="">All doctors</option>
                   {doctorOptions.map((opt) => (
@@ -493,7 +493,7 @@ export default function VideosPage() {
               <button
                 type="button"
                 onClick={() => setSortOpen(!sortOpen)}
-                className="inline-flex min-w-[140px] items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-900"
+                className="inline-flex min-w-[140px] items-center justify-between gap-2 rounded-card border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
               >
                 {SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort by'}
                 <ChevronDown className={`h-4 w-4 transition-transform ${sortOpen ? 'rotate-180' : ''}`} aria-hidden />
@@ -501,7 +501,7 @@ export default function VideosPage() {
               {sortOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
-                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-card border border-border bg-card py-1 shadow-lg">
                     {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
@@ -510,8 +510,8 @@ export default function VideosPage() {
                           setSortBy(opt.value);
                           setSortOpen(false);
                         }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 ${
-                          sortBy === opt.value ? 'bg-gray-50 font-medium text-gray-900' : 'text-gray-600'
+                        className={`w-full px-4 py-2 text-left text-sm hover:bg-muted ${
+                          sortBy === opt.value ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'
                         }`}
                       >
                         {opt.label}
@@ -545,11 +545,11 @@ export default function VideosPage() {
               />
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div className="min-w-0 space-y-1">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-zinc-100">
+                  <h2 className="text-xl font-bold text-foreground">
                     {playlistBrowseHeadingText(playlistFocus)}
                   </h2>
                   {playlistFocus ? (
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">
+                    <p className="text-sm text-muted-foreground">
                       {focusClipsLoading
                         ? 'Loading conversations…'
                         : focusClips.length > 0
@@ -557,7 +557,7 @@ export default function VideosPage() {
                           : 'No conversations in this category yet'}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-600 dark:text-zinc-400">
+                    <p className="text-sm text-muted-foreground">
                       Browse KOL playlists and ASCO 2026 series
                     </p>
                   )}
@@ -574,10 +574,10 @@ export default function VideosPage() {
             {playlistFocus ? (
               focusClipsLoading ? (
                 <div className="flex justify-center py-16" aria-busy="true">
-                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
                 </div>
               ) : focusClipsError ? (
-                <p className="text-sm text-red-600">Could not load conversations. Try again later.</p>
+                <p className="text-sm text-destructive">Could not load conversations. Try again later.</p>
               ) : focusClips.length > 0 ? (
                 <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {focusClips.map((item) => (
@@ -593,7 +593,7 @@ export default function VideosPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-600 dark:text-zinc-400">
+                <p className="text-sm text-muted-foreground">
                   No conversations match this category yet.
                 </p>
               )
@@ -601,7 +601,7 @@ export default function VideosPage() {
               <>
                 <PlaylistSections playlists={playlists} isInApp={isInApp} />
                 {playlists.length === 0 ? (
-                  <p className="text-sm text-gray-600 dark:text-zinc-400">
+                  <p className="text-sm text-muted-foreground">
                     No playlists configured. Add YouTube playlist IDs on the server.
                   </p>
                 ) : null}
@@ -615,16 +615,16 @@ export default function VideosPage() {
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {!useMediaHub ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-gray-600">Video catalog is not connected.</p>
+                  <p className="mb-2 text-pretty text-muted-foreground">Video catalog is not connected.</p>
                 </div>
               ) : useMediaHub && isLoading && displayItems.length === 0 ? (
                 <div className="col-span-full flex items-center justify-center py-16">
-                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
                 </div>
               ) : useMediaHub && displayItems.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
-                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                  <p className="mb-2 text-pretty text-muted-foreground">No results match.</p>
+                  <p className="text-pretty text-sm text-muted-foreground">Change search or filters and try again.</p>
                 </div>
               ) : (
                 displayItems.map((item) => (
@@ -638,7 +638,7 @@ export default function VideosPage() {
             </div>
             {useMediaHub && (
               <div ref={loadMoreRef} className="flex justify-center py-8">
-                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />}
               </div>
             )}
           </section>
@@ -647,11 +647,11 @@ export default function VideosPage() {
           <section className="space-y-10">
             {!useMediaHub && playlists.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
-                <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
+                <p className="mb-2 text-pretty text-muted-foreground">Video catalog needs a MediaHub API key or playlists.</p>
+                <p className="mb-3 text-pretty text-sm text-muted-foreground">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                 <Link
                   to={APP_CATALOG_CLIPS_GRID}
-                  className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
+                  className="text-sm font-medium text-foreground transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                 >
                   Browse catalog
                 </Link>
@@ -660,7 +660,7 @@ export default function VideosPage() {
               <>
                 {playlistsCarouselStrip}
                 <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
-                  <p className="text-pretty text-gray-600">
+                  <p className="text-pretty text-muted-foreground">
                     MediaHub is not connected. Add API keys in the server to load the featured banner and conversation rows.
                   </p>
                 </div>
@@ -679,8 +679,8 @@ export default function VideosPage() {
               <>
                 {playlistsCarouselStrip}
                 <div className="col-span-full flex flex-col items-center justify-center py-10 text-center">
-                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
-                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                  <p className="mb-2 text-pretty text-muted-foreground">No results match.</p>
+                  <p className="text-pretty text-sm text-muted-foreground">Change search or filters and try again.</p>
                 </div>
                 {BIOMARKER_CAROUSEL_IDS.map((id) => (
                   <BiomarkerConversationRow key={id} carouselId={id} isInApp={true} />
@@ -718,35 +718,35 @@ export default function VideosPage() {
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {!useMediaHub && playlists.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-gray-600">Video catalog needs a MediaHub API key or playlists.</p>
-                  <p className="mb-3 text-pretty text-sm text-gray-500">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
+                  <p className="mb-2 text-pretty text-muted-foreground">Video catalog needs a MediaHub API key or playlists.</p>
+                  <p className="mb-3 text-pretty text-sm text-muted-foreground">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
                   <Link
                     to={'/catalog?view=clips'}
-                    className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
+                    className="text-sm font-medium text-foreground transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                   >
                     Browse catalog
                   </Link>
                 </div>
               ) : !useMediaHub && playlists.length > 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
-                  <p className="text-pretty text-gray-600">
+                  <p className="text-pretty text-muted-foreground">
                     MediaHub is not connected. Add API keys in the server to load the featured banner and conversation grid.
                   </p>
                   <Link
                     to={'/catalog?view=clips'}
-                    className="text-sm font-medium text-gray-900 transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
+                    className="text-sm font-medium text-foreground transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
                   >
                     Open catalog
                   </Link>
                 </div>
               ) : useMediaHub && isLoading && displayItems.length === 0 ? (
                 <div className="col-span-full flex items-center justify-center py-16">
-                  <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
                 </div>
               ) : useMediaHub && displayItems.length === 0 ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-gray-600">No results match.</p>
-                  <p className="text-pretty text-sm text-gray-500">Change search or filters and try again.</p>
+                  <p className="mb-2 text-pretty text-muted-foreground">No results match.</p>
+                  <p className="text-pretty text-sm text-muted-foreground">Change search or filters and try again.</p>
                 </div>
               ) : (
                 displayItems.map((item) => {
@@ -759,7 +759,7 @@ export default function VideosPage() {
             </div>
             {useMediaHub && (
               <div ref={loadMoreRef} className="flex justify-center py-8">
-                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-gray-400" />}
+                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />}
               </div>
             )}
           </section>

@@ -60,20 +60,20 @@ const SHOW_UP = [
 
 export default function WhatWeDo() {
   return (
-    <div className="bg-white">
-      <section className="border-b border-gray-200">
+    <div className="bg-card">
+      <section className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
             <div className="lg:col-span-7 space-y-6">
               <div className="space-y-3">
-                <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-gray-900 leading-tight max-w-2xl">
+                <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-foreground leading-tight max-w-2xl">
                   We organize clinical education
                   <br />
                   into focused, easy-to-navigate
                   <br />
                   experiences
                 </h1>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
+                <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">
                   Community Health Media delivers expert-led medical communications: content, distribution, and
                   engagement across healthcare. Our public platform helps clinicians discover
                   treatment-specific material, learn through short-form video, and explore curated collections built
@@ -84,13 +84,13 @@ export default function WhatWeDo() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
                   to="/catalog"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
+                  className="inline-flex items-center justify-center gap-2 rounded-[6px] bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
                 >
                   Explore Catalogue <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
                   to="/search"
-                  className="rounded-full bg-white px-7 py-3 text-base font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 inline-flex items-center justify-center"
+                  className="rounded-[6px] bg-card px-7 py-3 text-base font-semibold text-foreground border border-border hover:bg-muted inline-flex items-center justify-center"
                 >
                   Search Content
                 </Link>
@@ -104,7 +104,7 @@ export default function WhatWeDo() {
             </div>
 
             <div className="lg:col-span-5">
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 overflow-hidden">
+              <div className="rounded-card border border-border bg-muted overflow-hidden">
                 <div
                   className="h-[340px] w-full bg-cover bg-center"
                   style={{
@@ -115,8 +115,8 @@ export default function WhatWeDo() {
                   <div className="h-full w-full bg-black/25" />
                 </div>
                 <div className="p-6 space-y-2">
-                  <p className="text-base font-semibold text-gray-900">Built to support modern clinical workflows</p>
-                  <p className="text-base text-gray-600 leading-relaxed">
+                  <p className="text-base font-semibold text-foreground">Built to support modern clinical workflows</p>
+                  <p className="text-base text-muted-foreground leading-relaxed">
                     Browse disease hubs, curated conversations and videos, and share relevant content with your team.
                   </p>
                 </div>
@@ -126,44 +126,44 @@ export default function WhatWeDo() {
         </div>
       </section>
 
-      <section className="border-b border-gray-200">
+      <section className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">Who we serve</h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">Who we serve</h2>
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">
               Different audiences need different promises. Here is how CHM shows up for each.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {AUDIENCES.map(({ title, body, icon }) => (
-              <div key={title} className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">
+              <div key={title} className="rounded-card border border-border bg-card p-6 space-y-3">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-foreground">
                   {icon}
                 </div>
-                <p className="text-xl font-semibold text-gray-900">{title}</p>
-                <p className="text-base text-gray-600 leading-relaxed">{body}</p>
+                <p className="text-xl font-semibold text-foreground">{title}</p>
+                <p className="text-base text-muted-foreground leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-b border-gray-200">
+      <section className="border-b border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">How we show up</h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">How we show up</h2>
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">
               A concise view of the work behind the scenes, before someone ever hits play.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {SHOW_UP.map(({ title, body, icon }) => (
-              <div key={title} className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">
+              <div key={title} className="rounded-card border border-border bg-card p-6 space-y-3">
+                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-foreground">
                   {icon}
                 </div>
-                <p className="text-xl font-semibold text-gray-900">{title}</p>
-                <p className="text-base text-gray-600 leading-relaxed">{body}</p>
+                <p className="text-xl font-semibold text-foreground">{title}</p>
+                <p className="text-base text-muted-foreground leading-relaxed">{body}</p>
               </div>
             ))}
           </div>
@@ -173,10 +173,10 @@ export default function WhatWeDo() {
       <section>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
               Our platform focuses on four things
             </h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">
               A simple, structured system to make clinical learning easier to discover and faster to consume.
             </p>
           </div>
@@ -210,11 +210,11 @@ export default function WhatWeDo() {
         </div>
       </section>
 
-      <section className="border-t border-gray-200">
+      <section className="border-t border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
           <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">How it works</h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
+            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground">How it works</h2>
+            <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl">
               A clear path from discovery to learning.
             </p>
           </div>
@@ -239,22 +239,22 @@ export default function WhatWeDo() {
         </div>
       </section>
 
-      <section className="border-t border-gray-200">
+      <section className="border-t border-border">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12">
-          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-8 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div className="rounded-card border border-border bg-muted p-8 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-7 space-y-3">
-              <div className="flex items-center gap-2 text-gray-900">
+              <div className="flex items-center gap-2 text-foreground">
                 <Shield className="h-5 w-5" />
                 <p className="text-base font-semibold">Built with clarity in mind</p>
               </div>
-              <h3 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900 max-w-md">
+              <h3 className="text-3xl md:text-4xl font-semibold tracking-tight text-foreground max-w-md">
                 Structured content experiences,
                 <br />
                 ready to scale
               </h3>
-              <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+              <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
                 Read{' '}
-                <Link to="/about" className="font-semibold text-gray-900 underline decoration-gray-300 hover:decoration-gray-900">
+                <Link to="/about" className="font-semibold text-foreground underline decoration-gray-300 hover:decoration-gray-900">
                   About
                 </Link>{' '}
                 for the full CHM story, formats, and what we stand for. For programs, partnerships, or platform
@@ -265,13 +265,13 @@ export default function WhatWeDo() {
             <div className="lg:col-span-5 flex flex-col gap-3">
               <Link
                 to="/join"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
+                className="inline-flex items-center justify-center gap-2 rounded-[6px] bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
               >
                 Get Started <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/contact"
-                className="rounded-full bg-white px-7 py-3 text-base font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 inline-flex items-center justify-center"
+                className="rounded-[6px] bg-card px-7 py-3 text-base font-semibold text-foreground border border-border hover:bg-muted inline-flex items-center justify-center"
               >
                 Contact Us
               </Link>
@@ -285,9 +285,9 @@ export default function WhatWeDo() {
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <p className="text-sm font-semibold text-gray-600">{label}</p>
-      <p className="text-base font-semibold text-gray-900 mt-1">{value}</p>
+    <div className="rounded-card border border-border bg-card p-4">
+      <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+      <p className="text-base font-semibold text-foreground mt-1">{value}</p>
     </div>
   );
 }
@@ -304,13 +304,13 @@ function Pillar({
   cta: { label: string; to: string };
 }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">
+    <div className="rounded-card border border-border bg-card p-6 space-y-3">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-foreground">
         {icon}
       </div>
-      <p className="text-xl font-semibold text-gray-900">{title}</p>
-      <p className="text-base text-gray-600 leading-relaxed">{body}</p>
-      <Link to={cta.to} className="text-base font-semibold text-gray-900 hover:text-gray-700 inline-flex items-center gap-2">
+      <p className="text-xl font-semibold text-foreground">{title}</p>
+      <p className="text-base text-muted-foreground leading-relaxed">{body}</p>
+      <Link to={cta.to} className="text-base font-semibold text-foreground hover:text-muted-foreground inline-flex items-center gap-2">
         {cta.label} <span>→</span>
       </Link>
     </div>
@@ -319,10 +319,10 @@ function Pillar({
 
 function Step({ step, title, body }: { step: string; title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-      <p className="text-base font-semibold text-gray-500">{step}</p>
-      <p className="text-xl font-semibold text-gray-900">{title}</p>
-      <p className="text-base text-gray-600 leading-relaxed">{body}</p>
+    <div className="rounded-card border border-border bg-card p-6 space-y-3">
+      <p className="text-base font-semibold text-muted-foreground">{step}</p>
+      <p className="text-xl font-semibold text-foreground">{title}</p>
+      <p className="text-base text-muted-foreground leading-relaxed">{body}</p>
     </div>
   );
 }

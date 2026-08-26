@@ -198,19 +198,19 @@ export default function Join() {
 
   if (success) {
     return (
-      <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-        <div className="w-full max-w-md rounded-2xl border border-gray-200/90 bg-white/95 p-8 text-center shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.12)]">
-          <h2 className="text-balance text-xl font-semibold text-gray-900">Check your email</h2>
-          <p className="text-pretty mt-2 text-sm text-gray-600">
+      <div className="bg-card min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
+        <div className="w-full max-w-md rounded-card border border-gray-200/90 bg-white/95 p-8 text-center shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.12)]">
+          <h2 className="text-balance text-xl font-semibold text-foreground">Check your email</h2>
+          <p className="text-pretty mt-2 text-sm text-muted-foreground">
             {cognitoAuthEnabled ? (
               <>
                 If this email can be registered, you&apos;ll receive a 6-digit verification code from{' '}
                 <strong>noreply@communityhealth.media</strong>. Already have an account?{' '}
-                <Link to="/login" className="font-medium text-gray-900 underline">
+                <Link to="/login" className="font-medium text-foreground underline">
                   Sign in
                 </Link>{' '}
                 or{' '}
-                <Link to="/forgot-password" className="font-medium text-gray-900 underline">
+                <Link to="/forgot-password" className="font-medium text-foreground underline">
                   reset your password
                 </Link>
                 .
@@ -219,7 +219,7 @@ export default function Join() {
               <>
                 If this email can be registered, you&apos;ll receive a verification link. Already have
                 an account?{' '}
-                <Link to="/login" className="font-medium text-gray-900 underline">
+                <Link to="/login" className="font-medium text-foreground underline">
                   Sign in
                 </Link>
                 .
@@ -233,7 +233,7 @@ export default function Join() {
                 : '/login'
             }
             state={fromLocation ? { from: fromLocation } : undefined}
-            className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
+            className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
           >
             {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
           </Link>
@@ -250,10 +250,10 @@ export default function Join() {
             <p className="text-sm font-semibold tracking-wide text-brand-800 dark:text-brand-400">
               Join
             </p>
-            <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
+            <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
               Join CHT
             </h1>
-            <p className="text-pretty mx-auto mt-3 max-w-md text-sm leading-relaxed text-gray-600 sm:text-base lg:mx-0">
+            <p className="text-pretty mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base lg:mx-0">
               CHT is a platform for healthcare professionals to participate in accredited education,
               surveys, and research opportunities, and to earn CME credits and honoraria.
             </p>
@@ -285,12 +285,12 @@ export default function Join() {
         </aside>
 
         <div className="order-1 w-full min-w-0 lg:order-2">
-          <div className="rounded-2xl border border-gray-200/90 bg-white/95 p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.14)] sm:p-6">
-            <h2 className="text-balance text-lg font-semibold tracking-tight text-gray-900 sm:text-xl">
+          <div className="rounded-card border border-gray-200/90 bg-white/95 p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.14)] sm:p-6">
+            <h2 className="text-balance text-lg font-semibold tracking-tight text-foreground sm:text-xl">
               Create your account
             </h2>
 
-            <p className="text-pretty mt-1 text-sm leading-snug text-gray-600">
+            <p className="text-pretty mt-1 text-sm leading-snug text-muted-foreground">
               Join the Community Health platform.
             </p>
 
@@ -300,19 +300,19 @@ export default function Join() {
                   type="button"
                   onClick={() => handleOAuth('google')}
                   disabled={!!oauthLoading}
-                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-gray-200/90 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
+                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-card border border-gray-200/90 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
                 >
                   {oauthLoading === 'google' ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-gray-600" />
                   ) : (
                     <GoogleIcon />
                   )}
                   Continue with Google
                 </button>
-                <p className="text-center text-xs text-gray-500">{GOOGLE_OAUTH_DISCLAIMER}</p>
+                <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
               </div>
             ) : (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+              <div className="mt-4 rounded-card border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
                 {googleOAuthMigrationMessage}
               </div>
             )}
@@ -323,14 +323,14 @@ export default function Join() {
                   <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white/95 px-3 text-gray-500">Or create account with email</span>
+                  <span className="bg-white/95 px-3 text-muted-foreground">Or create account with email</span>
                 </div>
               </div>
             </div>
 
             <form className="mt-4" onSubmit={handleSubmit} noValidate>
               {error && (
-                <div className="mb-3 rounded-xl border border-red-100 bg-red-50/90 px-3 py-2.5 text-sm text-red-800 shadow-[inset_0_0_0_1px_rgba(254,202,202,0.6)]">
+                <div className="mb-3 rounded-card border border-red-100 bg-red-50/90 px-3 py-2.5 text-sm text-red-800 shadow-[inset_0_0_0_1px_rgba(254,202,202,0.6)]">
                   {error}
                 </div>
               )}
@@ -387,7 +387,7 @@ export default function Join() {
                           >
                             <Check className="h-2.5 w-2.5" strokeWidth={3} />
                           </span>
-                          <span className={ok ? 'text-green-800' : 'text-gray-500'}>
+                          <span className={ok ? 'text-green-800' : 'text-muted-foreground'}>
                             {rule.label}
                           </span>
                         </li>
@@ -411,7 +411,7 @@ export default function Join() {
                     required
                   />
                   {profession && !professionRequiresNpi(profession) ? (
-                    <p className="mt-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                    <p className="mt-1.5 rounded-[6px] border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
                       <strong>Note:</strong> NPI is not required for your role. Honorarium programs
                       are designed for licensed healthcare professionals: you can still access all
                       educational content and events.
@@ -421,14 +421,14 @@ export default function Join() {
 
                 {requiresNpi && (
                   <div className="min-w-0 space-y-1.5 sm:col-span-2">
-                    <label className="text-sm font-semibold text-gray-900">
+                    <label className="text-sm font-semibold text-foreground">
                       NPI number
-                      <span className="ml-1 text-red-600" aria-hidden>
+                      <span className="ml-1 text-destructive" aria-hidden>
                         *
                       </span>
                       <span className="sr-only"> (required)</span>
                     </label>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Enter your 10-digit National Provider Identifier (NPI). Required for licensed
                       healthcare roles.
                     </p>
@@ -446,13 +446,13 @@ export default function Join() {
                         required
                         maxLength={10}
                         aria-describedby="npi-help"
-                        className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
+                        className="min-w-0 flex-1 rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
                       />
                       <button
                         type="button"
                         disabled={npiDigits.length !== 10 || npiVerifying}
                         onClick={() => void runNpiVerify(npiDigits)}
-                        className="shrink-0 rounded-xl bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
+                        className="shrink-0 rounded-card bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
                       >
                         {npiVerifying ? 'Verifying…' : 'Verify'}
                       </button>
@@ -461,29 +461,29 @@ export default function Join() {
                       NPI must be exactly 10 digits and verified against the NPI registry.
                     </p>
                     {npiVerified === true && !npiMeta?.duplicate && (
-                      <p className="text-xs font-medium text-green-700">
+                      <p className="text-xs font-medium text-success">
                         NPI verified
                         {npiMeta?.providerName ? ` — ${npiMeta.providerName}` : ''}
                         {npiMeta?.providerType ? ` (${npiMeta.providerType})` : ''}.
                       </p>
                     )}
                     {(npiVerified === false || npiMeta?.duplicate) && (
-                      <p className="text-xs font-medium text-red-600">
+                      <p className="text-xs font-medium text-destructive">
                         {npiMeta?.error ||
                           'NPI not found in the National Provider Identifier registry. Please check and try again.'}
                       </p>
                     )}
                     {npiVerifying && npiVerified === null ? (
-                      <p className="text-xs text-gray-500">Checking NPI registry…</p>
+                      <p className="text-xs text-muted-foreground">Checking NPI registry…</p>
                     ) : null}
                   </div>
                 )}
 
                 <div className="border-t border-gray-100/90 pt-3 shadow-[0_-1px_0_0_rgba(255,255,255,0.85)] sm:col-span-2">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Practice location
                   </p>
-                  <p className="mb-3 text-xs text-gray-500">
+                  <p className="mb-3 text-xs text-muted-foreground">
                     Institution and city are optional. State and 5-digit ZIP are required.
                   </p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-3">
@@ -537,7 +537,7 @@ export default function Join() {
                   <button
                     type="submit"
                     disabled={!canSubmit}
-                    className="w-full rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
+                    className="w-full rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
                   >
                     {!signupEnabled
                       ? 'Account creation temporarily unavailable'
@@ -546,7 +546,7 @@ export default function Join() {
                         : 'Create account'}
                   </button>
                   {!canSubmit && signupEnabled ? (
-                    <p className="mt-2 text-center text-xs text-gray-500">
+                    <p className="mt-2 text-center text-xs text-muted-foreground">
                       Complete required fields (including password rules, role
                       {requiresNpi ? ', NPI' : ''}, state, and ZIP) to continue.
                     </p>
@@ -555,9 +555,9 @@ export default function Join() {
               </div>
             </form>
 
-            <p className="mt-3 text-xs text-gray-500">
+            <p className="mt-3 text-xs text-muted-foreground">
               By continuing, you agree to our{' '}
-              <Link to="/privacy" className="underline hover:text-gray-700">
+              <Link to="/privacy" className="underline hover:text-muted-foreground">
                 Privacy Policy
               </Link>
               .
@@ -565,9 +565,9 @@ export default function Join() {
 
             <RecaptchaNotice />
 
-            <div className="mt-4 text-sm text-gray-600">
+            <div className="mt-4 text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-gray-900 hover:underline">
+              <Link to="/login" className="font-semibold text-foreground hover:underline">
                 Sign in
               </Link>
             </div>
@@ -588,13 +588,13 @@ function ValueRow({
   text: string;
 }) {
   return (
-    <div className="flex gap-3 rounded-2xl border border-gray-200/75 bg-white/70 p-4 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_10px_32px_-18px_rgba(0,0,0,0.08)] sm:p-4 sm:pr-5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-200/90 bg-gray-50/90 text-gray-900 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
+    <div className="flex gap-3 rounded-card border border-gray-200/75 bg-white/70 p-4 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_10px_32px_-18px_rgba(0,0,0,0.08)] sm:p-4 sm:pr-5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-card border border-gray-200/90 bg-gray-50/90 text-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
         {icon}
       </div>
       <div className="min-w-0 pt-0.5">
-        <p className="text-sm font-semibold text-gray-900">{title}</p>
-        <p className="text-pretty mt-0.5 text-sm leading-relaxed text-gray-600">{text}</p>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-pretty mt-0.5 text-sm leading-relaxed text-muted-foreground">{text}</p>
       </div>
     </div>
   );
@@ -610,17 +610,17 @@ function FieldLabel({
   optional?: boolean;
 }) {
   return (
-    <label className="text-sm font-semibold text-gray-900">
+    <label className="text-sm font-semibold text-foreground">
       {label}
       {required ? (
         <>
-          <span className="ml-1 text-red-600" aria-hidden>
+          <span className="ml-1 text-destructive" aria-hidden>
             *
           </span>
           <span className="sr-only"> (required)</span>
         </>
       ) : null}
-      {optional ? <span className="ml-1 font-normal text-gray-500">(optional)</span> : null}
+      {optional ? <span className="ml-1 font-normal text-muted-foreground">(optional)</span> : null}
     </label>
   );
 }
@@ -663,7 +663,7 @@ function Input({
         maxLength={maxLength}
         autoComplete={autoComplete}
         inputMode={inputMode}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
+        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
       />
     </div>
   );
@@ -689,7 +689,7 @@ function Select({
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
+        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
       >
         {options.map((opt) => (
           <option key={opt.value || 'empty'} value={opt.value}>

@@ -27,7 +27,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
     <section
       className={[
         'overflow-hidden bg-brand-600 shadow-[0_1px_0_rgba(0,0,0,0.06),0_20px_50px_-24px_rgba(0,0,0,0.35)]',
-        isInApp ? 'rounded-none' : 'rounded-2xl',
+        isInApp ? 'rounded-none' : 'rounded-card',
       ].join(' ')}
       aria-label="Featured video"
     >
@@ -67,7 +67,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             <Link
               to={playHref}
               state={{ clip }}
-              className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
+              className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-card px-5 text-sm font-semibold text-foreground shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
             >
               <Play className="h-4 w-4 shrink-0" aria-hidden fill="currentColor" />
               Play
@@ -90,7 +90,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
 export function ConversationsHeroSkeleton() {
   return (
     <div
-      className="h-[min(56vh,520px)] min-h-[280px] overflow-hidden rounded-2xl bg-zinc-200/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:min-h-[320px] md:h-[min(58vh,580px)]"
+      className="h-[min(56vh,520px)] min-h-[280px] overflow-hidden rounded-card bg-zinc-200/90 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.04)] sm:min-h-[320px] md:h-[min(58vh,580px)]"
       aria-hidden
     >
       <div className="flex h-full flex-col justify-end p-4 sm:p-6 md:px-10">

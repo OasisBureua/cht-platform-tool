@@ -88,25 +88,25 @@ export default function PlaylistDetail() {
   // Early returns after all hooks
   if (!playlistId) {
     return (
-      <div className="bg-white min-h-screen flex items-center justify-center">
-        <p className="text-gray-600">Invalid playlist</p>
+      <div className="bg-card min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Invalid playlist</p>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="bg-white min-h-screen flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+      <div className="bg-card min-h-screen flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="bg-white min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-600">Playlist not found.</p>
-        <Link to={catalogUrl} className="text-sm font-medium text-gray-900 hover:underline">
+      <div className="bg-card min-h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-muted-foreground">Playlist not found.</p>
+        <Link to={catalogUrl} className="text-sm font-medium text-foreground hover:underline">
           ← Back to Catalog
         </Link>
       </div>
@@ -116,30 +116,30 @@ export default function PlaylistDetail() {
   const { playlist } = data;
 
   return (
-    <div className="bg-white min-h-screen min-w-0">
+    <div className="bg-card min-h-screen min-w-0">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
         {/* Breadcrumb */}
         <Link
           to={catalogUrl}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
         >
           ← Back to Catalog
         </Link>
 
-        <h1 className="text-4xl md:text-5xl font-bold text-gray-900">{playlist.title}</h1>
+        <h1 className="text-4xl md:text-5xl font-bold text-foreground">{playlist.title}</h1>
 
         {/* Main content: Video player + Recommended sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Main video area */}
           <div className="lg:col-span-8 space-y-6">
             {videos.length === 0 ? (
-              <div className="aspect-video rounded-2xl bg-gray-100 flex items-center justify-center">
-                <p className="text-gray-600">No videos in this playlist.</p>
+              <div className="aspect-video rounded-card bg-muted flex items-center justify-center">
+                <p className="text-muted-foreground">No videos in this playlist.</p>
               </div>
             ) : (
               <>
                 {/* Embedded video player - IFrame API with GA4 events */}
-                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black" key={selectedVideo.id}>
+                <div className="aspect-video w-full rounded-card overflow-hidden bg-black" key={selectedVideo.id}>
                   <YouTubePlayer
                     youtubeUrl={selectedVideo.youtubeUrl}
                     title={selectedVideo.title}
@@ -150,17 +150,17 @@ export default function PlaylistDetail() {
                 </div>
 
                 {/* Video title banner */}
-                <div className="rounded-xl bg-brand-600 px-6 py-4">
+                <div className="rounded-card bg-brand-600 px-6 py-4">
                   <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
                 </div>
 
                 {/* Summary */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Summary</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Summary</h3>
                   {summary ? (
-                    <p className="text-gray-600 whitespace-pre-wrap">{summary}</p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{summary}</p>
                   ) : (
-                    <p className="text-sm text-gray-400 italic">Summary not yet available for this clip.</p>
+                    <p className="text-sm text-muted-foreground italic">Summary not yet available for this clip.</p>
                   )}
                 </div>
 
@@ -173,15 +173,15 @@ export default function PlaylistDetail() {
 
                 {/* Transcript */}
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Transcript</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Transcript</h3>
                   {!shootId ? (
-                    <p className="text-sm text-gray-400 italic">Transcript not available for this clip.</p>
+                    <p className="text-sm text-muted-foreground italic">Transcript not available for this clip.</p>
                   ) : transcriptLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   ) : transcript ? (
                     <PlaylistTranscriptDisplay data={transcript} />
                   ) : (
-                    <p className="text-sm text-gray-400 italic">Transcript not available.</p>
+                    <p className="text-sm text-muted-foreground italic">Transcript not available.</p>
                   )}
                 </div>
               </>
@@ -190,11 +190,11 @@ export default function PlaylistDetail() {
 
           {/* Right sidebar - Playlist */}
           <div className="lg:col-span-4">
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-6 sticky top-24">
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Playlist</h3>
-              <p className="text-sm text-gray-600 mb-4">{videos.length} video{videos.length !== 1 ? 's' : ''}</p>
+            <div className="rounded-card border border-border bg-muted p-6 sticky top-24">
+              <h3 className="text-lg font-bold text-foreground mb-1">Playlist</h3>
+              <p className="text-sm text-muted-foreground mb-4">{videos.length} video{videos.length !== 1 ? 's' : ''}</p>
               {videos.length === 0 ? (
-                <p className="text-sm text-gray-500">No videos in this playlist.</p>
+                <p className="text-sm text-muted-foreground">No videos in this playlist.</p>
               ) : (
                 <ul className="space-y-4">
                   {videos.map((video, idx) => (
@@ -207,10 +207,10 @@ export default function PlaylistDetail() {
                           url.searchParams.set('v', video.id);
                           window.history.replaceState({}, '', url.pathname + url.search);
                         }}
-                        className={`w-full overflow-hidden rounded-lg border-2 text-left transition-[border-color,box-shadow] ${
+                        className={`w-full overflow-hidden rounded-[6px] border-2 text-left transition-[border-color,box-shadow] ${
                           idx === safeIndex
                             ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-2'
-                            : 'border-transparent hover:border-gray-300'
+                            : 'border-transparent hover:border-border'
                         }`}
                       >
                         <div className="flex gap-3">
@@ -232,7 +232,7 @@ export default function PlaylistDetail() {
                             />
                           </div>
                           <div className="flex-1 min-w-0 py-1">
-                            <p className="text-sm font-medium text-gray-900 line-clamp-2">
+                            <p className="text-sm font-medium text-foreground line-clamp-2">
                               {video.title}
                             </p>
                           </div>
@@ -257,12 +257,12 @@ function PlaylistTranscriptDisplay({ data }: { data: unknown }) {
     if (typeof obj.transcript === 'string' && obj.transcript.trim()) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+        <div className="rounded-card border border-border bg-muted p-4 space-y-3 max-h-96 overflow-y-auto">
           {obj.shoot_name && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{String(obj.shoot_name)}</p>
           )}
           {paragraphs.map((para, i) => (
-            <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
+            <p key={i} className="text-muted-foreground text-sm leading-relaxed">{para}</p>
           ))}
         </div>
       );
@@ -273,18 +273,18 @@ function PlaylistTranscriptDisplay({ data }: { data: unknown }) {
     }
   }
   if (Array.isArray(data)) return <SegmentList segments={data} />;
-  return <p className="text-sm text-gray-400 italic">Transcript not available.</p>;
+  return <p className="text-sm text-muted-foreground italic">Transcript not available.</p>;
 }
 
 function SegmentList({ segments }: { segments: unknown[] }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+    <div className="rounded-card border border-border bg-muted p-4 space-y-3 max-h-96 overflow-y-auto">
       {segments.map((seg, i) => {
         const s = seg as { speaker?: string; text?: string };
         return (
           <div key={i} className="flex gap-3">
-            {s.speaker && <span className="font-medium text-gray-900 shrink-0">{s.speaker}:</span>}
-            <span className="text-gray-600 text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
+            {s.speaker && <span className="font-medium text-foreground shrink-0">{s.speaker}:</span>}
+            <span className="text-muted-foreground text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
           </div>
         );
       })}

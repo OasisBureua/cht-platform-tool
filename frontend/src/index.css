@@ -44,7 +44,7 @@
   --card: 0 0% 96%;                 /* #f6f6f6 */
   --card-foreground: 0 0% 5%;
   --muted: 0 0% 92%;                /* #ebebeb */
-  --muted-foreground: 0 0% 36%;     /* #5c5c5c */
+  --muted-foreground: 0 0% 31%;     /* clears AA on card and muted, not just on white */
   --border: 0 0% 92%;
   --input: 0 0% 88%;
   --ring: 212 100% 38%;             /* anchor */
@@ -391,32 +391,24 @@
     color: rgb(174 174 183) !important;
   }
 
-  /* Keep brand (teal) text readable on dark surfaces. */
+  /* Brand used AS TEXT has to lift on a dark ground; the mid steps of
+     the ramp are tuned for white labels on a fill, not for reading. */
   .dark .text-brand-800,
   .dark .text-brand-700,
   .dark .text-brand-600 {
-    color: rgb(91 176 197) !important;
+    color: rgb(93 203 255) !important;
   }
   .dark .text-brand-500 {
-    color: rgb(143 203 217) !important;
+    color: rgb(143 213 255) !important;
   }
   .dark .text-brand-400 {
-    color: rgb(189 225 234) !important;
+    color: rgb(174 234 255) !important;
   }
 
-  /* Slightly tame brand (teal) fills on dark for contrast. */
-  .dark .bg-brand-500 {
-    background-color: rgb(61 164 192) !important;
-  }
-  .dark .bg-brand-600 {
-    background-color: rgb(58 131 155) !important;
-  }
-  .dark .hover\:bg-brand-600:hover {
-    background-color: rgb(58 131 155) !important;
-  }
-  .dark .hover\:bg-brand-700:hover {
-    background-color: rgb(49 107 127) !important;
-  }
+  /* No dark override for brand fills. The old block re-pinned them to
+     teal with !important, which is why the palette swap left every CTA
+     the old colour in dark mode while light mode looked correct. The
+     ramp already carries white at AA in both appearances. */
 
   .dark .border-gray-50,
   .dark .border-gray-100,

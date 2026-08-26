@@ -133,7 +133,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-w-0 overflow-x-hidden bg-white text-gray-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-w-0 overflow-x-hidden bg-card text-foreground dark:bg-zinc-950 dark:text-zinc-100">
       {/* Hero: shorter than full-viewport; text stays legible on scrim + photo */}
       <section className="relative shadow-[0_20px_50px_-24px_rgba(0,0,0,0.35)]">
         <div
@@ -159,13 +159,13 @@ export default function Home() {
                 <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <Link
                     to="/join"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.28)_inset,0_8px_28px_-8px_rgba(58,131,155,0.45)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-200 active:scale-[0.96]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.28)_inset,0_8px_28px_-8px_rgba(58,131,155,0.45)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-200 active:scale-[0.96]"
                   >
                     Get Started
                   </Link>
                   <Link
                     to="/about"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-full border-2 border-white/55 bg-white/[0.06] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_-10px_rgba(0,0,0,0.35)] backdrop-blur-[2px] transition-[color,background-color,transform,box-shadow] hover:border-white/80 hover:bg-white/[0.12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/75 active:scale-[0.96]"
+                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-[6px] border-2 border-white/55 bg-white/[0.06] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_-10px_rgba(0,0,0,0.35)] backdrop-blur-[2px] transition-[color,background-color,transform,box-shadow] hover:border-white/80 hover:bg-white/[0.12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/75 active:scale-[0.96]"
                   >
                     Learn More
                   </Link>
@@ -252,18 +252,18 @@ export default function Home() {
             className="home-enter max-w-2xl space-y-5 text-center"
             style={{ animationDelay: `${HOME_STAGGER_MS.about}ms` }}
           >
-            <h4 className="text-balance text-3xl font-semibold text-gray-900 dark:text-zinc-100">About Us</h4>
-            <p className="text-pretty text-sm leading-relaxed text-gray-700 dark:text-zinc-300">
+            <h4 className="text-balance text-3xl font-semibold text-foreground">About Us</h4>
+            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               Community Health Media (CHM) is a full-service medical communications partner: expert-led content,
               strategic distribution, and multichannel campaigns for healthcare. We help organizations connect with HCPs,
               KOLs, and patient communities through clinically credible communication.
             </p>
-            <p className="text-pretty text-sm leading-relaxed text-gray-700 dark:text-zinc-300">
+            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
               Learn more about what we stand for, who we serve, and how our platform supports clinical learning.
             </p>
             <Link
               to="/about"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_8px_26px_-10px_rgba(58,131,155,0.4)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300 active:scale-[0.96]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_8px_26px_-10px_rgba(58,131,155,0.4)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300 active:scale-[0.96]"
             >
               Learn More
             </Link>
@@ -272,10 +272,10 @@ export default function Home() {
       </section>
 
       {/* Who We Reach */}
-      <section className="border-t border-gray-200 py-10 dark:border-zinc-800 sm:py-14">
+      <section className="border-t border-border py-10 dark:border-zinc-800 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <h4
-            className="home-enter mb-8 text-center text-balance text-3xl font-semibold text-gray-900 dark:text-zinc-100"
+            className="home-enter mb-8 text-center text-balance text-3xl font-semibold text-foreground"
             style={{ animationDelay: `${HOME_STAGGER_MS.whoWe}ms` }}
           >
             Who We Reach
@@ -284,17 +284,17 @@ export default function Home() {
             className="home-enter grid grid-cols-1 gap-6 sm:grid-cols-3"
             style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
           >
-            <div className="rounded-2xl bg-white p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
-              <p className="mb-2 font-semibold text-gray-900 dark:text-zinc-100">HCPs</p>
-              <p className="text-pretty text-sm leading-relaxed text-gray-600 dark:text-zinc-400">Beyond conferences and CME, where they actually consume content</p>
+            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
+              <p className="mb-2 font-semibold text-foreground">HCPs</p>
+              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Beyond conferences and CME, where they actually consume content</p>
             </div>
-            <div className="rounded-2xl bg-white p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
-              <p className="mb-2 font-semibold text-gray-900 dark:text-zinc-100">Patients</p>
-              <p className="text-pretty text-sm leading-relaxed text-gray-600 dark:text-zinc-400">Pre or active treatment, searching for credible information</p>
+            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
+              <p className="mb-2 font-semibold text-foreground">Patients</p>
+              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Pre or active treatment, searching for credible information</p>
             </div>
-            <div className="rounded-2xl bg-white p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
-              <p className="mb-2 font-semibold text-gray-900 dark:text-zinc-100">Caregivers</p>
-              <p className="text-pretty text-sm leading-relaxed text-gray-600 dark:text-zinc-400">Making decisions, seeking guidance, needing support</p>
+            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
+              <p className="mb-2 font-semibold text-foreground">Caregivers</p>
+              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Making decisions, seeking guidance, needing support</p>
             </div>
           </div>
         </div>
@@ -305,7 +305,7 @@ export default function Home() {
         <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6">
           <div className="space-y-2 text-center">
             <h5
-              className="home-enter text-balance text-4xl font-semibold text-gray-900 dark:text-zinc-100 md:text-5xl"
+              className="home-enter text-balance text-4xl font-semibold text-foreground md:text-5xl"
               style={{ animationDelay: `${HOME_STAGGER_MS.resourcesHead}ms` }}
             >
               Resources
@@ -319,7 +319,7 @@ export default function Home() {
               <Link
                 key={r.id}
                 to={r.href}
-                className="group relative block min-h-[140px] overflow-hidden rounded-2xl bg-gray-700 shadow-[0_10px_28px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.08] transition-[transform] active:scale-[0.96] md:min-h-[160px]"
+                className="group relative block min-h-[140px] overflow-hidden rounded-card bg-gray-700 shadow-[0_10px_28px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.08] transition-[transform] active:scale-[0.96] md:min-h-[160px]"
               >
                 <img
                   src={r.imageUrl}
@@ -341,81 +341,81 @@ export default function Home() {
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <h2
-            className="home-enter mb-8 text-center text-balance text-3xl font-semibold tracking-tighter text-gray-900 dark:text-zinc-100 md:mb-10 md:text-4xl lg:text-5xl"
+            className="home-enter mb-8 text-center text-balance text-3xl font-semibold tracking-tighter text-foreground md:mb-10 md:text-4xl lg:text-5xl"
             style={{ animationDelay: `${HOME_STAGGER_MS.faqHead}ms` }}
           >
             How We Help Pharma Educate Healthcare Audiences
           </h2>
           <div className="home-enter space-y-0" style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}>
             <details className="group home-faq-item">
-              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-gray-200 py-5 group-open:border-b-0 dark:border-zinc-800">
+              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0 dark:border-zinc-800">
                 <span className="flex items-center gap-2">
-                  <span className="text-green-600 dark:text-emerald-400" aria-hidden>
+                  <span className="text-success" aria-hidden>
                     ✓
                   </span>
-                  <span className="text-balance text-xl font-medium leading-snug text-gray-900 dark:text-zinc-100 md:text-[1.375rem]">AI-Powered Content Automation</span>
+                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">AI-Powered Content Automation</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
+              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
                 Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.
               </p>
             </details>
             <details className="group home-faq-item">
-              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-gray-200 py-5 group-open:border-b-0 dark:border-zinc-800">
+              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0 dark:border-zinc-800">
                 <span className="flex items-center gap-2">
-                  <span className="text-green-600 dark:text-emerald-400" aria-hidden>✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-gray-900 dark:text-zinc-100 md:text-[1.375rem]">Multi-Audience Reach</span>
+                  <span className="text-success" aria-hidden>✓</span>
+                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Multi-Audience Reach</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
+              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
                 Engage KOLs, HCPs, patients, and caregivers through one connected content system.
               </p>
             </details>
             <details className="group home-faq-item">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-border group-open:border-b-0">
                 <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">Entertainment-Grade Distribution</span>
+                  <span className="text-success">✓</span>
+                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Entertainment-Grade Distribution</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
+              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
                 Use podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
               </p>
             </details>
             <details className="group home-faq-item">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-border group-open:border-b-0">
                 <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">First-Party HCP Intelligence</span>
+                  <span className="text-success">✓</span>
+                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">First-Party HCP Intelligence</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
+              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
                 Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
               </p>
             </details>
             <details className="group home-faq-item">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-gray-200 group-open:border-b-0">
+              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-border group-open:border-b-0">
                 <span className="flex items-center gap-2">
-                  <span className="text-green-600">✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-gray-900 md:text-[1.375rem]">Real Engagement Analytics</span>
+                  <span className="text-success">✓</span>
+                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Real Engagement Analytics</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-gray-600">
+              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
                 Move beyond impressions. Track who watched, who shared, and who acted on it.
               </p>
             </details>
@@ -426,7 +426,7 @@ export default function Home() {
           >
             <Link
               to="/join"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-brand-600 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
             >
               Get Started
             </Link>
@@ -438,7 +438,7 @@ export default function Home() {
       <section className="py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6">
           <h2
-            className="home-enter text-balance mx-auto mb-6 md:mb-8 text-gray-900 dark:text-white"
+            className="home-enter text-balance mx-auto mb-6 md:mb-8 text-foreground"
             style={{
               animationDelay: `${HOME_STAGGER_MS.closingHead}ms`,
               fontFamily: '"Apple Garamond", Garamond, serif',
@@ -452,7 +452,7 @@ export default function Home() {
           </h2>
           <Link
             to="/join"
-            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-full bg-brand-600 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
+            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-[6px] bg-brand-600 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
             style={{ animationDelay: `${HOME_STAGGER_MS.closingCta}ms` }}
           >
             Join Us
@@ -522,13 +522,13 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="space-y-2 text-center">
           <h3
-            className="home-enter text-balance text-2xl font-medium tracking-tight text-gray-900 dark:text-zinc-100 sm:text-3xl md:text-4xl"
+            className="home-enter text-balance text-2xl font-medium tracking-tight text-foreground sm:text-3xl md:text-4xl"
             style={{ animationDelay: `${staggerBaseMs}ms` }}
           >
             View treatment specific content
           </h3>
           <p
-            className="home-enter mx-auto max-w-xl text-pretty text-sm text-zinc-500 dark:text-zinc-400 sm:text-base"
+            className="home-enter mx-auto max-w-xl text-pretty text-sm text-muted-foreground sm:text-base"
             style={{ animationDelay: `${staggerBaseMs + 90}ms` }}
           >
             Explore content by therapeutic area - expert-led education, conversations, and resources.

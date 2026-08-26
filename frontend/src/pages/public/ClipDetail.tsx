@@ -128,8 +128,8 @@ export default function ClipDetail() {
 
   if (!id) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-gray-600">Invalid clip ID</p>
+      <div className="min-h-screen bg-card flex items-center justify-center">
+        <p className="text-muted-foreground">Invalid clip ID</p>
       </div>
     );
   }
@@ -140,17 +140,17 @@ export default function ClipDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+      <div className="min-h-screen bg-card flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (isError || !clip) {
     return (
-      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6">
-        <p className="text-gray-600">Unable to load clip. {(error as Error)?.message || 'Not found.'}</p>
-        <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-gray-900 font-medium hover:underline flex items-center gap-2">
+      <div className="min-h-screen bg-card flex flex-col items-center justify-center gap-4 px-6">
+        <p className="text-muted-foreground">Unable to load clip. {(error as Error)?.message || 'Not found.'}</p>
+        <Link to={isInApp ? '/app/catalog' : '/catalog'} className="text-foreground font-medium hover:underline flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Conversations' : 'Back to catalog'}
         </Link>
       </div>
@@ -177,17 +177,17 @@ export default function ClipDetail() {
     : null;
 
   return (
-    <div className="min-h-screen bg-white min-w-0">
+    <div className="min-h-screen bg-card min-w-0">
       <div className="mx-auto max-w-4xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         <Link
           to={isInApp ? '/app/catalog' : '/catalog'}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" /> {isInApp ? 'Back to Conversations' : 'Back to catalog'}
         </Link>
 
         {/* Video embed - IFrame API with GA4 events */}
-        <div className="aspect-video w-full rounded-2xl overflow-hidden bg-black">
+        <div className="aspect-video w-full rounded-card overflow-hidden bg-black">
           <YouTubePlayer
             youtubeUrl={youtubeUrl}
             title={clip.title}
@@ -199,11 +199,11 @@ export default function ClipDetail() {
 
         {/* Title + meta - all from API, works for public and /app */}
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{clip.title}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">{clip.title}</h1>
           {seriesLabel ? (
             <p className="mt-2 text-sm font-medium text-brand-700">{seriesLabel}</p>
           ) : null}
-          <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-500 tabular-nums">
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground tabular-nums">
             {meta.doctors.length > 0 && (
               <span>Featuring: {meta.doctors.join(', ')}</span>
             )}
@@ -243,7 +243,7 @@ export default function ClipDetail() {
               <Link
                 key={`wp-${cat}`}
                 to={isInApp ? `/app/catalog/${cat}` : `/catalog/${cat}`}
-                className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800 hover:bg-brand-100"
+                className="rounded-[6px] bg-brand-50 px-3 py-1 text-xs font-medium text-brand-800 hover:bg-brand-100"
               >
                 {cat}
               </Link>
@@ -251,7 +251,7 @@ export default function ClipDetail() {
             {clip.tags.filter((t) => !String(t).startsWith('brand:')).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                className="rounded-[6px] bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
               >
                 {tag}
               </span>
@@ -261,11 +261,11 @@ export default function ClipDetail() {
 
         {/* Summary: catalog description only shown when summary is absent */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Summary</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Summary</h2>
           {aiSummary ? (
-            <p className="text-gray-600 whitespace-pre-wrap">{aiSummary}</p>
+            <p className="text-muted-foreground whitespace-pre-wrap">{aiSummary}</p>
           ) : (
-            <p className="text-sm text-gray-400 italic">Not available yet for this recording.</p>
+            <p className="text-sm text-muted-foreground italic">Not available yet for this recording.</p>
           )}
         </div>
 
@@ -278,15 +278,15 @@ export default function ClipDetail() {
 
         {/* Transcript when shoot has speech-to-text in Media Hub */}
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-1">Transcript</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-1">Transcript</h2>
           {!shootIdDisplay ? (
-            <p className="text-sm text-gray-400 italic">Transcript not linked for this recording yet.</p>
+            <p className="text-sm text-muted-foreground italic">Transcript not linked for this recording yet.</p>
           ) : transcriptLoading ? (
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           ) : transcript ? (
             <TranscriptDisplay data={transcript} />
           ) : (
-            <p className="text-sm text-gray-400 italic">Transcript not available.</p>
+            <p className="text-sm text-muted-foreground italic">Transcript not available.</p>
           )}
         </div>
       </div>
@@ -305,12 +305,12 @@ function TranscriptDisplay({ data }: { data: unknown }) {
     if (typeof obj.transcript === 'string' && obj.transcript.trim()) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+        <div className="rounded-card border border-border bg-muted p-4 space-y-3 max-h-96 overflow-y-auto">
           {obj.shoot_name && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{String(obj.shoot_name)}</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{String(obj.shoot_name)}</p>
           )}
           {paragraphs.map((para, i) => (
-            <p key={i} className="text-gray-600 text-sm leading-relaxed">{para}</p>
+            <p key={i} className="text-muted-foreground text-sm leading-relaxed">{para}</p>
           ))}
         </div>
       );
@@ -328,20 +328,20 @@ function TranscriptDisplay({ data }: { data: unknown }) {
     return <SegmentList segments={data} />;
   }
 
-  return <p className="text-sm text-gray-400 italic">Transcript not available.</p>;
+  return <p className="text-sm text-muted-foreground italic">Transcript not available.</p>;
 }
 
 function SegmentList({ segments }: { segments: unknown[] }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-3 max-h-96 overflow-y-auto">
+    <div className="rounded-card border border-border bg-muted p-4 space-y-3 max-h-96 overflow-y-auto">
       {segments.map((seg, i) => {
         const s = seg as { speaker?: string; text?: string };
         return (
           <div key={i} className="flex gap-3">
             {s.speaker && (
-              <span className="font-medium text-gray-900 shrink-0">{s.speaker}:</span>
+              <span className="font-medium text-foreground shrink-0">{s.speaker}:</span>
             )}
-            <span className="text-gray-600 text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
+            <span className="text-muted-foreground text-sm leading-relaxed">{s.text ?? JSON.stringify(seg)}</span>
           </div>
         );
       })}

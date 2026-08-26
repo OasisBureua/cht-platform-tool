@@ -214,7 +214,7 @@ export default function Login() {
                   <p className="mt-1">
                     Scan the QR code with an authenticator app, then enter the 6-digit code to finish signing in.
                   </p>
-                  <div className="mt-4 flex justify-center rounded-[6px] bg-white p-4">
+                  <div className="mt-4 flex justify-center rounded-[6px] bg-card p-4">
                     <QRCodeSVG
                       value={mfaSetup.otpauthUri}
                       size={180}

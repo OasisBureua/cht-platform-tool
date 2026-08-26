@@ -108,7 +108,7 @@ export default function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-gray-900 dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-foreground dark:bg-zinc-950 dark:text-zinc-100">
       <header className="sticky top-0 z-50 nav-liquid-glass">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
           {/* Center: quick entry to content library (filters live on /catalog) */}
@@ -132,7 +132,7 @@ export default function PublicLayout() {
                     value={headerQuery}
                     onChange={(e) => setHeaderQuery(e.target.value)}
                     placeholder="Browse library…"
-                    className="flex-1 min-w-0 bg-transparent pl-4 pr-2 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none"
+                    className="flex-1 min-w-0 bg-transparent pl-4 pr-2 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                     aria-label="Browse content library"
                   />
                   <button
@@ -149,7 +149,7 @@ export default function PublicLayout() {
             <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
               <Link
                 to="/catalog"
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl p-2 text-steel-700 transition-colors hover:bg-steel-50/80 hover:text-steel-800 sm:hidden dark:text-steel-300 dark:hover:bg-white/10"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-card p-2 text-steel-700 transition-colors hover:bg-steel-50/80 hover:text-steel-800 sm:hidden dark:text-steel-300 dark:hover:bg-white/10"
                 aria-label="Browse library"
               >
                 <Search className="h-5 w-5" />
@@ -158,13 +158,13 @@ export default function PublicLayout() {
               <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-zinc-200/70 bg-transparent p-1 shadow-[0_2px_14px_-6px_rgba(49,105,149,0.16)] backdrop-blur-md dark:border-zinc-600/55 dark:bg-transparent">
                 <Link
                   to="/login"
-                  className="rounded-full px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-900 transition-[opacity,background-color,color] hover:bg-zinc-100/90 dark:text-zinc-100 dark:hover:bg-zinc-800/75"
+                  className="rounded-[6px] px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-900 transition-[opacity,background-color,color] hover:bg-zinc-100/90 dark:text-zinc-100 dark:hover:bg-zinc-800/75"
                 >
                   Login
                 </Link>
                 <Link
                   to="/join"
-                  className="rounded-full bg-brand-600 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset] transition-[background-color,color,transform] hover:bg-brand-700 active:scale-[0.98]"
+                  className="rounded-[6px] bg-brand-600 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset] transition-[background-color,color,transform] hover:bg-brand-700 active:scale-[0.98]"
                 >
                   Get Started
                 </Link>
@@ -172,7 +172,7 @@ export default function PublicLayout() {
               <button
                 type="button"
                 onClick={() => setDrawerOpen(true)}
-                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-steel-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-steel-50/80 hover:text-steel-800 active:scale-[0.96] dark:text-steel-300 dark:hover:bg-white/5"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-card text-steel-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-steel-50/80 hover:text-steel-800 active:scale-[0.96] dark:text-steel-300 dark:hover:bg-white/5"
                 aria-label="Open menu"
                 aria-expanded={drawerOpen}
               >
@@ -206,11 +206,11 @@ export default function PublicLayout() {
           aria-label="Site navigation"
         >
           <div className="flex shrink-0 items-center justify-between px-4 pb-3 pt-4 shadow-[0_1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.1)]">
-            <span className="text-balance text-lg font-semibold tracking-tight text-gray-900 dark:text-white">Menu</span>
+            <span className="text-balance text-lg font-semibold tracking-tight text-foreground dark:text-white">Menu</span>
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96] dark:text-white dark:hover:bg-zinc-800 dark:active:bg-zinc-800/90"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card text-muted-foreground transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96] dark:text-white dark:hover:bg-zinc-800 dark:active:bg-zinc-800/90"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" strokeWidth={2} />
@@ -227,10 +227,10 @@ export default function PublicLayout() {
                 onClick={() => setDrawerOpen(false)}
                 className={({ isActive }) =>
                   [
-                    'public-drawer-link flex min-h-[48px] items-center rounded-2xl px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
+                    'public-drawer-link flex min-h-[48px] items-center rounded-card px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
                     isActive
                       ? 'bg-steel-100/95 text-steel-950 shadow-[inset_0_0_0_1px_rgba(49,105,149,0.2)] dark:bg-steel-950/50 dark:text-steel-50'
-                      : 'text-gray-800 hover:bg-gray-100/80 active:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
+                      : 'text-foreground hover:bg-gray-100/80 active:bg-muted dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
                   ].join(' ')
                 }
               >
@@ -239,21 +239,21 @@ export default function PublicLayout() {
             ))}
           </div>
           <div className="sm:hidden shrink-0 flex items-center justify-between gap-3 border-t border-gray-200/90 px-4 py-3 dark:border-zinc-800/90">
-            <span className="text-sm font-medium text-gray-700 dark:text-zinc-200">Appearance</span>
+            <span className="text-sm font-medium text-muted-foreground dark:text-zinc-200">Appearance</span>
             <ThemeToggle />
           </div>
           <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)] sm:hidden">
             <Link
               to="/login"
               onClick={() => setDrawerOpen(false)}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl border-2 border-steel-600 bg-white text-center text-base font-semibold text-steel-800 shadow-[0_8px_24px_-12px_rgba(49,105,149,0.2)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-steel-50 active:scale-[0.96] dark:border-steel-400 dark:bg-zinc-950 dark:text-steel-50 dark:hover:bg-steel-950/35"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-card border-2 border-steel-600 bg-card text-center text-base font-semibold text-steel-800 shadow-[0_8px_24px_-12px_rgba(49,105,149,0.2)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-steel-50 active:scale-[0.96] dark:border-steel-400 dark:bg-zinc-950 dark:text-steel-50 dark:hover:bg-steel-950/35"
             >
               Login
             </Link>
             <Link
               to="/join"
               onClick={() => setDrawerOpen(false)}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-2xl bg-brand-600 text-center text-base font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_10px_28px_-10px_rgba(58,131,155,0.42)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-card bg-brand-600 text-center text-base font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_10px_28px_-10px_rgba(58,131,155,0.42)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
             >
               Get Started
             </Link>
@@ -273,7 +273,7 @@ export default function PublicLayout() {
               <Link to="/home" className="inline-flex text-white transition-opacity hover:opacity-90" aria-label="Community Health Media, home">
                 <ChmWordmarkOption2 className="h-8 w-[5rem] text-white" />
               </Link>
-              <address className="not-italic text-sm text-gray-300 space-y-1 leading-relaxed">
+              <address className="not-italic text-sm text-white/70 space-y-1 leading-relaxed">
                 <p>2471 18th St NW</p>
                 <p>Second Floor</p>
                 <p>Washington, DC 20009</p>
@@ -284,7 +284,7 @@ export default function PublicLayout() {
                   href="https://www.instagram.com/healthinourhands_/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                   aria-label="Instagram"
                 >
                   <IconInstagram className="h-5 w-5" />
@@ -293,7 +293,7 @@ export default function PublicLayout() {
                   href="https://youtube.com/@CommunityHealthMedia/videos"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                   aria-label="YouTube"
                 >
                   <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
@@ -304,7 +304,7 @@ export default function PublicLayout() {
                   href="https://www.linkedin.com/company/community-health-media/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                   aria-label="LinkedIn"
                 >
                   <IconLinkedIn className="h-5 w-5" />
@@ -313,7 +313,7 @@ export default function PublicLayout() {
                   href="https://www.facebook.com/CHMediaHub/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-white/70 hover:text-white transition-colors"
                   aria-label="Facebook"
                 >
                   <IconFacebook className="h-5 w-5" />
@@ -323,11 +323,11 @@ export default function PublicLayout() {
 
             <div className="flex flex-col sm:flex-row gap-10 sm:gap-16">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Quick Links</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/70 mb-4">Quick Links</p>
                 <ul className="space-y-3">
                   {footerQuickLinks.map(({ to, label }) => (
                     <li key={to}>
-                      <Link to={to} className="text-sm text-gray-300 hover:text-white transition-colors">
+                      <Link to={to} className="text-sm text-white/70 hover:text-white transition-colors">
                         {label}
                       </Link>
                     </li>
@@ -335,15 +335,15 @@ export default function PublicLayout() {
                 </ul>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-4">Legal</p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-white/70 mb-4">Legal</p>
                 <ul className="space-y-3">
                   <li>
-                    <Link to="/privacy" className="text-sm text-gray-300 hover:text-white transition-colors">
+                    <Link to="/privacy" className="text-sm text-white/70 hover:text-white transition-colors">
                       Privacy Policy
                     </Link>
                   </li>
                   <li>
-                    <Link to="/terms" className="text-sm text-gray-300 hover:text-white transition-colors">
+                    <Link to="/terms" className="text-sm text-white/70 hover:text-white transition-colors">
                       Terms of Service
                     </Link>
                   </li>
@@ -353,7 +353,7 @@ export default function PublicLayout() {
           </div>
 
           <div className="mt-12 pt-8 border-t border-white/10">
-            <p className="text-sm text-gray-500">Copyright © 2026 Community Health Technologies, Inc. All Rights Reserved.</p>
+            <p className="text-sm text-white/70">Copyright © 2026 Community Health Technologies, Inc. All Rights Reserved.</p>
           </div>
         </div>
       </footer>

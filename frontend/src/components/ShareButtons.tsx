@@ -60,12 +60,12 @@ export function ShareButtons({
   const linkedInHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
 
   const iconBtn =
-    'inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors';
+    'inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground transition-colors';
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-3">Share</h2>
-      <p className="text-sm text-gray-600 mb-3">
+      <h2 className="text-lg font-semibold text-foreground mb-3">Share</h2>
+      <p className="text-sm text-muted-foreground mb-3">
         Share a link to this page on Community Health, or copy the address to send yourself.
       </p>
       <div className="flex flex-wrap items-center gap-3 mb-4">
@@ -90,13 +90,13 @@ export function ShareButtons({
           <IconLinkedIn className="h-5 w-5" />
         </a>
         <button type="button" onClick={copy} className={iconBtn} aria-label={copied ? 'Link copied' : 'Copy link'}>
-          {copied ? <Check className="h-5 w-5 text-green-600" /> : <Link2 className="h-5 w-5" />}
+          {copied ? <Check className="h-5 w-5 text-success" /> : <Link2 className="h-5 w-5" />}
         </button>
         <a href={emailHref} className={iconBtn} aria-label="Share by email" onClick={() => track('email')}>
           <Mail className="h-5 w-5" />
         </a>
       </div>
-      <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 break-all">{url}</div>
+      <div className="rounded-card border border-border bg-muted px-3 py-2 text-sm text-gray-800 break-all">{url}</div>
     </div>
   );
 }

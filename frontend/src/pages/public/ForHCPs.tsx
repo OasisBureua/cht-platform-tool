@@ -99,11 +99,11 @@ export default function ForHCPs() {
 
   const firstWebinar = upcoming[0] ?? past[0] ?? null;
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-card min-h-screen">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-12 md:space-y-16">
         {/* Main title */}
         <header>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
             HCP Platform
           </h1>
         </header>
@@ -136,14 +136,14 @@ export default function ForHCPs() {
         {/* Featured Biomarker Playlists - HR+ */}
         <section className="space-y-5">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
               Featured Biomarker Playlists
             </h2>
-            <p className="mt-1 text-lg font-semibold text-gray-900">HR+</p>
+            <p className="mt-1 text-lg font-semibold text-foreground">HR+</p>
           </div>
           {playlistsLoading && playlists.length === 0 ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+              <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
@@ -156,23 +156,23 @@ export default function ForHCPs() {
 
         {/* Webinars */}
         <section className="space-y-6">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
+          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
             Webinars
           </h2>
           {isLoading ? (
             <div className="flex justify-center py-12">
-              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+              <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
             </div>
           ) : webinars.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-              <p className="font-semibold text-gray-900">No webinars scheduled</p>
-              <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
+            <div className="rounded-card border border-border bg-card p-10 text-center">
+              <p className="font-semibold text-foreground">No webinars scheduled</p>
+              <p className="mt-1 text-sm text-muted-foreground">Check back soon for upcoming sessions.</p>
             </div>
           ) : (
             <div className="space-y-8">
               {upcoming.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Upcoming · {upcoming.length}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -184,7 +184,7 @@ export default function ForHCPs() {
               )}
               {past.length > 0 && (
                 <div className="space-y-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     Past · {past.length}
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-75">
@@ -222,18 +222,18 @@ function FeaturedCard({
   return (
     <Link
       to={to}
-      className="group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 min-h-[240px] md:min-h-[280px] h-full flex flex-col"
+      className="group relative rounded-card overflow-hidden border border-border bg-muted min-h-[240px] md:min-h-[280px] h-full flex flex-col"
     >
       <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/[0.28] transition-colors pointer-events-none" />
       {showNew && (
-        <span className="absolute left-3 top-3 z-10 rounded-full bg-black/90 px-2.5 py-1 text-xs font-semibold text-white">
+        <span className="absolute left-3 top-3 z-10 rounded-[6px] bg-black/90 px-2.5 py-1 text-xs font-semibold text-white">
           New
         </span>
       )}
       <div className="relative mt-auto flex flex-col justify-end p-5 md:p-6 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
         <p className="text-base md:text-lg font-semibold text-white line-clamp-2">{title}</p>
-        <span className="mt-3 inline-flex w-fit items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-md group-hover:bg-gray-100 transition-colors">
+        <span className="mt-3 inline-flex w-fit items-center rounded-[6px] bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-md group-hover:bg-muted transition-colors">
           {cta} →
         </span>
       </div>
@@ -245,15 +245,15 @@ function FeaturedCard({
 function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
   const names = card.videoNames.length > 0 ? card.videoNames : ['Video', 'Video', 'Video', 'Video'];
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col h-full min-h-[380px]">
-      <div className="relative aspect-video shrink-0 bg-gray-100">
+    <div className="rounded-card border border-border bg-card overflow-hidden flex flex-col h-full min-h-[380px]">
+      <div className="relative aspect-video shrink-0 bg-muted">
         <img src={card.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
       </div>
       <div className="p-5 flex flex-col flex-1 min-h-0 min-w-0">
-        <h4 className="font-bold text-gray-900 line-clamp-2 min-h-[3.25rem]">{card.title}</h4>
+        <h4 className="font-bold text-foreground line-clamp-2 min-h-[3.25rem]">{card.title}</h4>
         <ul className="mt-3 space-y-1.5 flex-1 min-h-0">
           {names.slice(0, 4).map((name, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
+            <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
               <span className="h-1 w-1 rounded-full bg-gray-400 shrink-0" />
               <span className="truncate" title={name}>
                 {name}
@@ -264,7 +264,7 @@ function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
         <div className="mt-4 flex justify-end pt-2 border-t border-gray-100">
           <Link
             to={card.playlistUrl}
-            className="rounded-full bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            className="rounded-[6px] bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             Play all
           </Link>
@@ -279,11 +279,11 @@ function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: b
   const imgSrc = w.imageUrl || FALLBACK_WEBINAR_IMAGE;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col sm:flex-row">
+    <div className="rounded-card border border-border bg-card overflow-hidden flex flex-col sm:flex-row">
       <div className="relative w-full sm:w-44 h-40 sm:h-auto shrink-0">
         <img src={imgSrc} alt="" className="h-full w-full object-cover" loading="eager" />
         {expired ? (
-          <span className="absolute left-2 top-2 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+          <span className="absolute left-2 top-2 rounded-[6px] border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
             Expired
           </span>
         ) : (
@@ -293,16 +293,16 @@ function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: b
         )}
       </div>
       <div className="p-5 flex flex-col flex-1">
-        <h4 className={`font-bold leading-snug ${expired ? 'text-gray-500' : 'text-gray-900'}`}>
+        <h4 className={`font-bold leading-snug ${expired ? 'text-muted-foreground' : 'text-foreground'}`}>
           {w.title}
         </h4>
         {date && (
-          <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 tabular-nums">
+          <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground tabular-nums">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {format(date, 'EEE, MMM d, yyyy')}
               {!expired && (
-                <span className="text-gray-400 ml-1">· {formatDistanceToNow(date, { addSuffix: true })}</span>
+                <span className="text-muted-foreground ml-1">· {formatDistanceToNow(date, { addSuffix: true })}</span>
               )}
             </span>
             <span className="inline-flex items-center gap-1">
@@ -313,14 +313,14 @@ function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: b
           </div>
         )}
         {w.description && (
-          <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2 flex-1">
+          <p className="mt-2 text-sm text-muted-foreground leading-relaxed line-clamp-2 flex-1">
             {w.description}
           </p>
         )}
         <div className="mt-4 flex justify-end">
           <Link
             to={`/webinars/${w.id}`}
-            className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            className="rounded-[6px] bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
           >
             Learn More
           </Link>

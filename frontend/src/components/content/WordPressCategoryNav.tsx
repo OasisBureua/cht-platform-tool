@@ -40,10 +40,10 @@ export function WordPressCategoryNav({ basePath, activeSlug }: WordPressCategory
             key={cat.slug}
             to={`${basePath}/catalog/${cat.slug}`}
             className={[
-              'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+              'rounded-[6px] px-3 py-1.5 text-xs font-semibold transition-colors',
               active
                 ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-800 hover:bg-gray-200',
+                : 'bg-muted text-gray-800 hover:bg-gray-200',
             ].join(' ')}
           >
             {formatWordPressCategoryLabel(cat.slug)}

@@ -41,11 +41,11 @@ export function PlaylistSections({ playlists, isInApp }: PlaylistSectionsProps) 
           <div className="min-w-0 space-y-1 border-b border-gray-100 pb-3 dark:border-zinc-800">
             <h3
               id={`playlist-section-${section.id}`}
-              className="text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-100 sm:text-xl"
+              className="text-lg font-bold tracking-tight text-foreground sm:text-xl"
             >
               {section.label}
             </h3>
-            <p className="text-sm text-gray-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               {section.items.length} playlist{section.items.length !== 1 ? 's' : ''}
             </p>
           </div>

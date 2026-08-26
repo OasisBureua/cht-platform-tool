@@ -14,8 +14,8 @@ function linkClass({ isActive }: { isActive: boolean }) {
   return [
     'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium',
     isActive
-      ? 'border-gray-900 text-gray-900'
-      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+      ? 'border-gray-900 text-foreground'
+      : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-muted-foreground',
   ].join(' ');
 }
 
@@ -36,12 +36,12 @@ export default function Navbar() {
   }, [dropdownOpen]);
 
   return (
-    <nav className="bg-white border-b border-gray-200">
+    <nav className="bg-card border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <NavLink to="/catalog" className="text-2xl font-bold text-gray-900">
+              <NavLink to="/catalog" className="text-2xl font-bold text-foreground">
                 CHT Platform
               </NavLink>
             </div>
@@ -82,11 +82,11 @@ export default function Navbar() {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white border border-gray-200 shadow-lg py-1 z-50">
+                <div className="absolute right-0 mt-2 w-48 rounded-[6px] bg-card border border-border shadow-lg py-1 z-50">
                   <button
                     type="button"
                     onClick={() => { setDropdownOpen(false); navigate('/earnings'); }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
                   >
                     <DollarSign className="w-4 h-4" />
                     Earnings
@@ -94,16 +94,16 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={() => { setDropdownOpen(false); navigate('/settings'); }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
                   >
                     <SettingsIcon className="w-4 h-4" />
                     Settings
                   </button>
-                  <div className="border-t border-gray-200 my-1" />
+                  <div className="border-t border-border my-1" />
                   <button
                     type="button"
                     onClick={() => { setDropdownOpen(false); navigate('/login'); }}
-                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-gray-50"
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-destructive hover:bg-muted"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
