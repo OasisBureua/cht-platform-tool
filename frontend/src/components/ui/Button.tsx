@@ -11,7 +11,7 @@ import { cn } from '../../lib/cn';
  * Depth, not outlines: every variant carries its own elevation and the
  * only border in the set is the focus ring.
  */
-type Variant = 'solid' | 'accent' | 'outline' | 'ghost' | 'danger';
+type Variant = 'solid' | 'cta' | 'accent' | 'outline' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
 
 const BASE =
@@ -24,6 +24,12 @@ const BASE =
 const VARIANT: Record<Variant, string> = {
   /** Primary action. brand-600 is the one step that carries white at AA. */
   solid: 'bg-brand-600 text-white shadow-card hover:bg-brand-700',
+  /**
+   * The design's emphasis action. The CTA fill is deep in light and
+   * bright in dark, so the label takes the ground either way rather
+   * than being pinned to white.
+   */
+  cta: 'bg-cta text-ground shadow-card hover:bg-cta-deep',
   accent: 'bg-accent text-accent-foreground shadow-card hover:bg-accent-hover',
   /** Secondary: reads as a control through elevation, not a hairline. */
   outline:

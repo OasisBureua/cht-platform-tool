@@ -1,38 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowRight,
-  Search,
-  Monitor,
-  Headphones,
-  FileText,
-  Video,
-  Clock,
-  CalendarClock,
-  LayoutGrid,
-} from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
-import { StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
 import { HomeHero } from '../../components/home/HomeHero';
-import {
-  ANON_HOME_BIOMARKER_CAROUSEL_IDS,
-  BiomarkerConversationRow,
-} from '../../components/content/BiomarkerConversationRow';
+import { ChmMark } from '../../components/brand/ChmMark';
+import { useKolDirectory } from '../../hooks/useKolDirectory';
+import { kolStaticEnrichment, type DolEntry } from '../../data/dol-network';
 import DISEASE_AREAS from '../../data/disease-areas';
+import { PODCAST_SHOWS } from '../../data/podcastsCatalog';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
-import { Button, Card, Chip, Rail, SectionHead } from '../../components/ui';
-
-const resourceImages: Record<string, string> = {
-  webinars: '/images/resource-webinars.png',
-  protocols: '/images/resource-protocols.png',
-  clinicals: '/images/resource-clinicals.png',
-  watch: '/images/resource-watch.png',
-  reporting: '/images/resource-reporting.png',
-  data: '/images/resource-data.png',
-  search: '/images/resource-search.png',
-};
+import { Reveal } from '../../components/ui';
 
 type FeaturedVideo = {
   id: string;
@@ -41,110 +19,402 @@ type FeaturedVideo = {
   youtubeUrl?: string;
 };
 
-type Resource = {
-  id: string;
-  title: string;
-  href: string;
-  icon: ReactNode;
-  imageUrl: string;
-};
-
-/** Shown when `/catalog/random-videos` returns [] so the carousel is never blank */
+/** Shown when `/catalog/random-videos` returns [] so the rail is never blank */
 const FALLBACK_FEATURED: FeaturedVideo[] = [
   {
     id: 'home-placeholder-1',
     title: 'Browse clinical conversations in the library',
-    imageUrl: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/img/thumb-cleopatra.jpg',
     youtubeUrl: undefined,
   },
   {
     id: 'home-placeholder-2',
     title: 'Expert-led education across therapeutic areas',
-    imageUrl: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/img/thumb-db09.jpg',
     youtubeUrl: undefined,
   },
   {
     id: 'home-placeholder-3',
     title: 'Webinars, protocols, and patient resources',
-    imageUrl: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?auto=format&fit=crop&w=800&q=80',
+    imageUrl: '/img/thumb-ild.jpg',
+    youtubeUrl: undefined,
+  },
+  {
+    id: 'home-placeholder-4',
+    title: 'Short cuts from the sessions that ran this month',
+    imageUrl: '/img/thumb-patina.jpg',
     youtubeUrl: undefined,
   },
 ];
 
-/** Staggered landing animation delays (ms) - paired with `.home-enter` in `index.css` */
-const HOME_STAGGER_MS = {
-  heroTitle: 0,
-  heroLead: 90,
-  heroCtas: 180,
-  featHeading: 260,
-  featCarousel: 340,
-  disease: 420,
-  biomarkerHead: 500,
-  biomarkerBody: 580,
-  hrHead: 680,
-  hrBody: 760,
-  about: 840,
-  whoWe: 920,
-  resourcesHead: 1000,
-  resourcesGrid: 1080,
-  faqHead: 1160,
-  faqBody: 1240,
-  closingHead: 1320,
-  closingCta: 1400,
-} as const;
+/* ── section chrome ──────────────────────────────────────────────────── */
 
-/**
- * One content section. Space separates the bands, never a rule: the
- * generous `py` is the divider, and the inner rail carries the page
- * gutter that `bleed-x` rails cancel back out.
- */
-function Band({ children, className = '' }: { children: ReactNode; className?: string }) {
+/** Full-bleed band; the inner rail carries the page gutter. */
+function Band({
+  children,
+  labelledBy,
+  className = '',
+}: {
+  children: ReactNode;
+  labelledBy?: string;
+  className?: string;
+}) {
   return (
-    <section className={className}>
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-24 lg:px-8">{children}</div>
+    <section aria-labelledby={labelledBy}>
+      <div className={`rail py-16 md:py-24 ${className}`}>{children}</div>
     </section>
   );
 }
 
-/** The one "see all" affordance a band is allowed, on the head's baseline. */
-function SeeAll({ to, children }: { to: string; children: ReactNode }) {
+function Eyebrow({
+  children,
+  tone = 'faint',
+  className = '',
+}: {
+  children: ReactNode;
+  tone?: 'faint' | 'cyan' | 'amber';
+  className?: string;
+}) {
+  const tones = { faint: 'text-muted2', cyan: 'text-anchor', amber: 'text-amber' };
+  return <p className={`eyebrow ${tones[tone]} ${className}`}>{children}</p>;
+}
+
+/**
+ * Section chrome: a mono index label on the leading edge, the heading,
+ * and the one "see all" affordance a band is allowed. The index keeps a
+ * fixed width so every section title on the page starts at the same x.
+ */
+function SectionHead({
+  id,
+  index,
+  title,
+  sub,
+  seeAll,
+}: {
+  id?: string;
+  index?: string;
+  title: string;
+  sub?: string;
+  seeAll?: { noun: string; to: string };
+}) {
   return (
-    <Button to={to} variant="outline" size="sm">
-      {children}
-      <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-    </Button>
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 items-center gap-6">
+          {index ? <Eyebrow className="hidden w-28 shrink-0 md:block">{index}</Eyebrow> : null}
+          <h2 id={id} className="display text-display-m text-text">
+            {title}
+          </h2>
+        </div>
+        {seeAll ? (
+          <Link
+            to={seeAll.to}
+            className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-[6px] bg-surface px-5 text-body-s text-dim shadow-card hover:bg-ground hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            See all {seeAll.noun}
+            <Arrow className="size-4" strokeWidth={1.75} />
+          </Link>
+        ) : null}
+      </div>
+      {sub ? (
+        <p className="prose-lede mt-4 max-w-[52ch] text-body-m text-muted2 md:ms-[8.5rem]">{sub}</p>
+      ) : null}
+    </div>
   );
 }
 
-/** How We Help Pharma - copy lives in one place so the accordion is one loop. */
-const PHARMA_FAQ: { title: string; body: string }[] = [
+/** Reading-direction glyph: mirrors under dir="rtl". */
+function Arrow({ className = '', strokeWidth = 1.5 }: { className?: string; strokeWidth?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      focusable="false"
+      className={`shrink-0 rtl:-scale-x-100 ${className}`}
+    >
+      <path d="M4 12h15M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
+/**
+ * The design's button: a mono label at control height, filled with the
+ * CTA token or reading as a control through elevation alone.
+ */
+function Btn({
+  to,
+  children,
+  variant = 'cta',
+  withArrow = false,
+}: {
+  to: string;
+  children: ReactNode;
+  variant?: 'cta' | 'outline';
+  withArrow?: boolean;
+}) {
+  const fill =
+    variant === 'cta'
+      ? 'bg-cta text-ground hover:bg-cta-deep'
+      : 'bg-surface text-text shadow-card hover:bg-ground hover:shadow-card-hover';
+  return (
+    <Link
+      to={to}
+      className={`press inline-flex h-11 items-center justify-center gap-2 rounded-[6px] ps-6 font-mono text-[0.875rem] tracking-[-0.011em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+        withArrow ? 'pe-5' : 'pe-6'
+      } ${fill}`}
+    >
+      {children}
+      {withArrow ? <Arrow className="size-4" strokeWidth={1.75} /> : null}
+    </Link>
+  );
+}
+
+/** A poster with the mark, a scrim and an optional runtime on it. */
+function Thumb({
+  src,
+  duration,
+  className = '',
+  onError,
+}: {
+  src: string;
+  duration?: string;
+  className?: string;
+  onError?: () => void;
+}) {
+  return (
+    <div className={`relative overflow-hidden rounded-[6px] bg-surface-2 ${className}`}>
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={onError}
+        className="absolute inset-0 size-full object-cover opacity-90 transition-[scale,opacity] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.03] group-hover:opacity-100"
+      />
+      {/* Under the scrim this is a permanently dark strip, so the mark
+          and the runtime take fixed white rather than the page tokens. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+      <div className="img-ring absolute inset-0 rounded-[inherit]" />
+      <ChmMark className="absolute bottom-3 start-3 size-5 text-white/80" />
+      {duration ? <span className="meta absolute end-3 bottom-3 text-white/80">{duration}</span> : null}
+    </div>
+  );
+}
+
+/* ── page content ────────────────────────────────────────────────────── */
+
+const MOMENTS = [
+  { t: 'Oncotype or Prosigna, which is more informative?', d: '4:12' },
+  { t: 'Neoadjuvant or adjuvant T-DXd?', d: '3:48' },
+  { t: 'First-line HER2+ metastatic breast cancer', d: '5:20' },
+  { t: 'Do BRCA patients benefit from ADCs?', d: '4:02' },
+];
+
+const ARTICLES = [
   {
-    title: 'AI-Powered Content Automation',
-    body: 'Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.',
+    slug: 'neratinib-revisited',
+    kicker: 'Perspective',
+    title: 'Neratinib revisited: time to reconsider an underused therapy?',
+    dek: 'Recurrence remains a clinically important challenge in high-risk HER2-positive early breast cancer. What the extended adjuvant data still supports.',
+    read: '7 min',
   },
   {
-    title: 'Multi-Audience Reach',
-    body: 'Engage KOLs, HCPs, patients, and caregivers through one connected content system.',
+    slug: 'gedatolisib-approval',
+    kicker: 'Regulatory',
+    title: 'FDA approves gedatolisib for HR+/HER2- PIK3CA wild-type advanced breast cancer',
+    dek: 'Approved in combination with fulvestrant. What the label covers, and which patients it actually changes the plan for.',
+    read: '5 min',
   },
   {
-    title: 'Entertainment-Grade Distribution',
-    body: 'Use podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.',
+    slug: 'trodelvy-1l-tnbc',
+    kicker: 'Regulatory',
+    title: 'Trodelvy gains first-line approval in metastatic triple-negative breast cancer',
+    dek: 'Expanding options in a setting that has had few. Where it sits against the current first-line standard.',
+    read: '6 min',
   },
   {
-    title: 'First-Party HCP Intelligence',
-    body: 'Access proprietary data for precision targeting, lookalike audiences, and measurable activation.',
-  },
-  {
-    title: 'Real Engagement Analytics',
-    body: 'Move beyond impressions. Track who watched, who shared, and who acted on it.',
+    slug: 'orserdu-combination',
+    kicker: 'Data',
+    title: 'New combination data in ESR1-mutated metastatic breast cancer',
+    dek: 'Hormone receptor-positive treatment is increasingly a combination question. What the latest readout adds.',
+    read: '6 min',
   },
 ];
 
-const WHO_WE_REACH: { audience: string; body: string }[] = [
-  { audience: 'HCPs', body: 'Beyond conferences and CME, where they actually consume content' },
-  { audience: 'Patients', body: 'Pre or active treatment, searching for credible information' },
-  { audience: 'Caregivers', body: 'Making decisions, seeking guidance, needing support' },
+/**
+ * The podcast network. The copy is the design's; the cover art is the
+ * platform's real show artwork for the two series it actually publishes,
+ * matched on `podcastId`.
+ */
+const SHOWS: {
+  slug: string;
+  title: string;
+  tagline: string;
+  hosts: string;
+  episodes: number;
+  tone: string;
+  cover: string;
+  podcastId?: string;
+  spanish?: boolean;
+}[] = [
+  {
+    slug: 'breast-friends',
+    title: 'The Breast Friends Podcast',
+    tagline: 'Breaking the status quo in breast cancer care',
+    hosts: 'With Dr. Hope Rugo and guests',
+    episodes: 6,
+    tone: 'var(--color-breast)',
+    cover: '/img/cells-warm.jpg',
+    podcastId: 'breast-friends',
+  },
+  {
+    slug: 'cancer-unfiltered',
+    title: 'Cancer Unfiltered',
+    tagline: 'Shifting paradigms, argued in public',
+    hosts: 'Drs. Komal Jhaveri & Neil Iyengar',
+    episodes: 4,
+    tone: 'var(--color-signature)',
+    cover: '/img/cells-blue.jpg',
+    podcastId: 'cancer-unfiltered',
+  },
+  {
+    slug: 'big-c-energy',
+    title: 'Big C Energy',
+    tagline: 'Cancer, from the people who lived it',
+    hosts: 'Patient and public voices',
+    episodes: 4,
+    tone: 'var(--color-cta)',
+    cover: '/img/thumb-patina.jpg',
+  },
+  {
+    slug: 'tetalks',
+    title: 'TeTalks',
+    tagline: 'Oncología en español',
+    hosts: 'Dras. Marcela Mazo Canola y Ana Sandoval León',
+    episodes: 2,
+    tone: 'var(--color-lung)',
+    cover: '/img/thumb-db09.jpg',
+    spanish: true,
+  },
 ];
+
+/**
+ * Disease states the design carries that the platform's own
+ * `DISEASE_AREAS` does not, kept verbatim and marked as not yet live.
+ */
+const DESIGN_ONLY_AREAS = [
+  { slug: 'gi', label: 'GI', tone: 'var(--color-gi)' },
+  { slug: 'gu', label: 'GU', tone: 'var(--color-gu)' },
+  { slug: 'hematology', label: 'Hematology', tone: 'var(--color-heme)' },
+  { slug: 'gynecologic', label: 'Gynecologic', tone: 'var(--color-gyn)' },
+];
+
+/**
+ * One colour per disease state, carried through the library. The pill is
+ * a gradient from the state's own tone toward a second hue; the design's
+ * six all run toward blue, and the amber one runs toward coral so it
+ * does not pass through mud on the way.
+ */
+const AREA_TONES: Record<string, { tone: string; mix?: string }> = {
+  'breast-cancer': { tone: 'var(--color-breast)' },
+  'lung-cancer': { tone: 'var(--color-lung)' },
+  'weight-loss': { tone: 'var(--color-metabolic)', mix: 'var(--color-metabolic-mix)' },
+};
+
+/**
+ * The biomarker vocabulary. Labels and counts are the design's; each
+ * chip filters the real catalog on the namespaced MediaHub tag the
+ * platform files that biomarker under.
+ */
+const BIOMARKERS = [
+  { label: 'HER2+', count: 12, tag: 'biomarker:HER2+' },
+  { label: 'HR+', count: 12, tag: 'biomarker:HR+' },
+  { label: 'HER2-Low / Ultra-Low', count: 9, tag: 'biomarker:HER2-low,biomarker:HER2-ultralow' },
+  { label: 'Triple Negative', count: 11, tag: 'biomarker:TNBC' },
+  { label: 'High Risk', count: 7, tag: 'biomarker:High-Risk / CNS' },
+];
+
+/** The video cut of the session, shown as the document in front. */
+const SESSION = {
+  crumb: 'breast / her2-positive',
+  runtime: '18:40',
+  formats: ['Video', 'Podcast', 'Editorial', 'Clips'],
+  headingLabel: 'Chapters',
+  rows: [
+    ['00:00', 'The case'],
+    ['03:12', 'What the registrational data says'],
+    ['08:40', 'Where the guidelines lag'],
+    ['13:05', 'Toxicity and dose decisions'],
+  ] as [string, string][],
+};
+
+const STATS = [
+  { n: '92%', l: 'of sessions get finished' },
+  { n: '2.4M', l: 'views a year' },
+  { n: '140+', l: 'practising faculty' },
+];
+
+const INITIAL_TONES = [
+  'var(--color-cyan)',
+  'var(--color-pink)',
+  'var(--color-purple)',
+  'var(--color-coral)',
+  'var(--color-glow)',
+];
+
+/* The stat band's grid: faint rules that pulse along their length on
+   staggered, non-repeating durations. */
+function StatGrid() {
+  const cols = 12;
+  const rows = 5;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {Array.from({ length: cols }, (_, i) => (
+        <span
+          key={`c${i}`}
+          className="absolute top-0 bottom-0 w-px bg-hairline motion-safe:animate-[gridShimmer_var(--d)_linear_infinite]"
+          style={{ left: `${((i + 1) / (cols + 1)) * 100}%`, ['--d' as string]: `${2 + ((i * 7) % 9) / 10}s` }}
+        />
+      ))}
+      {Array.from({ length: rows }, (_, i) => (
+        <span
+          key={`r${i}`}
+          className="absolute inset-x-0 h-px bg-hairline motion-safe:animate-[gridShimmer_var(--d)_linear_infinite]"
+          style={{ top: `${((i + 1) / (rows + 1)) * 100}%`, ['--d' as string]: `${2.1 + ((i * 5) % 8) / 10}s` }}
+        />
+      ))}
+      <span className="absolute inset-x-[18%] top-[33%] h-px bg-gradient-to-r from-transparent via-signature/50 to-transparent" />
+      <span className="absolute inset-x-[30%] top-[66%] h-px bg-gradient-to-r from-transparent via-amber/40 to-transparent" />
+      <ChmMark className="absolute -end-16 -bottom-16 size-40 text-hairline" />
+    </div>
+  );
+}
+
+/** Initials fallback for a contributor with no headshot on file. */
+function initials(name: string): string {
+  return name
+    .replace(/^Dr\.\s*/i, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 3);
+}
+
+/** The card sub-line: the institution when we have one, else the role. */
+function institutionLine(k: DolEntry): string {
+  const inst = k.institution?.trim();
+  if (inst && inst !== '-') return inst;
+  const affiliation = k.intel?.affiliation?.split('·')[0]?.trim();
+  if (affiliation) return affiliation;
+  const roleLead = k.role.split(/[.;]/)[0]?.trim() ?? k.role;
+  return roleLead.length > 46 ? `${roleLead.slice(0, 45)}…` : roleLead;
+}
 
 export default function Home() {
   useLayoutEffect(() => {
@@ -155,14 +425,19 @@ export default function Home() {
 
   const { data: randomVideosData, isLoading: randomVideosLoading } = useQuery({
     queryKey: ['catalog', 'random-videos'],
-    queryFn: () => catalogApi.getRandomVideos(6),
+    queryFn: () => catalogApi.getRandomVideos(8),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
 
-  const [brokenFeaturedIds, setBrokenFeaturedIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [brokenFeaturedIds, setBrokenFeaturedIds] = useState<Set<string>>(() => new Set());
+  const markBroken = (id: string) =>
+    setBrokenFeaturedIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
 
   const featuredVideos: FeaturedVideo[] = useMemo(() => {
     const mapped = randomVideos
@@ -175,425 +450,526 @@ export default function Home() {
         youtubeUrl: v.youtubeUrl,
       }));
     if (mapped.length > 0) return mapped;
-    // Placeholders are static Unsplash assets — only use when API returned nothing.
     if (brokenFeaturedIds.size > 0) return [];
     return randomVideosLoading ? [] : FALLBACK_FEATURED;
   }, [randomVideos, randomVideosLoading, brokenFeaturedIds]);
 
-  const resources: Resource[] = [
-    { id: 'r1', title: 'Webinars', href: '/webinars', icon: <Monitor className="h-10 w-10" />, imageUrl: resourceImages.webinars },
-    {
-      id: 'office-hours',
-      title: 'CHM Office Hours',
-      href: '/chm-office-hours',
-      icon: <CalendarClock className="h-10 w-10" />,
-      imageUrl: resourceImages.webinars,
-    },
-    { id: 'r2', title: 'Protocols', href: '/catalog', icon: <Headphones className="h-10 w-10" />, imageUrl: resourceImages.protocols },
-    { id: 'r3', title: 'Clinicals', href: '/catalog', icon: <FileText className="h-10 w-10" />, imageUrl: resourceImages.clinicals },
-    { id: 'r4', title: 'Conversations', href: '/catalog', icon: <Video className="h-10 w-10" />, imageUrl: resourceImages.watch },
-    { id: 'r5', title: 'Reporting', href: '/catalog', icon: <Clock className="h-10 w-10" />, imageUrl: resourceImages.reporting },
-    { id: 'r6', title: 'Data', href: '/catalog', icon: <LayoutGrid className="h-10 w-10" />, imageUrl: resourceImages.data },
-    { id: 'r7', title: 'Library', href: '/catalog', icon: <Search className="h-10 w-10" />, imageUrl: resourceImages.search },
-  ];
+  const clipHref = (v: FeaturedVideo) =>
+    v.id.startsWith('home-placeholder') ? '/catalog?view=clips' : `/catalog/clip/${getShortClipId(v.id)}`;
+
+  /* Faculty: the live directory, falling back to the static roster the
+     platform ships so the row is never empty while the call is in
+     flight. The portraits lead, because the row is a row of portraits. */
+  const { regions, loadState } = useKolDirectory({ surface: 'public' });
+  const faculty: DolEntry[] = useMemo(() => {
+    const live = regions.flatMap((r) => r.entries);
+    const roster = live.length > 0 ? live : kolStaticEnrichment;
+    return [...roster].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)).slice(0, 5);
+  }, [regions]);
+
+  /* The two series the platform actually publishes carry their own
+     artwork; the rest of the network keeps the design's covers. */
+  const shows = useMemo(
+    () =>
+      SHOWS.map((s) => {
+        const real = s.podcastId ? PODCAST_SHOWS.find((p) => p.id === s.podcastId) : undefined;
+        return { ...s, cover: real?.image ?? s.cover };
+      }),
+    [],
+  );
+
+  const areas = useMemo(
+    () => [
+      ...DISEASE_AREAS.map((a) => ({
+        slug: a.slug,
+        label: a.title,
+        tone: AREA_TONES[a.slug]?.tone ?? 'var(--color-gi)',
+        mix: AREA_TONES[a.slug]?.mix ?? 'var(--color-blue)',
+        live: a.active,
+        to: a.active ? `/catalog/${a.slug}` : undefined,
+      })),
+      ...DESIGN_ONLY_AREAS.map((a) => ({
+        ...a,
+        mix: 'var(--color-blue)',
+        live: false,
+        to: undefined,
+      })),
+    ],
+    [],
+  );
+
+  const sessionPoster = featuredVideos[0]?.imageUrl ?? '/img/thumb-cleopatra.jpg';
 
   return (
-    <div className="min-w-0 overflow-x-hidden bg-background text-foreground">
+    <div className="min-w-0 overflow-x-hidden bg-ground text-text">
+      {/* ── Hero ─────────────────────────────────────────── */}
       <HomeHero tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
 
-      {/* 01 - Featured: a bleed rail, so the last card runs off the edge
-          rather than being clipped inside the gutter. */}
-      <Band>
-        {randomVideosLoading && (
-          <>
-            <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.featHeading}ms` }}>
-              <SectionHead
-                index="01 / Featured"
-                title="Featured videos"
-                action={<SeeAll to="/catalog?view=clips">See all in library</SeeAll>}
-              />
-            </div>
-            <div
-              className="home-enter mt-10"
-              style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
-            >
-              <Rail aria-label="Featured videos">
-                {/* `contents` keeps the <ul>/<li> contract while the six
-                    skeleton tiles stay direct flex items of the rail. */}
-                <li className="contents" aria-hidden>
-                  <StripRowLoadingThumbnails />
-                </li>
-              </Rail>
-            </div>
-          </>
-        )}
+      {/* ── Now on CHM ───────────────────────────────────── */}
+      <Band labelledBy="now-heading">
+        <SectionHead
+          id="now-heading"
+          index="01 / Latest"
+          title="Now on CHM"
+          sub="The most recent across every format."
+          seeAll={{ noun: 'content', to: '/catalog' }}
+        />
+        <Reveal className="mt-12">
+          {/* The rail reveals as one block. Revealing each card meant
+              anything scrolled off to the right never intersected the
+              viewport, so it stayed blank until you swiped it in, and a
+              per-card stagger fights the swipe anyway. */}
+          <div className="scrollbar-none bleed-x overflow-x-auto">
+            <ul className="flex snap-x snap-mandatory gap-4">
+              {(randomVideosLoading ? Array.from({ length: 4 }) : featuredVideos.slice(0, 8)).map(
+                (entry, i) => {
+                  const v = entry as FeaturedVideo | undefined;
+                  return (
+                    <li
+                      key={v?.id ?? `skeleton-${i}`}
+                      className="w-[80%] shrink-0 snap-start sm:w-[45%] md:w-[31%] lg:w-[22.5%]"
+                    >
+                      {v ? (
+                        <Link
+                          to={clipHref(v)}
+                          className="press lift group flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                        >
+                          <div className="relative">
+                            <Thumb
+                              src={v.imageUrl}
+                              className="aspect-video w-full"
+                              onError={
+                                v.id.startsWith('home-placeholder') ? undefined : () => markBroken(v.id)
+                              }
+                            />
+                            <div className="absolute top-3 start-3">
+                              <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
+                                Video
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-1 flex-col px-1 pb-1">
+                            <h3 className="display line-clamp-2 text-body-m text-text">{v.title}</h3>
+                            {/* Tags are spans, not links: the card is already
+                                one link, and nesting a second inside it is
+                                invalid. They read as the session's own labels. */}
+                            <ul className="mt-3 flex flex-wrap gap-1.5">
+                              <li
+                                className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
+                                style={{ background: 'var(--color-cyan)', color: 'var(--color-on-bright)' }}
+                              >
+                                Oncology
+                              </li>
+                              <li
+                                className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
+                                style={{ background: 'var(--color-pink)', color: 'var(--color-on-bright)' }}
+                              >
+                                {v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                              </li>
+                            </ul>
+                            <p className="meta mt-auto pt-4 tabular-nums text-faint">Full session</p>
+                          </div>
+                        </Link>
+                      ) : (
+                        <div
+                          aria-hidden
+                          className="flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card"
+                        >
+                          <div className="aspect-video w-full rounded-[6px] bg-surface-2" />
+                          <div className="space-y-2 px-1 pb-1">
+                            <div className="h-3 w-4/5 rounded-[6px] bg-surface-2" />
+                            <div className="h-3 w-3/5 rounded-[6px] bg-surface-2" />
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  );
+                },
+              )}
+            </ul>
+          </div>
+        </Reveal>
+      </Band>
 
-        {!randomVideosLoading && featuredVideos.length > 0 && (
-          <>
-            <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.featHeading}ms` }}>
-              <SectionHead
-                index="01 / Featured"
-                title="Featured videos"
-                action={
-                  <div className="flex items-center gap-3">
-                    <Chip>{featuredVideos.length} items</Chip>
-                    <SeeAll to="/catalog?view=clips">See all in library</SeeAll>
-                  </div>
-                }
-              />
+      {/* ── Showcase / content engine ────────────────────── */}
+      <Band labelledBy="engine-heading">
+        <div className="grid items-center gap-14 lg:grid-cols-2">
+          <Reveal>
+            <Eyebrow>02 / The model</Eyebrow>
+            <h2 id="engine-heading" className="display mt-5 text-display-l">
+              <span className="block text-text">One recording.</span>
+              <span className="block text-muted2">Four formats.</span>
+            </h2>
+            <p className="prose-lede mt-6 max-w-[44ch] text-body-l text-muted2">
+              A single peer-to-peer conversation becomes a long-form interview, a podcast episode, a
+              written explainer and a set of short clips, each filed under the same disease state.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Btn to="/contact" variant="cta" withArrow>
+                Partner with CHM
+              </Btn>
+              <Btn to="/catalog" variant="outline">
+                Browse the library
+              </Btn>
             </div>
-            <div
-              className="home-enter mt-10"
-              style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
-            >
-              <Rail aria-label="Featured videos">
-                {featuredVideos.map((v) => (
-                  <li key={v.id} className="shrink-0 snap-start">
-                    <StripCard
-                      to={v.id.startsWith('home-placeholder') ? '/catalog?view=clips' : `/catalog/clip/${getShortClipId(v.id)}`}
-                      title={v.title}
-                      imageUrl={v.imageUrl}
-                      variant="thumbnailOnly"
-                      meta={v.youtubeUrl ? 'YouTube' : 'Conversation'}
-                      hideThumbnailOnError={!v.id.startsWith('home-placeholder')}
-                      onThumbnailError={() =>
-                        setBrokenFeaturedIds((prev) => {
-                          if (prev.has(v.id)) return prev;
-                          const next = new Set(prev);
-                          next.add(v.id);
-                          return next;
-                        })
-                      }
-                    />
-                  </li>
+          </Reveal>
+
+          <Reveal delay={80}>
+            {/* Window chrome, then the format row, then the sheet: the
+                same stack a browser uses, so the front format reads as
+                the document rather than a button above a box. */}
+            <div className="rounded-[6px] bg-surface p-2.5 shadow-card">
+              <div className="flex items-center gap-2 px-2 pt-1 pb-3">
+                <span aria-hidden className="size-2.5 rounded-full bg-hairline-strong" />
+                <span aria-hidden className="size-2.5 rounded-full bg-hairline-strong" />
+                <span aria-hidden className="size-2.5 rounded-full bg-hairline-strong" />
+                <span className="meta ms-2 truncate text-faint">{SESSION.crumb}</span>
+              </div>
+
+              <div className="relative z-10 flex gap-1">
+                {SESSION.formats.map((label, i) => (
+                  <span
+                    key={label}
+                    className={`relative flex-1 rounded-t-[8px] px-3 pt-2.5 text-center text-[0.8125rem] ${
+                      i === 0 ? '-mb-2 bg-ground pb-4 font-medium text-text' : 'pb-2.5 text-muted2'
+                    }`}
+                  >
+                    {label}
+                  </span>
                 ))}
-              </Rail>
-            </div>
-          </>
-        )}
-      </Band>
+              </div>
 
-      {/* 02 - Biomarker strips: catalog clips by tag (HER2+ / HR+), not YouTube playlists */}
-      <Band>
-        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.biomarkerHead}ms` }}>
-          <SectionHead index="02 / Biomarkers" title="Conversations by biomarker" />
-        </div>
-        <div className="mt-10 space-y-12">
-          {ANON_HOME_BIOMARKER_CAROUSEL_IDS.map((carouselId, index) => (
-            <div
-              key={carouselId}
-              className="home-enter"
-              style={{
-                animationDelay: `${
-                  carouselId === 'anon-home-hr'
-                    ? HOME_STAGGER_MS.hrBody
-                    : HOME_STAGGER_MS.biomarkerBody + index * 40
-                }ms`,
-              }}
-            >
-              <BiomarkerConversationRow carouselId={carouselId} isInApp={false} />
+              <div className="relative rounded-[6px] bg-ground p-3">
+                <Thumb src={sessionPoster} duration={SESSION.runtime} className="aspect-video w-full" />
+                <h3 className="sr-only">{SESSION.headingLabel}</h3>
+                {/* Capped and scrollable, so a long breakdown never pushes
+                    the section past a single screen. */}
+                <ol className="scrollbar-none mt-2 max-h-[8.5rem] overflow-y-auto overscroll-contain px-1">
+                  {SESSION.rows.map(([t, label], i) => (
+                    <li key={t} className="flex items-center gap-3 py-1.5">
+                      <span className="meta w-12 shrink-0 tabular-nums text-anchor">{t}</span>
+                      <span
+                        className={`truncate text-[0.8125rem] ${i === 0 ? 'text-text' : 'text-muted2'}`}
+                      >
+                        {label}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
             </div>
-          ))}
+          </Reveal>
         </div>
       </Band>
 
-      <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
-
-      {/* 04 - About Us teaser */}
-      <Band>
-        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.about}ms` }}>
-          <SectionHead
-            index="04 / About"
-            title="About Us"
-            action={<Button to="/about">Learn More</Button>}
-          />
-          <div className="mt-8 max-w-[54ch] space-y-5 text-pretty text-lg leading-relaxed text-muted-foreground">
-            <p>
-              Community Health Media (CHM) is a full-service medical communications partner: expert-led content,
-              strategic distribution, and multichannel campaigns for healthcare. We help organizations connect with HCPs,
-              KOLs, and patient communities through clinically credible communication.
-            </p>
-            <p>
-              Learn more about what we stand for, who we serve, and how our platform supports clinical learning.
-            </p>
+      {/* ── Podcast network ──────────────────────────────── */}
+      <Band labelledBy="shows-heading">
+        <SectionHead
+          id="shows-heading"
+          index="03 / Podcasts"
+          title="CHM Podcast Network"
+          sub="Four shows, each with its own voice and its own audience."
+          seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
+        />
+        <div className="mt-12">
+          {/* Headroom lives inside the scroller: overflow-x also clips
+              vertically, which would cut off the hover lift. */}
+          <div className="-my-5">
+            <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
+              {shows.map((s) => (
+                <li key={s.slug} className="w-[19rem] shrink-0 snap-start">
+                  <Link
+                    to="/chm-office-hours"
+                    className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  >
+                    <div className="relative aspect-[16/9] overflow-hidden">
+                      <img
+                        src={s.cover}
+                        alt=""
+                        loading="lazy"
+                        className="absolute inset-0 size-full object-cover transition-[scale] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.04]"
+                      />
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 mix-blend-multiply"
+                        style={{ background: s.tone, opacity: 0.72 }}
+                      />
+                      <span
+                        aria-hidden
+                        className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent"
+                      />
+                      <ChmMark className="absolute bottom-3 start-3 size-6 text-white/90" />
+                      {s.spanish ? (
+                        <span className="eyebrow absolute top-3 end-3 rounded-[6px] bg-white/90 px-2.5 py-1 text-on-bright">
+                          Español
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-1 flex-col p-4">
+                      <h3 className="display text-body-m text-text">{s.title}</h3>
+                      <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
+                        {s.tagline}
+                      </p>
+                      <p className="meta mt-auto pt-4 text-faint">
+                        {s.episodes} episodes · {s.hosts}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </Band>
 
-      {/* 05 - Who We Reach */}
-      <Band>
-        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.whoWe}ms` }}>
-          <SectionHead index="05 / Audience" title="Who We Reach" />
-        </div>
-        <div
-          className="home-enter mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3"
-          style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
-        >
-          {WHO_WE_REACH.map((w) => (
-            <Card key={w.audience}>
-              <p className="text-lg font-semibold text-foreground">{w.audience}</p>
-              <p className="mt-2 max-w-[36ch] text-pretty leading-relaxed text-muted-foreground">{w.body}</p>
-            </Card>
-          ))}
-        </div>
+      {/* ── This Moment in Medicine ──────────────────────── */}
+      <Band labelledBy="moment-heading">
+        <SectionHead
+          id="moment-heading"
+          index="04 / Series"
+          title="This Moment in Medicine"
+          sub="Short answers to the questions that come up between patients."
+          seeAll={{ noun: 'episodes', to: '/catalog' }}
+        />
+        <ol className="mt-12 grid gap-3 lg:grid-cols-2">
+          {MOMENTS.map((m, i) => {
+            const poster = featuredVideos.length ? featuredVideos[i % featuredVideos.length] : undefined;
+            return (
+              <Reveal as="li" key={m.t} delay={i * 55}>
+                <Link
+                  to={poster ? clipHref(poster) : '/catalog'}
+                  className="press card group flex items-center gap-5 p-3 ps-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  <span className="meta w-6 shrink-0 tabular-nums text-faint">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="display block text-body-m text-text">{m.t}</span>
+                    <span className="meta mt-1 block tabular-nums text-faint">{m.d}</span>
+                  </span>
+                  {poster ? (
+                    <Thumb src={poster.imageUrl} className="hidden h-16 w-28 shrink-0 sm:block" />
+                  ) : null}
+                </Link>
+              </Reveal>
+            );
+          })}
+        </ol>
       </Band>
 
-      {/* 06 - Resources */}
-      <Band>
-        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.resourcesHead}ms` }}>
-          <SectionHead index="06 / Resources" title="Resources" />
+      {/* ── Editorial ────────────────────────────────────── */}
+      <Band labelledBy="articles-heading">
+        <SectionHead
+          id="articles-heading"
+          index="05 / Editorial"
+          title="Recent articles"
+          seeAll={{ noun: 'articles', to: '/catalog' }}
+        />
+        <ul className="mt-12 space-y-3">
+          {ARTICLES.map((a, i) => (
+            <Reveal as="li" key={a.slug} delay={i * 45}>
+              <Link
+                to="/catalog"
+                className="press group grid items-baseline gap-x-8 gap-y-2 py-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
+              >
+                <span className="eyebrow text-amber-ink">{a.kicker}</span>
+                <span>
+                  <h3 className="display text-display-s text-text">{a.title}</h3>
+                  <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
+                </span>
+                <span className="meta text-faint md:text-end">{a.read}</span>
+              </Link>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      {/* ── In conversation ──────────────────────────────── */}
+      <Band labelledBy="kol-heading">
+        <SectionHead
+          id="kol-heading"
+          index="06 / Faculty"
+          title="In conversation"
+          sub="Practising specialists who bring their own audiences."
+          seeAll={{ noun: 'profiles', to: '/kol-network' }}
+        />
+        <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
+          {faculty.map((k, i) => (
+            <Reveal as="li" key={k.id} delay={i * 50}>
+              <Link
+                to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
+                className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                {k.photoUrl ? (
+                  <img
+                    src={k.photoUrl}
+                    alt=""
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    className="img-ring size-24 rounded-full object-cover md:size-28"
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="display grid size-24 place-items-center rounded-full text-body-l md:size-28"
+                    style={{
+                      background: INITIAL_TONES[i % INITIAL_TONES.length],
+                      color: 'var(--color-on-bright)',
+                    }}
+                  >
+                    {initials(k.name)}
+                  </span>
+                )}
+                <span className="display mt-4 block text-body-m text-text group-hover:text-anchor">
+                  {k.name}
+                </span>
+                <span className="mt-1 block text-body-s text-muted2">{institutionLine(k)}</span>
+              </Link>
+            </Reveal>
+          ))}
+          {faculty.length === 0 && loadState === 'loading'
+            ? Array.from({ length: 5 }, (_, i) => (
+                <li key={`kol-skeleton-${i}`} aria-hidden>
+                  <span className="block size-24 rounded-full bg-surface-2 md:size-28" />
+                  <span className="mt-4 block h-3 w-3/4 rounded-[6px] bg-surface-2" />
+                  <span className="mt-2 block h-3 w-1/2 rounded-[6px] bg-surface-2" />
+                </li>
+              ))
+            : null}
+        </ul>
+      </Band>
+
+      {/* ── Explore by disease state ─────────────────────── */}
+      <Band labelledBy="areas-heading">
+        <SectionHead
+          id="areas-heading"
+          index="07 / Browse"
+          title="Explore by disease state"
+          sub="Seven clinical areas on the map, each with its own colour through the library."
+        />
+        <div className="mt-12">
+          {/* overflow-x-auto clips vertically too, so the hover lift needs
+              headroom inside the scroller rather than margin outside it. */}
+          <div className="-my-5">
+            <div className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-3 overflow-x-auto py-5">
+              {areas.map((a) => {
+                const inner = (
+                  <>
+                    {/* Metallic build-up: a lit top edge, a shaded floor and
+                        a sheen that sweeps across on hover. */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 -z-10"
+                      style={{
+                        background:
+                          'linear-gradient(180deg, rgb(255 255 255 / 0.3) 0%, rgb(255 255 255 / 0.08) 34%, rgb(0 0 0 / 0.05) 70%, rgb(0 0 0 / 0.14) 100%)',
+                      }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-px"
+                      style={{ background: 'rgb(255 255 255 / 0.55)' }}
+                    />
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-y-0 -z-10 w-1/2 -translate-x-[220%] skew-x-[-18deg] transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-[320%] motion-reduce:hidden"
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent, rgb(255 255 255 / 0.34), transparent)',
+                      }}
+                    />
+                    <span>
+                      <span className="display block text-display-s">{a.label}</span>
+                      <span className="mt-0.5 block text-body-s text-on-bright/80">
+                        {a.live ? 'Video, podcast, editorial' : 'Coming this quarter'}
+                      </span>
+                    </span>
+                    <Arrow
+                      className="size-4 transition-[translate] duration-150 ease-[var(--ease-standard)] group-hover:translate-x-1"
+                      strokeWidth={2}
+                    />
+                  </>
+                );
+                const shell =
+                  'group relative isolate flex min-w-[15rem] flex-1 snap-start items-center justify-between gap-6 overflow-hidden rounded-[6px] px-7 py-5 text-on-bright shadow-card transition-[translate,box-shadow] duration-200 ease-[var(--ease-out-strong)]';
+                const tone = {
+                  backgroundImage: `linear-gradient(135deg, ${a.tone} 0%, color-mix(in oklab, ${a.tone} 62%, ${a.mix}) 100%)`,
+                };
+                return a.to ? (
+                  <Link
+                    key={a.slug}
+                    to={a.to}
+                    style={tone}
+                    className={`press ${shell} hover:-translate-y-1 hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <div key={a.slug} style={tone} className={`${shell} cursor-default`}>
+                    {inner}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <div
-          className="home-enter mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4"
-          style={{ animationDelay: `${HOME_STAGGER_MS.resourcesGrid}ms` }}
-        >
-          {resources.map((r) => (
+
+        <div className="mt-8 flex flex-wrap gap-2">
+          {BIOMARKERS.map((b) => (
             <Link
-              key={r.id}
-              to={r.href}
-              className="group relative block min-h-[150px] overflow-hidden rounded-card bg-muted shadow-card transition-[box-shadow,translate,scale] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96] md:min-h-[176px]"
+              key={b.label}
+              to={`/catalog?tag=${encodeURIComponent(b.tag)}`}
+              className="press inline-flex h-9 items-center gap-2 rounded-[6px] px-4 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
-              <img
-                src={r.imageUrl}
-                alt=""
-                className="absolute inset-0 h-full w-full object-cover transition-[scale] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.03]"
-              />
-              {/* The tile is a permanently dark region, so its label is
-                  fixed white rather than a page-following token. */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20 transition-[opacity] duration-150 group-hover:opacity-90" />
-              <div className="relative flex min-h-[150px] flex-col justify-between p-4 md:min-h-[176px]">
-                <span className="text-white/90 transition-[color] duration-150 group-hover:text-white">{r.icon}</span>
-                <p className="text-balance text-sm font-semibold text-white">{r.title}</p>
-              </div>
+              {b.label}
+              <span className="meta text-faint">{b.count}</span>
             </Link>
           ))}
         </div>
       </Band>
 
-      {/* 07 - How We Help Pharma: each answer is a surface, not a ruled row */}
-      <Band>
-        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.faqHead}ms` }}>
-          <SectionHead index="07 / Capabilities" title="How We Help Pharma Educate Healthcare Audiences" />
-        </div>
-        <div
-          className="home-enter mt-10 space-y-3"
-          style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}
-        >
-          {PHARMA_FAQ.map((item) => (
-            <details
-              key={item.title}
-              className="home-faq-item group rounded-card bg-card shadow-card transition-[box-shadow] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-card-hover"
-            >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
-                <span className="flex min-w-0 items-start gap-3">
-                  <span className="mt-1 shrink-0 text-success" aria-hidden>
-                    ✓
-                  </span>
-                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">
-                    {item.title}
-                  </span>
-                </span>
-                <span className="grid size-10 shrink-0 place-items-center rounded-[6px] bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
-                </span>
-              </summary>
-              {/* The answer hangs under the question, clear of the check. */}
-              <p className="max-w-[62ch] text-pretty pb-6 pe-5 ps-[3.25rem] text-base leading-relaxed text-muted-foreground sm:pe-6 sm:ps-[3.75rem]">
-                {item.body}
-              </p>
-            </details>
-          ))}
-        </div>
-        <div
-          className="home-enter mt-10 flex"
-          style={{ animationDelay: `${HOME_STAGGER_MS.faqBody + 90}ms` }}
-        >
-          <Button to="/join" size="lg">
-            Get Started
-          </Button>
-        </div>
-      </Band>
-
-      {/* Closing statement. A surface change closes the page; no rule above it. */}
-      <section className="bg-card">
-        <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 md:py-28 lg:px-8">
-          <h2
-            className="home-enter mx-auto max-w-[20ch] text-balance text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[3rem] md:text-[3.5rem]"
-            style={{ animationDelay: `${HOME_STAGGER_MS.closingHead}ms` }}
-          >
-            A Media Company That&apos;s About More Than Just Content
+      {/* ── Stat band ────────────────────────────────────── */}
+      <section aria-labelledby="stats-heading" className="relative overflow-hidden">
+        <StatGrid />
+        <div className="rail relative py-20 md:py-28">
+          <h2 id="stats-heading" className="sr-only">
+            CHM by the numbers
           </h2>
-          <div
-            className="home-enter mt-10 flex justify-center"
-            style={{ animationDelay: `${HOME_STAGGER_MS.closingCta}ms` }}
-          >
-            <Button to="/join" size="lg" className="min-w-[13rem]">
-              Join Us
-            </Button>
+          <dl className="grid gap-14 text-center md:grid-cols-3 md:gap-8">
+            {STATS.map((s, i) => (
+              <Reveal key={s.l} delay={i * 80}>
+                <dt className="sr-only">{s.l}</dt>
+                <dd>
+                  <span className="display block text-[3.25rem] leading-none tracking-[-0.04em] tabular-nums text-text md:text-[4.5rem]">
+                    {s.n}
+                  </span>
+                  <span className="mt-5 block text-body-m text-muted2">{s.l}</span>
+                </dd>
+              </Reveal>
+            ))}
+          </dl>
+        </div>
+      </section>
+
+      {/* ── Get started ──────────────────────────────────── */}
+      <section aria-labelledby="start-heading">
+        <div className="rail flex flex-col items-center py-24 text-center">
+          <h2 id="start-heading" className="display max-w-[18ch] text-display-l text-text">
+            Free for clinicians. Always.
+          </h2>
+          <p className="prose-lede mt-5 max-w-[46ch] text-body-l text-muted2">
+            Create an account to save your place, claim credit and get one email a week.
+          </p>
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
+            <Btn to="/join" variant="cta" withArrow>
+              Start watching free
+            </Btn>
+            <Btn to="/for-hcps" variant="outline">
+              For HCPs
+            </Btn>
           </div>
         </div>
       </section>
     </div>
-  );
-}
-
-type DiseaseAreasCarouselProps = {
-  /** Base delay (ms) for landing stagger; sub-regions add ~80–90ms each */
-  staggerBaseMs?: number;
-};
-
-function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const mid = Math.floor(DISEASE_AREAS.length / 2);
-    const card = el.querySelectorAll('[data-disease-card]')[mid] as HTMLElement | undefined;
-    if (card) {
-      // Scroll only the horizontal strip: never use scrollIntoView (it can jump the page).
-      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-      el.scrollLeft = Math.max(0, cardCenter - el.clientWidth / 2);
-    }
-    setActiveIdx(mid);
-  }, []);
-
-  const handleScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const cards = el.querySelectorAll('[data-disease-card]');
-    const containerCenter = el.scrollLeft + el.clientWidth / 2;
-    let closest = 0;
-    let closestDist = Infinity;
-    cards.forEach((card, i) => {
-      const rect = (card as HTMLElement).getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      const cardCenter = rect.left - elRect.left + el.scrollLeft + rect.width / 2;
-      const dist = Math.abs(containerCenter - cardCenter);
-      if (dist < closestDist) {
-        closestDist = dist;
-        closest = i;
-      }
-    });
-    setActiveIdx(closest);
-  }, []);
-
-  const scrollTo = useCallback((idx: number) => {
-    setActiveIdx(idx);
-    const el = scrollRef.current;
-    const card = el?.querySelectorAll('[data-disease-card]')[idx] as HTMLElement | undefined;
-    if (!el || !card) return;
-    const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-    el.scrollTo({
-      left: Math.max(0, cardCenter - el.clientWidth / 2),
-      behavior: 'smooth',
-    });
-  }, []);
-
-  return (
-    <section className="py-16 md:py-24">
-      {/* 03 - the head keeps the page rail; the strip runs full width. */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="home-enter" style={{ animationDelay: `${staggerBaseMs}ms` }}>
-          <SectionHead
-            index="03 / Areas"
-            title="View treatment specific content"
-            sub="Explore content by therapeutic area - expert-led education, conversations, and resources."
-          />
-        </div>
-      </div>
-
-      <div
-        className="home-enter mt-10 w-full min-w-0"
-        style={{ animationDelay: `${staggerBaseMs + 180}ms` }}
-      >
-        <div
-          ref={scrollRef}
-          onScroll={handleScroll}
-          className="scrollbar-hide flex snap-x snap-mandatory gap-5 overflow-x-auto overflow-y-hidden scroll-smooth px-4 py-4 sm:px-6"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          <div
-            className="w-[max(1rem,calc(50%-280px))] shrink-0 sm:w-[max(1rem,calc(50%-300px))] md:w-[max(1rem,calc(50%-340px))] lg:w-[max(1rem,calc(50%-360px))]"
-            aria-hidden
-          />
-          {DISEASE_AREAS.map((area) => {
-            const inner = (
-              <div
-                data-disease-card
-                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-card shadow-card transition-[box-shadow,translate] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px]"
-              >
-                <img
-                  src={area.image}
-                  alt={area.title}
-                  className="absolute inset-0 h-full w-full object-cover transition-[scale] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.03]"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                />
-                {/* Permanently dark region: the label is fixed white. */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
-                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-5 p-5 sm:p-8 md:p-10">
-                  <h3 className="text-balance text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl md:text-[2.25rem] md:leading-[1.08] md:tracking-[-0.025em]">
-                    {area.title}
-                  </h3>
-                  <span className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[6px] bg-white/15 px-4 text-sm font-medium text-white backdrop-blur-sm transition-[background-color] duration-150 group-hover:bg-white/25 sm:text-base">
-                    Explore Treatment
-                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
-                  </span>
-                </div>
-              </div>
-            );
-            return area.active ? (
-              <Link
-                key={area.slug}
-                to={`/catalog/${area.slug}`}
-                className="shrink-0 snap-center rounded-card transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]"
-              >
-                {inner}
-              </Link>
-            ) : (
-              <div key={area.slug} className="w-fit shrink-0 cursor-default snap-center">
-                {inner}
-              </div>
-            );
-          })}
-          <div
-            className="w-[max(1rem,calc(50%-280px))] shrink-0 sm:w-[max(1rem,calc(50%-300px))] md:w-[max(1rem,calc(50%-340px))] lg:w-[max(1rem,calc(50%-360px))]"
-            aria-hidden
-          />
-        </div>
-      </div>
-
-      <div className="mx-auto flex max-w-7xl justify-center px-4 sm:px-6 lg:px-8">
-        <div
-          className="home-enter flex flex-wrap items-center justify-center gap-1"
-          style={{ animationDelay: `${staggerBaseMs + 270}ms` }}
-          role="tablist"
-          aria-label="Disease area slides"
-        >
-          {DISEASE_AREAS.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              role="tab"
-              aria-selected={idx === activeIdx}
-              onClick={() => scrollTo(idx)}
-              className="group/dot flex h-9 items-center px-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              aria-label={`Go to disease area ${idx + 1}`}
-            >
-              <span
-                className={[
-                  'h-2 rounded-[6px] transition-[width,background-color] duration-300',
-                  idx === activeIdx
-                    ? 'w-8 bg-foreground'
-                    : 'w-2 bg-muted-foreground/35 group-hover/dot:bg-muted-foreground/60',
-                ].join(' ')}
-              />
-            </button>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }

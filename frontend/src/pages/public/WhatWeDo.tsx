@@ -1,449 +1,373 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  Play,
-  Search,
-  LayoutGrid,
-  Users,
-  Shield,
-  Stethoscope,
-  Building2,
-  Award,
-  Radio,
-  MessagesSquare,
-  LineChart,
-} from 'lucide-react';
-import { Button, Card, Rail, SectionHead } from '../../components/ui';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { submitContact } from '../../api/contact';
+import { ChmMark } from '../../components/brand/ChmMark';
+import { Button, Card, Field, Reveal, SectionHead } from '../../components/ui';
 import { cn } from '../../lib/cn';
-
-const AUDIENCES = [
-  {
-    title: 'Physicians & healthcare professionals',
-    body:
-      'CHM provides access to trusted knowledge, expert perspectives, and peer discussion that support continuous professional development and informed clinical practice.',
-    icon: <Stethoscope className="h-5 w-5" />,
-  },
-  {
-    title: 'Healthcare organizations, pharma & industry',
-    body:
-      'CHM helps healthcare organizations connect with professional medical audiences through credible content, expert voices, and multichannel communication strategies that drive engagement and insight.',
-    icon: <Building2 className="h-5 w-5" />,
-  },
-  {
-    title: 'KOLs & experts',
-    body:
-      'CHM offers a platform where experts can share their knowledge, contribute to professional dialogue, and amplify their impact across the medical community.',
-    icon: <Award className="h-5 w-5" />,
-  },
-] as const;
-
-const SHOW_UP = [
-  {
-    title: 'Credible medical education',
-    body: 'Expert-led content designed for clinical credibility, not volume for its own sake.',
-    icon: <Play className="h-5 w-5" />,
-  },
-  {
-    title: 'Strategic distribution',
-    body: 'Multichannel reach so important knowledge meets audiences where they already learn and engage.',
-    icon: <Radio className="h-5 w-5" />,
-  },
-  {
-    title: 'Community & dialogue',
-    body: 'Formats that turn information into conversation among peers and stakeholders.',
-    icon: <MessagesSquare className="h-5 w-5" />,
-  },
-  {
-    title: 'Engagement & insight',
-    body: 'Signals that help partners understand how professional audiences respond, learn, and stay informed.',
-    icon: <LineChart className="h-5 w-5" />,
-  },
-] as const;
+import { useKolDirectory } from '../../hooks/useKolDirectory';
 
 /**
- * The four pillars. Each one is a destination, so the whole card is the
- * link and the call to action renders as a label inside it: a card that
- * is already a link cannot carry a second one.
+ * Transplanted from chm-composio's `/partner`. The headings, the section
+ * order and every sentence are that page's; none of the old What We Do
+ * copy survives.
+ *
+ * Two slots take real platform data instead of the design's fixtures:
+ * the faculty figure in the results band reads the public KOL directory,
+ * and the walkthrough form posts to the same `/contact` endpoint the
+ * Contact page uses, rather than routing to a static thank-you page.
  */
-const PILLARS = [
-  {
-    title: 'Curated Disease-Area Hubs',
-    body: 'Treatment-specific pages organized by disease area and subtype, with structured collections.',
-    icon: <LayoutGrid className="h-5 w-5" />,
-    cta: { label: 'Browse Catalogue', to: '/catalog' },
-  },
-  {
-    title: 'Short-form Video Learning',
-    body: 'Focused videos designed for busy clinicians, with clear takeaways and practical framing.',
-    icon: <Play className="h-5 w-5" />,
-    cta: { label: 'Explore conversations', to: '/catalog' },
-  },
-  {
-    title: 'Fast Discovery & Search',
-    body: 'Search across topics, conditions, speakers, and collections with quick filters.',
-    icon: <Search className="h-5 w-5" />,
-    cta: { label: 'Go to Search', to: '/search' },
-  },
-  {
-    title: 'Sharing & Team Learning',
-    body: 'Make it easy to share relevant resources across your clinical team.',
-    icon: <Users className="h-5 w-5" />,
-    cta: { label: 'Explore Collections', to: '/catalog' },
-  },
-] as const;
-
-/**
- * The three claims under the opening. A bare spec row rather than three
- * stat cards: the values are adjectives, and set at metric size they
- * read as a dashboard bolted to a marketing page.
- */
-const HERO_SPECS = [
-  { label: 'Collections', value: 'Curated' },
-  { label: 'Videos', value: 'Short-form' },
-  { label: 'Discovery', value: 'Fast' },
-] as const;
 
 const STEPS = [
   {
-    step: '01',
-    title: 'Discover',
-    body: 'Browse the catalogue or search for a condition, topic, or speaker.',
+    n: '01',
+    title: 'One conversation',
+    body: 'Two faculty who already disagree sit down for ninety minutes on a question your brand has a stake in. No slides, no script approval, no talking points.',
   },
   {
-    step: '02',
-    title: 'Focus',
-    body: 'Open a disease hub and choose the collection or playlist that matches your clinical question.',
+    n: '02',
+    title: 'Four channels',
+    body: 'That session becomes long-form video, a podcast episode, an editorial explainer and a set of short clips. One recording day, four distribution surfaces.',
   },
   {
-    step: '03',
-    title: 'Learn & share',
-    body: 'Watch short-form video, then share links or playlists with colleagues for faster alignment.',
+    n: '03',
+    title: 'Placed in the track',
+    body: 'Everything lands inside the disease state where your audience already browses, next to the sessions they came for.',
+  },
+  {
+    n: '04',
+    title: 'Measured on completion',
+    body: 'Not impressions. Completion rate, post-test pass rate and repeat visits by faculty, reported monthly.',
   },
 ] as const;
 
-/** Display sizes from the type scale, as classes rather than tokens. */
-const DISPLAY_L =
-  'text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-[3rem]';
-const DISPLAY_M =
-  'text-[2rem] font-semibold leading-[1.08] tracking-[-0.025em] text-foreground sm:text-[2.25rem]';
-const DISPLAY_S =
-  'text-[1.375rem] font-semibold leading-[1.2] tracking-[-0.018em] text-foreground';
+const FORMATS = [
+  ['Long-form video', '18 to 30 min', 'The full case discussion, chaptered.'],
+  ['Podcast episode', '25 to 40 min', 'Audio cut, syndicated across the four CHM shows.'],
+  ['Editorial explainer', '5 to 8 min read', 'Written by faculty, not by a medical writer.'],
+  ['Short clips', '45 to 90 sec', 'Cut for social and for in-feed placement.'],
+] as const;
+
+const DISEASE_STATES = ['Breast', 'Lung', 'GI', 'GU', 'Hematology', 'Gynecologic'] as const;
 
 export default function WhatWeDo() {
   return (
-    <div className="bg-background text-foreground">
-      {/* ── Opening ──────────────────────────────────────────
-          Copy on the left, one figure on the right. Separation
-          between the two is the surface change on the figure,
-          not a rule between the columns. */}
-      <Band>
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-16">
-          <div className="lg:col-span-7">
-            <Reveal>
-              <p className="text-label uppercase text-muted-foreground">What we do</p>
-              <h1 className={cn('mt-5 max-w-[24ch] text-balance md:text-[3.25rem]', DISPLAY_L)}>
-                We organize clinical education into focused, easy-to-navigate experiences
-              </h1>
-              <p className="mt-6 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-                Community Health Media delivers expert-led medical communications: content, distribution, and
-                engagement across healthcare. Our public platform helps clinicians discover
-                treatment-specific material, learn through short-form video, and explore curated collections built
-                around disease areas and subtypes.
-              </p>
-            </Reveal>
-
-            <Reveal delay={60}>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Button to="/catalog" size="lg">
-                  Explore Catalogue
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-                <Button to="/search" variant="outline" size="lg">
-                  Search Content
-                </Button>
-              </div>
-            </Reveal>
-
-            <Reveal delay={120}>
-              <dl className="mt-12 grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-3">
-                {HERO_SPECS.map(({ label, value }) => (
-                  <div key={label}>
-                    <dt className="text-label uppercase text-muted-foreground">{label}</dt>
-                    <dd className="mt-2 text-xl font-semibold tracking-tight text-foreground">{value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </Reveal>
+    <div className="bg-background">
+      {/* ── Masthead ─────────────────────────────────────────
+          Permanently dark: everything in here is fixed white or
+          the fixed on-deep amber, never a page-following token. */}
+      <section aria-labelledby="partner-heading" className="relative overflow-hidden bg-cta-deep">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-[260px] right-[-140px] h-[700px] w-[700px] rounded-[6px] bg-signature/[0.16] blur-[75px]"
+        />
+        <div className="rail relative flex flex-wrap items-center justify-between gap-10 py-16">
+          <div>
+            <p className="eyebrow text-amber-on-deep">For pharma partners</p>
+            <h1
+              id="partner-heading"
+              className="display display-tight mt-4 max-w-[48rem] text-[2.5rem] text-white md:text-[3.125rem]"
+            >
+              Whole-brand education starts with the audience.
+            </h1>
+            <p className="mt-6 max-w-[540px] text-[1.0625rem] leading-relaxed text-white/75">
+              CHM does not sell impressions against a banner. We sell the completed session, the
+              faculty relationship behind it, and the four channels one recording produces.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-4">
+              <Button
+                href="#walkthrough"
+                className="bg-amber-on-deep text-on-bright shadow-none hover:bg-amber-on-deep hover:brightness-[0.96]"
+              >
+                Book a walkthrough
+              </Button>
+              <Button
+                to="/catalog"
+                variant="outline"
+                className="bg-white/10 text-white shadow-none hover:bg-white/[0.18] hover:shadow-none"
+              >
+                Browse the library
+              </Button>
+            </div>
           </div>
+          <ChmMark className="hidden h-[118px] w-[120px] text-amber-on-deep lg:block" />
+        </div>
+      </section>
 
-          <div className="lg:col-span-5">
-            <Reveal delay={180}>
-              <Card className="overflow-hidden p-0">
-                <div
-                  className="relative h-[300px] w-full bg-cover bg-center md:h-[360px]"
-                  style={{
-                    backgroundImage:
-                      "url('https://images.unsplash.com/photo-1526948128573-703ee1aeb6fa?auto=format&fit=crop&w=1800&q=80')",
-                  }}
-                >
-                  {/* A scrim, not a curtain: the photograph should still read. */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
-                </div>
-                <div className="p-6">
-                  <p className="text-base font-semibold text-foreground">Built to support modern clinical workflows</p>
-                  <p className="mt-2 max-w-[46ch] leading-relaxed text-muted-foreground">
-                    Browse disease hubs, curated conversations and videos, and share relevant content with your team.
-                  </p>
-                </div>
+      {/* ── How the content engine works ─────────────────── */}
+      <Band id="how" label="How the content engine works">
+        <Reveal>
+          <SectionHead
+            title="How the content engine works"
+            sub="One conversation, every channel."
+          />
+        </Reveal>
+        <ul className="mt-8 grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
+          {STEPS.map((s, i) => (
+            <Reveal as="li" key={s.n} delay={i * 60} className="h-full">
+              <Card className="h-full p-7">
+                <p className="display display-tight text-[1.75rem] tabular-nums text-amber">{s.n}</p>
+                <h3 className="display display-tight mt-4 text-display-s text-text">{s.title}</h3>
+                <p className="prose-lede mt-3 text-body-s text-muted2">{s.body}</p>
               </Card>
             </Reveal>
-          </div>
-        </div>
-      </Band>
-
-      {/* ── Who we serve ─────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="01 / Audiences"
-            title="Who we serve"
-            sub="Different audiences need different promises. Here is how CHM shows up for each."
-          />
-        </Reveal>
-        <ul className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
-          {AUDIENCES.map(({ title, body, icon }, i) => (
-            <li key={title}>
-              <Reveal delay={i * 60} className="h-full">
-                <Card className="flex h-full flex-col">
-                  <Medallion>{icon}</Medallion>
-                  <h3 className={cn('mt-5 text-balance', DISPLAY_S)}>{title}</h3>
-                  <p className="mt-3 leading-relaxed text-muted-foreground">{body}</p>
-                </Card>
-              </Reveal>
-            </li>
           ))}
         </ul>
       </Band>
 
-      {/* ── How we show up ───────────────────────────────────
-          Four statements, no surface under them. The band before
-          this one is a row of cards, so this one is bare ground:
-          the alternation is what separates the two. */}
-      <Band>
+      {/* ── What one recording produces ──────────────────── */}
+      <Band label="What one recording produces">
         <Reveal>
-          <SectionHead
-            index="02 / Approach"
-            title="How we show up"
-            sub="A concise view of the work behind the scenes, before someone ever hits play."
-          />
+          <SectionHead title="What one recording produces" />
         </Reveal>
-        <ul className="mt-12 grid grid-cols-1 gap-x-12 gap-y-10 md:grid-cols-2">
-          {SHOW_UP.map(({ title, body, icon }, i) => (
-            <li key={title}>
-              <Reveal delay={i * 60}>
-                <div className="flex gap-5">
-                  <Medallion>{icon}</Medallion>
-                  <div className="min-w-0">
-                    <h3 className={cn('text-balance', DISPLAY_S)}>{title}</h3>
-                    <p className="mt-2 max-w-[46ch] leading-relaxed text-muted-foreground">{body}</p>
-                  </div>
-                </div>
-              </Reveal>
-            </li>
-          ))}
-        </ul>
-      </Band>
-
-      {/* ── The four pillars ─────────────────────────────────
-          Every pillar leads somewhere, so they browse rather than
-          stack: a rail that runs off the viewport edge on a phone
-          and settles into a row on a desktop. */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="03 / Platform"
-            title="Our platform focuses on four things"
-            sub="A simple, structured system to make clinical learning easier to discover and faster to consume."
-          />
-        </Reveal>
-        <div className="mt-12">
-          <Rail aria-label="What the platform focuses on">
-            {PILLARS.map(({ title, body, icon, cta }, i) => (
-              <li
-                key={title}
-                className="w-[80%] shrink-0 snap-start sm:w-[46%] lg:w-[23.5%]"
+        <Reveal delay={60}>
+          <Card className="mt-7 overflow-hidden p-0">
+            {FORMATS.map(([name, len, note], i) => (
+              <div
+                key={name}
+                className={cn(
+                  'grid gap-3 px-7 py-6 md:grid-cols-[220px_160px_1fr]',
+                  i > 0 && 'border-t border-hairline',
+                )}
               >
-                <Reveal delay={i * 60} className="h-full">
-                  <Card to={cta.to} className="flex h-full flex-col">
-                    <Medallion>{icon}</Medallion>
-                    <h3 className={cn('mt-5 text-balance', DISPLAY_S)}>{title}</h3>
-                    <p className="mt-3 leading-relaxed text-muted-foreground">{body}</p>
-                    <span className="mt-auto inline-flex items-center gap-2 pt-6 text-sm font-semibold text-brand-600">
-                      {cta.label}
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </Card>
-                </Reveal>
-              </li>
-            ))}
-          </Rail>
-        </div>
-      </Band>
-
-      {/* ── How it works ─────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="04 / Path"
-            title="How it works"
-            sub="A clear path from discovery to learning."
-          />
-        </Reveal>
-        <ol className="mt-12 grid grid-cols-1 gap-x-12 gap-y-12 md:grid-cols-3">
-          {STEPS.map(({ step, title, body }, i) => (
-            <li key={step}>
-              <Reveal delay={i * 60}>
-                <p className="font-mono text-4xl tabular-nums leading-none text-muted-foreground">{step}</p>
-                <h3 className={cn('mt-5', DISPLAY_S)}>{title}</h3>
-                <p className="mt-3 max-w-[46ch] leading-relaxed text-muted-foreground">{body}</p>
-              </Reveal>
-            </li>
-          ))}
-        </ol>
-      </Band>
-
-      {/* ── Closing ──────────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <Card className="grid grid-cols-1 items-center gap-10 bg-muted p-8 md:p-12 lg:grid-cols-12">
-            <div className="lg:col-span-7">
-              <div className="flex items-center gap-2 text-foreground">
-                <Shield className="h-5 w-5" />
-                <p className="text-base font-semibold">Built with clarity in mind</p>
+                <p className="display text-body-l text-text">{name}</p>
+                <p className="meta text-anchor">{len}</p>
+                <p className="text-body-s text-muted2">{note}</p>
               </div>
-              <h2 className={cn('mt-5 max-w-[18ch] text-balance', DISPLAY_M)}>
-                Structured content experiences, ready to scale
-              </h2>
-              <p className="mt-5 max-w-[54ch] text-lg leading-relaxed text-muted-foreground">
-                Read{' '}
-                <Link
-                  to="/about"
-                  className="font-semibold text-foreground underline decoration-muted-foreground/40 underline-offset-4 transition-colors duration-150 hover:decoration-foreground"
-                >
-                  About
-                </Link>{' '}
-                for the full CHM story, formats, and what we stand for. For programs, partnerships, or platform
-                questions, contact us.
-              </p>
-            </div>
-
-            {/* Both actions take one width so the stack has a straight
-                edge; a ragged pair of buttons reads as an accident. */}
-            <div className="flex flex-col gap-3 lg:col-span-5 lg:items-end">
-              <Button to="/join" size="lg" className="w-full sm:w-auto sm:min-w-[13rem]">
-                Get Started
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <Button to="/contact" variant="outline" size="lg" className="w-full sm:w-auto sm:min-w-[13rem]">
-                Contact Us
-              </Button>
-            </div>
+            ))}
           </Card>
         </Reveal>
       </Band>
+
+      <Results />
+
+      {/* ── Book a walkthrough ───────────────────────────── */}
+      <section id="walkthrough" aria-labelledby="walkthrough-heading">
+        <div className="rail pb-16">
+          <Card className="grid gap-10 p-10 lg:grid-cols-[1fr_26.25rem] lg:items-start">
+            <div>
+              <p className="eyebrow text-muted2">Book a walkthrough</p>
+              <h2
+                id="walkthrough-heading"
+                className="display display-tight mt-3 text-[1.875rem] text-text"
+              >
+                Thirty minutes, and we show you the back end.
+              </h2>
+              <p className="prose-lede mt-4 max-w-[440px] text-body-m text-muted2">
+                Completion curves by session, faculty reach by channel, and the placement map for
+                your disease state. No deck.
+              </p>
+            </div>
+
+            <WalkthroughForm />
+          </Card>
+        </div>
+      </section>
     </div>
   );
 }
 
 /**
- * One content section. Space separates the bands; there is no rule
- * between them. The inner rail carries the page gutter, which is the
- * same variable `bleed-x` cancels, so a rail inside a band reaches the
- * viewport edge exactly.
+ * The results band. Permanently dark, so it takes fixed white and the
+ * fixed on-deep amber rather than the page tokens.
+ *
+ * The faculty figure is the one number here the platform actually holds:
+ * it is the public KOL directory's own total, and falls back to the
+ * design's figure only while the query is in flight.
  */
-function Band({ children }: { children: ReactNode }) {
+function Results() {
+  const directory = useKolDirectory({ surface: 'public' });
+
+  const stats = useMemo(
+    () =>
+      [
+        ['92%', 'session completion', 'Against a CME category average nearer 40%.'],
+        ['2.4M', 'annual views', 'Across video, podcast and editorial.'],
+        [
+          directory.total > 0 ? String(directory.total) : '140+',
+          'KOL faculty',
+          'Practicing clinicians with their own audiences.',
+        ],
+      ] as const,
+    [directory.total],
+  );
+
   return (
-    <section>
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-24 lg:px-8">{children}</div>
+    <section aria-label="What the engine returns">
+      <div className="rail pb-14">
+        <Reveal>
+          <div className="grid gap-8 rounded-[24px] bg-cta-deep p-10 md:grid-cols-3">
+            {stats.map(([n, l, note]) => (
+              <div key={l}>
+                <p className="display display-tight text-[2.625rem] tabular-nums text-amber-on-deep">
+                  {n}
+                </p>
+                <p className="meta mt-2 text-white/70">{l}</p>
+                <p className="mt-3 text-body-s leading-normal text-white/75">{note}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      </div>
     </section>
   );
 }
 
-/** The icon plate. Square with a slight corner, matching every control. */
-function Medallion({ children }: { children: ReactNode }) {
+/** Full-bleed band; the inner rail carries the page margins. */
+function Band({ children, label, id }: { children: ReactNode; label: string; id?: string }) {
   return (
-    <span className="grid size-11 shrink-0 place-items-center rounded-[6px] bg-muted text-brand-600">
-      {children}
-    </span>
+    <section id={id} aria-label={label}>
+      <div className="rail py-14">{children}</div>
+    </section>
   );
 }
 
-/**
- * Whether this visit gets scroll entrances at all. Decided during the
- * first render rather than inside an effect, so content is never hidden
- * for a frame on a browser that cannot un-hide it.
- */
-function motionAllowed() {
-  return (
-    typeof window !== 'undefined' &&
-    typeof IntersectionObserver !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: no-preference)').matches
-  );
-}
+type FormState = { name: string; email: string; company: string; disease: string };
+type FormErrors = Partial<Record<keyof FormState, string>>;
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Scroll entrance: opacity and a 2px lift, nothing more.
- *
- * It fails open. Without an observer, or with reduced motion asked for,
- * the block renders shown on the very first pass — the one way a reveal
- * can genuinely break a page is by leaving content invisible.
+ * The walkthrough request. The design's version validates on submit,
+ * moves focus to the first field that failed, and then navigates to a
+ * static thank-you route. This platform has no such route and does have
+ * a real endpoint, so the same four fields post to `/contact` and the
+ * panel confirms in place.
  */
-function Reveal({
-  children,
-  delay = 0,
-  className,
-}: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [armed] = useState(motionAllowed);
-  const [seen, setSeen] = useState(false);
+function WalkthroughForm() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    email: '',
+    company: '',
+    disease: DISEASE_STATES[0],
+  });
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [pending, setPending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!armed || !el) return;
+  const set = (key: keyof FormState) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+  };
 
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setSeen(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: '0px 0px -8% 0px' },
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const next: FormErrors = {};
+    if (!form.name.trim()) next.name = 'Enter your name';
+    if (!form.email.trim()) next.email = 'Enter your work email';
+    else if (!EMAIL.test(form.email.trim()))
+      next.email = 'Enter an email in the format name@hospital.org';
+    if (!form.company.trim()) next.company = 'Enter your company';
+
+    setErrors(next);
+
+    // The first field that failed takes focus, so the message is not
+    // only announced but arrived at.
+    const firstBad = (['name', 'email', 'company'] as const).find((k) => next[k]);
+    if (firstBad) {
+      formRef.current?.querySelector<HTMLElement>(`[name="${firstBad}"]`)?.focus();
+      return;
+    }
+
+    setPending(true);
+    setFailed(null);
+    try {
+      // One name field, two API fields: a single-word name goes in both
+      // rather than posting an empty last name.
+      const [first, ...rest] = form.name.trim().split(/\s+/);
+      await submitContact({
+        firstName: first,
+        lastName: rest.join(' ') || first,
+        email: form.email.trim(),
+        organization: form.company.trim(),
+        role: 'Pharma partner',
+        message: `Walkthrough request. Disease state of interest: ${form.disease}.`,
+      });
+      setSent(true);
+    } catch (err: unknown) {
+      setFailed(
+        err instanceof Error ? err.message : 'That did not send. Try again in a moment.',
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="rounded-[6px] bg-surface p-7 shadow-card">
+        <p className="display text-body-l text-text">Request received</p>
+        <p className="prose-lede mt-2 text-body-m text-muted2">
+          Someone will write back to set the thirty minutes, usually the same day.
+        </p>
+        <Button to="/catalog" variant="outline" className="mt-6">
+          Browse the library
+        </Button>
+      </div>
     );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [armed]);
-
-  const shown = !armed || seen;
+  }
 
   return (
-    <div
-      ref={ref}
-      data-shown={shown}
-      style={shown ? { transitionDelay: `${delay}ms` } : undefined}
-      className={cn(
-        'transition-[opacity,transform] duration-500 ease-[cubic-bezier(0,0,0.2,1)]',
-        'motion-safe:data-[shown=false]:translate-y-[2px] motion-safe:data-[shown=false]:opacity-0',
-        className,
+    <form ref={formRef} noValidate onSubmit={handleSubmit} className="space-y-5">
+      {failed && (
+        <p role="alert" className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {failed}
+        </p>
       )}
-    >
-      {children}
-    </div>
+
+      <Field
+        label="Name"
+        name="name"
+        autoComplete="name"
+        value={form.name}
+        error={errors.name}
+        onChange={(e) => set('name')(e.target.value)}
+      />
+
+      <Field
+        label="Work email"
+        name="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        hint="Use the address your institution issued, so we can verify you are a clinician."
+        value={form.email}
+        error={errors.email}
+        onChange={(e) => set('email')(e.target.value)}
+      />
+
+      <Field
+        label="Company"
+        name="company"
+        autoComplete="organization"
+        value={form.company}
+        error={errors.company}
+        onChange={(e) => set('company')(e.target.value)}
+      />
+
+      <div>
+        <label htmlFor="walkthrough-disease" className="text-sm text-muted-foreground">
+          Disease state of interest
+        </label>
+        <select
+          id="walkthrough-disease"
+          name="disease"
+          value={form.disease}
+          onChange={(e) => set('disease')(e.target.value)}
+          className="mt-2 h-12 w-full rounded-[6px] bg-card px-4 text-base text-foreground shadow-card outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:text-sm"
+        >
+          {DISEASE_STATES.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+        {pending ? 'Sending your request' : 'Request the walkthrough'}
+      </Button>
+    </form>
   );
 }

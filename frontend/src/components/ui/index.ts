@@ -6,3 +6,5 @@ export type { ChipKind } from './Chip';
 export { Field } from './Field';
 export { Rail, SectionHead } from './Rail';
 export { default as LoadingSpinner } from './LoadingSpinner';
+export { Reveal } from './Reveal';
+export { AbstractFigure } from './AbstractFigure';

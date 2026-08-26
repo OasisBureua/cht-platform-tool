@@ -1,580 +1,593 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
-import { ArrowUpDown, BadgeCheck, ChevronDown, GraduationCap, MapPin, Sparkles } from 'lucide-react';
+import { useEffect, useId, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
 import { hasAiSummary, resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
-import { Button, Chip, chipKind, Field, Rail, SectionHead } from '../../components/ui';
+import { Button, Reveal } from '../../components/ui';
+
+/* ── data shape ───────────────────────────────────────────
+   The API groups by region; the directory reads a flat list
+   and re-groups it, so the state a KOL belongs to travels on
+   the record itself. */
 
 type FlatKol = DolEntry & {
   stateId: string;
   stateTitle: string;
 };
 
+type Sort = 'state' | 'name' | 'newest';
+
 function flattenNetwork(regions: DolRegion[]): FlatKol[] {
   return regions.flatMap((r) =>
-    r.entries.map((e) => ({
-      ...e,
-      stateId: r.id,
-      stateTitle: r.title,
-    })),
+    r.entries.map((e) => ({ ...e, stateId: r.id, stateTitle: r.title })),
   );
 }
 
-function avatarSrc(k: FlatKol): string {
-  if (k.photoUrl) return k.photoUrl;
-  return avatarUrl(k.name);
+/** Surname, so "By name" sorts the way a directory is read. */
+function lastName(name: string): string {
+  return name.replace(/^Dr\.\s*/i, '').split(/\s+/).pop() || name;
 }
 
-type SortMode = 'state' | 'name-asc' | 'name-desc' | 'new-first';
+/** The role arrives as prose; the card carries its first clause. */
+function roleLead(role: string): string {
+  const lead = (role.split(/[.;]/)[0]?.trim() ?? role).slice(0, 72);
+  return lead.length >= 72 ? `${lead}…` : lead;
+}
 
 function institutionHint(k: FlatKol): string {
   const inst = k.institution?.trim();
-  if (inst && inst !== '-') {
-    return inst.length > 48 ? `${inst.slice(0, 47)}…` : inst;
-  }
-  const edu = k.education || '';
-  const cut = edu.split(/[;(]/)[0]?.trim() || '';
+  if (inst && inst !== '-') return inst.length > 48 ? `${inst.slice(0, 47)}…` : inst;
+  const cut = (k.education || '').split(/[;(]/)[0]?.trim() || '';
   return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || '-';
 }
 
-function avatarUrl(name: string): string {
-  const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
+function summaryOf(k: FlatKol): string {
+  const full = resolveKolDisplayBrief(k)?.whoTheyAre ?? k.bio.trim();
+  return full.length > 140 ? `${full.slice(0, 137)}…` : full;
+}
+
+function initials(name: string): string {
+  return name
+    .replace(/^Dr\.\s*/i, '')
+    .split(' ')
+    .map((w) => w[0])
+    .join('');
+}
+
+/* ── page chrome ──────────────────────────────────────────
+   Ported from the design's `PageHead` / `HeroPanel`: the
+   inner-page masthead splits into copy on the leading side
+   and a raised product panel on the trailing side. */
+
+function Eyebrow({ children }: { children: ReactNode }) {
+  return <p className="eyebrow text-muted2">{children}</p>;
+}
+
+function PageHead({
+  eyebrow,
+  title,
+  lede,
+  children,
+  figure,
+  rail,
+  pad,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  lede?: string;
+  children?: ReactNode;
+  figure?: ReactNode;
+  rail: string;
+  pad: string;
+}) {
+  return (
+    <section className={`${rail} ${pad}`}>
+      <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
+        <div>
+          <Eyebrow>{eyebrow}</Eyebrow>
+          <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+            {title}
+          </h1>
+          {lede ? <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">{lede}</p> : null}
+          {children ? <div className="mt-9">{children}</div> : null}
+        </div>
+        {figure ? <div>{figure}</div> : null}
+      </div>
+    </section>
+  );
 }
 
 /**
- * The specialty string arrives as one middot-joined line
- * ("Medical Oncology · Breast Cancer (TNBC)"). Split it back into the
- * labels it already carries rather than inventing a taxonomy.
+ * Shared frame for the inner-page hero visual: a raised panel on a
+ * soft brand-tinted field, with a bevel highlight along the top edge.
+ * Depth only, no outlines.
  */
-function specialtyLabels(k: FlatKol): string[] {
-  const raw = k.intel?.specialty?.trim();
-  if (!raw) return [];
-  return raw
-    .split(/[·|]/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .slice(0, 3);
+function HeroPanel({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden className="relative">
+      <div
+        className="pointer-events-none absolute -inset-8 rounded-[24px] opacity-80 blur-2xl"
+        style={{
+          background:
+            'radial-gradient(50% 50% at 70% 30%, color-mix(in oklab, var(--color-beam) 34%, transparent), transparent 70%), radial-gradient(45% 45% at 25% 75%, color-mix(in oklab, var(--color-pink) 30%, transparent), transparent 70%)',
+        }}
+      />
+      <div className="relative overflow-hidden rounded-[6px] bg-surface p-3 shadow-[var(--shadow-pop)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+        <div className="overflow-hidden rounded-[6px] bg-ground">{children}</div>
+      </div>
+    </div>
+  );
 }
 
-/** Reveal stagger, capped so a long list never waits seconds to appear. */
-function revealDelay(i: number): string {
-  return `${Math.min(i, 6) * 60}ms`;
+function Chrome({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 bg-surface px-4 py-3">
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="meta ms-2 text-faint">{label}</span>
+    </div>
+  );
 }
 
-const SELECT_CLASS =
-  'h-12 w-full appearance-none rounded-[6px] bg-card pl-4 pr-10 text-base text-foreground shadow-card ' +
-  'outline-none transition-shadow duration-150 hover:shadow-card-hover sm:text-sm ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+/** The directory as the product: the first four profiles and the live count. */
+function KolPanel({ rows, count }: { rows: FlatKol[]; count: number }) {
+  return (
+    <HeroPanel>
+      <Chrome label="chm / kol-network" />
+      <div className="p-4">
+        <div className="flex gap-2">
+          <span className="flex h-9 flex-1 items-center rounded-[6px] bg-surface px-3 text-body-s text-faint">
+            Search name or institution
+          </span>
+          <span className="flex h-9 items-center rounded-[6px] bg-anchor px-3 text-body-s tabular-nums text-ground">
+            {count}
+          </span>
+        </div>
+        <ul className="mt-3 space-y-2">
+          {rows.map((k) => (
+            <li key={`${k.stateId}-${k.id}`} className="flex items-center gap-3 rounded-[6px] bg-surface p-3">
+              {k.photoUrl ? (
+                <img
+                  src={k.photoUrl}
+                  alt=""
+                  className="size-9 shrink-0 rounded-full object-cover"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[0.625rem] text-muted2">
+                  {initials(k.name)}
+                </span>
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-body-s font-medium text-text">{k.name}</span>
+                <span className="meta mt-0.5 block truncate text-faint">{institutionHint(k)}</span>
+              </span>
+              <span className="meta shrink-0 rounded-[6px] bg-surface-2 px-2 py-1 text-muted2">
+                {k.stateId.slice(0, 2).toUpperCase()}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </HeroPanel>
+  );
+}
 
-const CHEVRON_CLASS =
-  'pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground';
+function EmptyState({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  action: { label: string; onClick: () => void };
+}) {
+  return (
+    <div className="rounded-[6px] px-8 py-16 text-center shadow-[var(--shadow-card)]">
+      <p className="display text-display-s text-text">{title}</p>
+      <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">{body}</p>
+      <div className="mt-7 flex justify-center">
+        <Button variant="outline" onClick={action.onClick}>
+          {action.label}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
-const CONTROL_LABEL_CLASS = 'block text-sm text-muted-foreground';
-
+/**
+ * Faceted directory: free-text plus state and institution, with the
+ * result count in a live region so filtering announces. Grouping by
+ * state is preserved from the platform's own view.
+ */
 export default function DolNetwork({ embedded = false }: { embedded?: boolean }) {
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [stateId, setStateId] = useState('');
-  const [institution, setInstitution] = useState('');
+  const [q, setQ] = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [state, setState] = useState('all');
+  const [institution, setInstitution] = useState('all');
+  const [sort, setSort] = useState<Sort>('state');
   const [newOnly, setNewOnly] = useState(false);
-  const [sortMode, setSortMode] = useState<SortMode>('state');
-  const [sortOpen, setSortOpen] = useState(false);
-  const sortRef = useRef<HTMLDivElement>(null);
+  const id = useId();
 
+  // Search hits the API, so it waits for a pause in typing.
   useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSortOpen(false);
-    };
-    document.addEventListener('click', onDoc);
-    return () => document.removeEventListener('click', onDoc);
-  }, []);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    const t = window.setTimeout(() => setDebouncedQ(q.trim()), 300);
     return () => window.clearTimeout(t);
-  }, [search]);
+  }, [q]);
 
   const directory = useKolDirectory({
-    q: debouncedSearch || undefined,
-    institution: institution || undefined,
+    q: debouncedQ || undefined,
+    institution: institution === 'all' ? undefined : institution,
     new_only: newOnly || undefined,
     surface: embedded ? 'app' : 'public',
   });
+
   const flat = useMemo(() => flattenNetwork(directory.regions), [directory.regions]);
 
-  const institutions = directory.institutions;
-
-  const filtered = useMemo(() => {
-    return flat.filter((k) => {
-      if (stateId && k.stateId !== stateId) return false;
-      return true;
-    });
-  }, [flat, stateId]);
-
-  const sorted = useMemo(() => {
-    const out = [...filtered];
-    const last = (n: string) => n.replace(/^Dr\.\s*/i, '').split(/\s+/).pop() || n;
-    if (sortMode === 'name-asc') {
-      out.sort((a, b) => last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' }));
-    } else if (sortMode === 'name-desc') {
-      out.sort((a, b) => last(b.name).localeCompare(last(a.name), undefined, { sensitivity: 'base' }));
-    } else if (sortMode === 'new-first') {
-      out.sort((a, b) => {
-        const aNew = Boolean(a.isNew);
-        const bNew = Boolean(b.isNew);
-        if (aNew !== bNew) return aNew ? -1 : 1;
-        return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
-      });
-    } else {
-      // Default 'state' mode: within each state, featured KOLs pin to the
-      // top, then curator display_order (nulls last), then name (SCRUM-70).
-      out.sort((a, b) => {
+  const shown = useMemo(() => {
+    const list = flat.filter((k) => state === 'all' || k.stateId === state);
+    const by: Record<Sort, (a: FlatKol, b: FlatKol) => number> = {
+      name: (a, b) => lastName(a.name).localeCompare(lastName(b.name), undefined, { sensitivity: 'base' }),
+      /* Within a state, curator-featured pins to the top, then the
+         curator's display order (nulls last), then surname (SCRUM-70). */
+      state: (a, b) => {
         const st = a.stateTitle.localeCompare(b.stateTitle, undefined, { sensitivity: 'base' });
         if (st !== 0) return st;
-        const aFeat = a.featured ? 1 : 0;
-        const bFeat = b.featured ? 1 : 0;
-        if (aFeat !== bFeat) return bFeat - aFeat;
-        const aOrd = a.displayOrder ?? Number.POSITIVE_INFINITY;
-        const bOrd = b.displayOrder ?? Number.POSITIVE_INFINITY;
-        if (aOrd !== bOrd) return aOrd - bOrd;
-        return last(a.name).localeCompare(last(b.name), undefined, { sensitivity: 'base' });
-      });
-    }
-    return out;
-  }, [filtered, sortMode]);
+        const feat = Number(!!b.featured) - Number(!!a.featured);
+        if (feat !== 0) return feat;
+        const ao = a.displayOrder ?? Number.POSITIVE_INFINITY;
+        const bo = b.displayOrder ?? Number.POSITIVE_INFINITY;
+        if (ao !== bo) return ao - bo;
+        return lastName(a.name).localeCompare(lastName(b.name), undefined, { sensitivity: 'base' });
+      },
+      newest: (a, b) =>
+        Number(!!b.isNew) - Number(!!a.isNew) ||
+        lastName(a.name).localeCompare(lastName(b.name), undefined, { sensitivity: 'base' }),
+    };
+    return [...list].sort(by[sort]);
+  }, [flat, state, sort]);
 
-  const byState = useMemo(() => {
-    if (sortMode !== 'state') return null;
+  const grouped = useMemo(() => {
+    if (sort !== 'state') return null;
     const map = new Map<string, FlatKol[]>();
-    sorted.forEach((k) => {
-      if (!map.has(k.stateId)) map.set(k.stateId, []);
-      map.get(k.stateId)!.push(k);
-    });
-    const order = directory.regions.map((r) => r.id).filter((id) => map.has(id));
-    return order.map((id) => ({
-      id,
-      meta: map.get(id)![0],
-      items: map.get(id)!,
-    }));
-  }, [sorted, sortMode, directory.regions]);
+    for (const k of shown) {
+      const arr = map.get(k.stateId) ?? [];
+      arr.push(k);
+      map.set(k.stateId, arr);
+    }
+    return [...map.entries()];
+  }, [shown, sort]);
 
-  const sortLabels: Record<SortMode, string> = {
-    state: 'State, then name (A–Z)',
-    'name-asc': 'Name (A–Z)',
-    'name-desc': 'Name (Z–A)',
-    'new-first': 'New listings first',
+  const reset = () => {
+    setQ('');
+    setState('all');
+    setInstitution('all');
+    setNewOnly(false);
   };
+  const filtered = Boolean(q) || state !== 'all' || institution !== 'all' || newOnly;
 
-  /* The page column. `bleed-x` on the rails is measured against
-     `--page-gutter`, so the column has to carry exactly that padding for
-     the first card to line up with the copy above it. Embedded, the app
-     shell already supplies the gutter, so the column adds none and the
-     rails give their bleed back. */
-  const column = embedded
-    ? 'mx-auto w-full min-w-0 max-w-7xl'
-    : 'mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8';
-  const railBleed = embedded ? 'mx-0 px-0' : undefined;
+  const field =
+    'card h-11 w-full rounded-[6px] px-4 text-base text-text outline-none ' +
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:text-body-s';
 
-  /* Live counts, not claims: everything here is read off the response
-     that is already driving the selects below. */
-  const facets = [
-    { label: 'Profiles', value: directory.total },
-    { label: 'States', value: directory.regions.length },
-    { label: 'Institutions', value: institutions.length },
-  ];
+  /* Embedded in the app shell, the shell already carries the gutter, so
+     the page column adds none and only the max width survives. */
+  const rail = embedded ? 'mx-auto w-full min-w-0 max-w-7xl' : 'rail';
+
+  const newCount = flat.filter((k) => k.isNew).length;
 
   return (
-    <div className={embedded ? 'min-w-0' : 'min-h-screen bg-background'}>
-      {/* ── Masthead ─────────────────────────────────────── */}
-      <section aria-labelledby="kol-network-heading">
-        <div className={`${column} ${embedded ? 'pb-8 pt-4 md:pb-10 md:pt-6' : 'pb-12 pt-14 md:pb-16 md:pt-24'}`}>
-          <p className="rise-in font-mono text-label uppercase text-muted-foreground">CHT Platform</p>
-          <h1
-            id="kol-network-heading"
-            className="rise-in mt-5 max-w-[20ch] text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-5xl md:text-[3rem]"
-            style={{ animationDelay: revealDelay(1) }}
-          >
-            Key Opinion Leader (KOL) Network
-          </h1>
-          <p
-            className="rise-in mt-6 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground"
-            style={{ animationDelay: revealDelay(2) }}
-          >
-            Oncology & breast cancer specialists: filter by state, institution, or text; sort by name, state, or
-            newest.
-          </p>
-
-          {directory.loadState === 'ready' && (
-            <dl
-              className="rise-in mt-10 flex flex-wrap gap-x-12 gap-y-6"
-              style={{ animationDelay: revealDelay(3) }}
-            >
-              {facets.map((f) => (
-                <div key={f.label}>
-                  <dt className="font-mono text-label uppercase text-muted-foreground">{f.label}</dt>
-                  <dd className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
-                    {f.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-      </section>
-
-      {/* ── Controls ─────────────────────────────────────── */}
-      <section>
-        <div className={`${column} ${embedded ? 'pb-8' : 'pb-12 md:pb-16'}`}>
-          <div role="search" aria-label="Filter and sort KOL directory" className="space-y-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
-              <Field
-                label="Search"
-                id="kol-q"
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Name, institution, keywords…"
-                autoComplete="off"
-                className="min-w-0 flex-1"
-              />
-
-              <div className="w-full shrink-0 sm:w-52 lg:w-56">
-                <label htmlFor="kol-state" className={CONTROL_LABEL_CLASS}>
-                  State
-                </label>
-                <div className="relative mt-2">
-                  <select
-                    id="kol-state"
-                    value={stateId}
-                    onChange={(e) => setStateId(e.target.value)}
-                    className={SELECT_CLASS}
-                  >
-                    <option value="">All states</option>
-                    {directory.regions.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.title}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className={CHEVRON_CLASS} aria-hidden />
-                </div>
+    <div className={embedded ? 'min-w-0' : 'min-h-screen bg-ground'}>
+      <PageHead
+        rail={rail}
+        pad={embedded ? 'pb-8 pt-4 md:pb-10 md:pt-6' : 'pb-12 pt-14 md:pb-16 md:pt-16'}
+        eyebrow="KOL network"
+        title="The faculty behind every session"
+        lede={`Oncology and breast cancer specialists across ${directory.regions.length} states. Filter by state, institution or specialty, and go from a profile straight to what they have recorded.`}
+        figure={<KolPanel rows={shown.slice(0, 4)} count={directory.total} />}
+      >
+        {directory.loadState === 'ready' ? (
+          <dl className="flex flex-wrap gap-x-14 gap-y-6">
+            {[
+              [String(directory.total), 'profiles'],
+              [String(directory.regions.length), 'states'],
+              [String(newCount), 'added this quarter'],
+            ].map(([n, l]) => (
+              <div key={l}>
+                <dt className="sr-only">{l}</dt>
+                <dd>
+                  <span className="display block text-display-m tabular-nums text-text">{n}</span>
+                  <span className="mt-1 block text-body-s text-muted2">{l}</span>
+                </dd>
               </div>
+            ))}
+          </dl>
+        ) : null}
+      </PageHead>
 
-              <div className="w-full shrink-0 sm:w-56 lg:w-60">
-                <label htmlFor="kol-inst" className={CONTROL_LABEL_CLASS}>
-                  Institution
-                </label>
-                <div className="relative mt-2">
-                  <select
-                    id="kol-inst"
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                    className={SELECT_CLASS}
-                  >
-                    <option value="">All institutions</option>
-                    {institutions.map((inst) => (
-                      <option key={inst} value={inst}>
-                        {inst.length > 42 ? `${inst.slice(0, 41)}…` : inst}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className={CHEVRON_CLASS} aria-hidden />
-                </div>
-              </div>
-
-              <div className="shrink-0" ref={sortRef}>
-                <span className={CONTROL_LABEL_CLASS}>Sort</span>
-                <div className="relative mt-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSortOpen((o) => !o);
-                    }}
-                    className={`inline-flex h-12 w-12 items-center justify-center rounded-[6px] text-foreground shadow-card transition-[background-color,box-shadow,scale] duration-150 motion-safe:active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                      sortOpen ? 'bg-muted shadow-card-hover' : 'bg-card hover:bg-muted hover:shadow-card-hover'
-                    }`}
-                    aria-expanded={sortOpen}
-                    aria-haspopup="listbox"
-                    title={sortLabels[sortMode]}
-                  >
-                    <ArrowUpDown className="h-4 w-4" />
-                  </button>
-                  {sortOpen && (
-                    <ul
-                      className="absolute right-0 top-full z-20 mt-2 min-w-[15rem] rounded-card bg-card p-1 shadow-card-hover"
-                      role="listbox"
-                    >
-                      {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
-                        <li key={mode}>
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={sortMode === mode}
-                            onClick={() => {
-                              setSortMode(mode);
-                              setSortOpen(false);
-                            }}
-                            className={`w-full rounded-[6px] px-3 py-2.5 text-left text-sm transition-colors duration-150 hover:bg-muted ${
-                              sortMode === mode ? 'font-semibold text-brand-700' : 'text-foreground'
-                            }`}
-                          >
-                            {sortLabels[mode]}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <label className="inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-[6px] bg-card px-4 text-sm font-medium text-foreground shadow-card transition-shadow duration-150 hover:shadow-card-hover">
-                <input
-                  type="checkbox"
-                  checked={newOnly}
-                  onChange={(e) => setNewOnly(e.target.checked)}
-                  className="rounded-[3px] border-border text-brand-600 focus:ring-brand-600"
-                />
-                New profiles only
-              </label>
-              <p className="inline-flex h-11 items-center rounded-[6px] bg-muted px-4 text-sm text-muted-foreground">
-                <span className="font-semibold tabular-nums text-foreground">{sorted.length}</span>
-                <span className="ml-1.5">shown</span>
-              </p>
-            </div>
+      <div
+        role="search"
+        aria-label="Filter and sort the KOL directory"
+        className={`${rail} grid gap-4 pb-10 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-end`}
+      >
+        <div>
+          <label htmlFor={`${id}-q`} className="eyebrow mb-2 block text-faint">
+            Search
+          </label>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute start-4 top-1/2 size-4 -translate-y-1/2 text-faint"
+              strokeWidth={1.5}
+              aria-hidden
+            />
+            <input
+              id={`${id}-q`}
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Name, institution or specialty"
+              autoComplete="off"
+              className={`${field} ps-11`}
+            />
           </div>
         </div>
-      </section>
 
-      {/* ── Directory ────────────────────────────────────── */}
-      <section>
-        <div className={`${column} ${embedded ? 'pb-10' : 'pb-16 md:pb-24'}`}>
-          <main id="kol-results" tabIndex={-1}>
-            {directory.loadState === 'loading' ? (
-              <p className="rounded-card bg-card px-6 py-16 text-center text-muted-foreground shadow-card">
-                Loading KOL directory…
-              </p>
-            ) : directory.loadState === 'error' ? (
-              <p className="rounded-card bg-card px-6 py-16 text-center text-destructive shadow-card">
-                Couldn't load the KOL directory. Refresh to try again.
-              </p>
-            ) : sorted.length === 0 ? (
-              <p className="rounded-card bg-card px-6 py-16 text-center text-muted-foreground shadow-card">
-                No profiles match your filters. Try clearing search or switching state.
-              </p>
-            ) : sortMode === 'state' && byState ? (
-              /* One rail per state: the last card runs off the edge, which
-                 reads as "more that way" instead of a cropped grid. */
-              <div className="space-y-14 md:space-y-20">
-                {byState.map(({ id, meta, items }, i) => (
-                  <section
-                    key={id}
-                    aria-label={meta.stateTitle}
-                    className="rise-in"
-                    style={{ animationDelay: revealDelay(i) }}
-                  >
-                    <SectionHead
-                      index={`${String(i + 1).padStart(2, '0')} / ${id}`}
-                      title={meta.stateTitle}
-                      action={
-                        <span className="inline-flex h-9 shrink-0 items-center rounded-[6px] bg-muted px-3.5 text-sm text-muted-foreground">
-                          <span className="font-semibold tabular-nums text-foreground">{items.length}</span>
-                          <span className="ml-1.5">KOL{items.length === 1 ? '' : 's'}</span>
-                        </span>
-                      }
-                    />
-                    <div className="mt-10">
-                      <Rail className={railBleed} aria-label={`${meta.stateTitle} KOLs`}>
-                        {items.map((k) => (
-                          <li
-                            key={k.id}
-                            className="w-[74%] shrink-0 snap-start sm:w-[46%] md:w-[31%] lg:w-[23%]"
-                          >
-                            <KolCard k={k} />
-                          </li>
-                        ))}
-                      </Rail>
-                    </div>
-                  </section>
-                ))}
-              </div>
-            ) : (
-              <>
-                <SectionHead
-                  index="01 / Directory"
-                  title="All profiles"
-                  sub={sortLabels[sortMode]}
-                  action={
-                    <span className="inline-flex h-9 shrink-0 items-center rounded-[6px] bg-muted px-3.5 text-sm text-muted-foreground">
-                      <span className="font-semibold tabular-nums text-foreground">{sorted.length}</span>
-                      <span className="ml-1.5">shown</span>
-                    </span>
-                  }
-                />
-                <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {sorted.map((k, i) => (
-                    <div
-                      key={`${k.stateId}-${k.id}`}
-                      className="rise-in"
-                      style={{ animationDelay: revealDelay(i) }}
-                    >
-                      <KolCard k={k} />
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </main>
+        <div>
+          <label htmlFor={`${id}-state`} className="eyebrow mb-2 block text-faint">
+            State
+          </label>
+          <select
+            id={`${id}-state`}
+            value={state}
+            onChange={(e) => setState(e.target.value)}
+            className={field}
+          >
+            <option value="all">All states</option>
+            {directory.regions.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.title}
+              </option>
+            ))}
+          </select>
         </div>
-      </section>
 
-      {/* ── Colophon ─────────────────────────────────────── */}
+        <div>
+          <label htmlFor={`${id}-inst`} className="eyebrow mb-2 block text-faint">
+            Institution
+          </label>
+          <select
+            id={`${id}-inst`}
+            value={institution}
+            onChange={(e) => setInstitution(e.target.value)}
+            className={field}
+          >
+            <option value="all">All institutions</option>
+            {directory.institutions.map((inst) => (
+              <option key={inst} value={inst}>
+                {inst.length > 42 ? `${inst.slice(0, 41)}…` : inst}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label htmlFor={`${id}-sort`} className="eyebrow mb-2 block text-faint">
+            Sort
+          </label>
+          <select
+            id={`${id}-sort`}
+            value={sort}
+            onChange={(e) => setSort(e.target.value as Sort)}
+            className={field}
+          >
+            <option value="state">By state</option>
+            <option value="name">By name</option>
+            <option value="newest">Newest first</option>
+          </select>
+        </div>
+      </div>
+
+      <div className={`${rail} flex flex-wrap items-center gap-4 pb-5`}>
+        <button
+          type="button"
+          onClick={() => setNewOnly((v) => !v)}
+          aria-pressed={newOnly}
+          className={`press rounded-[6px] px-4 py-2 text-body-s focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+            newOnly ? 'bg-anchor text-ground' : 'text-dim shadow-[var(--shadow-card)] hover:text-text'
+          }`}
+        >
+          New profiles only
+        </button>
+        {filtered ? (
+          <button
+            type="button"
+            onClick={reset}
+            className="press rounded-[6px] px-4 py-2 text-body-s text-muted2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            Clear filters
+          </button>
+        ) : null}
+        <p role="status" className="meta ms-auto text-faint">
+          {shown.length} shown
+        </p>
+      </div>
+
+      <div className={`${rail} ${embedded ? 'py-10' : 'py-14'}`}>
+        {directory.loadState === 'loading' ? (
+          <p
+            role="status"
+            className="rounded-[6px] px-8 py-16 text-center text-body-m text-muted2 shadow-[var(--shadow-card)]"
+          >
+            Reading the network…
+          </p>
+        ) : directory.loadState === 'error' ? (
+          <EmptyState
+            title="The directory did not load"
+            body="Nothing came back from the network this time. Reload the page and it will try again."
+            action={{ label: 'Reload', onClick: () => window.location.reload() }}
+          />
+        ) : shown.length === 0 ? (
+          <EmptyState
+            title="No profiles match those filters"
+            body="The network covers oncology and breast cancer specialists across seventeen states. Widen the filter to see more of it."
+            action={{ label: 'Clear filters', onClick: reset }}
+          />
+        ) : grouped ? (
+          <div className="space-y-16">
+            {grouped.map(([st, list], i) => (
+              <section key={st} aria-labelledby={`${id}-${st}`}>
+                <div className="flex items-baseline gap-4 pb-4">
+                  <span className="eyebrow hidden shrink-0 text-faint md:block">
+                    {String(i + 1).padStart(2, '0')} / {st}
+                  </span>
+                  <h2 id={`${id}-${st}`} className="display text-display-s text-text">
+                    {list[0].stateTitle}
+                  </h2>
+                  <span className="meta text-faint">
+                    {list.length} {list.length === 1 ? 'KOL' : 'KOLs'}
+                  </span>
+                </div>
+                <KolGrid list={list} />
+              </section>
+            ))}
+          </div>
+        ) : (
+          <KolGrid list={shown} />
+        )}
+      </div>
+
       <section>
-        <div className={`${column} ${embedded ? 'pb-6' : 'pb-16 md:pb-24'}`}>
-          <footer className="text-center">
-            <p className="font-mono text-xs text-muted-foreground">
-              Community Health Technologies: KOL Network | ★ = Newly added (within 60 days)
+        <div className={`${rail} flex flex-wrap items-center justify-between gap-8 ${embedded ? 'py-10' : 'py-16'}`}>
+          <div>
+            <h2 className="display text-display-m text-text">Practising, and want to record?</h2>
+            <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
+              CHM faculty are clinicians first. Sessions are recorded between clinics, in ninety
+              minutes, with no script approval.
             </p>
-            <p className="mx-auto mt-4 max-w-[54ch] text-xs leading-relaxed text-muted-foreground">
-              AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
-              important details against primary sources.
-            </p>
-          </footer>
+          </div>
+          <Button to="/contact" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+            Talk to the editorial team
+            <ArrowRight className="size-4" strokeWidth={1.75} />
+          </Button>
         </div>
       </section>
     </div>
   );
 }
 
-function cardSummarySnippet(k: FlatKol): string {
-  return resolveKolDisplayBrief(k)?.whoTheyAre ?? k.bio.trim();
+function KolGrid({ list }: { list: FlatKol[] }) {
+  return (
+    <ul className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {list.map((k, i) => (
+        <Reveal as="li" key={`${k.stateId}-${k.id}`} delay={Math.min(i, 6) * 50}>
+          <KolCard k={k} />
+        </Reveal>
+      ))}
+    </ul>
+  );
 }
 
-/**
- * A portrait card: the headshot fills the top of the surface and the
- * name sits on it, so a rail of these reads as a row of people rather
- * than a row of rows. Separation is the surface plus its shadow; the
- * only lines on the card are the ones in the photograph.
- */
 function KolCard({ k }: { k: FlatKol }) {
   const profileHref = `/kol-network/profile/${k.id}`;
-  const contentHref = kolCatalogBrowseHref(k);
   const inst = institutionHint(k);
-  const roleLead = (k.role.split(/[.;]/)[0]?.trim() ?? k.role).slice(0, 72);
-  const summary = cardSummarySnippet(k);
-  const summaryShort = summary.length > 140 ? `${summary.slice(0, 137)}…` : summary;
-  const showBadge = Boolean(k.intel?.rosterOnly ?? k.isNew);
-  const specialties = specialtyLabels(k);
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-card bg-card shadow-card transition-[box-shadow,translate] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover">
-      {/* Under the scrim this is a permanently dark region, so the name
-          and role take fixed white rather than the page tokens. */}
-      <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-muted">
-        <img
-          src={avatarSrc(k)}
-          alt=""
-          className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:group-hover:scale-[1.03]"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-        />
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"
-        />
-
-        {(k.featured || k.isNew) && (
-          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
-            {k.featured ? (
-              <span
-                className="inline-flex h-6 items-center rounded-[6px] bg-brand-600 px-2 text-[11px] font-bold leading-none text-white"
-                title="Curator-featured KOL"
-              >
-                ★
-              </span>
-            ) : null}
-            {k.isNew ? (
-              <span className="inline-flex h-6 items-center rounded-[6px] bg-accent px-2 text-[10px] font-bold uppercase tracking-wide text-accent-foreground">
-                New
-              </span>
-            ) : null}
-          </div>
+    /* The card is a container, not a link: it carries two
+       distinct actions, so nesting them inside one link
+       would make both unreachable. */
+    <div className="lift card flex h-full flex-col p-6">
+      <div className="flex items-start gap-4">
+        {k.photoUrl ? (
+          <img
+            src={k.photoUrl}
+            alt=""
+            className="img-ring size-12 shrink-0 rounded-full object-cover"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className="grid size-12 shrink-0 place-items-center rounded-full bg-surface-2 text-body-s font-medium text-muted2"
+          >
+            {initials(k.name)}
+          </span>
         )}
-
-        <div className="absolute inset-x-0 bottom-0 p-4">
-          <div className="flex items-start gap-1.5">
-            <h3 className="line-clamp-2 min-w-0 flex-1 text-lg font-semibold leading-[1.2] tracking-[-0.018em] text-white">
+        <div className="min-w-0">
+          <h3 className="display text-body-m text-text">
+            <Link to={profileHref} className="press rounded outline-offset-4 hover:text-signature">
               {k.name}
-            </h3>
-            {showBadge ? (
-              <BadgeCheck
-                className="mt-1 h-4 w-4 shrink-0 fill-brand-600 text-white"
-                aria-label="Listed in CHM network"
-              />
-            ) : null}
-          </div>
-          <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-white/70" title={k.role}>
-            {roleLead}
-            {roleLead.length >= 72 ? '…' : ''}
+            </Link>
+          </h3>
+          <p className="mt-0.5 text-body-s text-muted2" title={k.role}>
+            {roleLead(k.role)}
           </p>
         </div>
+        {/* Curator-featured takes the solid badge; newly added takes the
+            tinted one. Both ride the same slot at the end of the row. */}
+        {k.featured ? (
+          <span className="eyebrow ms-auto shrink-0 rounded-[6px] bg-amber px-2.5 py-1 text-ground">
+            Featured
+          </span>
+        ) : k.isNew ? (
+          <span className="eyebrow ms-auto shrink-0 rounded-[6px] bg-amber/20 px-2.5 py-1 text-amber-ink">
+            New
+          </span>
+        ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col gap-4 p-4">
-        {specialties.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5">
-            {specialties.map((s) => (
-              <li key={s}>
-                <Chip kind={chipKind(s)}>{s}</Chip>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <dl className="grid gap-3">
+      {/* State and institution share a row; the summary runs
+          full width beneath them. */}
+      <dl className="mt-5">
+        <div className="grid grid-cols-2 gap-4">
           <div className="min-w-0">
-            <dt className="font-mono text-label uppercase text-muted-foreground">State</dt>
-            <dd className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="min-w-0 truncate">{k.stateTitle}</span>
-            </dd>
+            <dt className="eyebrow text-faint">State</dt>
+            <dd className="mt-1 truncate text-body-s text-dim">{k.stateTitle}</dd>
           </div>
           <div className="min-w-0">
-            <dt className="font-mono text-label uppercase text-muted-foreground">Institution</dt>
-            <dd className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
-              <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-              <span className="min-w-0 truncate" title={inst}>
-                {inst}
-              </span>
+            <dt className="eyebrow text-faint">Institution</dt>
+            <dd className="mt-1 truncate text-body-s text-dim" title={inst}>
+              {inst}
             </dd>
           </div>
-        </dl>
-
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-mono text-label uppercase text-muted-foreground">Summary</p>
+        </div>
+        <div className="mt-4">
+          <dt className="eyebrow flex items-center gap-2 text-faint">
+            Summary
             {hasAiSummary(k) ? (
-              <span className="inline-flex items-center gap-1 font-mono text-label uppercase text-warning">
-                <Sparkles className="h-3 w-3" aria-hidden />
+              <span className="inline-flex items-center gap-1 text-amber-ink">
+                <Sparkles className="size-3" aria-hidden />
                 AI
               </span>
             ) : null}
-          </div>
-          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{summaryShort}</p>
+          </dt>
+          <dd className="prose-lede mt-1 text-body-s text-muted2">{summaryOf(k)}</dd>
         </div>
+      </dl>
 
-        <div className="mt-auto flex flex-col gap-2 pt-1">
-          <Button to={profileHref} size="sm" className="w-full">
-            Explore profile
-          </Button>
-          <Button to={contentHref} variant="outline" size="sm" className="w-full">
-            View content
-          </Button>
-        </div>
+      {/* Both actions name their destination, so each still
+          makes sense read out of context. */}
+      <div className="mt-auto flex flex-wrap gap-2 pt-5">
+        <Link
+          to={profileHref}
+          className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-signature px-4 text-body-s text-ground hover:brightness-[0.94] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          Explore profile
+          <ArrowRight className="size-3.5" strokeWidth={1.75} />
+        </Link>
+        <Link
+          to={kolCatalogBrowseHref(k)}
+          className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] px-4 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          View content
+          <ArrowRight className="size-3.5" strokeWidth={1.75} />
+        </Link>
       </div>
-    </article>
+    </div>
   );
 }

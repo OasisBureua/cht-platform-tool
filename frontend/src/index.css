@@ -148,13 +148,15 @@
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    /* Plain CSS avoids Tailwind `@apply` not seeing `chm-*` utilities during dev CSS pipeline */
     @apply min-w-0 overflow-x-clip text-base font-normal antialiased font-sans;
-    background-color: var(--chm-base-white);
-    color: var(--chm-precision-black);
-  }
-  .dark body {
-    @apply bg-zinc-950 text-zinc-100;
+    /* The ground is painted here, not only on the app root div. It was
+       pointing at --chm-base-white, which stopped existing when the
+       palette was replaced, so body has been transparent since: the
+       page only looked right because a child happened to paint it.
+       Both appearances come from the same token, so there is no
+       .dark override to fall out of sync. */
+    background-color: hsl(var(--ground));
+    color: hsl(var(--text));
   }
   /* Prevent horizontal overflow on mobile */
   #root {
@@ -475,9 +477,9 @@
     @apply px-4 py-2 rounded-lg border border-brand-300 bg-white text-brand-800 transition-[color,background-color,border-color] duration-200 ease-out hover:bg-brand-50 hover:border-brand-400 dark:border-zinc-600 dark:bg-zinc-950 dark:text-brand-300 dark:hover:border-zinc-500 dark:hover:bg-zinc-800;
   }
   
-  .card {
-    @apply rounded-lg bg-white p-6 shadow-[0_8px_30px_-20px_rgba(0,0,0,0.08)];
-  }
+  /* .card now lives in the chm-composio compatibility layer at the foot
+     of this file (surface + shadow + 2px hover lift). Nothing referenced
+     this older rule, so it is retired rather than aliased. */
 }
 
 @layer components {
@@ -502,4 +504,425 @@
 @keyframes home-marquee {
   from { transform: translate3d(0, 0, 0); }
   to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* ============================================================================
+ * CHM-COMPOSIO COMPATIBILITY LAYER (additive)
+ * ----------------------------------------------------------------------------
+ * The design at chm-composio authors in OKLCH under Tailwind v4 `@theme`.
+ * This platform is Tailwind v3 with HSL-triplet tokens, so the design's
+ * colour names are re-expressed here as HSL triplets with a light AND a
+ * dark value, taken from the design's own two appearances (its `:root` is
+ * the DARK ground; its `[data-theme="light"]` block is the light one).
+ *
+ * Nothing above this comment is renamed or repointed. These are new names
+ * that sit alongside the platform's own tokens.
+ *
+ * One unavoidable collision: the design writes `text-muted` for its third
+ * text step. `muted` is already a platform BACKGROUND token, so the design's
+ * step lands here as `muted2` — rewrite `text-muted` to `text-muted2` when
+ * transplanting a page.
+ * ========================================================================== */
+
+:root {
+  /* ground ramp */
+  --ground: 0 0% 100%;
+  --surface-1: 0 0% 96.3%;
+  --surface-2: 0 0% 92.1%;
+
+  /* text ramp: 14.7 / 9.1 / 5.9 / 4.7 on white */
+  --text: 0 0% 5.2%;
+  --dim: 0 0% 21.4%;
+  --muted2: 0 0% 36.1%;
+  --faint: 0 0% 42.8%;
+
+  /* alpha tokens: carry their own alpha, so they are consumed as
+     hsl(var(--x)) with no <alpha-value> slot. */
+  --wash: 0 0% 0% / 0.03;
+  --hairline: 0 0% 0% / 0.08;
+  --hairline-strong: 0 0% 0% / 0.14;
+  --placeholder: 0 0% 0% / 0.3;
+
+  /* action + accent */
+  --signature: 223.8 87.4% 52.2%;
+  --cta: 223.8 87.4% 52.2%;
+  --cta-deep: 224.4 88.1% 44.4%;
+  --anchor: 212.3 100% 38.3%;
+  --amber-ink: 17.5 77.6% 38.2%;
+  --inverse: 0 0% 5.2%;
+
+  /* Fixed across appearances: a label that always sits on a bright fill. */
+  --on-bright: 0 0% 5.2%;
+
+  /* Fixed across appearances: the design's amber, as it is tuned for the
+     deep-blue ground. A permanently dark region cannot use `amber-ink`,
+     which deepens to a dark orange in the light appearance and goes
+     unreadable on `cta-deep`. */
+  --amber-on-deep: 0.2 88.9% 79.7%;
+
+  /* Elevation. Light appearance. */
+  --s-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 16px -8px rgb(0 0 0 / 0.14);
+  --s-card-hover: 0 2px 6px rgb(0 0 0 / 0.07), 0 18px 36px -12px rgb(0 0 0 / 0.24);
+  --s-pop: 0 4px 10px rgb(0 0 0 / 0.08), 0 32px 64px -20px rgb(0 0 0 / 0.34);
+  --s-nav: 0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px -16px rgb(0 0 0 / 0.3);
+  --ring-img: rgb(0 0 0 / 0.1);
+
+  /* Motion vocabulary: hovers 150ms ease-in-out, transforms 500ms
+     ease-out, press feedback 90ms, entries move only 2px. */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-soft: cubic-bezier(0, 0, 0.2, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-cross: cubic-bezier(0.2, 0, 0, 1);
+  --dur-press: 90ms;
+  --dur-hover: 150ms;
+  --dur-transform: 500ms;
+
+  --radius-control: 6px;
+  --radius-surface: 8px;
+}
+
+.dark {
+  --ground: 0 0% 3.9%;
+  --surface-1: 0 0% 8.3%;
+  --surface-2: 0 0% 10.7%;
+
+  /* 19.8 / 13.9 / 7.4 / 5.1 on the ground */
+  --text: 0 0% 100%;
+  --dim: 0 0% 86.3%;
+  --muted2: 0 0% 63.5%;
+  --faint: 0 0% 52.5%;
+
+  --wash: 0 0% 100% / 0.04;
+  --hairline: 0 0% 100% / 0.08;
+  --hairline-strong: 0 0% 100% / 0.14;
+  --placeholder: 0 0% 100% / 0.3;
+
+  --signature: 210.8 100% 50%;
+  --cta: 210.8 100% 50%;
+  --cta-deep: 216.3 100% 48.9%;
+  --anchor: 199.4 100% 68.2%;
+  --amber-ink: 0.2 88.9% 79.7%;
+  --inverse: 0 0% 100%;
+
+  /* Unchanged: the fill it sits on is bright in both appearances. */
+  --on-bright: 0 0% 5.2%;
+  --amber-on-deep: 0.2 88.9% 79.7%;
+
+  --s-card: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.5), 0 8px 20px -10px rgb(0 0 0 / 0.7);
+  --s-card-hover: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 2px 6px rgb(0 0 0 / 0.55), 0 20px 40px -14px rgb(0 0 0 / 0.85);
+  --s-pop: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 30px 70px -18px rgb(0 0 0 / 0.9);
+  --s-nav: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 10px 30px -18px rgb(0 0 0 / 0.8);
+  --ring-img: rgb(255 255 255 / 0.12);
+}
+
+
+/* Raw colour aliases. The design's pages reach for var(--color-text),
+   var(--color-surface), var(--shadow-pop) etc. inside arbitrary values
+   and color-mix(). Declared on :root AND .dark so the substitution
+   happens in whichever scope carries the appearance (today both land on
+   <html>, but this survives the class moving to <body>).
+   --color-surface already exists above with the design's own value
+   (#f6f6f6 / #151515) and is deliberately left alone. */
+:root,
+.dark {
+  --color-ground: hsl(var(--ground));
+  --color-surface-2: hsl(var(--surface-2));
+  --color-text: hsl(var(--text));
+  --color-dim: hsl(var(--dim));
+  --color-muted2: hsl(var(--muted2));
+  --color-faint: hsl(var(--faint));
+  --color-wash: hsl(var(--wash));
+  --color-hairline: hsl(var(--hairline));
+  --color-hairline-strong: hsl(var(--hairline-strong));
+  --color-placeholder: hsl(var(--placeholder));
+  --color-signature: hsl(var(--signature));
+  --color-cta: hsl(var(--cta));
+  --color-cta-deep: hsl(var(--cta-deep));
+  --color-anchor: hsl(var(--anchor));
+  --color-amber-ink: hsl(var(--amber-ink));
+  --color-inverse: hsl(var(--inverse));
+  --color-on-bright: hsl(var(--on-bright));
+
+  /* Decorative beams behind the hero figures. Fixed across appearances,
+     like the rest of the spectrum, which is why one value serves both
+     scopes. The design authors these in OKLCH as `--color-beam` /
+     `--color-pink`; clipped to sRGB they land exactly on the two
+     cerebral hues already declared above. */
+  --color-beam: hsl(var(--cerebral-blue));
+  --color-pink: hsl(var(--cerebral-pink));
+
+  /* The auth panel's gradient wash over the cell photograph mixes these
+     three. Same story as the beams: raw spectrum hues, fixed across
+     appearances, so one declaration serves both scopes. The design's
+     OKLCH values clip to the cerebral blue and blue-deep above. */
+  --color-blue: hsl(var(--cerebral-blue));
+  --color-blue-deep: hsl(var(--cerebral-blue-deep));
+
+  --shadow-card: var(--s-card);
+  --shadow-card-hover: var(--s-card-hover);
+  --shadow-pop: var(--s-pop);
+  --shadow-nav: var(--s-nav);
+}
+
+@layer components {
+  /* ── rail ────────────────────────────────────────────────────────────
+     Sections run full-bleed; the inner rail carries the margins. Sets
+     --rail-pad so a nested .bleed-x cancels the right gutter. */
+  .rail {
+    --rail-pad: 1.25rem;
+    --page-gutter: var(--rail-pad);
+    width: 100%;
+    max-width: 90rem;
+    margin-inline: auto;
+    padding-inline: var(--rail-pad);
+  }
+
+  @media (min-width: 48rem) {
+    .rail {
+      --rail-pad: 2.5rem;
+    }
+  }
+
+  /* ── type ─────────────────────────────────────────────────────────── */
+  .display {
+    font-weight: 450;
+    text-wrap: balance;
+  }
+
+  /* The hero variant: same weight, tighter optical tracking. */
+  .display-tight {
+    font-weight: 450;
+    text-wrap: balance;
+    letter-spacing: -0.032em;
+    line-height: 1.02;
+  }
+
+  .eyebrow {
+    font-family: theme('fontFamily.mono');
+    font-weight: 400;
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta {
+    font-family: theme('fontFamily.mono');
+    font-size: 0.75rem;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .prose-lede {
+    text-wrap: pretty;
+  }
+
+  /* ── surfaces ─────────────────────────────────────────────────────── */
+  /* One card treatment across the system. Replaces the platform's older
+     .card (which nothing referenced) with the design's surface + shadow
+     + 2px hover lift. */
+  .card {
+    background: hsl(var(--surface-1));
+    border-radius: 1rem;
+    box-shadow: var(--s-card);
+    transition:
+      box-shadow var(--dur-hover) var(--ease-standard),
+      background-color var(--dur-hover) var(--ease-standard),
+      translate var(--dur-hover) var(--ease-standard);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover {
+      background: hsl(var(--ground));
+      box-shadow: var(--s-card-hover);
+      translate: 0 -2px;
+    }
+  }
+
+  /* A band alternates ground and surface instead of drawing a line
+     between sections. */
+  .band-tint {
+    background: hsl(var(--wash));
+  }
+
+  .img-ring {
+    outline: 1px solid var(--ring-img);
+    outline-offset: -1px;
+  }
+
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer utilities {
+  /* ── press ────────────────────────────────────────────────────────── */
+  .press {
+    transition-property: scale, background-color, color, border-color, opacity;
+    transition-duration: var(--dur-hover);
+    transition-timing-function: var(--ease-standard);
+  }
+
+  .press:active:not(:disabled) {
+    scale: 0.96;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lift {
+      transition: background-color var(--dur-hover) var(--ease-standard);
+    }
+    .lift:hover {
+      background-color: hsl(var(--surface-2));
+    }
+  }
+}
+
+/* ── entries ──────────────────────────────────────────────────────────
+   The opacity does the work; the lift is 2px. */
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise {
+    animation: fadeSlideUp 400ms var(--ease-out-soft) both;
+  }
+
+  /* Scroll-revealed blocks: same motion, driven by the observer in
+     <Reveal>, which flips data-shown. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(2px);
+    transition:
+      opacity 500ms var(--ease-out-soft),
+      transform 500ms var(--ease-out-soft);
+  }
+
+  .reveal[data-shown='true'] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active:not(:disabled) {
+    scale: 1;
+  }
+  /* Never strand a block invisible when the transition is neutralised. */
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   HOME TRANSPLANT ADDITIONS (chm-composio compatibility layer, cont.)
+   The spectrum hues and the per-disease tones the design's area rail and
+   hero accents reach for, plus the two keyframes and the `.shimmer` text
+   treatment its hero heading uses. Declared on :root AND .dark: these are
+   bright fills carrying the fixed dark `--color-on-bright` label, so the
+   hue itself is the same in both appearances, exactly like the cerebral
+   palette they resolve to.
+   ──────────────────────────────────────────────────────────────────────── */
+:root,
+.dark {
+  /* CHM Sharing amber. A raw hue like the cerebral spectrum: it does
+     not change with the appearance, because the label on it does not. */
+  --chm-metabolic: 27 100% 63%;
+
+  --color-blue: hsl(var(--cerebral-blue));
+  --color-cyan: hsl(var(--cerebral-cyan));
+  --color-purple: hsl(var(--cerebral-purple));
+  --color-coral: hsl(var(--cerebral-coral));
+  --color-glow: hsl(var(--cerebral-green));
+
+  /* One colour per disease state, carried through the library. */
+  --color-breast: var(--color-pink);
+  --color-lung: var(--color-purple);
+  --color-gi: var(--color-blue);
+  --color-gu: var(--color-cyan);
+  --color-heme: var(--color-coral);
+  --color-gyn: var(--color-glow);
+  /* The platform's own third area, which the design's six do not
+     include. Its six hues are all cool or pastel and all mix toward
+     blue; a seventh cool hue would read as a repeat, so this one is the
+     CHM Sharing amber and mixes toward coral instead. It carries the
+     same fixed dark label at well over AA. */
+  --color-metabolic: hsl(var(--chm-metabolic));
+  --color-metabolic-mix: hsl(var(--cerebral-coral));
+}
+
+/* The accent word in the hero: a slow gradient sweep across the glyphs
+   themselves, not a highlight behind them. */
+@keyframes shimmerSweep {
+  from {
+    background-position: 150% center;
+  }
+  to {
+    background-position: -150% center;
+  }
+}
+
+/* Faint grid rules that pulse along their length. */
+@keyframes gridShimmer {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.shimmer {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-text) 20%,
+    var(--color-signature) 36%,
+    var(--color-signature) 48%,
+    var(--color-amber-ink) 60%,
+    var(--color-text) 80%
+  );
+  background-size: 250% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shimmer {
+    animation: shimmerSweep 3s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* Background-clipped text with no sweep reads as a flat wash; drop to
+     one legible colour instead of leaving the glyphs transparent. */
+  .shimmer {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: var(--color-anchor);
+  }
 }

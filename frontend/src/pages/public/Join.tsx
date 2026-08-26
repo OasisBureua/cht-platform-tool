@@ -1,6 +1,7 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
-import { Award, Check, ClipboardCheck, DollarSign } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
@@ -26,8 +27,17 @@ import {
 } from '../../lib/password-rules';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 import CityTypeahead from '../../components/forms/CityTypeahead';
+import { ChmMark } from '../../components/brand/ChmMark';
 import { verifyNpiNumber } from '../../api/npi';
-import { Button, Card, Field, SectionHead } from '../../components/ui';
+import { catalogApi } from '../../api/catalog';
+import {
+  getMediaHubThumbnail,
+  hasRealThumbnail,
+  shouldSurfaceCatalogClip,
+} from '../../utils/clipUrl';
+import { doctorLabelFromSlug } from '../../utils/doctorLabel';
+import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
+import { Button, Field } from '../../components/ui';
 import { cn } from '../../lib/cn';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
@@ -37,17 +47,20 @@ const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
 const PLATFORM_HOME = '/app/home';
 
 /**
- * The page gutter, matching --page-gutter. Sections run full width and
- * this rail carries the margins, so bands are separated by space rather
- * than by a rule.
+ * One control treatment across the form: a surface with elevation, no
+ * hairline. Matches <Field> and <CityTypeahead> so a row of mixed
+ * controls reads as one set.
  */
-const RAIL = 'mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8';
-
-/** Controls share one field treatment: a surface with elevation, no hairline. */
 const CONTROL =
-  'h-12 w-full rounded-[6px] bg-card px-4 text-base text-foreground shadow-card ' +
-  'outline-none placeholder:text-muted-foreground/70 sm:text-sm ' +
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+  'h-12 w-full rounded-[6px] bg-surface px-4 text-base text-text shadow-[var(--shadow-card)] ' +
+  'outline-none placeholder:text-placeholder sm:text-body-m ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor';
+
+/** The glass card on the panel: surface at 88%, popped and blurred. */
+const FROST =
+  'rounded-[10px] bg-[color-mix(in_oklab,var(--color-surface)_88%,transparent)] p-4 ' +
+  'shadow-[var(--shadow-pop)] ring-1 ring-[color-mix(in_oklab,var(--color-text)_10%,transparent)] ' +
+  'backdrop-blur-2xl backdrop-saturate-150';
 
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
@@ -211,408 +224,483 @@ export default function Join() {
     }
   };
 
+  /* ── sent ───────────────────────────────────────────────────────────
+     The same shell, with the confirmation standing in for the form. */
   if (success) {
     return (
-      <div className="grid min-h-[calc(100dvh-4rem)] place-items-center bg-background">
-        <div className={cn(RAIL, 'py-16 md:py-24')}>
-          <Card className="home-enter mx-auto max-w-[34rem] p-8 text-center sm:p-10">
-            <p className="text-label uppercase text-muted-foreground">Almost there</p>
-            <h2 className="mt-3 text-balance text-[2rem] font-semibold leading-[1.08] tracking-[-0.025em] text-foreground sm:text-[2.25rem]">
-              Check your email
-            </h2>
-            <p className="text-pretty mx-auto mt-4 max-w-[46ch] leading-relaxed text-muted-foreground">
-              {cognitoAuthEnabled ? (
-                <>
-                  If this email can be registered, you&apos;ll receive a 6-digit verification code
-                  from <strong className="font-medium text-foreground">noreply@communityhealth.media</strong>. Already have an
-                  account?{' '}
-                  <Link to="/login" className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700">
-                    Sign in
-                  </Link>{' '}
-                  or{' '}
-                  <Link
-                    to="/forgot-password"
-                    className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700"
-                  >
-                    reset your password
-                  </Link>
-                  .
-                </>
-              ) : (
-                <>
-                  If this email can be registered, you&apos;ll receive a verification link. Already
-                  have an account?{' '}
-                  <Link to="/login" className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700">
-                    Sign in
-                  </Link>
-                  .
-                </>
-              )}
+      <AuthShell
+        heading="Check your email"
+        sub="Nothing else to do here. The next step is in your inbox."
+        footer={{ prompt: 'Already have an account?', label: 'Log in', href: '/login' }}
+      >
+        <p role="status" className="card mt-8 p-5 text-body-m text-dim">
+          {cognitoAuthEnabled ? (
+            <>
+              If this email can be registered, you&apos;ll receive a 6-digit verification code
+              from <strong className="font-medium text-text">noreply@communityhealth.media</strong>.
+              You can also{' '}
+              <Link
+                to="/forgot-password"
+                className="press rounded-[6px] text-anchor hover:brightness-110"
+              >
+                reset your password
+              </Link>{' '}
+              if you have been here before.
+            </>
+          ) : (
+            <>
+              If this email can be registered, you&apos;ll receive a verification link.
+            </>
+          )}
+        </p>
+
+        {/* A styled Link rather than <Button to>, because this one has to
+            carry router state through to the verification screen. */}
+        <Link
+          to={
+            cognitoAuthEnabled
+              ? `/verify-email?email=${encodeURIComponent(email.trim())}`
+              : '/login'
+          }
+          state={fromLocation ? { from: fromLocation } : undefined}
+          className="press mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-inverse text-body-m font-medium text-ground hover:brightness-[0.92]"
+        >
+          {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
+          <ArrowRight className="size-4" strokeWidth={1.75} />
+        </Link>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell
+      heading="Free for clinicians"
+      sub="Every session, every format, one email a week. It stays free."
+      footer={{ prompt: 'Already have an account?', label: 'Log in', href: '/login' }}
+    >
+      {googleOAuthEnabled ? (
+        <div className="mt-8 space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={() => handleOAuth('google')}
+            disabled={!!oauthLoading}
+            className="w-full"
+          >
+            {oauthLoading === 'google' ? (
+              <span className="size-4 animate-spin rounded-full border-2 border-hairline border-t-anchor" />
+            ) : (
+              <GoogleIcon />
+            )}
+            Continue with Google
+          </Button>
+          <p className="text-center text-body-s text-faint">{GOOGLE_OAUTH_DISCLAIMER}</p>
+        </div>
+      ) : (
+        <p className="mt-8 rounded-[6px] bg-amber-ink/10 px-4 py-3 text-body-s text-amber-ink">
+          {googleOAuthMigrationMessage}
+        </p>
+      )}
+
+      {/* No rule across the column: the label alone carries the split. */}
+      <p className="eyebrow mt-8 text-faint">Or with email</p>
+
+      <form onSubmit={handleSubmit} noValidate className="mt-5">
+        {error && (
+          <p
+            role="alert"
+            className="mb-5 rounded-[6px] bg-destructive/10 px-4 py-3 text-body-s text-destructive"
+          >
+            {error}
+          </p>
+        )}
+
+        <fieldset className="space-y-5">
+          <legend className="sr-only">Create a CHM account</legend>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="First name"
+              placeholder="Jane"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              autoComplete="given-name"
+              required
+            />
+            <Field
+              label="Last name"
+              placeholder="Doe"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              autoComplete="family-name"
+              required
+            />
+          </div>
+
+          <Field
+            label="Work email"
+            type="email"
+            inputMode="email"
+            placeholder="name@hospital.org"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
+
+          <div>
+            <Field
+              label="Password"
+              type="password"
+              placeholder="At least 8 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              required
+            />
+            <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2" aria-live="polite">
+              {SIGNUP_PASSWORD_RULES.map((rule) => {
+                const ok = passwordRules[rule.id];
+                return (
+                  <li key={rule.id} className="flex items-center gap-2 text-meta">
+                    <span
+                      className={cn(
+                        'grid size-4 shrink-0 place-items-center rounded-full',
+                        'transition-colors duration-150 ease-[var(--ease-standard)]',
+                        ok ? 'bg-success text-ground' : 'bg-surface-2 text-transparent',
+                      )}
+                      aria-hidden
+                    >
+                      <Check className="size-2.5" strokeWidth={3} />
+                    </span>
+                    <span className={ok ? 'text-success' : 'text-faint'}>{rule.label}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          <SelectField
+            label="Role"
+            value={profession}
+            onChange={(e) => {
+              const v = e.target.value;
+              setProfession(v);
+              setNpiVerified(null);
+              setNpiMeta(null);
+              if (!professionRequiresNpi(v)) setNpiNumber('');
+            }}
+            options={JOIN_PROFESSION_OPTIONS}
+            required
+          />
+
+          {profession && !professionRequiresNpi(profession) ? (
+            <p className="rounded-[6px] bg-surface px-4 py-3 text-body-s text-muted2">
+              <strong className="font-medium text-text">Note:</strong> NPI is not required for
+              your role. Honorarium programs are designed for licensed healthcare professionals:
+              you can still access all educational content and events.
             </p>
-            {/* A styled Link rather than <Button to>, because this one has to
-                carry router state through to the verification screen. */}
-            <Link
-              to={
-                cognitoAuthEnabled
-                  ? `/verify-email?email=${encodeURIComponent(email.trim())}`
-                  : '/login'
-              }
-              state={fromLocation ? { from: fromLocation } : undefined}
-              className="mt-8 inline-flex h-12 items-center justify-center rounded-[6px] bg-brand-600 px-7 text-base font-medium text-white shadow-card transition-[background-color,box-shadow,scale] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]"
-            >
-              {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
+          ) : null}
+
+          {requiresNpi && (
+            <div>
+              <label htmlFor="npi-number" className="text-body-s text-dim">
+                NPI number
+              </label>
+              <p className="mt-1 text-body-s text-faint">
+                Enter your 10-digit National Provider Identifier (NPI). Required for licensed
+                healthcare roles.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <input
+                  id="npi-number"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="10-digit NPI"
+                  value={npiNumber}
+                  onChange={(e) => {
+                    setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
+                    setNpiVerified(null);
+                    setNpiMeta(null);
+                  }}
+                  required
+                  maxLength={10}
+                  aria-describedby="npi-help"
+                  className={cn(CONTROL, 'min-w-0 flex-1')}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  disabled={npiDigits.length !== 10 || npiVerifying}
+                  onClick={() => void runNpiVerify(npiDigits)}
+                >
+                  {npiVerifying ? 'Verifying…' : 'Verify'}
+                </Button>
+              </div>
+              <p id="npi-help" className="sr-only">
+                NPI must be exactly 10 digits and verified against the NPI registry.
+              </p>
+              {npiVerified === true && !npiMeta?.duplicate && (
+                <p className="mt-2 text-body-s font-medium text-success">
+                  NPI verified
+                  {npiMeta?.providerName ? ` — ${npiMeta.providerName}` : ''}
+                  {npiMeta?.providerType ? ` (${npiMeta.providerType})` : ''}.
+                </p>
+              )}
+              {(npiVerified === false || npiMeta?.duplicate) && (
+                <p className="mt-2 text-body-s font-medium text-destructive">
+                  {npiMeta?.error ||
+                    'NPI not found in the National Provider Identifier registry. Please check and try again.'}
+                </p>
+              )}
+              {npiVerifying && npiVerified === null ? (
+                <p className="mt-2 text-body-s text-faint">Checking NPI registry…</p>
+              ) : null}
+            </div>
+          )}
+
+          <div>
+            <p className="eyebrow text-faint">Practice location</p>
+            <p className="mt-2 text-body-s text-faint">
+              Institution and city are optional. State and 5-digit ZIP are required.
+            </p>
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <Field
+                className="sm:col-span-2"
+                label="Institution / Hospital (optional)"
+                placeholder="e.g., Mayo Clinic"
+                value={institution}
+                onChange={(e) => setInstitution(e.target.value)}
+                autoComplete="organization"
+              />
+              <SelectField
+                label="State"
+                value={state}
+                onChange={(e) => {
+                  setState(e.target.value);
+                  setCity('');
+                }}
+                options={US_STATE_SELECT_OPTIONS}
+                required
+              />
+              <Field
+                label="ZIP code"
+                placeholder="12345"
+                value={zipCode}
+                onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                maxLength={5}
+                inputMode="numeric"
+                autoComplete="postal-code"
+                required
+              />
+              <CityTypeahead
+                className="sm:col-span-2"
+                label="City"
+                value={city}
+                onChange={setCity}
+                stateCode={state || undefined}
+                optional
+              />
+            </div>
+          </div>
+        </fieldset>
+
+        <Button
+          type="submit"
+          size="lg"
+          disabled={!canSubmit}
+          className="mt-7 w-full bg-inverse text-ground shadow-none hover:bg-inverse hover:brightness-[0.92]"
+        >
+          {!signupEnabled
+            ? 'Account creation temporarily unavailable'
+            : submitting
+              ? 'Creating account…'
+              : 'Create account'}
+          <ArrowRight className="size-4" strokeWidth={1.75} />
+        </Button>
+
+        {!canSubmit && signupEnabled ? (
+          <p className="mt-3 text-center text-body-s text-faint">
+            Complete required fields (including password rules, role
+            {requiresNpi ? ', NPI' : ''}, state, and ZIP) to continue.
+          </p>
+        ) : null}
+      </form>
+
+      <p className="mt-6 text-body-s text-faint">
+        By continuing, you agree to our{' '}
+        <Link to="/privacy" className="press rounded-[6px] text-anchor hover:brightness-110">
+          Privacy Policy
+        </Link>
+        .
+      </p>
+
+      <p className="mt-6 text-center text-body-s text-faint">
+        Working in industry instead?{' '}
+        <Link to="/what-we-do" className="press rounded-[6px] text-anchor hover:brightness-110">
+          See how CHM partners with pharma
+        </Link>
+      </p>
+
+      <RecaptchaNotice />
+    </AuthShell>
+  );
+}
+
+/* ── shell ────────────────────────────────────────────────────────── */
+
+/**
+ * Two panels: the form on one side, the thing you are signing up for on
+ * the other. Below lg the panel drops away and the form takes the
+ * screen on its own.
+ *
+ * The registration form is far taller than a viewport, so at lg the
+ * shell is pinned to one screen and the form column scrolls inside it.
+ * `position: sticky` cannot do the job here: PublicLayout's <main>
+ * carries overflow-x-hidden, which makes it a scroll container and
+ * leaves a sticky descendant stranded.
+ *
+ * The floating card shows a real session rather than a testimonial,
+ * because a quote from a clinician who did not say it is a fabricated
+ * endorsement, and the session is the more honest argument anyway.
+ */
+function AuthShell({
+  heading,
+  sub,
+  children,
+  footer,
+}: {
+  heading: string;
+  sub: string;
+  children: ReactNode;
+  footer: { prompt: string; label: string; href: string };
+}) {
+  return (
+    <div className="bg-ground lg:grid lg:h-[calc(100dvh-4rem)] lg:grid-cols-2 lg:overflow-hidden">
+      {/* ── form ─────────────────────────────────────────── */}
+      <div className="flex flex-col px-5 py-14 sm:px-10 lg:min-h-0 lg:overflow-y-auto lg:px-14 xl:px-20">
+        {/* `my-auto` rather than justify-center: a centred flex child in
+            a scroll container puts its own overflow out of reach. */}
+        <div className="mx-auto my-auto w-full max-w-[25rem]">
+          <Link to="/home" aria-label="CHM home" className="press -ms-2 block w-fit rounded-[6px] p-2">
+            <ChmMark className="size-9 text-anchor" />
+          </Link>
+
+          <Link
+            to="/home"
+            className="press mt-8 inline-flex w-fit items-center gap-1.5 rounded-[6px] py-1 text-body-s text-muted2 hover:text-text"
+          >
+            <ArrowLeft className="size-4" strokeWidth={1.75} />
+            Back
+          </Link>
+
+          <h1 className="display display-tight mt-5 text-[2.125rem] leading-[1.08] text-text">
+            {heading}
+          </h1>
+          <p className="prose-lede mt-3 text-body-m text-muted2">{sub}</p>
+
+          {children}
+
+          <p className="mt-8 text-body-s text-muted2">
+            {footer.prompt}{' '}
+            <Link to={footer.href} className="press rounded-[6px] text-anchor hover:brightness-110">
+              {footer.label}
             </Link>
-          </Card>
+          </p>
+        </div>
+      </div>
+
+      {/* ── panel ────────────────────────────────────────── */}
+      <div className="relative hidden overflow-hidden bg-surface lg:block">
+        <img src="/img/cells-warm.jpg" alt="" className="absolute inset-0 size-full object-cover" />
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(150deg, color-mix(in oklab, var(--color-blue-deep) 62%, transparent) 0%, color-mix(in oklab, var(--color-blue) 28%, transparent) 46%, color-mix(in oklab, var(--color-pink) 30%, transparent) 100%)',
+          }}
+        />
+
+        <div className="absolute inset-x-10 bottom-12 xl:inset-x-14">
+          <LatestSession />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── the panel's proof ────────────────────────────────────────────── */
+
+/**
+ * The newest thing on the platform, pulled from the live catalog rather
+ * than hard-coded, so the argument for signing up is never stale.
+ */
+function LatestSession() {
+  const { data, isPending } = useQuery({
+    queryKey: ['catalog', 'clips', 'join-latest'],
+    queryFn: () => catalogApi.getClips({ sort_by: 'posted', limit: 6 }),
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+  });
+
+  const featured = (data?.items ?? []).find(
+    (clip) => shouldSurfaceCatalogClip(clip) && hasRealThumbnail(clip),
+  );
+
+  if (!featured) {
+    // Never leave a hollow card sitting on the panel: the placeholder
+    // exists only while the request is in flight.
+    if (!isPending) return null;
+    return (
+      <div className={FROST} aria-hidden>
+        <div className="h-3 w-24 rounded-[3px] bg-surface-2" />
+        <div className="mt-3 flex items-center gap-3">
+          <div className="h-16 w-28 shrink-0 rounded-[6px] bg-surface-2" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-3.5 w-full rounded-[3px] bg-surface-2" />
+            <div className="h-3.5 w-2/3 rounded-[3px] bg-surface-2" />
+          </div>
         </div>
       </div>
     );
   }
 
+  const lead = featured.doctors?.[0] ? doctorLabelFromSlug(featured.doctors[0]) : null;
+  const meta = [lead, formatDuration(featured.duration_seconds)].filter(Boolean).join(' · ');
+
   return (
-    <div className="min-h-[calc(100dvh-4rem)] bg-background">
-      {/* ── 01 / Join ─────────────────────────────────────────
-          The pitch. Space, not a rule, separates it from the form. */}
-      <section aria-labelledby="join-heading">
-        <div className={cn(RAIL, 'py-16 md:py-24')}>
-          <header className="home-enter">
-            <p className="text-label uppercase text-muted-foreground">01 / Join</p>
-            <h1
-              id="join-heading"
-              className="mt-3 text-balance text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-[3rem]"
-            >
-              Join CHT
-            </h1>
-            <p className="text-pretty mt-5 max-w-[54ch] text-lg leading-relaxed text-muted-foreground">
-              CHT is a platform for healthcare professionals to participate in accredited education,
-              surveys, and research opportunities, and to earn CME credits and honoraria.
-            </p>
-          </header>
-
-          <ul className="mt-12 grid gap-4 sm:grid-cols-3" role="list">
-            {VALUE_PROPS.map((v, i) => (
-              <li key={v.title} className="home-enter" style={{ animationDelay: `${80 + i * 60}ms` }}>
-                <ValueCard {...v} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ── 02 / Account ──────────────────────────────────────
-          The task itself. Fields are the surfaces here: they sit on
-          bg-card above the page, so nothing needs a border. */}
-      <section aria-labelledby="account-heading" className="pb-24 md:pb-32">
-        <div className={RAIL}>
-          <SectionHead
-            index="02 / Account"
-            title="Create your account"
-            sub="Join the Community Health platform."
-            action={
-              <p className="text-sm text-muted-foreground">
-                Already have an account?{' '}
-                <Link
-                  to="/login"
-                  className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700"
-                >
-                  Sign in
-                </Link>
-              </p>
-            }
+    <div className={FROST}>
+      <p className="eyebrow text-faint">Latest on CHM</p>
+      <div className="mt-3 flex items-center gap-3">
+        <span className="relative block h-16 w-28 shrink-0 overflow-hidden rounded-[6px] bg-ground">
+          <img
+            src={getMediaHubThumbnail(featured)}
+            alt=""
+            loading="lazy"
+            className="size-full object-cover"
           />
-
-          <div className="mt-10 max-w-[42rem]">
-            {googleOAuthEnabled ? (
-              <div className="space-y-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="lg"
-                  onClick={() => handleOAuth('google')}
-                  disabled={!!oauthLoading}
-                  className="w-full"
-                >
-                  {oauthLoading === 'google' ? (
-                    <span className="size-4 animate-spin rounded-full border-2 border-muted border-t-brand-600" />
-                  ) : (
-                    <GoogleIcon />
-                  )}
-                  Continue with Google
-                </Button>
-                <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
-              </div>
-            ) : (
-              <p className="rounded-[6px] bg-warning/10 px-4 py-3 text-sm text-warning">
-                {googleOAuthMigrationMessage}
-              </p>
-            )}
-
-            {/* No rule across the page: the label alone carries the split. */}
-            <p className="mt-8 text-label uppercase text-muted-foreground">
-              Or create account with email
-            </p>
-
-            <form className="mt-5 space-y-10" onSubmit={handleSubmit} noValidate>
-              {error && (
-                <div role="alert" className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <Field
-                  label="First name"
-                  placeholder="Jane"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-                <Field
-                  label="Last name"
-                  placeholder="Doe"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-                <Field
-                  className="sm:col-span-2"
-                  label="Email address"
-                  type="email"
-                  placeholder="jane@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <div className="sm:col-span-2">
-                  <Field
-                    label="Password"
-                    type="password"
-                    placeholder="Create a strong password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                  />
-                  <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2" aria-live="polite">
-                    {SIGNUP_PASSWORD_RULES.map((rule) => {
-                      const ok = passwordRules[rule.id];
-                      return (
-                        <li key={rule.id} className="flex items-center gap-2 text-xs">
-                          <span
-                            className={cn(
-                              'grid size-4 shrink-0 place-items-center rounded-full transition-colors duration-150',
-                              ok ? 'bg-success text-background' : 'bg-muted text-transparent',
-                            )}
-                            aria-hidden
-                          >
-                            <Check className="size-2.5" strokeWidth={3} />
-                          </span>
-                          <span className={ok ? 'text-success' : 'text-muted-foreground'}>
-                            {rule.label}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <SelectField
-                  label="Role"
-                  value={profession}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setProfession(v);
-                    setNpiVerified(null);
-                    setNpiMeta(null);
-                    if (!professionRequiresNpi(v)) setNpiNumber('');
-                  }}
-                  options={JOIN_PROFESSION_OPTIONS}
-                  required
-                />
-                {profession && !professionRequiresNpi(profession) ? (
-                  <p className="max-w-[62ch] rounded-[6px] bg-muted px-4 py-3 text-sm leading-relaxed text-muted-foreground">
-                    <strong className="font-medium text-foreground">Note:</strong> NPI is not
-                    required for your role. Honorarium programs are designed for licensed healthcare
-                    professionals: you can still access all educational content and events.
-                  </p>
-                ) : null}
-
-                {requiresNpi && (
-                  <div>
-                    <label htmlFor="npi-number" className="text-sm text-muted-foreground">
-                      NPI number
-                    </label>
-                    <p className="mt-1 max-w-[54ch] text-sm text-muted-foreground">
-                      Enter your 10-digit National Provider Identifier (NPI). Required for licensed
-                      healthcare roles.
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <input
-                        id="npi-number"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="10-digit NPI"
-                        value={npiNumber}
-                        onChange={(e) => {
-                          setNpiNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
-                          setNpiVerified(null);
-                          setNpiMeta(null);
-                        }}
-                        required
-                        maxLength={10}
-                        aria-describedby="npi-help"
-                        className={cn(CONTROL, 'min-w-0 flex-1')}
-                      />
-                      <Button
-                        type="button"
-                        size="lg"
-                        disabled={npiDigits.length !== 10 || npiVerifying}
-                        onClick={() => void runNpiVerify(npiDigits)}
-                      >
-                        {npiVerifying ? 'Verifying…' : 'Verify'}
-                      </Button>
-                    </div>
-                    <p id="npi-help" className="sr-only">
-                      NPI must be exactly 10 digits and verified against the NPI registry.
-                    </p>
-                    {npiVerified === true && !npiMeta?.duplicate && (
-                      <p className="mt-2 text-sm font-medium text-success">
-                        NPI verified
-                        {npiMeta?.providerName ? ` — ${npiMeta.providerName}` : ''}
-                        {npiMeta?.providerType ? ` (${npiMeta.providerType})` : ''}.
-                      </p>
-                    )}
-                    {(npiVerified === false || npiMeta?.duplicate) && (
-                      <p className="mt-2 text-sm font-medium text-destructive">
-                        {npiMeta?.error ||
-                          'NPI not found in the National Provider Identifier registry. Please check and try again.'}
-                      </p>
-                    )}
-                    {npiVerifying && npiVerified === null ? (
-                      <p className="mt-2 text-sm text-muted-foreground">Checking NPI registry…</p>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <p className="text-label uppercase text-muted-foreground">Practice location</p>
-                <p className="mt-2 max-w-[54ch] text-sm text-muted-foreground">
-                  Institution and city are optional. State and 5-digit ZIP are required.
-                </p>
-                <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                  <Field
-                    className="sm:col-span-2"
-                    label="Institution / Hospital (optional)"
-                    placeholder="e.g., Mayo Clinic"
-                    value={institution}
-                    onChange={(e) => setInstitution(e.target.value)}
-                  />
-                  <SelectField
-                    label="State"
-                    value={state}
-                    onChange={(e) => {
-                      setState(e.target.value);
-                      setCity('');
-                    }}
-                    options={US_STATE_SELECT_OPTIONS}
-                    required
-                  />
-                  <Field
-                    label="ZIP code"
-                    placeholder="12345"
-                    value={zipCode}
-                    onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    maxLength={5}
-                    required
-                    inputMode="numeric"
-                  />
-                  <CityTypeahead
-                    className="sm:col-span-2"
-                    label="City"
-                    value={city}
-                    onChange={setCity}
-                    stateCode={state || undefined}
-                    optional
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Button type="submit" size="lg" disabled={!canSubmit} className="w-full">
-                  {!signupEnabled
-                    ? 'Account creation temporarily unavailable'
-                    : submitting
-                      ? 'Creating account...'
-                      : 'Create account'}
-                </Button>
-                {!canSubmit && signupEnabled ? (
-                  <p className="mt-3 text-center text-sm text-muted-foreground">
-                    Complete required fields (including password rules, role
-                    {requiresNpi ? ', NPI' : ''}, state, and ZIP) to continue.
-                  </p>
-                ) : null}
-              </div>
-            </form>
-
-            <p className="mt-6 text-sm text-muted-foreground">
-              By continuing, you agree to our{' '}
-              <Link to="/privacy" className="rounded-[6px] underline hover:text-foreground">
-                Privacy Policy
-              </Link>
-              .
-            </p>
-
-            <RecaptchaNotice />
-          </div>
-        </div>
-      </section>
+        </span>
+        <span className="min-w-0">
+          <span className="display line-clamp-2 block text-body-m text-text">
+            {featured.title}
+          </span>
+          {meta ? <span className="meta mt-1 block text-faint">{meta}</span> : null}
+        </span>
+      </div>
     </div>
   );
 }
 
-/* ── the pitch ────────────────────────────────────────────── */
-
-const VALUE_PROPS = [
-  {
-    icon: <Award className="h-5 w-5" aria-hidden />,
-    title: 'Earn CME credits',
-    text: 'Participate in accredited educational programs.',
-  },
-  {
-    icon: <DollarSign className="h-5 w-5" aria-hidden />,
-    title: 'Honoraria',
-    text: 'Receive payment for eligible activities.',
-  },
-  {
-    icon: <ClipboardCheck className="h-5 w-5" aria-hidden />,
-    title: 'On your schedule',
-    text: 'Short videos and surveys when it works for you.',
-  },
-];
-
-function ValueCard({
-  icon,
-  title,
-  text,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  text: string;
-}) {
-  return (
-    <Card className="h-full">
-      <div className="grid size-11 shrink-0 place-items-center rounded-[6px] bg-muted text-brand-600">
-        {icon}
-      </div>
-      <p className="mt-5 font-medium text-foreground">{title}</p>
-      <p className="text-pretty mt-1.5 text-sm leading-relaxed text-muted-foreground">{text}</p>
-    </Card>
-  );
+/** Sessions are read in minutes; anything under one reads in seconds. */
+function formatDuration(seconds: number | undefined): string | null {
+  if (!seconds || seconds < 0) return null;
+  if (seconds < 60) return `${Math.round(seconds)} sec`;
+  return `${Math.round(seconds / 60)} min`;
 }
 
-/* ── controls ─────────────────────────────────────────────── */
+/* ── controls ─────────────────────────────────────────────────────── */
 
 /**
  * The select counterpart to <Field>: same label, same surface, same
@@ -637,7 +725,7 @@ function SelectField({
   const id = `${uid}-select`;
   return (
     <div className={className}>
-      <label htmlFor={id} className="block text-sm text-muted-foreground">
+      <label htmlFor={id} className="block text-body-s text-dim">
         {label}
       </label>
       <select

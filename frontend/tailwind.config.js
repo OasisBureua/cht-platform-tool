@@ -1,3 +1,5 @@
+import defaultColors from 'tailwindcss/colors.js'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -30,11 +32,45 @@ export default {
         'pill': '9999px',
       },
       boxShadow: {
-        'card': '0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06)',
-        'card-hover': '0 4px 12px 0 rgb(0 0 0 / 0.08)',
+        /* Repointed at the theme-aware vars in index.css so `shadow-card`
+           follows the appearance instead of staying tuned for white. The
+           light values are within a hair of the old literals. */
+        'card': 'var(--s-card)',
+        'card-hover': 'var(--s-card-hover)',
+        'pop': 'var(--s-pop)',
+        'nav': 'var(--s-nav)',
+      },
+      keyframes: {
+        fadeSlideUp: {
+          from: { opacity: '0', transform: 'translateY(2px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        marquee: {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-50%)' },
+        },
+      },
+      animation: {
+        'fade-slide-up': 'fadeSlideUp 400ms cubic-bezier(0, 0, 0.2, 1) both',
+        marquee: 'marquee 40s linear infinite',
       },
       fontSize: {
         'label': ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.05em', fontWeight: '600' }],
+        /* ------------------------------------------------------------
+         * chm-composio type scale (additive).
+         * Display sizes carry tight negative tracking and 1.02-1.08
+         * leading; body opens up to 1.62. `label` above is the
+         * platform's own and is left untouched — the design's label
+         * step is carried by the `.eyebrow` class in index.css.
+         * ---------------------------------------------------------- */
+        'hero': ['4.25rem', { lineHeight: '1.02', letterSpacing: '-0.032em' }],
+        'display-l': ['3rem', { lineHeight: '1.05', letterSpacing: '-0.028em' }],
+        'display-m': ['2.25rem', { lineHeight: '1.08', letterSpacing: '-0.025em' }],
+        'display-s': ['1.375rem', { lineHeight: '1.2', letterSpacing: '-0.018em' }],
+        'body-l': ['1.125rem', { lineHeight: '1.62' }],
+        'body-m': ['1rem', { lineHeight: '1.6' }],
+        'body-s': ['0.875rem', { lineHeight: '1.5' }],
+        'meta': ['0.75rem', { lineHeight: '1.4' }],
       },
       colors: {
         /* ============================================================
@@ -146,6 +182,48 @@ export default {
           900: '#00337c',
           950: '#001a52',
         },
+        /* ============================================================
+         * CHM-COMPOSIO COMPATIBILITY LAYER (additive)
+         * Colour names the design's pages use that this platform did
+         * not have. Backed by the light/dark var pairs at the foot of
+         * index.css. No existing platform token is renamed.
+         *
+         * `muted2` is the design's `muted` text step, renamed only
+         * because `muted` is already a platform background token.
+         * Rewrite the design's `text-muted` to `text-muted2`.
+         * ============================================================ */
+        ground: 'hsl(var(--ground) / <alpha-value>)',
+        surface: 'hsl(var(--surface-1) / <alpha-value>)',
+        'surface-2': 'hsl(var(--surface-2) / <alpha-value>)',
+        text: 'hsl(var(--text) / <alpha-value>)',
+        dim: 'hsl(var(--dim) / <alpha-value>)',
+        muted2: 'hsl(var(--muted2) / <alpha-value>)',
+        faint: 'hsl(var(--faint) / <alpha-value>)',
+        anchor: 'hsl(var(--anchor) / <alpha-value>)',
+        cta: 'hsl(var(--cta) / <alpha-value>)',
+        'cta-deep': 'hsl(var(--cta-deep) / <alpha-value>)',
+        signature: 'hsl(var(--signature) / <alpha-value>)',
+        inverse: 'hsl(var(--inverse) / <alpha-value>)',
+        'on-bright': 'hsl(var(--on-bright) / <alpha-value>)',
+        'amber-ink': 'hsl(var(--amber-ink) / <alpha-value>)',
+        /* The design writes `text-amber` for the same hue. Spread the
+           stock scale back in first: a bare string here would wipe out
+           Tailwind's amber-50..950, which ~40 platform usages still need. */
+        amber: {
+          ...defaultColors.amber,
+          DEFAULT: 'hsl(var(--amber-ink) / <alpha-value>)',
+          /* `text-amber-on-deep`: fixed in both appearances, for the
+             permanently dark bands where `amber` itself would deepen
+             into the ground. */
+          'on-deep': 'hsl(var(--amber-on-deep) / <alpha-value>)',
+        },
+        /* These carry their own alpha, so no <alpha-value> slot: an
+           opacity modifier on them is a no-op, not a broken colour. */
+        hairline: 'hsl(var(--hairline))',
+        'hairline-strong': 'hsl(var(--hairline-strong))',
+        wash: 'hsl(var(--wash))',
+        placeholder: 'hsl(var(--placeholder))',
+
         /**
          * `steel-*`: the former blue `accent-*` chrome scale, renamed so the
          * `accent` token can mean orange. Neutral cool chrome for nav/links.

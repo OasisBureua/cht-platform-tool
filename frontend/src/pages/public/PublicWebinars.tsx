@@ -1,141 +1,19 @@
 import { useMemo } from 'react';
-import type { ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
-import { webinarsApi } from '../../api/webinars';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { webinarsApi, type WebinarItem } from '../../api/webinars';
 import { isSessionExpired } from '../../utils/live-session-timing';
-import { Card, Chip, Rail, SectionHead } from '../../components/ui';
+import { AbstractFigure, Button, Reveal } from '../../components/ui';
 import { cn } from '../../lib/cn';
 
-type WebinarRow = {
-  id: string;
-  title: string;
-  description: string;
-  startTime?: string;
-  duration?: number;
-  /** Faculty, when the feed carries it. Both fields are optional upstream. */
-  hostDisplayName?: string;
-  speakers?: string[];
-};
+/** A feed row that survived the date filter, so `startTime` is present. */
+type Session = WebinarItem & { startTime: string };
 
-/** Bands separate with space, not rules: one gutter, one vertical rhythm. */
-function Band({ children }: { children: ReactNode }) {
-  return (
-    <section>
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-24 lg:px-8">{children}</div>
-    </section>
-  );
-}
-
-export default function PublicWebinars() {
-  const { data: webinars = [], isLoading } = useQuery({
-    queryKey: ['webinars'],
-    queryFn: webinarsApi.list,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { upcoming, recent } = useMemo(() => {
-    const upcomingList = webinars
-      .filter((w) => w.startTime && !isSessionExpired(w.startTime, w.duration))
-      .sort((a, b) => new Date(a.startTime!).getTime() - new Date(b.startTime!).getTime());
-
-    const recentPast = webinars
-      .filter((w) => w.startTime && isSessionExpired(w.startTime, w.duration))
-      .sort((a, b) => new Date(b.startTime!).getTime() - new Date(a.startTime!).getTime())
-      .slice(0, 5);
-
-    return { upcoming: upcomingList, recent: recentPast };
-  }, [webinars]);
-
-  const [lead, ...rest] = upcoming;
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* ── Masthead ─────────────────────────────────────── */}
-      <section>
-        <div className="mx-auto max-w-7xl px-4 pt-16 pb-4 sm:px-6 md:pt-24 md:pb-6 lg:px-8">
-          <h1 className="text-balance text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-[3rem]">
-            Live
-          </h1>
-          <p className="mt-5 max-w-[54ch] leading-relaxed text-muted-foreground">
-            Live and upcoming sessions: click any webinar to register and join.
-          </p>
-        </div>
-      </section>
-
-      {isLoading ? (
-        <Band>
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-          </div>
-        </Band>
-      ) : upcoming.length === 0 && recent.length === 0 ? (
-        <Band>
-          <div className="rounded-card bg-card p-12 text-center shadow-card">
-            <p className="text-xl font-semibold tracking-[-0.018em] text-foreground">
-              No Live sessions available
-            </p>
-            <p className="mt-2 text-muted-foreground">Check back soon for upcoming sessions.</p>
-          </div>
-        </Band>
-      ) : (
-        <>
-          {upcoming.length > 0 && (
-            <Band>
-              <SectionHead index="01 / Sessions" title={`Upcoming · ${upcoming.length}`} />
-
-              {/* The next session leads at full width; the rest browse
-                  sideways, so the page has a focal point instead of a
-                  uniform stack. */}
-              <div className="home-enter mt-10 md:mt-12">
-                <LeadSession webinar={lead} />
-              </div>
-
-              {rest.length > 0 && (
-                <div className="mt-4">
-                  <Rail aria-label="More upcoming sessions">
-                    {rest.map((w, i) => (
-                      <li
-                        key={w.id}
-                        className="home-enter w-[78%] shrink-0 snap-start sm:w-[46%] lg:w-[23%]"
-                        style={{ animationDelay: `${60 + i * 60}ms` }}
-                      >
-                        <SessionCard webinar={w} />
-                      </li>
-                    ))}
-                  </Rail>
-                </div>
-              )}
-            </Band>
-          )}
-
-          {recent.length > 0 && (
-            <Band>
-              <SectionHead
-                index={`${upcoming.length > 0 ? '02' : '01'} / Archive`}
-                title="Past · last 5"
-              />
-              <ul className="mt-10 space-y-3 md:mt-12">
-                {recent.map((w, i) => (
-                  <li
-                    key={w.id}
-                    className="home-enter"
-                    style={{ animationDelay: `${i * 60}ms` }}
-                  >
-                    <PastSession webinar={w} />
-                  </li>
-                ))}
-              </ul>
-            </Band>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ── pieces ─────────────────────────────────────────────── */
+const MONTH = (d: Date) => format(d, 'MMM').toUpperCase();
+const DAY = (d: Date) => format(d, 'd');
+const prettyDay = (d: Date) => format(d, 'EEE, MMM d, yyyy');
 
 function formatDuration(minutes?: number): string {
   if (!minutes) return '';
@@ -146,174 +24,170 @@ function formatDuration(minutes?: number): string {
 }
 
 /** Host and speakers read as one faculty line, deduped. */
-function facultyOf(w: WebinarRow): string | null {
+function facultyOf(w: WebinarItem): string | null {
   const names = [...new Set([w.hostDisplayName, ...(w.speakers ?? [])].filter(Boolean) as string[])];
   return names.length ? names.join(' · ') : null;
 }
 
 /**
- * The date is the card's index: a solid square, brand fill while the
- * session is still ahead and muted once it has run. White on brand-600
- * is fixed, because that fill is bright in both appearances.
+ * Row layout mirrors the platform's own live view: a stacked
+ * month/day chip leads, then the title, then the schedule detail,
+ * with the status carried in words as well as colour.
  */
-function DateChip({
-  date,
-  past = false,
-  large = false,
-}: {
-  date: Date | null;
-  past?: boolean;
-  large?: boolean;
-}) {
+function SessionRow({ s, isPast }: { s: Session; isPast: boolean }) {
+  const date = new Date(s.startTime);
+  const faculty = facultyOf(s);
+  const schedule = [format(date, 'h:mm a'), formatDuration(s.duration)].filter(Boolean).join(' · ');
+
   return (
-    <div
-      className={cn(
-        'grid shrink-0 place-items-center rounded-[6px] text-center leading-none',
-        large ? 'size-20 md:size-24' : 'size-14',
-        past ? 'bg-muted text-muted-foreground' : 'bg-brand-600 text-white',
-      )}
+    <Link
+      to={`/live/${s.id}`}
+      className="card group grid items-center gap-x-6 gap-y-4 p-5 md:grid-cols-[5rem_1fr_auto_2rem]"
     >
-      {date ? (
-        <span>
-          <span
-            className={cn(
-              'block font-mono text-label uppercase',
-              past ? 'text-muted-foreground' : 'text-white/75',
-            )}
-          >
-            {format(date, 'MMM')}
-          </span>
-          <span
-            className={cn(
-              'mt-1.5 block font-semibold tabular-nums',
-              large ? 'text-3xl md:text-4xl' : 'text-2xl',
-            )}
-          >
-            {format(date, 'd')}
-          </span>
-        </span>
-      ) : (
-        <span className="font-mono text-label uppercase">TBD</span>
-      )}
-    </div>
-  );
-}
-
-/** Status: how long until it starts, or that it has expired. */
-function StatusPill({ date, past }: { date: Date | null; past: boolean }) {
-  if (past) return <Chip kind="neutral">Expired</Chip>;
-  if (!date) return null;
-  return <Chip kind="neutral">{formatDistanceToNow(date, { addSuffix: true })}</Chip>;
-}
-
-/** Day, time and length, in figures that cannot jitter between rows. */
-function SessionMeta({
-  date,
-  duration,
-  className,
-}: {
-  date: Date | null;
-  duration?: number;
-  className?: string;
-}) {
-  if (!date && !duration) return null;
-  return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-xs tabular-nums text-muted-foreground',
-        className,
-      )}
-    >
-      {date && (
-        <span className="inline-flex items-center gap-1.5">
-          <Calendar className="size-3.5" />
-          {format(date, 'EEE, MMM d, yyyy')}
-        </span>
-      )}
-      {date && (
-        <span className="inline-flex items-center gap-1.5">
-          <Clock className="size-3.5" />
-          {format(date, 'h:mm a')}
-        </span>
-      )}
-      {duration ? <span>{formatDuration(duration)}</span> : null}
-    </div>
-  );
-}
-
-function LeadSession({ webinar }: { webinar: WebinarRow }) {
-  const date = webinar.startTime ? new Date(webinar.startTime) : null;
-  const faculty = facultyOf(webinar);
-
-  return (
-    <Card to={`/live/${webinar.id}`} className="group p-6 md:p-8">
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
-        <DateChip date={date} large />
-
-        <div className="min-w-0 flex-1">
-          <StatusPill date={date} past={false} />
-          <h3 className="mt-4 text-balance text-xl font-semibold leading-[1.2] tracking-[-0.018em] text-foreground sm:text-2xl">
-            {webinar.title}
-          </h3>
-          {faculty && <p className="mt-2 text-sm text-muted-foreground">{faculty}</p>}
-          {webinar.description && (
-            <p className="mt-3 line-clamp-2 max-w-[54ch] text-sm leading-relaxed text-muted-foreground">
-              {webinar.description}
-            </p>
-          )}
-          <SessionMeta date={date} duration={webinar.duration} className="mt-6" />
-        </div>
-
-        <ArrowRight className="hidden size-5 shrink-0 self-center text-muted-foreground transition-transform duration-150 group-hover:translate-x-1 md:block" />
-      </div>
-    </Card>
-  );
-}
-
-function SessionCard({ webinar }: { webinar: WebinarRow }) {
-  const date = webinar.startTime ? new Date(webinar.startTime) : null;
-  const faculty = facultyOf(webinar);
-
-  return (
-    <Card to={`/live/${webinar.id}`} className="flex h-full flex-col gap-5 p-5">
-      <div className="flex items-start justify-between gap-3">
-        <DateChip date={date} />
-        <StatusPill date={date} past={false} />
-      </div>
-
-      <div className="min-w-0">
-        <h3 className="line-clamp-2 font-semibold leading-snug tracking-[-0.011em] text-foreground">
-          {webinar.title}
-        </h3>
-        {faculty && <p className="mt-1.5 line-clamp-1 text-sm text-muted-foreground">{faculty}</p>}
-      </div>
-
-      <SessionMeta date={date} duration={webinar.duration} className="mt-auto" />
-    </Card>
-  );
-}
-
-function PastSession({ webinar }: { webinar: WebinarRow }) {
-  const date = webinar.startTime ? new Date(webinar.startTime) : null;
-  const faculty = facultyOf(webinar);
-
-  return (
-    <Card to={`/live/${webinar.id}`} className="group flex items-center gap-4 p-4 sm:gap-5 sm:p-5">
-      <DateChip date={date} past />
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h3 className="min-w-0 truncate font-semibold text-muted-foreground">{webinar.title}</h3>
-          <StatusPill date={date} past />
-        </div>
-        {faculty && <p className="mt-1.5 truncate text-sm text-muted-foreground">{faculty}</p>}
-        <SessionMeta date={date} duration={webinar.duration} className="mt-2.5" />
-        {webinar.description && (
-          <p className="mt-2 line-clamp-1 text-sm text-muted-foreground">{webinar.description}</p>
+      {/* Date chip. Anchor is a bright fill in dark and a deep one in
+          light, so the label takes the ground either way. */}
+      <span
+        className={cn(
+          'grid h-20 w-20 place-items-center rounded-[6px] text-center',
+          isPast ? 'bg-surface-2 text-muted2' : 'bg-anchor text-ground',
         )}
-      </div>
+      >
+        <span>
+          <span className="eyebrow block opacity-80">{MONTH(date)}</span>
+          <span className="display block text-[1.75rem] leading-none tabular-nums">
+            {DAY(date)}
+          </span>
+        </span>
+      </span>
 
-      <ArrowRight className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-1" />
-    </Card>
+      <span className="min-w-0">
+        {/* The design pairs the status with a therapeutic-area label.
+            The webinars feed carries no area, so that slot stays on the
+            design's own empty branch rather than inventing one. */}
+        <span className="flex flex-wrap items-center gap-2">
+          <span
+            className={cn(
+              'eyebrow inline-flex items-center rounded-[6px] px-2.5 py-1',
+              isPast ? 'bg-surface-2 text-muted2' : 'bg-cta text-ground',
+            )}
+          >
+            {isPast ? 'Replay' : 'Registration open'}
+          </span>
+        </span>
+        <span className="display mt-2 block text-display-s text-text">{s.title}</span>
+        {faculty ? <span className="mt-1 block text-body-s text-muted2">{faculty}</span> : null}
+      </span>
+
+      <span className="text-body-s text-muted2 md:text-end">
+        <span className="block">{prettyDay(date)}</span>
+        {schedule ? <span className="meta mt-1 block text-faint">{schedule}</span> : null}
+      </span>
+
+      <ArrowRight
+        className="size-4 shrink-0 text-muted2 transition-[translate] duration-150 ease-[var(--ease-standard)] group-hover:translate-x-1 group-hover:text-text"
+        strokeWidth={1.75}
+      />
+    </Link>
+  );
+}
+
+export default function PublicWebinars() {
+  const { data: webinars = [], isLoading } = useQuery({
+    queryKey: ['webinars'],
+    queryFn: webinarsApi.list,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { next, done } = useMemo(() => {
+    // The feed is only trusted once it is actually a list. When the API is
+    // unreachable the request resolves against the SPA fallback and hands
+    // back an HTML string, which used to take the whole route down with
+    // "webinars.filter is not a function" rather than showing the page.
+    const rows: WebinarItem[] = Array.isArray(webinars) ? webinars : [];
+
+    // A session with no start time belongs to neither list: it cannot be
+    // placed on the schedule and cannot be judged expired.
+    const dated = rows.filter((w): w is Session => Boolean(w.startTime));
+
+    return {
+      next: dated
+        .filter((w) => !isSessionExpired(w.startTime, w.duration))
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()),
+      done: dated
+        .filter((w) => isSessionExpired(w.startTime, w.duration))
+        .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+        .slice(0, 5),
+    };
+  }, [webinars]);
+
+  return (
+    <div className="min-h-screen bg-ground">
+      <section className="rail pt-14 pb-12 md:pt-16 md:pb-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
+          <div>
+            <p className="eyebrow text-muted2">Live</p>
+            <h1 className="display mt-6 max-w-[16ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+              Live and upcoming sessions
+            </h1>
+            <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
+              Click any session to register and join. Replays are chaptered and filed under their
+              disease state within a week.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-3">
+              {/* With nothing on the schedule the design sends people to
+                  the library instead, so the empty feed needs no separate
+                  treatment. */}
+              <Button to={next.length ? `/live/${next[0].id}` : '/catalog'} variant="cta">
+                {next.length ? 'Register for the next session' : 'Browse the library'}
+                <ArrowRight className="size-4" strokeWidth={1.75} />
+              </Button>
+              <Button to="/chm-office-hours" variant="outline">
+                CHM Office Hours
+              </Button>
+            </div>
+          </div>
+
+          <AbstractFigure variant="broadcast" />
+        </div>
+      </section>
+
+      {isLoading ? (
+        <div className="rail flex justify-center pb-24">
+          <Loader2 aria-label="Loading sessions" className="size-8 animate-spin text-faint" />
+        </div>
+      ) : (
+        <>
+          {next.length > 0 ? (
+            <section aria-labelledby="upcoming-heading" className="rail pb-14">
+              <h2 id="upcoming-heading" className="eyebrow text-faint">
+                Upcoming · {next.length}
+              </h2>
+              <ul className="mt-5 space-y-3">
+                {next.map((s, i) => (
+                  <Reveal as="li" key={s.id} delay={i * 50}>
+                    <SessionRow s={s} isPast={false} />
+                  </Reveal>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {done.length > 0 ? (
+            <section aria-labelledby="past-heading" className="rail pb-24">
+              <h2 id="past-heading" className="eyebrow text-faint">
+                Past · last {done.length}
+              </h2>
+              <ul className="mt-5 space-y-3">
+                {done.map((s, i) => (
+                  <Reveal as="li" key={s.id} delay={i * 50}>
+                    <SessionRow s={s} isPast />
+                  </Reveal>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+        </>
+      )}
+    </div>
   );
 }

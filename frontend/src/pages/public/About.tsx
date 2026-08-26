@@ -1,264 +1,323 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight } from 'lucide-react';
-import { Button, Card, Rail, SectionHead } from '../../components/ui';
-import { cn } from '../../lib/cn';
-
-const FORMATS = [
-  'Peer-to-peer interviews, expert panels, and roundtables',
-  'Medical events, conferences, and live experiences',
-  'In-depth medical content and research updates',
-  'Interactive learning modules and accredited webinars',
-  'Live and on-demand webcasts and podcasts',
-] as const;
-
-const CORE_PILLARS = [
-  {
-    title: 'Trusted medical knowledge',
-    body:
-      'We connect expert knowledge with the professional communities that use it, so medical knowledge reaches the right audiences and shows how medicine learns and evolves.',
-  },
-  {
-    title: 'Professional community',
-    body:
-      'We bring together physicians, experts, and healthcare stakeholders so knowledge and perspective actually get exchanged.',
-  },
-  {
-    title: 'Engagement that generates insight',
-    body:
-      'Through expert-driven content, discussion, and live sessions, we capture engagement data that shows organizations how medical audiences learn and respond.',
-  },
-] as const;
+import { useMemo, type ReactNode } from 'react';
+import { ChmMark } from '../../components/brand/ChmMark';
+import { Button, Reveal, SectionHead } from '../../components/ui';
+import { useKolDirectory, type DolEntry } from '../../hooks/useKolDirectory';
 
 /**
- * The three narrative claims that sit under the positioning line. They
- * were four stacked paragraphs; the fourth is now the band's heading,
- * so these three read as parallel support for it.
+ * Transplanted from chm-composio's `/about`. Every heading, sentence and
+ * section order below is that page's, not the old platform About copy.
+ *
+ * The one substitution is the hero figure: the design fakes the KOL
+ * directory panel from a static array, and this platform has the real
+ * directory behind `useKolDirectory`, so the panel renders live faculty.
  */
-const APPROACH = [
-  'We help healthcare organizations, pharmaceutical companies, and medical brands connect with healthcare professionals (HCPs), key opinion leaders (KOLs), and patient communities through clinically credible communication.',
-  'Our approach combines medical content production with targeted distribution, so important knowledge reaches the right clinicians while it still matters to their practice.',
-  'We treat content, community, and data as one system rather than three separate services. That is what sets this apart from traditional medical communications: engagement you can measure, and insight you can act on.',
+
+/* Moved off the homepage: a position statement is what an About
+   page is for. It helps nobody find a session. */
+const BELIEFS = [
+  {
+    h: 'Watch like a colleague',
+    b: 'Narrated slide decks lose people because that is not how anyone learns from a peer. Our sessions run like case discussions between colleagues, because that is exactly what they are.',
+  },
+  {
+    h: 'Trust what you hear',
+    b: 'Credentials, institutional affiliation and sourcing sit beside every contributor, on every screen. Credibility is a layout decision before it is a claim.',
+  },
+  {
+    h: 'See it land',
+    b: 'Completion rate and post-test pass rate, reported monthly. Not impressions. If a session is not being finished, that is our problem to fix.',
+  },
 ] as const;
 
-/**
- * A full-width section whose inner rail carries the page gutter. Space
- * separates bands; there is no rule between them.
- */
-function Band({
-  children,
-  className,
-  tinted = false,
-}: {
-  children: ReactNode;
-  className?: string;
-  tinted?: boolean;
-}) {
+const AUDIENCES = [
+  { label: 'HCPs', blurb: 'Beyond conferences and CME, where they actually consume content.' },
+  { label: 'Patients', blurb: 'Pre- or active treatment, searching for credible information.' },
+  { label: 'Caregivers', blurb: 'Making decisions, seeking guidance, needing support.' },
+] as const;
+
+const CAPABILITIES = [
+  {
+    title: 'AI-powered content automation',
+    body: 'One recording becomes long-form video, an audio cut, a written explainer and a set of short clips, without a second production day.',
+  },
+  {
+    title: 'Multi-audience reach',
+    body: 'The same clinical conversation, versioned for HCPs, patients and caregivers, each on the surface they already use.',
+  },
+  {
+    title: 'Entertainment-grade distribution',
+    body: 'Published where attention already is, not parked behind a portal login nobody returns to.',
+  },
+  {
+    title: 'First-party HCP intelligence',
+    body: 'Who watched, how far they got, and which specialty they practise in. Consented and first-party.',
+  },
+  {
+    title: 'Real engagement analytics',
+    body: 'Completion rate and post-test pass rate, reported monthly. Not impressions.',
+  },
+] as const;
+
+export default function About() {
   return (
-    <section className={cn(tinted && 'bg-muted')}>
-      <div className={cn('mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-24 lg:px-8', className)}>
-        {children}
+    <div className="bg-background">
+      <PageHead
+        eyebrow="About CHM"
+        title="Medicine moves through shared knowledge"
+        lede="Community Health Media is a full-service medical communications partner: expert-led content, strategic distribution and multichannel campaigns for healthcare. We connect organisations with HCPs, KOLs and patient communities through clinically credible communication."
+        figure={<KolPanel />}
+      />
+
+      <Band label="What we believe">
+        <Reveal>
+          <SectionHead
+            index="01 / Position"
+            title="What we believe"
+            sub="Three commitments that decide how every session gets made."
+          />
+        </Reveal>
+        <ul className="mt-12 grid gap-8 md:grid-cols-3">
+          {BELIEFS.map((b, i) => (
+            <Reveal as="li" key={b.h} delay={i * 70}>
+              <div className="card h-full p-7">
+                <ChmMark className="size-6 text-signature" />
+                <h3 className="display mt-5 text-body-l text-text">{b.h}</h3>
+                <p className="prose-lede mt-3 text-body-m text-muted2">{b.b}</p>
+              </div>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      <Band label="Who we reach">
+        <Reveal>
+          <SectionHead
+            index="02 / Audience"
+            title="Who we reach"
+            sub="Three groups, each meeting the same content on different terms."
+          />
+        </Reveal>
+        <ul className="mt-12 space-y-3">
+          {AUDIENCES.map((a, i) => (
+            <Reveal as="li" key={a.label} delay={i * 60}>
+              <div className="card grid gap-3 p-7 md:grid-cols-[12rem_1fr] md:gap-10">
+                <p className="display text-display-s text-text">{a.label}</p>
+                <p className="prose-lede text-body-m text-muted2">{a.blurb}</p>
+              </div>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      <Band label="How we help organisations educate healthcare audiences">
+        <Reveal>
+          <SectionHead
+            index="03 / Platform"
+            title="How we help organisations educate healthcare audiences"
+          />
+        </Reveal>
+        <ul className="mt-12 space-y-3">
+          {CAPABILITIES.map((c, i) => (
+            <Reveal as="li" key={c.title} delay={i * 45}>
+              <div className="card grid gap-3 p-7 md:grid-cols-[22rem_1fr] md:gap-10">
+                <h3 className="display text-body-l text-text">{c.title}</h3>
+                <p className="prose-lede text-body-m text-muted2">{c.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      <section id="contact" className="rail flex flex-wrap items-center justify-between gap-8 py-20">
+        <div>
+          <p className="eyebrow text-muted2">Contact</p>
+          <h2 className="display mt-4 max-w-[22ch] text-display-m text-text">
+            Faculty enquiries, partnerships and corrections
+          </h2>
+          <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
+            All land in the same inbox, and a person reads it.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Button to="/contact">Talk to the team</Button>
+          <Button to="/kol-network" variant="outline">
+            See the KOL network
+          </Button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+/**
+ * Inner-page masthead. When a `figure` is supplied the hero splits into
+ * copy on the leading side and a raised product panel on the trailing
+ * side, matching the homepage's weight.
+ */
+function PageHead({
+  eyebrow,
+  title,
+  lede,
+  figure,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  lede?: string;
+  figure?: ReactNode;
+}) {
+  const copy = (
+    <>
+      <p className="eyebrow text-muted2">{eyebrow}</p>
+      <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+        {title}
+      </h1>
+      {lede ? <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">{lede}</p> : null}
+    </>
+  );
+
+  if (!figure) {
+    return <section className="rail pb-14 pt-16 md:pb-16 md:pt-20">{copy}</section>;
+  }
+
+  return (
+    <section className="rail pb-12 pt-14 md:pb-16 md:pt-16">
+      <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
+        <div>{copy}</div>
+        <div>{figure}</div>
       </div>
     </section>
   );
 }
 
-/**
- * Scroll reveal: opacity plus a 2px lift, nothing more. If the observer
- * cannot run, or motion is reduced, the block is shown immediately —
- * content must never be able to get stuck invisible.
- */
-function Reveal({
-  children,
-  delay = 0,
-  className,
-}: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (
-      typeof IntersectionObserver === 'undefined' ||
-      !window.matchMedia('(prefers-reduced-motion: no-preference)').matches
-    ) {
-      setShown(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setShown(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: '0px 0px -8% 0px' },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
+/** Full-bleed band; the inner rail carries the page margins. */
+function Band({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: shown ? `${delay}ms` : undefined }}
-      className={cn(
-        'transition-[opacity,translate] duration-500 ease-[cubic-bezier(0,0,0.2,1)]',
-        'motion-reduce:transition-none',
-        shown ? 'translate-y-0 opacity-100' : 'translate-y-0.5 opacity-0',
-        className,
-      )}
-    >
-      {children}
+    <section aria-label={label}>
+      <div className="rail py-16 md:py-24">{children}</div>
+    </section>
+  );
+}
+
+/**
+ * Shared frame for the hero visual: a raised panel on a soft brand-tinted
+ * field, with a bevel highlight along the top edge. Depth only, no
+ * outlines. The design's gradient named two colours this platform does
+ * not carry, so it is re-expressed on `signature` and `anchor`.
+ */
+function HeroPanel({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden className="relative">
+      <div
+        className="pointer-events-none absolute -inset-8 rounded-[24px] opacity-80 blur-2xl"
+        style={{
+          background:
+            'radial-gradient(50% 50% at 70% 30%, hsl(var(--signature) / 0.30), transparent 70%), radial-gradient(45% 45% at 25% 75%, hsl(var(--anchor) / 0.24), transparent 70%)',
+        }}
+      />
+      <div className="relative overflow-hidden rounded-[6px] bg-surface p-3 shadow-pop">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+        <div className="overflow-hidden rounded-[6px] bg-ground">{children}</div>
+      </div>
     </div>
   );
 }
 
-export default function About() {
+function Chrome({ label }: { label: string }) {
   return (
-    <div className="bg-background">
-      {/* ── Hero ───────────────────────────────────────────── */}
-      <section>
-        <div className="mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 md:pb-16 md:pt-24 lg:px-8">
-          <Reveal className="max-w-3xl">
-            <p className="text-label uppercase text-muted-foreground">Community Health Media</p>
-            <h1 className="mt-4 text-balance text-[2.75rem] font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-[3rem] md:text-[3.5rem]">
-              About Us
-            </h1>
-            <p className="mt-6 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground md:text-xl">
-              Community Health Media (CHM) is a full-service medical communications partner specializing in
-              expert-led content, strategic distribution, and multichannel campaigns for the healthcare industry.
-            </p>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── 01 / Mission ───────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="01 / Mission"
-            title="What we stand for"
-            sub="CHM produces credible, expert-driven medical content designed to inform healthcare professionals and support continuous learning as clinical practice changes."
-            action={
-              <Button
-                to="/what-we-do"
-                variant="outline"
-                size="sm"
-                className="h-auto min-h-9 max-w-full py-2 text-left"
-              >
-                How we serve different audiences and the platform
-                <ArrowRight className="h-4 w-4 shrink-0" />
-              </Button>
-            }
-          />
-        </Reveal>
-
-        <ul className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
-          {CORE_PILLARS.map(({ title, body }, i) => (
-            <li key={title} className="flex">
-              <Reveal delay={i * 60} className="flex w-full">
-                <Card className="flex h-full w-full flex-col gap-3">
-                  <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <p className="text-lg font-semibold leading-snug tracking-tight text-foreground">
-                    {title}
-                  </p>
-                  <p className="max-w-[54ch] text-base leading-relaxed text-muted-foreground">{body}</p>
-                </Card>
-              </Reveal>
-            </li>
-          ))}
-        </ul>
-      </Band>
-
-      {/* ── 02 / Approach ──────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="02 / Approach"
-            title="Community Health Media turns medical knowledge into measurable impact."
-          />
-        </Reveal>
-
-        <ul className="mt-12 grid grid-cols-1 gap-x-8 gap-y-10 md:grid-cols-3">
-          {APPROACH.map((para, i) => (
-            <li key={para}>
-              <Reveal delay={i * 60}>
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <p className="mt-3 max-w-[54ch] text-base leading-relaxed text-muted-foreground md:text-lg">
-                  {para}
-                </p>
-              </Reveal>
-            </li>
-          ))}
-        </ul>
-      </Band>
-
-      {/* ── 03 / Formats ───────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="03 / Formats"
-            title="Formats we deliver"
-            sub="CHM develops and delivers a wide range of medical education and communication formats, including:"
-          />
-        </Reveal>
-
-        <div className="mt-12">
-          {/* Mandatory snap otherwise pulls the first card past the bleed
-              padding and flush to the viewport edge; the scroll padding
-              puts the snapport start back on the page gutter. */}
-          <Rail
-            aria-label="Formats we deliver"
-            className="[scroll-padding-inline:var(--page-gutter)]"
-          >
-            {FORMATS.map((item, i) => (
-              <li
-                key={item}
-                className="w-[76%] shrink-0 snap-start sm:w-[46%] md:w-[31%] lg:w-[23%]"
-              >
-                <Reveal delay={i * 60} className="h-full">
-                  <Card className="flex h-full flex-col gap-4">
-                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <p className="text-base leading-relaxed text-foreground">{item}</p>
-                  </Card>
-                </Reveal>
-              </li>
-            ))}
-          </Rail>
-        </div>
-      </Band>
-
-      {/* ── Explore the platform ───────────────────────────── */}
-      <Band tinted className="text-center">
-        <Reveal className="mx-auto flex max-w-2xl flex-col items-center">
-          <h2 className="text-balance text-[2.25rem] font-semibold leading-[1.08] tracking-[-0.025em] text-foreground md:text-[3rem] md:leading-[1.05] md:tracking-[-0.028em]">
-            Explore the platform
-          </h2>
-          <p className="mt-5 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground">
-            Browse public content, or join to access webinars, surveys, and personalized learning experiences.
-          </p>
-          <div className="mt-9 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:justify-center">
-            <Button to="/catalog" size="lg" className="w-full sm:w-auto">
-              Browse Catalogue
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button to="/join" variant="outline" size="lg" className="w-full sm:w-auto">
-              Get started
-            </Button>
-          </div>
-        </Reveal>
-      </Band>
+    <div className="flex items-center gap-2 bg-surface px-4 py-3">
+      <span className="size-2.5 rounded-full bg-surface-2" />
+      <span className="size-2.5 rounded-full bg-surface-2" />
+      <span className="size-2.5 rounded-full bg-surface-2" />
+      <span className="meta ms-2 text-faint">{label}</span>
     </div>
+  );
+}
+
+function initials(name: string): string {
+  return name
+    .replace(/^Dr\.\s*/i, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+/**
+ * The KOL directory as the product shot. The design mocks four rows from
+ * a static array; here they are the first four entries the public
+ * directory actually returns, and the badge is its real total.
+ *
+ * Decorative: the real directory is a page away, so the panel stays out
+ * of the accessibility tree rather than duplicating it.
+ */
+function KolPanel() {
+  const directory = useKolDirectory({ surface: 'public' });
+
+  const rows = useMemo(
+    () =>
+      directory.regions
+        .flatMap((r) => r.entries.map((e) => ({ ...e, stateId: r.id })))
+        .slice(0, 4),
+    [directory.regions],
+  );
+
+  const count = directory.total > 0 ? String(directory.total) : '—';
+
+  return (
+    <HeroPanel>
+      <Chrome label="chm / kol-network" />
+      <div className="p-4">
+        <div className="flex gap-2">
+          <span className="flex h-9 flex-1 items-center rounded-[6px] bg-surface px-3 text-body-s text-faint">
+            Search name or institution
+          </span>
+          <span className="flex h-9 items-center rounded-[6px] bg-anchor px-3 text-body-s tabular-nums text-ground">
+            {count}
+          </span>
+        </div>
+        <ul className="mt-3 space-y-2">
+          {/* Four rows either way: the panel is part of the hero's
+              composition and must not resize while the query settles. */}
+          {rows.length > 0
+            ? rows.map((k: DolEntry & { stateId: string }) => (
+                <li key={k.id} className="flex items-center gap-3 rounded-[6px] bg-surface p-3">
+                  {k.photoUrl ? (
+                    <img
+                      src={k.photoUrl}
+                      alt=""
+                      className="size-9 shrink-0 rounded-full object-cover"
+                    />
+                  ) : (
+                    <span className="grid size-9 shrink-0 place-items-center rounded-full bg-surface-2 text-[0.625rem] text-muted2">
+                      {initials(k.name)}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-body-s font-medium text-text">
+                      {k.name}
+                    </span>
+                    <span className="meta mt-0.5 block truncate text-faint">
+                      {k.institution || k.role}
+                    </span>
+                  </span>
+                  <span className="meta shrink-0 rounded-[6px] bg-surface-2 px-2 py-1 text-muted2">
+                    {k.stateId.slice(0, 2).toUpperCase()}
+                  </span>
+                </li>
+              ))
+            : [0, 1, 2, 3].map((i) => (
+                <li key={i} className="flex items-center gap-3 rounded-[6px] bg-surface p-3">
+                  <span className="size-9 shrink-0 rounded-full bg-surface-2" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block h-3 w-2/3 rounded-[3px] bg-surface-2" />
+                    <span className="mt-2 block h-2.5 w-1/2 rounded-[3px] bg-surface-2" />
+                  </span>
+                </li>
+              ))}
+        </ul>
+      </div>
+    </HeroPanel>
   );
 }

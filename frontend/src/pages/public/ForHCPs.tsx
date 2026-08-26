@@ -1,77 +1,173 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
 import { webinarsApi, type WebinarItem } from '../../api/webinars';
-import { catalogApi, type CatalogItem } from '../../api/catalog';
 import { isSessionExpired } from '../../utils/live-session-timing';
-import { Button, Card, Chip, chipKind, Rail, SectionHead } from '../../components/ui';
+import DISEASE_AREAS from '../../data/disease-areas';
+import { ChmMark } from '../../components/brand/ChmMark';
+import { Button, Reveal } from '../../components/ui';
 import { cn } from '../../lib/cn';
 
-const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
+/**
+ * For HCPs — transplanted from the design at chm-composio
+ * (`src/app/for-hcps/page.tsx`). The design owns the copy, the sections
+ * and their order; this file owns the Next -> Vite conversion (next/link
+ * -> react-router `Link`, no metadata export) and the wiring of the
+ * platform's real feeds into the design's slots:
+ *
+ *   hero panel   <- the newest catalog clips + the real disease areas
+ *   01 Playlists <- GET /catalog/playlists
+ *   02 Areas     <- src/data/disease-areas
+ *   03 Live      <- GET /webinars
+ *
+ * Where a slot has no real counterpart (the three entry destinations,
+ * every playlist blurb when the feed is empty) the design's own content
+ * stands verbatim.
+ */
 
-const STOCK_IMAGES = {
-  featuredVideo: '/images/resource-watch.png',
-  featuredWebinar: '/images/resource-webinars.png',
-} as const;
+const STALE = 5 * 60 * 1000;
 
-/** Matches `--page-gutter`, so a `bleed-x` rail lands flush on the viewport edge. */
-const RAIL = 'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8';
+/* ── design content ──────────────────────────────────────────
+   Kept verbatim from the reference. `entry` is static in the
+   design too: three destinations, not a feed. */
 
-/** Four cards across at the widest, with the fifth peeking past the edge. */
-const RAIL_ITEM = 'w-[78%] shrink-0 snap-start sm:w-[46%] lg:w-[31%] xl:w-[23.5%]';
+const entry = [
+  { label: 'Clinical Conversations', href: '/catalog', cta: 'Conversations' },
+  { label: 'CHM Office Hours', href: '/chm-office-hours', cta: 'View sessions' },
+  { label: 'Live panels', href: '/live', cta: 'Join now' },
+];
 
-/** A scrim has to stay dark whatever the appearance, so it is fixed rather than tokenised. */
-const SCRIM = 'linear-gradient(to top, rgb(0 0 0 / 0.82) 0%, rgb(0 0 0 / 0.34) 46%, rgb(0 0 0 / 0.05) 100%)';
-
-type Treatment = {
-  id: string;
-  title: string;
-  imageUrl: string;
-  slug: string;
-  videoNames: string[];
-  playlistUrl: string;
+type PlaylistCard = {
+  key: string;
+  label: string;
+  blurb: string;
+  count: number;
+  cover: string;
+  href: string;
 };
 
-function catalogToTreatment(p: CatalogItem): Treatment {
-  return {
-    id: p.id,
-    title: p.title,
-    imageUrl: p.thumbnailUrl || '/images/placeholder-playlist.svg',
-    slug: p.id,
-    videoNames: p.videoNames || [],
-    playlistUrl: `/catalog/playlist/${p.id}`,
-  };
-}
+/** The design's own four biomarker playlists, for when the feed is empty. */
+const DESIGN_PLAYLISTS: PlaylistCard[] = [
+  {
+    key: 'her2',
+    label: 'HER2+',
+    blurb: 'First-line sequencing, residual disease and the DESTINY-Breast readouts read side by side.',
+    count: 12,
+    cover: '/img/thumb-cleopatra.jpg',
+    href: '/catalog/breast-cancer',
+  },
+  {
+    key: 'hr',
+    label: 'HR+',
+    blurb: 'Endocrine sequencing after CDK4/6i, the PI3K/AKT pathway and proactive toxicity management.',
+    count: 12,
+    cover: '/img/thumb-db09.jpg',
+    href: '/catalog/breast-cancer',
+  },
+  {
+    key: 'residual-disease',
+    label: 'Residual disease',
+    blurb: 'Who needs adjuvant therapy after neoadjuvant treatment, and how the decision gets made.',
+    count: 8,
+    cover: '/img/thumb-patina.jpg',
+    href: '/catalog/breast-cancer',
+  },
+  {
+    key: 'ild-safety',
+    label: 'ILD & safety',
+    blurb: 'Early detection, monitoring cadence and the dose decisions that keep patients on therapy.',
+    count: 7,
+    cover: '/img/thumb-ild.jpg',
+    href: '/catalog/breast-cancer',
+  },
+];
+
+/**
+ * One colour per disease state, as the design's library carries it. The
+ * compatibility layer declares all three; `--color-metabolic` is the
+ * platform's own third area, which the design's six do not include.
+ */
+const AREA_TONE: Record<string, string> = {
+  'breast-cancer': 'var(--color-breast)',
+  'lung-cancer': 'var(--color-lung)',
+  'weight-loss': 'var(--color-metabolic)',
+};
+
+type PanelTile = { key: string; title: string; thumb: string; duration: string };
+
+/** The design's four newest library tiles, for the hero panel's cold start. */
+const DESIGN_TILES: PanelTile[] = [
+  { key: 'neratinib-revisited', title: 'Neratinib revisited: is it time to reconsider an underused therapy?', thumb: '/img/thumb-cleopatra.jpg', duration: '7 MIN' },
+  { key: 'parp-still-earns', title: 'Where PARP still earns its place', thumb: '/img/thumb-db09.jpg', duration: '23:18' },
+  { key: 'bispecific-step-up', title: 'Step-up dosing without a transplant bed', thumb: '/img/thumb-ild.jpg', duration: '28:50' },
+  { key: 'first-line-sequencing-her2', title: 'First-line sequencing in HER2+ mBC', thumb: '/img/thumb-cleopatra.jpg', duration: '18:40' },
+];
+
+/* ── data plumbing ───────────────────────────────────────── */
 
 /**
  * Both feeds behind this page are merges: webinars come from DB programs
  * plus live Zoom sessions, playlists from the catalog and its WordPress
- * overlay. Either can carry the same id twice, which React reports as a
- * duplicate key and then renders unpredictably. Keep the first of each.
+ * overlay. Either can hand back the same id twice, and the old page keyed
+ * rows straight off `id`, which is what logged "two children with the same
+ * key" and then rendered the rail unpredictably.
+ *
+ * Keeping the first row per id fixes that. A row with no id at all is kept
+ * too — dropping content is the worse failure — and takes its index as a
+ * key, widened until it cannot collide with a real id.
  */
-function uniqueById<T extends { id: string }>(rows: T[]): T[] {
+function keyed<T extends { id?: string | null }>(rows: T[]): { key: string; row: T }[] {
   const seen = new Set<string>();
-  return rows.filter((row) => {
-    if (seen.has(row.id)) return false;
-    seen.add(row.id);
-    return true;
+  const out: { key: string; row: T }[] = [];
+  // A failing endpoint hands back an object, not a list, and the old page
+  // took the whole section down with `rows.filter is not a function`.
+  if (!Array.isArray(rows)) return out;
+  rows.forEach((row, i) => {
+    const id = (row.id ?? '').trim();
+    if (id && seen.has(id)) return;
+    let key = id || `row-${i}`;
+    while (seen.has(key)) key = `${key}-${i}`;
+    seen.add(key);
+    out.push({ key, row });
   });
+  return out;
 }
 
-const FALLBACK_HR: Treatment[] = [
-  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-];
-
-function isExpired(w: WebinarItem): boolean {
-  if (!w.startTime) return false;
-  return isSessionExpired(w.startTime, w.duration);
+function playlistToCard(p: CatalogItem, key: string): PlaylistCard {
+  const names = p.videoNames ?? [];
+  return {
+    key,
+    label: p.title,
+    // A playlist carries no blurb, so the slot takes what the feed does
+    // have: the first videos in it.
+    blurb: names.slice(0, 3).join(' · '),
+    count: p.videoCount || names.length,
+    cover: p.thumbnailUrl || '/images/placeholder-playlist.svg',
+    href: `/catalog/playlist/${p.id}`,
+  };
 }
 
-function formatDuration(minutes?: number): string {
+function clipToTile(c: MediaHubClip, key: string): PanelTile {
+  return {
+    key,
+    title: c.title,
+    thumb: c.thumbnail_url || '/images/placeholder-playlist.svg',
+    duration: clipDuration(c.duration_seconds),
+  };
+}
+
+function clipDuration(seconds?: number): string {
+  if (!seconds || seconds <= 0) return '';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function sessionDuration(minutes?: number): string {
   if (!minutes) return '';
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);
@@ -79,424 +175,453 @@ function formatDuration(minutes?: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+function facultyLine(w: WebinarItem): string {
+  if (w.hostDisplayName) return w.hostDisplayName;
+  return (w.speakers ?? []).join(', ');
+}
+
+/* ── page ────────────────────────────────────────────────── */
+
 export default function ForHCPs() {
-  const { data: webinars = [], isLoading } = useQuery({
+  const { data: webinars = [], isLoading: webinarsLoading } = useQuery({
     queryKey: ['webinars'],
     queryFn: webinarsApi.list,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE,
   });
 
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE,
   });
 
-  const hrPlusPlaylists = useMemo<Treatment[]>(() => {
-    const rows = uniqueById(playlists);
-    if (rows.length === 0) return FALLBACK_HR;
-    const hrOrTnbc = rows.filter(
-      (p) => /HR\+|hormone|TNBC|mTNBC|CDK4|endocrine|triple.?negative/i.test(p.title) &&
-        !/HER2|her2|DESTINY-Breast/i.test(p.title)
-    );
-    if (hrOrTnbc.length > 0) return hrOrTnbc.map(catalogToTreatment);
-    const nonHer2 = rows.filter(
-      (p) => !/HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
-    );
-    return nonHer2.length > 0 ? nonHer2.map(catalogToTreatment) : FALLBACK_HR;
+  const { data: clipsPage } = useQuery({
+    queryKey: ['catalog', 'clips', 'hcp-hero'],
+    queryFn: () => catalogApi.getClips({ sort_by: 'recent', limit: 4 }),
+    staleTime: STALE,
+  });
+
+  const playlistCards = useMemo<PlaylistCard[]>(() => {
+    const rows = keyed(playlists).map(({ key, row }) => playlistToCard(row, key));
+    return rows.length > 0 ? rows.slice(0, 4) : DESIGN_PLAYLISTS;
   }, [playlists]);
 
-  const { upcoming, past } = useMemo(() => {
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-    const sorted = uniqueById(webinars).sort((a, b) => {
-      if (!a.startTime && !b.startTime) return 0;
-      if (!a.startTime) return 1;
-      if (!b.startTime) return -1;
-      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-    });
-    return {
-      upcoming: sorted.filter((w) => !isExpired(w)),
-      past: sorted.filter((w) => {
-        if (!isExpired(w) || !w.startTime) return false;
-        return new Date(w.startTime).getTime() >= thirtyDaysAgo;
-      }),
-    };
+  const tiles = useMemo<PanelTile[]>(() => {
+    const rows = keyed(clipsPage?.items ?? []).map(({ key, row }) => clipToTile(row, key));
+    return rows.length >= 4 ? rows.slice(0, 4) : DESIGN_TILES;
+  }, [clipsPage]);
+
+  /** The design lists what is coming up; recent replays stand in when nothing is. */
+  const sessions = useMemo(() => {
+    const rows = keyed(webinars)
+      .filter(({ row }) => !!row.startTime)
+      .sort(
+        (a, b) =>
+          new Date(a.row.startTime as string).getTime() -
+          new Date(b.row.startTime as string).getTime(),
+      );
+    const live = rows.filter(({ row }) => !isSessionExpired(row.startTime, row.duration));
+    if (live.length > 0) return live.slice(0, 5);
+    return rows
+      .filter(({ row }) => isSessionExpired(row.startTime, row.duration))
+      .reverse()
+      .slice(0, 5);
   }, [webinars]);
 
-  const firstWebinar = upcoming[0] ?? past[0] ?? null;
-
   return (
-    <div className="min-h-screen bg-background">
-      {/* ── Masthead + featured ─────────────────────────────
-          The three destinations are the page's opening statement, so
-          they sit inside the title band rather than under a heading of
-          their own. */}
-      <section>
-        <div className={cn(RAIL, 'pt-14 pb-16 md:pt-20 md:pb-24')}>
-          <Reveal>
-            <h1 className="max-w-[14ch] text-balance text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-[3rem]">
-              HCP Platform
-            </h1>
-          </Reveal>
+    <div className="min-h-screen bg-ground">
+      <PageHead
+        eyebrow="For HCPs"
+        title="Built for the ten minutes you actually have"
+        lede="Free for clinicians. Everything is organised by therapeutic area first, then by how much time you have: a full session, an audio cut for the drive, or a written explainer between patients."
+        figure={<CatalogPanel tiles={tiles} />}
+      >
+        <div className="flex flex-wrap gap-3">
+          <Button to="/join" className="font-mono tracking-[-0.011em]">
+            Create a free account
+            <ArrowRight className="size-4" strokeWidth={1.75} />
+          </Button>
+          <Button to="/catalog" variant="outline" className="font-mono tracking-[-0.011em]">
+            Browse the library
+          </Button>
+        </div>
+      </PageHead>
 
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
-            <Reveal delay={60} className="h-full">
-              <FeaturedCard
-                title="Clinical Conversations"
-                imageUrl={STOCK_IMAGES.featuredVideo}
-                cta="Conversations"
-                to="/catalog"
-                showNew
-              />
-            </Reveal>
-            <Reveal delay={120} className="h-full">
-              <FeaturedCard
-                title={firstWebinar?.title || 'Featured Webinar'}
-                imageUrl={firstWebinar?.imageUrl || STOCK_IMAGES.featuredWebinar}
-                cta="Join Now"
-                to={firstWebinar ? `/webinars/${firstWebinar.id}` : '/webinars'}
-                showNew
-              />
-            </Reveal>
-            <Reveal delay={180} className="h-full">
-              <FeaturedCard
-                title="CHM Office Hours"
-                imageUrl={STOCK_IMAGES.featuredWebinar}
-                cta="View sessions"
-                to="/chm-office-hours"
-                showNew
-              />
-            </Reveal>
-          </div>
+      <section>
+        <div className="rail py-14">
+          <ul className="grid gap-4 md:grid-cols-3">
+            {entry.map((e, i) => (
+              <Reveal as="li" key={e.label} delay={i * 60}>
+                <Link
+                  to={e.href}
+                  className="press lift group flex h-full items-center justify-between gap-6 card p-6"
+                >
+                  <span>
+                    <span className="eyebrow block text-amber-ink">New</span>
+                    <span className="display mt-2 block text-body-l text-text">{e.label}</span>
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-body-s text-muted2 group-hover:text-text">
+                    {e.cta}
+                    <ArrowRight className="size-4" strokeWidth={1.75} />
+                  </span>
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
         </div>
       </section>
 
-      {/* ── Featured Biomarker Playlists ─────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead
-            index="01 / Playlists"
-            title="Featured Biomarker Playlists"
-            action={<Chip kind={chipKind('HR+')}>HR+</Chip>}
-          />
-        </Reveal>
-
+      <Band labelledBy="hcp-playlists">
+        <BandHead
+          id="hcp-playlists"
+          index="01 / Playlists"
+          title="Featured biomarker playlists"
+          seeAll={{ noun: 'playlists', href: '/catalog' }}
+        />
         {playlistsLoading && playlists.length === 0 ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-          </div>
+          <Pending label="Loading playlists" />
         ) : (
-          <div className="mt-12 grid auto-rows-fr grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {hrPlusPlaylists.slice(0, 3).map((card, i) => (
-              <Reveal key={card.id} delay={i * 60} className="h-full">
-                <BiomarkerPlaylistCard card={card} />
+          <ul className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {playlistCards.map((p, i) => (
+              <Reveal as="li" key={p.key} delay={i * 60}>
+                <Link
+                  to={p.href}
+                  className="press lift group flex h-full flex-col gap-5 card p-5"
+                >
+                  <Thumb src={p.cover} className="aspect-video w-full" />
+                  <div className="flex flex-1 flex-col">
+                    <h3 className="display text-body-l text-text">{p.label}</h3>
+                    {p.blurb ? (
+                      <p className="prose-lede mt-2 line-clamp-3 text-body-s text-muted2">{p.blurb}</p>
+                    ) : null}
+                    <p className="meta mt-auto pt-6 text-faint">
+                      {p.count ? `Play all · ${p.count} videos` : 'Play all'}
+                    </p>
+                  </div>
+                </Link>
               </Reveal>
             ))}
-          </div>
+          </ul>
         )}
       </Band>
 
-      {/* ── Webinars ─────────────────────────────────────── */}
-      <Band>
-        <Reveal>
-          <SectionHead index="02 / Sessions" title="Webinars" />
-        </Reveal>
+      <Band labelledBy="hcp-areas">
+        <BandHead
+          id="hcp-areas"
+          index="02 / Areas"
+          title="View treatment-specific content"
+          sub="Expert-led education, conversations and resources by therapeutic area."
+        />
+        <ul className="mt-12 grid gap-4 md:grid-cols-3">
+          {DISEASE_AREAS.map((a, i) => (
+            <Reveal as="li" key={a.slug} delay={i * 70}>
+              <Link
+                to={`/catalog/${a.slug}`}
+                className="press lift group flex h-full flex-col card p-7"
+              >
+                <h3 className="display text-display-s text-text">{a.title}</h3>
+                <p className="prose-lede mt-3 text-body-s text-muted2">{a.description}</p>
+                <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-body-s text-muted2 group-hover:text-text">
+                  Explore treatment
+                  <ArrowRight className="size-4" strokeWidth={1.75} />
+                </span>
+              </Link>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
 
-        {isLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+      <Band labelledBy="hcp-live">
+        <BandHead
+          id="hcp-live"
+          index="03 / Live"
+          title="Webinars"
+          seeAll={{ noun: 'sessions', href: '/live' }}
+        />
+        {webinarsLoading && webinars.length === 0 ? (
+          <Pending label="Loading sessions" />
+        ) : sessions.length === 0 ? (
+          <div className="card mt-10 px-8 py-16 text-center">
+            <p className="display text-display-s text-text">No sessions scheduled</p>
+            <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
+              Check back soon for upcoming sessions.
+            </p>
+            <div className="mt-7 flex justify-center">
+              <Button to="/live" variant="outline" className="font-mono tracking-[-0.011em]">
+                See the schedule
+              </Button>
+            </div>
           </div>
-        ) : webinars.length === 0 ? (
-          <Reveal className="mt-12">
-            <Card className="px-8 py-16 text-center">
-              <p className="text-xl font-semibold tracking-tight text-foreground">No webinars scheduled</p>
-              <p className="mx-auto mt-2 max-w-[42ch] text-muted-foreground">
-                Check back soon for upcoming sessions.
-              </p>
-            </Card>
-          </Reveal>
         ) : (
-          <div className="mt-12 space-y-14">
-            {upcoming.length > 0 && (
-              /* The rail reveals as one block: a card scrolled off to the
-                 right would otherwise never intersect the viewport and
-                 stay blank until it was swiped in. */
-              <Reveal>
-                <GroupLabel>Upcoming · {upcoming.length}</GroupLabel>
-                <Rail aria-label={`Upcoming webinars, ${upcoming.length}`}>
-                  {upcoming.map((w) => (
-                    <li key={w.id} className={RAIL_ITEM}>
-                      <WebinarCard webinar={w} expired={false} />
-                    </li>
-                  ))}
-                </Rail>
-              </Reveal>
-            )}
-
-            {past.length > 0 && (
-              <Reveal>
-                <GroupLabel>Past · {past.length}</GroupLabel>
-                <Rail aria-label={`Past webinars, ${past.length}`}>
-                  {past.map((w) => (
-                    <li key={w.id} className={RAIL_ITEM}>
-                      <WebinarCard webinar={w} expired />
-                    </li>
-                  ))}
-                </Rail>
-              </Reveal>
-            )}
-          </div>
+          <ul className="mt-10 space-y-3">
+            {sessions.map(({ key, row: s }, i) => {
+              const start = new Date(s.startTime as string);
+              const meta = [format(start, 'h:mm a'), sessionDuration(s.duration)]
+                .filter(Boolean)
+                .join(' · ');
+              const faculty = facultyLine(s);
+              return (
+                <Reveal as="li" key={key} delay={i * 50}>
+                  <Link
+                    to={`/live/${s.id}`}
+                    className="press group grid items-center gap-x-8 gap-y-2 py-6 md:grid-cols-[12rem_1fr_auto]"
+                  >
+                    <div>
+                      <p className="meta text-signature">{format(start, 'EEE, MMM d, yyyy')}</p>
+                      {meta ? <p className="meta mt-1 text-faint">{meta}</p> : null}
+                    </div>
+                    <div>
+                      <h3 className="display text-body-l text-text">{s.title}</h3>
+                      {faculty ? <p className="mt-1 text-body-s text-muted2">{faculty}</p> : null}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 justify-self-start text-body-s text-muted2 group-hover:text-text md:justify-self-end">
+                      Learn more
+                      <ArrowRight className="size-4" strokeWidth={1.75} />
+                    </span>
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </ul>
         )}
       </Band>
     </div>
   );
 }
 
-/* =======================
-   UI Components
-   ======================= */
+/* =========================================================
+   Design chrome, transplanted from chm-composio's shared
+   components. The shared `SectionHead` in components/ui is
+   the platform's own head — index above the title, semibold
+   sans — so the design's version (mono index parked at a
+   fixed width beside a display title, one "see all" pill)
+   is carried here rather than being flattened into it.
+   ========================================================= */
 
 /**
- * One content section. Space separates sections here, never a rule:
- * generous vertical air inside a rail that carries the page gutter.
+ * Inner-page masthead. With a `figure` the hero splits into copy on the
+ * leading side and a raised product panel on the trailing side.
  */
-function Band({ children, className }: { children: ReactNode; className?: string }) {
+function PageHead({
+  eyebrow,
+  title,
+  lede,
+  children,
+  figure,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  lede?: string;
+  children?: ReactNode;
+  figure?: ReactNode;
+}) {
+  const copy = (
+    <>
+      <p className="eyebrow text-muted2">{eyebrow}</p>
+      <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+        {title}
+      </h1>
+      {lede ? <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">{lede}</p> : null}
+      {children ? <div className="mt-9">{children}</div> : null}
+    </>
+  );
+
+  if (!figure) {
+    return <section className="rail pt-16 pb-14 md:pt-20 md:pb-16">{copy}</section>;
+  }
+
   return (
-    <section>
-      <div className={cn(RAIL, 'py-16 md:py-24', className)}>{children}</div>
+    <section className="rail pt-14 pb-12 md:pt-16 md:pb-16">
+      <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
+        <div>{copy}</div>
+        <div>{figure}</div>
+      </div>
     </section>
   );
 }
 
-/** The mono eyebrow that names a group inside a section. */
-function GroupLabel({ children }: { children: ReactNode }) {
+/** Full-bleed band; the inner rail carries the margins. */
+function Band({
+  children,
+  className = '',
+  labelledBy,
+}: {
+  children: ReactNode;
+  className?: string;
+  labelledBy?: string;
+}) {
   return (
-    <p className="mb-6 font-mono text-label uppercase tabular-nums text-muted-foreground">{children}</p>
+    <section aria-labelledby={labelledBy}>
+      <div className={cn('rail py-16 md:py-24', className)}>{children}</div>
+    </section>
   );
 }
 
 /**
- * Scroll-triggered entry, on the shared `rise-in` vocabulary: opacity
- * plus a 2px lift, nothing more, with the stagger carried as an
- * animation delay.
- *
- * Anything already on screen, or already scrolled past, is shown without
- * waiting for a callback, and a scroll/resize check backs the observer
- * up: a threshold that never gets crossed cleanly would otherwise strand
- * a block at opacity 0, and invisible content is a far worse failure
- * than an unanimated one. Under reduced motion the block starts shown
- * and the stylesheet neutralises the animation.
+ * Section chrome: a mono index label on the leading edge, the heading,
+ * and one "see all" affordance. The index keeps a fixed width so every
+ * section title on the page starts at the same x.
  */
-function Reveal({
-  children,
-  delay = 0,
-  className,
+function BandHead({
+  index,
+  title,
+  sub,
+  seeAll,
+  id,
 }: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
+  index?: string;
+  title: string;
+  sub?: string;
+  seeAll?: { noun: string; href: string };
+  id?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(
-    () => !window.matchMedia('(prefers-reduced-motion: no-preference)').matches,
-  );
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || shown) return;
-
-    const settled = () => el.getBoundingClientRect().top < window.innerHeight * 0.92;
-
-    if (!('IntersectionObserver' in window) || settled()) {
-      // The rAF lets the hidden state paint once so the entry still runs.
-      const id = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(id);
-    }
-
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting || entry.boundingClientRect.top < 0) {
-          setShown(true);
-          io.disconnect();
-        }
-      },
-      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 },
-    );
-    io.observe(el);
-
-    const check = () => {
-      if (!settled()) return;
-      setShown(true);
-      io.disconnect();
-      window.removeEventListener('scroll', check);
-      window.removeEventListener('resize', check);
-    };
-    window.addEventListener('scroll', check, { passive: true });
-    window.addEventListener('resize', check, { passive: true });
-
-    return () => {
-      io.disconnect();
-      window.removeEventListener('scroll', check);
-      window.removeEventListener('resize', check);
-    };
-  }, [shown]);
-
   return (
-    <div
-      ref={ref}
-      className={cn(shown ? 'rise-in' : 'opacity-0', className)}
-      style={shown && delay ? { animationDelay: `${delay}ms` } : undefined}
-    >
-      {children}
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 items-center gap-6">
+          {index ? <p className="eyebrow hidden w-28 shrink-0 text-muted2 md:block">{index}</p> : null}
+          <h2 id={id} className="display text-display-m text-text">
+            {title}
+          </h2>
+        </div>
+        {seeAll ? (
+          <Link
+            to={seeAll.href}
+            className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-[6px] bg-surface px-5 text-body-s text-dim shadow-[var(--shadow-card)] hover:bg-ground hover:text-text hover:shadow-[var(--shadow-card-hover)]"
+          >
+            See all {seeAll.noun}
+            <ArrowRight className="size-4" strokeWidth={1.75} />
+          </Link>
+        ) : null}
+      </div>
+      {sub ? (
+        <p className="prose-lede mt-4 max-w-[52ch] text-body-m text-muted2 md:ms-[8.5rem]">{sub}</p>
+      ) : null}
     </div>
   );
 }
 
-function FeaturedCard({
-  title,
-  imageUrl,
-  cta,
-  to,
-  showNew,
-}: {
-  title: string;
-  imageUrl: string;
-  cta: string;
-  to: string;
-  showNew?: boolean;
-}) {
+/** A state the design's static data never has: a feed still in flight. */
+function Pending({ label }: { label: string }) {
   return (
-    <Link
-      to={to}
-      className={cn(
-        'group relative flex h-full min-h-[15rem] flex-col justify-end overflow-hidden rounded-card bg-muted shadow-card md:min-h-[18rem]',
-        'transition-[box-shadow,translate,scale] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)]',
-        'hover:-translate-y-0.5 hover:shadow-card-hover motion-safe:active:scale-[0.96]',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-      )}
-    >
-      <img
-        src={imageUrl}
-        alt=""
-        loading="eager"
-        referrerPolicy="no-referrer"
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:group-hover:scale-[1.03]"
-      />
-      <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: SCRIM }} />
-
-      {showNew && (
-        <Chip kind="agent" className="absolute left-3 top-3 z-10">
-          New
-        </Chip>
-      )}
-
-      {/* Permanently dark region: the labels are fixed white, because the
-          page-following tokens would resolve to dark grey on the scrim. */}
-      <div className="relative flex flex-col items-start p-5 md:p-6">
-        <p className="line-clamp-2 text-balance text-lg font-semibold leading-snug tracking-tight text-white md:text-xl">
-          {title}
-        </p>
-        <span className="mt-4 inline-flex h-10 items-center gap-2 rounded-[6px] bg-card px-4 text-sm font-semibold text-foreground shadow-card transition-colors duration-150 group-hover:bg-background">
-          {cta}
-          <ArrowRight className="h-4 w-4" strokeWidth={2} />
-        </span>
-      </div>
-    </Link>
+    <div className="flex justify-center py-16" role="status" aria-label={label}>
+      <Loader2 className="size-8 animate-spin text-faint" />
+    </div>
   );
 }
 
-function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
-  const names = card.videoNames.length > 0 ? card.videoNames : ['Video', 'Video', 'Video', 'Video'];
+function Thumb({
+  src,
+  duration,
+  className = '',
+  rounded = 'rounded-[6px]',
+}: {
+  src: string;
+  duration?: string;
+  className?: string;
+  rounded?: string;
+}) {
   return (
-    <Card className="flex h-full min-h-[22rem] flex-col overflow-hidden p-0">
-      <div className="relative aspect-video shrink-0 bg-muted">
-        <img
-          src={card.imageUrl}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="eager"
-          referrerPolicy="no-referrer"
-        />
+    <div className={cn('relative overflow-hidden bg-surface-2', rounded, className)}>
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        /* Tailwind v3 renders `scale-*` as a transform, so the transition
+           names transform where the v4 original named `scale`. */
+        className="absolute inset-0 size-full object-cover opacity-90 transition-[transform,opacity] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.03] group-hover:opacity-100"
+      />
+      {/* Permanently dark region from here down: the scrim is fixed black
+          whatever the appearance, so its labels are fixed white. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+      <div className="img-ring absolute inset-0 rounded-[inherit]" />
+      <ChmMark className="absolute bottom-3 start-3 size-5 text-white/80" />
+      {duration ? <span className="meta absolute end-3 bottom-3 text-white/80">{duration}</span> : null}
+    </div>
+  );
+}
+
+/* ── hero panel ──────────────────────────────────────────── */
+
+/**
+ * Shared frame for the inner-page hero visual: a raised panel on a soft
+ * brand-tinted field, with a bevel highlight along the top edge. Depth
+ * only, no outlines.
+ */
+function HeroPanel({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden className="relative">
+      <div
+        className="pointer-events-none absolute -inset-8 rounded-[24px] opacity-80 blur-2xl"
+        style={{
+          background:
+            'radial-gradient(50% 50% at 70% 30%, color-mix(in oklab, var(--color-beam) 34%, transparent), transparent 70%), radial-gradient(45% 45% at 25% 75%, color-mix(in oklab, var(--color-pink) 30%, transparent), transparent 70%)',
+        }}
+      />
+      <div className="relative overflow-hidden rounded-[6px] bg-surface p-3 shadow-[var(--shadow-pop)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+        <div className="overflow-hidden rounded-[6px] bg-ground">{children}</div>
       </div>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col p-5">
-        <h3 className="line-clamp-2 text-lg font-semibold leading-snug tracking-tight text-foreground">
-          {card.title}
-        </h3>
-        {/* The old bullet was a raw grey dot; a mono index carries the
-            same "this is a list" signal and reads as data. */}
-        <ul className="mt-4 space-y-2">
-          {names.slice(0, 4).map((name, i) => (
-            <li key={`${card.id}-${i}`} className="flex min-w-0 items-baseline gap-3 text-sm text-muted-foreground">
-              <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground/70">
-                {String(i + 1).padStart(2, '0')}
+    </div>
+  );
+}
+
+function Chrome({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 bg-surface px-4 py-3">
+      {/* The design's dots are white/15, which is invisible on the light
+          ground; the hairline token is the same weight in both. */}
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="meta ms-2 text-faint">{label}</span>
+    </div>
+  );
+}
+
+/** The content library as the product: real areas, real newest clips. */
+function CatalogPanel({ tiles }: { tiles: PanelTile[] }) {
+  return (
+    <HeroPanel>
+      <Chrome label="chm / catalog" />
+      <div className="p-4">
+        <div className="flex flex-wrap gap-1.5">
+          {DISEASE_AREAS.slice(0, 4).map((a, i) => (
+            <span
+              key={a.slug}
+              className={cn(
+                'rounded-[6px] px-2.5 py-1 text-[0.6875rem]',
+                i === 0 ? 'text-on-bright' : 'bg-surface text-muted2',
+              )}
+              style={i === 0 ? { background: AREA_TONE[a.slug] ?? 'var(--color-anchor)' } : undefined}
+            >
+              {a.title}
+            </span>
+          ))}
+        </div>
+        <ul className="mt-3 grid grid-cols-2 gap-2">
+          {tiles.map((t) => (
+            <li key={t.key} className="overflow-hidden rounded-[6px] bg-surface">
+              <span className="relative block aspect-video">
+                <img
+                  src={t.thumb}
+                  alt=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 size-full object-cover"
+                />
+                {/* Fixed-black scrim, so the duration on it is fixed white. */}
+                <span className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+                {t.duration ? (
+                  <span className="meta absolute bottom-2 end-2 text-white/90">{t.duration}</span>
+                ) : null}
               </span>
-              <span className="truncate" title={name}>
-                {name}
-              </span>
+              <span className="block truncate px-2.5 py-2 text-[0.6875rem] text-text">{t.title}</span>
             </li>
           ))}
         </ul>
-        <div className="mt-auto pt-6">
-          <Button to={card.playlistUrl} size="sm">
-            Play all
-          </Button>
-        </div>
       </div>
-    </Card>
-  );
-}
-
-function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: boolean }) {
-  const date = w.startTime ? new Date(w.startTime) : null;
-  const imgSrc = w.imageUrl || FALLBACK_WEBINAR_IMAGE;
-
-  return (
-    <Card className="flex h-full flex-col overflow-hidden p-0">
-      <div className="relative aspect-video shrink-0 bg-muted">
-        <img src={imgSrc} alt="" className="h-full w-full object-cover" loading="eager" />
-        <Chip kind={expired ? 'neutral' : 'agent'} className="absolute left-3 top-3">
-          {expired ? 'Expired' : 'Upcoming'}
-        </Chip>
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <h3
-          className={cn(
-            'line-clamp-2 text-base font-semibold leading-snug tracking-tight',
-            expired ? 'text-muted-foreground' : 'text-foreground',
-          )}
-        >
-          {w.title}
-        </h3>
-
-        {date && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-xs tabular-nums text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <Calendar className="h-3.5 w-3.5 shrink-0" />
-              {format(date, 'EEE, MMM d, yyyy')}
-              {!expired && <span className="ml-1">· {formatDistanceToNow(date, { addSuffix: true })}</span>}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="h-3.5 w-3.5 shrink-0" />
-              {format(date, 'h:mm a')}
-            </span>
-            {w.duration && <span>{formatDuration(w.duration)}</span>}
-          </div>
-        )}
-
-        {w.description && (
-          <p className="mt-3 line-clamp-2 max-w-[54ch] text-sm leading-relaxed text-muted-foreground">
-            {w.description}
-          </p>
-        )}
-
-        <div className="mt-auto pt-6">
-          <Button to={`/webinars/${w.id}`} size="sm" variant={expired ? 'outline' : 'solid'}>
-            Learn More
-          </Button>
-        </div>
-      </div>
-    </Card>
+    </HeroPanel>
   );
 }
