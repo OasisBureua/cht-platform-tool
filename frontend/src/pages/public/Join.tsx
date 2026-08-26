@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
@@ -27,7 +27,6 @@ import {
 } from '../../lib/password-rules';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 import CityTypeahead from '../../components/forms/CityTypeahead';
-import { ChmMark } from '../../components/brand/ChmMark';
 import { verifyNpiNumber } from '../../api/npi';
 import { catalogApi } from '../../api/catalog';
 import {
@@ -584,19 +583,7 @@ function AuthShell({
         {/* `my-auto` rather than justify-center: a centred flex child in
             a scroll container puts its own overflow out of reach. */}
         <div className="mx-auto my-auto w-full max-w-[25rem]">
-          <Link to="/home" aria-label="CHM home" className="press -ms-2 block w-fit rounded-[6px] p-2">
-            <ChmMark className="size-7 text-anchor" />
-          </Link>
-
-          <Link
-            to="/home"
-            className="press mt-5 inline-flex w-fit items-center gap-1.5 rounded-[6px] py-1 text-body-s text-muted2 hover:text-text"
-          >
-            <ArrowLeft className="size-4" strokeWidth={1.75} />
-            Back
-          </Link>
-
-          <h1 className="display display-tight mt-4 text-[1.875rem] leading-[1.08] text-text">
+          <h1 className="display display-tight text-[1.875rem] leading-[1.08] text-text">
             {heading}
           </h1>
           <p className="prose-lede mt-3 text-body-m text-muted2">{sub}</p>

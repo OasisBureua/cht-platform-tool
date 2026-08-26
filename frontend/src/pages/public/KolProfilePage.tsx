@@ -2,7 +2,6 @@ import { ProfileBanner } from '../../components/kol/ProfileBanner';
 import { useMemo, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
   ArrowRight,
   Briefcase,
   ExternalLink,
@@ -123,31 +122,12 @@ export default function KolProfilePage() {
 
   return (
     <div className="min-h-screen w-full bg-ground pb-20 text-text">
-      <div className="sticky top-16 z-30 w-full bg-[color-mix(in_oklab,var(--color-surface)_88%,transparent)] backdrop-blur-2xl backdrop-saturate-150">
-        <div className="flex w-full max-w-none items-center gap-1 px-4 py-2 sm:px-6 lg:px-8">
-          <Link
-            to="/kol-network"
-            className="press grid size-11 shrink-0 place-items-center rounded-[6px] text-dim hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            aria-label="Back to KOL directory"
-          >
-            <ArrowLeft className="h-5 w-5" strokeWidth={2} />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <p className="display truncate text-body-m leading-tight text-text">{vm.displayName}</p>
-            <p className="truncate text-body-s text-muted2">
-              {(entry.role.split(/[.;]/)[0]?.trim() ?? '').slice(0, 56)}
-              {(entry.role.split(/[.;]/)[0]?.trim() ?? '').length > 56 ? '…' : ''}
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="w-full max-w-none">
         {/* Banner: full viewport width */}
         {/* A banner rather than a slab: the cluster motif seeded from
             this profile, so the page reads as part of the site instead
             of a stock gradient. A supplied banner image still wins. */}
-        <div className="relative h-40 w-full overflow-hidden bg-surface sm:h-52">
+        <div className="relative h-24 w-full overflow-hidden bg-surface sm:h-28">
           {vm.bannerImageUrl ? (
             <img src={vm.bannerImageUrl} alt="" className="size-full object-cover" loading="lazy" />
           ) : (
@@ -162,11 +142,11 @@ export default function KolProfilePage() {
             and the fields a partner wants to compare -- sessions,
             publications, Open Payments -- were never on screen together. */}
         <div className="rail grid gap-8 pb-6 lg:grid-cols-[21rem_1fr] lg:gap-12">
-          <aside className="lg:sticky lg:top-[7.75rem] lg:h-fit lg:self-start">
+          <aside className="lg:sticky lg:top-24 lg:h-fit lg:self-start">
             <img
               src={entry.photoUrl || avatarUrl(entry.name)}
               alt=""
-              className="-mt-14 size-28 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-32"
+              className="-mt-12 size-24 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-28"
             />
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -307,8 +287,6 @@ export default function KolProfilePage() {
                   </article>
                 ) : null}
 
-                <KolPublicationsSection kolId={entry.id} />
-
                 <article className="card p-6">
                   <h2 className="display flex items-center gap-2 text-body-m text-text">
                     <Briefcase className="h-4 w-4" aria-hidden />
@@ -341,6 +319,10 @@ export default function KolProfilePage() {
                     </ul>
                   </article>
                 ) : null}
+
+                {/* Last: seventeen indexed papers is a reference list, not
+                    the reason anyone opened the page. */}
+                <KolPublicationsSection kolId={entry.id} />
               
             </div>
           </div>
