@@ -551,7 +551,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             {shows.map((s) => (
               <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
                 <Link
-                  to="/chm-office-hours"
+                  to="/catalog"
                   className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   <div className="relative aspect-square overflow-hidden">
@@ -687,7 +687,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             index="03 / Podcasts"
             title="CHM Podcast Network"
             sub="Four shows, each with its own voice and its own audience."
-            seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
+            seeAll={{ noun: 'shows', to: '/catalog' }}
           />
           {showsBody}
         </Band>
@@ -764,7 +764,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
           <LatestTabs
             tracks={[
               { key: 'video', label: 'Video', panel: nowBody, more: { to: '/catalog', label: 'Browse the library' } },
-              { key: 'podcast', label: 'Podcasts', panel: showsBody, more: { to: '/podcasts', label: 'Browse the library' } },
+              { key: 'podcast', label: 'Podcasts', panel: showsBody, more: { to: '/catalog', label: 'Browse the library' } },
               { key: 'editorial', label: 'Editorial', panel: articlesBody, more: { to: '/catalog', label: 'Browse the library' } },
             ]}
           />

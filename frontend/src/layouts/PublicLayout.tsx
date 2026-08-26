@@ -668,7 +668,6 @@ const columns: { label: string; links: FooterLink[] }[] = [
       { to: '/catalog', label: 'Content library' },
       { to: '/catalog?view=playlists', label: 'Playlists' },
       { to: '/catalog?view=clips', label: 'Clips' },
-      { to: '/chm-office-hours', label: 'CHM Office Hours' },
     ],
   },
   {

@@ -721,7 +721,7 @@ export default function Home() {
             index="03 / Podcasts"
             title="CHM Podcast Network"
             sub="Four shows, each with its own voice and its own audience."
-            seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
+            seeAll={{ noun: 'shows', to: '/catalog' }}
           />
           <div className="mt-[2.375rem]">
             {/* Headroom lives inside the scroller: overflow-x also clips
@@ -731,7 +731,7 @@ export default function Home() {
                 {shows.map((s) => (
                   <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
                     <Link
-                      to="/chm-office-hours"
+                      to="/catalog"
                       className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <div className="relative aspect-square overflow-hidden">
