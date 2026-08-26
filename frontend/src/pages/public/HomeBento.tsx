@@ -445,6 +445,19 @@ export default function HomeBento() {
       {/* ── Hero ─────────────────────────────────────────── */}
       <HomeHero tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
 
+      {/* ── The model, as a bento ─────────────────────────
+          No headline. Five cards that each show a format rather than
+          describe one — a heading above them would only say in words
+          what the cards already say in full. */}
+      <Band labelledBy="engine-heading">
+        <h2 id="engine-heading" className="sr-only">
+          One recording, three formats
+        </h2>
+        <Reveal>
+          <FormatBento poster={sessionPoster} />
+        </Reveal>
+      </Band>
+
       {/* ── Now on CHM ───────────────────────────────────── */}
       <Band labelledBy="now-heading">
         <SectionHead
@@ -529,38 +542,6 @@ export default function HomeBento() {
             </ul>
           </div>
         </Reveal>
-      </Band>
-
-      {/* ── Showcase / content engine ────────────────────── */}
-      <Band labelledBy="engine-heading">
-        <div className="grid items-start gap-14">
-          <Reveal>
-            <Eyebrow>02 / The model</Eyebrow>
-            <h2 id="engine-heading" className="display mt-5 text-display-l">
-              <span className="block text-text">One recording.</span>
-              <span className="block text-muted2">Four formats.</span>
-            </h2>
-            <p className="prose-lede mt-6 max-w-[44ch] text-body-l text-muted2">
-              A single peer-to-peer conversation becomes a long-form interview, a podcast episode, a
-              written explainer and a set of short clips, each filed under the same disease state.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <Btn to="/contact" variant="cta" withArrow>
-                Partner with CHM
-              </Btn>
-              <Btn to="/catalog" variant="outline">
-                Browse the library
-              </Btn>
-            </div>
-          </Reveal>
-
-          <Reveal delay={80}>
-            {/* Window chrome, then the format row, then the sheet: the
-                same stack a browser uses, so the front format reads as
-                the document rather than a button above a box. */}
-            <FormatBento poster={sessionPoster} />
-          </Reveal>
-        </div>
       </Band>
 
       {/* ── Podcast network ──────────────────────────────── */}

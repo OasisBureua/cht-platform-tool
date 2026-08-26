@@ -29,7 +29,6 @@ const nav = [
 /* Everything the search dialog can jump to that is not a disease state. */
 const destinations = [
   ...nav,
-  { to: '/for-hcps', label: 'For HCPs' },
   { to: '/about', label: 'About CHM' },
   { to: '/what-we-do', label: 'What we do' },
   { to: '/contact', label: 'Contact the editorial team' },
@@ -171,13 +170,6 @@ export default function PublicLayout() {
 
               <ThemeControl />
 
-              <Link
-                to="/for-hcps"
-                className="press hidden h-9 shrink-0 items-center rounded-[6px] px-3.5 text-[0.8125rem] text-text shadow-[var(--shadow-card)] hover:bg-surface-2 sm:inline-flex"
-              >
-                For HCPs
-              </Link>
-
               {/* Two plain controls. A chevron here read as a dropdown but
                   only linked to sign-in, so the icon lied about the action. */}
               <Link
@@ -188,7 +180,7 @@ export default function PublicLayout() {
               </Link>
               <Link
                 to="/join"
-                className="press hidden h-9 shrink-0 items-center rounded-[6px] bg-inverse px-4 text-[0.8125rem] font-medium text-ground hover:brightness-[0.92] sm:inline-flex"
+                className="press hidden h-9 shrink-0 items-center rounded-[6px] bg-cta px-4 text-[0.8125rem] font-medium text-white hover:bg-cta-deep sm:inline-flex"
               >
                 Get started
               </Link>

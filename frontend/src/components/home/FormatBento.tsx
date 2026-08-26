@@ -37,6 +37,7 @@ function Card({
   to,
   accent,
   className = '',
+  height = 'h-[25rem]',
   children,
 }: {
   label: string;
@@ -46,18 +47,20 @@ function Card({
   to: string;
   accent?: boolean;
   className?: string;
+  /** Fixed, so one card's content cannot set every sibling's height. */
+  height?: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       to={to}
-      className={`group card lift press flex min-h-[17rem] flex-col p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
+      className={`group card lift press flex flex-col overflow-hidden p-4 ${height} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
     >
       <div className="flex items-center justify-between">
         <span className={`eyebrow ${accent ? 'text-amber' : 'text-faint'}`}>{label}</span>
         <span className="meta tabular-nums text-faint">{meta}</span>
       </div>
-      <div className="my-4 min-h-0 flex-1">{children}</div>
+      <div className="my-3 min-h-0 flex-1 overflow-hidden">{children}</div>
       <div>
         <p className="display text-body-m text-text">{title}</p>
         <p className="prose-lede mt-1 text-body-s text-muted2">{body}</p>
@@ -178,6 +181,7 @@ export function FormatBento({ poster }: { poster: string }) {
         title="Office Hours"
         body="Send the case you are stuck on. Two faculty work it live, without the answer in advance."
         to="/live"
+        height="h-[15rem]"
         className="md:col-span-2"
       >
         <div className="flex h-full items-center gap-4">
@@ -202,11 +206,12 @@ export function FormatBento({ poster }: { poster: string }) {
       </Card>
 
       <Card
-        label="Network"
-        meta="4 shows"
-        title="CHM Podcast Network"
-        body="Four shows, each with its own voice and its own audience."
-        to="/podcasts"
+        label="For clinicians"
+        meta="Free"
+        title="The HCP platform"
+        body="Every session, every format, filed by disease state. Free, and it stays free."
+        to="/for-hcps"
+        height="h-[15rem]"
       >
         <div className="flex h-full items-end gap-2">
           {[

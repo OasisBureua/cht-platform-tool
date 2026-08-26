@@ -528,11 +528,11 @@ export default function Home() {
             <Eyebrow>02 / The model</Eyebrow>
             <h2 id="engine-heading" className="display mt-5 text-display-l">
               <span className="block text-text">One recording.</span>
-              <span className="block text-muted2">Four formats.</span>
+              <span className="block text-muted2">Three formats.</span>
             </h2>
             <p className="prose-lede mt-6 max-w-[44ch] text-body-l text-muted2">
               A single peer-to-peer conversation becomes a long-form interview, a podcast episode, a
-              written explainer and a set of short clips, each filed under the same disease state.
+              written explainer, each filed under the same disease state.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Btn to="/contact" variant="cta" withArrow>
