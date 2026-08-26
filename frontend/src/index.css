@@ -525,23 +525,30 @@
  * ========================================================================== */
 
 :root {
-  /* ground ramp */
+  /* Ground ramp. The page stays pure white; the surfaces above it
+     carry a warm bias (hue 40) rather than being pure neutral, so a
+     card reads as paper against the white instead of as dimmed white.
+     Saturation is deliberately tiny — at this lightness the hue is
+     felt rather than seen, and luminance barely moves, so every
+     contrast pair below holds. */
   --ground: 0 0% 100%;
-  --surface-1: 0 0% 96.3%;
-  --surface-2: 0 0% 92.1%;
+  --surface-1: 40 24% 96.5%;
+  --surface-2: 40 18% 92.4%;
 
-  /* text ramp: 14.7 / 9.1 / 5.9 / 4.7 on white */
-  --text: 0 0% 5.2%;
-  --dim: 0 0% 21.4%;
-  --muted2: 0 0% 36.1%;
-  --faint: 0 0% 42.8%;
+  /* text ramp: 14.7 / 9.1 / 5.9 / 4.7 on white. Kept near-neutral with
+     the faintest warm cast so it sits on the warm surfaces without
+     reading as two different greys. */
+  --text: 30 6% 5.4%;
+  --dim: 30 5% 21.6%;
+  --muted2: 30 5% 36.3%;
+  --faint: 30 5% 40.5%;
 
   /* alpha tokens: carry their own alpha, so they are consumed as
      hsl(var(--x)) with no <alpha-value> slot. */
-  --wash: 0 0% 0% / 0.03;
-  --hairline: 0 0% 0% / 0.08;
-  --hairline-strong: 0 0% 0% / 0.14;
-  --placeholder: 0 0% 0% / 0.3;
+  --wash: 40 30% 20% / 0.035;
+  --hairline: 30 12% 12% / 0.08;
+  --hairline-strong: 30 12% 12% / 0.14;
+  --placeholder: 30 6% 12% / 0.3;
 
   /* action + accent */
   --signature: 223.8 87.4% 52.2%;

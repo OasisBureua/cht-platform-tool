@@ -43,6 +43,17 @@ const FOCUSABLE =
   'a[href], button:not(:disabled), input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export default function PublicLayout() {
+  // The bar starts flush to the top edge and detaches into the floating
+  // pill once the page moves. The threshold is 8px rather than 0 so a
+  // single pixel of scroll or an elastic bounce cannot make it flicker.
+  const [detached, setDetached] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setDetached(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -126,9 +137,24 @@ export default function PublicLayout() {
         Skip to content
       </a>
 
-      <header className="sticky top-0 z-50 pt-3 md:pt-4">
-        <div className="rail">
-          <div className="flex h-16 flex-nowrap items-center gap-3 whitespace-nowrap rounded-[6px] bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] px-4 shadow-[var(--shadow-nav)] ring-1 ring-[color-mix(in_oklab,var(--color-text)_10%,transparent)] backdrop-blur-2xl backdrop-saturate-150 md:px-5 xl:gap-5">
+      <header
+        className={`sticky top-0 z-50 transition-[padding] duration-300 ease-[var(--ease-out-soft)] ${
+          detached ? 'pt-3 md:pt-4' : 'pt-0'
+        }`}
+      >
+        <div className={detached ? 'rail' : 'w-full px-5 md:px-10'}>
+          <div
+            className={`relative flex h-16 flex-nowrap items-center gap-3 whitespace-nowrap px-4 backdrop-blur-2xl backdrop-saturate-150 md:px-5 xl:gap-5 transition-[background-color,border-radius,box-shadow] duration-300 ease-[var(--ease-out-soft)] ${
+              detached
+                ? 'rounded-[6px] bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] shadow-[var(--shadow-nav)] ring-1 ring-[color-mix(in_oklab,var(--color-text)_10%,transparent)]'
+                : 'rounded-none bg-[color-mix(in_oklab,var(--color-surface)_88%,transparent)] shadow-none ring-0'
+            }`}
+          >
+            {/* A hairline only while flush: at the top edge there is no
+                shadow to separate the bar from the page behind it. */}
+            {!detached && (
+              <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-hairline" />
+            )}
             <Link
               to="/home"
               className="press shrink-0 rounded-[6px] py-1 text-text"
