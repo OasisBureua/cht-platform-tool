@@ -362,7 +362,7 @@ function institutionLine(k: DolEntry): string {
   return roleLead.length > 46 ? `${roleLead.slice(0, 45)}…` : roleLead;
 }
 
-export default function HomeBento({ order = 'a' }: { order?: 'a' | 'c' } = {}) {
+export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
@@ -828,27 +828,11 @@ export default function HomeBento({ order = 'a' }: { order?: 'a' | 'c' } = {}) {
         sections become five and only one scroller is loose on the page. */
   const ORDER =
     order === 'c'
-      ? ['engine', 'areas', 'latest', 'moment', 'kol']
+      ? ['engine', 'latest', 'areas', 'moment', 'kol']
       : ['engine', 'now', 'moment', 'shows', 'articles', 'areas', 'kol'];
 
   return (
     <div className="min-w-0 overflow-x-hidden bg-ground text-text">
-
-      {/* Variant marker: this route exists to compare the formats
-          section against /home. Not linked from the nav. */}
-      <div className="rail pt-4">
-        <p className="eyebrow text-faint">
-          {order === 'c'
-            ? 'Order C · seven sections folded into five'
-            : 'Order A · no two scrollers adjacent'}
-          {' · compare '}
-          <a className="text-anchor hover:brightness-110" href="/home">/home (B)</a>
-          {' · '}
-          <a className="text-anchor hover:brightness-110" href={order === 'c' ? '/home-bento' : '/home-c'}>
-            {order === 'c' ? '/home-bento (A)' : '/home-c (C)'}
-          </a>
-        </p>
-      </div>
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <HomeHero variant="demo" tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />

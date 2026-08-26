@@ -41,16 +41,19 @@ const TONES = ['--ink-pink', '--ink-purple', '--anchor', '--ink-cyan', '--ink-co
 const R0 = [4, 24, 46, 72, 106];
 const R1 = [24, 46, 72, 106, 152];
 
-/** Per-hub angle nudge and radius multiplier. Fixed, so resize is stable. */
-const JITTER: [number, number][] = [
-  [0.0, 1.02],
-  [0.16, 0.82],
-  [-0.1, 1.14],
-  [0.07, 0.88],
-  [-0.19, 1.08],
-  [0.12, 0.94],
-  [-0.06, 1.0],
-  [0.2, 0.86],
+/**
+ * Where each hub sits, as a fraction of the canvas. Hand-placed rather
+ * than laid on a ring: an even ring reads as a clock face, and these
+ * are the positions that actually work around the headline, the lede
+ * and the search box. Add a seventh hub and it wraps with an offset.
+ */
+const HUB_SPOTS: [number, number][] = [
+  [0.42, 0.19],
+  [0.8, 0.35],
+  [0.2, 0.62],
+  [0.54, 0.66],
+  [0.41, 0.93],
+  [0.83, 0.86],
 ];
 const SP = [0.0043, 0.0029, 0.0019, 0.0013, 0.00084];
 const OP = [0.42, 0.3, 0.21, 0.14, 0.09];
@@ -106,13 +109,15 @@ export function DiseaseMap({ className = '' }: { className?: string }) {
       k = Math.max(0.8, Math.min(1.75, w / 820));
 
       hubs = labels.map((label, i) => {
-        const [da, dr] = JITTER[i % JITTER.length];
-        const a = (i / labels.length) * Math.PI * 2 - Math.PI / 2 + da;
+        const [fx, fy] = HUB_SPOTS[i % HUB_SPOTS.length];
+        // Past the first pass, nudge so a seventh hub does not land
+        // exactly on top of the first.
+        const wrap = Math.floor(i / HUB_SPOTS.length) * 0.06;
         return {
           label,
           tone: TONES[i % TONES.length],
-          x: w / 2 + Math.cos(a) * w * 0.3 * dr,
-          y: h / 2 + Math.sin(a) * h * 0.38 * dr,
+          x: w * (fx + wrap),
+          y: h * (fy - wrap),
         };
       });
       const n = Math.max(900, Math.min(6000, Math.round((w * h) / 46)));

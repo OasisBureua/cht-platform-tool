@@ -139,11 +139,10 @@ function App() {
                 ======================= */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/home-bento" element={<HomeBento />} />
-              {/* Same page, order C: now + shows + articles folded into
-                  one tabbed block. Not linked from the nav. */}
-              <Route path="/home-c" element={<HomeBento order="c" />} />
+              {/* The homepage is order C: seven sections folded into five. */}
+              <Route path="/home" element={<HomeBento />} />
+              {/* Order B, kept for comparison. Not linked from the nav. */}
+              <Route path="/home-tame" element={<Home />} />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
