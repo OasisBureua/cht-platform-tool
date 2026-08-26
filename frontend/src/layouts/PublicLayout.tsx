@@ -141,9 +141,16 @@ export default function PublicLayout() {
           detached ? 'pt-3 md:pt-4' : 'pt-0'
         }`}
       >
-        <div className={detached ? 'rail' : 'w-full px-5 md:px-10'}>
+        {/* At rest the wrapper carries no gutter, so the bar's own
+            background reaches both viewport edges and it reads as part
+            of the page rather than as a floating sticky element. The
+            gutter moves onto the bar instead, at the rail's own values,
+            so the wordmark stays aligned with the content below it. */}
+        <div className={detached ? 'rail' : 'w-full'}>
           <div
-            className={`relative flex h-16 flex-nowrap items-center gap-3 whitespace-nowrap px-4 backdrop-blur-2xl backdrop-saturate-150 md:px-5 xl:gap-5 transition-[background-color,border-radius,box-shadow] duration-300 ease-[var(--ease-out-soft)] ${
+            className={`relative flex h-16 flex-nowrap items-center gap-3 whitespace-nowrap backdrop-blur-2xl backdrop-saturate-150 xl:gap-5 transition-[background-color,border-radius,box-shadow,padding] duration-300 ease-[var(--ease-out-soft)] ${
+              detached ? 'px-4 md:px-5' : 'px-5 md:px-10'
+            } ${
               detached
                 ? 'rounded-[6px] bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] shadow-[var(--shadow-nav)] ring-1 ring-[color-mix(in_oklab,var(--color-text)_10%,transparent)]'
                 : 'rounded-none bg-[color-mix(in_oklab,var(--color-surface)_88%,transparent)] shadow-none ring-0'

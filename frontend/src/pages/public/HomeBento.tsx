@@ -631,7 +631,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="now-heading">
           <SectionHead
             id="now-heading"
-            index="01 / Latest"
             title="Now on CHM"
             sub="The most recent across every format."
             seeAll={{ noun: 'content', to: '/catalog' }}
@@ -646,7 +645,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="moment-heading">
           <SectionHead
             id="moment-heading"
-            index="04 / Series"
             title="This Moment in Medicine"
             sub="Short answers to the questions that come up between patients."
             seeAll={{ noun: 'episodes', to: '/catalog' }}
@@ -684,7 +682,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="shows-heading">
           <SectionHead
             id="shows-heading"
-            index="03 / Podcasts"
             title="CHM Podcast Network"
             sub="Four shows, each with its own voice and its own audience."
             seeAll={{ noun: 'shows', to: '/catalog' }}
@@ -699,7 +696,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="articles-heading">
           <SectionHead
             id="articles-heading"
-            index="05 / Editorial"
             title="Recent articles"
             seeAll={{ noun: 'articles', to: '/catalog' }}
           />
@@ -713,7 +709,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="areas-heading">
           <SectionHead
             id="areas-heading"
-            index="07 / Browse"
             title="Explore by disease state"
             sub="Each cluster is sized by what the area actually holds."
           />
@@ -757,7 +752,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="latest-heading">
           <SectionHead
             id="latest-heading"
-            index="03 / Latest"
             title="Everything new, in every format"
             sub="One section instead of three. The format is a filter, not another scroll."
           />
@@ -777,7 +771,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Band labelledBy="kol-heading">
           <SectionHead
             id="kol-heading"
-            index="06 / Faculty"
             title="In conversation"
             sub="Practising specialists who bring their own audiences."
             seeAll={{ noun: 'profiles', to: '/kol-network' }}
