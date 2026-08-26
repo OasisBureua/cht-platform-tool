@@ -38,6 +38,7 @@ function Card({
   accent,
   className = '',
   height = 'h-[25rem]',
+  span = 'md:col-span-4',
   children,
 }: {
   label: string;
@@ -49,12 +50,14 @@ function Card({
   className?: string;
   /** Fixed, so one card's content cannot set every sibling's height. */
   height?: string;
+  /** Column span on the twelve-column row. */
+  span?: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       to={to}
-      className={`group card lift press flex flex-col overflow-hidden p-4 ${height} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
+      className={`group card lift press flex flex-col overflow-hidden p-4 ${height} ${span} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
     >
       <div className="flex items-center justify-between">
         <span className={`eyebrow ${accent ? 'text-amber' : 'text-faint'}`}>{label}</span>
@@ -131,8 +134,11 @@ function Drift() {
 }
 
 export function FormatBento({ poster }: { poster: string }) {
+  // Twelve columns, not three: row one is 4+4+4, but row two splits
+  // 7+5 so the Live card stops short of the format cards' right edge
+  // instead of running the full two-thirds.
   return (
-    <div className="mt-12 grid gap-4 md:grid-cols-3">
+    <div className="mt-12 grid gap-4 md:grid-cols-12">
       <Card
         label="Video"
         meta="18:40"
@@ -182,7 +188,7 @@ export function FormatBento({ poster }: { poster: string }) {
         body="Send the case you are stuck on. Two faculty work it live, without the answer in advance."
         to="/live"
         height="h-[15rem]"
-        className="md:col-span-2"
+        span="md:col-span-7"
       >
         <div className="flex h-full items-center gap-4">
           <span className="grid size-16 shrink-0 place-items-center rounded-[6px] bg-anchor text-center text-ground">
@@ -212,6 +218,7 @@ export function FormatBento({ poster }: { poster: string }) {
         body="Every session, every format, filed by disease state. Free, and it stays free."
         to="/for-hcps"
         height="h-[15rem]"
+        span="md:col-span-5"
       >
         <div className="flex h-full items-end gap-2">
           {[

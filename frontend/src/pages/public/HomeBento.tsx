@@ -449,7 +449,7 @@ export default function HomeBento() {
       </div>
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <HomeHero tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
+      <HomeHero variant="demo" tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
 
       {/* ── The model, as a bento ─────────────────────────
           No headline. Five cards that each show a format rather than

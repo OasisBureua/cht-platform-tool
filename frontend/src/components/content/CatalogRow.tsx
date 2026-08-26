@@ -64,7 +64,15 @@ export function CatalogRow({
         </Link>
       </div>
 
-      <Rail className="mt-6" aria-label={title}>
+      {/* The rail bleeds into the gutter so a tile runs off the edge
+          rather than being clipped short of it. Mandatory snapping
+          measures from the padding box, though, so without a matching
+          scroll-padding it snaps the first tile INTO the gutter and the
+          row starts a gutter's width left of its own heading. */}
+      <Rail
+        className="mt-6 [scroll-padding-inline-start:var(--page-gutter,1rem)]"
+        aria-label={title}
+      >
         {children}
       </Rail>
     </section>

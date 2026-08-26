@@ -483,7 +483,7 @@ export default function Dashboard() {
                 ? 'shadow-card hover:shadow-card-hover'
                 : /* Same to-br three-stop wash, off the spectrum now:
                      cool blue corner → paper → warm coral corner. */
-                  'bg-gradient-to-br from-cerebral-blue/18 via-surface to-cerebral-coral/22 shadow-card hover:shadow-card-hover',
+                  'bg-gradient-to-br from-cerebral-blue/20 via-surface to-cerebral-coral/25 shadow-card hover:shadow-card-hover',
             ].join(' ')}
           >
             {nextLiveCoverUrl ? (
@@ -493,13 +493,13 @@ export default function Dashboard() {
                   alt={nextUpcomingWebinar?.title ? `Cover for ${nextUpcomingWebinar.title}` : ''}
                   className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/38 to-black/22" />
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-[58%] max-w-[320px] bg-gradient-to-r from-black/52 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-[58%] max-w-[320px] bg-gradient-to-r from-black/50 to-transparent" />
               </>
             ) : (
               <>
-                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-cerebral-blue/20 blur-3xl dark:bg-cerebral-blue/14" />
-                <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-cerebral-coral/35 blur-3xl dark:bg-cerebral-coral/14" />
+                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-cerebral-blue/20 blur-3xl dark:bg-cerebral-blue/15" />
+                <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-cerebral-coral/35 blur-3xl dark:bg-cerebral-coral/15" />
               </>
             )}
             <div className="relative z-10 flex items-start justify-between gap-3">
@@ -539,7 +539,7 @@ export default function Dashboard() {
                   <p
                     className={[
                       'meta mt-3',
-                      nextLiveCoverUrl ? 'text-white/88' : 'text-dim',
+                      nextLiveCoverUrl ? 'text-white/90' : 'text-dim',
                     ].join(' ')}
                   >
                     {nextUpcomingWebinar.startTime
@@ -720,8 +720,8 @@ export default function Dashboard() {
                           draggable={false}
                           onError={slide.thumbTrackKey ? onSpotlightThumbError : undefined}
                         />
-                        <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                         <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white sm:p-7 md:p-8">
                           {/* Permanently dark: over the scrim the eyebrow
                               takes the amber tuned for deep grounds and the

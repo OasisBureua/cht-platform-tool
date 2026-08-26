@@ -1,7 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { KnowledgeField } from './KnowledgeField';
+import { LiveDemo } from './LiveDemo';
 
 type Tile = { id: string; imageUrl: string };
+
+/** Which hero this page runs. See the note on `HomeHero` below. */
+export type HeroVariant = 'rail' | 'field' | 'demo';
 
 /**
  * The landing hero. A continuous rail of real session thumbnails sits
@@ -15,10 +20,23 @@ type Tile = { id: string; imageUrl: string };
  * The hero sits on the page ground rather than a pinned dark panel: the
  * scrims are `--color-ground`, so the whole composition follows the
  * appearance and the copy can use the page's own text ramp.
+ *
+ * Three variants, because the two homepages make different arguments:
+ *   rail  — the thumbnail lens above. A shelf of content.
+ *   field — a drifting particle field. Says "a body of knowledge",
+ *           claims nothing specific, and carries no image licensing.
+ *   demo  — the real search box, lifted into the hero. Says "here is
+ *           what the library knows" and can actually be used.
  */
-export function HomeHero({ tiles }: { tiles: Tile[] }) {
+export function HomeHero({
+  tiles,
+  variant = 'rail',
+}: {
+  tiles: Tile[];
+  variant?: HeroVariant;
+}) {
   const stage = useRef<HTMLDivElement>(null);
-  const row = tiles.length ? [...tiles, ...tiles, ...tiles].slice(0, 18) : [];
+  const row = variant === 'rail' && tiles.length ? [...tiles, ...tiles, ...tiles].slice(0, 18) : [];
 
   useEffect(() => {
     const root = stage.current;
@@ -115,6 +133,23 @@ export function HomeHero({ tiles }: { tiles: Tile[] }) {
         </div>
       )}
 
+      {variant === 'field' && (
+        <div aria-hidden className="pointer-events-none absolute inset-0 select-none">
+          <KnowledgeField />
+          {/* A light knock-down behind the copy, not a hole: the field is
+              densest dead centre, which is exactly where a hard scrim
+              would leave a bare ring. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(34% 30% at 50% 44%, color-mix(in oklab, var(--color-ground) 82%, transparent) 0%, color-mix(in oklab, var(--color-ground) 40%, transparent) 62%, transparent 100%)',
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-ground" />
+        </div>
+      )}
+
       <div className="rail relative flex flex-col items-center pt-20 pb-16 text-center md:pt-28 md:pb-20">
         <h1
           id="hero-heading"
@@ -132,10 +167,12 @@ export function HomeHero({ tiles }: { tiles: Tile[] }) {
         </p>
 
         <div
-          className="rise mt-10 flex flex-wrap justify-center gap-3"
+          className="rise mt-10 flex w-full flex-wrap justify-center gap-3"
           style={{ animationDelay: '200ms' }}
         >
-          <Link
+          {variant === 'demo' && <LiveDemo />}
+          {variant !== 'demo' && (
+          <><Link
             to="/join"
             className="press inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-cta ps-6 pe-5 font-mono text-[0.875rem] tracking-[-0.011em] text-ground hover:bg-cta-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
@@ -158,7 +195,8 @@ export function HomeHero({ tiles }: { tiles: Tile[] }) {
             className="press inline-flex h-11 items-center justify-center gap-2 rounded-[6px] bg-surface px-6 font-mono text-[0.875rem] tracking-[-0.011em] text-text shadow-card hover:bg-ground hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
           >
             Partner with CHM
-          </Link>
+          </Link></>
+          )}
         </div>
       </div>
     </section>

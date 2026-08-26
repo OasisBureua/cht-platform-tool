@@ -435,7 +435,7 @@ export default function Home() {
   return (
     <div className="min-w-0 overflow-x-hidden bg-ground text-text">
       {/* ── Hero ─────────────────────────────────────────── */}
-      <HomeHero tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
+      <HomeHero variant="field" tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
 
       {/* ── Now on CHM ───────────────────────────────────── */}
       <Band labelledBy="now-heading">
