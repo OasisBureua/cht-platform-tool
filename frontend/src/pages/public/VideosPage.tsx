@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { ArrowRight, ListVideo, Loader2, Play, Search } from 'lucide-react';
 import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
@@ -99,6 +99,17 @@ function tagLabel(value: string): string {
    plus elevation, never a hairline, and a 6px corner rather than a pill. */
 const CHIP = 'press inline-flex h-10 items-center rounded-[6px] px-4 text-body-s';
 const CHIP_ON = 'bg-inverse text-ground shadow-card';
+
+/** The hue each area carries through the rest of the site. */
+const AREA_CHIP_TONE: Record<string, string> = {
+  'breast-cancer': 'bg-ink-pink text-ground shadow-card',
+  'lung-cancer': 'bg-ink-purple text-ground shadow-card',
+  'weight-loss': 'bg-ink-coral text-ground shadow-card',
+  gi: 'bg-anchor text-ground shadow-card',
+  gu: 'bg-ink-cyan text-ground shadow-card',
+  hematology: 'bg-ink-green text-ground shadow-card',
+  gynecologic: 'bg-ink-purple text-ground shadow-card',
+};
 const CHIP_OFF =
   'bg-surface text-dim shadow-card hover:bg-ground hover:text-text hover:shadow-card-hover';
 
@@ -708,6 +719,20 @@ export default function VideosPage() {
     return out.slice(0, 8);
   }, [wpCategoriesData, mediaHubTags]);
 
+  /* Playlists used to sit below an infinite-scroll grid, which meant
+     paging the whole catalogue in before you could reach them. They are
+     a view now, not a footer. */
+  const [viewParams, setViewParams] = useSearchParams();
+  const view = viewParams.get('view') === 'playlists' ? 'playlists' : 'clips';
+  const setView = (next: 'clips' | 'playlists') => {
+    const p = new URLSearchParams(viewParams);
+    if (next === 'clips') p.delete('view');
+    else p.set('view', next);
+    setViewParams(p, { replace: true });
+  };
+
+  const [markersOpen, setMarkersOpen] = useState(false);
+
   const filtersActive = !!(
     query ||
     format !== 'all' ||
@@ -789,8 +814,38 @@ export default function VideosPage() {
         </section>
       )}
 
-      {/* ── search ─────────────────────────────────────── */}
+      {/* ── view switch ────────────────────────────────── */}
       <div className={`${RAIL} ${isInApp ? 'pt-10 md:pt-12' : ''}`}>
+        <div
+          role="tablist"
+          aria-label="Library view"
+          className="inline-flex gap-1 rounded-[8px] bg-surface p-1 shadow-card"
+        >
+          {([['clips', 'Videos'], ['playlists', 'Playlists']] as const).map(([key, label]) => {
+            const on = view === key;
+            return (
+              <button
+                key={key}
+                role="tab"
+                type="button"
+                aria-selected={on}
+                onClick={() => setView(key)}
+                className={`press inline-flex h-9 items-center rounded-[6px] px-4 text-body-s transition-[background-color,color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                  on ? 'bg-ground font-medium text-text shadow-card' : 'text-muted2 hover:text-text'
+                }`}
+              >
+                {label}
+                {key === 'playlists' && playlists.length > 0 ? (
+                  <span className="meta ms-2 tabular-nums text-faint">{playlists.length}</span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── search ─────────────────────────────────────── */}
+      <div className={`${RAIL} ${isInApp ? 'pt-6 md:pt-8' : 'pt-6'} ${view === 'playlists' ? 'hidden' : ''}`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
             <Search
@@ -852,7 +907,9 @@ export default function VideosPage() {
               type="button"
               onClick={() => setFilters({ area: a.slug, marker: '' })}
               aria-pressed={area === a.slug}
-              className={`${CHIP} ${area === a.slug ? CHIP_ON : CHIP_OFF}`}
+              className={`${CHIP} ${
+                area === a.slug ? (AREA_CHIP_TONE[a.slug] ?? CHIP_ON) : CHIP_OFF
+              }`}
             >
               {a.title}
             </button>
@@ -874,18 +931,47 @@ export default function VideosPage() {
               {doctorLabelFromSlug(doctorFilter)}
             </button>
           ) : null}
-          {biomarkerChips.map((b) => (
-            <button
-              key={b.value}
-              type="button"
-              onClick={() => setFilters({ marker: marker === b.value ? '' : b.value })}
-              aria-pressed={marker === b.value}
-              className={`${CHIP} gap-2 ${marker === b.value ? CHIP_ON : CHIP_OFF}`}
-            >
-              {b.label}
-              {b.count != null ? <span className="meta opacity-70">{b.count}</span> : null}
-            </button>
-          ))}
+          {biomarkerChips.length > 0 ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMarkersOpen((v) => !v)}
+                aria-expanded={markersOpen}
+                aria-controls="biomarker-filters"
+                className={`${CHIP} gap-2 ${marker || markersOpen ? CHIP_ON : CHIP_OFF}`}
+              >
+                {marker
+                  ? biomarkerChips.find((b) => b.value === marker)?.label ?? 'Biomarker'
+                  : 'Biomarkers'}
+                <span className="meta opacity-70">{biomarkerChips.length}</span>
+              </button>
+
+              {markersOpen ? (
+                <div
+                  id="biomarker-filters"
+                  className="absolute z-30 mt-2 w-[min(38rem,80vw)] rounded-[8px] bg-surface p-4 shadow-[var(--shadow-pop)]"
+                >
+                  <div className="flex flex-wrap gap-2">
+                    {biomarkerChips.map((b) => (
+                      <button
+                        key={b.value}
+                        type="button"
+                        onClick={() => {
+                          setFilters({ marker: marker === b.value ? '' : b.value });
+                          setMarkersOpen(false);
+                        }}
+                        aria-pressed={marker === b.value}
+                        className={`${CHIP} gap-2 ${marker === b.value ? CHIP_ON : CHIP_OFF}`}
+                      >
+                        {b.label}
+                        {b.count != null ? <span className="meta opacity-70">{b.count}</span> : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {filtersActive ? (
             <button
               type="button"
@@ -900,7 +986,32 @@ export default function VideosPage() {
 
       {/* ── rails (app, unfiltered) / grid ─────────────── */}
       <div className={`${RAIL} pt-12 pb-20`}>
-        {isFirstLoad ? (
+        {view === 'playlists' ? (
+          playlists.length > 0 ? (
+            <section aria-labelledby="all-playlists">
+              <h2 id="all-playlists" className="sr-only">
+                Playlists
+              </h2>
+              <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
+                {playlists.map((pl) => (
+                  <li key={pl.id} className="min-w-0">
+                    <PlaylistCard
+                      item={pl}
+                      href={`${isInApp ? '/app' : ''}/catalog/playlist/${pl.id}`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <div className="rounded-[6px] px-8 py-16 text-center shadow-card">
+              <p className="display text-display-s text-text">No playlists yet</p>
+              <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
+                Curated lists appear here as faculty group sessions into series.
+              </p>
+            </div>
+          )
+        ) : isFirstLoad ? (
           <div className="flex items-center justify-center py-16" aria-busy="true">
             <Loader2 className="size-10 animate-spin text-faint" aria-hidden />
           </div>
@@ -1014,31 +1125,12 @@ export default function VideosPage() {
         {/* The sentinel belongs to the grid. Mounting it under the rails
             would page the whole catalogue in behind a view that only ever
             shows the first fourteen. */}
-        {!showRails ? (
+        {!showRails && view === 'clips' ? (
           <div ref={loadMoreRef} className="flex justify-center py-10">
             {isFetchingNextPage ? (
               <Loader2 className="size-8 animate-spin text-faint" aria-hidden />
             ) : null}
           </div>
-        ) : null}
-
-        {playlists.length > 0 && !showRails ? (
-          <section aria-labelledby="featured-playlists" className="mt-16">
-            <p className="eyebrow text-muted2">Collections</p>
-            <h2 id="featured-playlists" className="display mt-3 text-display-s text-text">
-              Featured playlists
-            </h2>
-            <ul className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
-              {playlists.slice(0, 12).map((p) => (
-                <li key={p.id} className="min-w-0">
-                  <PlaylistCard
-                    item={p}
-                    href={`${isInApp ? '/app' : ''}/catalog/playlist/${p.id}`}
-                  />
-                </li>
-              ))}
-            </ul>
-          </section>
         ) : null}
       </div>
     </div>
