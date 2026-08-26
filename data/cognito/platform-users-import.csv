@@ -1,0 +1,19 @@
+profile,address,birthdate,gender,preferred_username,updated_at,website,picture,phone_number,phone_number_verified,zoneinfo,locale,email,email_verified,given_name,family_name,middle_name,name,nickname,cognito:mfa_enabled,cognito:username
+,,,,,,,,,,,,dave@communityhealth.media,TRUE,User,,,User,,FALSE,dave@communityhealth.media
+,,,,,,,,,,,,andrewpnielson@gmail.com,TRUE,Andrew,Nielson,,Andrew Nielson,,FALSE,andrewpnielson@gmail.com
+,,,,,,,,,,,,amanda@communityhealth.media,TRUE,Amanda,Forkey,,Amanda Forkey,,FALSE,amanda@communityhealth.media
+,,,,,,,,,,,,belleandlillyshow@gmail.com,TRUE,Belle And Lilly,Show,,Belle And Lilly Show,,FALSE,belleandlillyshow@gmail.com
+,,,,,,,,,,,,seth@communityhealth.media,TRUE,Seth,Laderman,,Seth Laderman,,FALSE,seth@communityhealth.media
+,,,,,,,,,,,,andrew@communityhealth.media,TRUE,Andrew,Nielson,,Andrew Nielson,,FALSE,andrew@communityhealth.media
+,,,,,,,,,,,,sebastien@communityhealth.media,TRUE,Sebastien,Fregeau,,Sebastien Fregeau,,FALSE,sebastien@communityhealth.media
+,,,,,,,,,,,,info@ucheaduaka.com,TRUE,Uche,Aduaka,,Uche Aduaka,,FALSE,info@ucheaduaka.com
+,,,,,,,,,,,,marcus@broccolicity.com,TRUE,Marcus,Allen,,Marcus Allen,,FALSE,marcus@broccolicity.com
+,,,,,,,,,,,,morgan@wechipn.com,TRUE,Morgan,Webster,,Morgan Webster,,FALSE,morgan@wechipn.com
+,,,,,,,,,,,,putyouinadaze@gmail.com,TRUE,Adaze,Oviawe,,Adaze Oviawe,,FALSE,putyouinadaze@gmail.com
+,,,,,,,,,,,,hugo@communityhealth.media,TRUE,User,,,User,,FALSE,hugo@communityhealth.media
+,,,,,,,,,,,,mawebster35@gmail.com,TRUE,Morgan,Webster,,Morgan Webster,,FALSE,mawebster35@gmail.com
+,,,,,,,,,,,,marcus.allen82@gmail.com,TRUE,marcus,allen,,marcus allen,,FALSE,marcus.allen82@gmail.com
+,,,,,,,,,,,,morgan@communityhealth.media,TRUE,Morgan,Webster,,Morgan Webster,,FALSE,morgan@communityhealth.media
+,,,,,,,,,,,,sfregeau56@gmail.com,TRUE,Sebastien,Fregeau,,Sebastien Fregeau,,FALSE,sfregeau56@gmail.com
+,,,,,,,,,,,,adaze.oviawe@gmail.com,TRUE,Adaze,Oviawe,,Adaze Oviawe,,FALSE,adaze.oviawe@gmail.com
+,,,,,,,,,,,,uchennaaduaka4@gmail.com,TRUE,Uche,Aduaka,,Uche Aduaka,,FALSE,uchennaaduaka4@gmail.com

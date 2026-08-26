@@ -1,0 +1,527 @@
+@import "tailwindcss";
+
+/* ── appearance ───────────────────────────────────────────
+   Theme-varying values live as plain custom properties, and the
+   Tailwind tokens point at them by reference, so every utility
+   emits var(--color-x) and follows the appearance at runtime.
+   Do NOT use `@theme inline` here: inline resolves the value into
+   the utility at build time, which is precisely what breaks the
+   light/dark swap. */
+:root {
+  --c-ground: oklch(0.145 0 0);
+  --c-surface: oklch(0.196 0 0);
+  --c-surface-2: oklch(0.223 0 0);
+  --c-wash: oklch(1 0 0 / 0.04);
+  --c-hairline: oklch(1 0 0 / 0.08);
+  --c-hairline-strong: oklch(1 0 0 / 0.14);
+  --c-placeholder: oklch(1 0 0 / 0.3);
+
+  /* 19.8 / 13.9 / 7.4 / 5.1 on the ground */
+  --c-text: oklch(1 0 0);
+  --c-dim: oklch(0.895 0 0);
+  --c-muted: oklch(0.712 0 0);
+  --c-faint: oklch(0.62 0 0);
+
+  --c-ink-cyan: oklch(0.82 0.15 213);
+  --c-ink-pink: oklch(0.83 0.16 330);
+  --c-ink-purple: oklch(0.78 0.15 292);
+  --c-ink-coral: oklch(0.79 0.11 20);
+  --c-ink-green: oklch(0.86 0.16 155);
+  --c-success: oklch(0.72 0.15 155);
+  --c-warning: oklch(0.78 0.15 85);
+  --c-error: oklch(0.65 0.19 25);
+
+  --c-signature: oklch(0.62 0.24 258);
+  --c-cta: oklch(0.62 0.24 258);
+  --c-cta-deep: oklch(0.55 0.24 260);
+  --c-inverse: oklch(1 0 0);
+  --c-anchor: oklch(0.8 0.13 235);
+  --c-amber-ink: oklch(0.79 0.11 20);
+
+  --s-card: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 1px 2px oklch(0 0 0 / 0.5), 0 8px 20px -10px oklch(0 0 0 / 0.7);
+  --s-card-hover: inset 0 1px 0 oklch(1 0 0 / 0.1), 0 2px 6px oklch(0 0 0 / 0.55), 0 20px 40px -14px oklch(0 0 0 / 0.85);
+  --s-pop: inset 0 1px 0 oklch(1 0 0 / 0.08), 0 30px 70px -18px oklch(0 0 0 / 0.9);
+  --s-nav: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 10px 30px -18px oklch(0 0 0 / 0.8);
+  --ring-img: oklch(1 0 0 / 0.12);
+}
+
+/* Same spectrum on a light ground. The bright fills are unchanged
+   because they carry their own dark label either way; what moves is
+   the ground, the text ramp, and any colour used AS text. */
+:root[data-theme="light"] {
+  --c-ground: oklch(1 0 0);
+  --c-surface: oklch(0.972 0 0);
+  --c-surface-2: oklch(0.94 0 0);
+  --c-wash: oklch(0 0 0 / 0.03);
+  --c-hairline: oklch(0 0 0 / 0.08);
+  --c-hairline-strong: oklch(0 0 0 / 0.14);
+  --c-placeholder: oklch(0 0 0 / 0.3);
+
+  /* 14.7 / 9.1 / 5.9 / 4.7 on white */
+  --c-text: oklch(0.16 0 0);
+  --c-dim: oklch(0.335 0 0);
+  --c-muted: oklch(0.475 0 0);
+  --c-faint: oklch(0.535 0 0);
+
+  --c-ink-cyan: oklch(0.5 0.12 213);
+  --c-ink-pink: oklch(0.5 0.2 340);
+  --c-ink-purple: oklch(0.48 0.2 292);
+  --c-ink-coral: oklch(0.5 0.17 25);
+  --c-ink-green: oklch(0.46 0.14 155);
+  --c-success: oklch(0.45 0.13 155);
+  --c-warning: oklch(0.46 0.12 70);
+  --c-error: oklch(0.5 0.19 27);
+
+  --c-signature: oklch(0.52 0.24 264);
+  --c-cta: oklch(0.52 0.24 264);
+  --c-cta-deep: oklch(0.46 0.23 264);
+  --c-inverse: oklch(0.16 0 0);
+  --c-anchor: oklch(0.48 0.19 252);
+  --c-amber-ink: oklch(0.52 0.15 40);
+
+  --s-card: 0 1px 2px oklch(0 0 0 / 0.05), 0 6px 16px -8px oklch(0 0 0 / 0.14);
+  --s-card-hover: 0 2px 6px oklch(0 0 0 / 0.07), 0 18px 36px -12px oklch(0 0 0 / 0.24);
+  --s-pop: 0 4px 10px oklch(0 0 0 / 0.08), 0 32px 64px -20px oklch(0 0 0 / 0.34);
+  --s-nav: 0 1px 0 oklch(0 0 0 / 0.04), 0 8px 24px -16px oklch(0 0 0 / 0.3);
+  --ring-img: oklch(0 0 0 / 0.1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --c-ground: oklch(1 0 0);
+    --c-surface: oklch(0.972 0 0);
+    --c-surface-2: oklch(0.94 0 0);
+    --c-wash: oklch(0 0 0 / 0.03);
+    --c-hairline: oklch(0 0 0 / 0.08);
+    --c-hairline-strong: oklch(0 0 0 / 0.14);
+    --c-placeholder: oklch(0 0 0 / 0.3);
+
+    /* 14.7 / 9.1 / 5.9 / 4.7 on white */
+    --c-text: oklch(0.16 0 0);
+    --c-dim: oklch(0.335 0 0);
+    --c-muted: oklch(0.475 0 0);
+    --c-faint: oklch(0.535 0 0);
+
+    --c-ink-cyan: oklch(0.5 0.12 213);
+  --c-ink-pink: oklch(0.5 0.2 340);
+  --c-ink-purple: oklch(0.48 0.2 292);
+  --c-ink-coral: oklch(0.5 0.17 25);
+  --c-ink-green: oklch(0.46 0.14 155);
+  --c-success: oklch(0.45 0.13 155);
+  --c-warning: oklch(0.46 0.12 70);
+  --c-error: oklch(0.5 0.19 27);
+
+  --c-signature: oklch(0.52 0.24 264);
+    --c-cta: oklch(0.52 0.24 264);
+    --c-cta-deep: oklch(0.46 0.23 264);
+    --c-inverse: oklch(0.16 0 0);
+    --c-anchor: oklch(0.48 0.19 252);
+    --c-amber-ink: oklch(0.52 0.15 40);
+
+    --s-card: 0 1px 2px oklch(0 0 0 / 0.05), 0 6px 16px -8px oklch(0 0 0 / 0.14);
+    --s-card-hover: 0 2px 6px oklch(0 0 0 / 0.07), 0 18px 36px -12px oklch(0 0 0 / 0.24);
+    --s-pop: 0 4px 10px oklch(0 0 0 / 0.08), 0 32px 64px -20px oklch(0 0 0 / 0.34);
+    --s-nav: 0 1px 0 oklch(0 0 0 / 0.04), 0 8px 24px -16px oklch(0 0 0 / 0.3);
+    --ring-img: oklch(0 0 0 / 0.1);
+  }
+}
+
+@theme {
+  --color-ground: var(--c-ground);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-wash: var(--c-wash);
+  --color-hairline: var(--c-hairline);
+  --color-hairline-strong: var(--c-hairline-strong);
+  --color-placeholder: var(--c-placeholder);
+
+  --color-text: var(--c-text);
+  --color-dim: var(--c-dim);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+
+  --color-ink-cyan: var(--c-ink-cyan);
+  --color-ink-pink: var(--c-ink-pink);
+  --color-ink-purple: var(--c-ink-purple);
+  --color-ink-coral: var(--c-ink-coral);
+  --color-ink-green: var(--c-ink-green);
+
+  --color-success: var(--c-success);
+  --color-warning: var(--c-warning);
+  --color-error: var(--c-error);
+
+  --color-signature: var(--c-signature);
+  --color-accent: var(--c-signature);
+  --color-cta: var(--c-cta);
+  --color-cta-deep: var(--c-cta-deep);
+  --color-inverse: var(--c-inverse);
+  --color-anchor: var(--c-anchor);
+  --color-amber: var(--c-amber-ink);
+  --color-amber-ink: var(--c-amber-ink);
+
+  --shadow-card: var(--s-card);
+  --shadow-card-hover: var(--s-card-hover);
+  --shadow-pop: var(--s-pop);
+  --shadow-nav: var(--s-nav);
+}
+
+@theme {
+  /* Fixed across appearances: the spectrum, the area hues, and any
+     label that always sits on a bright fill. */
+  --color-blue: oklch(0.62 0.24 258);
+  --color-blue-deep: oklch(0.42 0.3 266);
+  --color-cyan: oklch(0.82 0.15 213);
+  --color-pink: oklch(0.83 0.16 330);
+  --color-coral: oklch(0.79 0.11 20);
+  --color-purple: oklch(0.74 0.16 292);
+  --color-glow: oklch(0.9 0.17 155);
+  --color-beam: oklch(0.62 0.24 258);
+  --color-beam-bright: oklch(0.82 0.15 213);
+  --color-beam-deep: oklch(0.42 0.3 266);
+  --color-on-bright: oklch(0.16 0 0);
+
+  --color-breast: oklch(0.83 0.16 330);
+  --color-lung: oklch(0.74 0.16 292);
+  --color-gi: oklch(0.62 0.24 258);
+  --color-gu: oklch(0.82 0.15 213);
+  --color-heme: oklch(0.79 0.11 20);
+  --color-gyn: oklch(0.9 0.17 155);
+
+  --color-info: oklch(0.62 0.24 258);
+
+  /* ── Composio system ─────────────────────────────────
+     Values read off composio.dev: a near-black ground, a
+     vivid mint signature, and text carried on white alpha.
+     Authored in OKLCH because this is a new system, not a
+     hex-authored brand spec being preserved.            */
+
+  /* Four steps of white, all clearing 4.5:1 on the ground.
+     Their own 0.4 muted measures 3.76, so ours starts higher. */
+  /* Solid, never alpha. Tailwind v4 inlines theme colours that
+     carry baked alpha, so an alpha ramp silently refuses to follow
+     a theme swap. Measured on the ground: 19.8 / 13.9 / 7.4 / 5.1. */
+
+  /* The spectrum from the brand artwork: electric blue through
+     cyan on one side, pink and coral on the other, with deep blue
+     and purple anchoring the cool end. Mint survives only as the
+     glow edge on outlined shapes. */
+
+
+
+  /* Labels that always sit on a bright fill. These must NOT follow
+     the appearance, because the fill is bright in both. */
+
+
+  /* Therapeutic areas drawn from the same spectrum. Breast keeps
+     the pink it owns by convention; the rest fan out across it. */
+
+
+  --font-sans: var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* ── type ────────────────────────────────────────────
+     Display sizes carry tight negative tracking and a
+     1.04–1.08 leading; body opens up to 1.62.           */
+  --text-hero: 4.25rem;
+  --text-hero--line-height: 1.02;
+  --text-hero--letter-spacing: -0.032em;
+  --text-display-l: 3rem;
+  --text-display-l--line-height: 1.05;
+  --text-display-l--letter-spacing: -0.028em;
+  --text-display-m: 2.25rem;
+  --text-display-m--line-height: 1.08;
+  --text-display-m--letter-spacing: -0.025em;
+  --text-display-s: 1.375rem;
+  --text-display-s--line-height: 1.2;
+  --text-display-s--letter-spacing: -0.018em;
+  --text-body-l: 1.125rem;
+  --text-body-l--line-height: 1.62;
+  --text-body-m: 1rem;
+  --text-body-m--line-height: 1.6;
+  --text-body-s: 0.875rem;
+  --text-body-s--line-height: 1.5;
+  --text-label: 0.6875rem;
+  --text-label--line-height: 1.4;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.4;
+
+  /* Motion vocabulary measured off the reference:
+     hovers are 150ms ease-in-out, transforms 500ms ease-out,
+     press feedback 90ms linear, entries move only 2px.       */
+
+  /* One radius for every control and the floating nav. */
+  --radius-control: 6px;
+  --radius-surface: 8px;
+
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out-soft: cubic-bezier(0, 0, 0.2, 1);
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-cross: cubic-bezier(0.2, 0, 0, 1);
+  --dur-press: 90ms;
+  --dur-hover: 150ms;
+  --dur-transform: 500ms;
+}
+
+html {
+  /* Decorative blur fields bleed past their box by design; clip on
+     the inline axis so they can never create a horizontal scrollbar.
+     This has to sit on html, not body: with html at `visible`, body's
+     overflow propagates to the viewport and body computes back to
+     `visible`, so the rule would do nothing there. `clip` rather than
+     `hidden` keeps position: sticky working. */
+  overflow-x: clip;
+  scroll-behavior: smooth;
+  background: var(--color-ground);
+}
+
+body {
+  background: var(--color-ground);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-anchor);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@layer components {
+  .display {
+    font-weight: 450;
+    text-wrap: balance;
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-weight: 400;
+    font-size: var(--text-label);
+    line-height: 1.4;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .meta {
+    font-family: var(--font-mono);
+    font-size: var(--text-meta);
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .prose-lede {
+    text-wrap: pretty;
+  }
+
+  /* Sections run full-bleed and are separated by a single
+     hairline; the inner rail carries the margins. */
+  /* Legacy pages still reference .shell; keep it aliased to the
+     rail so nothing renders flush to the viewport edge. */
+  .shell,
+  .rail {
+    --rail-pad: 1.25rem;
+    width: 100%;
+    max-width: 90rem;
+    margin-inline: auto;
+    padding-inline: var(--rail-pad);
+  }
+
+  /* Breaks a horizontal scroller out of the rail's gutter, so items
+     run off the viewport edge instead of being clipped short of it,
+     while the first item still lines up with the page. Reads as "more
+     that way" rather than as a cropped card. */
+  .bleed-x {
+    margin-inline: calc(-1 * var(--rail-pad, 1.25rem));
+    padding-inline: var(--rail-pad, 1.25rem);
+  }
+
+  @media (min-width: 48rem) {
+    .shell,
+    .rail {
+      --rail-pad: 2.5rem;
+      padding-inline: var(--rail-pad);
+    }
+  }
+
+  /* On dark surfaces tints come from Deep Expertise, so the
+     system stays consistent. */
+  .on-anchor {
+    --tint-1: rgb(255 255 255 / 0.15);
+    --tint-2: rgb(255 255 255 / 0.3);
+  }
+
+  /* One card treatment across the system. */
+  .card {
+    background: var(--color-surface);
+    border-radius: 1rem;
+    box-shadow: var(--shadow-card);
+    transition:
+      box-shadow var(--dur-hover) var(--ease-standard),
+      background-color var(--dur-hover) var(--ease-standard),
+      translate var(--dur-hover) var(--ease-standard);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover {
+      background: var(--color-ground);
+      box-shadow: var(--shadow-card-hover);
+      translate: 0 -2px;
+    }
+  }
+
+  /* A band alternates ground and surface instead of drawing a
+     line between sections. */
+  .band-tint {
+    background: var(--color-wash);
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .img-ring {
+    outline: 1px solid var(--ring-img);
+    outline-offset: -1px;
+  }
+}
+
+@utility press {
+  transition-property: scale, background-color, color, border-color, opacity;
+  transition-duration: var(--dur-hover);
+  transition-timing-function: var(--ease-standard);
+}
+
+.press:active:not(:disabled) {
+  scale: 0.96;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Entries barely move. The opacity does the work. */
+  @keyframes fadeSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .rise {
+    animation: fadeSlideUp 400ms var(--ease-out-soft) both;
+  }
+
+  /* Scroll-revealed blocks: same motion, triggered by the
+     observer in <Reveal>. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(2px);
+    transition:
+      opacity 500ms var(--ease-out-soft),
+      transform 500ms var(--ease-out-soft);
+  }
+
+  .reveal[data-shown="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  @keyframes shimmerSweep {
+    from {
+      background-position: 150% center;
+    }
+    to {
+      background-position: -150% center;
+    }
+  }
+
+  /* Faint grid rules that pulse along their length. */
+  @keyframes gridShimmer {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .lift {
+      transition: background-color var(--dur-hover) var(--ease-standard);
+    }
+    .lift:hover {
+      background-color: var(--color-surface-2);
+    }
+  }
+}
+
+/* The accent word in the hero: a slow gradient sweep across
+   the glyphs themselves. */
+.shimmer {
+  background-image: linear-gradient(
+    100deg,
+    var(--color-text) 20%,
+    var(--color-accent) 36%,
+    var(--color-signature) 48%,
+    var(--color-amber-ink) 60%,
+    var(--color-text) 80%
+  );
+  background-size: 250% auto;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shimmer {
+    animation: shimmerSweep 3s linear infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .press:active:not(:disabled) {
+    scale: 1;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .shimmer {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: var(--color-anchor);
+  }
+}
+
+::selection {
+  background: var(--color-signature);
+  color: var(--color-text);
+}
+

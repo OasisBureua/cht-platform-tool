@@ -1,0 +1,211 @@
+variable "project" {
+  description = "Project name"
+  type        = string
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+}
+
+variable "resource_prefix" {
+  description = "Prefix for resource names (optional - derived from project/environment if empty)"
+  type        = string
+  default     = ""
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+}
+
+variable "vpc_id" {
+  description = "VPC ID"
+  type        = string
+}
+
+variable "private_subnet_ids" {
+  description = "Private subnet IDs"
+  type        = list(string)
+}
+
+variable "cluster_id" {
+  description = "ECS cluster ID"
+  type        = string
+}
+
+variable "cluster_name" {
+  description = "ECS cluster name"
+  type        = string
+}
+
+variable "execution_role_arn" {
+  description = "ECS task execution role ARN"
+  type        = string
+}
+
+variable "task_role_arn" {
+  description = "ECS task role ARN"
+  type        = string
+}
+
+variable "alb_security_group_id" {
+  description = "ALB security group ID"
+  type        = string
+}
+
+variable "target_group_arn" {
+  description = "ALB target group ARN"
+  type        = string
+}
+
+variable "alb_listener_arn" {
+  description = "ALB listener ARN"
+  type        = string
+}
+
+variable "log_group_name" {
+  description = "CloudWatch log group name"
+  type        = string
+}
+
+variable "container_image" {
+  description = "Docker container image"
+  type        = string
+}
+
+variable "database_secret_arn" {
+  description = "Database secret ARN"
+  type        = string
+}
+
+variable "app_secrets_arn" {
+  description = "Application secrets ARN"
+  type        = string
+}
+
+variable "sqs_queue_urls_env_file_arn" {
+  description = "S3 ARN for environment file with SQS queue URLs"
+  type        = string
+  default     = ""
+}
+
+variable "frontend_url" {
+  description = "Frontend URL for CORS and redirects (e.g. https://testapp.communityhealth.media)"
+  type        = string
+  default     = ""
+}
+
+variable "sqs_email_queue_url" {
+  description = "SQS email queue URL"
+  type        = string
+  default     = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-email-queue"
+}
+
+variable "sqs_payment_queue_url" {
+  description = "SQS payment queue URL"
+  type        = string
+  default     = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-payment-queue"
+}
+
+variable "sqs_cme_queue_url" {
+  description = "SQS CME queue URL"
+  type        = string
+  default     = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-platform-cme-queue"
+}
+
+variable "task_cpu" {
+  description = "Task CPU units"
+  type        = number
+  default     = 256
+}
+
+variable "task_memory" {
+  description = "Task memory (MB)"
+  type        = number
+  default     = 512
+}
+
+variable "desired_count" {
+  description = "Desired number of tasks"
+  type        = number
+  default     = 2
+}
+
+variable "min_capacity" {
+  description = "Minimum number of tasks"
+  type        = number
+  default     = 1
+}
+
+variable "max_capacity" {
+  description = "Maximum number of tasks"
+  type        = number
+  default     = 4
+}
+
+variable "enable_scheduled_scaling" {
+  description = "Enabled scheduled ECS scaling (dev only)"
+  type        = bool
+  default     = false
+}
+
+variable "session_assets_s3_bucket" {
+  description = "S3 bucket for session hero uploads (presigned PUT); empty disables env injection"
+  type        = string
+  default     = ""
+}
+
+variable "session_assets_public_url_base" {
+  description = "HTTPS base URL for public GET on session hero objects (virtual-hosted style, no trailing slash)"
+  type        = string
+  default     = ""
+}
+
+variable "run_db_migrations" {
+  description = "Run prisma migrate deploy on container start. Set false for DR standby on a read replica."
+  type        = bool
+  default     = true
+}
+
+variable "cognito_user_pool_id" {
+  description = "Cognito user pool ID for backend auth (empty disables Cognito routes)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_client_id" {
+  description = "Cognito app client ID (cht-web PKCE client)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_hosted_ui_base_url" {
+  description = "Cognito Hosted UI base URL for OAuth token exchange"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_jwks_uri" {
+  description = "Cognito JWKS URI for JWT validation"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_region" {
+  description = "AWS region where the Cognito user pool lives (usually us-east-1, even for DR tasks)"
+  type        = string
+  default     = ""
+}
+
+variable "recaptcha_min_score" {
+  description = "Minimum reCAPTCHA v3 score for login/signup verification"
+  type        = number
+  default     = 0.5
+}
+
+variable "redis_url" {
+  description = "Redis URL for upstream caching (empty disables cache)"
+  type        = string
+  default     = ""
+}

@@ -1,0 +1,89 @@
+/** US states + DC for profile, KOL grouping, and filters. */
+export type UsStateOption = { value: string; label: string };
+
+export const US_STATES: UsStateOption[] = [
+  { value: 'AL', label: 'Alabama' },
+  { value: 'AK', label: 'Alaska' },
+  { value: 'AZ', label: 'Arizona' },
+  { value: 'AR', label: 'Arkansas' },
+  { value: 'CA', label: 'California' },
+  { value: 'CO', label: 'Colorado' },
+  { value: 'CT', label: 'Connecticut' },
+  { value: 'DE', label: 'Delaware' },
+  { value: 'DC', label: 'District of Columbia' },
+  { value: 'FL', label: 'Florida' },
+  { value: 'GA', label: 'Georgia' },
+  { value: 'HI', label: 'Hawaii' },
+  { value: 'ID', label: 'Idaho' },
+  { value: 'IL', label: 'Illinois' },
+  { value: 'IN', label: 'Indiana' },
+  { value: 'IA', label: 'Iowa' },
+  { value: 'KS', label: 'Kansas' },
+  { value: 'KY', label: 'Kentucky' },
+  { value: 'LA', label: 'Louisiana' },
+  { value: 'ME', label: 'Maine' },
+  { value: 'MD', label: 'Maryland' },
+  { value: 'MA', label: 'Massachusetts' },
+  { value: 'MI', label: 'Michigan' },
+  { value: 'MN', label: 'Minnesota' },
+  { value: 'MS', label: 'Mississippi' },
+  { value: 'MO', label: 'Missouri' },
+  { value: 'MT', label: 'Montana' },
+  { value: 'NE', label: 'Nebraska' },
+  { value: 'NV', label: 'Nevada' },
+  { value: 'NH', label: 'New Hampshire' },
+  { value: 'NJ', label: 'New Jersey' },
+  { value: 'NM', label: 'New Mexico' },
+  { value: 'NY', label: 'New York' },
+  { value: 'NC', label: 'North Carolina' },
+  { value: 'ND', label: 'North Dakota' },
+  { value: 'OH', label: 'Ohio' },
+  { value: 'OK', label: 'Oklahoma' },
+  { value: 'OR', label: 'Oregon' },
+  { value: 'PA', label: 'Pennsylvania' },
+  { value: 'RI', label: 'Rhode Island' },
+  { value: 'SC', label: 'South Carolina' },
+  { value: 'SD', label: 'South Dakota' },
+  { value: 'TN', label: 'Tennessee' },
+  { value: 'TX', label: 'Texas' },
+  { value: 'UT', label: 'Utah' },
+  { value: 'VT', label: 'Vermont' },
+  { value: 'VA', label: 'Virginia' },
+  { value: 'WA', label: 'Washington' },
+  { value: 'WV', label: 'West Virginia' },
+  { value: 'WI', label: 'Wisconsin' },
+  { value: 'WY', label: 'Wyoming' },
+];
+
+const BY_VALUE = new Map(US_STATES.map((s) => [s.value, s]));
+const BY_LABEL_LOWER = new Map(
+  US_STATES.map((s) => [s.label.toLowerCase(), s.value]),
+);
+
+/** Normalize free-text state to a 2-letter code, or null if unknown. */
+export function normalizeUsStateCode(raw: string | null | undefined): string | null {
+  const t = raw?.trim();
+  if (!t) return null;
+  const upper = t.toUpperCase();
+  if (BY_VALUE.has(upper)) return upper;
+  const fromLabel = BY_LABEL_LOWER.get(t.toLowerCase());
+  if (fromLabel) return fromLabel;
+  return null;
+}
+
+export function usStateLabel(code: string | null | undefined): string {
+  if (!code) return 'Unknown';
+  return BY_VALUE.get(code)?.label ?? code;
+}
+
+/** Select options with empty placeholder for registration / profile forms. */
+export const US_STATE_SELECT_OPTIONS: UsStateOption[] = [
+  { value: '', label: 'Select state' },
+  ...US_STATES,
+];
+
+/** Exactly 5 digits (registration requires ZIP-5, not ZIP+4). */
+export function normalizeUsZip5(raw: string | null | undefined): string | null {
+  const digits = (raw ?? '').replace(/\D/g, '');
+  return digits.length === 5 ? digits : null;
+}

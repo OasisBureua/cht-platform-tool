@@ -1,0 +1,147 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
+import { FormJotformScope } from '../programs/form-jotform-scope';
+import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import { AuthUser } from '../../auth/auth.service';
+import { SurveysService } from './surveys.service';
+import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
+import { JotformResumeDto } from './dto/jotform-resume.dto';
+import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
+
+@Controller('surveys')
+export class SurveysController {
+  constructor(
+    private readonly surveysService: SurveysService,
+    private readonly formJotformProgress: FormJotformProgressService,
+  ) {}
+
+  /**
+   * GET /api/surveys
+   * Learner: post-event (FEEDBACK) surveys only: active and completed lists.
+   * Admin: full list in `active`.
+   */
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  async getAll(@CurrentUser() user: AuthUser) {
+    return this.surveysService.getAllForUser(user.userId, user.role);
+  }
+
+  /**
+   * GET /api/surveys/:id/my-response
+   * Whether the current user has a saved response (including via Jotform webhook).
+   */
+  @Get(':id/my-response')
+  @UseGuards(JwtAuthGuard)
+  async getMyResponse(
+    @CurrentUser() user: AuthUser,
+    @Param('id') surveyId: string,
+  ) {
+    return this.surveysService.getMyResponseStatus(
+      surveyId,
+      user.userId,
+      user.role,
+    );
+  }
+
+  /**
+   * GET /api/surveys/:id/jotform-resume, saved Jotform session for Save & Continue (24h)
+   */
+  @Get(':id/jotform-resume')
+  @UseGuards(JwtAuthGuard)
+  async getSurveyJotformResume(
+    @Param('id') surveyId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    await this.surveysService.ensureUserCanAccessSurvey(
+      surveyId,
+      user.userId,
+      user.role,
+    );
+    return this.formJotformProgress.getResumeSession(
+      user.userId,
+      FormJotformScope.SURVEY,
+      surveyId,
+    );
+  }
+
+  /**
+   * PUT /api/surveys/:id/jotform-resume
+   */
+  @Put(':id/jotform-resume')
+  @UseGuards(JwtAuthGuard)
+  async putSurveyJotformResume(
+    @Param('id') surveyId: string,
+    @CurrentUser() user: AuthUser,
+    @Body() body: JotformResumeDto,
+  ) {
+    await this.surveysService.ensureUserCanAccessSurvey(
+      surveyId,
+      user.userId,
+      user.role,
+    );
+    await this.formJotformProgress.saveResumeSession(
+      user.userId,
+      FormJotformScope.SURVEY,
+      surveyId,
+      body.sessionId,
+    );
+    return { ok: true as const };
+  }
+
+  /**
+   * GET /api/surveys/:id
+   * Learner: post-event (FEEDBACK) detail is forbidden until attendance allows.
+   */
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async getById(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.surveysService.getByIdForUser(id, user.userId, user.role);
+  }
+
+  /**
+   * GET /api/surveys/:id/profile-prefill
+   * SCRUM-186: return `{ [questionId]: currentUserValue }` for each survey
+   * question with a `syncToProfile` mapping. Frontend uses this to pre-fill
+   * the intake/feedback form from the User's profile.
+   */
+  @Get(':id/profile-prefill')
+  @UseGuards(JwtAuthGuard)
+  async getProfilePrefill(
+    @Param('id') surveyId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.surveysService.getProfilePrefill(
+      surveyId,
+      user.userId,
+      user.role,
+    );
+  }
+
+  /**
+   * POST /api/surveys/:surveyId/responses
+   * Submit a survey response (auth required).
+   * Queues SURVEY_BONUS payment if configured.
+   */
+  @Post(':id/responses')
+  @UseGuards(JwtAuthGuard)
+  async submitResponse(
+    @CurrentUser() user: AuthUser,
+    @Param('id') surveyId: string,
+    @Body() dto: SubmitSurveyResponseDto,
+  ) {
+    return this.surveysService.submitResponse(
+      surveyId,
+      user.userId,
+      user.role,
+      dto,
+    );
+  }
+}

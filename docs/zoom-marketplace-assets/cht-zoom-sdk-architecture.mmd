@@ -1,0 +1,53 @@
+%% CHT Platform SDK — Zoom Meeting SDK architecture (Marketplace submission)
+%% Focus: services that interact with Zoom for in-browser embed join
+
+flowchart TB
+  classDef user fill:#f8fafc,stroke:#475569,stroke-width:2px
+  classDef cht fill:#e8f4fc,stroke:#1d4ed8,stroke-width:2px
+  classDef zoom fill:#fef3c7,stroke:#b45309,stroke-width:2px
+  classDef data fill:#ecfdf5,stroke:#047857,stroke-width:2px
+  classDef edge fill:#f3f4f6,stroke:#6b7280,stroke-width:2px
+
+  Learner(["Approved HCP / KOL<br/>browser"])
+
+  subgraph Edge["CHT edge"]
+    CF["Amazon CloudFront<br/>testapp.communityhealth.media"]
+    S3["S3 static frontend<br/>React SPA"]
+  end
+
+  subgraph App["CHT application tier · AWS us-east-1"]
+    ALB["Application Load Balancer"]
+    API["ECS Fargate · NestJS API<br/>/api/webinars/:id/meeting-sdk-auth<br/>/api/office-hours/:id/meeting-sdk-auth<br/>/api/…/sdk-attendance<br/>/api/webhooks/zoom"]
+    Secrets["AWS Secrets Manager<br/>ZOOM_SDK_KEY / ZOOM_SDK_SECRET<br/>ZOOM_* S2S + webhook secret"]
+    DB[("Amazon Aurora PostgreSQL<br/>programs · enrollments<br/>WebinarParticipantEvent")]
+    Cognito["Amazon Cognito<br/>auth · MFA"]
+  end
+
+  subgraph ZoomCloud["Zoom"]
+    SDKCDN["Zoom Meeting SDK CDN<br/>Embedded client 4.1.0"]
+    ZoomAPI["Zoom REST API<br/>Server-to-Server OAuth<br/>webinar/meeting admin"]
+    ZoomWH["Zoom Event Subscriptions<br/>participant join/leave · ended"]
+    ZoomRT["Zoom realtime media<br/>webinar / meeting session"]
+  end
+
+  Learner -->|"HTTPS"| CF
+  CF --> S3
+  CF -->|"/api/*"| ALB --> API
+  API --> Cognito
+  API --> Secrets
+  API --> DB
+
+  Learner -->|"loads embed iframe"| SDKCDN
+  API -->|"signs short-lived Meeting SDK JWT<br/>role=0 attendee"| Learner
+  Learner -->|"join with JWT + meeting number"| ZoomRT
+  SDKCDN -.-> ZoomRT
+
+  API -->|"S2S OAuth create/read sessions"| ZoomAPI
+  ZoomWH -->|"POST signed webhooks"| API
+  ZoomAPI -.-> ZoomRT
+
+  class Learner user
+  class CF,S3,ALB edge
+  class API,Secrets,Cognito cht
+  class DB data
+  class SDKCDN,ZoomAPI,ZoomWH,ZoomRT zoom

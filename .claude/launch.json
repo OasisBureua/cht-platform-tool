@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "chm-composio", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "-H", "0.0.0.0", "-p", "3003"], "port": 3003 }
+  ]
+}

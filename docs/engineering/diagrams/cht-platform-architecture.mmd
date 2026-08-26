@@ -1,0 +1,74 @@
+%% CHT Platform: multi-region architecture (platform / testapp)
+%% Export: ./scripts/export-architecture-diagram.sh
+
+flowchart TB
+  classDef primary fill:#e8f4fc,stroke:#1d4ed8,stroke-width:2px
+  classDef dr fill:#fef3c7,stroke:#b45309,stroke-width:2px
+  classDef external fill:#f3f4f6,stroke:#6b7280
+  classDef future fill:#f5f3ff,stroke:#7c3aed,stroke-dasharray:5 5
+
+  Users(["HCPs & admins<br/>browsers"])
+
+  subgraph Edge["Edge"]
+    CF["CloudFront<br/>testapp / devapp"]
+    S3FE["S3 frontend buckets<br/>us-east-1 + us-east-2 DR"]
+  end
+
+  subgraph USE1["us-east-1, primary"]
+    ALB1["Application Load Balancer"]
+    ECSB["ECS Fargate<br/>cht-platform-backend<br/>NestJS API"]
+    ECSW["ECS Fargate<br/>cht-platform-worker<br/>Python SQS consumers"]
+    AuroraP["Aurora Global<br/>primary cluster<br/>writer"]
+    Cognito["Amazon Cognito<br/>Hosted UI + WAF<br/>email / Google OAuth"]
+    SQS["SQS<br/>email · payment · CME<br/>+ DLQs"]
+    Secrets["Secrets Manager<br/>DB · app keys · Cognito"]
+    SES["Amazon SES<br/>transactional email"]
+  end
+
+  subgraph USE2["us-east-2, DR standby"]
+    ALB2["DR Application Load Balancer"]
+    ECSB2["DR ECS backend<br/>run_db_migrations=false"]
+    AuroraS["Aurora Global<br/>secondary cluster<br/>reader"]
+  end
+
+  subgraph Integrations["External integrations"]
+    Zoom["Zoom<br/>webinars · webhooks"]
+    JotForm["JotForm<br/>surveys"]
+    Bill["Bill.com<br/>honorarium payouts"]
+    MH["MediaHub public API<br/>catalog · KOL · HCP upsert"]
+    ContentHub["contenthub.communityhealth.media<br/>(planned rename)"]
+    HubSpot["HubSpot<br/>CRM sync"]
+  end
+
+  Users --> CF
+  CF --> S3FE
+  CF -->|"HTTPS /api*"| ALB1
+  CF -.->|"failover /api*"| ALB2
+
+  ALB1 --> ECSB
+  ECSB --> AuroraP
+  ECSB --> Cognito
+  ECSB --> Secrets
+  ECSB --> SQS
+  ECSB --> Zoom
+  ECSB --> JotForm
+  ECSB --> Bill
+  ECSB --> MH
+  ECSB --> HubSpot
+  ECSW --> SQS
+  ECSW --> AuroraP
+  ECSW --> Bill
+  ECSW --> SES
+
+  AuroraP ==>|"Global Database<br/>replication"| AuroraS
+
+  ALB2 --> ECSB2
+  ECSB2 --> AuroraS
+  ECSB2 --> Secrets
+
+  MH -.-> ContentHub
+
+  class AuroraP,ECSB,ALB1,Cognito primary
+  class AuroraS,ECSB2,ALB2 dr
+  class Zoom,JotForm,Bill,MH,HubSpot,SES external
+  class ContentHub future

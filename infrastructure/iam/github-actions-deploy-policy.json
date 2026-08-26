@@ -1,0 +1,176 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyDangerousIAM",
+      "Effect": "Deny",
+      "Action": [
+        "iam:CreateUser",
+        "iam:DeleteUser",
+        "iam:CreateAccessKey",
+        "iam:DeleteAccessKey",
+        "iam:UpdateAccessKey",
+        "iam:CreateLoginProfile",
+        "iam:UpdateLoginProfile",
+        "iam:DeleteLoginProfile",
+        "iam:AttachUserPolicy",
+        "iam:DetachUserPolicy",
+        "iam:PutUserPolicy",
+        "iam:DeleteUserPolicy"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRAuth",
+      "Effect": "Allow",
+      "Action": ["ecr:GetAuthorizationToken"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ECRPushPull",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:CompleteLayerUpload",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:DescribeRepositories",
+        "ecr:ListImages",
+        "ecr:PutLifecyclePolicy",
+        "ecr:GetLifecyclePolicy",
+        "ecr:DeleteLifecyclePolicy"
+      ],
+      "Resource": [
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-platform-*",
+        "arn:aws:ecr:us-east-1:233636046512:repository/cht-dev-*"
+      ]
+    },
+    {
+      "Sid": "DeployS3",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::cht-platform-*",
+        "arn:aws:s3:::cht-platform-*/*",
+        "arn:aws:s3:::cht-dev-*",
+        "arn:aws:s3:::cht-dev-*/*"
+      ]
+    },
+    {
+      "Sid": "TerraformStateLock",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:DescribeTable",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": "arn:aws:dynamodb:us-east-1:233636046512:table/cht-platform-terraform-locks"
+    },
+    {
+      "Sid": "DeployIAMRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:UpdateRole",
+        "iam:ListInstanceProfilesForRole",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:ListPolicyVersions",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:TagPolicy",
+        "iam:UntagPolicy",
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:aws:iam::233636046512:role/cht-platform-*",
+        "arn:aws:iam::233636046512:role/cht-dev-*",
+        "arn:aws:iam::233636046512:policy/cht-platform-*",
+        "arn:aws:iam::233636046512:policy/cht-dev-*",
+        "arn:aws:iam::233636046512:policy/GitHubActions-CHT-Platform-Deploy"
+      ]
+    },
+    {
+      "Sid": "ServiceLinkedRoles",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateServiceLinkedRole",
+        "iam:GetServiceLinkedRoleDeletionStatus"
+      ],
+      "Resource": "arn:aws:iam::233636046512:role/aws-service-role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": [
+            "guardduty.amazonaws.com",
+            "config.amazonaws.com",
+            "malware-protection.guardduty.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "TerraformInfrastructure",
+      "Effect": "Allow",
+      "Action": [
+        "acm:Describe*",
+        "acm:Get*",
+        "acm:List*",
+        "application-autoscaling:*",
+        "cloudfront:*",
+        "cloudtrail:*",
+        "cloudwatch:*",
+        "cognito-idp:*",
+        "config:*",
+        "ec2:*",
+        "ecs:*",
+        "elasticache:*",
+        "elasticloadbalancing:*",
+        "events:*",
+        "guardduty:*",
+        "kms:*",
+        "logs:*",
+        "rds:*",
+        "route53:*",
+        "secretsmanager:*",
+        "sns:*",
+        "sqs:*",
+        "wafv2:*",
+        "sts:GetCallerIdentity",
+        "tag:GetResources"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DeployLogsRead",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": [
+        "arn:aws:logs:us-east-1:233636046512:log-group:/ecs/cht-platform*",
+        "arn:aws:logs:us-east-1:233636046512:log-group:/ecs/cht-dev*",
+        "arn:aws:logs:us-east-1:233636046512:log-group:/aws/vpc/cht-dev*"
+      ]
+    }
+  ]
+}

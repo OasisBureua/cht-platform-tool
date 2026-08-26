@@ -1,0 +1,30 @@
+%% CHT Platform: authentication flow (Cognito)
+
+sequenceDiagram
+  autonumber
+  participant U as User browser
+  participant FE as React frontend
+  participant API as NestJS backend
+  participant CG as Cognito Hosted UI
+  participant G as Google OAuth
+  participant DB as Aurora PostgreSQL
+
+  Note over U,DB: Email / password login
+  U->>FE: Submit login form
+  FE->>FE: reCAPTCHA v3 token (optional)
+  FE->>API: POST /auth/cognito/login
+  API->>CG: InitiateAuth USER_PASSWORD_AUTH
+  CG-->>API: tokens or MFA challenge
+  API->>DB: Session + User lookup
+  API-->>FE: httpOnly session cookie
+
+  Note over U,DB: Google sign-in / sign-up
+  U->>FE: Continue with Google
+  FE->>CG: OAuth authorize (PKCE)
+  CG->>G: Federated login
+  G-->>CG: IdP response
+  CG-->>FE: auth code → /auth/callback
+  FE->>API: POST /auth/cognito/callback
+  API->>CG: Exchange code for tokens
+  API->>DB: findOrCreateByCognitoSub
+  API-->>FE: session cookie

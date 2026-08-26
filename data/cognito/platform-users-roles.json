@@ -1,0 +1,20 @@
+[
+  { "email": "dave@communityhealth.media", "role": "HCP", "name": "User" },
+  { "email": "andrewpnielson@gmail.com", "role": "HCP", "name": "Andrew Nielson" },
+  { "email": "amanda@communityhealth.media", "role": "ADMIN", "name": "Amanda Forkey" },
+  { "email": "belleandlillyshow@gmail.com", "role": "HCP", "name": "Belle And Lilly Show" },
+  { "email": "seth@communityhealth.media", "role": "ADMIN", "name": "Seth Laderman" },
+  { "email": "andrew@communityhealth.media", "role": "ADMIN", "name": "Andrew Nielson" },
+  { "email": "sebastien@communityhealth.media", "role": "ADMIN", "name": "Sebastien Fregeau" },
+  { "email": "info@ucheaduaka.com", "role": "HCP", "name": "Uche Aduaka" },
+  { "email": "marcus@broccolicity.com", "role": "HCP", "name": "Marcus Allen" },
+  { "email": "morgan@wechipn.com", "role": "HCP", "name": "Morgan Webster" },
+  { "email": "putyouinadaze@gmail.com", "role": "HCP", "name": "Adaze Oviawe" },
+  { "email": "hugo@communityhealth.media", "role": "HCP", "name": "User" },
+  { "email": "mawebster35@gmail.com", "role": "HCP", "name": "Morgan Webster" },
+  { "email": "marcus.allen82@gmail.com", "role": "ADMIN", "name": "marcus allen" },
+  { "email": "morgan@communityhealth.media", "role": "ADMIN", "name": "Morgan Webster" },
+  { "email": "sfregeau56@gmail.com", "role": "HCP", "name": "Sebastien Fregeau" },
+  { "email": "adaze.oviawe@gmail.com", "role": "ADMIN", "name": "Adaze Oviawe" },
+  { "email": "uchennaaduaka4@gmail.com", "role": "ADMIN", "name": "Uche Aduaka" }
+]

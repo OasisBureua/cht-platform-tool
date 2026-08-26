@@ -1,0 +1,111 @@
+name: Rollback Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rollback'
+        required: true
+        type: choice
+        options:
+          - platform
+          - staging
+      image_tag:
+        description: 'Image tag to rollback to (e.g., platform-abc1234-1234567890)'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  rollback:
+    name: Rollback to Previous Version
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment == 'platform' && 'production' || 'staging' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set deployment targets
+        id: targets
+        run: |
+          if [ "${{ inputs.environment }}" = "platform" ]; then
+            echo "cluster=cht-platform-cluster" >> $GITHUB_OUTPUT
+            echo "prefix=cht-platform" >> $GITHUB_OUTPUT
+            echo "health_url=https://testapp.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
+          else
+            echo "cluster=cht-platform-staging-cluster" >> $GITHUB_OUTPUT
+            echo "prefix=cht-platform-staging" >> $GITHUB_OUTPUT
+            echo "health_url=https://staging.testapp.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Roll back ECS services
+        env:
+          CLUSTER: ${{ steps.targets.outputs.cluster }}
+          PREFIX: ${{ steps.targets.outputs.prefix }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          rollback_service() {
+            local SERVICE=$1
+            local CONTAINER=$2
+            local IMAGE="${ECR_REGISTRY}/${CONTAINER}:${IMAGE_TAG}"
+            local TASK_DEF
+            TASK_DEF=$(aws ecs describe-services \
+              --cluster "$CLUSTER" \
+              --services "$SERVICE" \
+              --query 'services[0].taskDefinition' \
+              --output text)
+
+            aws ecs describe-task-definition \
+              --task-definition "$TASK_DEF" \
+              --query 'taskDefinition' > task-def.json
+
+            jq --arg IMAGE "$IMAGE" --arg CONTAINER "$CONTAINER" \
+              'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+               | .containerDefinitions = (.containerDefinitions | map(if .name == $CONTAINER then .image = $IMAGE else . end))' \
+              task-def.json > new-task-def.json
+
+            NEW_TASK_DEF=$(aws ecs register-task-definition \
+              --cli-input-json file://new-task-def.json \
+              --query 'taskDefinition.taskDefinitionArn' \
+              --output text)
+
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$SERVICE" \
+              --task-definition "$NEW_TASK_DEF" \
+              --force-new-deployment
+          }
+
+          rollback_service "${PREFIX}-backend" "backend"
+          rollback_service "${PREFIX}-worker" "worker"
+
+      - name: Wait for rollback
+        env:
+          CLUSTER: ${{ steps.targets.outputs.cluster }}
+          PREFIX: ${{ steps.targets.outputs.prefix }}
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services "${PREFIX}-backend" "${PREFIX}-worker"
+
+      - name: Verify health
+        env:
+          HEALTH_URL: ${{ steps.targets.outputs.health_url }}
+        run: |
+          curl -fsS "$HEALTH_URL"
+          echo "✅ Rollback successful!"

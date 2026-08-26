@@ -1,0 +1,551 @@
+name: Deploy to Development
+
+# Manual dispatch, or push to feature branches (app + infra paths).
+# develop deploys only via workflow_dispatch (Actions → Run workflow).
+on:
+  workflow_dispatch:
+    inputs:
+      plan_only:
+        description: 'Plan only: skip apply approval and deploy steps'
+        type: boolean
+        default: false
+      deploy_all:
+        description: 'Deploy all lanes (ignore change detection)'
+        type: boolean
+        default: false
+  push:
+    branches:
+      - 'feature/**'
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'worker/**'
+      - 'infrastructure/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+
+concurrency:
+  group: deploy-cht-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 233636046512.dkr.ecr.us-east-1.amazonaws.com
+  ECR_BACKEND_REPO: cht-dev-backend
+  ECR_WORKER_REPO: cht-dev-worker
+  TERRAFORM_VERSION: 1.10.5
+  TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
+  TF_VAR_FILE: ../variables/dev.github.tfvars
+  TF_BACKEND_CONFIG: ../backends/us-east-1-dev.hcl
+  APP_URL: https://devapp.communityhealth.media
+  API_URL: https://devapp.communityhealth.media/api
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  changes:
+    name: Detect deploy scope
+    runs-on: ubuntu-latest
+    outputs:
+      deploy_backend: ${{ steps.scope.outputs.deploy_backend }}
+      deploy_frontend: ${{ steps.scope.outputs.deploy_frontend }}
+      deploy_infra: ${{ steps.scope.outputs.deploy_infra }}
+      base_sha: ${{ steps.base.outputs.base_sha }}
+      base_source: ${{ steps.base.outputs.base_source }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve change base
+        if: github.event.inputs.deploy_all != 'true'
+        id: base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          chmod +x scripts/ci-resolve-deploy-base.sh
+          ./scripts/ci-resolve-deploy-base.sh \
+            "${{ github.event_name }}" \
+            "${{ github.event.before || '' }}" \
+            "deploy-dev.yml" \
+            "${{ github.ref_name }}" \
+            "origin/develop"
+
+      - name: Detect changed paths
+        if: github.event.inputs.deploy_all != 'true' && steps.base.outputs.base_resolved == 'true'
+        uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          ref: ${{ github.sha }}
+          base: ${{ steps.base.outputs.base_sha }}
+          list-files: shell
+          filters: |
+            backend:
+              - 'backend/**'
+              - 'worker/**'
+            frontend:
+              - 'frontend/**'
+            infra:
+              - 'infrastructure/**'
+
+      - name: Set deploy scope
+        id: scope
+        run: |
+          chmod +x scripts/ci-detect-deploy-scope.sh
+          FORCE_ALL=false
+          if [ "${{ github.event.inputs.deploy_all }}" = "true" ]; then
+            FORCE_ALL=true
+          elif [ "${{ steps.base.outputs.base_resolved || 'false' }}" != "true" ]; then
+            echo "No change base SHA; deploying all lanes."
+            FORCE_ALL=true
+          fi
+          ./scripts/ci-detect-deploy-scope.sh \
+            "$FORCE_ALL" \
+            "${{ steps.filter.outputs.backend || 'false' }}" \
+            "${{ steps.filter.outputs.frontend || 'false' }}" \
+            "${{ steps.filter.outputs.infra || 'false' }}"
+          echo "Changed backend files: ${{ steps.filter.outputs.backend_files || 'n/a' }}"
+          echo "Changed frontend files: ${{ steps.filter.outputs.frontend_files || 'n/a' }}"
+          echo "Changed infra files: ${{ steps.filter.outputs.infra_files || 'n/a' }}"
+
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend - Install dependencies
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Backend - Generate Prisma client
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./backend
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/cht_platform
+
+      - name: Backend - Run tests
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./backend
+        run: npm test
+
+      - name: Frontend - Install dependencies
+        if: needs.changes.outputs.deploy_frontend == 'true'
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Frontend - Run tests
+        if: needs.changes.outputs.deploy_frontend == 'true'
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Setup Terraform
+        if: needs.changes.outputs.deploy_infra == 'true'
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform validate
+        if: needs.changes.outputs.deploy_infra == 'true'
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+  deploy:
+    name: Deploy to dev
+    runs-on: ubuntu-latest
+    needs: [changes, test]
+    if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+    environment: development
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Deploy scope summary
+        run: |
+          echo "## Deploy scope" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Lane | Run |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-----|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend (images + ECS image roll) | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Infra (Terraform plan/apply) | ${{ needs.changes.outputs.deploy_infra }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend (build + S3 + CloudFront) | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Change base: \`${{ needs.changes.outputs.base_sha || 'n/a' }}\` (${{ needs.changes.outputs.base_source || 'n/a' }})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Generate image tag
+        if: needs.changes.outputs.deploy_backend == 'true'
+        id: meta
+        run: |
+          chmod +x scripts/next-dev-image-tag.sh
+          IMAGE_TAG="$(./scripts/next-dev-image-tag.sh ${{ env.ECR_BACKEND_REPO }} "$AWS_REGION")"
+          echo "image_tag=${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: ${IMAGE_TAG}"
+
+      - name: Set up Docker Buildx
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push backend image
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:dev-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and push worker image
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ./worker
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}
+            ${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:dev-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup Terraform
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Verify GitHub Environment secrets
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+        env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
+          MEDIAHUB_API_KEY: ${{ secrets.MEDIAHUB_API_KEY }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          YOUTUBE_PLAYLIST_IDS: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
+          ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          ZOOM_CLIENT_ID: ${{ secrets.ZOOM_CLIENT_ID }}
+          ZOOM_CLIENT_SECRET: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          ZOOM_WEBHOOK_SECRET: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          ZOOM_SDK_KEY: ${{ secrets.ZOOM_SDK_KEY }}
+          ZOOM_SDK_SECRET: ${{ secrets.ZOOM_SDK_SECRET }}
+          JOTFORM_API_KEY: ${{ secrets.JOTFORM_API_KEY }}
+          BILL_DEV_KEY: ${{ secrets.BILL_DEV_KEY }}
+          BILL_USERNAME: ${{ secrets.BILL_USERNAME }}
+          BILL_PASSWORD: ${{ secrets.BILL_PASSWORD }}
+          BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
+          BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          COGNITO_GOOGLE_CLIENT_ID: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
+          COGNITO_GOOGLE_CLIENT_SECRET: ${{ secrets.COGNITO_GOOGLE_CLIENT_SECRET }}
+          RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          CONTENTHUB_API_KEY: ${{ secrets.CONTENTHUB_API_KEY }}
+          INTERNAL_CACHE_SECRET: ${{ secrets.INTERNAL_CACHE_SECRET }}
+        run: ./scripts/verify-github-env-secrets.sh development
+
+      - name: Terraform Init
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: terraform init -reconfigure -backend-config="${{ env.TF_BACKEND_CONFIG }}"
+
+      - name: Terraform Plan
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          EXTRA_VARS=()
+          if [ "${{ needs.changes.outputs.deploy_backend }}" = "true" ]; then
+            # New images built in this run, pin ECS to those tags.
+            EXTRA_VARS+=(
+              -var="backend_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_BACKEND_REPO }}:${{ steps.meta.outputs.image_tag }}"
+              -var="worker_image=${{ env.ECR_REGISTRY }}/${{ env.ECR_WORKER_REPO }}:${{ steps.meta.outputs.image_tag }}"
+            )
+          else
+            # Infra-only: keep currently applied image tags from state so we do not
+            # roll ECS back to placeholder tags in *.github.tfvars.
+            chmod +x "${{ github.workspace }}/scripts/ci-resolve-ecs-images-from-state.sh"
+            eval "$("${{ github.workspace }}/scripts/ci-resolve-ecs-images-from-state.sh")"
+            EXTRA_VARS+=(
+              -var="backend_image=${BACKEND_IMAGE}"
+              -var="worker_image=${WORKER_IMAGE}"
+            )
+          fi
+          terraform plan \
+            -var-file="${{ env.TF_VAR_FILE }}" \
+            "${EXTRA_VARS[@]}" \
+            -out=tfplan
+        env:
+          TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
+          TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
+          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
+          TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
+          TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
+          TF_VAR_youtube_api_key: ${{ secrets.YOUTUBE_API_KEY }}
+          TF_VAR_youtube_playlist_ids: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
+          TF_VAR_zoom_account_id: ${{ secrets.ZOOM_ACCOUNT_ID }}
+          TF_VAR_zoom_client_id: ${{ secrets.ZOOM_CLIENT_ID }}
+          TF_VAR_zoom_client_secret: ${{ secrets.ZOOM_CLIENT_SECRET }}
+          TF_VAR_zoom_webhook_secret: ${{ secrets.ZOOM_WEBHOOK_SECRET }}
+          TF_VAR_zoom_sdk_key: ${{ secrets.ZOOM_SDK_KEY }}
+          TF_VAR_zoom_sdk_secret: ${{ secrets.ZOOM_SDK_SECRET }}
+          TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
+          TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
+          TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
+          TF_VAR_bill_password: ${{ secrets.BILL_PASSWORD }}
+          TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
+          TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
+          TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
+          TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
+          TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
+          TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
+          TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
+          TF_VAR_cognito_google_client_id: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
+          TF_VAR_cognito_google_client_secret: ${{ secrets.COGNITO_GOOGLE_CLIENT_SECRET }}
+          TF_VAR_recaptcha_secret_key: ${{ secrets.RECAPTCHA_SECRET_KEY }}
+          TF_VAR_contenthub_api_key: ${{ secrets.CONTENTHUB_API_KEY }}
+          TF_VAR_internal_cache_secret: ${{ secrets.INTERNAL_CACHE_SECRET }}
+
+      - name: Plan summary
+        if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          echo "## Terraform plan summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          terraform show -json tfplan | jq -r '
+            .resource_changes[]
+            | select(.change.actions != ["no-op"])
+            | "\(.change.actions | join(",")): \(.address)"
+          ' >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          ADD=$(terraform show -json tfplan | jq '[.resource_changes[] | select(.change.actions | index("create"))] | length')
+          CHANGE=$(terraform show -json tfplan | jq '[.resource_changes[] | select(.change.actions == ["update"])] | length')
+          DESTROY=$(terraform show -json tfplan | jq '[.resource_changes[] | select(.change.actions | index("delete"))] | length')
+          echo "| Action | Count |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| create | ${ADD} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| update | ${CHANGE} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| destroy | ${DESTROY} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event.inputs.plan_only }}" = "true" ]; then
+            echo "ℹ️ **Plan only**: apply and deploy skipped." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "⏸️ **Awaiting approval**: review the plan above, then approve the pending issue to run \`terraform apply\`." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Approve Terraform apply
+        if: (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true') && github.event.inputs.plan_only != 'true'
+        uses: trstringer/manual-approval@v1
+        timeout-minutes: 120
+        with:
+          secret: ${{ github.token }}
+          approvers: ${{ github.actor }}
+          minimum-approvals: 1
+          issue-title: "Approve dev Terraform apply (run #${{ github.run_number }})"
+          issue-body: |
+            Review the **Terraform Plan** step and plan summary for workflow run ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}.
+
+            Plan: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Comment **approve** on this issue to run `terraform apply tfplan` and continue the dev deploy.
+            Comment **deny** to cancel the apply (the workflow will fail).
+
+      - name: Terraform Apply
+        if: (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true') && github.event.inputs.plan_only != 'true'
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: terraform apply tfplan
+
+      - name: Get Terraform outputs
+        if: |
+          github.event.inputs.plan_only != 'true' && (
+            needs.changes.outputs.deploy_frontend == 'true' ||
+            needs.changes.outputs.deploy_backend == 'true' ||
+            needs.changes.outputs.deploy_infra == 'true'
+          )
+        id: outputs
+        working-directory: ${{ env.TF_ENV_DIR }}
+        run: |
+          echo "frontend_bucket=$(terraform output -raw frontend_bucket)" >> $GITHUB_OUTPUT
+          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+          echo "cluster_name=$(terraform output -raw cluster_name)" >> $GITHUB_OUTPUT
+          echo "cognito_user_pool_id=$(terraform output -raw cognito_user_pool_id)" >> $GITHUB_OUTPUT
+          echo "cognito_client_id=$(terraform output -raw cognito_client_id)" >> $GITHUB_OUTPUT
+          echo "cognito_hosted_ui_base_url=$(terraform output -raw cognito_hosted_ui_base_url)" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Frontend
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build -- --mode development
+        env:
+          VITE_API_URL: ${{ env.API_URL }}
+          VITE_APP_URL: ${{ env.APP_URL }}
+          VITE_COGNITO_USER_POOL_ID: ${{ steps.outputs.outputs.cognito_user_pool_id }}
+          VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.cognito_client_id }}
+          VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_hosted_ui_base_url }}
+          VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
+          VITE_MEDIAHUB_AUTH_DECOMMISSIONED: 'true'
+          VITE_DISABLE_AUTH: 'false'
+          VITE_USE_DEV_AUTH: 'false'
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          VITE_GOOGLE_OAUTH_ENABLED: 'true'
+          VITE_CATALOG_WORDPRESS_ONLY: 'true'
+          VITE_SUPABASE_URL: https://mediahub.communityhealth.media
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Upload to S3
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
+        working-directory: ./frontend
+        run: |
+          BUCKET="${{ steps.outputs.outputs.frontend_bucket }}"
+
+          # Phase 1: upload new build WITHOUT --delete so old hashed chunks stay available
+          # while CloudFront invalidation propagates (avoids ChunkLoadError).
+          aws s3 sync dist/ "s3://${BUCKET}/" \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.html" \
+            --exclude "logo.svg" \
+            --exclude "vite.svg" \
+            --exclude "robots.txt" \
+            --exclude "images/*"
+
+          if [ -d dist/images ]; then
+            aws s3 sync dist/images/ "s3://${BUCKET}/images/" \
+              --cache-control "public, max-age=300, must-revalidate"
+          fi
+          for f in logo.svg vite.svg robots.txt; do
+            [ -f "dist/$f" ] && aws s3 cp "dist/$f" "s3://${BUCKET}/$f" \
+              --cache-control "public, max-age=300, must-revalidate"
+          done
+
+          if [ -f dist/zoom-embed.html ]; then
+            aws s3 cp dist/zoom-embed.html "s3://${BUCKET}/zoom-embed.html" \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "text/html"
+          fi
+
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate CloudFront
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.outputs.outputs.cloudfront_id }} \
+            --paths "/*"
+
+      - name: Prune removed frontend assets
+        if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'
+        working-directory: ./frontend
+        run: |
+          BUCKET="${{ steps.outputs.outputs.frontend_bucket }}"
+          aws s3 sync dist/ "s3://${BUCKET}/" \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.html" \
+            --exclude "logo.svg" \
+            --exclude "vite.svg" \
+            --exclude "robots.txt" \
+            --exclude "images/*"
+          if [ -d dist/images ]; then
+            aws s3 sync dist/images/ "s3://${BUCKET}/images/" \
+              --delete \
+              --cache-control "public, max-age=300, must-revalidate"
+          fi
+          aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --content-type "text/html"
+
+      - name: Wait for ECS services stable
+        if: needs.changes.outputs.deploy_backend == 'true' && github.event.inputs.plan_only != 'true'
+        run: |
+          CLUSTER="${{ steps.outputs.outputs.cluster_name }}"
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" \
+            --services cht-dev-backend cht-dev-worker \
+            --region "$AWS_REGION"
+          echo "ECS services stable in cluster $CLUSTER"
+
+      - name: Health Check
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true')
+        id: healthcheck
+        continue-on-error: true
+        run: |
+          echo "Waiting 30s for deployment to stabilize..."
+          sleep 30
+          curl -fsS "${{ env.APP_URL }}/health/ready" && echo "✅ /health/ready passed!" || echo "❌ /health/ready failed"
+          curl -fsS "${{ env.APP_URL }}/health" && echo "✅ /health passed!" || echo "❌ /health failed"
+          curl -fsS -o /dev/null -w "Frontend HTTP %{http_code}\n" "${{ env.APP_URL }}/"
+
+      - name: Final health gate
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true') && steps.healthcheck.outcome == 'failure'
+        run: |
+          echo "Health check failed, marking workflow failed."
+          exit 1
+
+      - name: Deployment Summary
+        if: github.event.inputs.plan_only != 'true' && (needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_frontend == 'true' || needs.changes.outputs.deploy_infra == 'true')
+        run: |
+          echo "## CHT Platform dev deploy" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Item | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend lane | ${{ needs.changes.outputs.deploy_backend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Infra lane | ${{ needs.changes.outputs.deploy_infra }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend lane | ${{ needs.changes.outputs.deploy_frontend }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Image tag | \`${{ needs.changes.outputs.deploy_backend == 'true' && steps.meta.outputs.image_tag || 'n/a' }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend | ${{ env.APP_URL }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| API | ${{ env.API_URL }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Manual equivalent: \`./scripts/deploy-primary.sh dev\` + \`./scripts/deploy-frontend.sh dev\`" >> "$GITHUB_STEP_SUMMARY"
