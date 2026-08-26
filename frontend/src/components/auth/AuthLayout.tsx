@@ -14,11 +14,14 @@ export function AuthLayout({
   sub,
   children,
   footer,
+  welcome = 'Welcome back to the library.',
 }: {
   heading: string;
   sub?: string;
   children: ReactNode;
   footer?: ReactNode;
+  /** The line in the panel. Sign-in welcomes back; sign-up welcomes in. */
+  welcome?: string;
 }) {
   return (
     <div className="grid min-h-[calc(100dvh-4rem)] bg-background lg:grid-cols-2">
@@ -57,12 +60,18 @@ export function AuthLayout({
               'linear-gradient(150deg, hsl(var(--cerebral-blue-deep) / 0.66) 0%, hsl(var(--cerebral-blue) / 0.3) 46%, hsl(var(--cerebral-pink) / 0.3) 100%)',
           }}
         />
-        <div className="absolute inset-x-10 bottom-12 xl:inset-x-14">
-          <div className="rounded-card bg-card/90 p-5 shadow-card backdrop-blur-2xl backdrop-saturate-150">
-            <p className="text-label uppercase text-muted-foreground">Peer-led education</p>
-            <p className="mt-3 text-lg font-medium leading-snug text-foreground">
-              Video, podcasts and editorial for oncology, organised by disease state
-              and by format.
+        {/* Centred in the frame, and a welcome rather than a feature
+            list: the panel's job on a sign-in screen is to say who this
+            is for, not to sell the product to someone already signing
+            in. Permanently over imagery, so the type is fixed white. */}
+        <div className="absolute inset-0 flex items-center justify-center p-10 xl:p-14">
+          <div className="max-w-[24rem] text-center">
+            <p className="text-label uppercase text-white/70">Community Health Media</p>
+            <p className="mt-4 text-[1.75rem] font-medium leading-[1.15] tracking-[-0.02em] text-white">
+              {welcome}
+            </p>
+            <p className="mt-4 text-[0.9375rem] leading-relaxed text-white/75">
+              Peer-led oncology education, organised the way clinicians actually work.
             </p>
           </div>
         </div>

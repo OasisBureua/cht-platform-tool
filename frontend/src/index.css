@@ -926,3 +926,11 @@
     color: var(--color-anchor);
   }
 }
+
+/* The written explainer reads itself in the session widget: a slow
+   upward drift over two identical passes, so the loop never shows a
+   seam. Half the height is exactly one pass. */
+@keyframes editorial-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(0, -50%, 0); }
+}

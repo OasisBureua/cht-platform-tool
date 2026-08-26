@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { HomeHero } from '../../components/home/HomeHero';
+import { SessionWidget } from '../../components/home/SessionWidget';
+import { Thumb } from '../../components/ui/Thumb';
 import { ChmMark } from '../../components/brand/ChmMark';
 import { useKolDirectory } from '../../hooks/useKolDirectory';
 import { kolStaticEnrichment, type DolEntry } from '../../data/dol-network';
@@ -175,36 +177,6 @@ function Btn({
 }
 
 /** A poster with the mark, a scrim and an optional runtime on it. */
-function Thumb({
-  src,
-  duration,
-  className = '',
-  onError,
-}: {
-  src: string;
-  duration?: string;
-  className?: string;
-  onError?: () => void;
-}) {
-  return (
-    <div className={`relative overflow-hidden rounded-[6px] bg-surface-2 ${className}`}>
-      <img
-        src={src}
-        alt=""
-        loading="lazy"
-        referrerPolicy="no-referrer"
-        onError={onError}
-        className="absolute inset-0 size-full object-cover opacity-90 transition-[scale,opacity] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.03] group-hover:opacity-100"
-      />
-      {/* Under the scrim this is a permanently dark strip, so the mark
-          and the runtime take fixed white rather than the page tokens. */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-      <div className="img-ring absolute inset-0 rounded-[inherit]" />
-      <ChmMark className="absolute bottom-3 start-3 size-5 text-white/80" />
-      {duration ? <span className="meta absolute end-3 bottom-3 text-white/80">{duration}</span> : null}
-    </div>
-  );
-}
 
 /* ── page content ────────────────────────────────────────────────────── */
 
@@ -340,24 +312,7 @@ const BIOMARKERS = [
 ];
 
 /** The video cut of the session, shown as the document in front. */
-const SESSION = {
-  crumb: 'breast / her2-positive',
-  runtime: '18:40',
-  formats: ['Video', 'Podcast', 'Editorial', 'Clips'],
-  headingLabel: 'Chapters',
-  rows: [
-    ['00:00', 'The case'],
-    ['03:12', 'What the registrational data says'],
-    ['08:40', 'Where the guidelines lag'],
-    ['13:05', 'Toxicity and dose decisions'],
-  ] as [string, string][],
-};
 
-const STATS = [
-  { n: '92%', l: 'of sessions get finished' },
-  { n: '2.4M', l: 'views a year' },
-  { n: '140+', l: 'practising faculty' },
-];
 
 const INITIAL_TONES = [
   'var(--color-cyan)',
@@ -369,31 +324,6 @@ const INITIAL_TONES = [
 
 /* The stat band's grid: faint rules that pulse along their length on
    staggered, non-repeating durations. */
-function StatGrid() {
-  const cols = 12;
-  const rows = 5;
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: cols }, (_, i) => (
-        <span
-          key={`c${i}`}
-          className="absolute top-0 bottom-0 w-px bg-hairline motion-safe:animate-[gridShimmer_var(--d)_linear_infinite]"
-          style={{ left: `${((i + 1) / (cols + 1)) * 100}%`, ['--d' as string]: `${2 + ((i * 7) % 9) / 10}s` }}
-        />
-      ))}
-      {Array.from({ length: rows }, (_, i) => (
-        <span
-          key={`r${i}`}
-          className="absolute inset-x-0 h-px bg-hairline motion-safe:animate-[gridShimmer_var(--d)_linear_infinite]"
-          style={{ top: `${((i + 1) / (rows + 1)) * 100}%`, ['--d' as string]: `${2.1 + ((i * 5) % 8) / 10}s` }}
-        />
-      ))}
-      <span className="absolute inset-x-[18%] top-[33%] h-px bg-gradient-to-r from-transparent via-signature/50 to-transparent" />
-      <span className="absolute inset-x-[30%] top-[66%] h-px bg-gradient-to-r from-transparent via-amber/40 to-transparent" />
-      <ChmMark className="absolute -end-16 -bottom-16 size-40 text-hairline" />
-    </div>
-  );
-}
 
 /** Initials fallback for a contributor with no headshot on file. */
 function initials(name: string): string {
@@ -618,46 +548,7 @@ export default function Home() {
             {/* Window chrome, then the format row, then the sheet: the
                 same stack a browser uses, so the front format reads as
                 the document rather than a button above a box. */}
-            <div className="rounded-[6px] bg-surface p-2.5 shadow-card">
-              <div className="flex items-center gap-2 px-2 pt-1 pb-3">
-                <span aria-hidden className="size-2.5 rounded-full bg-hairline-strong" />
-                <span aria-hidden className="size-2.5 rounded-full bg-hairline-strong" />
-                <span aria-hidden className="size-2.5 rounded-full bg-hairline-strong" />
-                <span className="meta ms-2 truncate text-faint">{SESSION.crumb}</span>
-              </div>
-
-              <div className="relative z-10 flex gap-1">
-                {SESSION.formats.map((label, i) => (
-                  <span
-                    key={label}
-                    className={`relative flex-1 rounded-t-[8px] px-3 pt-2.5 text-center text-[0.8125rem] ${
-                      i === 0 ? '-mb-2 bg-ground pb-4 font-medium text-text' : 'pb-2.5 text-muted2'
-                    }`}
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
-
-              <div className="relative rounded-[6px] bg-ground p-3">
-                <Thumb src={sessionPoster} duration={SESSION.runtime} className="aspect-video w-full" />
-                <h3 className="sr-only">{SESSION.headingLabel}</h3>
-                {/* Capped and scrollable, so a long breakdown never pushes
-                    the section past a single screen. */}
-                <ol className="scrollbar-none mt-2 max-h-[8.5rem] overflow-y-auto overscroll-contain px-1">
-                  {SESSION.rows.map(([t, label], i) => (
-                    <li key={t} className="flex items-center gap-3 py-1.5">
-                      <span className="meta w-12 shrink-0 tabular-nums text-anchor">{t}</span>
-                      <span
-                        className={`truncate text-[0.8125rem] ${i === 0 ? 'text-text' : 'text-muted2'}`}
-                      >
-                        {label}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            </div>
+            <SessionWidget poster={sessionPoster} />
           </Reveal>
         </div>
       </Band>
@@ -927,29 +818,6 @@ export default function Home() {
           ))}
         </div>
       </Band>
-
-      {/* ── Stat band ────────────────────────────────────── */}
-      <section aria-labelledby="stats-heading" className="relative overflow-hidden">
-        <StatGrid />
-        <div className="rail relative py-20 md:py-28">
-          <h2 id="stats-heading" className="sr-only">
-            CHM by the numbers
-          </h2>
-          <dl className="grid gap-14 text-center md:grid-cols-3 md:gap-8">
-            {STATS.map((s, i) => (
-              <Reveal key={s.l} delay={i * 80}>
-                <dt className="sr-only">{s.l}</dt>
-                <dd>
-                  <span className="display block text-[3.25rem] leading-none tracking-[-0.04em] tabular-nums text-text md:text-[4.5rem]">
-                    {s.n}
-                  </span>
-                  <span className="mt-5 block text-body-m text-muted2">{s.l}</span>
-                </dd>
-              </Reveal>
-            ))}
-          </dl>
-        </div>
-      </section>
 
       {/* ── Get started ──────────────────────────────────── */}
       <section aria-labelledby="start-heading">

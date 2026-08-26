@@ -8,3 +8,4 @@ export { Rail, SectionHead } from './Rail';
 export { default as LoadingSpinner } from './LoadingSpinner';
 export { Reveal } from './Reveal';
 export { AbstractFigure } from './AbstractFigure';
+export { Thumb } from './Thumb';
