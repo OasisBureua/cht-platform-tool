@@ -17,10 +17,8 @@ import { Link } from 'react-router-dom';
 type Track = {
   key: string;
   label: string;
-  /** The catalogue total, not the number of cards in the panel. */
-  count?: number;
   panel: ReactNode;
-  /** Where the rest of this format lives, and what to call it. */
+  /** Where the rest of this format lives. */
   more?: { to: string; label: string };
 };
 
@@ -78,9 +76,6 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
               }`}
             >
               {t.label}
-              {t.count !== undefined && (
-                <span className="meta ms-1.5 tabular-nums text-faint">{t.count}</span>
-              )}
               {on && (
                 <span
                   aria-hidden
@@ -95,10 +90,9 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
         {tracks[active].more && (
           <Link
             to={tracks[active].more!.to}
-            className="press mb-1 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[6px] px-1 text-body-s text-muted2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
+            className="press mb-2 inline-flex h-9 shrink-0 items-center gap-2 rounded-[6px] bg-surface px-4 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
           >
-            <span className="max-sm:hidden">{tracks[active].more!.label}</span>
-            <span className="sm:hidden">See all</span>
+            {tracks[active].more!.label}
             <svg
               viewBox="0 0 24 24"
               fill="none"

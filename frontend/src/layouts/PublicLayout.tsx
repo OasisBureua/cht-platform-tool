@@ -23,7 +23,6 @@ const nav = [
   { to: '/catalog', label: 'Content Library' },
   { to: '/kol-network', label: 'KOL Network' },
   { to: '/live', label: 'Live' },
-  { to: '/chm-office-hours', label: 'CHM Office Hours' },
 ];
 
 /* Everything the search dialog can jump to that is not a disease state. */
