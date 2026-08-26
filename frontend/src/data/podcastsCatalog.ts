@@ -36,6 +36,16 @@ export const CANCER_UNFILTERED_PLATFORM_LINKS = podcastSeriesPlatformLinks(
   'https://linkin.bio/cancerunfiltered/',
 );
 
+export const BIG_C_ENERGY_PLATFORM_LINKS = podcastSeriesPlatformLinks(
+  'Big C Energy',
+  'https://podcasts.apple.com/us/podcast/big-c-energy/id1896934572',
+);
+
+export const TETALKS_PLATFORM_LINKS = podcastSeriesPlatformLinks(
+  'TeTalks',
+  'https://podcasts.apple.com/us/podcast/tetalks/id6791666042',
+);
+
 export type PodcastPlayLatest =
   | { kind: 'external'; href: string }
   | { kind: 'app'; to: string };
@@ -85,7 +95,7 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     title: 'Breast Friends',
     tagline:
       'Direct, expert-led conversations about breast cancer, built for patients and clinicians. We pair first-line data with what it feels like in the exam room and at home.',
-    image: '/images/podcasts/breast-friends/cover.png',
+    image: '/images/podcasts/breast-friends/cover.jpg',
     logo: '/images/podcasts/breast-friends/logo-with-names-full-color.png',
     category: 'Clinical · Oncology',
     updateNote: 'New episodes monthly',
@@ -99,13 +109,39 @@ export const PODCAST_SHOWS: PodcastShow[] = [
     title: 'Cancer Unfiltered',
     tagline:
       'Candid conversations with leading oncologists on the realities of cancer care, honest perspectives, real-world insights, and what it means for patients and clinicians.',
-    image: '/images/podcasts/cancer-unfiltered/cover.png',
+    image: '/images/podcasts/cancer-unfiltered/cover.jpg',
     logo: '/images/podcasts/cancer-unfiltered/logo.png',
     category: 'Clinical · Oncology',
     updateNote: 'New episodes monthly',
     remoteEpisodes: true,
     minEpisodeDurationSeconds: 15 * 60,
     platformLinks: CANCER_UNFILTERED_PLATFORM_LINKS,
+    episodes: [],
+  },
+  {
+    id: 'big-c-energy',
+    title: 'Big C Energy',
+    tagline:
+      'Cancer, from the people who lived it. Alison Haislip talks to survivors, caregivers and clinicians about what treatment is actually like once the appointment ends.',
+    image: '/images/podcasts/big-c-energy/cover.jpg',
+    category: 'Patient · Survivorship',
+    updateNote: 'New episodes monthly',
+    remoteEpisodes: true,
+    minEpisodeDurationSeconds: 15 * 60,
+    platformLinks: BIG_C_ENERGY_PLATFORM_LINKS,
+    episodes: [],
+  },
+  {
+    id: 'tetalks',
+    title: 'TeTalks',
+    tagline:
+      'Oncología en español. Las Dras. Marcela Mazo Canola y Ana Sandoval León repasan los datos que cambian la conversación en la consulta.',
+    image: '/images/podcasts/tetalks/cover.jpg',
+    category: 'Clinical · En español',
+    updateNote: 'Nuevos episodios cada mes',
+    remoteEpisodes: true,
+    minEpisodeDurationSeconds: 15 * 60,
+    platformLinks: TETALKS_PLATFORM_LINKS,
     episodes: [],
   },
 ];
