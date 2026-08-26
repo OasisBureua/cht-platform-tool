@@ -58,13 +58,20 @@ function Band({
   children,
   labelledBy,
   className = '',
-  pad = 'py-16 md:py-24',
+  pad = 'py-10 md:py-14',
 }: {
   children: ReactNode;
   labelledBy?: string;
   className?: string;
-  /** Overridable, because a band that follows the hero needs less
-      top space than one that follows another band. */
+  /**
+   * Overridable, because a band that follows the hero needs less top
+   * space than one that follows another band.
+   *
+   * The padding is symmetric and every band carries it, so the gap you
+   * see between two sections is the sum of both: 56 + 56 on desktop.
+   * That is the number to reason about, not the 14. It was py-24
+   * before, which stacked to 192px of nothing between every section.
+   */
   pad?: string;
 }) {
   return (
@@ -633,7 +640,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
   const SECTIONS: Record<string, ReactNode> = {
     engine: (
       <>
-        <Band labelledBy="engine-heading" pad="pt-6 pb-16 md:pt-8 md:pb-24">
+        <Band labelledBy="engine-heading" pad="pt-4 pb-10 md:pt-6 md:pb-14">
           <h2 id="engine-heading" className="sr-only">
             One recording, three formats
           </h2>
@@ -896,7 +903,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
 
       {/* ── Get started ──────────────────────────────────── */}
       <section aria-labelledby="start-heading">
-        <div className="rail flex flex-col items-center py-24 text-center">
+        <div className="rail flex flex-col items-center py-16 md:py-20 text-center">
           <h2 id="start-heading" className="display max-w-[18ch] text-display-l text-text">
             Free for clinicians. Always.
           </h2>

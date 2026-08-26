@@ -815,7 +815,7 @@ export default function Home() {
 
       {/* ── Get started ──────────────────────────────────── */}
       <section aria-labelledby="start-heading">
-        <div className="rail flex flex-col items-center py-24 text-center">
+        <div className="rail flex flex-col items-center py-16 md:py-20 text-center">
           <h2 id="start-heading" className="display max-w-[18ch] text-display-l text-text">
             Free for clinicians. Always.
           </h2>

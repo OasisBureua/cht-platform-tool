@@ -50,11 +50,15 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
 
   return (
     <div className="mt-8">
+      {/* The link sits on the tab row, not under the panel. Under a
+          horizontal scroller it is only reachable by scrolling past
+          everything it is offering to replace. */}
+      <div className="flex items-end justify-between gap-4 border-b border-hairline">
       <div
         role="tablist"
         aria-label="Latest by format"
         onKeyDown={onKeyDown}
-        className="flex gap-1 border-b border-hairline"
+        className="flex gap-1"
       >
         {tracks.map((t, i) => {
           const on = i === active;
@@ -88,6 +92,29 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
         })}
       </div>
 
+        {tracks[active].more && (
+          <Link
+            to={tracks[active].more!.to}
+            className="press mb-2 inline-flex shrink-0 items-center gap-1.5 text-body-s text-muted2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
+          >
+            <span className="max-sm:hidden">{tracks[active].more!.label}</span>
+            <span className="sm:hidden">See all</span>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+              className="size-4 shrink-0"
+            >
+              <path d="M4 12h15M13 6l6 6-6 6" />
+            </svg>
+          </Link>
+        )}
+      </div>
+
       {tracks.map((t, i) => (
         <div
           key={t.key}
@@ -99,31 +126,6 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
           className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
         >
           {t.panel}
-          {/* Each panel shows a slice, so each panel says where the rest
-              is. A single head-level "see all" cannot, because it does
-              not know which tab you are on. */}
-          {t.more && (
-            <div className="mt-6 flex justify-center">
-              <Link
-                to={t.more.to}
-                className="press inline-flex h-10 items-center gap-2 rounded-[6px] bg-surface px-5 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
-              >
-                {t.more.label}
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.75}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden
-                  className="size-4 shrink-0"
-                >
-                  <path d="M4 12h15M13 6l6 6-6 6" />
-                </svg>
-              </Link>
-            </div>
-          )}
         </div>
       ))}
     </div>
