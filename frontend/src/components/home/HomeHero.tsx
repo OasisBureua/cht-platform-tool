@@ -179,7 +179,10 @@ export function HomeHero({
           id="hero-heading"
           className="rise display max-w-[16ch] text-[2.75rem] leading-[1.03] tracking-[-0.032em] text-text sm:text-[3.5rem] lg:text-[4.25rem]"
         >
-          Medicine moves through <span className="shimmer">shared knowledge</span>.
+          {/* The shimmer is gone: it read against a still hero, but both
+              live variants now animate behind the headline, and a
+              travelling highlight over a moving field just gets lost. */}
+          Medicine moves through shared knowledge.
         </h1>
 
         <p

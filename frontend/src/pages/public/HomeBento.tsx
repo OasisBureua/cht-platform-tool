@@ -6,6 +6,7 @@ import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUr
 import { HomeHero } from '../../components/home/HomeHero';
 import { DiseaseClusterCard } from '../../components/home/DiseaseClusterCard';
 import { FormatBento } from '../../components/home/FormatBento';
+import { LatestTabs } from '../../components/home/LatestTabs';
 import { Thumb } from '../../components/ui/Thumb';
 import { ChmMark } from '../../components/brand/ChmMark';
 import { useKolDirectory } from '../../hooks/useKolDirectory';
@@ -361,7 +362,7 @@ function institutionLine(k: DolEntry): string {
   return roleLead.length > 46 ? `${roleLead.slice(0, 45)}…` : roleLead;
 }
 
-export default function HomeBento() {
+export default function HomeBento({ order = 'a' }: { order?: 'a' | 'c' } = {}) {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
@@ -451,6 +452,158 @@ export default function HomeBento() {
      moving any of them. Order A: no two horizontal scrollers touch. `now`, `shows` and
      `areas` are the three scrollers, so a grid or a list sits between
      each pair. Ends on faces rather than on a filter row. */
+  /* Split out of their own sections so order C's tabbed block can
+     render the same content without re-implementing a single card. */
+  const nowBody = (
+    <>
+      <Reveal className="mt-12">
+        {/* The rail reveals as one block. Revealing each card meant
+            anything scrolled off to the right never intersected the
+            viewport, so it stayed blank until you swiped it in, and a
+            per-card stagger fights the swipe anyway. */}
+        <div className="scrollbar-none bleed-x overflow-x-auto">
+          <ul className="flex snap-x snap-mandatory gap-4">
+            {(randomVideosLoading ? Array.from({ length: 4 }) : featuredVideos.slice(0, 8)).map(
+              (entry, i) => {
+                const v = entry as FeaturedVideo | undefined;
+                return (
+                  <li
+                    key={v?.id ?? `skeleton-${i}`}
+                    className="w-[80%] shrink-0 snap-start sm:w-[45%] md:w-[31%] lg:w-[22.5%]"
+                  >
+                    {v ? (
+                      <Link
+                        to={clipHref(v)}
+                        className="press lift group flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                      >
+                        <div className="relative">
+                          <Thumb
+                            src={v.imageUrl}
+                            className="aspect-video w-full"
+                            onError={
+                              v.id.startsWith('home-placeholder') ? undefined : () => markBroken(v.id)
+                            }
+                          />
+                          <div className="absolute top-3 start-3">
+                            <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
+                              Video
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex flex-1 flex-col px-1 pb-1">
+                          <h3 className="display line-clamp-2 text-body-m text-text">{v.title}</h3>
+                          {/* Tags are spans, not links: the card is already
+                              one link, and nesting a second inside it is
+                              invalid. They read as the session's own labels. */}
+                          <ul className="mt-3 flex flex-wrap gap-1.5">
+                            <li
+                              className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
+                              style={{ background: 'var(--color-cyan)', color: 'var(--color-on-bright)' }}
+                            >
+                              Oncology
+                            </li>
+                            <li
+                              className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
+                              style={{ background: 'var(--color-pink)', color: 'var(--color-on-bright)' }}
+                            >
+                              {v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                            </li>
+                          </ul>
+                          <p className="meta mt-auto pt-4 tabular-nums text-faint">Full session</p>
+                        </div>
+                      </Link>
+                    ) : (
+                      <div
+                        aria-hidden
+                        className="flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card"
+                      >
+                        <div className="aspect-video w-full rounded-[6px] bg-surface-2" />
+                        <div className="space-y-2 px-1 pb-1">
+                          <div className="h-3 w-4/5 rounded-[6px] bg-surface-2" />
+                          <div className="h-3 w-3/5 rounded-[6px] bg-surface-2" />
+                        </div>
+                      </div>
+                    )}
+                  </li>
+                );
+              },
+            )}
+          </ul>
+        </div>
+      </Reveal>
+    </>
+  );
+  const showsBody = (
+    <>
+      <div className="mt-[2.375rem]">
+        {/* Headroom lives inside the scroller: overflow-x also clips
+            vertically, which would cut off the hover lift. */}
+        <div className="-my-5">
+          <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
+            {shows.map((s) => (
+              <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
+                <Link
+                  to="/chm-office-hours"
+                  className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  <div className="relative aspect-square overflow-hidden">
+                    <img
+                      src={s.cover}
+                      alt=""
+                      loading="lazy"
+                      className="absolute inset-0 size-full object-cover transition-[scale] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.04]"
+                    />
+                    <span
+                      aria-hidden
+                      className="absolute bottom-3 start-3 grid size-8 place-items-center rounded-[6px] bg-black/35 backdrop-blur-sm"
+                    >
+                      <ChmMark className="size-5 text-white" />
+                    </span>
+                    {s.spanish ? (
+                      <span className="eyebrow absolute top-3 end-3 rounded-[6px] bg-white/90 px-2.5 py-1 text-on-bright">
+                        Español
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+                    <h3 className="display text-body-m text-text">{s.title}</h3>
+                    <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
+                      {s.tagline}
+                    </p>
+                    <p className="meta mt-3 text-faint">
+                      {s.episodes} episodes · {s.hosts}
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </>
+  );
+  const articlesBody = (
+    <>
+      <ul className="mt-12 space-y-3">
+        {ARTICLES.map((a, i) => (
+          <Reveal as="li" key={a.slug} delay={i * 45}>
+            <Link
+              to="/catalog"
+              className="press group grid items-baseline gap-x-8 gap-y-2 py-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
+            >
+              <span className="eyebrow text-amber-ink">{a.kicker}</span>
+              <span>
+                <h3 className="display text-display-s text-text">{a.title}</h3>
+                <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
+              </span>
+              <span className="meta text-faint md:text-end">{a.read}</span>
+            </Link>
+          </Reveal>
+        ))}
+      </ul>
+    </>
+  );
+
   const SECTIONS: Record<string, ReactNode> = {
     engine: (
       <>
@@ -475,81 +628,7 @@ export default function HomeBento() {
             sub="The most recent across every format."
             seeAll={{ noun: 'content', to: '/catalog' }}
           />
-          <Reveal className="mt-12">
-            {/* The rail reveals as one block. Revealing each card meant
-                anything scrolled off to the right never intersected the
-                viewport, so it stayed blank until you swiped it in, and a
-                per-card stagger fights the swipe anyway. */}
-            <div className="scrollbar-none bleed-x overflow-x-auto">
-              <ul className="flex snap-x snap-mandatory gap-4">
-                {(randomVideosLoading ? Array.from({ length: 4 }) : featuredVideos.slice(0, 8)).map(
-                  (entry, i) => {
-                    const v = entry as FeaturedVideo | undefined;
-                    return (
-                      <li
-                        key={v?.id ?? `skeleton-${i}`}
-                        className="w-[80%] shrink-0 snap-start sm:w-[45%] md:w-[31%] lg:w-[22.5%]"
-                      >
-                        {v ? (
-                          <Link
-                            to={clipHref(v)}
-                            className="press lift group flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                          >
-                            <div className="relative">
-                              <Thumb
-                                src={v.imageUrl}
-                                className="aspect-video w-full"
-                                onError={
-                                  v.id.startsWith('home-placeholder') ? undefined : () => markBroken(v.id)
-                                }
-                              />
-                              <div className="absolute top-3 start-3">
-                                <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
-                                  Video
-                                </span>
-                              </div>
-                            </div>
-                            <div className="flex flex-1 flex-col px-1 pb-1">
-                              <h3 className="display line-clamp-2 text-body-m text-text">{v.title}</h3>
-                              {/* Tags are spans, not links: the card is already
-                                  one link, and nesting a second inside it is
-                                  invalid. They read as the session's own labels. */}
-                              <ul className="mt-3 flex flex-wrap gap-1.5">
-                                <li
-                                  className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
-                                  style={{ background: 'var(--color-cyan)', color: 'var(--color-on-bright)' }}
-                                >
-                                  Oncology
-                                </li>
-                                <li
-                                  className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
-                                  style={{ background: 'var(--color-pink)', color: 'var(--color-on-bright)' }}
-                                >
-                                  {v.youtubeUrl ? 'YouTube' : 'Conversation'}
-                                </li>
-                              </ul>
-                              <p className="meta mt-auto pt-4 tabular-nums text-faint">Full session</p>
-                            </div>
-                          </Link>
-                        ) : (
-                          <div
-                            aria-hidden
-                            className="flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card"
-                          >
-                            <div className="aspect-video w-full rounded-[6px] bg-surface-2" />
-                            <div className="space-y-2 px-1 pb-1">
-                              <div className="h-3 w-4/5 rounded-[6px] bg-surface-2" />
-                              <div className="h-3 w-3/5 rounded-[6px] bg-surface-2" />
-                            </div>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  },
-                )}
-              </ul>
-            </div>
-          </Reveal>
+          {nowBody}
         </Band>
       </>
     ),
@@ -602,51 +681,7 @@ export default function HomeBento() {
             sub="Four shows, each with its own voice and its own audience."
             seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
           />
-          <div className="mt-[2.375rem]">
-            {/* Headroom lives inside the scroller: overflow-x also clips
-                vertically, which would cut off the hover lift. */}
-            <div className="-my-5">
-              <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
-                {shows.map((s) => (
-                  <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
-                    <Link
-                      to="/chm-office-hours"
-                      className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                    >
-                      <div className="relative aspect-square overflow-hidden">
-                        <img
-                          src={s.cover}
-                          alt=""
-                          loading="lazy"
-                          className="absolute inset-0 size-full object-cover transition-[scale] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.04]"
-                        />
-                        <span
-                          aria-hidden
-                          className="absolute bottom-3 start-3 grid size-8 place-items-center rounded-[6px] bg-black/35 backdrop-blur-sm"
-                        >
-                          <ChmMark className="size-5 text-white" />
-                        </span>
-                        {s.spanish ? (
-                          <span className="eyebrow absolute top-3 end-3 rounded-[6px] bg-white/90 px-2.5 py-1 text-on-bright">
-                            Español
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
-                        <h3 className="display text-body-m text-text">{s.title}</h3>
-                        <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
-                          {s.tagline}
-                        </p>
-                        <p className="meta mt-3 text-faint">
-                          {s.episodes} episodes · {s.hosts}
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          {showsBody}
         </Band>
       </>
     ),
@@ -660,23 +695,7 @@ export default function HomeBento() {
             title="Recent articles"
             seeAll={{ noun: 'articles', to: '/catalog' }}
           />
-          <ul className="mt-12 space-y-3">
-            {ARTICLES.map((a, i) => (
-              <Reveal as="li" key={a.slug} delay={i * 45}>
-                <Link
-                  to="/catalog"
-                  className="press group grid items-baseline gap-x-8 gap-y-2 py-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
-                >
-                  <span className="eyebrow text-amber-ink">{a.kicker}</span>
-                  <span>
-                    <h3 className="display text-display-s text-text">{a.title}</h3>
-                    <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
-                  </span>
-                  <span className="meta text-faint md:text-end">{a.read}</span>
-                </Link>
-              </Reveal>
-            ))}
-          </ul>
+          {articlesBody}
         </Band>
       </>
     ),
@@ -721,6 +740,27 @@ export default function HomeBento() {
               </Link>
             ))}
           </div>
+        </Band>
+      </>
+    ),
+    latest: (
+      <>
+        {/* ── Latest, all formats ──────────────────────────── */}
+        <Band labelledBy="latest-heading">
+          <SectionHead
+            id="latest-heading"
+            index="03 / Latest"
+            title="Everything new, in every format"
+            sub="One section instead of three. The format is a filter, not another scroll."
+            seeAll={{ noun: 'content', to: '/catalog' }}
+          />
+          <LatestTabs
+            tracks={[
+              { key: 'video', label: 'Video', count: featuredVideos.length, panel: nowBody },
+              { key: 'podcast', label: 'Podcasts', count: shows.length, panel: showsBody },
+              { key: 'editorial', label: 'Editorial', count: ARTICLES.length, panel: articlesBody },
+            ]}
+          />
         </Band>
       </>
     ),
@@ -783,7 +823,13 @@ export default function HomeBento() {
       </>
     ),
   };
-  const ORDER = ['engine', 'now', 'moment', 'shows', 'articles', 'areas', 'kol'];
+  /* A: no two horizontal scrollers touch.
+     C: now + shows + articles fold into one tabbed block, so seven
+        sections become five and only one scroller is loose on the page. */
+  const ORDER =
+    order === 'c'
+      ? ['engine', 'areas', 'latest', 'moment', 'kol']
+      : ['engine', 'now', 'moment', 'shows', 'articles', 'areas', 'kol'];
 
   return (
     <div className="min-w-0 overflow-x-hidden bg-ground text-text">
@@ -792,8 +838,15 @@ export default function HomeBento() {
           section against /home. Not linked from the nav. */}
       <div className="rail pt-4">
         <p className="eyebrow text-faint">
-          Variant · formats as a bento ·{' '}
-          <a className="text-anchor hover:brightness-110" href="/home">compare with /home</a>
+          {order === 'c'
+            ? 'Order C · seven sections folded into five'
+            : 'Order A · no two scrollers adjacent'}
+          {' · compare '}
+          <a className="text-anchor hover:brightness-110" href="/home">/home (B)</a>
+          {' · '}
+          <a className="text-anchor hover:brightness-110" href={order === 'c' ? '/home-bento' : '/home-c'}>
+            {order === 'c' ? '/home-bento (A)' : '/home-c (C)'}
+          </a>
         </p>
       </div>
 
