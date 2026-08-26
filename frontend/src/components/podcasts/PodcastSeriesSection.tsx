@@ -38,15 +38,15 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
 
   const playLabel = `Episode ${ep.num.replace(/\D/g, '')}: ${ep.title}`;
   const className = [
-    'group flex w-full gap-3 rounded-card px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-50/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 active:scale-[0.995] dark:hover:bg-zinc-800/85 dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5',
+    'group flex w-full gap-3 rounded-card px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 active:scale-[0.995] dark:hover:bg-muted/85 dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5',
     isActive ? 'bg-accent-50/80 ring-1 ring-accent-200/80 dark:bg-accent-950/30 dark:ring-accent-800/60' : '',
   ].join(' ');
 
   const inner = (
     <>
-      <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-card bg-zinc-50 px-2.5 py-2 text-center shadow-[0_4px_18px_-12px_rgba(0,0,0,0.08)] dark:bg-zinc-800 sm:min-w-[3.5rem] sm:px-3">
+      <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-card bg-muted px-2.5 py-2 text-center shadow-[0_4px_18px_-12px_rgba(0,0,0,0.08)] sm:min-w-[3.5rem] sm:px-3">
         <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Ep</span>
-        <span className="text-lg font-extrabold leading-none text-foreground tabular-nums dark:text-zinc-100">
+        <span className="text-lg font-extrabold leading-none text-foreground tabular-nums">
           {ep.num.replace(/\D/g, '')}
         </span>
       </div>
@@ -84,7 +84,7 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
         </span>
       </div>
       <ChevronRight
-        className="h-5 w-5 shrink-0 self-center text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-muted-foreground dark:text-muted-foreground dark:group-hover:text-zinc-300"
+        className="h-5 w-5 shrink-0 self-center text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-muted-foreground dark:text-muted-foreground dark:group-hover:text-muted-foreground"
         aria-hidden
       />
     </>
@@ -132,11 +132,11 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
   return (
     <section
       id={show.id}
-      className="overflow-hidden rounded-card bg-card text-foreground shadow-[0_10px_44px_-28px_rgba(0,0,0,0.12)] dark:bg-zinc-900 dark:text-zinc-100 dark:shadow-[0_12px_48px_-30px_rgba(0,0,0,0.55)]"
+      className="overflow-hidden rounded-card bg-card text-foreground shadow-[0_10px_44px_-28px_rgba(0,0,0,0.12)] dark:shadow-[0_12px_48px_-30px_rgba(0,0,0,0.55)]"
       aria-label={`${show.title} series`}
     >
       <div className="min-w-0">
-        <div className="relative overflow-hidden bg-card px-5 py-5 dark:bg-zinc-950 sm:px-7 sm:py-6 md:px-10 md:py-7">
+        <div className="relative overflow-hidden bg-card px-5 py-5 sm:px-7 sm:py-6 md:px-10 md:py-7">
           <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center">
             <img
               src={show.logo ?? show.image}
@@ -197,7 +197,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
             </div>
           </div>
         </div>
-        <div className="bg-card px-4 py-3 shadow-[inset_0_10px_28px_-22px_rgba(15,23,42,0.12)] dark:bg-zinc-900 dark:shadow-[inset_0_10px_28px_-22px_rgba(0,0,0,0.45)] sm:px-6">
+        <div className="bg-card px-4 py-3 shadow-[inset_0_10px_28px_-22px_rgba(15,23,42,0.12)] dark:shadow-[inset_0_10px_28px_-22px_rgba(0,0,0,0.45)] sm:px-6">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
               Listen on
@@ -208,7 +208,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
                 href={platform.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[32px] items-center rounded-[6px] bg-zinc-50 px-3 text-xs font-medium text-zinc-700 transition-[background-color,color,transform] duration-200 hover:bg-zinc-100 active:scale-[0.96] dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                className="inline-flex min-h-[32px] items-center rounded-[6px] bg-muted px-3 text-xs font-medium text-zinc-700 transition-[background-color,color,transform] duration-200 hover:bg-muted active:scale-[0.96] dark:hover:bg-zinc-700"
               >
                 {platform.label}
               </a>
@@ -217,12 +217,12 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
         </div>
       </div>
 
-      <div className="bg-zinc-50/95 px-4 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.75),inset_0_12px_32px_-24px_rgba(15,23,42,0.08)] dark:bg-zinc-950/85 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),inset_0_12px_32px_-24px_rgba(0,0,0,0.35)] sm:px-6">
+      <div className="bg-muted/95 px-4 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.75),inset_0_12px_32px_-24px_rgba(15,23,42,0.08)] /85 dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),inset_0_12px_32px_-24px_rgba(0,0,0,0.35)] sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Episodes</h3>
           {show.remoteEpisodes ? (
             <div
-              className="inline-flex rounded-full bg-card p-0.5 shadow-sm dark:bg-zinc-900"
+              className="inline-flex rounded-full bg-card p-0.5 shadow-sm"
               role="tablist"
               aria-label="Sort episodes"
             >
@@ -237,7 +237,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
                     'min-h-[32px] rounded-[6px] px-3 text-xs font-semibold transition-colors',
                     sort === opt.value
                       ? 'bg-accent-600 text-white'
-                      : 'text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-zinc-200',
+                      : 'text-muted-foreground hover:text-foreground dark:text-muted-foreground ',
                   ].join(' ')}
                 >
                   {opt.label}

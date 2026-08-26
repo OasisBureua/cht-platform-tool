@@ -209,12 +209,12 @@ export default function PlaylistDetail() {
                         }}
                         className={`w-full overflow-hidden rounded-[6px] border-2 text-left transition-[border-color,box-shadow] ${
                           idx === safeIndex
-                            ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-2'
+                            ? 'border-foreground ring-2 ring-gray-900 ring-offset-2'
                             : 'border-transparent hover:border-border'
                         }`}
                       >
                         <div className="flex gap-3">
-                          <div className="w-32 shrink-0 aspect-video bg-gray-200">
+                          <div className="w-32 shrink-0 aspect-video bg-muted">
                             <img
                               src={video.thumbnailUrl}
                               alt={video.title}

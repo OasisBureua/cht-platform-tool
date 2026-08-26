@@ -5,7 +5,7 @@ import { ADMIN_NAV_ITEMS } from './adminNavItems';
 export default function AdminSidebar() {
   return (
     <aside
-      className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] w-[120px] shrink-0 flex-col self-start overflow-y-auto overflow-x-hidden border-r border-gray-200/80 bg-card md:flex dark:border-zinc-800/80 dark:bg-zinc-950"
+      className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] w-[120px] shrink-0 flex-col self-start overflow-y-auto overflow-x-hidden border-r border-gray-200/80 bg-card md:flex /80"
       aria-label="Admin sidebar"
     >
       <div className="flex h-[82px] w-full shrink-0 items-center justify-center">
@@ -26,7 +26,7 @@ export default function AdminSidebar() {
                 'flex w-full flex-col items-center justify-center gap-1 rounded-[6px] px-1.5 py-2.5 text-center transition',
                 isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-primary dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-primary',
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary  dark:hover:bg-muted dark:hover:text-primary',
               ].join(' ')
             }
           >

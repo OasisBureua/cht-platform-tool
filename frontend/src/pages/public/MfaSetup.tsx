@@ -150,7 +150,7 @@ export default function MfaSetup() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   required
-                  className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
                 />
               </div>
 

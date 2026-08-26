@@ -261,7 +261,7 @@ function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-end pt-2 border-t border-gray-100">
+        <div className="mt-4 flex justify-end pt-2 border-t border-border">
           <Link
             to={card.playlistUrl}
             className="rounded-[6px] bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"

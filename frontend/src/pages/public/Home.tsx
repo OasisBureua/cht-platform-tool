@@ -133,7 +133,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-w-0 overflow-x-hidden bg-card text-foreground dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-w-0 overflow-x-hidden bg-card text-foreground">
       {/* Hero: shorter than full-viewport; text stays legible on scrim + photo */}
       <section className="relative shadow-[0_20px_50px_-24px_rgba(0,0,0,0.35)]">
         <div
@@ -272,7 +272,7 @@ export default function Home() {
       </section>
 
       {/* Who We Reach */}
-      <section className="border-t border-border py-10 dark:border-zinc-800 sm:py-14">
+      <section className="border-t border-border py-10 sm:py-14">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <h4
             className="home-enter mb-8 text-center text-balance text-3xl font-semibold text-foreground"
@@ -284,15 +284,15 @@ export default function Home() {
             className="home-enter grid grid-cols-1 gap-6 sm:grid-cols-3"
             style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
           >
-            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
+            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] ">
               <p className="mb-2 font-semibold text-foreground">HCPs</p>
               <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Beyond conferences and CME, where they actually consume content</p>
             </div>
-            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
+            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] ">
               <p className="mb-2 font-semibold text-foreground">Patients</p>
               <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Pre or active treatment, searching for credible information</p>
             </div>
-            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] dark:bg-zinc-900 dark:ring-white/10">
+            <div className="rounded-card bg-card p-6 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] ">
               <p className="mb-2 font-semibold text-foreground">Caregivers</p>
               <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Making decisions, seeking guidance, needing support</p>
             </div>
@@ -348,14 +348,14 @@ export default function Home() {
           </h2>
           <div className="home-enter space-y-0" style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}>
             <details className="group home-faq-item">
-              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0 dark:border-zinc-800">
+              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-success" aria-hidden>
                     ✓
                   </span>
                   <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">AI-Powered Content Automation</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -364,12 +364,12 @@ export default function Home() {
               </p>
             </details>
             <details className="group home-faq-item">
-              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0 dark:border-zinc-800">
+              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0">
                 <span className="flex items-center gap-2">
                   <span className="text-success" aria-hidden>✓</span>
                   <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Multi-Audience Reach</span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45 dark:bg-zinc-800 dark:text-zinc-100">
+                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
@@ -554,7 +554,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
             const inner = (
               <div
                 data-disease-card
-                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-[20px] shadow-[0_16px_40px_-16px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.12] sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px] dark:ring-white/10"
+                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-[20px] shadow-[0_16px_40px_-16px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.12] sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px] "
               >
                 <img
                   src={area.image}

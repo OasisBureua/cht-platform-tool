@@ -43,7 +43,7 @@ export function WordPressCategoryNav({ basePath, activeSlug }: WordPressCategory
               'rounded-[6px] px-3 py-1.5 text-xs font-semibold transition-colors',
               active
                 ? 'bg-gray-900 text-white'
-                : 'bg-muted text-gray-800 hover:bg-gray-200',
+                : 'bg-muted text-gray-800 hover:bg-muted',
             ].join(' ')}
           >
             {formatWordPressCategoryLabel(cat.slug)}

@@ -148,7 +148,7 @@ function Input({
       <input
         id={id}
         {...props}
-        className="w-full rounded-[6px] border border-border px-3 py-2 text-sm text-foreground shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        className="w-full rounded-[6px] border border-border px-3 py-2 text-sm text-foreground shadow-sm focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
       />
     </div>
   );

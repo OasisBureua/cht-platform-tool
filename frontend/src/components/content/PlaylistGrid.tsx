@@ -34,7 +34,7 @@ function PlaylistCard({
   if (hidden) return null;
 
   return (
-    <div className="flex h-full min-h-[280px] min-w-0 flex-col rounded-card border border-border bg-card transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="flex h-full min-h-[280px] min-w-0 flex-col rounded-card border border-border bg-card transition-shadow hover:shadow-md">
       <div className="relative aspect-video shrink-0 overflow-hidden rounded-t-2xl bg-muted">
         <Link to={playlistUrl} className="block h-full">
           <img
@@ -50,7 +50,7 @@ function PlaylistCard({
       <div className="flex min-w-0 flex-1 flex-col gap-2 p-4 sm:p-5">
         <Link to={playlistUrl} className="block min-w-0">
           <h3
-            className="line-clamp-3 break-words font-bold text-foreground [overflow-wrap:anywhere] hover:underline sm:line-clamp-2 dark:text-zinc-100"
+            className="line-clamp-3 break-words font-bold text-foreground [overflow-wrap:anywhere] hover:underline sm:line-clamp-2"
             title={item.title}
           >
             {title}
@@ -61,7 +61,7 @@ function PlaylistCard({
             {desc}
           </p>
         ) : null}
-        <div className="mt-auto flex shrink-0 justify-end border-t border-gray-100 pt-4 dark:border-zinc-800">
+        <div className="mt-auto flex shrink-0 justify-end border-t border-border pt-4 ">
           <Link
             to={playlistUrl}
             className="inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"

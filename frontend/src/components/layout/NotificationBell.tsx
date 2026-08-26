@@ -65,7 +65,7 @@ export function NotificationBell() {
             if (isAdmin) queryClient.invalidateQueries({ queryKey: ['admin', 'webhook-imports'] });
           }
         }}
-        className="relative p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        className="relative p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-muted-foreground hover:bg-muted dark:text-muted-foreground dark:hover:bg-muted "
         aria-label="Notifications"
         aria-expanded={open}
       >
@@ -85,8 +85,8 @@ export function NotificationBell() {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-card border border-border bg-card shadow-lg z-50 text-[100%] dark:border-zinc-700 dark:bg-zinc-900">
-          <p className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-gray-100 dark:border-zinc-800 dark:text-muted-foreground">
+        <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-card border border-border bg-card shadow-lg z-50 text-[100%]">
+          <p className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border dark:text-muted-foreground">
             Notifications
           </p>
 
@@ -110,10 +110,10 @@ export function NotificationBell() {
 
           {isAdmin && webhookImports.length > 0 ? (
             <>
-              <p className="px-4 py-2 text-xs font-semibold text-muted-foreground border-b border-gray-100 dark:border-zinc-800 dark:text-muted-foreground">
+              <p className="px-4 py-2 text-xs font-semibold text-muted-foreground border-b border-border dark:text-muted-foreground">
                 Admin: Zoom imports need review
               </p>
-              <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
+              <ul className="divide-y divide-gray-100 ">
                 {webhookImports.map((prog) => (
                   <li key={prog.id}>
                     <Link
@@ -140,7 +140,7 @@ export function NotificationBell() {
             </>
           ) : null}
 
-          <p className="px-4 py-2 text-xs font-semibold text-muted-foreground border-b border-gray-100 dark:border-zinc-800 dark:text-muted-foreground">
+          <p className="px-4 py-2 text-xs font-semibold text-muted-foreground border-b border-border dark:text-muted-foreground">
             Live follow-ups
           </p>
           {items.length === 0 ? (
@@ -149,13 +149,13 @@ export function NotificationBell() {
               approval, if required.
             </p>
           ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
+            <ul className="divide-y divide-gray-100 ">
               {items.map((it) => (
                 <li key={it.id}>
                   <Link
                     to={it.href}
                     onClick={() => setOpen(false)}
-                    className="block px-4 py-3 hover:bg-muted dark:hover:bg-zinc-800/80"
+                    className="block px-4 py-3 hover:bg-muted dark:hover:bg-muted/80"
                   >
                     <p className="text-sm font-medium text-foreground">{it.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{it.body}</p>

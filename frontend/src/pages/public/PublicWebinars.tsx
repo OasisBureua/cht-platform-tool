@@ -108,7 +108,7 @@ function WebinarCard({ webinar, past = false }: { webinar: WebinarRow; past?: bo
       </div>
 
       {/* Divider */}
-      <div className="w-px h-10 shrink-0 bg-gray-200" />
+      <div className="w-px h-10 shrink-0 bg-muted" />
 
       {/* Info */}
       <div className="flex-1 min-w-0 space-y-1">

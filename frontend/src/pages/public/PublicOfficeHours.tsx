@@ -105,7 +105,7 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
         )}
       </div>
 
-      <div className="w-px h-10 bg-gray-200 shrink-0" />
+      <div className="w-px h-10 bg-muted shrink-0" />
 
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">

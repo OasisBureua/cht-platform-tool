@@ -141,7 +141,7 @@ export default function DiseaseDetail() {
             </div>
             <Link
               to={`${basePath}/catalog`}
-              className="rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-gray-200 w-fit"
+              className="rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted w-fit"
             >
               All Content
             </Link>
@@ -177,7 +177,7 @@ export default function DiseaseDetail() {
           </div>
           <Link
             to={`${basePath}/catalog`}
-            className="rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-gray-200 w-fit"
+            className="rounded-[6px] bg-muted px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted w-fit"
           >
             All Content
           </Link>

@@ -99,7 +99,7 @@ export default function AuthCallback() {
           <p className="mt-2 text-sm text-destructive">{error}</p>
           <Link
             to="/login"
-            className="mt-6 inline-flex rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+            className="mt-6 inline-flex rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-muted"
           >
             Back to Login
           </Link>

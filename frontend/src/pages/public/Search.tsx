@@ -214,7 +214,7 @@ export default function Search() {
                       className={[
                         'rounded-[6px] px-4 py-2 text-sm font-semibold border',
                         type === t
-                          ? 'bg-brand-600 text-white border-gray-900'
+                          ? 'bg-brand-600 text-white border-foreground'
                           : 'bg-card text-foreground border-border hover:bg-muted',
                       ].join(' ')}
                     >

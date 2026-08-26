@@ -300,7 +300,7 @@ export default function Join() {
                   type="button"
                   onClick={() => handleOAuth('google')}
                   disabled={!!oauthLoading}
-                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-card border border-gray-200/90 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-gray-50/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
+                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-card border border-gray-200/90 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-muted/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
                 >
                   {oauthLoading === 'google' ? (
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-gray-600" />
@@ -381,7 +381,7 @@ export default function Join() {
                           <span
                             className={[
                               'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full',
-                              ok ? 'bg-green-600 text-white' : 'bg-gray-200 text-transparent',
+                              ok ? 'bg-green-600 text-white' : 'bg-muted text-transparent',
                             ].join(' ')}
                             aria-hidden
                           >
@@ -479,7 +479,7 @@ export default function Join() {
                   </div>
                 )}
 
-                <div className="border-t border-gray-100/90 pt-3 shadow-[0_-1px_0_0_rgba(255,255,255,0.85)] sm:col-span-2">
+                <div className="border-t border-border/90 pt-3 shadow-[0_-1px_0_0_rgba(255,255,255,0.85)] sm:col-span-2">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Practice location
                   </p>

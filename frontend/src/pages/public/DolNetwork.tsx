@@ -256,7 +256,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
             <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-foreground">
               <input
                 type="checkbox"
@@ -343,13 +343,13 @@ function KolCard({ k }: { k: FlatKol }) {
 
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-card border border-border bg-card shadow-sm transition-[box-shadow,transform] hover:shadow-md">
-      <div className="border-b border-gray-100 p-3">
+      <div className="border-b border-border p-3">
         <div className="flex items-center gap-2.5">
           <div className="relative h-[4.75rem] w-[4.75rem] shrink-0 sm:h-[5.25rem] sm:w-[5.25rem]">
             <img
               src={avatarSrc(k)}
               alt=""
-              className="h-full w-full rounded-[15px] border border-gray-100 object-cover shadow-inner"
+              className="h-full w-full rounded-[15px] border border-border object-cover shadow-inner"
               loading="lazy"
               referrerPolicy="no-referrer"
             />

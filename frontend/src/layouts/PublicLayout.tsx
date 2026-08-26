@@ -108,7 +108,7 @@ export default function PublicLayout() {
   };
 
   return (
-    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-foreground dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="min-h-screen flex min-w-0 flex-col bg-chm-surface text-foreground ">
       <header className="sticky top-0 z-50 nav-liquid-glass">
         <div className="mx-auto max-w-7xl px-3 sm:px-6">
           {/* Center: quick entry to content library (filters live on /catalog) */}
@@ -158,7 +158,7 @@ export default function PublicLayout() {
               <div className="hidden sm:inline-flex items-center gap-0.5 rounded-full border border-zinc-200/70 bg-transparent p-1 shadow-[0_2px_14px_-6px_rgba(49,105,149,0.16)] backdrop-blur-md dark:border-zinc-600/55 dark:bg-transparent">
                 <Link
                   to="/login"
-                  className="rounded-[6px] px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-900 transition-[opacity,background-color,color] hover:bg-zinc-100/90 dark:text-zinc-100 dark:hover:bg-zinc-800/75"
+                  className="rounded-[6px] px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-zinc-900 transition-[opacity,background-color,color] hover:bg-muted/90 dark:hover:bg-muted/75"
                 >
                   Login
                 </Link>
@@ -200,7 +200,7 @@ export default function PublicLayout() {
           aria-label="Close menu"
         />
         <nav
-          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:border-l dark:border-zinc-800/90 dark:bg-zinc-950 dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_64px_-24px_rgba(0,0,0,0.55),inset_1px_0_0_0_rgba(255,255,255,0.04)] ${
+          className={`absolute right-0 top-0 flex h-full w-[min(100%,22rem)] max-w-[100vw] flex-col overflow-hidden rounded-l-[1.25rem] bg-white/[0.97] shadow-[0_0_0_1px_rgba(0,0,0,0.05),0_32px_64px_-24px_rgba(0,0,0,0.28),inset_1px_0_0_0_rgba(255,255,255,0.85)] backdrop-blur-2xl backdrop-saturate-150 transition-[transform,box-shadow] duration-300 ease-out motion-reduce:duration-150 dark:border-l /90  dark:shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_64px_-24px_rgba(0,0,0,0.55),inset_1px_0_0_0_rgba(255,255,255,0.04)] ${
             drawerOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           aria-label="Site navigation"
@@ -210,7 +210,7 @@ export default function PublicLayout() {
             <button
               type="button"
               onClick={() => setDrawerOpen(false)}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card text-muted-foreground transition-[color,background-color,transform] duration-200 ease-out hover:bg-gray-100/90 active:scale-[0.96] dark:text-white dark:hover:bg-zinc-800 dark:active:bg-zinc-800/90"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-card text-muted-foreground transition-[color,background-color,transform] duration-200 ease-out hover:bg-muted/90 active:scale-[0.96] dark:text-white dark:hover:bg-muted dark:active:bg-zinc-800/90"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" strokeWidth={2} />
@@ -230,7 +230,7 @@ export default function PublicLayout() {
                     'public-drawer-link flex min-h-[48px] items-center rounded-card px-4 py-3 text-pretty text-base font-medium leading-snug transition-[background-color,color,transform,box-shadow] duration-200 ease-out active:scale-[0.96]',
                     isActive
                       ? 'bg-steel-100/95 text-steel-950 shadow-[inset_0_0_0_1px_rgba(49,105,149,0.2)] dark:bg-steel-950/50 dark:text-steel-50'
-                      : 'text-foreground hover:bg-gray-100/80 active:bg-muted dark:text-zinc-200 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800',
+                      : 'text-foreground hover:bg-muted/80 active:bg-muted  dark:hover:bg-muted/80 dark:active:bg-zinc-800',
                   ].join(' ')
                 }
               >
@@ -238,15 +238,15 @@ export default function PublicLayout() {
               </NavLink>
             ))}
           </div>
-          <div className="sm:hidden shrink-0 flex items-center justify-between gap-3 border-t border-gray-200/90 px-4 py-3 dark:border-zinc-800/90">
-            <span className="text-sm font-medium text-muted-foreground dark:text-zinc-200">Appearance</span>
+          <div className="sm:hidden shrink-0 flex items-center justify-between gap-3 border-t border-gray-200/90 px-4 py-3 /90">
+            <span className="text-sm font-medium text-muted-foreground">Appearance</span>
             <ThemeToggle />
           </div>
           <div className="shrink-0 space-y-2.5 p-4 pt-2 shadow-[0_-1px_0_0_rgba(0,0,0,0.06)] dark:shadow-[0_-1px_0_0_rgba(255,255,255,0.1)] sm:hidden">
             <Link
               to="/login"
               onClick={() => setDrawerOpen(false)}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-card border-2 border-steel-600 bg-card text-center text-base font-semibold text-steel-800 shadow-[0_8px_24px_-12px_rgba(49,105,149,0.2)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-steel-50 active:scale-[0.96] dark:border-steel-400 dark:bg-zinc-950 dark:text-steel-50 dark:hover:bg-steel-950/35"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-card border-2 border-steel-600 bg-card text-center text-base font-semibold text-steel-800 shadow-[0_8px_24px_-12px_rgba(49,105,149,0.2)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-steel-50 active:scale-[0.96] dark:border-steel-400 dark:text-steel-50 dark:hover:bg-steel-950/35"
             >
               Login
             </Link>

@@ -14,7 +14,7 @@ function linkClass({ isActive }: { isActive: boolean }) {
   return [
     'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium',
     isActive
-      ? 'border-gray-900 text-foreground'
+      ? 'border-foreground text-foreground'
       : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-muted-foreground',
   ].join(' ');
 }

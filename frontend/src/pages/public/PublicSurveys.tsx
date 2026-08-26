@@ -85,7 +85,7 @@ export default function PublicSurveys() {
   }, [sortNewestFirst]);
 
   return (
-    <div className="space-y-8 bg-card pb-16 text-foreground dark:bg-zinc-950 dark:text-zinc-100 md:pb-10">
+    <div className="space-y-8 bg-card pb-16 text-foreground md:pb-10">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <header className="md:flex md:items-end md:justify-between md:gap-6">
           <div>
@@ -115,7 +115,7 @@ export default function PublicSurveys() {
         </header>
 
         <section
-          className="mt-8 overflow-hidden rounded-card border border-gray-200/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_40px_-18px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] dark:border-zinc-800/90 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_12px_40px_-18px_rgba(0,0,0,0.5)]"
+          className="mt-8 overflow-hidden rounded-card border border-gray-200/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_12px_40px_-18px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.02)] /90 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_12px_40px_-18px_rgba(0,0,0,0.5)]"
           aria-label="Featured survey"
         >
           <div className="min-w-0">
@@ -152,7 +152,7 @@ export default function PublicSurveys() {
               </div>
             </div>
 
-            <div className="border-t border-gray-200/90 bg-card px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 sm:px-6">
+            <div className="border-t border-gray-200/90 bg-card px-4 py-3 sm:px-6">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                   Topics
@@ -160,7 +160,7 @@ export default function PublicSurveys() {
                 {SURVEY_FOCUS.map((label) => (
                   <span
                     key={label}
-                    className="inline-flex min-h-[32px] items-center rounded-[6px] border border-border bg-card px-3 text-xs font-medium text-muted-foreground dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+                    className="inline-flex min-h-[32px] items-center rounded-[6px] border border-border bg-card px-3 text-xs font-medium text-muted-foreground"
                   >
                     {label}
                   </span>
@@ -168,7 +168,7 @@ export default function PublicSurveys() {
               </div>
             </div>
 
-            <div className="border-t border-gray-200/90 bg-muted px-4 py-3 dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6">
+            <div className="border-t border-gray-200/90 bg-muted px-4 py-3 /80 sm:px-6">
               <div className="flex items-center justify-between gap-3">
                 <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
                   All surveys
@@ -177,7 +177,7 @@ export default function PublicSurveys() {
                   type="button"
                   onClick={() => setSortNewestFirst((v) => !v)}
                   aria-pressed={sortNewestFirst}
-                  className="inline-flex min-h-[32px] items-center rounded-[6px] border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted hover:text-foreground active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  className="inline-flex min-h-[32px] items-center rounded-[6px] border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted hover:text-foreground active:scale-[0.96] dark:hover:bg-muted dark:hover:text-foreground"
                 >
                   <ArrowUpDown className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                   {sortNewestFirst ? 'Newest first' : 'Oldest first'}
@@ -185,18 +185,18 @@ export default function PublicSurveys() {
               </div>
             </div>
 
-            <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
+            <ul className="divide-y divide-gray-100 ">
               {sorted.map((survey, idx) => (
                 <li key={survey.id}>
                   <Link
                     to="/app/surveys"
-                    className="group flex w-full gap-3 px-4 py-4 text-left transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50/90 focus-visible:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500 active:scale-[0.995] dark:hover:bg-zinc-800/70 dark:focus-visible:bg-zinc-800 sm:gap-4 sm:px-6 sm:py-5"
+                    className="group flex w-full gap-3 px-4 py-4 text-left transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted/90 focus-visible:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-500 active:scale-[0.995] dark:hover:bg-muted/70 dark:focus-visible:bg-zinc-800 sm:gap-4 sm:px-6 sm:py-5"
                   >
-                    <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-card border border-border bg-card px-2.5 py-2 text-center shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-zinc-700 dark:bg-zinc-900 sm:min-w-[3.5rem] sm:px-3">
+                    <div className="flex min-h-[44px] min-w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-card border border-border bg-card px-2.5 py-2 text-center shadow-[0_1px_0_rgba(0,0,0,0.03)] sm:min-w-[3.5rem] sm:px-3">
                       <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                         #
                       </span>
-                      <span className="text-lg font-extrabold leading-none text-foreground tabular-nums dark:text-zinc-100">
+                      <span className="text-lg font-extrabold leading-none text-foreground tabular-nums">
                         {idx + 1}
                       </span>
                     </div>
@@ -218,7 +218,7 @@ export default function PublicSurveys() {
                       </p>
                     </div>
                     <ChevronRight
-                      className="h-5 w-5 shrink-0 self-center text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-muted-foreground dark:text-muted-foreground dark:group-hover:text-zinc-300"
+                      className="h-5 w-5 shrink-0 self-center text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-muted-foreground dark:text-muted-foreground dark:group-hover:text-muted-foreground"
                       aria-hidden
                     />
                   </Link>
@@ -229,7 +229,7 @@ export default function PublicSurveys() {
         </section>
 
         <section
-          className="mt-8 overflow-hidden rounded-card border-2 border-dashed border-gray-300/90 bg-zinc-50/90 shadow-[0_1px_0_rgba(0,0,0,0.03),0_6px_24px_-12px_rgba(0,0,0,0.08)] dark:border-zinc-700/80 dark:bg-zinc-900/90 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_6px_24px_-12px_rgba(0,0,0,0.45)]"
+          className="mt-8 overflow-hidden rounded-card border-2 border-dashed border-gray-300/90 bg-muted/90 shadow-[0_1px_0_rgba(0,0,0,0.03),0_6px_24px_-12px_rgba(0,0,0,0.08)] /80 /90 dark:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_6px_24px_-12px_rgba(0,0,0,0.45)]"
           aria-label="More surveys"
         >
           <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:gap-6 sm:p-6 md:p-8">
@@ -241,8 +241,8 @@ export default function PublicSurveys() {
                 loading="lazy"
                 referrerPolicy="no-referrer"
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 ring-1 ring-black/5 dark:bg-zinc-950/40 dark:ring-white/10">
-                <span className="text-sm font-bold tracking-[0.2em] text-muted-foreground dark:text-zinc-200">Soon</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-white/50 ring-1 ring-black/5 /40 ">
+                <span className="text-sm font-bold tracking-[0.2em] text-muted-foreground">Soon</span>
               </div>
             </div>
             <div className="flex min-w-0 flex-1 flex-col justify-center">
@@ -252,7 +252,7 @@ export default function PublicSurveys() {
               </p>
               <Link
                 to="/app/surveys"
-                className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-border hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
+                className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:border-border hover:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:scale-[0.96] dark:hover:border-zinc-600 dark:hover:bg-muted"
               >
                 <Bell className="h-4 w-4 shrink-0" aria-hidden />
                 View app surveys
@@ -265,7 +265,7 @@ export default function PublicSurveys() {
         <section className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
           <Link
             to="/app/surveys"
-            className="group flex items-center gap-5 rounded-card border border-gray-200/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] active:scale-[0.995] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]"
+            className="group flex items-center gap-5 rounded-card border border-gray-200/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] active:scale-[0.995] dark:hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]"
           >
             <div className="h-24 w-32 shrink-0 overflow-hidden rounded-card">
               <img
@@ -280,13 +280,13 @@ export default function PublicSurveys() {
               <p className="font-semibold text-foreground">Newest activity</p>
               <p className="mt-0.5 text-sm text-muted-foreground">See what opened most recently in the app.</p>
             </div>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition-[background-color,transform] duration-200 group-hover:bg-brand-700 dark:bg-zinc-100 dark:text-foreground dark:group-hover:bg-card">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition-[background-color,transform] duration-200 group-hover:bg-brand-700 dark:text-foreground dark:group-hover:bg-card">
               <ArrowRight className="h-5 w-5" aria-hidden />
             </span>
           </Link>
           <Link
             to="/catalog"
-            className="group flex items-center gap-5 rounded-card border border-gray-200/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] active:scale-[0.995] dark:border-zinc-800 dark:bg-zinc-900 dark:hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]"
+            className="group flex items-center gap-5 rounded-card border border-gray-200/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.12)] active:scale-[0.995] dark:hover:shadow-[0_8px_24px_-12px_rgba(0,0,0,0.4)]"
           >
             <div className="h-24 w-32 shrink-0 overflow-hidden rounded-card">
               <img
@@ -301,7 +301,7 @@ export default function PublicSurveys() {
               <p className="font-semibold text-foreground">Explore conversations</p>
               <p className="mt-0.5 text-sm text-muted-foreground">Jump to the video library while you are here.</p>
             </div>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition-[background-color,transform] duration-200 group-hover:bg-brand-700 dark:bg-zinc-100 dark:text-foreground dark:group-hover:bg-card">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white transition-[background-color,transform] duration-200 group-hover:bg-brand-700 dark:text-foreground dark:group-hover:bg-card">
               <ArrowRight className="h-5 w-5" aria-hidden />
             </span>
           </Link>
