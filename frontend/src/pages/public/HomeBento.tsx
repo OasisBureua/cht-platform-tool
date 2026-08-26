@@ -1,9 +1,10 @@
-import { useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { HomeHero } from '../../components/home/HomeHero';
+import { DiseaseClusterCard } from '../../components/home/DiseaseClusterCard';
 import { FormatBento } from '../../components/home/FormatBento';
 import { Thumb } from '../../components/ui/Thumb';
 import { ChmMark } from '../../components/brand/ChmMark';
@@ -285,6 +286,14 @@ const SHOWS: {
  * Disease states the design carries that the platform's own
  * `DISEASE_AREAS` does not, kept verbatim and marked as not yet live.
  */
+/**
+ * The canvas reads a raw HSL triplet, not a resolved `var()`, so the
+ * cluster needs the token name rather than the pill's CSS colour. These
+ * are the `ink` set, which deepens on the light ground and brightens on
+ * the dark one.
+ */
+const AREA_CANVAS_TOKENS: Record<string, string> = {'breast-cancer': '--ink-pink', 'lung-cancer': '--ink-purple', 'weight-loss': '--ink-coral', 'gi': '--anchor', 'gu': '--ink-cyan', 'hematology': '--ink-green', 'gynecologic': '--ink-purple'};
+
 const DESIGN_ONLY_AREAS = [
   { slug: 'gi', label: 'GI', tone: 'var(--color-gi)' },
   { slug: 'gu', label: 'GU', tone: 'var(--color-gu)' },
@@ -420,12 +429,14 @@ export default function HomeBento() {
         slug: a.slug,
         label: a.title,
         tone: AREA_TONES[a.slug]?.tone ?? 'var(--color-gi)',
+        token: AREA_CANVAS_TOKENS[a.slug] ?? '--anchor',
         mix: AREA_TONES[a.slug]?.mix ?? 'var(--color-blue)',
         live: a.active,
         to: a.active ? `/catalog/${a.slug}` : undefined,
       })),
       ...DESIGN_ONLY_AREAS.map((a) => ({
         ...a,
+        token: AREA_CANVAS_TOKENS[a.slug] ?? '--anchor',
         mix: 'var(--color-blue)',
         live: false,
         to: undefined,
@@ -435,6 +446,344 @@ export default function HomeBento() {
   );
 
   const sessionPoster = featuredVideos[0]?.imageUrl ?? '/img/thumb-cleopatra.jpg';
+
+  /* Section blocks, keyed so the page can be resequenced without
+     moving any of them. Order A: no two horizontal scrollers touch. `now`, `shows` and
+     `areas` are the three scrollers, so a grid or a list sits between
+     each pair. Ends on faces rather than on a filter row. */
+  const SECTIONS: Record<string, ReactNode> = {
+    engine: (
+      <>
+        <Band labelledBy="engine-heading" pad="pt-6 pb-16 md:pt-8 md:pb-24">
+          <h2 id="engine-heading" className="sr-only">
+            One recording, three formats
+          </h2>
+          <Reveal>
+            <FormatBento poster={sessionPoster} />
+          </Reveal>
+        </Band>
+      </>
+    ),
+    now: (
+      <>
+        {/* ── Now on CHM ───────────────────────────────────── */}
+        <Band labelledBy="now-heading">
+          <SectionHead
+            id="now-heading"
+            index="01 / Latest"
+            title="Now on CHM"
+            sub="The most recent across every format."
+            seeAll={{ noun: 'content', to: '/catalog' }}
+          />
+          <Reveal className="mt-12">
+            {/* The rail reveals as one block. Revealing each card meant
+                anything scrolled off to the right never intersected the
+                viewport, so it stayed blank until you swiped it in, and a
+                per-card stagger fights the swipe anyway. */}
+            <div className="scrollbar-none bleed-x overflow-x-auto">
+              <ul className="flex snap-x snap-mandatory gap-4">
+                {(randomVideosLoading ? Array.from({ length: 4 }) : featuredVideos.slice(0, 8)).map(
+                  (entry, i) => {
+                    const v = entry as FeaturedVideo | undefined;
+                    return (
+                      <li
+                        key={v?.id ?? `skeleton-${i}`}
+                        className="w-[80%] shrink-0 snap-start sm:w-[45%] md:w-[31%] lg:w-[22.5%]"
+                      >
+                        {v ? (
+                          <Link
+                            to={clipHref(v)}
+                            className="press lift group flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                          >
+                            <div className="relative">
+                              <Thumb
+                                src={v.imageUrl}
+                                className="aspect-video w-full"
+                                onError={
+                                  v.id.startsWith('home-placeholder') ? undefined : () => markBroken(v.id)
+                                }
+                              />
+                              <div className="absolute top-3 start-3">
+                                <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
+                                  Video
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex flex-1 flex-col px-1 pb-1">
+                              <h3 className="display line-clamp-2 text-body-m text-text">{v.title}</h3>
+                              {/* Tags are spans, not links: the card is already
+                                  one link, and nesting a second inside it is
+                                  invalid. They read as the session's own labels. */}
+                              <ul className="mt-3 flex flex-wrap gap-1.5">
+                                <li
+                                  className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
+                                  style={{ background: 'var(--color-cyan)', color: 'var(--color-on-bright)' }}
+                                >
+                                  Oncology
+                                </li>
+                                <li
+                                  className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
+                                  style={{ background: 'var(--color-pink)', color: 'var(--color-on-bright)' }}
+                                >
+                                  {v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                                </li>
+                              </ul>
+                              <p className="meta mt-auto pt-4 tabular-nums text-faint">Full session</p>
+                            </div>
+                          </Link>
+                        ) : (
+                          <div
+                            aria-hidden
+                            className="flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card"
+                          >
+                            <div className="aspect-video w-full rounded-[6px] bg-surface-2" />
+                            <div className="space-y-2 px-1 pb-1">
+                              <div className="h-3 w-4/5 rounded-[6px] bg-surface-2" />
+                              <div className="h-3 w-3/5 rounded-[6px] bg-surface-2" />
+                            </div>
+                          </div>
+                        )}
+                      </li>
+                    );
+                  },
+                )}
+              </ul>
+            </div>
+          </Reveal>
+        </Band>
+      </>
+    ),
+    moment: (
+      <>
+        {/* ── This Moment in Medicine ──────────────────────── */}
+        <Band labelledBy="moment-heading">
+          <SectionHead
+            id="moment-heading"
+            index="04 / Series"
+            title="This Moment in Medicine"
+            sub="Short answers to the questions that come up between patients."
+            seeAll={{ noun: 'episodes', to: '/catalog' }}
+          />
+          <ol className="mt-12 grid gap-3 lg:grid-cols-2">
+            {MOMENTS.map((m, i) => {
+              const poster = featuredVideos.length ? featuredVideos[i % featuredVideos.length] : undefined;
+              return (
+                <Reveal as="li" key={m.t} delay={i * 55}>
+                  <Link
+                    to={poster ? clipHref(poster) : '/catalog'}
+                    className="press card group flex items-center gap-5 p-3 ps-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  >
+                    <span className="meta w-6 shrink-0 tabular-nums text-faint">
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="display block text-body-m text-text">{m.t}</span>
+                      <span className="meta mt-1 block tabular-nums text-faint">{m.d}</span>
+                    </span>
+                    {poster ? (
+                      <Thumb src={poster.imageUrl} className="hidden h-16 w-28 shrink-0 sm:block" />
+                    ) : null}
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </ol>
+        </Band>
+      </>
+    ),
+    shows: (
+      <>
+        {/* ── Podcast network ──────────────────────────────── */}
+        <Band labelledBy="shows-heading">
+          <SectionHead
+            id="shows-heading"
+            index="03 / Podcasts"
+            title="CHM Podcast Network"
+            sub="Four shows, each with its own voice and its own audience."
+            seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
+          />
+          <div className="mt-[2.375rem]">
+            {/* Headroom lives inside the scroller: overflow-x also clips
+                vertically, which would cut off the hover lift. */}
+            <div className="-my-5">
+              <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
+                {shows.map((s) => (
+                  <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
+                    <Link
+                      to="/chm-office-hours"
+                      className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                    >
+                      <div className="relative aspect-square overflow-hidden">
+                        <img
+                          src={s.cover}
+                          alt=""
+                          loading="lazy"
+                          className="absolute inset-0 size-full object-cover transition-[scale] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.04]"
+                        />
+                        <span
+                          aria-hidden
+                          className="absolute bottom-3 start-3 grid size-8 place-items-center rounded-[6px] bg-black/35 backdrop-blur-sm"
+                        >
+                          <ChmMark className="size-5 text-white" />
+                        </span>
+                        {s.spanish ? (
+                          <span className="eyebrow absolute top-3 end-3 rounded-[6px] bg-white/90 px-2.5 py-1 text-on-bright">
+                            Español
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
+                        <h3 className="display text-body-m text-text">{s.title}</h3>
+                        <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
+                          {s.tagline}
+                        </p>
+                        <p className="meta mt-3 text-faint">
+                          {s.episodes} episodes · {s.hosts}
+                        </p>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </Band>
+      </>
+    ),
+    articles: (
+      <>
+        {/* ── Editorial ────────────────────────────────────── */}
+        <Band labelledBy="articles-heading">
+          <SectionHead
+            id="articles-heading"
+            index="05 / Editorial"
+            title="Recent articles"
+            seeAll={{ noun: 'articles', to: '/catalog' }}
+          />
+          <ul className="mt-12 space-y-3">
+            {ARTICLES.map((a, i) => (
+              <Reveal as="li" key={a.slug} delay={i * 45}>
+                <Link
+                  to="/catalog"
+                  className="press group grid items-baseline gap-x-8 gap-y-2 py-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
+                >
+                  <span className="eyebrow text-amber-ink">{a.kicker}</span>
+                  <span>
+                    <h3 className="display text-display-s text-text">{a.title}</h3>
+                    <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
+                  </span>
+                  <span className="meta text-faint md:text-end">{a.read}</span>
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
+        </Band>
+      </>
+    ),
+    areas: (
+      <>
+        {/* ── Explore by disease state ─────────────────────── */}
+        <Band labelledBy="areas-heading">
+          <SectionHead
+            id="areas-heading"
+            index="07 / Browse"
+            title="Explore by disease state"
+            sub="Each cluster is sized by what the area actually holds."
+          />
+        <div className="mt-12">
+          {/* overflow-x-auto clips vertically too, so the hover lift needs
+              headroom inside the scroller rather than margin outside it. */}
+          <div className="-my-5">
+            <div className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-3 overflow-x-auto py-5">
+              {areas.map((a) => (
+                <DiseaseClusterCard
+                  key={a.slug}
+                  label={a.label}
+                  sub={a.live ? 'Video, podcast, editorial and live' : 'In production'}
+                  tone={a.token}
+                  weight={a.live ? 1 : 0}
+                  to={a.to}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+          <div className="mt-8 flex flex-wrap gap-2">
+            {BIOMARKERS.map((b) => (
+              <Link
+                key={b.label}
+                to={`/catalog?tag=${encodeURIComponent(b.tag)}`}
+                className="press inline-flex h-9 items-center gap-2 rounded-[6px] px-4 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                {b.label}
+                <span className="meta text-faint">{b.count}</span>
+              </Link>
+            ))}
+          </div>
+        </Band>
+      </>
+    ),
+    kol: (
+      <>
+        {/* ── In conversation ──────────────────────────────── */}
+        <Band labelledBy="kol-heading">
+          <SectionHead
+            id="kol-heading"
+            index="06 / Faculty"
+            title="In conversation"
+            sub="Practising specialists who bring their own audiences."
+            seeAll={{ noun: 'profiles', to: '/kol-network' }}
+          />
+          <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
+            {faculty.map((k, i) => (
+              <Reveal as="li" key={k.id} delay={i * 50}>
+                <Link
+                  to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
+                  className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {k.photoUrl ? (
+                    <img
+                      src={k.photoUrl}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="img-ring size-24 rounded-full object-cover md:size-28"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="display grid size-24 place-items-center rounded-full text-body-l md:size-28"
+                      style={{
+                        background: INITIAL_TONES[i % INITIAL_TONES.length],
+                        color: 'var(--color-on-bright)',
+                      }}
+                    >
+                      {initials(k.name)}
+                    </span>
+                  )}
+                  <span className="display mt-4 block text-body-m text-text group-hover:text-anchor">
+                    {k.name}
+                  </span>
+                  <span className="mt-1 block text-body-s text-muted2">{institutionLine(k)}</span>
+                </Link>
+              </Reveal>
+            ))}
+            {faculty.length === 0 && loadState === 'loading'
+              ? Array.from({ length: 5 }, (_, i) => (
+                  <li key={`kol-skeleton-${i}`} aria-hidden>
+                    <span className="block size-24 rounded-full bg-surface-2 md:size-28" />
+                    <span className="mt-4 block h-3 w-3/4 rounded-[6px] bg-surface-2" />
+                    <span className="mt-2 block h-3 w-1/2 rounded-[6px] bg-surface-2" />
+                  </li>
+                ))
+              : null}
+          </ul>
+        </Band>
+      </>
+    ),
+  };
+  const ORDER = ['engine', 'now', 'moment', 'shows', 'articles', 'areas', 'kol'];
 
   return (
     <div className="min-w-0 overflow-x-hidden bg-ground text-text">
@@ -455,362 +804,9 @@ export default function HomeBento() {
           No headline. Five cards that each show a format rather than
           describe one — a heading above them would only say in words
           what the cards already say in full. */}
-      <Band labelledBy="engine-heading" pad="pt-6 pb-16 md:pt-8 md:pb-24">
-        <h2 id="engine-heading" className="sr-only">
-          One recording, three formats
-        </h2>
-        <Reveal>
-          <FormatBento poster={sessionPoster} />
-        </Reveal>
-      </Band>
-
-      {/* ── Now on CHM ───────────────────────────────────── */}
-      <Band labelledBy="now-heading">
-        <SectionHead
-          id="now-heading"
-          index="01 / Latest"
-          title="Now on CHM"
-          sub="The most recent across every format."
-          seeAll={{ noun: 'content', to: '/catalog' }}
-        />
-        <Reveal className="mt-12">
-          {/* The rail reveals as one block. Revealing each card meant
-              anything scrolled off to the right never intersected the
-              viewport, so it stayed blank until you swiped it in, and a
-              per-card stagger fights the swipe anyway. */}
-          <div className="scrollbar-none bleed-x overflow-x-auto">
-            <ul className="flex snap-x snap-mandatory gap-4">
-              {(randomVideosLoading ? Array.from({ length: 4 }) : featuredVideos.slice(0, 8)).map(
-                (entry, i) => {
-                  const v = entry as FeaturedVideo | undefined;
-                  return (
-                    <li
-                      key={v?.id ?? `skeleton-${i}`}
-                      className="w-[80%] shrink-0 snap-start sm:w-[45%] md:w-[31%] lg:w-[22.5%]"
-                    >
-                      {v ? (
-                        <Link
-                          to={clipHref(v)}
-                          className="press lift group flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                        >
-                          <div className="relative">
-                            <Thumb
-                              src={v.imageUrl}
-                              className="aspect-video w-full"
-                              onError={
-                                v.id.startsWith('home-placeholder') ? undefined : () => markBroken(v.id)
-                              }
-                            />
-                            <div className="absolute top-3 start-3">
-                              <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
-                                Video
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex flex-1 flex-col px-1 pb-1">
-                            <h3 className="display line-clamp-2 text-body-m text-text">{v.title}</h3>
-                            {/* Tags are spans, not links: the card is already
-                                one link, and nesting a second inside it is
-                                invalid. They read as the session's own labels. */}
-                            <ul className="mt-3 flex flex-wrap gap-1.5">
-                              <li
-                                className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
-                                style={{ background: 'var(--color-cyan)', color: 'var(--color-on-bright)' }}
-                              >
-                                Oncology
-                              </li>
-                              <li
-                                className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
-                                style={{ background: 'var(--color-pink)', color: 'var(--color-on-bright)' }}
-                              >
-                                {v.youtubeUrl ? 'YouTube' : 'Conversation'}
-                              </li>
-                            </ul>
-                            <p className="meta mt-auto pt-4 tabular-nums text-faint">Full session</p>
-                          </div>
-                        </Link>
-                      ) : (
-                        <div
-                          aria-hidden
-                          className="flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card"
-                        >
-                          <div className="aspect-video w-full rounded-[6px] bg-surface-2" />
-                          <div className="space-y-2 px-1 pb-1">
-                            <div className="h-3 w-4/5 rounded-[6px] bg-surface-2" />
-                            <div className="h-3 w-3/5 rounded-[6px] bg-surface-2" />
-                          </div>
-                        </div>
-                      )}
-                    </li>
-                  );
-                },
-              )}
-            </ul>
-          </div>
-        </Reveal>
-      </Band>
-
-      {/* ── Podcast network ──────────────────────────────── */}
-      <Band labelledBy="shows-heading">
-        <SectionHead
-          id="shows-heading"
-          index="03 / Podcasts"
-          title="CHM Podcast Network"
-          sub="Four shows, each with its own voice and its own audience."
-          seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
-        />
-        <div className="mt-[2.375rem]">
-          {/* Headroom lives inside the scroller: overflow-x also clips
-              vertically, which would cut off the hover lift. */}
-          <div className="-my-5">
-            <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
-              {shows.map((s) => (
-                <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
-                  <Link
-                    to="/chm-office-hours"
-                    className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
-                    <div className="relative aspect-square overflow-hidden">
-                      <img
-                        src={s.cover}
-                        alt=""
-                        loading="lazy"
-                        className="absolute inset-0 size-full object-cover transition-[scale] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.04]"
-                      />
-                      <span
-                        aria-hidden
-                        className="absolute bottom-3 start-3 grid size-8 place-items-center rounded-[6px] bg-black/35 backdrop-blur-sm"
-                      >
-                        <ChmMark className="size-5 text-white" />
-                      </span>
-                      {s.spanish ? (
-                        <span className="eyebrow absolute top-3 end-3 rounded-[6px] bg-white/90 px-2.5 py-1 text-on-bright">
-                          Español
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
-                      <h3 className="display text-body-m text-text">{s.title}</h3>
-                      <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
-                        {s.tagline}
-                      </p>
-                      <p className="meta mt-3 text-faint">
-                        {s.episodes} episodes · {s.hosts}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </Band>
-
-      {/* ── This Moment in Medicine ──────────────────────── */}
-      <Band labelledBy="moment-heading">
-        <SectionHead
-          id="moment-heading"
-          index="04 / Series"
-          title="This Moment in Medicine"
-          sub="Short answers to the questions that come up between patients."
-          seeAll={{ noun: 'episodes', to: '/catalog' }}
-        />
-        <ol className="mt-12 grid gap-3 lg:grid-cols-2">
-          {MOMENTS.map((m, i) => {
-            const poster = featuredVideos.length ? featuredVideos[i % featuredVideos.length] : undefined;
-            return (
-              <Reveal as="li" key={m.t} delay={i * 55}>
-                <Link
-                  to={poster ? clipHref(poster) : '/catalog'}
-                  className="press card group flex items-center gap-5 p-3 ps-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  <span className="meta w-6 shrink-0 tabular-nums text-faint">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="display block text-body-m text-text">{m.t}</span>
-                    <span className="meta mt-1 block tabular-nums text-faint">{m.d}</span>
-                  </span>
-                  {poster ? (
-                    <Thumb src={poster.imageUrl} className="hidden h-16 w-28 shrink-0 sm:block" />
-                  ) : null}
-                </Link>
-              </Reveal>
-            );
-          })}
-        </ol>
-      </Band>
-
-      {/* ── Editorial ────────────────────────────────────── */}
-      <Band labelledBy="articles-heading">
-        <SectionHead
-          id="articles-heading"
-          index="05 / Editorial"
-          title="Recent articles"
-          seeAll={{ noun: 'articles', to: '/catalog' }}
-        />
-        <ul className="mt-12 space-y-3">
-          {ARTICLES.map((a, i) => (
-            <Reveal as="li" key={a.slug} delay={i * 45}>
-              <Link
-                to="/catalog"
-                className="press group grid items-baseline gap-x-8 gap-y-2 py-7 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
-              >
-                <span className="eyebrow text-amber-ink">{a.kicker}</span>
-                <span>
-                  <h3 className="display text-display-s text-text">{a.title}</h3>
-                  <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
-                </span>
-                <span className="meta text-faint md:text-end">{a.read}</span>
-              </Link>
-            </Reveal>
-          ))}
-        </ul>
-      </Band>
-
-      {/* ── In conversation ──────────────────────────────── */}
-      <Band labelledBy="kol-heading">
-        <SectionHead
-          id="kol-heading"
-          index="06 / Faculty"
-          title="In conversation"
-          sub="Practising specialists who bring their own audiences."
-          seeAll={{ noun: 'profiles', to: '/kol-network' }}
-        />
-        <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-3 lg:grid-cols-5">
-          {faculty.map((k, i) => (
-            <Reveal as="li" key={k.id} delay={i * 50}>
-              <Link
-                to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
-                className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                {k.photoUrl ? (
-                  <img
-                    src={k.photoUrl}
-                    alt=""
-                    loading="lazy"
-                    referrerPolicy="no-referrer"
-                    className="img-ring size-24 rounded-full object-cover md:size-28"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="display grid size-24 place-items-center rounded-full text-body-l md:size-28"
-                    style={{
-                      background: INITIAL_TONES[i % INITIAL_TONES.length],
-                      color: 'var(--color-on-bright)',
-                    }}
-                  >
-                    {initials(k.name)}
-                  </span>
-                )}
-                <span className="display mt-4 block text-body-m text-text group-hover:text-anchor">
-                  {k.name}
-                </span>
-                <span className="mt-1 block text-body-s text-muted2">{institutionLine(k)}</span>
-              </Link>
-            </Reveal>
-          ))}
-          {faculty.length === 0 && loadState === 'loading'
-            ? Array.from({ length: 5 }, (_, i) => (
-                <li key={`kol-skeleton-${i}`} aria-hidden>
-                  <span className="block size-24 rounded-full bg-surface-2 md:size-28" />
-                  <span className="mt-4 block h-3 w-3/4 rounded-[6px] bg-surface-2" />
-                  <span className="mt-2 block h-3 w-1/2 rounded-[6px] bg-surface-2" />
-                </li>
-              ))
-            : null}
-        </ul>
-      </Band>
-
-      {/* ── Explore by disease state ─────────────────────── */}
-      <Band labelledBy="areas-heading">
-        <SectionHead
-          id="areas-heading"
-          index="07 / Browse"
-          title="Explore by disease state"
-          sub="Seven clinical areas on the map, each with its own colour through the library."
-        />
-        <div className="mt-12">
-          {/* overflow-x-auto clips vertically too, so the hover lift needs
-              headroom inside the scroller rather than margin outside it. */}
-          <div className="-my-5">
-            <div className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-3 overflow-x-auto py-5">
-              {areas.map((a) => {
-                const inner = (
-                  <>
-                    {/* Metallic build-up: a lit top edge, a shaded floor and
-                        a sheen that sweeps across on hover. */}
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-0 -z-10"
-                      style={{
-                        background:
-                          'linear-gradient(180deg, rgb(255 255 255 / 0.3) 0%, rgb(255 255 255 / 0.08) 34%, rgb(0 0 0 / 0.05) 70%, rgb(0 0 0 / 0.14) 100%)',
-                      }}
-                    />
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-px"
-                      style={{ background: 'rgb(255 255 255 / 0.55)' }}
-                    />
-                    <span
-                      aria-hidden
-                      className="pointer-events-none absolute inset-y-0 -z-10 w-1/2 -translate-x-[220%] skew-x-[-18deg] transition-transform duration-200 ease-[var(--ease-out-strong)] group-hover:translate-x-[320%] motion-reduce:hidden"
-                      style={{
-                        background:
-                          'linear-gradient(90deg, transparent, rgb(255 255 255 / 0.34), transparent)',
-                      }}
-                    />
-                    <span>
-                      <span className="display block text-display-s">{a.label}</span>
-                      <span className="mt-0.5 block text-body-s text-on-bright/80">
-                        {a.live ? 'Video, podcast, editorial' : 'Coming this quarter'}
-                      </span>
-                    </span>
-                    <Arrow
-                      className="size-4 transition-[translate] duration-150 ease-[var(--ease-standard)] group-hover:translate-x-1"
-                      strokeWidth={2}
-                    />
-                  </>
-                );
-                const shell =
-                  'group relative isolate flex min-w-[15rem] flex-1 snap-start items-center justify-between gap-6 overflow-hidden rounded-[6px] px-7 py-5 text-on-bright shadow-card transition-[translate,box-shadow] duration-200 ease-[var(--ease-out-strong)]';
-                const tone = {
-                  backgroundImage: `linear-gradient(135deg, ${a.tone} 0%, color-mix(in oklab, ${a.tone} 62%, ${a.mix}) 100%)`,
-                };
-                return a.to ? (
-                  <Link
-                    key={a.slug}
-                    to={a.to}
-                    style={tone}
-                    className={`press ${shell} hover:-translate-y-1 hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring`}
-                  >
-                    {inner}
-                  </Link>
-                ) : (
-                  <div key={a.slug} style={tone} className={`${shell} cursor-default`}>
-                    {inner}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-wrap gap-2">
-          {BIOMARKERS.map((b) => (
-            <Link
-              key={b.label}
-              to={`/catalog?tag=${encodeURIComponent(b.tag)}`}
-              className="press inline-flex h-9 items-center gap-2 rounded-[6px] px-4 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              {b.label}
-              <span className="meta text-faint">{b.count}</span>
-            </Link>
-          ))}
-        </div>
-      </Band>
+      {ORDER.map((key) => (
+        <Fragment key={key}>{SECTIONS[key]}</Fragment>
+      ))}
 
       {/* ── Get started ──────────────────────────────────── */}
       <section aria-labelledby="start-heading">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Pipeline } from './Pipeline';
 import { Thumb } from '../ui/Thumb';
 
 /**
@@ -220,20 +221,9 @@ export function FormatBento({ poster }: { poster: string }) {
         height="h-[15rem]"
         span="md:col-span-5"
       >
-        <div className="flex h-full items-end gap-2">
-          {[
-            'var(--color-pink)',
-            'var(--color-cyan)',
-            'var(--color-purple)',
-            'var(--color-coral)',
-          ].map((tone, i) => (
-            <span
-              key={i}
-              className="flex-1 rounded-[6px] transition-[height] duration-300 ease-out"
-              style={{ background: tone, height: `${52 + i * 14}%`, opacity: 0.85 }}
-            />
-          ))}
-        </div>
+        {/* The bars carried no meaning. This is the platform's actual
+            claim: one recording in, every format out, filed. */}
+        <Pipeline />
       </Card>
     </div>
   );
