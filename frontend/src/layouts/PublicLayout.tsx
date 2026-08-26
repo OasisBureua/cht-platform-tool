@@ -253,7 +253,7 @@ export default function PublicLayout() {
             <Link
               to="/join"
               onClick={() => setDrawerOpen(false)}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-card bg-brand-600 text-center text-base font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_10px_28px_-10px_rgba(58,131,155,0.42)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-card bg-brand-600 text-center text-base font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_10px_28px_-10px_rgba(0,124,255,0.42)] transition-[background-color,transform,box-shadow] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
             >
               Get Started
             </Link>
