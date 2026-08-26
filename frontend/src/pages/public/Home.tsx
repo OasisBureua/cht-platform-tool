@@ -564,13 +564,13 @@ export default function Home() {
           sub="Four shows, each with its own voice and its own audience."
           seeAll={{ noun: 'shows', to: '/chm-office-hours' }}
         />
-        <div className="mt-12">
+        <div className="mt-[2.375rem]">
           {/* Headroom lives inside the scroller: overflow-x also clips
               vertically, which would cut off the hover lift. */}
           <div className="-my-5">
             <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
               {shows.map((s) => (
-                <li key={s.slug} className="w-[19rem] shrink-0 snap-start">
+                <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
                   <Link
                     to="/chm-office-hours"
                     className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -584,9 +584,10 @@ export default function Home() {
                       />
                       <span
                         aria-hidden
-                        className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/45 to-transparent"
-                      />
-                      <ChmMark className="absolute bottom-3 start-3 size-6 text-white/90" />
+                        className="absolute bottom-3 start-3 grid size-8 place-items-center rounded-[6px] bg-black/35 backdrop-blur-sm"
+                      >
+                        <ChmMark className="size-5 text-white" />
+                      </span>
                       {s.spanish ? (
                         <span className="eyebrow absolute top-3 end-3 rounded-[6px] bg-white/90 px-2.5 py-1 text-on-bright">
                           Español
