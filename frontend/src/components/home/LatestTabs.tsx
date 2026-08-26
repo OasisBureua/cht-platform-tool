@@ -1,4 +1,5 @@
 import { useId, useRef, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * Three format sections folded into one, as tabs.
@@ -13,7 +14,15 @@ import { useId, useRef, useState, type ReactNode } from 'react';
  * End, and one tab stop for the whole set.
  */
 
-type Track = { key: string; label: string; count: number; panel: ReactNode };
+type Track = {
+  key: string;
+  label: string;
+  /** The catalogue total, not the number of cards in the panel. */
+  count?: number;
+  panel: ReactNode;
+  /** Where the rest of this format lives, and what to call it. */
+  more?: { to: string; label: string };
+};
 
 export function LatestTabs({ tracks }: { tracks: Track[] }) {
   const [active, setActive] = useState(0);
@@ -65,7 +74,9 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
               }`}
             >
               {t.label}
-              <span className="meta ms-1.5 tabular-nums text-faint">{t.count}</span>
+              {t.count !== undefined && (
+                <span className="meta ms-1.5 tabular-nums text-faint">{t.count}</span>
+              )}
               {on && (
                 <span
                   aria-hidden
@@ -88,6 +99,31 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
           className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
         >
           {t.panel}
+          {/* Each panel shows a slice, so each panel says where the rest
+              is. A single head-level "see all" cannot, because it does
+              not know which tab you are on. */}
+          {t.more && (
+            <div className="mt-6 flex justify-center">
+              <Link
+                to={t.more.to}
+                className="press inline-flex h-10 items-center gap-2 rounded-[6px] bg-surface px-5 text-body-s text-dim shadow-card hover:text-text hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
+              >
+                {t.more.label}
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                  className="size-4 shrink-0"
+                >
+                  <path d="M4 12h15M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+            </div>
+          )}
         </div>
       ))}
     </div>

@@ -369,6 +369,30 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
     document.body.scrollTop = 0;
   }, []);
 
+  /**
+   * Catalogue totals for the format tabs. `limit: 1` because only the
+   * `total` is wanted — the panels render their own slice from data
+   * they already hold, so this must not pull a second copy of it.
+   *
+   * The tabs count the library, not the cards on screen. A tab reading
+   * the panel length would just say "4" three times, which tells a
+   * clinician nothing about whether the library is worth an account.
+   */
+  const { data: totals } = useQuery({
+    queryKey: ['catalog', 'format-totals'],
+    queryFn: async () => {
+      const [clips, posts] = await Promise.all([
+        catalogApi.getClips({ limit: 1, dedup_by: 'shoot' }),
+        catalogApi.getWordPressPosts({ limit: 1 }),
+      ]);
+      // A zero here means the call came back empty, not that the
+      // library is empty. Undefined, so the tab shows no badge and the
+      // footer falls back to copy that names no number.
+      return { video: clips.total || undefined, editorial: posts.total || undefined };
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: randomVideosData, isLoading: randomVideosLoading } = useQuery({
     queryKey: ['catalog', 'random-videos'],
     queryFn: () => catalogApi.getRandomVideos(8),
@@ -445,6 +469,8 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
     ],
     [],
   );
+
+  const episodeTotal = useMemo(() => SHOWS.reduce((n, show) => n + show.episodes, 0), []);
 
   const sessionPoster = featuredVideos[0]?.imageUrl ?? '/img/thumb-cleopatra.jpg';
 
@@ -752,13 +778,36 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             index="03 / Latest"
             title="Everything new, in every format"
             sub="One section instead of three. The format is a filter, not another scroll."
-            seeAll={{ noun: 'content', to: '/catalog' }}
           />
           <LatestTabs
             tracks={[
-              { key: 'video', label: 'Video', count: featuredVideos.length, panel: nowBody },
-              { key: 'podcast', label: 'Podcasts', count: shows.length, panel: showsBody },
-              { key: 'editorial', label: 'Editorial', count: ARTICLES.length, panel: articlesBody },
+              {
+                key: 'video',
+                label: 'Video',
+                count: totals?.video,
+                panel: nowBody,
+                more: {
+                  to: '/catalog',
+                  label: totals?.video ? `Browse all ${totals.video} sessions` : 'Browse the library',
+                },
+              },
+              {
+                key: 'podcast',
+                label: 'Podcasts',
+                count: episodeTotal,
+                panel: showsBody,
+                more: { to: '/podcasts', label: `All ${SHOWS.length} shows` },
+              },
+              {
+                key: 'editorial',
+                label: 'Editorial',
+                count: totals?.editorial,
+                panel: articlesBody,
+                more: {
+                  to: '/catalog',
+                  label: totals?.editorial ? `Read all ${totals.editorial} articles` : 'Read the archive',
+                },
+              },
             ]}
           />
         </Band>
