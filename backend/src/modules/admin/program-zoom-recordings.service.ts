@@ -17,7 +17,7 @@ import { ZoomService } from '../webinars/zoom.service';
 
 const PRESIGN_EXPIRES_SEC = 15 * 60;
 
-function extForFile(fileType: string, fileExtension?: string | null): string {
+export function extForFile(fileType: string, fileExtension?: string | null): string {
   if (fileExtension?.trim()) {
     const e = fileExtension.trim().replace(/^\./, '').toLowerCase();
     return e || 'bin';
@@ -32,7 +32,7 @@ function extForFile(fileType: string, fileExtension?: string | null): string {
   return 'bin';
 }
 
-function contentTypeFor(fileType: string, ext: string): string {
+export function contentTypeFor(fileType: string, ext: string): string {
   const t = fileType.toUpperCase();
   if (t === 'MP4' || ext === 'mp4') return 'video/mp4';
   if (t === 'M4A' || ext === 'm4a') return 'audio/mp4';
@@ -41,6 +41,42 @@ function contentTypeFor(fileType: string, ext: string): string {
   if (ext === 'json') return 'application/json';
   if (ext === 'csv') return 'text/csv';
   return 'application/octet-stream';
+}
+
+/** Content-Type that browsers will display in a tab instead of saving to disk. */
+export function inlineContentType(fileType: string, ext: string): string {
+  const t = fileType.toUpperCase();
+  if (t === 'TRANSCRIPT' || t === 'CC' || t === 'CHAT') {
+    return 'text/plain; charset=utf-8';
+  }
+  return contentTypeFor(fileType, ext);
+}
+
+export type RecordingUrlDisposition = 'inline' | 'attachment';
+
+function storedContentType(
+  fileType: string,
+  ext: string,
+  zoomContentType?: string | null,
+): string {
+  const zoomCt = zoomContentType?.split(';')[0]?.trim().toLowerCase() || '';
+  if (!zoomCt || zoomCt === 'application/octet-stream') {
+    return contentTypeFor(fileType, ext);
+  }
+  return zoomCt;
+}
+
+function downloadFilename(row: {
+  fileType: string;
+  zoomRecordingFileId: string;
+  fileExtension: string | null;
+}): string {
+  const ext =
+    (row.fileExtension || extForFile(row.fileType, row.fileExtension))
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase() || 'bin';
+  const id = row.zoomRecordingFileId.replace(/[^a-zA-Z0-9._-]/g, '_');
+  return `${row.fileType.toLowerCase()}-${id}.${ext}`;
 }
 
 @Injectable()
@@ -176,9 +212,7 @@ export class ProgramZoomRecordingsService {
         );
         const ext = extForFile(file.fileType, file.fileExtension);
         const key = `zoom-recordings/${programId}/${meetingId}/${file.id}.${ext}`;
-        const ct =
-          contentType?.split(';')[0]?.trim() ||
-          contentTypeFor(file.fileType, ext);
+        const ct = storedContentType(file.fileType, ext, contentType);
 
         await this.s3.send(
           new PutObjectCommand({
@@ -262,15 +296,32 @@ export class ProgramZoomRecordingsService {
     };
   }
 
-  async createDownloadUrl(programId: string, recordingId: string) {
+  async createDownloadUrl(
+    programId: string,
+    recordingId: string,
+    opts?: { disposition?: RecordingUrlDisposition },
+  ) {
     const row = await this.prisma.programZoomRecording.findFirst({
       where: { id: recordingId, programId },
     });
     if (!row) throw new NotFoundException('Recording not found');
 
+    const ext = row.fileExtension || extForFile(row.fileType, row.fileExtension);
+    const disposition =
+      opts?.disposition === 'inline' ? 'inline' : 'attachment';
+    const contentType =
+      disposition === 'inline'
+        ? inlineContentType(row.fileType, ext)
+        : contentTypeFor(row.fileType, ext);
+
     const command = new GetObjectCommand({
       Bucket: row.s3Bucket,
       Key: row.s3Key,
+      ResponseContentType: contentType,
+      ResponseContentDisposition:
+        disposition === 'inline'
+          ? 'inline'
+          : `attachment; filename="${downloadFilename(row)}"`,
     });
     const url = await getSignedUrl(this.s3, command, {
       expiresIn: PRESIGN_EXPIRES_SEC,

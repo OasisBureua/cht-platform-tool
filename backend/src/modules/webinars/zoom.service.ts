@@ -995,7 +995,7 @@ export class ZoomService implements OnModuleInit {
     };
   }
 
-  /** Download a Zoom recording file (follows redirects). */
+  /** Download a Zoom recording file (follows redirects). MP4s need a long timeout. */
   async downloadRecordingFile(
     downloadUrl: string,
     bearerToken?: string,
@@ -1007,6 +1007,9 @@ export class ZoomService implements OnModuleInit {
     const { data, headers } = await firstValueFrom(
       this.http.get<ArrayBuffer>(downloadUrl, {
         responseType: 'arraybuffer',
+        timeout: 5 * 60 * 1000,
+        maxContentLength: 1024 * 1024 * 1024,
+        maxBodyLength: 1024 * 1024 * 1024,
         headers: { Authorization: `Bearer ${token}` },
         maxRedirects: 5,
       }),

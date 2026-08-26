@@ -1899,11 +1899,30 @@ export class AdminController {
     summary:
       'Presigned S3 GET URL for an admin to view/download a stored Zoom recording',
   })
+  @ApiQuery({
+    name: 'disposition',
+    required: false,
+    enum: ['inline', 'attachment'],
+    description:
+      'inline opens in the browser; attachment forces download. Default: attachment.',
+  })
   async programZoomRecordingDownloadUrl(
     @Param('id') id: string,
     @Param('recordingId') recordingId: string,
+    @Query('disposition') disposition?: string,
   ) {
-    return this.programZoomRecordings.createDownloadUrl(id, recordingId);
+    if (
+      disposition &&
+      disposition !== 'inline' &&
+      disposition !== 'attachment'
+    ) {
+      throw new BadRequestException(
+        'disposition must be inline or attachment',
+      );
+    }
+    return this.programZoomRecordings.createDownloadUrl(id, recordingId, {
+      disposition: disposition === 'inline' ? 'inline' : 'attachment',
+    });
   }
 
   @Get('programs/:id/registrations')
