@@ -7,6 +7,7 @@ import { SurveysModule } from '../surveys/surveys.module';
 import { WebinarsModule } from '../webinars/webinars.module';
 import { EmailModule } from '../email/email.module';
 import { SessionHeroPresignService } from './session-hero-presign.service';
+import { ProgramZoomRecordingsService } from './program-zoom-recordings.service';
 
 @Module({
   imports: [
@@ -18,6 +19,6 @@ import { SessionHeroPresignService } from './session-hero-presign.service';
     EmailModule,
   ],
   controllers: [AdminController],
-  providers: [SessionHeroPresignService],
+  providers: [SessionHeroPresignService, ProgramZoomRecordingsService],
 })
 export class AdminModule {}
