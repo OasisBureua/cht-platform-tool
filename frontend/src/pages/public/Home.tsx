@@ -5,6 +5,7 @@ import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, Lay
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
+import { HomeHero } from '../../components/home/HomeHero';
 import {
   ANON_HOME_BIOMARKER_CAROUSEL_IDS,
   BiomarkerConversationRow,
@@ -134,47 +135,7 @@ export default function Home() {
 
   return (
     <div className="min-w-0 overflow-x-hidden bg-card text-foreground">
-      {/* Hero: shorter than full-viewport; text stays legible on scrim + photo */}
-      <section className="relative shadow-[0_20px_50px_-24px_rgba(0,0,0,0.35)]">
-        <div
-          className="w-full min-h-[min(42vh,380px)] bg-cover bg-center bg-gray-800 sm:min-h-[min(48vh,420px)] md:min-h-[min(52vh,460px)]"
-          style={{
-            backgroundImage: "url('/images/home-hero-brand-auditorium.png')",
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/55" />
-          <div className="relative mx-auto flex min-h-[min(42vh,380px)] max-w-7xl items-center justify-center px-4 py-10 text-center sm:min-h-[min(48vh,420px)] sm:px-6 sm:py-12 md:min-h-[min(52vh,460px)] md:py-14">
-            <div className="max-w-3xl space-y-4 sm:space-y-5">
-              <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.heroTitle}ms` }}>
-                <h1 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl md:text-5xl">
-                  The Future of Healthcare Marketing and Education
-                </h1>
-              </div>
-              <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.heroLead}ms` }}>
-                <p className="text-pretty text-sm leading-relaxed text-white/90 md:text-base">
-                  Community Health Technologies is redefining how pharma reaches healthcare audiences, and educates them where they actively consume and trust information.
-                </p>
-              </div>
-              <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.heroCtas}ms` }}>
-                <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-                  <Link
-                    to="/join"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.28)_inset,0_8px_28px_-8px_rgba(0,124,255,0.45)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-200 active:scale-[0.96]"
-                  >
-                    Get Started
-                  </Link>
-                  <Link
-                    to="/about"
-                    className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-[6px] border-2 border-white/55 bg-white/[0.06] px-6 py-2.5 text-sm font-semibold text-white shadow-[0_8px_28px_-10px_rgba(0,0,0,0.35)] backdrop-blur-[2px] transition-[color,background-color,transform,box-shadow] hover:border-white/80 hover:bg-white/[0.12] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/75 active:scale-[0.96]"
-                  >
-                    Learn More
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
 
       {/* Featured: Replit-style horizontal row + strip cards (same as in-app) */}
       <section className="space-y-6 pt-4 pb-10 sm:space-y-8 sm:pt-6 sm:pb-12">

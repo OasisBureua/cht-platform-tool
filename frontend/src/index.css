@@ -475,3 +475,8 @@
   /* macOS renders text heavier than intended; set once at the root. */
   html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 }
+
+@keyframes home-marquee {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
