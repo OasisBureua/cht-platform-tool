@@ -102,7 +102,7 @@ export default function Layout() {
                       'flex min-h-[48px] items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
                       isActive
                         ? 'bg-steel-100 text-steel-950 shadow-[0_4px_18px_-10px_rgba(49,105,149,0.25)] ring-2 ring-steel-500/25 dark:bg-steel-600 dark:text-white dark:ring-steel-400/35 dark:shadow-[0_4px_20px_-10px_rgba(37,99,235,0.35)]'
-                        : 'text-foreground hover:bg-steel-50/90 hover:text-foreground  dark:hover:bg-muted/85 dark:hover:text-white',
+                        : 'text-foreground hover:bg-steel-50/90 dark:hover:text-white',
                     ].join(' ')
                   }
                 >
@@ -124,7 +124,7 @@ export default function Layout() {
               </li>
             ))}
           </ul>
-          <div className="mt-auto border-t border-zinc-200 px-4 py-3 text-[11px] leading-snug text-muted-foreground dark:text-muted-foreground">
+          <div className="mt-auto border-t border-border px-4 py-3 text-[11px] leading-snug text-muted-foreground">
             <Link
               to="/app/settings"
               className="font-semibold text-steel-700 underline-offset-2 hover:underline dark:text-steel-400"
@@ -135,7 +135,7 @@ export default function Layout() {
             {' · '}
             <button
               type="button"
-              className="font-semibold text-zinc-700 hover:underline "
+              className="font-semibold text-muted-foreground hover:underline "
               onClick={() => {
                 setMobileDrawerOpen(false);
                 logout();
@@ -163,7 +163,7 @@ export default function Layout() {
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card bg-white/95 text-steel-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-steel-50/90 hover:text-steel-800 active:scale-[0.96] md:hidden /95 dark:text-steel-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-muted dark:hover:text-steel-200"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card bg-white/95 text-steel-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-steel-50/90 hover:text-steel-800 active:scale-[0.96] md:hidden /95 dark:text-steel-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:text-steel-200"
                 aria-expanded={mobileDrawerOpen}
                 aria-controls="app-slide-drawer-nav"
                 aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -188,7 +188,7 @@ export default function Layout() {
                 title="Search"
                 className={({ isActive }) =>
                   [
-                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card text-steel-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-steel-50/80 hover:text-steel-800 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-steel-300 dark:hover:bg-muted/80 dark:hover:text-steel-200',
+                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card text-steel-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-steel-50/80 hover:text-steel-800 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-steel-300 dark:hover:text-steel-200',
                     isActive ? 'bg-steel-100 text-steel-900 ring-2 ring-steel-500/25 dark:bg-steel-600/25 dark:text-white dark:ring-steel-400/30' : '',
                   ].join(' ')
                 }
@@ -218,7 +218,7 @@ export default function Layout() {
                       type="button"
                       role="menuitem"
                       onClick={() => toggleColorScheme()}
-                      className="flex min-h-[44px] w-full items-center rounded-[6px] px-3 text-left text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground md:hidden dark:hover:bg-muted dark:hover:text-foreground"
+                      className="flex min-h-[44px] w-full items-center rounded-[6px] px-3 text-left text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground md:hidden"
                     >
                       {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
                     </button>
@@ -226,7 +226,7 @@ export default function Layout() {
                       to="/app/settings"
                       role="menuitem"
                       onClick={() => setProfileMenuOpen(false)}
-                      className="flex min-h-[44px] items-center rounded-[6px] px-3 text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground dark:hover:bg-muted dark:hover:text-foreground"
+                      className="flex min-h-[44px] items-center rounded-[6px] px-3 text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground"
                     >
                       Settings
                     </Link>
@@ -237,7 +237,7 @@ export default function Layout() {
                         setProfileMenuOpen(false);
                         logout();
                       }}
-                      className="flex min-h-[44px] w-full items-center rounded-[6px] px-3 text-left text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground dark:hover:bg-muted dark:hover:text-foreground"
+                      className="flex min-h-[44px] w-full items-center rounded-[6px] px-3 text-left text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground"
                     >
                       Logout
                     </button>

@@ -80,7 +80,7 @@ export function ConversationRow({
             {title}
           </h2>
           {subtitle ? (
-            <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums dark:text-muted-foreground md:text-sm">{subtitle}</span>
+            <span className="shrink-0 text-xs font-medium text-muted-foreground tabular-nums md:text-sm">{subtitle}</span>
           ) : null}
         </div>
         {seeAllExternal ? (
@@ -111,7 +111,7 @@ export function ConversationRow({
             type="button"
             aria-label="Scroll left"
             onClick={() => scroll(-1)}
-            className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-zinc-700 opacity-0 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 group-hover/row:opacity-100 md:flex "
+            className="absolute left-0 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground opacity-0 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 group-hover/row:opacity-100 md:flex "
           >
             <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
@@ -130,7 +130,7 @@ export function ConversationRow({
             type="button"
             aria-label="Scroll right"
             onClick={() => scroll(1)}
-            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-zinc-700 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 md:opacity-0 md:transition-opacity md:group-hover/row:opacity-100 "
+            className="absolute right-0 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-card text-muted-foreground shadow-[0_4px_20px_-8px_rgba(0,0,0,0.12)] transition-[opacity,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_8px_28px_-10px_rgba(0,0,0,0.16)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 md:opacity-0 md:transition-opacity md:group-hover/row:opacity-100 "
           >
             <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
@@ -166,18 +166,18 @@ export type StripCardProps = {
 };
 
 const stripCardShell =
-  'group/card flex min-h-0 min-w-0 w-[226px] flex-col overflow-hidden rounded-card bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[250px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96]  dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'group/card flex min-h-0 min-w-0 w-[226px] flex-col overflow-hidden rounded-card bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[250px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
 
 /** Homepage compact card: +25% width vs default shell; inner media aspect tuned ~+15% taller vs prior 16/13 */
 const stripCardShellHomepage =
-  'group/card flex min-h-0 min-w-0 w-[311px] flex-col overflow-hidden rounded-card bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[344px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96]  dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'group/card flex min-h-0 min-w-0 w-[311px] flex-col overflow-hidden rounded-card bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[344px] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
 
 const thumbnailOnlyShell =
-  'group/card relative block w-[226px] shrink-0 overflow-hidden rounded-card bg-muted shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[259px] aspect-video hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96]  dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'group/card relative block w-[226px] shrink-0 overflow-hidden rounded-card bg-muted shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[259px] aspect-video hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
 
 /** +25% width vs thumbnailOnlyShell; aspect ~15% taller media vs prior 16/11.7 */
 const thumbnailOnlyShellHomepage =
-  'group/card relative block w-[311px] shrink-0 overflow-hidden rounded-card bg-muted shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[356px] aspect-[16/13.5] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96]  dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
+  'group/card relative block w-[311px] shrink-0 overflow-hidden rounded-card bg-muted shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] sm:w-[356px] aspect-[16/13.5] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_32px_-14px_rgba(0,0,0,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_8px_24px_-12px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.45)]';
 
 function isYoutubeMissingPoster(img: HTMLImageElement): boolean {
   return img.naturalWidth > 0 && img.naturalWidth <= 120 && img.naturalHeight <= 90;
@@ -270,8 +270,8 @@ function StripCardInner({
           <span
             className={
               home
-                ? 'mt-1.5 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-2 py-0.5 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100'
-                : 'mt-1 inline-flex w-fit max-w-full items-center rounded-md bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100'
+                ? 'mt-1.5 inline-flex w-fit max-w-full items-center rounded-[6px] bg-brand-100 px-2 py-0.5 text-[11px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100'
+                : 'mt-1 inline-flex w-fit max-w-full items-center rounded-[6px] bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold tabular-nums tracking-wide text-brand-900 dark:bg-brand-950/55 dark:text-brand-100'
             }
           >
             {videoLabel}
@@ -401,7 +401,7 @@ function RowSkeleton({ homepage }: { homepage?: boolean }) {
       <div className={homepage ? 'space-y-1.5 px-2.5 pb-2.5 pt-2' : 'space-y-1 px-2 pb-2 pt-1.5'}>
         <div className={`animate-pulse rounded bg-zinc-200/80 ${homepage ? 'h-3.5 w-[92%]' : 'h-3 w-[92%]'}`} />
         <div className={`animate-pulse rounded bg-zinc-200/70 ${homepage ? 'h-3 w-[75%]' : 'h-2.5 w-[75%]'}`} />
-        <div className={`animate-pulse rounded-md bg-zinc-200/70 ${homepage ? 'mt-1.5 h-6 w-16' : 'mt-1 h-5 w-14'}`} />
+        <div className={`animate-pulse rounded-[6px] bg-zinc-200/70 ${homepage ? 'mt-1.5 h-6 w-16' : 'mt-1 h-5 w-14'}`} />
       </div>
     </div>
   );

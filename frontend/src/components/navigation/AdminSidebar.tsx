@@ -26,7 +26,7 @@ export default function AdminSidebar() {
                 'flex w-full flex-col items-center justify-center gap-1 rounded-[6px] px-1.5 py-2.5 text-center transition',
                 isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-muted hover:text-primary  dark:hover:bg-muted dark:hover:text-primary',
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary dark:hover:text-primary',
               ].join(' ')
             }
           >

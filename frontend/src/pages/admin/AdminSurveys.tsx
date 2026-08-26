@@ -58,7 +58,7 @@ export default function AdminSurveys() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
         Failed to load surveys. Please try again.
       </div>
     );
@@ -67,12 +67,12 @@ export default function AdminSurveys() {
   return (
     <div className="space-y-6">
       {deleteMutation.isError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 flex items-center justify-between">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive flex items-center justify-between">
           <span>Failed to delete survey. Please try again.</span>
           <button
             type="button"
             onClick={() => deleteMutation.reset()}
-            className="text-sm font-semibold text-red-700 underline"
+            className="text-sm font-semibold text-destructive underline"
           >
             Dismiss
           </button>
@@ -80,13 +80,13 @@ export default function AdminSurveys() {
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Surveys</h1>
+          <h1 className="text-2xl font-semibold text-foreground">Surveys</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <label className="text-sm font-semibold text-gray-700 shrink-0">Filter by program:</label>
+            <label className="text-sm font-semibold text-muted-foreground shrink-0">Filter by program:</label>
             <select
               value={programFilter}
               onChange={(e) => setProgramFilter(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
             >
               <option value="all">All programs</option>
               {programOptions.map(([id, title]) => (
@@ -99,7 +99,7 @@ export default function AdminSurveys() {
               <button
                 type="button"
                 onClick={() => setProgramFilter('all')}
-                className="text-xs font-semibold text-gray-500 underline hover:text-gray-800"
+                className="text-xs font-semibold text-muted-foreground underline hover:text-foreground"
               >
                 Clear
               </button>
@@ -116,9 +116,9 @@ export default function AdminSurveys() {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-          <p className="font-semibold text-gray-900">No surveys yet</p>
-          <p className="mt-1 text-sm text-gray-600">
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <p className="font-semibold text-foreground">No surveys yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
             Create a survey to gather feedback from programs.
           </p>
           <Link
@@ -130,22 +130,22 @@ export default function AdminSurveys() {
           </Link>
         </div>
       ) : filteredItems.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
-          <p className="font-semibold text-gray-900">No surveys for this program</p>
-          <p className="mt-1 text-sm text-gray-600">Try another program or clear the filter.</p>
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <p className="font-semibold text-foreground">No surveys for this program</p>
+          <p className="mt-1 text-sm text-muted-foreground">Try another program or clear the filter.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="rounded-xl border border-border bg-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-muted border-b border-border">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Survey</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Type</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Jotform</th>
-                <th className="px-4 py-3 text-right font-semibold text-gray-600">Actions</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Survey</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Type</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Jotform</th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {filteredItems.map((s) => {
                 const displayTitle = adminSurveyDisplayTitle(
                   s.program?.title,
@@ -153,10 +153,10 @@ export default function AdminSurveys() {
                   s.title,
                 );
                 return (
-                  <tr key={s.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-900">{displayTitle}</td>
-                    <td className="px-4 py-3 text-gray-700">{s.type}</td>
-                    <td className="px-4 py-3 text-gray-700">
+                  <tr key={s.id} className="hover:bg-muted">
+                    <td className="px-4 py-3 font-medium text-foreground">{displayTitle}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{s.type}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
                       {s.jotformFormId ? (
                         <a
                           href={`https://communityhealthmedia.jotform.com/${s.jotformFormId}`}
@@ -167,7 +167,7 @@ export default function AdminSurveys() {
                           {s.jotformFormId}
                         </a>
                       ) : (
-                        <span className="text-gray-400">-</span>
+                        <span className="text-muted-foreground">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -180,7 +180,7 @@ export default function AdminSurveys() {
                         </Link>
                         <Link
                           to={`/admin/surveys/${s.id}/edit`}
-                          className="text-sm font-semibold text-gray-900 hover:underline"
+                          className="text-sm font-semibold text-foreground hover:underline"
                         >
                           Edit
                         </Link>
@@ -188,7 +188,7 @@ export default function AdminSurveys() {
                           type="button"
                           onClick={() => handleDelete(s.id, displayTitle)}
                           disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
-                          className="text-sm font-semibold text-red-600 hover:underline disabled:opacity-50"
+                          className="text-sm font-semibold text-destructive hover:underline disabled:opacity-50"
                           title="Delete survey"
                         >
                           <Trash2 className="h-4 w-4" />

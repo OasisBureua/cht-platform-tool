@@ -71,7 +71,7 @@ export default function AdminPrograms() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
         Failed to load {isOfficeHours ? 'Office Hours' : 'webinars'}. Please try again.
       </div>
     );
@@ -99,10 +99,10 @@ export default function AdminPrograms() {
       {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             {isOfficeHours ? 'Office Hours' : 'Webinars'}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {isOfficeHours
               ? 'Zoom Meeting sessions for live Q&A, often scheduled beside webinars. Host admits participants from the waiting room.'
               : 'Schedule and manage live Zoom Webinars and learner-facing registration.'}
@@ -112,14 +112,14 @@ export default function AdminPrograms() {
           {isOfficeHours ? (
             <Link
               to="/admin/programs"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
             >
               Webinars
             </Link>
           ) : (
             <Link
               to="/admin/office-hours"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
             >
               Office Hours
             </Link>
@@ -129,7 +129,7 @@ export default function AdminPrograms() {
               type="button"
               onClick={() => setSendInvitesOpen(true)}
               disabled={items.length === 0}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-40"
             >
               Send registration invites
             </button>
@@ -170,13 +170,13 @@ export default function AdminPrograms() {
       {deleteConfirmId &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
+            <div className="w-full max-w-sm rounded-card bg-card p-6 shadow-xl space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="font-semibold text-gray-900">
+                  <h2 className="font-semibold text-foreground">
                     Delete {isOfficeHours ? 'Office Hours session' : 'webinar'}?
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     This permanently removes the session and its survey responses. This cannot be undone.
                   </p>
                 </div>
@@ -186,13 +186,13 @@ export default function AdminPrograms() {
                     setDeleteConfirmId(null);
                     setDeleteError(null);
                   }}
-                  className="ml-4 shrink-0 text-gray-400 hover:text-gray-600"
+                  className="ml-4 shrink-0 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
               {deleteError ? (
-                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-destructive">
                   {deleteError}
                 </p>
               ) : null}
@@ -203,7 +203,7 @@ export default function AdminPrograms() {
                     setDeleteConfirmId(null);
                     setDeleteError(null);
                   }}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
                 >
                   Cancel
                 </button>
@@ -244,12 +244,12 @@ export default function AdminPrograms() {
 
       {/* Table */}
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center">
+        <div className="rounded-card border border-border bg-card p-16 text-center">
           <Video className="h-12 w-12 text-gray-200 mx-auto mb-4" />
-          <p className="font-semibold text-gray-900">
+          <p className="font-semibold text-foreground">
             {isOfficeHours ? 'No Office Hours scheduled' : 'No webinars yet'}
           </p>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {isOfficeHours
               ? 'Create a new Zoom Meeting session for live Q&A alongside your webinars.'
               : 'Schedule your first Live session.'}
@@ -262,17 +262,17 @@ export default function AdminPrograms() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white">
+        <div className="rounded-xl border border-border bg-card">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-muted border-b border-border">
               <tr>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
                   {isOfficeHours ? 'Session' : 'Webinar'}
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden sm:table-cell">Date & Time</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden md:table-cell">Sponsor</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600">Status</th>
-                <th className="px-4 py-3 text-left font-semibold text-gray-600 hidden lg:table-cell">Zoom</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden sm:table-cell">Date & Time</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden md:table-cell">Sponsor</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden lg:table-cell">Zoom</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -396,14 +396,14 @@ function WebinarRow({
     return (
       <tr className="bg-amber-50/60 hover:bg-amber-50">
         <td className="px-4 py-3">
-          <p className="font-medium text-gray-900 line-clamp-1">{webinar.title}</p>
-          {durationStr && <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>}
+          <p className="font-medium text-foreground line-clamp-1">{webinar.title}</p>
+          {durationStr && <p className="text-xs text-muted-foreground mt-0.5">{durationStr}</p>}
           <p className="text-xs font-medium text-amber-800 mt-1">
             In Zoom only: schedule or publish in the platform to show on LIVE
           </p>
         </td>
-        <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">{dateStr}</td>
-        <td className="px-4 py-3 text-gray-600 hidden md:table-cell">, </td>
+        <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell whitespace-nowrap">{dateStr}</td>
+        <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">, </td>
         <td className="px-4 py-3">
           <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">
             Zoom only
@@ -437,7 +437,7 @@ function WebinarRow({
               )}
             </button>
             {importError ? (
-              <p className="text-[10px] text-red-600 max-w-[12rem] text-right">{importError}</p>
+              <p className="text-[10px] text-destructive max-w-[12rem] text-right">{importError}</p>
             ) : null}
           </div>
         </td>
@@ -446,26 +446,26 @@ function WebinarRow({
   }
 
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className="hover:bg-muted">
       <td className="px-4 py-3">
-        <p className="font-medium text-gray-900 line-clamp-1">{webinar.title}</p>
+        <p className="font-medium text-foreground line-clamp-1">{webinar.title}</p>
         {durationStr && (
-          <p className="text-xs text-gray-400 mt-0.5">{durationStr}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{durationStr}</p>
         )}
         {webinar.zoomSessionType !== 'MEETING' &&
           webinar.honorariumAmount != null &&
           webinar.honorariumAmount > 0 && (
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Honorarium ${webinar.honorariumAmount.toLocaleString()}
             </p>
           )}
       </td>
 
-      <td className="px-4 py-3 text-gray-600 hidden sm:table-cell whitespace-nowrap">
+      <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell whitespace-nowrap">
         {dateStr}
       </td>
 
-      <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
+      <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">
         {webinar.sponsorName}
       </td>
 
@@ -485,7 +485,7 @@ function WebinarRow({
                 href={webinar.zoomJoinUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-blue-500 transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-500 transition-colors"
               >
                 <ExternalLink className="h-3 w-3" /> Join link
               </a>
@@ -515,7 +515,7 @@ function WebinarRow({
             ))}
           </div>
         ) : (
-          <span className="text-xs text-gray-400">No Zoom</span>
+          <span className="text-xs text-muted-foreground">No Zoom</span>
         )}
       </td>
 
@@ -523,7 +523,7 @@ function WebinarRow({
         <button
           ref={buttonRef}
           onClick={openMenu}
-          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <MoreVertical className="h-4 w-4" />
         </button>
@@ -533,12 +533,12 @@ function WebinarRow({
             <div
               ref={menuRef}
               style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
-              className="w-36 rounded-xl border border-gray-200 bg-white shadow-lg py-1"
+              className="w-36 rounded-xl border border-border bg-card shadow-lg py-1"
             >
               <Link
                 to={`/admin/programs/${webinar.id}/hub`}
                 onClick={() => setMenuOpen(false)}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
               >
                 Program hub
               </Link>
@@ -547,7 +547,7 @@ function WebinarRow({
                   setMenuOpen(false);
                   onEdit();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
               >
                 <Pencil className="h-3.5 w-3.5" /> Edit
               </button>
@@ -556,7 +556,7 @@ function WebinarRow({
                   setMenuOpen(false);
                   onDelete();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-red-50"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete
               </button>
@@ -685,13 +685,13 @@ function EditWebinarModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-xl rounded-card bg-card shadow-xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
-          <h2 className="font-semibold text-gray-900">
+          <h2 className="font-semibold text-foreground">
             {sessionKind === 'MEETING' ? 'Edit Office Hours' : 'Edit webinar'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -699,41 +699,41 @@ function EditWebinarModal({
         {/* Body */}
         <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Title *</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">Title *</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Description</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">Description</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Sponsor</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Sponsor</label>
               <input
                 type="text"
                 value={sponsorName}
                 onChange={(e) => setSponsorName(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Status</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Status</label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as AdminWebinar['status'])}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               >
                 <option value="DRAFT">Draft</option>
                 <option value="PUBLISHED">Published</option>
@@ -743,38 +743,38 @@ function EditWebinarModal({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Session type</label>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">Session type</label>
             <select
               value={sessionKind}
               onChange={(e) => setSessionKind(e.target.value as ZoomSessionType)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             >
               <option value="WEBINAR">Live webinar (Zoom Webinar)</option>
               <option value="MEETING">Office Hours (Zoom Meeting)</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Must match how this session exists in Zoom; the wrong choice can fail when syncing title or schedule.
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Date & Time</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Date & Time</label>
               <input
                 type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">Duration (min)</label>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Duration (min)</label>
               <input
                 type="number"
                 min="1"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
           </div>
@@ -785,23 +785,23 @@ function EditWebinarModal({
               onChange={setSessionHeroImageUrl}
             />
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
-                Learner disclaimer <span className="font-normal text-gray-400">, optional</span>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                Learner disclaimer <span className="font-normal text-muted-foreground">, optional</span>
               </label>
               <textarea
                 rows={3}
                 value={sessionDisclaimer}
                 onChange={(e) => setSessionDisclaimer(e.target.value)}
                 placeholder="Compliance or sponsor wording shown to learners"
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
-              <p className="mt-1 text-xs text-gray-500">Leave blank and save to clear. Updates appear on registration and the session page.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Leave blank and save to clear. Updates appear on registration and the session page.</p>
             </div>
           </div>
 
           {sessionKind === 'WEBINAR' ? (
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1">
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">
                 Honorarium (USD): optional
               </label>
               <input
@@ -811,9 +811,9 @@ function EditWebinarModal({
                 value={honorariumUsd}
                 onChange={(e) => setHonorariumUsd(e.target.value)}
                 placeholder="Leave blank to remove"
-                className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Webinars only. Save with an empty field to clear the honorarium for this program.
               </p>
             </div>
@@ -822,37 +822,37 @@ function EditWebinarModal({
           {sessionKind === 'WEBINAR' ? (
             <>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Host <span className="font-normal text-gray-400">, optional</span>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  Host <span className="font-normal text-muted-foreground">, optional</span>
                 </label>
                 <input
                   type="text"
                   value={hostDisplayName}
                   onChange={(e) => setHostDisplayName(e.target.value)}
                   placeholder="Dr. Jane Smith"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                 />
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Person moderating/running the session. Shown as "Host:" on the webinar card.
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Host bio <span className="font-normal text-gray-400">, optional</span>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  Host bio <span className="font-normal text-muted-foreground">, optional</span>
                 </label>
                 <textarea
                   rows={2}
                   value={hostBio}
                   onChange={(e) => setHostBio(e.target.value)}
                   placeholder="Title, specialty, or brief note…"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1">
-                  Speakers / KOLs <span className="font-normal text-gray-400">, optional; add one or more</span>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  Speakers / KOLs <span className="font-normal text-muted-foreground">, optional; add one or more</span>
                 </label>
                 <div className="space-y-2">
                   {speakers.map((sp, i) => (
@@ -866,12 +866,12 @@ function EditWebinarModal({
                           setSpeakers(next);
                         }}
                         placeholder={`Speaker ${i + 1}`}
-                        className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                        className="flex-1 rounded-xl border border-border px-4 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                       />
                       <button
                         type="button"
                         onClick={() => setSpeakers(speakers.filter((_, idx) => idx !== i))}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                        className="text-muted-foreground hover:text-red-500 transition-colors p-1"
                         aria-label="Remove speaker"
                       >
                         <X className="h-4 w-4" />
@@ -881,7 +881,7 @@ function EditWebinarModal({
                   <button
                     type="button"
                     onClick={() => setSpeakers([...speakers, ''])}
-                    className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors"
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <span className="text-lg leading-none">+</span> Add speaker
                   </button>
@@ -893,7 +893,7 @@ function EditWebinarModal({
           {sessionKind === 'WEBINAR' ? (
             <div>
               {zoomSettingsQuery.isFetching && !zoomSettingsQuery.data ? (
-                <p className="text-xs text-gray-500">Loading Zoom webinar settings…</p>
+                <p className="text-xs text-muted-foreground">Loading Zoom webinar settings…</p>
               ) : (
                 <ZoomWebinarSettingsFields
                   value={zoomSettings}
@@ -918,7 +918,7 @@ function EditWebinarModal({
           )}
 
           {error && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-sm text-destructive bg-red-50 rounded-lg px-3 py-2">{error}</p>
           )}
         </div>
 
@@ -926,7 +926,7 @@ function EditWebinarModal({
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 flex-shrink-0">
           <button
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
           >
             Cancel
           </button>
@@ -952,11 +952,11 @@ function EditWebinarModal({
 
 function StatusBadge({ status }: { status: AdminWebinar['status'] }) {
   const map: Record<AdminWebinar['status'], { label: string; cls: string }> = {
-    PUBLISHED: { label: 'Live', cls: 'bg-green-50 text-green-700 border-green-200' },
-    DRAFT:     { label: 'Draft', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-    ARCHIVED:  { label: 'Archived', cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+    PUBLISHED: { label: 'Live', cls: 'bg-green-50 text-success border-green-200' },
+    DRAFT:     { label: 'Draft', cls: 'bg-amber-50 text-warning border-amber-200' },
+    ARCHIVED:  { label: 'Archived', cls: 'bg-muted text-muted-foreground border-gray-200' },
   };
-  const { label, cls } = map[status] ?? { label: status, cls: 'bg-gray-100 text-gray-700 border-gray-200' };
+  const { label, cls } = map[status] ?? { label: status, cls: 'bg-muted text-muted-foreground border-gray-200' };
   return (
     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
       {label}

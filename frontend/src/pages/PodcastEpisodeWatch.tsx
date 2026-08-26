@@ -30,7 +30,7 @@ export default function PodcastEpisodeWatch() {
 
   if (isLoading && show.remoteEpisodes) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-zinc-500">
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
         Loading episode…
       </div>
@@ -47,7 +47,7 @@ export default function PodcastEpisodeWatch() {
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Back to {show.title}
         </Link>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Episode not found.</p>
+        <p className="text-sm text-muted-foreground">Episode not found.</p>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function PodcastEpisodeWatch() {
           {prevEp?.videoId ? (
             <Link
               to={podcastEpisodeWatchPath(showId, prevEp.videoId)}
-              className="rounded-full bg-zinc-100 px-3 py-1.5 font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+              className="rounded-full bg-muted px-3 py-1.5 font-medium text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700"
             >
               ← Previous
             </Link>
@@ -74,7 +74,7 @@ export default function PodcastEpisodeWatch() {
           {nextEp?.videoId ? (
             <Link
               to={podcastEpisodeWatchPath(showId, nextEp.videoId)}
-              className="rounded-full bg-zinc-100 px-3 py-1.5 font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+              className="rounded-full bg-muted px-3 py-1.5 font-medium text-muted-foreground hover:bg-zinc-200 dark:hover:bg-zinc-700"
             >
               Next →
             </Link>
@@ -82,7 +82,7 @@ export default function PodcastEpisodeWatch() {
         </div>
       </div>
 
-      <article className="overflow-hidden rounded-2xl bg-zinc-950 shadow-xl ring-1 ring-zinc-800">
+      <article className="overflow-hidden rounded-card bg-zinc-950 shadow-xl ring-1 ring-zinc-800">
         <YouTubePlayer
           key={episode.videoId}
           youtubeUrl={episode.youtubeUrl}
@@ -96,7 +96,7 @@ export default function PodcastEpisodeWatch() {
             {episode.num} · {show.title}
           </p>
           <h1 className="text-balance text-xl font-bold text-white sm:text-2xl">{episode.title}</h1>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-white/70">
             {episode.date}
             {episode.duration ? ` · ${episode.duration}` : ''}
             {episode.viewCount ? ` · ${formatViewCount(episode.viewCount)}` : ''}

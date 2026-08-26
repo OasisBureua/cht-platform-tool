@@ -115,10 +115,10 @@ const CLIP_LIMIT = 14;
 
 /** Shared bento tile surface */
 const bentoMetric =
-  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(49,105,149,0.14)] active:scale-[0.995] dark:bg-zinc-900 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(49,105,149,0.1)]';
+  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-card bg-card p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(49,105,149,0.14)] active:scale-[0.995] dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(49,105,149,0.1)]';
 
 const bentoPending =
-  'group relative flex min-h-[148px] flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.1)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(245,158,11,0.18)] active:scale-[0.995] dark:from-amber-950/20 dark:via-zinc-900 dark:to-zinc-950 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_16px_48px_-28px_rgba(245,158,11,0.08)]';
+  'group relative flex min-h-[148px] flex-col overflow-hidden rounded-card bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.1)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(245,158,11,0.18)] active:scale-[0.995] dark:from-amber-950/20 dark:via-zinc-900 dark:to-zinc-950 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_16px_48px_-28px_rgba(245,158,11,0.08)]';
 
 type SpotlightSlide = {
   id: string;
@@ -398,17 +398,17 @@ export default function Dashboard() {
   return (
     <div className="-mt-4 space-y-8 sm:-mt-5 md:-mt-6 md:space-y-10 lg:-mt-8">
       {isOnboardingOpen ? (
-        <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] sm:p-6">
+        <div className="rounded-card border border-border/80 bg-card p-5 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-steel-700 dark:text-steel-300">New here?</p>
-              <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
-              <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
+              <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-foreground">Pick a place to start</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Choose one path and you can switch anytime.</p>
             </div>
             <button
               type="button"
               onClick={closeOnboarding}
-              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg text-zinc-500 transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-100 hover:text-zinc-900 active:scale-[0.96]"
+              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-[6px] text-muted-foreground transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted hover:text-foreground active:scale-[0.96]"
               aria-label="Close onboarding"
             >
               <X className="h-4 w-4" aria-hidden />
@@ -420,13 +420,13 @@ export default function Dashboard() {
                 key={item.title}
                 to={item.to}
                 onClick={closeOnboarding}
-                className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white hover:shadow-[0_10px_40px_-22px_rgba(0,0,0,0.15)] active:scale-[0.96]"
+                className="group rounded-card border border-zinc-100 bg-zinc-50/50 p-4 transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white hover:shadow-[0_10px_40px_-22px_rgba(0,0,0,0.15)] active:scale-[0.96]"
               >
                 <div className="mb-2 flex items-center gap-2">
                   <item.icon className="h-4 w-4 text-steel-600 dark:text-steel-400" aria-hidden />
-                  <p className="text-sm font-bold text-zinc-900">{item.title}</p>
+                  <p className="text-sm font-bold text-foreground">{item.title}</p>
                 </div>
-                <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">{item.desc}</p>
               </Link>
             ))}
           </div>
@@ -434,7 +434,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={closeOnboarding}
-              className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+              className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
             >
               Continue
             </button>
@@ -443,7 +443,7 @@ export default function Dashboard() {
       ) : null}
 
       <section
-        className="-mx-4 border-y border-zinc-200/35 bg-gradient-to-b from-white via-zinc-50/95 to-zinc-100/35 dark:border-zinc-800/60 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 sm:-mx-6 lg:-mx-8"
+        className="-mx-4 border-y border-border/35 bg-gradient-to-b from-white via-zinc-50/95 to-zinc-100/35 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 sm:-mx-6 lg:-mx-8"
         aria-labelledby="app-dashboard-overview-heading"
       >
         <div className="px-4 pb-6 pt-5 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8">
@@ -466,7 +466,7 @@ export default function Dashboard() {
           <Link
             to={nextUpcomingWebinar?.id ? `/app/live/${nextUpcomingWebinar.id}` : '/app/live'}
             className={[
-              'group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px]',
+              'group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-card p-4 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px]',
               nextLiveCoverUrl
                 ? 'shadow-[0_22px_56px_-28px_rgba(0,0,0,0.4)] hover:shadow-[0_28px_64px_-28px_rgba(0,0,0,0.48)] dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.75)]'
                 : 'bg-gradient-to-br from-steel-100/90 via-white to-amber-50/80 shadow-[0_20px_56px_-30px_rgba(49,105,149,0.12)] hover:shadow-[0_28px_64px_-30px_rgba(49,105,149,0.18)] dark:from-zinc-900 dark:via-steel-950/20 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]',
@@ -554,14 +554,14 @@ export default function Dashboard() {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl text-chm-expertise dark:text-chm-knowledge">
                 <Banknote className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-muted-foreground" aria-hidden />
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Earnings</p>
               <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-chm-precision dark:text-zinc-100">
                 {!userId ? '--' : earningsSummaryLoading ? '…' : `$${(earningsSummary?.totalEarnings ?? 0).toFixed(2)}`}
               </p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Total balance</p>
+              <p className="mt-1 text-sm text-muted-foreground">Total balance</p>
             </div>
           </Link>
 
@@ -570,14 +570,14 @@ export default function Dashboard() {
               <span className="flex h-10 w-10 items-center justify-center rounded-xl text-chm-expertise dark:text-chm-knowledge">
                 <Activity className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-muted-foreground" aria-hidden />
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Activity</p>
               <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-chm-precision dark:text-zinc-100">
                 {!userId ? '--' : activityStatsLoading ? '…' : (activityStats?.activitiesCompleted ?? 0).toLocaleString()}
               </p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {!userId
                   ? 'Sign in to track progress'
                   : activityStatsLoading
@@ -604,7 +604,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                   <ChevronRight
-                    className="h-5 w-5 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
+                    className="h-5 w-5 shrink-0 text-muted-foreground transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-muted-foreground"
                     aria-hidden
                   />
                 </div>
@@ -618,7 +618,7 @@ export default function Dashboard() {
                         : 'Open Surveys to finish eligibility tasks.'}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-chm-connection/12 px-5 py-4 shadow-[0_8px_28px_-20px_rgba(231,118,79,0.25)] dark:bg-chm-connection/20">
+              <div className="flex shrink-0 flex-col items-center justify-center rounded-card bg-chm-connection/12 px-5 py-4 shadow-[0_8px_28px_-20px_rgba(231,118,79,0.25)] dark:bg-chm-connection/20">
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-connection dark:text-chm-sharing">Due</p>
                 <p className="mt-1 text-3xl font-bold tabular-nums text-chm-precision dark:text-zinc-100">
                   {surveysLoading ? '…' : requiredSurveysPending.length.toLocaleString()}
@@ -635,8 +635,8 @@ export default function Dashboard() {
 
       <section className="w-full space-y-4" aria-label="Featured highlights">
         <div>
-          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-xl">Featured</h2>
-          <p className="mt-1.5 max-w-2xl text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <h2 className="text-lg font-bold tracking-tight text-foreground md:text-xl">Featured</h2>
+          <p className="mt-1.5 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
             Swipe the card or use the dots to rotate highlights.
           </p>
         </div>
@@ -645,7 +645,7 @@ export default function Dashboard() {
           {featuredSlideCount > 0 ? (
             <>
               <div
-                className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:bg-zinc-950 dark:ring-zinc-800"
+                className="overflow-hidden rounded-card bg-background shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:ring-zinc-800"
                 onTouchStart={(e) => {
                   touchStartX.current = e.touches[0].clientX;
                 }}
@@ -682,7 +682,7 @@ export default function Dashboard() {
                         className={[
                           'relative w-full',
                           isPodcastSpotlight
-                            ? 'h-[min(62.4vh,480px)] min-h-[336px] bg-white sm:min-h-[384px] dark:bg-zinc-950'
+                            ? 'h-[min(62.4vh,480px)] min-h-[336px] bg-background sm:min-h-[384px]'
                             : 'h-[min(52vh,400px)] min-h-[280px] sm:min-h-[320px]',
                         ].join(' ')}
                       >
@@ -716,14 +716,14 @@ export default function Dashboard() {
                           <div className="flex flex-wrap items-center gap-3">
                             <Link
                               to={slide.primaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-chm-precision shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
+                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-white px-5 text-sm font-semibold text-chm-precision shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
                             >
                               <PlayCircle className="h-4 w-4" aria-hidden />
                               {slide.primaryCta}
                             </Link>
                             <Link
                               to={slide.secondaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-chm-knowledge px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(61,164,192,0.45)] transition-[background-color,transform] duration-200 hover:bg-chm-expertise active:scale-[0.96] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chm-expertise"
+                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-chm-knowledge px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(61,164,192,0.45)] transition-[background-color,transform] duration-200 hover:bg-chm-expertise active:scale-[0.96] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chm-expertise"
                             >
                               {slide.secondaryCta}
                             </Link>
@@ -851,7 +851,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-pretty text-sm text-zinc-600">
+          <p className="text-pretty text-sm text-muted-foreground">
             Clips and playlists load when the media catalog is connected. You can still open scheduled sessions and surveys below.
           </p>
         </div>
@@ -867,7 +867,7 @@ export default function Dashboard() {
           {webinarsLoading ? (
             <StripRowLoading />
           ) : webinars.length === 0 ? (
-            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-200/55 bg-zinc-50/80 px-4 py-8 text-center shadow-[0_4px_24px_-16px_rgba(0,0,0,0.06)]">
+            <div className="min-w-0 flex-1 rounded-card border border-dashed border-zinc-200/55 bg-zinc-50/80 px-4 py-8 text-center shadow-[0_4px_24px_-16px_rgba(0,0,0,0.06)]">
               <p className="text-sm font-medium text-zinc-800">No sessions listed yet</p>
               <p className="mt-1 text-pretty text-sm text-zinc-600">We post new times here when they are ready.</p>
             </div>
@@ -899,7 +899,7 @@ export default function Dashboard() {
           {officeHoursLoading ? (
             <StripRowLoading />
           ) : officeHours.length === 0 ? (
-            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-200/90 bg-zinc-50/80 px-4 py-8 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]">
+            <div className="min-w-0 flex-1 rounded-card border border-dashed border-zinc-200/90 bg-zinc-50/80 px-4 py-8 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]">
               <p className="text-sm font-medium text-zinc-800">No office hours scheduled yet</p>
               <p className="mt-1 text-pretty text-sm text-zinc-600">When sessions are published, they will appear here.</p>
             </div>

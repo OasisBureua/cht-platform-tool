@@ -57,17 +57,17 @@ export default function Earnings() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <div className="flex items-center gap-2.5 text-gray-900">
+        <div className="flex items-center gap-2.5 text-foreground">
           <Banknote className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
-          <h1 className="text-balance text-2xl font-semibold text-gray-900 md:text-3xl">Your Earnings</h1>
+          <h1 className="text-balance text-2xl font-semibold text-foreground md:text-3xl">Your Earnings</h1>
         </div>
-        <p className="text-pretty text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+        <p className="text-pretty text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
           Balances and activity. Actual payouts are sent through{' '}
           <BillComMark size="sm" className="translate-y-px" />. Open{' '}
           <Link
             to="/app/settings"
             state={{ settingsTab: 'payment' as const }}
-            className="font-medium text-gray-900 underline hover:no-underline"
+            className="font-medium text-foreground underline hover:no-underline"
           >
             Payment Settings
           </Link>{' '}
@@ -76,28 +76,28 @@ export default function Earnings() {
       </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="text-sm text-gray-600">Total Balance</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">${total.toFixed(2)}</p>
-          <p className="mt-1 text-sm text-gray-600 tabular-nums">
+        <div className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="text-sm text-muted-foreground">Total Balance</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">${total.toFixed(2)}</p>
+          <p className="mt-1 text-sm text-muted-foreground tabular-nums">
             {points.toLocaleString()} points = ${total.toFixed(2)}
           </p>
         </div>
 
-        <div className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="text-sm text-gray-600">This Week</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+        <div className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="text-sm text-muted-foreground">This Week</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
             ${(earnings?.currentWeekEarnings ?? 0).toFixed(2)}
           </p>
-          <p className="mt-1 text-sm text-gray-600">Current week earnings</p>
+          <p className="mt-1 text-sm text-muted-foreground">Current week earnings</p>
         </div>
 
-        <div className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="text-sm text-gray-600">Pending Payments</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-gray-900">
+        <div className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="text-sm text-muted-foreground">Pending Payments</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
             ${(earnings?.pendingPayments ?? 0).toFixed(2)}
           </p>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-muted-foreground">
             {earnings?.lastPaymentDate
               ? `Last payment: ${format(new Date(earnings.lastPaymentDate), 'MMM d, yyyy')}`
               : 'No payments yet'}
@@ -105,10 +105,10 @@ export default function Earnings() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+      <section className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-balance text-gray-900">Recent Activity</h2>
-          <span className="text-sm text-gray-600">Last 12 weeks</span>
+          <h2 className="text-base font-semibold text-balance text-foreground">Recent Activity</h2>
+          <span className="text-sm text-muted-foreground">Last 12 weeks</span>
         </div>
 
         <div className="mt-4 h-[280px]">
@@ -123,43 +123,43 @@ export default function Earnings() {
               </LineChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-full flex items-center justify-center text-sm text-gray-600">
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
               No activity yet
             </div>
           )}
         </div>
       </section>
 
-      <section className="rounded-xl border border-gray-100/90 bg-white p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+      <section className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-balance text-gray-900">Payment history</h2>
+          <h2 className="text-base font-semibold text-balance text-foreground">Payment history</h2>
           <Link
             to="/app/payments#payment-history"
-            className="min-h-[44px] shrink-0 rounded-lg px-3 text-sm font-medium text-gray-900 underline transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:no-underline active:scale-[0.96]"
+            className="min-h-[44px] shrink-0 rounded-[6px] px-3 text-sm font-medium text-foreground underline transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:no-underline active:scale-[0.96]"
           >
             Full payment history
           </Link>
         </div>
 
         {paymentHistory.length === 0 ? (
-          <div className="mt-4 border border-dashed border-gray-200 rounded-xl p-8 text-center">
-            <p className="text-sm font-semibold text-gray-900">No payments yet</p>
-            <p className="mt-1 text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+          <div className="mt-4 border border-dashed border-border rounded-card p-8 text-center">
+            <p className="text-sm font-semibold text-foreground">No payments yet</p>
+            <p className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
               Completed honoraria and bonuses appear here after admins process them through{' '}
               <BillComMark size="xs" className="translate-y-px" />.
             </p>
           </div>
         ) : (
-          <ul className="mt-4 divide-y divide-gray-100 border border-gray-100 rounded-xl overflow-hidden">
+          <ul className="mt-4 divide-y divide-gray-100 border border-gray-100 rounded-card overflow-hidden">
             {paymentHistory.slice(0, 8).map((row) => (
               <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{row.title}</p>
-                  <p className="text-xs text-gray-500">{format(new Date(row.date), 'MMM d, yyyy')}</p>
+                  <p className="font-medium text-foreground truncate">{row.title}</p>
+                  <p className="text-xs text-muted-foreground">{format(new Date(row.date), 'MMM d, yyyy')}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-semibold text-gray-900">${row.amount.toFixed(2)}</p>
-                  <p className="text-xs text-gray-500">{row.status}</p>
+                  <p className="font-semibold text-foreground">${row.amount.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">{row.status}</p>
                 </div>
               </li>
             ))}

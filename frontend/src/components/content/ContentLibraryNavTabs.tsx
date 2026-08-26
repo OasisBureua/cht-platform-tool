@@ -6,7 +6,7 @@ function tabClass(active: boolean) {
     'flex flex-col items-center gap-2 transition-colors min-w-[3.5rem]',
     active
       ? 'font-medium text-foreground'
-      : 'text-muted-foreground hover:text-foreground dark:text-muted-foreground dark:hover:text-foreground',
+      : 'text-muted-foreground hover:text-foreground',
   ].join(' ');
 }
 

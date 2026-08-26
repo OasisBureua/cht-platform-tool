@@ -96,7 +96,7 @@ export function ShareButtons({
           <Mail className="h-5 w-5" />
         </a>
       </div>
-      <div className="rounded-card border border-border bg-muted px-3 py-2 text-sm text-gray-800 break-all">{url}</div>
+      <div className="rounded-card border border-border bg-muted px-3 py-2 text-sm text-foreground break-all">{url}</div>
     </div>
   );
 }

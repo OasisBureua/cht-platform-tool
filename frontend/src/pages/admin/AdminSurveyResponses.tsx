@@ -48,7 +48,7 @@ export default function AdminSurveyResponses() {
 
   if (isError || !data) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive">
         Failed to load survey responses.
       </div>
     );
@@ -83,7 +83,7 @@ export default function AdminSurveyResponses() {
     <div className="mx-auto max-w-6xl space-y-6 pb-16">
       <Link
         to="/admin/surveys"
-        className="inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900"
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
         Back to surveys
@@ -91,8 +91,8 @@ export default function AdminSurveyResponses() {
 
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{displayTitle}</h1>
-          <p className="mt-1 text-sm text-gray-600">
+          <h1 className="text-2xl font-semibold text-foreground">{displayTitle}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             {survey.type} survey
             {survey.program ? (
               <>
@@ -100,7 +100,7 @@ export default function AdminSurveyResponses() {
                 ·{' '}
                 <Link
                   to={`/admin/programs/${survey.program.id}/hub?tab=surveys`}
-                  className="font-semibold text-gray-900 underline"
+                  className="font-semibold text-foreground underline"
                 >
                   {survey.program.title}
                 </Link>
@@ -113,7 +113,7 @@ export default function AdminSurveyResponses() {
             type="button"
             onClick={downloadAnalyticsPdf}
             disabled={responses.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
             Download PDF
@@ -123,7 +123,7 @@ export default function AdminSurveyResponses() {
             type="button"
             onClick={() => void downloadCsv()}
             disabled={csvDownloading || responses.length === 0}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
             {csvDownloading ? 'Preparing…' : 'Download CSV'}
@@ -131,7 +131,7 @@ export default function AdminSurveyResponses() {
         )}
       </header>
 
-      <div className="border-b border-gray-200">
+      <div className="border-b border-border">
         <nav className="-mb-px flex gap-6" aria-label="Survey responses views">
           {(
             [
@@ -147,8 +147,8 @@ export default function AdminSurveyResponses() {
               className={[
                 'border-b-2 px-1 pb-3 text-sm font-semibold transition-colors',
                 tab === t.key
-                  ? 'border-gray-900 text-gray-900'
-                  : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700',
+                  ? 'border-gray-900 text-foreground'
+                  : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
               ].join(' ')}
             >
               {t.label}
@@ -160,10 +160,10 @@ export default function AdminSurveyResponses() {
       {tab === 'analytics' ? (
         <SurveyAnalyticsPanel surveyId={id} enabled={tab === 'analytics'} />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-card border border-border bg-card">
           <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-600">
+            <tr className="border-b border-border text-left text-muted-foreground">
               <th className="py-3 px-4">User</th>
               <th className="py-3 px-4">Registration</th>
               <th className="py-3 px-4">Attendance</th>
@@ -176,9 +176,9 @@ export default function AdminSurveyResponses() {
               <tr key={r.id}>
                 <td className="py-3 px-4 align-top">
                   {r.user.firstName} {r.user.lastName}
-                  <div className="text-xs text-gray-500">{r.user.email}</div>
+                  <div className="text-xs text-muted-foreground">{r.user.email}</div>
                   {r.user.specialty ? (
-                    <div className="text-xs text-gray-400">{r.user.specialty}</div>
+                    <div className="text-xs text-muted-foreground">{r.user.specialty}</div>
                   ) : null}
                 </td>
                 <td className="py-3 px-4 align-top">
@@ -192,7 +192,7 @@ export default function AdminSurveyResponses() {
                       {registrationStatusLabel(r.registration.status)}
                     </span>
                   ) : (
-                    <span className="text-gray-500">, </span>
+                    <span className="text-muted-foreground">, </span>
                   )}
                 </td>
                 <td className="py-3 px-4 align-top">
@@ -206,10 +206,10 @@ export default function AdminSurveyResponses() {
                       {attendanceStatusLabel(r.registration.postEventAttendanceStatus)}
                     </span>
                   ) : (
-                    <span className="text-gray-500">, </span>
+                    <span className="text-muted-foreground">, </span>
                   )}
                 </td>
-                <td className="py-3 px-4 align-top text-gray-600 whitespace-nowrap">
+                <td className="py-3 px-4 align-top text-muted-foreground whitespace-nowrap">
                   {format(parseISO(r.submittedAt), 'MMM d, yyyy h:mm a')}
                 </td>
                 <td className="py-3 px-4 align-top">
@@ -220,7 +220,7 @@ export default function AdminSurveyResponses() {
           </tbody>
         </table>
           {responses.length === 0 ? (
-            <p className="text-sm text-gray-500 px-4 py-8 text-center">
+            <p className="text-sm text-muted-foreground px-4 py-8 text-center">
               No responses submitted yet.
             </p>
           ) : null}

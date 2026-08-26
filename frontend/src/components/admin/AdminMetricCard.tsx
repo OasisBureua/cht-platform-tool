@@ -7,11 +7,10 @@ const VARIANT_STYLES: Record<
   { shell: string; label: string; value: string; sub: string }
 > = {
   default: {
-    shell:
-      'border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800/80',
-    label: 'text-gray-600 dark:text-zinc-400',
-    value: 'text-gray-900 dark:text-zinc-50',
-    sub: 'text-gray-500 dark:text-zinc-400',
+    shell: 'border-border bg-card',
+    label: 'text-muted-foreground',
+    value: 'text-foreground',
+    sub: 'text-muted-foreground',
   },
   danger: {
     shell: 'border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30',
@@ -58,7 +57,7 @@ export function AdminMetricCard({
   return (
     <div
       className={[
-        'rounded-2xl border p-4 sm:p-5',
+        'rounded-card border p-4 sm:p-5',
         styles.shell,
         className,
       ].join(' ')}

@@ -71,23 +71,23 @@ export default function ZoomWebinarSettingsFields({
   warning?: string | null;
 }) {
   return (
-    <div className="space-y-3 rounded-xl border border-gray-200 bg-white px-4 py-4">
+    <div className="space-y-3 rounded-card border border-border bg-card px-4 py-4">
       <div>
-        <p className="text-sm font-semibold text-gray-900">Zoom webinar settings</p>
-        <p className="mt-0.5 text-xs text-gray-500">
+        <p className="text-sm font-semibold text-foreground">Zoom webinar settings</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
           These options are written to the Zoom webinar. Backstage is where hosts and
           panelists can join before attendees.
         </p>
       </div>
       {warning ? (
-        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">{warning}</p>
+        <p className="rounded-[6px] bg-amber-50 px-3 py-2 text-xs text-amber-800">{warning}</p>
       ) : null}
       <ul className="divide-y divide-gray-100">
         {ROWS.map((row) => {
           const id = `zoom-setting-${row.key}`;
           return (
             <li key={row.key} className="flex items-start justify-between gap-4 py-2.5 first:pt-0 last:pb-0">
-              <span id={id} className="text-sm text-gray-800">
+              <span id={id} className="text-sm text-foreground">
                 {row.label}
               </span>
               <Toggle

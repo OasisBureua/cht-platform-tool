@@ -25,7 +25,7 @@ export default function AdminCampaignsDashboard() {
           type="button"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-60"
         >
           <RefreshCw
             className={['h-4 w-4', isFetching ? 'animate-spin' : ''].join(' ')}
@@ -51,10 +51,10 @@ export default function AdminCampaignsDashboard() {
 
           <section className="space-y-3">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+              <h2 className="text-lg font-semibold text-foreground">
                 Campaign breakdown
               </h2>
-              <p className="text-xs text-gray-500 dark:text-zinc-400">
+              <p className="text-xs text-muted-foreground">
                 Synced {new Date(data.syncedAt).toLocaleString()}
                 {data.summary.campaignsFromCache != null &&
                 data.summary.campaignsFromCache > 0

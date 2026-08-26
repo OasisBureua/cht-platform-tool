@@ -84,7 +84,7 @@ export function NativeSurveyQuestionEditor({
       {value.sections.map((section, sectionIndex) => (
         <section
           key={section.id}
-          className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50/60 p-4"
+          className="space-y-4 rounded-card border border-border bg-muted/60 p-4"
         >
           <div className="flex items-center gap-3">
             <input
@@ -96,7 +96,7 @@ export function NativeSurveyQuestionEditor({
                 }))
               }
               aria-label={`Section ${sectionIndex + 1} title`}
-              className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold"
+              className="min-w-0 flex-1 rounded-[6px] border border-border bg-card px-3 py-2 text-sm font-semibold"
               placeholder="Section title"
             />
             {value.sections.length > 1 && section.questions.length === 0 ? (
@@ -110,7 +110,7 @@ export function NativeSurveyQuestionEditor({
                     ),
                   })
                 }
-                className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-700"
+                className="rounded-[6px] p-2 text-muted-foreground hover:bg-red-50 hover:text-destructive"
                 aria-label="Delete empty section"
               >
                 <Trash2 className="h-4 w-4" />
@@ -126,10 +126,10 @@ export function NativeSurveyQuestionEditor({
             return (
               <div
                 key={question.id}
-                className="space-y-3 rounded-xl border border-gray-200 bg-white p-4"
+                className="space-y-3 rounded-card border border-border bg-card p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-xs text-gray-400">
+                  <span className="font-mono text-xs text-muted-foreground">
                     {question.id}
                   </span>
                   {locked ? (
@@ -144,7 +144,7 @@ export function NativeSurveyQuestionEditor({
                         moveQuestion(sectionIndex, questionIndex, -1)
                       }
                       disabled={questionIndex === 0}
-                      className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
                       aria-label="Move question up"
                     >
                       <ArrowUp className="h-4 w-4" />
@@ -155,7 +155,7 @@ export function NativeSurveyQuestionEditor({
                         moveQuestion(sectionIndex, questionIndex, 1)
                       }
                       disabled={questionIndex === section.questions.length - 1}
-                      className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-muted disabled:opacity-30"
                       aria-label="Move question down"
                     >
                       <ArrowDown className="h-4 w-4" />
@@ -171,7 +171,7 @@ export function NativeSurveyQuestionEditor({
                         }))
                       }
                       disabled={locked}
-                      className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-30"
+                      className="rounded p-1.5 text-muted-foreground hover:bg-red-50 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-30"
                       aria-label="Delete question"
                       title={
                         locked
@@ -185,7 +185,7 @@ export function NativeSurveyQuestionEditor({
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
-                  <label className="space-y-1 text-xs font-semibold text-gray-600">
+                  <label className="space-y-1 text-xs font-semibold text-muted-foreground">
                     Question type
                     <select
                       value={question.type}
@@ -207,7 +207,7 @@ export function NativeSurveyQuestionEditor({
                             : {}),
                         });
                       }}
-                      className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal disabled:bg-gray-100"
+                      className="block w-full rounded-[6px] border border-border px-3 py-2 text-sm font-normal disabled:bg-muted"
                     >
                       {QUESTION_TYPES.map((type) => (
                         <option key={type.value} value={type.value}>
@@ -216,7 +216,7 @@ export function NativeSurveyQuestionEditor({
                       ))}
                     </select>
                   </label>
-                  <label className="space-y-1 text-xs font-semibold text-gray-600">
+                  <label className="space-y-1 text-xs font-semibold text-muted-foreground">
                     Prompt
                     <input
                       value={question.prompt}
@@ -226,7 +226,7 @@ export function NativeSurveyQuestionEditor({
                           prompt: event.target.value,
                         })
                       }
-                      className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal disabled:bg-gray-100"
+                      className="block w-full rounded-[6px] border border-border px-3 py-2 text-sm font-normal disabled:bg-muted"
                       required
                     />
                   </label>
@@ -234,7 +234,7 @@ export function NativeSurveyQuestionEditor({
 
                 {isChoice ? (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-600">
+                    <p className="text-xs font-semibold text-muted-foreground">
                       Options
                     </p>
                     {(question.options ?? []).map((option, optionIndex) => (
@@ -252,7 +252,7 @@ export function NativeSurveyQuestionEditor({
                               options,
                             });
                           }}
-                          className="min-w-0 flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm disabled:bg-gray-100"
+                          className="min-w-0 flex-1 rounded-[6px] border border-border px-3 py-2 text-sm disabled:bg-muted"
                           required
                         />
                         <button
@@ -267,7 +267,7 @@ export function NativeSurveyQuestionEditor({
                               ),
                             })
                           }
-                          className="rounded p-2 text-gray-400 hover:text-red-700 disabled:opacity-30"
+                          className="rounded p-2 text-muted-foreground hover:text-destructive disabled:opacity-30"
                           aria-label="Delete option"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -285,12 +285,12 @@ export function NativeSurveyQuestionEditor({
                           ],
                         })
                       }
-                      className="text-xs font-semibold text-brand-700 disabled:text-gray-400"
+                      className="text-xs font-semibold text-brand-700 disabled:text-muted-foreground"
                     >
                       + Add option
                     </button>
                     {question.type === 'multi_choice' ? (
-                      <label className="block max-w-xs space-y-1 text-xs font-semibold text-gray-600">
+                      <label className="block max-w-xs space-y-1 text-xs font-semibold text-muted-foreground">
                         Maximum selections
                         <input
                           type="number"
@@ -307,7 +307,7 @@ export function NativeSurveyQuestionEditor({
                               maxSelections: Number(event.target.value),
                             })
                           }
-                          className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal disabled:bg-gray-100"
+                          className="block w-full rounded-[6px] border border-border px-3 py-2 text-sm font-normal disabled:bg-muted"
                         />
                       </label>
                     ) : null}
@@ -316,7 +316,7 @@ export function NativeSurveyQuestionEditor({
 
                 {question.type === 'rating' ? (
                   <div className="grid max-w-sm grid-cols-2 gap-3">
-                    <label className="space-y-1 text-xs font-semibold text-gray-600">
+                    <label className="space-y-1 text-xs font-semibold text-muted-foreground">
                       Minimum
                       <input
                         type="number"
@@ -327,10 +327,10 @@ export function NativeSurveyQuestionEditor({
                             scaleMin: Number(event.target.value),
                           })
                         }
-                        className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal disabled:bg-gray-100"
+                        className="block w-full rounded-[6px] border border-border px-3 py-2 text-sm font-normal disabled:bg-muted"
                       />
                     </label>
-                    <label className="space-y-1 text-xs font-semibold text-gray-600">
+                    <label className="space-y-1 text-xs font-semibold text-muted-foreground">
                       Maximum
                       <input
                         type="number"
@@ -341,14 +341,14 @@ export function NativeSurveyQuestionEditor({
                             scaleMax: Number(event.target.value),
                           })
                         }
-                        className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal disabled:bg-gray-100"
+                        className="block w-full rounded-[6px] border border-border px-3 py-2 text-sm font-normal disabled:bg-muted"
                       />
                     </label>
                   </div>
                 ) : null}
 
                 {question.type !== 'info' ? (
-                  <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                  <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={question.required !== false}
@@ -373,7 +373,7 @@ export function NativeSurveyQuestionEditor({
                 questions: [...current.questions, newQuestion()],
               }))
             }
-            className="inline-flex items-center gap-2 rounded-lg border border-brand-200 bg-white px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
+            className="inline-flex items-center gap-2 rounded-[6px] border border-brand-200 bg-card px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50"
           >
             <Plus className="h-4 w-4" />
             Add question
@@ -396,7 +396,7 @@ export function NativeSurveyQuestionEditor({
             ],
           })
         }
-        className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900"
+        className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
       >
         <Plus className="h-4 w-4" />
         Add section

@@ -91,7 +91,7 @@ export default function CityTypeahead({
             setOpen(false);
           }
         }}
-        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-gray-400 transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:opacity-60"
+        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:opacity-60"
       />
       {open && suggestions.length > 0 ? (
         <ul
@@ -105,7 +105,7 @@ export default function CityTypeahead({
                 type="button"
                 className={[
                   'block w-full px-3 py-2 text-left text-sm',
-                  i === highlight ? 'bg-brand-50 text-brand-900' : 'text-gray-800 hover:bg-muted',
+                  i === highlight ? 'bg-brand-50 text-brand-900' : 'text-foreground hover:bg-muted',
                 ].join(' ')}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(e) => {

@@ -75,7 +75,7 @@ export function ConversationsClipCard({ item, href }: ConversationsClipCardProps
         </p>
         {desc ? (
           <p
-            className="mt-1 line-clamp-1 text-left text-[11px] leading-snug text-muted-foreground [overflow-wrap:anywhere] dark:text-muted-foreground"
+            className="mt-1 line-clamp-1 text-left text-[11px] leading-snug text-muted-foreground [overflow-wrap:anywhere]"
             title={desc}
           >
             {desc}

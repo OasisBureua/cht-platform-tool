@@ -177,10 +177,10 @@ export default function AdminContent() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Content
           </h1>
-          <p className="text-sm text-gray-600 dark:text-zinc-400">
+          <p className="text-sm text-muted-foreground">
             Read-only view of what is currently live on WordPress. Authoring stays in WordPress Admin.
           </p>
         </div>
@@ -188,7 +188,7 @@ export default function AdminContent() {
           type="button"
           onClick={onRefresh}
           disabled={isFetching}
-          className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
         >
           <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
           Refresh from WordPress
@@ -198,14 +198,14 @@ export default function AdminContent() {
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
         <div className="relative min-w-[220px] flex-1">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
           />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search posts…"
-            className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+            className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
           />
         </div>
         <select
@@ -214,7 +214,7 @@ export default function AdminContent() {
             setCategory(e.target.value);
             setOffset(0);
           }}
-          className="min-w-[180px] rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          className="min-w-[180px] rounded-xl border border-border bg-card px-3 py-2.5 text-sm font-medium text-foreground"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -225,7 +225,7 @@ export default function AdminContent() {
         </select>
       </div>
 
-      <div className="flex items-center justify-between gap-3 text-sm text-gray-600 dark:text-zinc-400">
+      <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
         <span>
           {isLoading
             ? 'Loading…'
@@ -245,7 +245,7 @@ export default function AdminContent() {
             type="button"
             disabled={!canPrev || isFetching}
             onClick={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium disabled:opacity-40 dark:border-zinc-700"
+            className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-40"
           >
             Previous
           </button>
@@ -253,7 +253,7 @@ export default function AdminContent() {
             type="button"
             disabled={!canNext || isFetching}
             onClick={() => setOffset((o) => o + PAGE_SIZE)}
-            className="rounded-lg border border-gray-200 px-3 py-1.5 font-medium disabled:opacity-40 dark:border-zinc-700"
+            className="rounded-lg border border-border px-3 py-1.5 font-medium disabled:opacity-40"
           >
             Next
           </button>
@@ -261,7 +261,7 @@ export default function AdminContent() {
       </div>
 
       {isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive dark:border-red-900/50 dark:bg-red-950/40">
           {(() => {
             const status = (error as { response?: { status?: number } } | null)
               ?.response?.status;
@@ -273,14 +273,14 @@ export default function AdminContent() {
         </div>
       ) : isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       ) : items.length === 0 ? (
-        <p className="py-12 text-center text-sm text-gray-600 dark:text-zinc-400">
+        <p className="py-12 text-center text-sm text-muted-foreground">
           No WordPress posts match these filters.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+        <ul className="divide-y divide-gray-100 overflow-hidden rounded-card border border-border bg-card dark:divide-zinc-800">
           {items.map((post) => (
             <PostRow key={post.post_id} post={post} />
           ))}
@@ -320,7 +320,7 @@ function PostRow({ post }: { post: WordPressPostItem }) {
       <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0 space-y-1">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-zinc-100">
+            <h2 className="text-base font-semibold text-foreground">
               {post.permalink ? (
                 <a
                   href={post.permalink}
@@ -335,7 +335,7 @@ function PostRow({ post }: { post: WordPressPostItem }) {
                 <span className="line-clamp-2">{title}</span>
               )}
             </h2>
-            <p className="text-xs text-gray-500 dark:text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               #{post.post_id} · {post.slug} · updated {formatModified(post.modified_gmt)}
             </p>
           </div>
@@ -364,7 +364,7 @@ function PostRow({ post }: { post: WordPressPostItem }) {
             {tags.slice(0, 6).map((t) => (
               <span
                 key={`t-${t}`}
-                className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700 dark:bg-zinc-800 dark:text-zinc-300"
+                className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
               >
                 {t}
               </span>

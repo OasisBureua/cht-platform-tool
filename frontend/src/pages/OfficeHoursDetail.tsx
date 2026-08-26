@@ -86,11 +86,11 @@ export default function OfficeHoursDetail() {
 
   if (sessionError || !session) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Session not found</p>
+      <div className="rounded-card border border-border bg-muted p-10 text-center">
+        <p className="font-semibold text-foreground">Session not found</p>
         <Link
           to="/app/chm-office-hours"
-          className="mt-5 inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
+          className="mt-5 inline-flex rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
         >
           Back to CHM Office Hours
         </Link>
@@ -107,36 +107,36 @@ export default function OfficeHoursDetail() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back
         </button>
       ) : null}
 
-      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-        <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-semibold text-gray-700">
+      <div className="bg-card border border-border rounded-card p-6 space-y-4">
+        <span className="inline-flex rounded-[6px] border border-border bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
           CHM Office Hours
         </span>
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{session.title}</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold text-foreground">{session.title}</h1>
         {session.hostDisplayName ? (
-          <p className="text-sm font-medium text-gray-800">Get time with {session.hostDisplayName}</p>
+          <p className="text-sm font-medium text-foreground">Get time with {session.hostDisplayName}</p>
         ) : null}
         {start && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {format(start, 'EEEE, MMMM d, yyyy · h:mm a')}
             {session.duration ? ` · ${session.duration} min` : ''}
           </p>
         )}
-        <p className="text-gray-600 whitespace-pre-wrap">{session.description}</p>
+        <p className="text-muted-foreground whitespace-pre-wrap">{session.description}</p>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="note">
+        <div className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="note">
           <strong>Confidentiality notice:</strong> CHM Office Hours are not conducted over a HIPAA-enabled environment.
           Please do not disclose patient-identifiable information during these sessions.
         </div>
 
         {!enrolled ? (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <strong>How it works:</strong> Complete registration (and pick a time slot if offered). An administrator
             approves your request; then join from this page via Zoom when it&apos;s time. You may wait briefly until the
             host admits you.
@@ -144,11 +144,11 @@ export default function OfficeHoursDetail() {
         ) : null}
 
         {programLoading ? (
-          <p className="text-sm text-gray-500">Loading…</p>
+          <p className="text-sm text-muted-foreground">Loading…</p>
         ) : (
           <div className="flex flex-col gap-3 pt-2">
             {registrationPendingApproval ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+              <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-4">
                 <div className="flex items-start gap-3">
                   <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-amber-400 flex items-center justify-center">
                     <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
@@ -162,7 +162,7 @@ export default function OfficeHoursDetail() {
                 </div>
               </div>
             ) : enrolled ? (
-              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-4">
+              <div className="rounded-card border border-green-200 bg-green-50 px-4 py-4">
                 <div className="flex items-start gap-3">
                   <svg className="mt-0.5 h-5 w-5 shrink-0 text-green-600" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -174,16 +174,16 @@ export default function OfficeHoursDetail() {
                 </div>
               </div>
             ) : registrationClosed ? (
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4">
-                <p className="text-sm font-semibold text-gray-900">Registration closed</p>
-                <p className="mt-0.5 text-sm text-gray-700">
+              <div className="rounded-card border border-border bg-muted px-4 py-4">
+                <p className="text-sm font-semibold text-foreground">Registration closed</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   This session has already started. New registrations are no longer accepted.
                 </p>
               </div>
             ) : needsRegistrationWizard ? (
               <Link
                 to={`/app/chm-office-hours/${id}/register`}
-                className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                className="inline-flex w-fit items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 Register for this session
               </Link>
@@ -192,7 +192,7 @@ export default function OfficeHoursDetail() {
                 type="button"
                 onClick={() => enrollMutation.mutate()}
                 disabled={!userId || enrollMutation.isPending}
-                className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
+                className="inline-flex w-fit items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
               >
                 {enrollMutation.isPending ? 'Saving…' : 'Register for this session'}
               </button>
@@ -203,7 +203,7 @@ export default function OfficeHoursDetail() {
                 <div className="flex flex-wrap gap-2">
                   <Link
                     to={`/app/chm-office-hours/${id}/session?returnTo=${encodeURIComponent(`/app/chm-office-hours/${id}`)}`}
-                    className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                    className="inline-flex w-fit items-center justify-center gap-2 rounded-[6px] border border-gray-900 bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
                   >
                     <MonitorPlay className="h-4 w-4" />
                     Join in browser
@@ -212,7 +212,7 @@ export default function OfficeHoursDetail() {
                     href={session.joinUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    className="inline-flex w-fit items-center justify-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted"
                   >
                     Open in Zoom
                     <ExternalLink className="h-4 w-4 opacity-80" />
@@ -222,7 +222,7 @@ export default function OfficeHoursDetail() {
                 <button
                   type="button"
                   disabled
-                  className="inline-flex w-fit cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-500"
+                  className="inline-flex w-fit cursor-not-allowed items-center justify-center gap-2 rounded-[6px] border border-border bg-muted px-4 py-2.5 text-sm font-semibold text-muted-foreground"
                   title="Available after an administrator approves your registration."
                 >
                   <Video className="h-4 w-4" />
@@ -231,14 +231,14 @@ export default function OfficeHoursDetail() {
                 </button>
               ) : null
             ) : (
-              <p className="text-sm text-gray-500">Join link will appear here when available.</p>
+              <p className="text-sm text-muted-foreground">Join link will appear here when available.</p>
             )}
             {user?.role === 'ADMIN' && id ? (
-              <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
+              <div className="rounded-[6px] border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
                 <p className="text-xs font-semibold text-violet-900">Admin: start as Zoom host</p>
                 <Link
                   to={`/app/chm-office-hours/${id}/session?host=1&returnTo=${encodeURIComponent(`/app/chm-office-hours/${id}`)}`}
-                  className="inline-flex w-fit items-center justify-center gap-2 rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
+                  className="inline-flex w-fit items-center justify-center gap-2 rounded-[6px] border border-violet-300 bg-white px-4 py-2 text-sm font-semibold text-violet-950 hover:bg-violet-100"
                 >
                   <MonitorPlay className="h-4 w-4" />
                   Start as host in browser
@@ -249,11 +249,11 @@ export default function OfficeHoursDetail() {
         )}
 
         {!enrolled && userId && !registrationPendingApproval && (
-          <p className="text-xs text-gray-500">Register once, then join your session directly from here.</p>
+          <p className="text-xs text-muted-foreground">Register once, then join your session directly from here.</p>
         )}
 
         {program && userId ? (
-          <div className="border-t border-gray-200 pt-6">
+          <div className="border-t border-border pt-6">
             <PostEventParticipantFlow
               program={program}
               userId={userId}
@@ -268,8 +268,8 @@ export default function OfficeHoursDetail() {
         program &&
         (program.jotformSurveyUrl?.trim() || program.honorariumAmount) &&
         !isPostEventSurveyUnlocked(program) ? (
-          <div className="border-t border-gray-200 pt-6 text-sm text-gray-600">
-            <p className="font-medium text-gray-900">Post-event steps</p>
+          <div className="border-t border-border pt-6 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Post-event steps</p>
             <p className="mt-1">Additional steps unlock after the scheduled session window (or when attendance is verified).</p>
           </div>
         ) : null}

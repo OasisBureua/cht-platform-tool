@@ -19,7 +19,7 @@ export function LegalPageShell({
           <p className="text-sm text-muted-foreground max-w-3xl leading-relaxed">{intro}</p>
         </header>
 
-        <div className="mt-8 rounded-3xl border border-border bg-card p-6 sm:p-8 space-y-6">
+        <div className="mt-8 rounded-card border border-border bg-card p-6 sm:p-8 space-y-6">
           {children}
         </div>
       </div>

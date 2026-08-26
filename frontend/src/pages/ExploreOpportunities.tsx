@@ -237,20 +237,20 @@ export default function ExploreOpportunities() {
 
   return (
     <div className="space-y-6 min-w-0">
-      <div className="flex items-center gap-2.5 text-gray-900">
+      <div className="flex items-center gap-2.5 text-foreground">
         <Compass className="h-5 w-5 text-brand-700 dark:text-brand-400" strokeWidth={2} aria-hidden />
-        <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Explore Opportunities</h1>
+        <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">Explore Opportunities</h1>
       </div>
 
       {/* Search + Filters */}
       <div className="flex flex-col md:flex-row gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by title, topic, or description..."
-            className="w-full rounded-xl border border-gray-200 bg-white pl-11 pr-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+            className="w-full rounded-card border border-border bg-card pl-11 pr-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
           />
         </div>
       </div>
@@ -261,8 +261,8 @@ export default function ExploreOpportunities() {
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex min-h-[44px] flex-col items-center gap-1 rounded-xl border px-6 py-4 text-sm font-medium transition-[color,background-color,border-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] ${
-              tab === key ? 'border-gray-900 bg-gray-100 text-gray-900' : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+            className={`flex min-h-[44px] flex-col items-center gap-1 rounded-card border px-6 py-4 text-sm font-medium transition-[color,background-color,border-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] ${
+              tab === key ? 'border-gray-900 bg-muted text-foreground' : 'border-border bg-card text-muted-foreground hover:border-border hover:bg-muted'
             }`}
           >
             <Icon className="h-6 w-6" />
@@ -273,18 +273,18 @@ export default function ExploreOpportunities() {
 
       {/* Content grid */}
       {showClipsError ? (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-12 text-center">
+        <div className="rounded-card border border-amber-200 bg-amber-50 p-12 text-center">
           <p className="text-amber-800 font-medium mb-2">Search temporarily unavailable</p>
           <p className="text-sm text-amber-700">Try a shorter search term or try again in a moment.</p>
         </div>
       ) : isLoading ? (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-2xl border border-gray-200 bg-gray-50 p-12 text-center">
-          <p className="text-gray-600 mb-2">No opportunities found</p>
-          <p className="text-sm text-gray-500">
+        <div className="rounded-card border border-border bg-muted p-12 text-center">
+          <p className="text-muted-foreground mb-2">No opportunities found</p>
+          <p className="text-sm text-muted-foreground">
             {query ? 'Try a different search term or clear the filter.' : 'Content will appear here once configured.'}
           </p>
         </div>
@@ -301,7 +301,7 @@ export default function ExploreOpportunities() {
             return (
             <div
               key={item.id}
-              className="flex flex-col overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_36px_-14px_rgba(0,0,0,0.1)]"
+              className="flex flex-col overflow-hidden rounded-card border border-gray-100/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_36px_-14px_rgba(0,0,0,0.1)]"
             >
               <div className="h-44 shrink-0">
                 <img
@@ -314,7 +314,7 @@ export default function ExploreOpportunities() {
               </div>
               <div className="p-4 flex flex-col flex-1 min-h-0">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                  <span className="rounded-[6px] bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                     {item.type === 'webinar' && 'Live'}
                     {item.type === 'clip' && 'Video'}
                     {item.type === 'playlist' && 'Playlist'}
@@ -322,32 +322,32 @@ export default function ExploreOpportunities() {
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <h3 className="line-clamp-2 text-balance font-bold text-gray-900 flex-1 min-w-[8rem]">{item.title}</h3>
+                  <h3 className="line-clamp-2 text-balance font-bold text-foreground flex-1 min-w-[8rem]">{item.title}</h3>
                   {webinarBadge ? (
-                    <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+                    <span className="shrink-0 rounded-[6px] border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
                       {webinarBadge}
                     </span>
                   ) : null}
                 </div>
                 <div className="flex-1 min-h-0 mt-2">
                   {item.type === 'clip' && item.subtitle ? (
-                    <p className="text-sm text-gray-600 line-clamp-2">{item.subtitle}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{item.subtitle}</p>
                   ) : item.type === 'playlist' && item.videoNames?.length ? (
                     <ul className="space-y-1">
                       {item.videoNames.slice(0, 3).map((v, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                        <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                           <span className="h-1 w-1 rounded-full bg-gray-400" />
                           {v}
                         </li>
                       ))}
                     </ul>
                   ) : item.type === 'clip' ? null : (
-                    <p className="text-sm text-gray-600 line-clamp-2">{item.description || item.title}</p>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{item.description || item.title}</p>
                   )}
                 </div>
                 <Link
                   to={item.href}
-                  className="mt-4 inline-flex w-fit rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                  className="mt-4 inline-flex w-fit rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   {item.type === 'survey' ? 'Join' : item.type === 'webinar' ? 'View Session' : 'Conversations'}
                 </Link>

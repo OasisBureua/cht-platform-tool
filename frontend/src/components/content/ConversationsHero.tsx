@@ -67,7 +67,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             <Link
               to={playHref}
               state={{ clip }}
-              className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-card px-5 text-sm font-semibold text-foreground shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
+              className="hero-play-btn inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-white px-5 text-sm font-semibold text-gray-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/95 active:scale-[0.96]"
             >
               <Play className="h-4 w-4 shrink-0" aria-hidden fill="currentColor" />
               Play
@@ -75,7 +75,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             <Link
               to={playHref}
               state={{ clip }}
-              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md border border-white/20 bg-white/10 px-5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/20 active:scale-[0.96]"
+              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] border border-white/20 bg-white/10 px-5 text-sm font-semibold text-white shadow-[0_0_0_1px_rgba(255,255,255,0.06)] backdrop-blur-sm transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white/20 active:scale-[0.96]"
             >
               <Info className="h-4 w-4 shrink-0" aria-hidden />
               More detail
@@ -97,7 +97,7 @@ export function ConversationsHeroSkeleton() {
         <div className="mb-2 h-3 w-24 animate-pulse rounded bg-zinc-300/80" />
         <div className="mb-2 h-8 w-4/5 max-w-md animate-pulse rounded bg-zinc-300/80" />
         <div className="mb-2 h-3 w-full max-w-sm animate-pulse rounded bg-zinc-300/60" />
-        <div className="mt-4 h-10 w-28 animate-pulse rounded-md bg-zinc-300/80" />
+        <div className="mt-4 h-10 w-28 animate-pulse rounded-[6px] bg-zinc-300/80" />
       </div>
     </div>
   );

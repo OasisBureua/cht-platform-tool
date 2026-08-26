@@ -111,8 +111,8 @@ export default function AdminCampaignDetail() {
     return (
       <div className="space-y-4">
         <BackLink />
-        <div className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-800/50">
-          <p className="text-sm text-gray-600 dark:text-zinc-400">
+        <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
+          <p className="text-sm text-muted-foreground">
             Campaign not found in the current dashboard snapshot.
           </p>
           <Link
@@ -141,7 +141,7 @@ export default function AdminCampaignDetail() {
         <BackLink />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-balance text-xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 md:text-2xl">
+            <h1 className="text-balance text-xl font-bold tracking-tight text-foreground md:text-2xl">
               {campaign.name}
             </h1>
             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -154,7 +154,7 @@ export default function AdminCampaignDetail() {
                 {dataSourceLabel(campaign.dataSource)}
               </span>
               {(campaign.contentHubCampaignStatus ?? campaign.status) ? (
-                <span className="text-xs text-gray-500 dark:text-zinc-400">
+                <span className="text-xs text-muted-foreground">
                   {campaign.contentHubCampaignStatus ?? campaign.status}
                 </span>
               ) : null}
@@ -196,7 +196,7 @@ export default function AdminCampaignDetail() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+        <h2 className="text-lg font-semibold text-foreground">
           Campaign metrics
         </h2>
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
@@ -206,7 +206,7 @@ export default function AdminCampaignDetail() {
               label={label}
               value={formatCount(campaign.metrics[key] ?? 0)}
               sub={sub}
-              icon={<Icon className="h-5 w-5 text-gray-500 dark:text-zinc-400" />}
+              icon={<Icon className="h-5 w-5 text-muted-foreground" />}
             />
           ))}
         </div>
@@ -268,19 +268,19 @@ export default function AdminCampaignDetail() {
 
       {assetEntries.length > 0 ? (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+          <h2 className="text-lg font-semibold text-foreground">
             HubSpot assets
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {assetEntries.map(([type, count]) => (
               <div
                 key={type}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800/50"
+                className="rounded-xl border border-border bg-card px-4 py-3"
               >
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-zinc-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   {type.replace(/_/g, ' ')}
                 </p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums text-gray-900 dark:text-zinc-100">
+                <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
                   {formatCount(count)}
                 </p>
               </div>
@@ -290,7 +290,7 @@ export default function AdminCampaignDetail() {
       ) : null}
 
       <section className="space-y-4">
-        <div className="border-b border-gray-200 dark:border-zinc-700">
+        <div className="border-b border-border">
           <nav className="-mb-px flex flex-wrap gap-x-6 gap-y-1" aria-label="Campaign detail views">
             {(
               [
@@ -331,12 +331,12 @@ export default function AdminCampaignDetail() {
                 className={[
                   'border-b-2 px-1 pb-3 text-sm font-semibold transition-colors',
                   tab === item.key
-                    ? 'border-gray-900 text-gray-900 dark:border-zinc-100 dark:text-zinc-100'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-zinc-400 dark:hover:border-zinc-600 dark:hover:text-zinc-200',
+                    ? 'border-gray-900 text-foreground dark:border-zinc-100'
+                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
                 ].join(' ')}
               >
                 {item.label}
-                <span className="ml-2 tabular-nums text-xs font-medium text-gray-400 dark:text-zinc-500">
+                <span className="ml-2 tabular-nums text-xs font-medium text-muted-foreground">
                   {formatCount(item.count)}
                 </span>
               </button>
@@ -359,7 +359,7 @@ export default function AdminCampaignDetail() {
 
       {(campaign.warnings.length > 0 || campaign.errors.length > 0) && (
         <section className="space-y-2">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Notes</h2>
+          <h2 className="text-lg font-semibold text-foreground">Notes</h2>
           {campaign.warnings.map((warning) => (
             <div
               key={warning}
@@ -386,7 +386,7 @@ function BackLink() {
   return (
     <Link
       to="/admin/campaigns-dashboard"
-      className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+      className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden />
       Campaigns Dashboard

@@ -35,7 +35,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   return (
     <div className="relative isolate">
       <div
-        className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:bg-zinc-950 dark:ring-zinc-800"
+        className="overflow-hidden rounded-card bg-background shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:ring-zinc-800"
         onTouchStart={(e) => {
           touchStartX.current = e.touches[0].clientX;
         }}
@@ -81,14 +81,14 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
                   <div className="flex flex-wrap items-center gap-3">
                     <Link
                       to={`/app/podcasts/${show.id}`}
-                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
+                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
                     >
                       <PlayCircle className="h-4 w-4" aria-hidden />
                       Open series
                     </Link>
                     <a
                       href="#podcast-catalog"
-                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(0,124,255,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
+                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(0,124,255,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
                     >
                       Full catalog
                     </a>
@@ -144,7 +144,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
               referrerPolicy="no-referrer"
             />
           </div>
-          <p className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-tight text-zinc-800 dark:text-zinc-200">
+          <p className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-tight text-foreground">
             {show.title}
           </p>
         </Link>
@@ -157,7 +157,7 @@ function CatalogShowCard({ show }: { show: PodcastShow }) {
   return (
     <Link
       to={`/app/podcasts/${show.id}`}
-      className="group flex gap-4 overflow-hidden rounded-2xl bg-white p-4 shadow-[0_10px_36px_-24px_rgba(15,23,42,0.14)] ring-1 ring-zinc-200/90 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-22px_rgba(15,23,42,0.16)] active:scale-[0.995] dark:bg-zinc-950 dark:ring-zinc-800 sm:gap-5 sm:p-5"
+      className="group flex gap-4 overflow-hidden rounded-card bg-background p-4 shadow-[0_10px_36px_-24px_rgba(15,23,42,0.14)] ring-1 ring-zinc-200/90 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-22px_rgba(15,23,42,0.16)] active:scale-[0.995] dark:ring-zinc-800 sm:gap-5 sm:p-5"
     >
       <img
         src={show.logo ?? show.image}
@@ -175,10 +175,10 @@ function CatalogShowCard({ show }: { show: PodcastShow }) {
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel-700 dark:text-steel-300">
           {show.category}
         </p>
-        <h3 className="mt-1 text-balance text-lg font-extrabold tracking-tight text-zinc-900 group-hover:underline dark:text-zinc-100 sm:text-xl">
+        <h3 className="mt-1 text-balance text-lg font-extrabold tracking-tight text-foreground group-hover:underline sm:text-xl">
           {show.title}
         </h3>
-        <p className="mt-1 line-clamp-2 text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+        <p className="mt-1 line-clamp-2 text-pretty text-sm leading-relaxed text-muted-foreground">
           {show.tagline}
         </p>
         <p className="mt-2 text-xs font-semibold text-steel-700 dark:text-steel-400">
@@ -196,7 +196,7 @@ function WorthListenCard({ show, episode }: { show: PodcastShow; episode: Podcas
     : `/app/podcasts/${show.id}`;
 
   return (
-    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_12px_36px_-20px_rgba(0,0,0,0.15)] ring-1 ring-zinc-200/90 sm:max-h-[300px] dark:bg-zinc-950 dark:ring-zinc-800 dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
+    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-card bg-background shadow-[0_12px_36px_-20px_rgba(0,0,0,0.15)] ring-1 ring-zinc-200/90 sm:max-h-[300px] dark:ring-zinc-800 dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
       <img
         src={show.image}
         alt=""
@@ -225,7 +225,7 @@ function WorthListenCard({ show, episode }: { show: PodcastShow; episode: Podcas
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Link
             to={playHref}
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-white px-4 text-xs font-semibold text-zinc-900 shadow-md transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.98] sm:text-sm"
+            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-[6px] bg-white px-4 text-xs font-semibold text-zinc-900 shadow-md transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.98] sm:text-sm"
           >
             <Play className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" aria-hidden />
             {episode.duration || 'Play'}
@@ -250,13 +250,13 @@ export default function Podcasts() {
     <div className="flex flex-col gap-6 pb-24 md:gap-8 md:pb-16">
       <header>
         <div>
-          <div className="mb-2 flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
+          <div className="mb-2 flex items-center gap-2.5 text-foreground">
             <Mic2 className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
-            <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">
+            <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               Podcasts
             </h1>
           </div>
-          <p className="max-w-2xl text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <p className="max-w-2xl text-pretty text-sm font-normal leading-relaxed text-muted-foreground">
             Browse CHM audio like a catalog: new drops, featured episodes, and every series in one place.
           </p>
         </div>
@@ -272,10 +272,10 @@ export default function Podcasts() {
 
       {/* Worth the Watch analogue: tall hero cards */}
       <section aria-labelledby="podcasts-worth" className="space-y-3">
-        <h2 id="podcasts-worth" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+        <h2 id="podcasts-worth" className="text-lg font-bold tracking-tight text-foreground">
           Worth the listen
         </h2>
-        <p className="-mt-1 max-w-2xl text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="-mt-1 max-w-2xl text-sm text-muted-foreground">
           Latest standout episodes: full art, quick play, then open the show page for the full run.
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -288,7 +288,7 @@ export default function Podcasts() {
       {/* Compact thumb row */}
       <section aria-labelledby="podcasts-top" className="space-y-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="podcasts-top" className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h2 id="podcasts-top" className="text-lg font-bold tracking-tight text-foreground">
             Top shows
           </h2>
           <a
@@ -304,8 +304,8 @@ export default function Podcasts() {
       {/* Full catalog: cards open dedicated show pages */}
       <div id="podcast-catalog" className="scroll-mt-24 space-y-4 md:space-y-5">
         <div className="pt-6">
-          <h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">All series</h2>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">All series</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Open a show for its full episode list and listen links.
           </p>
         </div>
@@ -317,7 +317,7 @@ export default function Podcasts() {
       </div>
 
       <section
-        className="overflow-hidden rounded-2xl bg-gradient-to-b from-zinc-50/95 to-zinc-100/80 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.1),0_4px_20px_-16px_rgba(15,23,42,0.06)] dark:from-zinc-900/90 dark:to-zinc-950/95 dark:shadow-[0_16px_48px_-28px_rgba(0,0,0,0.55),0_8px_28px_-20px_rgba(0,0,0,0.35)]"
+        className="overflow-hidden rounded-card bg-gradient-to-b from-zinc-50/95 to-zinc-100/80 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.1),0_4px_20px_-16px_rgba(15,23,42,0.06)] dark:from-zinc-900/90 dark:to-zinc-950/95 dark:shadow-[0_16px_48px_-28px_rgba(0,0,0,0.55),0_8px_28px_-20px_rgba(0,0,0,0.35)]"
         aria-label="Upcoming series"
       >
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:gap-6 sm:p-6 md:p-8">
@@ -334,20 +334,20 @@ export default function Podcasts() {
             </div>
           </div>
           <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <h2 className="text-balance text-xl font-bold text-zinc-900 dark:text-zinc-100">{UPCOMING_PLACEHOLDER.title}</h2>
-            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-zinc-600 dark:text-zinc-400">
+            <h2 className="text-balance text-xl font-bold text-foreground">{UPCOMING_PLACEHOLDER.title}</h2>
+            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-muted-foreground">
               {UPCOMING_PLACEHOLDER.tagline}
             </p>
             <button
               type="button"
-              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-zinc-800 shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-900 dark:text-zinc-200 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
+              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-[6px] bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
               disabled
               aria-disabled
             >
               <Bell className="h-4 w-4 shrink-0" aria-hidden />
               Notify me when live
             </button>
-            <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
+            <p className="mt-2 text-xs text-muted-foreground">
               We will use the email on your account when this goes live.
             </p>
           </div>

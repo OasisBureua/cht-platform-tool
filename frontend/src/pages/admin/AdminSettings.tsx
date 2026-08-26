@@ -66,8 +66,8 @@ export default function AdminSettings() {
   return (
     <div className="space-y-8 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Settings</h1>
-        <p className="text-sm text-gray-600">Manage your account and platform-wide configuration.</p>
+        <h1 className="text-2xl font-semibold text-foreground">Settings</h1>
+        <p className="text-sm text-muted-foreground">Manage your account and platform-wide configuration.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -76,10 +76,10 @@ export default function AdminSettings() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Profile */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-5">
+          <section className="rounded-card border border-border bg-card p-6 space-y-5">
             <div className="flex items-center gap-2">
-              <User className="h-5 w-5 text-gray-500" />
-              <h2 className="text-base font-semibold text-gray-900">Your Profile</h2>
+              <User className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-base font-semibold text-foreground">Your Profile</h2>
             </div>
 
             <div className="flex items-center gap-4">
@@ -87,49 +87,49 @@ export default function AdminSettings() {
                 <span className="text-lg font-bold text-white">{initials}</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">{displayName}</p>
-                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                <p className="font-semibold text-foreground">{displayName}</p>
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                   <Shield className="h-3 w-3" /> Admin
                 </span>
               </div>
             </div>
 
             {isLoading ? (
-              <div className="h-24 animate-pulse rounded-lg bg-gray-100" />
+              <div className="h-24 animate-pulse rounded-lg bg-muted" />
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">First Name</label>
                   <input
                     type="text"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Last Name</label>
                   <input
                     type="text"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Email</label>
                   <input
                     value={profile?.email ?? user?.email ?? ''}
                     readOnly
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50 text-gray-500"
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-muted text-muted-foreground"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Role</label>
                   <input
                     value="ADMIN"
                     readOnly
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-gray-50 text-gray-500"
+                    className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-muted text-muted-foreground"
                   />
                 </div>
                 <div className="sm:col-span-2 flex items-center gap-3">
@@ -140,18 +140,18 @@ export default function AdminSettings() {
                   >
                     {saving ? 'Saving…' : 'Save Changes'}
                   </button>
-                  {saved && <span className="text-sm text-green-600 font-medium">Saved ✓</span>}
-                  {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+                  {saved && <span className="text-sm text-success font-medium">Saved ✓</span>}
+                  {saveError && <span className="text-sm text-destructive">{saveError}</span>}
                 </div>
               </div>
             )}
           </section>
 
           {/* Platform Controls */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-5">
+          <section className="rounded-card border border-border bg-card p-6 space-y-5">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-gray-500" />
-              <h2 className="text-base font-semibold text-gray-900">Platform Controls</h2>
+              <Shield className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-base font-semibold text-foreground">Platform Controls</h2>
             </div>
             <div className="divide-y divide-gray-100">
               <ControlRow
@@ -185,8 +185,8 @@ export default function AdminSettings() {
 
         {/* Right column */}
         <div className="space-y-4">
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900">Quick Actions</h3>
+          <section className="rounded-card border border-border bg-card p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Quick Actions</h3>
             <div className="space-y-2">
               <ActionButton label="Manage Users" href="/admin/users" />
               <ActionButton label="View Payments" href="/admin/payments" />
@@ -195,23 +195,23 @@ export default function AdminSettings() {
               <ActionButton label="Webinar Scheduler" href="/admin/webinar-scheduler" />
               <button
                 onClick={handleLogout}
-                className="flex w-full items-center gap-2 rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                className="flex w-full items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-destructive hover:bg-red-50 transition-colors"
               >
                 <LogOut className="h-4 w-4" /> Sign Out
               </button>
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Account Info</h3>
+          <section className="rounded-card border border-border bg-card p-5">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Account Info</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Role</span>
-                <span className="font-medium text-gray-900">Admin</span>
+                <span className="text-muted-foreground">Role</span>
+                <span className="font-medium text-foreground">Admin</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Email</span>
-                <span className="font-medium text-gray-900 truncate max-w-[140px]">{profile?.email ?? user?.email ?? '-'}</span>
+                <span className="text-muted-foreground">Email</span>
+                <span className="font-medium text-foreground truncate max-w-[140px]">{profile?.email ?? user?.email ?? '-'}</span>
               </div>
             </div>
           </section>
@@ -243,13 +243,13 @@ function ControlRow({
       className="flex items-center justify-between gap-4 py-3 group"
     >
       <div className="flex items-start gap-3">
-        <span className="mt-0.5 text-gray-400 group-hover:text-gray-700 transition-colors">{icon}</span>
+        <span className="mt-0.5 text-muted-foreground group-hover:text-foreground transition-colors">{icon}</span>
         <div>
-          <p className="text-sm font-medium text-gray-900">{label}</p>
-          <p className="text-xs text-gray-500">{description}</p>
+          <p className="text-sm font-medium text-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <ExternalLink className="h-4 w-4 text-gray-300 group-hover:text-gray-500 shrink-0 transition-colors" />
+      <ExternalLink className="h-4 w-4 text-gray-300 group-hover:text-muted-foreground shrink-0 transition-colors" />
     </Tag>
   );
 }
@@ -258,7 +258,7 @@ function ActionButton({ label, href }: { label: string; href: string }) {
   return (
     <a
       href={href}
-      className="flex w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+      className="flex w-full rounded-lg border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors"
     >
       {label}
     </a>

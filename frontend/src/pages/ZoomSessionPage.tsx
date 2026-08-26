@@ -92,14 +92,14 @@ export default function ZoomSessionPage({
         <button
           type="button"
           onClick={goBack}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-200 hover:bg-white/10"
+          className="inline-flex items-center gap-1.5 rounded-[6px] px-2 py-1.5 text-sm font-medium text-gray-200 hover:bg-white/10"
         >
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{title}</p>
-          <p className="truncate text-[11px] text-gray-400">
+          <p className="truncate text-[11px] text-white/70">
             {hostRequested ? 'Starting as Zoom host' : 'In-browser Zoom session'}
           </p>
         </div>

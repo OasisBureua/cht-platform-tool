@@ -39,35 +39,35 @@ export default function AdminUsers() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">User Management</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           View users, promote to KOL or Admin, or delete HCP/KOL accounts. Admin accounts cannot be removed here. Admins use
           /admin/login to sign in.
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+      <div className="bg-card rounded-card border border-border p-6">
         <div className="flex items-center gap-2 mb-4">
-          <Search className="h-5 w-5 text-gray-500" />
-          <h2 className="text-lg font-semibold text-gray-900">All Users</h2>
+          <Search className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-lg font-semibold text-foreground">All Users</h2>
         </div>
 
         {isLoading ? (
-          <div className="py-8 text-center text-gray-500">Loading users...</div>
+          <div className="py-8 text-center text-muted-foreground">Loading users...</div>
         ) : users.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">No users yet.</div>
+          <div className="py-8 text-center text-muted-foreground">No users yet.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-border">
               <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Role</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {users.map((user) => (
                   <UserRow
                     key={user.id}
@@ -87,12 +87,12 @@ export default function AdminUsers() {
 
       {pendingDeleteUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4">
+          <div className="w-full max-w-md rounded-card bg-card p-6 shadow-xl space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-semibold text-gray-900">Delete user?</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Permanently delete <strong className="text-gray-700">{pendingDeleteUser.email}</strong>? This cannot be
+                <h2 className="font-semibold text-foreground">Delete user?</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Permanently delete <strong className="text-muted-foreground">{pendingDeleteUser.email}</strong>? This cannot be
                   undone. Their enrollments and registrations will be removed.
                 </p>
               </div>
@@ -100,7 +100,7 @@ export default function AdminUsers() {
                 type="button"
                 onClick={() => setPendingDeleteUser(null)}
                 disabled={deleteUser.isPending}
-                className="shrink-0 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+                className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-50"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -111,7 +111,7 @@ export default function AdminUsers() {
                 type="button"
                 onClick={() => setPendingDeleteUser(null)}
                 disabled={deleteUser.isPending}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -152,8 +152,8 @@ function UserRow({
 
   return (
     <tr>
-      <td className="px-4 py-3 text-sm font-medium text-gray-900">{name}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
+      <td className="px-4 py-3 text-sm font-medium text-foreground">{name}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
       <td className="px-4 py-3">
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-800'}`}>
           {user.role}
@@ -165,7 +165,7 @@ function UserRow({
             value={user.role}
             onChange={(e) => onRoleChange(e.target.value as 'HCP' | 'KOL' | 'ADMIN')}
             disabled={isUpdating || isDeleting}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50"
+            className="rounded-lg border border-border px-3 py-1.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 disabled:opacity-50"
           >
             <option value="HCP">HCP</option>
             <option value="KOL">KOL</option>
@@ -183,7 +183,7 @@ function UserRow({
               <Trash2 className="h-4 w-4" />
             </button>
           ) : (
-            <span className="text-xs text-gray-400">, </span>
+            <span className="text-xs text-muted-foreground">, </span>
           )}
         </div>
       </td>

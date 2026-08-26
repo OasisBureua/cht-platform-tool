@@ -28,11 +28,11 @@ export default function AdminEditSurvey() {
 
   if (isError || !survey) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Survey not found</p>
+      <div className="rounded-card border border-border bg-muted p-10 text-center">
+        <p className="font-semibold text-foreground">Survey not found</p>
         <Link
           to="/admin/surveys"
-          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-gray-900 hover:underline"
+          className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:underline"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to surveys
@@ -115,13 +115,13 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
       <div>
         <Link
           to="/admin/surveys"
-          className="inline-flex items-center gap-2 text-sm font-semibold text-gray-700 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to surveys
         </Link>
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">Edit Survey</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="mt-4 text-2xl font-bold text-foreground">Edit Survey</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Edit the auto-generated{' '}
           {survey.type === 'INTAKE' ? 'registration intake' : 'post-event'}{' '}
           survey. Saving marks it customized, so template regeneration will
@@ -139,29 +139,29 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+        <div className="bg-card rounded-card border border-border p-6 space-y-6">
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-gray-900">Title</span>
+            <span className="text-sm font-semibold text-foreground">Title</span>
             <input
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               required
             />
           </label>
           <label className="block space-y-1">
-            <span className="text-sm font-semibold text-gray-900">
+            <span className="text-sm font-semibold text-foreground">
               Description
             </span>
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               rows={3}
             />
           </label>
-          <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-800">
+          <label className="inline-flex items-center gap-2 text-sm font-medium text-foreground">
             <input
               type="checkbox"
               checked={required}
@@ -192,10 +192,10 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
           </div>
         )}
 
-        <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6">
+        <div className="space-y-4 rounded-card border border-border bg-card p-6">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Questions</h2>
-            <p className="mt-1 text-sm text-gray-600">
+            <h2 className="text-lg font-semibold text-foreground">Questions</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Add questions and choose text, choice, rating, or information
               types. Question IDs are generated once and used as response keys.
             </p>
@@ -221,7 +221,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
         ) : null}
 
         {saveError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-destructive text-sm">
             {saveError}
           </div>
         )}
@@ -230,7 +230,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+            className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
           >
             Cancel
           </button>

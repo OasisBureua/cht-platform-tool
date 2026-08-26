@@ -15,9 +15,9 @@ export function PostEventAttendanceMessage(props: {
   const att = myRegistration?.postEventAttendanceStatus;
   if (att === 'PENDING_VERIFICATION') {
     return (
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-2">
-        <h2 className="text-base font-semibold text-gray-900">Post-event steps</h2>
-        <p className="text-sm text-gray-600">
+      <section className="bg-card border border-border rounded-card p-6 space-y-2">
+        <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
+        <p className="text-sm text-muted-foreground">
           Your registration is approved. An administrator still needs to <strong>verify attendance</strong> after the live
           session before the post-event survey and honorarium steps unlock here.
         </p>
@@ -26,7 +26,7 @@ export function PostEventAttendanceMessage(props: {
   }
   if (att === 'DENIED') {
     return (
-      <section className="rounded-xl border border-red-200 bg-red-50 p-6 space-y-2">
+      <section className="rounded-card border border-red-200 bg-red-50 p-6 space-y-2">
         <h2 className="text-base font-semibold text-red-900">Attendance not verified</h2>
         <p className="text-sm text-red-800">
           Your attendance could not be verified for this session. If you believe this is a mistake, contact support.
@@ -152,12 +152,12 @@ export function PostEventFeedbackLearnerActions(props: {
       {showAckBlock ? (
         <div className="space-y-3">
           {nativeSurveyMode ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               When you are finished, tap <strong>Complete survey</strong> to save your responses
               {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
             </p>
           ) : surveyReadyForAck ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
                 <>
                   Submit the embedded survey, then tap <strong>Complete survey</strong> to record your response
@@ -172,7 +172,7 @@ export function PostEventFeedbackLearnerActions(props: {
               )}
             </p>
           ) : (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
                 <>
                   Submit the embedded survey below, then return here and tap <strong>Complete survey</strong>
@@ -189,13 +189,13 @@ export function PostEventFeedbackLearnerActions(props: {
           )}
           {betweenAckHelpAndButton}
           {surveySubmitError ? (
-            <p className="text-sm text-red-700">{surveySubmitError}</p>
+            <p className="text-sm text-destructive">{surveySubmitError}</p>
           ) : null}
           <button
             type="button"
             disabled={completeSurveyDisabled}
             onClick={handleCompleteSurvey}
-            className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
             {nativeSurveyMode && surveyFormSubmitting
               ? 'Saving…'
@@ -206,14 +206,14 @@ export function PostEventFeedbackLearnerActions(props: {
                 : 'Complete survey'}
           </button>
           {!nativeSurveyMode && ackMut.isError ? (
-            <p className="text-sm text-red-700">Could not save progress. Check your connection and try again.</p>
+            <p className="text-sm text-destructive">Could not save progress. Check your connection and try again.</p>
           ) : null}
         </div>
       ) : null}
 
       {showPayoutBlock ? (
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+          <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
             Review the payout details we will use for your honorarium. Add your{' '}
             <BillComMark size="sm" className="translate-y-px" /> profile and W-9 under{' '}
             <Link to="/app/payments" className="font-semibold underline">
@@ -223,28 +223,28 @@ export function PostEventFeedbackLearnerActions(props: {
             for an administrator to approve and pay shortly after the job runs.
           </p>
           {previewError ? (
-            <p className="text-sm text-red-700">
+            <p className="text-sm text-destructive">
               Could not load payout preview. Open Payments to finish setup, then try again.
             </p>
           ) : !preview ? (
-            <p className="text-sm text-gray-500">Loading payout summary…</p>
+            <p className="text-sm text-muted-foreground">Loading payout summary…</p>
           ) : (
-            <ul className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-800 space-y-2">
+            <ul className="rounded-[6px] border border-border bg-muted px-4 py-3 text-sm text-foreground space-y-2">
               <li>
-                <span className="font-medium text-gray-900">Program: </span>
+                <span className="font-medium text-foreground">Program: </span>
                 {preview.programTitle}
               </li>
               <li>
-                <span className="font-medium text-gray-900">Honorarium: </span>
+                <span className="font-medium text-foreground">Honorarium: </span>
                 {formatMoneyFromCents(preview.honorariumAmountCents)}
               </li>
               <li>
-                <span className="font-medium text-gray-900">Payee: </span>
+                <span className="font-medium text-foreground">Payee: </span>
                 {preview.payeeDisplayName}
               </li>
               {preview.maskedBankLast4 ? (
                 <li>
-                  <span className="font-medium text-gray-900">Bank account: </span>
+                  <span className="font-medium text-foreground">Bank account: </span>
                   {preview.maskedBankLast4}
                 </li>
               ) : (
@@ -258,7 +258,7 @@ export function PostEventFeedbackLearnerActions(props: {
               )}
               {preview.addressSummary ? (
                 <li>
-                  <span className="font-medium text-gray-900">Address on profile: </span>
+                  <span className="font-medium text-foreground">Address on profile: </span>
                   {preview.addressSummary}
                 </li>
               ) : null}
@@ -298,7 +298,7 @@ export function PostEventFeedbackLearnerActions(props: {
             onClick={() => {
               payMut.mutateAsync().catch(() => {});
             }}
-            className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
             {payMut.isPending
               ? 'Submitting…'
@@ -307,7 +307,7 @@ export function PostEventFeedbackLearnerActions(props: {
                 : 'Continue'}
           </button>
           {payMut.isError ? (
-            <p className="text-sm text-red-700">Could not submit payment request. Fix any issues above and try again.</p>
+            <p className="text-sm text-destructive">Could not submit payment request. Fix any issues above and try again.</p>
           ) : null}
         </div>
       ) : null}
@@ -316,7 +316,7 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-2">
           {hasHonorarium ? (
             <>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-muted-foreground">
                 {myRegistration.honorariumPayment?.status === 'PAID' ? (
                   <>Your honorarium has been marked paid.</>
                 ) : (
@@ -327,12 +327,12 @@ export function PostEventFeedbackLearnerActions(props: {
                   </>
                 )}
               </p>
-              <Link to="/app/payments" className="inline-flex text-sm font-semibold text-gray-900 underline">
+              <Link to="/app/payments" className="inline-flex text-sm font-semibold text-foreground underline">
                 Open Payments
               </Link>
             </>
           ) : (
-            <p className="text-sm text-gray-700">Thank you. Your post-event survey response is recorded.</p>
+            <p className="text-sm text-muted-foreground">Thank you. Your post-event survey response is recorded.</p>
           )}
         </div>
       ) : null}

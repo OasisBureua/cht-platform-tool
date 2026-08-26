@@ -26,12 +26,12 @@ const PLAYLISTS = [
 export default function Watch() {
   return (
     <div className="space-y-8">
-      <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Main Study Name</h1>
+      <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">Main Study Name</h1>
 
       {/* Main video + Info */}
       <section className="flex flex-col lg:flex-row gap-6">
         <div className="flex-1 space-y-4">
-          <div className="relative aspect-video overflow-hidden rounded-2xl bg-black shadow-[0_12px_48px_-16px_rgba(0,0,0,0.45)]">
+          <div className="relative aspect-video overflow-hidden rounded-card bg-black shadow-[0_12px_48px_-16px_rgba(0,0,0,0.45)]">
             <img src={STOCK_IMAGES.main} alt="" className="w-full h-full object-cover" loading="eager" referrerPolicy="no-referrer" />
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20">
               <button
@@ -47,31 +47,31 @@ export default function Watch() {
           <div className="flex items-center gap-4">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+              className="inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
             >
               <Play className="h-4 w-4" /> Play
             </button>
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200/90 bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-[background-color,transform,border-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.96]"
+              className="inline-flex items-center gap-2 rounded-[6px] border border-border/90 bg-card px-4 py-2 text-sm font-semibold text-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)] transition-[background-color,transform,border-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted active:scale-[0.96]"
             >
               <Bookmark className="h-4 w-4" /> Save
             </button>
-            <span className="flex items-center gap-1.5 text-sm tabular-nums text-gray-600">
+            <span className="flex items-center gap-1.5 text-sm tabular-nums text-muted-foreground">
               <Eye className="h-4 w-4" /> 1,247 views
             </span>
           </div>
         </div>
-        <div className="w-full shrink-0 rounded-2xl border border-gray-100/90 bg-white p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)] lg:w-96">
-          <h3 className="mb-3 text-balance font-bold text-gray-900">Video Information</h3>
-          <p className="mb-4 text-pretty text-sm text-gray-600">
+        <div className="w-full shrink-0 rounded-card border border-gray-100/90 bg-card p-6 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)] lg:w-96">
+          <h3 className="mb-3 text-balance font-bold text-foreground">Video Information</h3>
+          <p className="mb-4 text-pretty text-sm text-muted-foreground">
             In this expert discussion, Dr. VK Gadi and Dr. Ruta Rao break down the data from DESTINY-Breast 05 and 11, and what it means for HER2+ treatment.
           </p>
           <dl className="space-y-2 text-sm">
-            <div><dt className="font-semibold text-gray-900">Research Focus:</dt><dd className="text-gray-600">Novel immunotherapy combinations and targeted therapy protocols</dd></div>
-            <div><dt className="font-semibold text-gray-900">Institution:</dt><dd className="text-gray-600">Memorial Cancer Research Center</dd></div>
-            <div><dt className="font-semibold text-gray-900">Publication Date:</dt><dd className="text-gray-600">March 2025</dd></div>
-            <div><dt className="font-semibold text-gray-900">Status:</dt><dd className="text-gray-600">Completed</dd></div>
+            <div><dt className="font-semibold text-foreground">Research Focus:</dt><dd className="text-muted-foreground">Novel immunotherapy combinations and targeted therapy protocols</dd></div>
+            <div><dt className="font-semibold text-foreground">Institution:</dt><dd className="text-muted-foreground">Memorial Cancer Research Center</dd></div>
+            <div><dt className="font-semibold text-foreground">Publication Date:</dt><dd className="text-muted-foreground">March 2025</dd></div>
+            <div><dt className="font-semibold text-foreground">Status:</dt><dd className="text-muted-foreground">Completed</dd></div>
           </dl>
         </div>
       </section>
@@ -79,35 +79,35 @@ export default function Watch() {
       {/* Study Playlists */}
       <section className="space-y-4">
         <div>
-          <h2 className="text-balance text-xl font-bold text-gray-900">Study Playlists</h2>
-          <p className="text-pretty text-sm text-gray-600">Explore detailed discussions broken down into focused topics.</p>
+          <h2 className="text-balance text-xl font-bold text-foreground">Study Playlists</h2>
+          <p className="text-pretty text-sm text-muted-foreground">Explore detailed discussions broken down into focused topics.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {PLAYLISTS.map((p, idx) => (
             <div
               key={p.id}
-              className="overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_36px_-14px_rgba(0,0,0,0.1)] active:scale-[0.995]"
+              className="overflow-hidden rounded-card border border-gray-100/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.07)] transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_14px_36px_-14px_rgba(0,0,0,0.1)] active:scale-[0.995]"
             >
               <div className="h-44">
                 <img src={STOCK_IMAGES.playlist[idx]} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
               </div>
               <div className="p-4 space-y-3">
-                <h3 className="font-bold text-gray-900">{p.title}</h3>
+                <h3 className="font-bold text-foreground">{p.title}</h3>
                 {p.videoNames ? (
                   <ul className="space-y-1">
                     {p.videoNames.map((v, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                      <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                         <span className="h-1 w-1 rounded-full bg-gray-400" />
                         {v}
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-sm text-gray-600">{p.desc}</p>
+                  <p className="text-sm text-muted-foreground">{p.desc}</p>
                 )}
                 <Link
                   to={APP_CATALOG_CONVERSATIONS_HUB}
-                  className="inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                  className="inline-flex rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   {p.videoNames ? 'Play all' : 'Play'}
                 </Link>

@@ -38,7 +38,7 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
 
   const playLabel = `Episode ${ep.num.replace(/\D/g, '')}: ${ep.title}`;
   const className = [
-    'group flex w-full gap-3 rounded-card px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 active:scale-[0.995] dark:hover:bg-muted/85 dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5',
+    'group flex w-full gap-3 rounded-card px-4 py-4 text-left shadow-[0_4px_22px_-14px_rgba(0,0,0,0.1)] transition-[background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted/95 hover:shadow-[0_8px_28px_-16px_rgba(0,0,0,0.12)] focus-visible:bg-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-600 active:scale-[0.995] dark:focus-visible:bg-zinc-800 dark:shadow-[0_4px_26px_-14px_rgba(0,0,0,0.4)] sm:gap-4 sm:px-6 sm:py-5',
     isActive ? 'bg-accent-50/80 ring-1 ring-accent-200/80 dark:bg-accent-950/30 dark:ring-accent-800/60' : '',
   ].join(' ');
 
@@ -58,24 +58,24 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
             {ep.description}
           </p>
         ) : null}
-        <p className="mt-1.5 text-xs text-muted-foreground tabular-nums dark:text-muted-foreground sm:hidden">
+        <p className="mt-1.5 text-xs text-muted-foreground tabular-nums sm:hidden">
           {ep.date}
           {ep.duration ? (
             <>
               {' '}
-              <span className="text-muted-foreground dark:text-muted-foreground">|</span> {ep.duration}
+              <span className="text-muted-foreground">|</span> {ep.duration}
             </>
           ) : null}
           {ep.viewCount ? (
             <>
               {' '}
-              <span className="text-muted-foreground dark:text-muted-foreground">|</span> {formatViewCount(ep.viewCount)}
+              <span className="text-muted-foreground">|</span> {formatViewCount(ep.viewCount)}
             </>
           ) : null}
         </p>
       </div>
       <div className="hidden shrink-0 flex-col items-end justify-center gap-1 text-right sm:flex">
-        <time className="whitespace-nowrap text-xs text-muted-foreground tabular-nums dark:text-muted-foreground" dateTime={ep.dateIso}>
+        <time className="whitespace-nowrap text-xs text-muted-foreground tabular-nums" dateTime={ep.dateIso}>
           {ep.date}
         </time>
         <span className="text-xs font-semibold text-accent-700 tabular-nums dark:text-accent-300">
@@ -84,7 +84,7 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
         </span>
       </div>
       <ChevronRight
-        className="h-5 w-5 shrink-0 self-center text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-muted-foreground dark:text-muted-foreground dark:group-hover:text-muted-foreground"
+        className="h-5 w-5 shrink-0 self-center text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-foreground"
         aria-hidden
       />
     </>
@@ -144,8 +144,8 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
               className={[
                 'h-24 w-24 shrink-0 rounded-card shadow-md ring-1 ring-zinc-200/90 sm:h-28 sm:w-28 dark:ring-zinc-700',
                 show.logo
-                  ? 'object-contain bg-card p-2 dark:bg-card dark:p-2.5'
-                  : 'bg-card object-cover dark:bg-card',
+                  ? 'object-contain bg-card p-2 dark:p-2.5'
+                  : 'bg-card object-cover',
               ].join(' ')}
               loading="lazy"
               referrerPolicy="no-referrer"
@@ -177,7 +177,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
                             href: seriesHubHref ?? 'https://communityhealth.media',
                           }));
                   const playClass =
-                    'inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-accent px-4 py-2 text-sm font-bold text-white shadow-[0_8px_28px_-12px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 active:scale-[0.96]';
+                    'inline-flex min-h-[40px] min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-accent px-4 py-2 text-sm font-bold text-white shadow-[0_8px_28px_-12px_rgba(234,88,12,0.45)] transition-[background-color,transform] duration-200 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 active:scale-[0.96]';
                   if (play.kind === 'app') {
                     return (
                       <Link to={play.to} className={playClass}>
@@ -208,7 +208,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
                 href={platform.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[32px] items-center rounded-[6px] bg-muted px-3 text-xs font-medium text-zinc-700 transition-[background-color,color,transform] duration-200 hover:bg-muted active:scale-[0.96] dark:hover:bg-zinc-700"
+                className="inline-flex min-h-[32px] items-center rounded-[6px] bg-muted px-3 text-xs font-medium text-muted-foreground transition-[background-color,color,transform] duration-200 active:scale-[0.96] dark:hover:bg-zinc-700"
               >
                 {platform.label}
               </a>
@@ -237,7 +237,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
                     'min-h-[32px] rounded-[6px] px-3 text-xs font-semibold transition-colors',
                     sort === opt.value
                       ? 'bg-accent-600 text-white'
-                      : 'text-muted-foreground hover:text-foreground dark:text-muted-foreground ',
+                      : 'text-muted-foreground hover:text-foreground ',
                   ].join(' ')}
                 >
                   {opt.label}

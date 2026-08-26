@@ -57,7 +57,7 @@ function PlaylistCard({
           </h3>
         </Link>
         {desc ? (
-          <p className="line-clamp-4 whitespace-pre-line break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere] sm:line-clamp-3 dark:text-muted-foreground">
+          <p className="line-clamp-4 whitespace-pre-line break-words text-sm leading-relaxed text-muted-foreground [overflow-wrap:anywhere] sm:line-clamp-3">
             {desc}
           </p>
         ) : null}

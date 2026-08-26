@@ -159,7 +159,7 @@ export function CampaignsDashboardSummary({
             label={label}
             value={formatCount(summary[key] ?? 0)}
             sub={sub}
-            icon={<Icon className="h-5 w-5 text-gray-500 dark:text-zinc-400" />}
+            icon={<Icon className="h-5 w-5 text-muted-foreground" />}
           />
         ))}
       </div>
@@ -176,8 +176,8 @@ export function CampaignsDashboardTable({
 
   if (!campaigns.length) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center dark:border-zinc-700 dark:bg-zinc-800/50">
-        <p className="text-sm text-gray-500 dark:text-zinc-400">
+      <div className="rounded-card border border-dashed border-border bg-card p-8 text-center">
+        <p className="text-sm text-muted-foreground">
           No HubSpot campaigns found for this reporting window.
         </p>
       </div>
@@ -185,42 +185,42 @@ export function CampaignsDashboardTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800/50">
+    <div className="overflow-hidden rounded-card border border-border bg-card">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-zinc-700">
-          <thead className="bg-gray-50 dark:bg-zinc-900/60">
+        <table className="min-w-full divide-y divide-border text-sm">
+          <thead className="bg-muted">
             <tr>
-              <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
                 Campaign
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 Sessions
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 Influenced
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 Email sent
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 Opens
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 Clicks
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 Survey
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
                 Client
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
                 Platforms
               </th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
                 Content Hub
               </th>
-              <th className="px-4 py-3 text-right font-semibold text-gray-600 dark:text-zinc-300">
+              <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
                 <span className="sr-only">Open</span>
               </th>
             </tr>
@@ -250,24 +250,24 @@ export function CampaignsDashboardTable({
                     }
                   }}
                   className={[
-                    'hover:bg-gray-50/80 dark:hover:bg-zinc-900/40',
+                    'hover:bg-muted/80',
                     canOpen
                       ? 'cursor-pointer focus-visible:bg-brand-50/60 focus-visible:outline-none dark:focus-visible:bg-brand-950/20'
                       : '',
                   ].join(' ')}
                 >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900 dark:text-zinc-100">
+                    <div className="font-medium text-foreground">
                       {campaign.name}
                     </div>
                     {campaign.hubspotCampaignId ? (
-                      <div className="mt-0.5 font-mono text-xs text-gray-400 dark:text-zinc-500">
+                      <div className="mt-0.5 font-mono text-xs text-muted-foreground">
                         {campaign.hubspotCampaignId}
                       </div>
                     ) : null}
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                       {campaign.status || campaign.contentHubCampaignStatus ? (
-                        <span className="text-xs text-gray-500 dark:text-zinc-400">
+                        <span className="text-xs text-muted-foreground">
                           {campaign.contentHubCampaignStatus ?? campaign.status}
                         </span>
                       ) : null}
@@ -299,21 +299,21 @@ export function CampaignsDashboardTable({
                   <td className="px-4 py-3 text-right">
                     {campaign.survey ? (
                       <div>
-                        <p className="tabular-nums font-semibold text-gray-900 dark:text-zinc-100">
+                        <p className="tabular-nums font-semibold text-foreground">
                           {formatCount(
                             campaign.survey.jotformSubmissionCount ??
                               campaign.survey.totalResponses,
                           )}
                         </p>
-                        <p className="text-[11px] text-gray-500 dark:text-zinc-400">
+                        <p className="text-[11px] text-muted-foreground">
                           {campaign.survey.jotformFormId ? 'Jotform' : 'CHT'}
                         </p>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400 dark:text-zinc-500">—</span>
+                      <span className="text-xs text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 dark:text-zinc-300">
+                  <td className="px-4 py-3 text-sm text-muted-foreground">
                     {campaign.contentHubClientSponsor ?? '—'}
                   </td>
                   <td className="px-4 py-3">
@@ -345,7 +345,7 @@ export function CampaignsDashboardTable({
                         })}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400 dark:text-zinc-500">
+                      <span className="text-xs text-muted-foreground">
                         {availablePlatforms > 0
                           ? `${availablePlatforms} synced`
                           : '—'}
@@ -362,7 +362,7 @@ export function CampaignsDashboardTable({
                         {campaign.contentHubCampaignName ?? 'View report'}
                       </Link>
                     ) : (
-                      <span className="text-xs text-gray-400 dark:text-zinc-500">
+                      <span className="text-xs text-muted-foreground">
                         Not linked
                       </span>
                     )}
@@ -379,7 +379,7 @@ export function CampaignsDashboardTable({
                         </Link>
                       ) : null}
                       <ChevronRight
-                        className="h-4 w-4 text-gray-400 dark:text-zinc-500"
+                        className="h-4 w-4 text-muted-foreground"
                         aria-hidden
                       />
                     </div>

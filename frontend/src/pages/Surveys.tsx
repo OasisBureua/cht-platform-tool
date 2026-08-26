@@ -74,34 +74,34 @@ export default function Surveys() {
 
   return (
     <div className="-mt-[15px] space-y-2.5 sm:space-y-4">
-      <div className="flex items-center gap-2.5 text-zinc-900 dark:text-zinc-100">
+      <div className="flex items-center gap-2.5 text-foreground">
         <ClipboardCheck className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
-        <h1 className="text-balance text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-3xl">Your Surveys</h1>
+        <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground md:text-3xl">Your Surveys</h1>
       </div>
-      <p className="text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+      <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
         <strong>Post-event</strong> surveys unlock after your Live session ends. Complete them within 7 days to receive
         your honorarium. Keep{' '}
-        <Link to="/app/payments" className="font-semibold text-zinc-900 underline dark:text-zinc-100">
+        <Link to="/app/payments" className="font-semibold text-foreground underline">
           Payments
         </Link>{' '}
         (W-9 and bank details) current so payouts can be processed.
       </p>
 
       <section className="space-y-3.5 pt-1">
-        <div className="-mt-[10px] rounded-2xl border border-gray-200/90 bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.04),0_10px_30px_-16px_rgba(0,0,0,0.1)] dark:border-zinc-800/90 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-16px_rgba(0,0,0,0.45)] md:p-5">
+        <div className="-mt-[10px] rounded-card border border-border/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04),0_10px_30px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_10px_30px_-16px_rgba(0,0,0,0.45)] md:p-5">
           <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-steel-700 dark:text-steel-300">Survey eligible for payment</p>
-              <h2 className="mt-1 text-balance text-lg font-bold text-zinc-900 dark:text-zinc-100 md:text-xl">
+              <h2 className="mt-1 text-balance text-lg font-bold text-foreground md:text-xl">
                 Surveys open after each live session
               </h2>
-              <p className="mt-1 text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground">
                 Join a webinar first. Once the session ends, the survey appears here for completion.
               </p>
             </div>
             <Link
               to="/app/live"
-              className="inline-flex h-11 min-w-[176px] shrink-0 items-center justify-center gap-2 rounded-md bg-brand-600 px-5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+              className="inline-flex h-11 min-w-[176px] shrink-0 items-center justify-center gap-2 rounded-[6px] bg-brand-600 px-5 text-sm font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
             >
               Go to live sessions
               <ArrowRight className="h-4 w-4" aria-hidden />
@@ -113,7 +113,7 @@ export default function Surveys() {
           <StatChip label="Active surveys" value={activeCount} />
           <StatChip label="Completed" value={completedCount} />
           <StatChip label="Expiring" value={expiringCount} />
-          <div className="ml-0 inline-flex min-h-[44px] items-center rounded-full bg-orange-50 px-5 py-2 text-sm font-semibold text-steel-800 tabular-nums dark:bg-orange-950/45 dark:text-steel-200 sm:ml-2">
+          <div className="ml-0 inline-flex min-h-[44px] items-center rounded-[6px] bg-orange-50 px-5 py-2 text-sm font-semibold text-steel-800 tabular-nums dark:bg-orange-950/45 dark:text-steel-200 sm:ml-2">
             {availableToEarn > 0
               ? `$${availableToEarn.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} available to earn`
               : 'Honorarium set per webinar'}
@@ -122,18 +122,18 @@ export default function Surveys() {
 
         {isLoading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
           </div>
         ) : !hasAny ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-12px_rgba(0,0,0,0.45)]">
-            <p className="font-semibold text-gray-900 dark:text-zinc-100">No post-session surveys yet</p>
-            <p className="mt-1 text-sm text-gray-600 dark:text-zinc-400">Enroll in a Live activity, then check back after the session ends.</p>
+          <div className="rounded-card border border-border bg-card p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_-12px_rgba(0,0,0,0.45)]">
+            <p className="font-semibold text-foreground">No post-session surveys yet</p>
+            <p className="mt-1 text-sm text-muted-foreground">Enroll in a Live activity, then check back after the session ends.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {activeCount > 0 ? (
               <div className="space-y-2.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Active surveys</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Active surveys</h3>
                 <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {activeSurveys.map((survey, idx) => (
                     <SurveyGridCard key={survey.id} survey={survey} imageUrl={CARD_IMAGES[idx % CARD_IMAGES.length]} />
@@ -144,7 +144,7 @@ export default function Surveys() {
 
             {completedCount > 0 ? (
               <div className="space-y-2.5">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-500">Completed</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Completed</h3>
                 <div className="grid min-w-0 grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {completedSurveys.map((survey, idx) => (
                     <CompletedSurveyGridCard
@@ -165,8 +165,8 @@ export default function Surveys() {
 
 function StatChip({ label, value }: { label: string; value: number }) {
   return (
-    <div className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-      <span className="tabular-nums text-sm font-semibold text-zinc-900 dark:text-zinc-100">{value}</span>
+    <div className="inline-flex min-h-[44px] items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground">
+      <span className="tabular-nums text-sm font-semibold text-foreground">{value}</span>
       <span>{label}</span>
     </div>
   );
@@ -182,7 +182,7 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
   return (
     <Link
       to={`/app/surveys/${survey.id}`}
-      className="group block min-w-0 overflow-hidden rounded-lg border border-zinc-200/80 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-10px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_10px_28px_-10px_rgba(0,0,0,0.15)] active:scale-[0.96] dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_6px_20px_-10px_rgba(0,0,0,0.45)]"
+      className="group block min-w-0 overflow-hidden rounded-[6px] border border-border/80 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-10px_rgba(0,0,0,0.1)] transition-[transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_10px_28px_-10px_rgba(0,0,0,0.15)] active:scale-[0.96] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_6px_20px_-10px_rgba(0,0,0,0.45)]"
     >
       <div className="relative aspect-[249/140] w-full overflow-hidden">
         <img
@@ -198,18 +198,18 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
         <div className="flex items-start justify-between gap-2">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>{badge.label}</span>
           {showHonorarium ? (
-            <span className="tabular-nums inline-flex items-center text-base font-extrabold text-zinc-900 dark:text-zinc-100">{payoutLabel}</span>
+            <span className="tabular-nums inline-flex items-center text-base font-extrabold text-foreground">{payoutLabel}</span>
           ) : null}
         </div>
 
-        <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-900 dark:text-zinc-100 [overflow-wrap:anywhere]">
+        <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-foreground [overflow-wrap:anywhere]">
           {survey.title}
         </p>
         {survey.program?.title ? (
-          <p className="line-clamp-1 text-left text-[11px] text-zinc-500">{survey.program.title}</p>
+          <p className="line-clamp-1 text-left text-[11px] text-muted-foreground">{survey.program.title}</p>
         ) : null}
         {honorarium ? (
-          <p className="text-[10px] font-medium leading-snug text-zinc-600">
+          <p className="text-[10px] font-medium leading-snug text-muted-foreground">
             Listed honorarium (after completion). Payouts require a completed W-9 under Payments.
           </p>
         ) : null}
@@ -225,7 +225,7 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
         </div>
 
         <div className="flex w-full justify-center">
-          <span className="inline-flex min-h-[40px] min-w-[132px] items-center justify-center gap-1.5 rounded-md bg-brand-600 px-4 text-xs font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:bg-brand-700 group-active:scale-[0.96]">
+          <span className="inline-flex min-h-[40px] min-w-[132px] items-center justify-center gap-1.5 rounded-[6px] bg-brand-600 px-4 text-xs font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:bg-brand-700 group-active:scale-[0.96]">
             <ClipboardList className="h-3.5 w-3.5" aria-hidden />
             Complete post-event
           </span>
@@ -242,7 +242,7 @@ function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUr
   return (
     <Link
       to={`/app/surveys/${survey.id}`}
-      className="group block min-w-0 overflow-hidden rounded-lg border border-zinc-200/80 bg-white opacity-90 shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md active:scale-[0.96] dark:border-zinc-800 dark:bg-zinc-900"
+      className="group block min-w-0 overflow-hidden rounded-[6px] border border-border/80 bg-card opacity-90 shadow-sm transition-[transform,box-shadow] duration-200 hover:shadow-md active:scale-[0.96]"
     >
       <div className="relative aspect-[249/140] w-full overflow-hidden">
         <img
@@ -258,15 +258,15 @@ function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUr
         <div className="flex items-start justify-between gap-2">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>{badge.label}</span>
           {honorarium ? (
-            <span className="tabular-nums text-sm font-bold text-zinc-600 dark:text-zinc-400">{honorarium}</span>
+            <span className="tabular-nums text-sm font-bold text-muted-foreground">{honorarium}</span>
           ) : null}
         </div>
 
-        <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-zinc-700 dark:text-zinc-300 [overflow-wrap:anywhere]">
+        <p className="line-clamp-2 text-left text-[13px] font-semibold leading-snug text-muted-foreground [overflow-wrap:anywhere]">
           {survey.title}
         </p>
         {survey.program?.title ? (
-          <p className="line-clamp-1 text-left text-[11px] text-zinc-500">{survey.program.title}</p>
+          <p className="line-clamp-1 text-left text-[11px] text-muted-foreground">{survey.program.title}</p>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-1.5">
@@ -277,7 +277,7 @@ function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUr
         </div>
 
         <div className="flex w-full justify-center">
-          <span className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-4 text-xs font-semibold text-zinc-700 group-hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+          <span className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-[6px] border border-border bg-zinc-50 px-4 text-xs font-semibold text-muted-foreground group-hover:bg-muted dark:bg-zinc-800">
             View submission
           </span>
         </div>
