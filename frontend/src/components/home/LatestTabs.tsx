@@ -95,7 +95,7 @@ export function LatestTabs({ tracks }: { tracks: Track[] }) {
         {tracks[active].more && (
           <Link
             to={tracks[active].more!.to}
-            className="press mb-2 inline-flex shrink-0 items-center gap-1.5 text-body-s text-muted2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
+            className="press mb-1 inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[6px] px-1 text-body-s text-muted2 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor"
           >
             <span className="max-sm:hidden">{tracks[active].more!.label}</span>
             <span className="sm:hidden">See all</span>

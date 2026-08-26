@@ -705,57 +705,63 @@ const columns: { label: string; links: FooterLink[] }[] = [
   },
 ];
 
-/* One colour per column, drawn from the brand spectrum. Fixed across
-   appearances, because the ground under them is. */
+/* One colour per column, drawn from the brand spectrum. The `ink` set,
+   not `cerebral`: the footer follows the appearance now, so a hue tuned
+   for a permanently dark ground washes out on the light one. */
 const COLUMN_INK = [
-  'text-cerebral-cyan',
-  'text-cerebral-pink',
-  'text-cerebral-purple',
-  'text-cerebral-coral',
-  'text-cerebral-green',
+  'text-ink-cyan',
+  'text-ink-pink',
+  'text-ink-purple',
+  'text-ink-coral',
+  'text-ink-green',
 ];
 
 const FOOTER_LINK =
-  'press -mx-2 inline-block rounded-[6px] px-2 py-0.5 text-body-s text-white/70 hover:text-white';
+  'press -mx-2 inline-block rounded-[6px] px-2 py-1.5 text-body-s text-dim hover:text-text';
 
 function SiteFooter() {
   return (
-    <footer className="bg-black text-white">
-      <div className="rail py-16">
+    <footer
+      /* The same expression the navbar's flush state uses, not a
+         lookalike: the two bookend the page, so they must move together
+         if the surface token ever changes. */
+      className="bg-[color-mix(in_oklab,var(--color-surface)_88%,transparent)] text-text"
+    >
+      <div className="rail pb-10 pt-14">
         <div className="grid gap-12 lg:grid-cols-[1fr_3fr]">
           <div>
             <Link
               to="/home"
-              className="press inline-block rounded-[6px] py-1 text-white"
+              className="press inline-block rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
-              <ChmWordmarkOption2 className="h-8 w-[5rem] text-white" />
+              <ChmWordmarkOption2 className="h-8 w-[5rem] text-text" />
             </Link>
-            <p className="prose-lede mt-5 max-w-[28ch] text-body-s text-white/70">
+            <p className="prose-lede mt-5 max-w-[28ch] text-body-s text-muted2">
               Community Health Media. Peer-led oncology education, organised the way clinicians
               actually work.
             </p>
 
-            <address className="mt-6 space-y-1 text-body-s not-italic leading-relaxed text-white/70">
+            <address className="mt-6 space-y-1 text-body-s not-italic leading-relaxed text-muted2">
               <p>2471 18th St NW</p>
               <p>Second Floor</p>
               <p>Washington, DC 20009</p>
               <p>
                 <a
                   href="mailto:info@communityhealth.media"
-                  className="press rounded-[6px] hover:text-white"
+                  className="press inline-flex min-h-6 items-center rounded-[6px] hover:text-text"
                 >
                   info@communityhealth.media
                 </a>
               </p>
             </address>
 
-            <div className="mt-6 flex gap-4">
+            <div className="mt-6 flex gap-1">
               <a
                 href="https://www.instagram.com/healthinourhands_/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="press text-white/70 hover:text-white"
+                className="press grid size-10 -m-2.5 place-items-center rounded-[6px] text-muted2 hover:text-text"
                 aria-label="Instagram"
               >
                 <IconInstagram className="size-5" />
@@ -764,7 +770,7 @@ function SiteFooter() {
                 href="https://youtube.com/@CommunityHealthMedia/videos"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="press text-white/70 hover:text-white"
+                className="press grid size-10 -m-2.5 place-items-center rounded-[6px] text-muted2 hover:text-text"
                 aria-label="YouTube"
               >
                 <IconYouTube className="size-5" />
@@ -773,7 +779,7 @@ function SiteFooter() {
                 href="https://www.linkedin.com/company/community-health-media/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="press text-white/70 hover:text-white"
+                className="press grid size-10 -m-2.5 place-items-center rounded-[6px] text-muted2 hover:text-text"
                 aria-label="LinkedIn"
               >
                 <IconLinkedIn className="size-5" />
@@ -782,7 +788,7 @@ function SiteFooter() {
                 href="https://www.facebook.com/CHMediaHub/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="press text-white/70 hover:text-white"
+                className="press grid size-10 -m-2.5 place-items-center rounded-[6px] text-muted2 hover:text-text"
                 aria-label="Facebook"
               >
                 <IconFacebook className="size-5" />
@@ -821,21 +827,21 @@ function SiteFooter() {
           </nav>
         </div>
 
-        <div className="mt-16 flex flex-wrap items-center justify-between gap-4 pt-8">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-hairline pt-6">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <p className="meta text-white/70">
+            <p className="meta text-faint">
               © 2026 Community Health Technologies, Inc. All rights reserved.
             </p>
-            <Link to="/privacy" className="meta press rounded-[6px] text-white/70 hover:text-white">
+            <Link to="/privacy" className="meta press inline-flex h-6 items-center rounded-[6px] text-faint hover:text-text">
               Privacy
             </Link>
-            <Link to="/terms" className="meta press rounded-[6px] text-white/70 hover:text-white">
+            <Link to="/terms" className="meta press inline-flex h-6 items-center rounded-[6px] text-faint hover:text-text">
               Terms
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            <ChmMark className="size-4 text-white/70" />
-            <p className="eyebrow text-white/70">Medicine moves through shared knowledge</p>
+            <ChmMark className="size-4 text-faint" />
+            <p className="eyebrow text-faint">Medicine moves through shared knowledge</p>
           </div>
         </div>
       </div>

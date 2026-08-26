@@ -183,6 +183,10 @@ export function DiseaseMap({ className = '' }: { className?: string }) {
         ctx.fillRect(px, py, m.z, m.z);
       }
 
+      // Below the tablet break the hub ring is only a few hundred
+      // pixels across, so the labels land on the chips and the lede.
+      // The clusters still read; the words are what stop working.
+      const labelled = w >= 640;
       ctx.font = '500 10px ui-monospace, SFMono-Regular, monospace';
       ctx.textAlign = 'center';
       for (const hb of hubs) {
@@ -197,6 +201,7 @@ export function DiseaseMap({ className = '' }: { className?: string }) {
         ctx.beginPath();
         ctx.arc(hb.x, hb.y, 3.4 * Math.min(k, 1.6), 0, Math.PI * 2);
         ctx.fill();
+        if (!labelled) continue;
         ctx.globalAlpha = 0.66 * keep;
         ctx.fillStyle = label;
         ctx.fillText(hb.label, hb.x, hb.y - 12 * Math.min(k, 1.6));
