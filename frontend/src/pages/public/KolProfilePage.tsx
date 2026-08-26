@@ -1,5 +1,5 @@
 import { ProfileBanner } from '../../components/kol/ProfileBanner';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -53,7 +53,6 @@ function IconLinkedIn({ className }: { className?: string }) {
   );
 }
 
-type TabId = 'overview' | 'background' | 'engagement';
 
 function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
@@ -96,7 +95,6 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
 
 export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
-  const [tab, setTab] = useState<TabId>('overview');
 
   const profile = useKolProfile(kolId);
 
@@ -157,131 +155,117 @@ export default function KolProfilePage() {
           )}
         </div>
 
-        <div className="rail relative pb-6">
-          {/* Avatar overlap */}
-          <div className="relative -mt-16 flex justify-between sm:-mt-[4.25rem]">
+
+        {/* ── Dossier ──────────────────────────────────────────
+            A sticky identity rail beside a scrolling record. The tabs
+            are gone: they hid two thirds of the profile behind a click,
+            and the fields a partner wants to compare -- sessions,
+            publications, Open Payments -- were never on screen together. */}
+        <div className="rail grid gap-8 pb-6 lg:grid-cols-[21rem_1fr] lg:gap-12">
+          <aside className="lg:sticky lg:top-[7.75rem] lg:h-fit lg:self-start">
             <img
               src={entry.photoUrl || avatarUrl(entry.name)}
               alt=""
-              className="size-28 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-32"
+              className="-mt-14 size-28 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-32"
             />
-            <div className="flex flex-col items-end gap-2 pt-20 sm:pt-24">
-              <span className="eyebrow inline-flex items-center rounded-[6px] bg-surface px-3 py-1.5 text-anchor shadow-card">
-                CHM Network
-              </span>
-              <Link
-                to={catalogHref}
-                className="press inline-flex h-10 items-center gap-2 rounded-[6px] bg-cta px-4 text-body-s font-medium text-ground hover:bg-cta-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-              >
-                Catalog videos
-                <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
-              </Link>
-            </div>
-          </div>
 
-          <div className="mt-3 space-y-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="display text-[2rem] leading-[1.04] tracking-[-0.03em] text-text sm:text-[2.6rem]">
-                  {vm.displayName}
-                </h1>
-                {entry.featured ? (
-                  <span
-                    className="eyebrow rounded-[5px] bg-cta px-2 py-1 text-ground"
-                    title="Curator-featured KOL"
-                  >
-                    ★ Featured
-                  </span>
-                ) : null}
-              </div>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <h1 className="display text-[1.75rem] leading-[1.06] tracking-[-0.028em] text-text">
+                {vm.displayName}
+              </h1>
+              {entry.featured ? (
+                <span className="eyebrow rounded-[5px] bg-cta px-2 py-1 text-ground">Featured</span>
+              ) : null}
               {vm.rosterOnly ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="eyebrow rounded-[5px] bg-surface-2 px-2 py-1 text-muted2">
-                    Roster
-                  </span>
-                </div>
+                <span className="eyebrow rounded-[5px] bg-surface-2 px-2 py-1 text-muted2">Roster</span>
               ) : null}
             </div>
+            <p className="prose-lede mt-2 text-body-s text-muted2">{vm.institution}</p>
 
-            <div className="mt-6 grid gap-x-10 gap-y-4 border-t border-hairline pt-6 text-body-s sm:grid-cols-2">
-              <div>
-                <p className="eyebrow text-faint">Specialty</p>
-                <p className="mt-1.5 text-dim">{vm.specialty}</p>
-              </div>
-              <div>
-                <p className="eyebrow text-faint">State</p>
-                <p className="mt-1.5 text-dim">{vm.stateName}</p>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="eyebrow text-faint">Institution</p>
-                <p className="mt-1.5 text-dim">{vm.institution}</p>
-              </div>
-              {entry.education?.trim() ? (
-                <div className="sm:col-span-2">
-                  <p className="eyebrow text-faint">Education &amp; training</p>
-                  <p className="prose-lede mt-1.5 text-dim">{entry.education}</p>
+            {/* The hard numbers, pinned. This is the block that has to
+                stay on screen while the narrative scrolls past it. */}
+            <dl className="mt-6 border-t border-hairline">
+              {(
+                [
+                  ['Specialty', vm.specialty],
+                  ['Location', vm.stateName],
+                  entry.shootCount ? ['Sessions', String(entry.shootCount)] : null,
+                  entry.intel?.publicationsApprox
+                    ? ['Publications', `~${entry.intel.publicationsApprox}`]
+                    : null,
+                  entry.intel?.openPayments
+                    ? ['Open Payments', `$${entry.intel.openPayments.total.toLocaleString()}`]
+                    : null,
+                  entry.intel?.openPayments
+                    ? ['Records', `${entry.intel.openPayments.records} · ${entry.intel.openPayments.years}`]
+                    : null,
+                  entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
+                  entry.intel?.handle ? ['Handle', entry.intel.handle] : null,
+                ].filter(Boolean) as [string, string][]
+              ).map(([k, v]) => (
+                <div
+                  key={k}
+                  className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5"
+                >
+                  <dt className="text-body-s text-faint">{k}</dt>
+                  <dd className="meta text-end tabular-nums text-text">{v}</dd>
                 </div>
-              ) : null}
-            </div>
+              ))}
+            </dl>
+
+            <Link
+              to={catalogHref}
+              className="press mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-cta text-body-s font-medium text-ground hover:bg-cta-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Catalog videos
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
 
             {(vm.phone || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {vm.phone ? (
                   <a
                     href={`tel:${vm.phone.replace(/\D/g, '')}`}
-                    className="press inline-flex h-9 items-center rounded-[6px] text-body-s text-anchor hover:brightness-110"
+                    className="press inline-flex h-10 items-center rounded-[6px] bg-surface px-3 text-body-s text-anchor shadow-card hover:brightness-110"
                   >
                     {vm.phone}
                   </a>
                 ) : null}
                 <SocialIcon href={vm.linkedInUrl} label="LinkedIn">
-                  <IconLinkedIn className="h-4 w-4" />
+                  <IconLinkedIn className="size-4" />
                 </SocialIcon>
                 <SocialIcon href={vm.twitterUrl} label="Twitter / X">
-                  <IconTwitter className="h-4 w-4" />
+                  <IconTwitter className="size-4" />
                 </SocialIcon>
                 <SocialIcon href={vm.webUrl} label="Website">
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="size-4" />
                 </SocialIcon>
               </div>
             )}
-          </div>
+          </aside>
 
-          {/* Tabs */}
-          <nav className="mt-9 flex gap-1 border-b border-hairline" aria-label="Profile sections">
-            {(
-              [
-                ['overview', 'Overview'],
-                ['background', 'Background'],
-                ['engagement', 'Engagement'],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-                className={[
-                  'press relative min-h-[44px] rounded-t-[6px] px-4 pb-3 pt-2 text-body-m transition-colors duration-150',
-                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor',
-                  tab === id ? 'font-medium text-text' : 'text-muted2 hover:text-text',
-                ].join(' ')}
-              >
-                {label}
-                {tab === id ? (
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-anchor"
-                  />
-                ) : null}
-              </button>
-            ))}
-          </nav>
+          <div className="min-w-0 lg:pt-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="eyebrow text-faint">Role</p>
+                <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.role}</p>
+              </div>
+              {entry.intel?.affiliation ? (
+                <div>
+                  <p className="eyebrow text-faint">Affiliation</p>
+                  <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.intel.affiliation}</p>
+                </div>
+              ) : null}
+              {entry.education?.trim() ? (
+                <div className="sm:col-span-2">
+                  <p className="eyebrow text-faint">Education &amp; training</p>
+                  <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.education}</p>
+                </div>
+              ) : null}
+            </div>
 
-          <div className="mt-8 space-y-4" role="tabpanel">
-            {tab === 'overview' ? (
-              <>
+            <div className="mt-8 space-y-4">
+
                 {displayBrief ? (
                   <article className="card overflow-hidden p-0">
                     <div className="flex items-center gap-2 border-b border-hairline px-6 py-4">
@@ -334,11 +318,7 @@ export default function KolProfilePage() {
                 </article>
 
                 <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
-              </>
-            ) : null}
-
-            {tab === 'background' ? (
-              <div className="space-y-4">
+              
                 {showBioOnBackground ? (
                   <article className="card p-6">
                     <h2 className="display text-body-m text-text">Summary</h2>
@@ -361,12 +341,8 @@ export default function KolProfilePage() {
                     </ul>
                   </article>
                 ) : null}
-              </div>
-            ) : null}
-
-            {tab === 'engagement' ? (
-              <KolCatalogContentSection entry={entry} variant="engagement" limit={12} />
-            ) : null}
+              
+            </div>
           </div>
         </div>
       </div>
