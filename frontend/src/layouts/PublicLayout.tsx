@@ -28,7 +28,7 @@ const nav = [
 const destinations = [
   ...nav,
   { to: '/about', label: 'About CHM' },
-  { to: '/what-we-do', label: 'What we do' },
+  { to: '/about', label: 'What we do' },
   { to: '/contact', label: 'Contact' },
 ];
 
@@ -658,7 +658,7 @@ const columns: { label: string; links: FooterLink[] }[] = [
     label: 'Company',
     links: [
       { to: '/about', label: 'About CHM' },
-      { to: '/what-we-do', label: 'What we do' },
+      { to: '/about', label: 'What we do' },
       { to: '/kol-network', label: 'KOL network' },
       { to: '/contact', label: 'Contact' },
     ],

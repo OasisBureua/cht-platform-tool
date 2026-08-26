@@ -39,7 +39,6 @@ const PublicWebinarDetail   = lazy(() => import('./pages/public/PublicWebinarDet
 const PublicOfficeHours     = lazy(() => import('./pages/public/PublicOfficeHours'));
 const PublicOfficeHoursDetail = lazy(() => import('./pages/public/PublicOfficeHoursDetail'));
 const PublicSurveys         = lazy(() => import('./pages/public/PublicSurveys'));
-const WhatWeDo              = lazy(() => import('./pages/public/WhatWeDo'));
 const Services              = lazy(() => import('./pages/public/Services'));
 const Portfolios            = lazy(() => import('./pages/public/Portfolios'));
 const DolNetwork            = lazy(() => import('./pages/public/DolNetwork'));
@@ -66,8 +65,6 @@ const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
-const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
-const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -179,7 +176,8 @@ function App() {
               <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
               <Route path="/surveys" element={<PublicSurveys />} />
               <Route path="/for-hcps" element={<ForHCPs />} />
-              <Route path="/what-we-do" element={<WhatWeDo />} />
+              {/* Merged into /about: one page for who we are and what we run. */}
+              <Route path="/what-we-do" element={<Navigate to="/about" replace />} />
               <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
               <Route path="/kol-network" element={<DolNetwork />} />
               <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />

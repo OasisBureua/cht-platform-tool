@@ -539,7 +539,7 @@ export default function Join() {
 
       <p className="mt-6 text-center text-body-s text-faint">
         Working in industry instead?{' '}
-        <Link to="/what-we-do" className="press rounded-[6px] text-anchor hover:brightness-110">
+        <Link to="/about" className="press rounded-[6px] text-anchor hover:brightness-110">
           See how CHM partners with pharma
         </Link>
       </p>

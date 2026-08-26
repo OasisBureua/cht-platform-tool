@@ -193,8 +193,8 @@ export default function Contact() {
             </ul>
           </div>
 
-          <Reveal delay={60}>
-            <Card className="h-fit p-7">
+          <Reveal delay={60} className="h-full">
+            <Card className="flex h-full flex-col p-7">
               {sent ? (
                 /* The design navigates to /thanks; this app has no such
                    route, so the confirmation takes the card and the rest

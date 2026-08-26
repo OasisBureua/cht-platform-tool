@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { ChmMark } from '../../components/brand/ChmMark';
-import { Button, Reveal, SectionHead } from '../../components/ui';
+import { Button, Card, Reveal, SectionHead } from '../../components/ui';
+import { cn } from '../../lib/cn';
 import { useKolDirectory, type DolEntry } from '../../hooks/useKolDirectory';
 
 /**
@@ -128,6 +129,54 @@ export default function About() {
         </ul>
       </Band>
 
+      {/* ── How the content engine works ─────────────────── */}
+      <Band label="How the content engine works">
+        <Reveal>
+          <SectionHead
+            index="04 / Engine"
+            title="How the content engine works"
+            sub="One conversation, every channel."
+          />
+        </Reveal>
+        <ul className="mt-8 grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
+          {STEPS.map((st, i) => (
+            <Reveal as="li" key={st.n} delay={i * 60} className="h-full">
+              <Card className="h-full p-7">
+                <p className="display display-tight text-[1.75rem] tabular-nums text-anchor">
+                  {st.n}
+                </p>
+                <h3 className="display display-tight mt-4 text-display-s text-text">{st.title}</h3>
+                <p className="prose-lede mt-3 text-body-s text-muted2">{st.body}</p>
+              </Card>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      {/* ── What one recording produces ──────────────────── */}
+      <Band label="What one recording produces">
+        <Reveal>
+          <SectionHead index="05 / Output" title="What one recording produces" />
+        </Reveal>
+        <Reveal delay={60}>
+          <Card className="mt-7 overflow-hidden p-0">
+            {FORMATS.map(([name, len, note], i) => (
+              <div
+                key={name}
+                className={cn(
+                  'grid gap-3 px-7 py-6 md:grid-cols-[220px_160px_1fr]',
+                  i > 0 && 'border-t border-hairline',
+                )}
+              >
+                <p className="display text-body-l text-text">{name}</p>
+                <p className="meta text-anchor">{len}</p>
+                <p className="text-body-s text-muted2">{note}</p>
+              </div>
+            ))}
+          </Card>
+        </Reveal>
+      </Band>
+
       <section id="contact" className="rail flex flex-wrap items-center justify-between gap-8 py-20">
         <div>
           <p className="eyebrow text-muted2">Contact</p>
@@ -190,6 +239,37 @@ function PageHead({
 }
 
 /** Full-bleed band; the inner rail carries the page margins. */
+/* Lifted from the former /what-we-do, unchanged. */
+const STEPS = [
+  {
+    n: '01',
+    title: 'One conversation',
+    body: 'Two faculty who already disagree sit down for ninety minutes on a question your brand has a stake in. No slides, no script approval, no talking points.',
+  },
+  {
+    n: '02',
+    title: 'Four channels',
+    body: 'That session becomes long-form video, a podcast episode, an editorial explainer and a set of short clips. One recording day, four distribution surfaces.',
+  },
+  {
+    n: '03',
+    title: 'Placed in the track',
+    body: 'Everything lands inside the disease state where your audience already browses, next to the sessions they came for.',
+  },
+  {
+    n: '04',
+    title: 'Measured on completion',
+    body: 'Not impressions. Completion rate, post-test pass rate and repeat visits by faculty, reported monthly.',
+  },
+] as const;
+
+const FORMATS = [
+  ['Long-form video', '18 to 30 min', 'The full case discussion, chaptered.'],
+  ['Podcast episode', '25 to 40 min', 'Audio cut, syndicated across the four CHM shows.'],
+  ['Editorial explainer', '5 to 8 min read', 'Written by faculty, not by a medical writer.'],
+  ['Short clips', '45 to 90 sec', 'Cut for social and for in-feed placement.'],
+] as const;
+
 function Band({ children, label }: { children: ReactNode; label: string }) {
   return (
     <section aria-label={label}>
