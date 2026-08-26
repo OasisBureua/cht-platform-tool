@@ -1,102 +1,117 @@
-/* Chillax (brand): local @font-face so the family applies even when the Fontshare CSS link is slow or blocked */
-@font-face {
-  font-family: 'Chillax';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('https://cdn.fontshare.com/wf/WSPWZKQM26GGKSLVGSP2CFUHUMS5BCYQ/UE3YJANJM3SE3IWT4TOMYQVMLCQ6GZGG/XESIRBQU62YFBC7YQZI6D2NT5CNZ4PPU.woff2')
-    format('woff2');
-}
-@font-face {
-  font-family: 'Chillax';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('https://cdn.fontshare.com/wf/XASL35KKT35X3ACCBCOQKKABSR6AT3FX/6MU5BWUUPHCFUHM2F3E3QPQGKXCVBUOO/WZY5PMNTII6NKOB2TTIAX7QVAWMSY2DQ.woff2')
-    format('woff2');
-}
-@font-face {
-  font-family: 'Chillax';
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url('https://cdn.fontshare.com/wf/2T24MWUOKZU65SZJ33GPRGNOKE4KPOBX/T6LIXZJIPB23UDPMTIKURYWSZLXZBJ3A/THF5L6EHVL4N4NNE3GYDZNZSHABL5CH5.woff2')
-    format('woff2');
-}
-@font-face {
-  font-family: 'Chillax';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url('https://cdn.fontshare.com/wf/UM553GIXLG5E46TUH763VYPGAQ77BPQ5/NN4EI53RUGC4BO5HP5F46SYQ4WY4U4CE/T2KA2X72VGASVXFVB7QCOIFYVH5GZJTW.woff2')
-    format('woff2');
-}
-
+/* Geist + Geist Mono load from the <link> in index.html, which the
+   browser can preconnect and prioritise; an @import here would
+   block the stylesheet instead. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --color-text-primary: #111827;
-  --color-text-secondary: #4b5563;
-  --color-text-muted: #6b7280;
-  --color-border: #e5e7eb;
-  --color-surface: #f9fafb;
-  /** CHM brand (see tailwind `chm-*`) */
-  --chm-base-white: #f2f4f8;
-  --chm-knowledge-blue: #3da4c0;
-  --chm-sharing-yellow: #ff9e40;
-  --chm-expertise-blue: #3a839b;
-  --chm-precision-black: #485165;
-  --chm-connection-orange: #e7764f;
-  --chm-discovery-gray: #79869a;
+  --color-text-primary: #0d0d0d;
+  --color-text-secondary: #373737;
+  --color-text-muted: #5c5c5c;
+  --color-border: #ebebeb;
+  --color-surface: #f6f6f6;
 
   /* ============================================================
-   * SEMANTIC DESIGN TOKENS (light: platform default)
+   * CEREBRAL PALETTE
+   * The brand spectrum. These are raw hues and never change with
+   * the appearance; what changes is which of them a semantic token
+   * points at. Consumed through the semantic tokens below, not
+   * directly, so a hue can be retuned in one place.
+   * ============================================================ */
+  --cerebral-blue: 211 100% 50%;        /* #007cff */
+  --cerebral-blue-deep: 246 100% 46%;   /* #1600ec */
+  --cerebral-cyan: 188 100% 50%;        /* #00dcfe */
+  --cerebral-pink: 304 100% 81%;        /* #ff9ff8 */
+  --cerebral-coral: 0 88% 80%;          /* #f99d9d */
+  --cerebral-purple: 254 100% 79%;      /* #ae96ff */
+  --cerebral-green: 145 100% 72%;       /* #71ffab */
+
+  /* A label that always sits on a bright fill. Fixed across
+     appearances, because the fill is bright in both. */
+  --cerebral-on-bright: 0 0% 5%;
+
+  /* ============================================================
+   * SEMANTIC DESIGN TOKENS (light)
    * HSL channel triplets so Tailwind `hsl(var(--x) / <alpha>)`
    * opacity modifiers work. Consumed by tailwind.config colors.
-   * PRIMARY = teal (knowledge/expertise), ACCENT = connection orange.
+   * The page is the lighter surface and cards sit a step down from
+   * it, which is the inverse of the old ramp: it keeps the white
+   * ground while still separating a card without a border.
    * ============================================================ */
-  --background: 220 33% 96%;        /* #f2f4f8 chm surface */
-  --foreground: 221 17% 34%;        /* #485165 precision */
-  --card: 0 0% 100%;                /* #ffffff */
-  --card-foreground: 221 17% 34%;
-  --muted: 220 20% 94%;             /* #eef1f6 */
-  --muted-foreground: 216 15% 54%;  /* #79869a discovery */
-  --border: 214 32% 91%;            /* #e2e8f0 */
-  --input: 214 20% 85%;
-  --ring: 193 52% 50%;              /* teal focus ring */
+  --background: 0 0% 100%;          /* #ffffff */
+  --foreground: 0 0% 5%;            /* #0d0d0d */
+  --card: 0 0% 96%;                 /* #f6f6f6 */
+  --card-foreground: 0 0% 5%;
+  --muted: 0 0% 92%;                /* #ebebeb */
+  --muted-foreground: 0 0% 36%;     /* #5c5c5c */
+  --border: 0 0% 92%;
+  --input: 0 0% 88%;
+  --ring: 212 100% 38%;             /* anchor */
 
-  --primary: 193 52% 50%;           /* #3da4c0 knowledge blue */
+  --primary: 224 88% 52%;           /* #1a54f0 — deepened for white */
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 196 45% 42%;     /* #3a839b expertise blue */
+  --primary-hover: 224 88% 44%;     /* #0d41d5 */
 
-  --accent: 15 76% 61%;             /* #e7764f connection orange */
+  --accent: 314 72% 38%;            /* #a61b86 */
   --accent-foreground: 0 0% 100%;
-  --accent-hover: 15 62% 51%;       /* #d15b34 */
+  --accent-hover: 259 55% 49%;
 
-  --radius: 0.75rem;                /* platform keeps its rounded language */
+  /* Accents used AS TEXT deepen on a light ground; the bright
+     spectrum sits near 1.7:1 on white and cannot be read. */
+  --ink-cyan: 191 100% 27%;
+  --ink-pink: 314 72% 38%;
+  --ink-purple: 259 55% 49%;
+  --ink-coral: 359 61% 43%;
+  --ink-green: 148 100% 21%;
+
+  --success: 149 100% 21%;
+  --warning: 34 100% 25%;
+  --destructive: 359 76% 41%;
+  --destructive-foreground: 0 0% 100%;
+
+  /* Controls are rectangular with a slight corner; cards keep the
+     larger 1rem via `rounded-card`. */
+  --radius: 0.375rem;
 }
 
 .dark {
-  --background: 240 10% 4%;         /* #09090b zinc-950 */
-  --foreground: 240 5% 96%;         /* #f4f4f5 */
-  --card: 240 6% 10%;               /* #18181b zinc-900 */
-  --card-foreground: 240 5% 96%;
-  --muted: 240 4% 16%;              /* #27272a zinc-800 */
-  --muted-foreground: 240 5% 65%;   /* #a1a1aa zinc-400 */
-  --border: 240 4% 16%;
-  --input: 240 4% 20%;
-  --ring: 191 58% 56%;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #dcdcdc;
+  --color-text-muted: #a2a2a2;
+  --color-border: #1b1b1b;
+  --color-surface: #151515;
 
-  --primary: 191 58% 56%;           /* brighter teal on dark */
-  --primary-foreground: 240 10% 4%;
-  --primary-hover: 193 52% 50%;
+  --background: 0 0% 4%;            /* #0a0a0a */
+  --foreground: 0 0% 100%;
+  --card: 0 0% 8%;                  /* #151515 */
+  --card-foreground: 0 0% 100%;
+  --muted: 0 0% 11%;                /* #1b1b1b */
+  --muted-foreground: 0 0% 64%;     /* #a2a2a2 */
+  --border: 0 0% 11%;
+  --input: 0 0% 14%;
+  --ring: 199 100% 68%;             /* anchor */
 
-  --accent: 17 81% 66%;             /* #ef8a63 warmer orange on dark */
-  --accent-foreground: 240 10% 4%;
-  --accent-hover: 15 76% 61%;
+  --primary: 211 100% 50%;          /* #007cff — full brightness on black */
+  --primary-foreground: 0 0% 4%;
+  --primary-hover: 211 100% 58%;
+
+  --accent: 304 100% 81%;           /* #ff9ff8 */
+  --accent-foreground: 0 0% 5%;
+  --accent-hover: 254 100% 79%;
+
+  --ink-cyan: 188 100% 50%;
+  --ink-pink: 304 100% 81%;
+  --ink-purple: 255 100% 82%;
+  --ink-coral: 0 88% 80%;
+  --ink-green: 145 80% 68%;
+
+  --success: 146 50% 51%;
+  --warning: 43 77% 52%;
+  --destructive: 1 81% 62%;
+  --destructive-foreground: 0 0% 4%;
 }
+
 
 @keyframes shimmer {
   100% {
@@ -448,4 +463,23 @@
   .card {
     @apply rounded-lg bg-white p-6 shadow-[0_8px_30px_-20px_rgba(0,0,0,0.08)];
   }
+}
+
+@layer components {
+  /* Breaks a horizontal scroller out of the page gutter so items run off
+     the viewport edge, while the first still lines up with the content.
+     Cancels the gutter and gives it back as padding. */
+  .bleed-x {
+    margin-inline: calc(-1 * var(--page-gutter, 1rem));
+    padding-inline: var(--page-gutter, 1rem);
+  }
+}
+
+@layer base {
+  :root { --page-gutter: 1rem; }
+  @media (min-width: 640px) { :root { --page-gutter: 1.5rem; } }
+  @media (min-width: 1024px) { :root { --page-gutter: 2rem; } }
+
+  /* macOS renders text heavier than intended; set once at the root. */
+  html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 }

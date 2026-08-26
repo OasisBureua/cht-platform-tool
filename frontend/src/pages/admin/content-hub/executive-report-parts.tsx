@@ -5,7 +5,7 @@ import type { CSSProperties, ReactNode } from 'react';
  * /chm-logo-mark.png; that asset does not exist in the platform's public dir, so this
  * renders the inline SVG LogoMark (fills its container): no broken image, same motif.
  */
-export function FluidMark({ color = '#3da4c0' }: { color?: string }) {
+export function FluidMark({ color = '#007cff' }: { color?: string }) {
   return (
     <div className="flex h-full w-full items-center justify-center">
       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -23,7 +23,7 @@ export function FluidMark({ color = '#3da4c0' }: { color?: string }) {
 }
 
 /** The two corner logo watermarks used on every decorated panel. */
-export function CornerLogos({ color = '#3da4c0' }: { color?: string }) {
+export function CornerLogos({ color = '#007cff' }: { color?: string }) {
   return (
     <>
       <div className="pointer-events-none absolute -right-12 -top-12 select-none" style={{ opacity: 0.12 }}>
@@ -77,9 +77,9 @@ export function Slide({
     <section
       id={id}
       className={`exec-slide relative flex w-full flex-col overflow-hidden ${
-        dark ? 'bg-[#485165] text-white' : 'bg-white text-[#485165]'
+        dark ? 'bg-[#373737] text-white' : 'bg-white text-[#373737]'
       } ${extra}`}
-      style={{ minHeight: '56.25vw', breakAfter: 'page', fontFamily: 'Chillax, sans-serif' }}
+      style={{ minHeight: '56.25vw', breakAfter: 'page', fontFamily: 'Geist, sans-serif' }}
     >
       {children}
     </section>
@@ -89,8 +89,8 @@ export function Slide({
 /** Dark slate header band with teal kicker used on Production/Distribution slides. */
 export function SlideHeaderBar({ kicker, title }: { kicker: string; title: string }) {
   return (
-    <div className="flex-shrink-0 bg-[#485165] px-14 py-8 text-white">
-      <div className="mb-1 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">{kicker}</div>
+    <div className="flex-shrink-0 bg-[#373737] px-14 py-8 text-white">
+      <div className="mb-1 text-sm font-bold uppercase tracking-[0.28em] text-[#007cff]">{kicker}</div>
       <h2 className="text-5xl font-black tracking-tight">{title}</h2>
     </div>
   );
@@ -102,16 +102,16 @@ export function CoverNodes() {
     <svg viewBox="0 0 500 640" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-full w-full" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
       <line x1="325" y1="68" x2="152" y2="192" stroke="#3dc4c0" strokeWidth="1.5" strokeOpacity="0.55" />
       <line x1="325" y1="68" x2="415" y2="325" stroke="#3dc4c0" strokeWidth="1.5" strokeOpacity="0.55" />
-      <line x1="152" y1="192" x2="415" y2="325" stroke="#e7764f" strokeWidth="1.5" strokeOpacity="0.55" />
-      <line x1="415" y1="325" x2="265" y2="408" stroke="#79869a40" strokeWidth="1.5" strokeOpacity="0.55" />
+      <line x1="152" y1="192" x2="415" y2="325" stroke="#c54ebe" strokeWidth="1.5" strokeOpacity="0.55" />
+      <line x1="415" y1="325" x2="265" y2="408" stroke="#5c5c5c40" strokeWidth="1.5" strokeOpacity="0.55" />
       <line x1="265" y1="408" x2="118" y2="528" stroke="#3dc4c0" strokeWidth="1.5" strokeOpacity="0.55" />
-      <line x1="118" y1="528" x2="415" y2="605" stroke="#e7764f" strokeWidth="1.5" strokeOpacity="0.55" />
+      <line x1="118" y1="528" x2="415" y2="605" stroke="#c54ebe" strokeWidth="1.5" strokeOpacity="0.55" />
       <circle cx="325" cy="68" r="11" fill="#3dc4c0" fillOpacity="0.9" />
       <circle cx="152" cy="192" r="8" fill="#3dc4c0" fillOpacity="0.9" />
-      <circle cx="415" cy="325" r="15" fill="#e7764f" fillOpacity="0.9" />
-      <circle cx="265" cy="408" r="6" fill="#79869a" fillOpacity="0.9" />
+      <circle cx="415" cy="325" r="15" fill="#c54ebe" fillOpacity="0.9" />
+      <circle cx="265" cy="408" r="6" fill="#5c5c5c" fillOpacity="0.9" />
       <circle cx="118" cy="528" r="12" fill="#3dc4c0" fillOpacity="0.9" />
-      <circle cx="415" cy="605" r="13" fill="#ff9e40" fillOpacity="0.9" />
+      <circle cx="415" cy="605" r="13" fill="#f99d9d" fillOpacity="0.9" />
     </svg>
   );
 }
@@ -133,7 +133,7 @@ export function PlatformTile({
   totalImpressions: number;
   hasData: boolean;
 }) {
-  const color = PLATFORM_TILE_COLORS[platform] ?? '#79869a';
+  const color = PLATFORM_TILE_COLORS[platform] ?? '#5c5c5c';
   const fmt = (n: number) => (hasData ? Number(n).toLocaleString('en-US') : '-');
   return (
     <div className="overflow-hidden rounded-xl border" style={{ borderColor: `${color}30` }}>
@@ -142,13 +142,13 @@ export function PlatformTile({
       </DecoPanel>
       <div className="flex flex-col gap-4 bg-white p-5">
         <div>
-          <div className="text-5xl font-black leading-none text-[#485165]">{fmt(totalViews)}</div>
-          <div className="mt-2 text-sm font-semibold uppercase tracking-wide text-[#79869a]">Total Views</div>
+          <div className="text-5xl font-black leading-none text-[#373737]">{fmt(totalViews)}</div>
+          <div className="mt-2 text-sm font-semibold uppercase tracking-wide text-[#5c5c5c]">Total Views</div>
         </div>
-        <div className="h-px bg-[#f2f4f8]" />
+        <div className="h-px bg-[#f6f6f6]" />
         <div>
-          <div className="text-5xl font-black leading-none text-[#485165]">{fmt(totalImpressions)}</div>
-          <div className="mt-2 text-sm font-semibold uppercase tracking-wide text-[#79869a]">Total Impressions</div>
+          <div className="text-5xl font-black leading-none text-[#373737]">{fmt(totalImpressions)}</div>
+          <div className="mt-2 text-sm font-semibold uppercase tracking-wide text-[#5c5c5c]">Total Impressions</div>
         </div>
       </div>
     </div>

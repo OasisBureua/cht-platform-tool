@@ -229,7 +229,7 @@ export const PLATFORM_COLORS: Record<Platform, string> = {
   linkedin: '#0077B5',
   meta: '#7B5EA7',
   youtube: '#FF0000',
-  livestream: '#3DA4C0',
+  livestream: '#007cff',
   survey: '#2E7D32',
 };
 

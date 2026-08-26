@@ -29,7 +29,7 @@ const INTEGRATIONS: IntegrationMeta[] = [
   { key: 'linkedin', initials: 'LI', color: '#0077b5', name: 'LinkedIn Campaign Manager', description: 'Ad impressions, clicks, engagement, audience reach, conversions' },
   { key: 'meta', initials: 'ME', color: '#1877f2', name: 'Meta Ads Manager', description: 'Ad spend, reach, impressions, clicks, conversions, audience insights' },
   { key: 'youtube', initials: 'YT', color: '#ff0000', name: 'YouTube Analytics', description: 'Views, watch time, audience retention, demographics, traffic sources' },
-  { key: 'livestream', initials: 'LS', color: '#3da4c0', name: 'Zoom (Livestream)', description: 'Webinar attendance, peak viewers, and replay engagement via CHT Zoom integration' },
+  { key: 'livestream', initials: 'LS', color: '#007cff', name: 'Zoom (Livestream)', description: 'Webinar attendance, peak viewers, and replay engagement via CHT Zoom integration' },
   { key: 'survey', initials: 'SV', color: '#2e7d32', name: 'Native Surveys', description: 'Post-event and intake survey responses collected on CHT' },
 ];
 

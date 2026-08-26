@@ -9,13 +9,14 @@ export default {
     extend: {
       fontFamily: {
         /** Type mix: Chillax = shared UI/display; Georgia serif = report documents; mono = data/tokens. */
-        sans: ['Chillax', 'system-ui', 'sans-serif'],
-        /** Display/headings: Chillax with a serif fallback (unchanged for existing usage). */
-        serif: ['Chillax', 'Georgia', 'serif'],
+        sans: ['Geist', 'system-ui', 'sans-serif'],
+        /** Display/headings. Kept under the `serif` key so the ~existing
+            font-serif usages keep working; the face is no longer a serif. */
+        serif: ['Geist', 'system-ui', 'sans-serif'],
         /** Report-document body: true editorial serif (matches Report Generator white-papers). */
         report: ['Georgia', '"Times New Roman"', 'serif'],
         /** Numeric/tabular data, tokens, IDs. */
-        mono: ['Menlo', 'Monaco', 'ui-monospace', 'monospace'],
+        mono: ['Geist Mono', 'Menlo', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
         /** Token-driven radius (see --radius). Platform keeps its fully-rounded language. */
@@ -59,39 +60,65 @@ export default {
           DEFAULT: 'hsl(var(--primary) / <alpha-value>)',
           foreground: 'hsl(var(--primary-foreground) / <alpha-value>)',
           hover: 'hsl(var(--primary-hover) / <alpha-value>)',
-          50: '#f1f9fb',
-          100: '#dceff4',
-          200: '#bde1ea',
-          300: '#8fcbd9',
-          400: '#5bb0c5',
-          500: '#3da4c0',
-          600: '#3a839b',
-          700: '#316b7f',
-          800: '#2c5867',
-          900: '#284a58',
-          950: '#16303b',
+          50: '#c7f8ff',
+          100: '#aeeaff',
+          200: '#8fd5ff',
+          300: '#68baff',
+          400: '#3b9aff',
+          500: '#007cff',
+          600: '#0068fc',
+          700: '#0050c4',
+          800: '#00419c',
+          900: '#00337c',
+          950: '#001a52',
         },
         /** ACCENT = CHM Connection Orange. The pop color: used sparingly. */
         accent: {
           DEFAULT: 'hsl(var(--accent) / <alpha-value>)',
           foreground: 'hsl(var(--accent-foreground) / <alpha-value>)',
           hover: 'hsl(var(--accent-hover) / <alpha-value>)',
-          50: '#fef4f0',
-          100: '#fde4d9',
-          200: '#fbc8b3',
-          300: '#f7a483',
-          400: '#ef7e54',
-          500: '#e7764f',
-          600: '#d15b34',
-          700: '#ae4728',
-          800: '#8f3c25',
-          900: '#763523',
-          950: '#401a0f',
+          50: '#ffdfff',
+          100: '#ffcdff',
+          200: '#ffb3fe',
+          300: '#f293ea',
+          400: '#da70d2',
+          500: '#c54ebe',
+          600: '#a841a2',
+          700: '#883184',
+          800: '#6d2569',
+          900: '#561c53',
+          950: '#350833',
         },
         /**
-         * Official CHM brand palette (marketing / guidelines). Unchanged, 
-         * knowledge=teal and connection=orange are already correct.
+         * Legacy CHM marketing palette. Superseded by `cerebral`; kept
+         * only so the 3 files still referencing it keep compiling.
          */
+        /** CEREBRAL: the brand spectrum, for taxonomy and decoration. */
+        cerebral: {
+          blue: 'hsl(var(--cerebral-blue) / <alpha-value>)',
+          'blue-deep': 'hsl(var(--cerebral-blue-deep) / <alpha-value>)',
+          cyan: 'hsl(var(--cerebral-cyan) / <alpha-value>)',
+          pink: 'hsl(var(--cerebral-pink) / <alpha-value>)',
+          coral: 'hsl(var(--cerebral-coral) / <alpha-value>)',
+          purple: 'hsl(var(--cerebral-purple) / <alpha-value>)',
+          green: 'hsl(var(--cerebral-green) / <alpha-value>)',
+          'on-bright': 'hsl(var(--cerebral-on-bright) / <alpha-value>)',
+        },
+        /** Spectrum hues tuned for TEXT: they deepen on a light ground. */
+        ink: {
+          cyan: 'hsl(var(--ink-cyan) / <alpha-value>)',
+          pink: 'hsl(var(--ink-pink) / <alpha-value>)',
+          purple: 'hsl(var(--ink-purple) / <alpha-value>)',
+          coral: 'hsl(var(--ink-coral) / <alpha-value>)',
+          green: 'hsl(var(--ink-green) / <alpha-value>)',
+        },
+        success: 'hsl(var(--success) / <alpha-value>)',
+        warning: 'hsl(var(--warning) / <alpha-value>)',
+        destructive: {
+          DEFAULT: 'hsl(var(--destructive) / <alpha-value>)',
+          foreground: 'hsl(var(--destructive-foreground) / <alpha-value>)',
+        },
+        /** Superseded by `cerebral`. Retained: 3 files still name these. */
         chm: {
           surface: '#f2f4f8',
           knowledge: '#3da4c0',
@@ -102,39 +129,39 @@ export default {
           discovery: '#79869a',
         },
         /**
-         * `brand-*`: REMAPPED from orange to teal so the ~45 files using
-         * `bg-brand-600` etc. become teal-primary with zero per-file churn.
-         * Deprecated alias of `primary-*`; new code should use `primary`.
+         * `brand-*`: alias of `primary-*`, now the Cerebral blue. 68 files
+         * still use `bg-brand-600` etc., so remapping here moves them all
+         * with zero per-file churn. Deprecated: new code uses `primary`.
          */
         brand: {
-          50: '#f1f9fb',
-          100: '#dceff4',
-          200: '#bde1ea',
-          300: '#8fcbd9',
-          400: '#5bb0c5',
-          500: '#3da4c0',
-          600: '#3a839b',
-          700: '#316b7f',
-          800: '#2c5867',
-          900: '#284a58',
-          950: '#16303b',
+          50: '#c7f8ff',
+          100: '#aeeaff',
+          200: '#8fd5ff',
+          300: '#68baff',
+          400: '#3b9aff',
+          500: '#007cff',
+          600: '#0068fc',
+          700: '#0050c4',
+          800: '#00419c',
+          900: '#00337c',
+          950: '#001a52',
         },
         /**
          * `steel-*`: the former blue `accent-*` chrome scale, renamed so the
          * `accent` token can mean orange. Neutral cool chrome for nav/links.
          */
         steel: {
-          50: '#f0f7fb',
-          100: '#d9eaf4',
-          200: '#b7daec',
-          300: '#8ac0de',
-          400: '#5b9fcd',
-          500: '#3f82b5',
-          600: '#3a839b',
-          700: '#2a5780',
-          800: '#264a6b',
-          900: '#1f3f5e',
-          950: '#152b40',
+          50: '#e9f7ff',
+          100: '#daebf7',
+          200: '#c3d7e6',
+          300: '#a7becf',
+          400: '#89a2b5',
+          500: '#6e8a9f',
+          600: '#5d7587',
+          700: '#495e6d',
+          800: '#394a56',
+          900: '#2c3a44',
+          950: '#162128',
         },
       },
     },
