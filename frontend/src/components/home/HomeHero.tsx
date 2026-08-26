@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { DiseaseMap } from './DiseaseMap';
 import { KnowledgeField } from './KnowledgeField';
 import { LiveDemo } from './LiveDemo';
 
@@ -25,8 +26,10 @@ export type HeroVariant = 'rail' | 'field' | 'demo';
  *   rail  — the thumbnail lens above. A shelf of content.
  *   field — a drifting particle field. Says "a body of knowledge",
  *           claims nothing specific, and carries no image licensing.
- *   demo  — the real search box, lifted into the hero. Says "here is
- *           what the library knows" and can actually be used.
+ *   demo  — the real search box over the disease map. Says "here is
+ *           what the library knows, and here is the way in", and can
+ *           actually be used. The map punches its own hole for the
+ *           box, so the two never fight.
  */
 export function HomeHero({
   tiles,
@@ -133,6 +136,22 @@ export function HomeHero({
         </div>
       )}
 
+      {variant === 'demo' && (
+        <div aria-hidden className="pointer-events-none absolute inset-0 select-none">
+          <DiseaseMap />
+          {/* Carries the contrast for the copy, so the map underneath can
+              stay a map instead of being cut into an annulus. */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(32% 34% at 50% 50%, var(--color-ground) 30%, color-mix(in oklab, var(--color-ground) 70%, transparent) 66%, transparent 100%)',
+            }}
+          />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent to-ground" />
+        </div>
+      )}
+
       {variant === 'field' && (
         <div aria-hidden className="pointer-events-none absolute inset-0 select-none">
           <KnowledgeField />
@@ -150,7 +169,12 @@ export function HomeHero({
         </div>
       )}
 
-      <div className="rail relative flex flex-col items-center pt-20 pb-16 text-center md:pt-28 md:pb-20">
+      <div className={`rail relative flex flex-col items-center justify-center pt-10 pb-16 text-center md:pt-14 md:pb-20 ${
+          // The map needs an annulus around the copy to live in. On a
+          // short hero the copy column eats the full width and the
+          // clusters can only clip off the edges.
+          variant === 'demo' ? 'md:min-h-[34rem]' : ''
+        }`}>
         <h1
           id="hero-heading"
           className="rise display max-w-[16ch] text-[2.75rem] leading-[1.03] tracking-[-0.032em] text-text sm:text-[3.5rem] lg:text-[4.25rem]"

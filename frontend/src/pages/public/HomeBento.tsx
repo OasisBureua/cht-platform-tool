@@ -570,7 +570,7 @@ export default function HomeBento() {
                     to="/chm-office-hours"
                     className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                   >
-                    <div className="relative aspect-[16/9] overflow-hidden">
+                    <div className="relative aspect-square overflow-hidden">
                       <img
                         src={s.cover}
                         alt=""
@@ -579,12 +579,7 @@ export default function HomeBento() {
                       />
                       <span
                         aria-hidden
-                        className="absolute inset-0 mix-blend-multiply"
-                        style={{ background: s.tone, opacity: 0.72 }}
-                      />
-                      <span
-                        aria-hidden
-                        className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent"
+                        className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/45 to-transparent"
                       />
                       <ChmMark className="absolute bottom-3 start-3 size-6 text-white/90" />
                       {s.spanish ? (
@@ -593,12 +588,12 @@ export default function HomeBento() {
                         </span>
                       ) : null}
                     </div>
-                    <div className="flex flex-1 flex-col p-4">
+                    <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
                       <h3 className="display text-body-m text-text">{s.title}</h3>
                       <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
                         {s.tagline}
                       </p>
-                      <p className="meta mt-auto pt-4 text-faint">
+                      <p className="meta mt-3 text-faint">
                         {s.episodes} episodes · {s.hosts}
                       </p>
                     </div>
