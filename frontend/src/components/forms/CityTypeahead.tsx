@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { suggestCities } from '../../data/us-cities';
+import { cn } from '../../lib/cn';
 
 type Props = {
   label: string;
@@ -9,6 +10,8 @@ type Props = {
   optional?: boolean;
   placeholder?: string;
   disabled?: boolean;
+  /** Lets a form grid place the control, e.g. `sm:col-span-2`. */
+  className?: string;
 };
 
 export default function CityTypeahead({
@@ -19,8 +22,10 @@ export default function CityTypeahead({
   optional = true,
   placeholder = 'Start typing a city',
   disabled,
+  className,
 }: Props) {
   const listId = useId();
+  const inputId = `${listId}-city`;
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -48,11 +53,11 @@ export default function CityTypeahead({
   };
 
   return (
-    <div className="relative space-y-1.5" ref={rootRef}>
-      <label className="text-sm font-semibold text-foreground">
+    <div className={cn('relative', className)} ref={rootRef}>
+      <label htmlFor={inputId} className="block text-sm text-muted-foreground">
         {label}
         {optional ? (
-          <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+          <span className="ml-1 text-muted-foreground">(optional)</span>
         ) : (
           <span className="ml-1 text-destructive" aria-hidden>
             *
@@ -60,6 +65,7 @@ export default function CityTypeahead({
         )}
       </label>
       <input
+        id={inputId}
         type="text"
         role="combobox"
         aria-expanded={open && suggestions.length > 0}
@@ -91,22 +97,22 @@ export default function CityTypeahead({
             setOpen(false);
           }
         }}
-        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25 disabled:opacity-60"
+        className="mt-2 h-12 w-full rounded-[6px] bg-card px-4 text-base text-foreground shadow-card outline-none placeholder:text-muted-foreground/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60 sm:text-sm"
       />
       {open && suggestions.length > 0 ? (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-card border border-border bg-card py-1 shadow-lg"
+          className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-card bg-card py-1 shadow-card-hover"
         >
           {suggestions.map((city, i) => (
             <li key={city} role="option" aria-selected={i === highlight}>
               <button
                 type="button"
-                className={[
-                  'block w-full px-3 py-2 text-left text-sm',
-                  i === highlight ? 'bg-brand-50 text-brand-900' : 'text-foreground hover:bg-muted',
-                ].join(' ')}
+                className={cn(
+                  'block w-full px-4 py-2 text-left text-sm transition-colors duration-150',
+                  i === highlight ? 'bg-brand-600 text-white' : 'text-foreground hover:bg-muted',
+                )}
                 onMouseEnter={() => setHighlight(i)}
                 onMouseDown={(e) => {
                   e.preventDefault();
@@ -120,7 +126,7 @@ export default function CityTypeahead({
         </ul>
       ) : null}
       {!stateCode && value.trim() ? (
-        <p className="text-xs text-muted-foreground">Select a state to narrow city suggestions.</p>
+        <p className="mt-2 text-sm text-muted-foreground">Select a state to narrow city suggestions.</p>
       ) : null}
     </div>
   );

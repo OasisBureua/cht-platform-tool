@@ -1,9 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowUpDown, BadgeCheck, GraduationCap, MapPin, Sparkles } from 'lucide-react';
+import { ArrowUpDown, BadgeCheck, ChevronDown, GraduationCap, MapPin, Sparkles } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../../hooks/useKolDirectory';
 import { hasAiSummary, resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
+import { Button, Chip, chipKind, Field, Rail, SectionHead } from '../../components/ui';
 
 type FlatKol = DolEntry & {
   stateId: string;
@@ -41,6 +41,36 @@ function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
 }
+
+/**
+ * The specialty string arrives as one middot-joined line
+ * ("Medical Oncology · Breast Cancer (TNBC)"). Split it back into the
+ * labels it already carries rather than inventing a taxonomy.
+ */
+function specialtyLabels(k: FlatKol): string[] {
+  const raw = k.intel?.specialty?.trim();
+  if (!raw) return [];
+  return raw
+    .split(/[·|]/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 3);
+}
+
+/** Reveal stagger, capped so a long list never waits seconds to appear. */
+function revealDelay(i: number): string {
+  return `${Math.min(i, 6) * 60}ms`;
+}
+
+const SELECT_CLASS =
+  'h-12 w-full appearance-none rounded-[6px] bg-card pl-4 pr-10 text-base text-foreground shadow-card ' +
+  'outline-none transition-shadow duration-150 hover:shadow-card-hover sm:text-sm ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+
+const CHEVRON_CLASS =
+  'pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground';
+
+const CONTROL_LABEL_CLASS = 'block text-sm text-muted-foreground';
 
 export default function DolNetwork({ embedded = false }: { embedded?: boolean }) {
   const [search, setSearch] = useState('');
@@ -136,194 +166,285 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
     'new-first': 'New listings first',
   };
 
+  /* The page column. `bleed-x` on the rails is measured against
+     `--page-gutter`, so the column has to carry exactly that padding for
+     the first card to line up with the copy above it. Embedded, the app
+     shell already supplies the gutter, so the column adds none and the
+     rails give their bleed back. */
+  const column = embedded
+    ? 'mx-auto w-full min-w-0 max-w-7xl'
+    : 'mx-auto w-full min-w-0 max-w-7xl px-4 sm:px-6 lg:px-8';
+  const railBleed = embedded ? 'mx-0 px-0' : undefined;
+
+  /* Live counts, not claims: everything here is read off the response
+     that is already driving the selects below. */
+  const facets = [
+    { label: 'Profiles', value: directory.total },
+    { label: 'States', value: directory.regions.length },
+    { label: 'Institutions', value: institutions.length },
+  ];
+
   return (
-    <div className={embedded ? 'min-w-0' : 'bg-[#f5f5f7] min-h-screen'}>
-      <div
-        className={
-          embedded
-            ? 'mx-auto max-w-6xl py-2 sm:py-4 md:py-6'
-            : 'mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12 md:py-14'
-        }
-      >
-        <header className="mb-8 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand-700">CHT Platform</p>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">Key Opinion Leader (KOL) Network</h1>
-          <p className="text-sm md:text-base text-muted-foreground max-w-3xl">
+    <div className={embedded ? 'min-w-0' : 'min-h-screen bg-background'}>
+      {/* ── Masthead ─────────────────────────────────────── */}
+      <section aria-labelledby="kol-network-heading">
+        <div className={`${column} ${embedded ? 'pb-8 pt-4 md:pb-10 md:pt-6' : 'pb-12 pt-14 md:pb-16 md:pt-24'}`}>
+          <p className="rise-in font-mono text-label uppercase text-muted-foreground">CHT Platform</p>
+          <h1
+            id="kol-network-heading"
+            className="rise-in mt-5 max-w-[20ch] text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-5xl md:text-[3rem]"
+            style={{ animationDelay: revealDelay(1) }}
+          >
+            Key Opinion Leader (KOL) Network
+          </h1>
+          <p
+            className="rise-in mt-6 max-w-[54ch] text-pretty text-lg leading-relaxed text-muted-foreground"
+            style={{ animationDelay: revealDelay(2) }}
+          >
             Oncology & breast cancer specialists: filter by state, institution, or text; sort by name, state, or
             newest.
           </p>
-        </header>
 
-        <div
-          className="rounded-card border border-black/[0.08] bg-card p-4 sm:p-5 shadow-card mb-10 space-y-4"
-          role="search"
-          aria-label="Filter and sort KOL directory"
-        >
-          <div className="flex flex-col lg:flex-row lg:flex-nowrap gap-3 lg:items-end lg:gap-3">
-            <div className="flex-1 min-w-0 space-y-1">
-              <label htmlFor="kol-q" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Search
-              </label>
-              <input
+          {directory.loadState === 'ready' && (
+            <dl
+              className="rise-in mt-10 flex flex-wrap gap-x-12 gap-y-6"
+              style={{ animationDelay: revealDelay(3) }}
+            >
+              {facets.map((f) => (
+                <div key={f.label}>
+                  <dt className="font-mono text-label uppercase text-muted-foreground">{f.label}</dt>
+                  <dd className="mt-2 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                    {f.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
+      </section>
+
+      {/* ── Controls ─────────────────────────────────────── */}
+      <section>
+        <div className={`${column} ${embedded ? 'pb-8' : 'pb-12 md:pb-16'}`}>
+          <div role="search" aria-label="Filter and sort KOL directory" className="space-y-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <Field
+                label="Search"
                 id="kol-q"
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Name, institution, keywords…"
-                className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
                 autoComplete="off"
+                className="min-w-0 flex-1"
               />
-            </div>
-            <div className="w-full sm:w-48 lg:w-52 shrink-0 space-y-1">
-              <label htmlFor="kol-state" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                State
-              </label>
-              <select
-                id="kol-state"
-                value={stateId}
-                onChange={(e) => setStateId(e.target.value)}
-                className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
-              >
-                <option value="">All states</option>
-                {directory.regions.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="w-full sm:w-52 lg:w-56 shrink-0 space-y-1">
-              <label htmlFor="kol-inst" className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Institution
-              </label>
-              <select
-                id="kol-inst"
-                value={institution}
-                onChange={(e) => setInstitution(e.target.value)}
-                className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
-              >
-                <option value="">All institutions</option>
-                {institutions.map((inst) => (
-                  <option key={inst} value={inst}>
-                    {inst.length > 42 ? `${inst.slice(0, 41)}…` : inst}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col items-stretch sm:items-end gap-1 shrink-0" ref={sortRef}>
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Sort</span>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSortOpen((o) => !o);
-                  }}
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-[6px] border border-border bg-card hover:bg-brand-50 hover:border-brand-500/35 transition-colors ${
-                    sortOpen ? 'bg-brand-50 border-brand-600' : ''
-                  }`}
-                  aria-expanded={sortOpen}
-                  aria-haspopup="listbox"
-                  title={sortLabels[sortMode]}
-                >
-                  <ArrowUpDown className="h-4 w-4 text-foreground" />
-                </button>
-                {sortOpen && (
-                  <ul
-                    className="absolute right-0 top-full z-20 mt-2 min-w-[14rem] rounded-[6px] border border-black/[0.08] bg-card py-1 shadow-lg"
-                    role="listbox"
+
+              <div className="w-full shrink-0 sm:w-52 lg:w-56">
+                <label htmlFor="kol-state" className={CONTROL_LABEL_CLASS}>
+                  State
+                </label>
+                <div className="relative mt-2">
+                  <select
+                    id="kol-state"
+                    value={stateId}
+                    onChange={(e) => setStateId(e.target.value)}
+                    className={SELECT_CLASS}
                   >
-                    {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
-                      <li key={mode}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected={sortMode === mode}
-                          onClick={() => {
-                            setSortMode(mode);
-                            setSortOpen(false);
-                          }}
-                          className={`w-full px-3 py-2.5 text-left text-sm hover:bg-brand-50 ${
-                            sortMode === mode ? 'font-semibold text-brand-800' : 'text-foreground'
-                          }`}
-                        >
-                          {sortLabels[mode]}
-                        </button>
-                      </li>
+                    <option value="">All states</option>
+                    {directory.regions.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title}
+                      </option>
                     ))}
-                  </ul>
-                )}
+                  </select>
+                  <ChevronDown className={CHEVRON_CLASS} aria-hidden />
+                </div>
+              </div>
+
+              <div className="w-full shrink-0 sm:w-56 lg:w-60">
+                <label htmlFor="kol-inst" className={CONTROL_LABEL_CLASS}>
+                  Institution
+                </label>
+                <div className="relative mt-2">
+                  <select
+                    id="kol-inst"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    className={SELECT_CLASS}
+                  >
+                    <option value="">All institutions</option>
+                    {institutions.map((inst) => (
+                      <option key={inst} value={inst}>
+                        {inst.length > 42 ? `${inst.slice(0, 41)}…` : inst}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className={CHEVRON_CLASS} aria-hidden />
+                </div>
+              </div>
+
+              <div className="shrink-0" ref={sortRef}>
+                <span className={CONTROL_LABEL_CLASS}>Sort</span>
+                <div className="relative mt-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSortOpen((o) => !o);
+                    }}
+                    className={`inline-flex h-12 w-12 items-center justify-center rounded-[6px] text-foreground shadow-card transition-[background-color,box-shadow,scale] duration-150 motion-safe:active:scale-[0.96] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
+                      sortOpen ? 'bg-muted shadow-card-hover' : 'bg-card hover:bg-muted hover:shadow-card-hover'
+                    }`}
+                    aria-expanded={sortOpen}
+                    aria-haspopup="listbox"
+                    title={sortLabels[sortMode]}
+                  >
+                    <ArrowUpDown className="h-4 w-4" />
+                  </button>
+                  {sortOpen && (
+                    <ul
+                      className="absolute right-0 top-full z-20 mt-2 min-w-[15rem] rounded-card bg-card p-1 shadow-card-hover"
+                      role="listbox"
+                    >
+                      {(Object.keys(sortLabels) as SortMode[]).map((mode) => (
+                        <li key={mode}>
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={sortMode === mode}
+                            onClick={() => {
+                              setSortMode(mode);
+                              setSortOpen(false);
+                            }}
+                            className={`w-full rounded-[6px] px-3 py-2.5 text-left text-sm transition-colors duration-150 hover:bg-muted ${
+                              sortMode === mode ? 'font-semibold text-brand-700' : 'text-foreground'
+                            }`}
+                          >
+                            {sortLabels[mode]}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-border">
-            <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-foreground">
-              <input
-                type="checkbox"
-                checked={newOnly}
-                onChange={(e) => setNewOnly(e.target.checked)}
-                className="rounded border-border text-brand-700 focus:ring-brand-600"
-              />
-              New profiles only
-            </label>
-            <p className="text-sm text-muted-foreground rounded-full border border-border bg-muted px-3 py-1">
-              <span className="font-semibold text-foreground">{sorted.length}</span> shown
-            </p>
+
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <label className="inline-flex h-11 cursor-pointer items-center gap-2.5 rounded-[6px] bg-card px-4 text-sm font-medium text-foreground shadow-card transition-shadow duration-150 hover:shadow-card-hover">
+                <input
+                  type="checkbox"
+                  checked={newOnly}
+                  onChange={(e) => setNewOnly(e.target.checked)}
+                  className="rounded-[3px] border-border text-brand-600 focus:ring-brand-600"
+                />
+                New profiles only
+              </label>
+              <p className="inline-flex h-11 items-center rounded-[6px] bg-muted px-4 text-sm text-muted-foreground">
+                <span className="font-semibold tabular-nums text-foreground">{sorted.length}</span>
+                <span className="ml-1.5">shown</span>
+              </p>
+            </div>
           </div>
         </div>
+      </section>
 
-        <main id="kol-results" tabIndex={-1}>
-          {directory.loadState === 'loading' ? (
-            <p className="text-center rounded-card border border-border bg-card py-14 px-6 text-muted-foreground">
-              Loading KOL directory…
-            </p>
-          ) : directory.loadState === 'error' ? (
-            <p className="text-center rounded-card border border-destructive/25 bg-destructive/10 py-14 px-6 text-destructive">
-              Couldn't load the KOL directory. Refresh to try again.
-            </p>
-          ) : sorted.length === 0 ? (
-            <p className="text-center rounded-card border border-border bg-card py-14 px-6 text-muted-foreground">
-              No profiles match your filters. Try clearing search or switching state.
-            </p>
-          ) : sortMode === 'state' && byState ? (
-            <div className="space-y-12">
-              {byState.map(({ id, meta, items }) => (
-                <section key={id} aria-labelledby={`state-${id}`} className="space-y-5">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-border pb-3">
-                    <h2 id={`state-${id}`} className="text-xl font-semibold text-foreground">
-                      {meta.stateTitle}
-                    </h2>
-                    <span className="text-sm text-muted-foreground">
-                      {items.length} KOL{items.length === 1 ? '' : 's'}
+      {/* ── Directory ────────────────────────────────────── */}
+      <section>
+        <div className={`${column} ${embedded ? 'pb-10' : 'pb-16 md:pb-24'}`}>
+          <main id="kol-results" tabIndex={-1}>
+            {directory.loadState === 'loading' ? (
+              <p className="rounded-card bg-card px-6 py-16 text-center text-muted-foreground shadow-card">
+                Loading KOL directory…
+              </p>
+            ) : directory.loadState === 'error' ? (
+              <p className="rounded-card bg-card px-6 py-16 text-center text-destructive shadow-card">
+                Couldn't load the KOL directory. Refresh to try again.
+              </p>
+            ) : sorted.length === 0 ? (
+              <p className="rounded-card bg-card px-6 py-16 text-center text-muted-foreground shadow-card">
+                No profiles match your filters. Try clearing search or switching state.
+              </p>
+            ) : sortMode === 'state' && byState ? (
+              /* One rail per state: the last card runs off the edge, which
+                 reads as "more that way" instead of a cropped grid. */
+              <div className="space-y-14 md:space-y-20">
+                {byState.map(({ id, meta, items }, i) => (
+                  <section
+                    key={id}
+                    aria-label={meta.stateTitle}
+                    className="rise-in"
+                    style={{ animationDelay: revealDelay(i) }}
+                  >
+                    <SectionHead
+                      index={`${String(i + 1).padStart(2, '0')} / ${id}`}
+                      title={meta.stateTitle}
+                      action={
+                        <span className="inline-flex h-9 shrink-0 items-center rounded-[6px] bg-muted px-3.5 text-sm text-muted-foreground">
+                          <span className="font-semibold tabular-nums text-foreground">{items.length}</span>
+                          <span className="ml-1.5">KOL{items.length === 1 ? '' : 's'}</span>
+                        </span>
+                      }
+                    />
+                    <div className="mt-10">
+                      <Rail className={railBleed} aria-label={`${meta.stateTitle} KOLs`}>
+                        {items.map((k) => (
+                          <li
+                            key={k.id}
+                            className="w-[74%] shrink-0 snap-start sm:w-[46%] md:w-[31%] lg:w-[23%]"
+                          >
+                            <KolCard k={k} />
+                          </li>
+                        ))}
+                      </Rail>
+                    </div>
+                  </section>
+                ))}
+              </div>
+            ) : (
+              <>
+                <SectionHead
+                  index="01 / Directory"
+                  title="All profiles"
+                  sub={sortLabels[sortMode]}
+                  action={
+                    <span className="inline-flex h-9 shrink-0 items-center rounded-[6px] bg-muted px-3.5 text-sm text-muted-foreground">
+                      <span className="font-semibold tabular-nums text-foreground">{sorted.length}</span>
+                      <span className="ml-1.5">shown</span>
                     </span>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
-                    {items.map((k) => (
-                      <KolCard key={k.id} k={k} />
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 lg:gap-5">
-              {sorted.map((k) => (
-                <KolCard key={`${k.stateId}-${k.id}`} k={k} />
-              ))}
-            </div>
-          )}
-        </main>
+                  }
+                />
+                <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {sorted.map((k, i) => (
+                    <div
+                      key={`${k.stateId}-${k.id}`}
+                      className="rise-in"
+                      style={{ animationDelay: revealDelay(i) }}
+                    >
+                      <KolCard k={k} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </main>
+        </div>
+      </section>
 
-        <footer className="mt-12 space-y-2 border-t border-border pt-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            Community Health Technologies: KOL Network | ★ = Newly added (within 60 days)
-          </p>
-          <p className="mx-auto max-w-2xl text-[10px] leading-snug text-muted-foreground">
-            AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
-            important details against primary sources.
-          </p>
-        </footer>
-      </div>
+      {/* ── Colophon ─────────────────────────────────────── */}
+      <section>
+        <div className={`${column} ${embedded ? 'pb-6' : 'pb-16 md:pb-24'}`}>
+          <footer className="text-center">
+            <p className="font-mono text-xs text-muted-foreground">
+              Community Health Technologies: KOL Network | ★ = Newly added (within 60 days)
+            </p>
+            <p className="mx-auto mt-4 max-w-[54ch] text-xs leading-relaxed text-muted-foreground">
+              AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
+              important details against primary sources.
+            </p>
+          </footer>
+        </div>
+      </section>
     </div>
   );
 }
@@ -332,6 +453,12 @@ function cardSummarySnippet(k: FlatKol): string {
   return resolveKolDisplayBrief(k)?.whoTheyAre ?? k.bio.trim();
 }
 
+/**
+ * A portrait card: the headshot fills the top of the surface and the
+ * name sits on it, so a rail of these reads as a row of people rather
+ * than a row of rows. Separation is the surface plus its shadow; the
+ * only lines on the card are the ones in the photograph.
+ */
 function KolCard({ k }: { k: FlatKol }) {
   const profileHref = `/kol-network/profile/${k.id}`;
   const contentHref = kolCatalogBrowseHref(k);
@@ -340,105 +467,112 @@ function KolCard({ k }: { k: FlatKol }) {
   const summary = cardSummarySnippet(k);
   const summaryShort = summary.length > 140 ? `${summary.slice(0, 137)}…` : summary;
   const showBadge = Boolean(k.intel?.rosterOnly ?? k.isNew);
+  const specialties = specialtyLabels(k);
 
   return (
-    <article className="flex h-full flex-col overflow-hidden rounded-card border border-border bg-card shadow-card transition-[box-shadow,transform] hover:shadow-md">
-      <div className="border-b border-border p-3">
-        <div className="flex items-center gap-2.5">
-          <div className="relative h-[4.75rem] w-[4.75rem] shrink-0 sm:h-[5.25rem] sm:w-[5.25rem]">
-            <img
-              src={avatarSrc(k)}
-              alt=""
-              className="h-full w-full rounded-[15px] border border-border object-cover shadow-inner"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
+    <article className="group flex h-full flex-col overflow-hidden rounded-card bg-card shadow-card transition-[box-shadow,translate] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover">
+      {/* Under the scrim this is a permanently dark region, so the name
+          and role take fixed white rather than the page tokens. */}
+      <div className="relative aspect-[4/5] shrink-0 overflow-hidden bg-muted">
+        <img
+          src={avatarSrc(k)}
+          alt=""
+          className="absolute inset-0 size-full object-cover transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] motion-safe:group-hover:scale-[1.03]"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent"
+        />
+
+        {(k.featured || k.isNew) && (
+          <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
             {k.featured ? (
               <span
-                className="absolute -right-0.5 -top-0.5 rounded-full bg-brand-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-card"
+                className="inline-flex h-6 items-center rounded-[6px] bg-brand-600 px-2 text-[11px] font-bold leading-none text-white"
                 title="Curator-featured KOL"
               >
                 ★
               </span>
             ) : null}
             {k.isNew ? (
-              <span
-                className={
-                  k.featured
-                    ? 'absolute -left-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-card'
-                    : 'absolute -right-0.5 -top-0.5 rounded-full bg-orange-600 px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-card'
-                }
-              >
+              <span className="inline-flex h-6 items-center rounded-[6px] bg-accent px-2 text-[10px] font-bold uppercase tracking-wide text-accent-foreground">
                 New
               </span>
             ) : null}
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-col justify-center gap-0.5">
-              <div className="flex items-center gap-1">
-                <h3 className="min-w-0 flex-1 text-[11px] font-bold leading-tight text-foreground line-clamp-2 sm:text-xs">
-                  {k.name}
-                </h3>
-                {showBadge ? (
-                  <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-brand-600 text-white" aria-label="Listed in CHM network" />
-                ) : null}
-              </div>
-              <p className="text-[10px] leading-snug text-muted-foreground line-clamp-2" title={k.role}>
-                {roleLead}
-                {roleLead.length >= 72 ? '…' : ''}
-              </p>
-            </div>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <div className="flex items-start gap-1.5">
+            <h3 className="line-clamp-2 min-w-0 flex-1 text-lg font-semibold leading-[1.2] tracking-[-0.018em] text-white">
+              {k.name}
+            </h3>
+            {showBadge ? (
+              <BadgeCheck
+                className="mt-1 h-4 w-4 shrink-0 fill-brand-600 text-white"
+                aria-label="Listed in CHM network"
+              />
+            ) : null}
           </div>
+          <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-white/70" title={k.role}>
+            {roleLead}
+            {roleLead.length >= 72 ? '…' : ''}
+          </p>
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-3 pt-2">
-        <div className="rounded-card bg-gray-100/90 p-2.5">
-          <div className="grid grid-cols-2 gap-2 gap-y-2.5">
-            <div className="min-w-0">
-              <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">State</p>
-              <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight text-foreground line-clamp-2">
-                <MapPin className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="min-w-0">{k.stateTitle}</span>
-              </p>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Institution</p>
-              <p className="mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold leading-tight text-foreground line-clamp-2">
-                <GraduationCap className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden />
-                <span className="min-w-0" title={inst}>
-                  {inst}
-                </span>
-              </p>
-            </div>
+      <div className="flex flex-1 flex-col gap-4 p-4">
+        {specialties.length > 0 && (
+          <ul className="flex flex-wrap gap-1.5">
+            {specialties.map((s) => (
+              <li key={s}>
+                <Chip kind={chipKind(s)}>{s}</Chip>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <dl className="grid gap-3">
+          <div className="min-w-0">
+            <dt className="font-mono text-label uppercase text-muted-foreground">State</dt>
+            <dd className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 truncate">{k.stateTitle}</span>
+            </dd>
           </div>
-          <div className="mt-2.5 border-t border-gray-200/80 pt-2.5">
-            <div className="flex items-center gap-1">
-              <p className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground">Summary</p>
-              {hasAiSummary(k) ? (
-                <span className="inline-flex items-center gap-0.5 text-[8px] font-semibold uppercase tracking-wide text-warning">
-                  <Sparkles className="h-2.5 w-2.5" aria-hidden />
-                  AI
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground line-clamp-3">{summaryShort}</p>
+          <div className="min-w-0">
+            <dt className="font-mono text-label uppercase text-muted-foreground">Institution</dt>
+            <dd className="mt-1 flex items-center gap-1.5 text-sm text-foreground">
+              <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="min-w-0 truncate" title={inst}>
+                {inst}
+              </span>
+            </dd>
           </div>
+        </dl>
+
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="font-mono text-label uppercase text-muted-foreground">Summary</p>
+            {hasAiSummary(k) ? (
+              <span className="inline-flex items-center gap-1 font-mono text-label uppercase text-warning">
+                <Sparkles className="h-3 w-3" aria-hidden />
+                AI
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{summaryShort}</p>
         </div>
 
-        <div className="mt-auto flex flex-col gap-1.5 pt-3 sm:flex-row sm:gap-2">
-          <Link
-            to={profileHref}
-            className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-full bg-brand-600 px-2 text-center text-[10px] font-semibold text-white transition hover:bg-brand-700 sm:text-[11px]"
-          >
+        <div className="mt-auto flex flex-col gap-2 pt-1">
+          <Button to={profileHref} size="sm" className="w-full">
             Explore profile
-          </Link>
-          <Link
-            to={contentHref}
-            className="inline-flex min-h-[36px] flex-1 items-center justify-center rounded-full border border-border bg-card px-2 text-center text-[10px] font-semibold text-foreground transition hover:bg-muted sm:text-[11px]"
-          >
+          </Button>
+          <Button to={contentHref} variant="outline" size="sm" className="w-full">
             View content
-          </Link>
+          </Button>
         </div>
       </div>
     </article>

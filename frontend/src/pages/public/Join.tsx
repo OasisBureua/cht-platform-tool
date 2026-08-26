@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Link, Navigate, useLocation } from 'react-router-dom';
 import { Award, Check, ClipboardCheck, DollarSign } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,12 +27,27 @@ import {
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 import CityTypeahead from '../../components/forms/CityTypeahead';
 import { verifyNpiNumber } from '../../api/npi';
+import { Button, Card, Field, SectionHead } from '../../components/ui';
+import { cn } from '../../lib/cn';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
   i === 0 ? { ...o, label: 'Select your role' } : { ...o },
 );
 
 const PLATFORM_HOME = '/app/home';
+
+/**
+ * The page gutter, matching --page-gutter. Sections run full width and
+ * this rail carries the margins, so bands are separated by space rather
+ * than by a rule.
+ */
+const RAIL = 'mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8';
+
+/** Controls share one field treatment: a surface with elevation, no hairline. */
+const CONTROL =
+  'h-12 w-full rounded-[6px] bg-card px-4 text-base text-foreground shadow-card ' +
+  'outline-none placeholder:text-muted-foreground/70 sm:text-sm ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
@@ -198,173 +213,177 @@ export default function Join() {
 
   if (success) {
     return (
-      <div className="bg-card min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-        <div className="w-full max-w-md rounded-card border border-gray-200/90 bg-white/95 p-8 text-center shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.12)]">
-          <h2 className="text-balance text-xl font-semibold text-foreground">Check your email</h2>
-          <p className="text-pretty mt-2 text-sm text-muted-foreground">
-            {cognitoAuthEnabled ? (
-              <>
-                If this email can be registered, you&apos;ll receive a 6-digit verification code from{' '}
-                <strong>noreply@communityhealth.media</strong>. Already have an account?{' '}
-                <Link to="/login" className="font-medium text-foreground underline">
-                  Sign in
-                </Link>{' '}
-                or{' '}
-                <Link to="/forgot-password" className="font-medium text-foreground underline">
-                  reset your password
-                </Link>
-                .
-              </>
-            ) : (
-              <>
-                If this email can be registered, you&apos;ll receive a verification link. Already have
-                an account?{' '}
-                <Link to="/login" className="font-medium text-foreground underline">
-                  Sign in
-                </Link>
-                .
-              </>
-            )}
-          </p>
-          <Link
-            to={
-              cognitoAuthEnabled
-                ? `/verify-email?email=${encodeURIComponent(email.trim())}`
-                : '/login'
-            }
-            state={fromLocation ? { from: fromLocation } : undefined}
-            className="mt-6 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96]"
-          >
-            {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
-          </Link>
+      <div className="grid min-h-[calc(100dvh-4rem)] place-items-center bg-background">
+        <div className={cn(RAIL, 'py-16 md:py-24')}>
+          <Card className="home-enter mx-auto max-w-[34rem] p-8 text-center sm:p-10">
+            <p className="text-label uppercase text-muted-foreground">Almost there</p>
+            <h2 className="mt-3 text-balance text-[2rem] font-semibold leading-[1.08] tracking-[-0.025em] text-foreground sm:text-[2.25rem]">
+              Check your email
+            </h2>
+            <p className="text-pretty mx-auto mt-4 max-w-[46ch] leading-relaxed text-muted-foreground">
+              {cognitoAuthEnabled ? (
+                <>
+                  If this email can be registered, you&apos;ll receive a 6-digit verification code
+                  from <strong className="font-medium text-foreground">noreply@communityhealth.media</strong>. Already have an
+                  account?{' '}
+                  <Link to="/login" className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700">
+                    Sign in
+                  </Link>{' '}
+                  or{' '}
+                  <Link
+                    to="/forgot-password"
+                    className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700"
+                  >
+                    reset your password
+                  </Link>
+                  .
+                </>
+              ) : (
+                <>
+                  If this email can be registered, you&apos;ll receive a verification link. Already
+                  have an account?{' '}
+                  <Link to="/login" className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700">
+                    Sign in
+                  </Link>
+                  .
+                </>
+              )}
+            </p>
+            {/* A styled Link rather than <Button to>, because this one has to
+                carry router state through to the verification screen. */}
+            <Link
+              to={
+                cognitoAuthEnabled
+                  ? `/verify-email?email=${encodeURIComponent(email.trim())}`
+                  : '/login'
+              }
+              state={fromLocation ? { from: fromLocation } : undefined}
+              className="mt-8 inline-flex h-12 items-center justify-center rounded-[6px] bg-brand-600 px-7 text-base font-medium text-white shadow-card transition-[background-color,box-shadow,scale] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]"
+            >
+              {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
+            </Link>
+          </Card>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-gradient-to-b from-gray-50/90 via-white to-white px-4 py-10 sm:px-6 sm:py-12 md:py-16">
-      <div className="mx-auto grid max-w-5xl grid-cols-1 items-start gap-10 lg:grid-cols-2 lg:gap-12 xl:gap-14">
-        <aside className="order-2 space-y-5 lg:sticky lg:top-24 lg:order-1">
-          <header className="text-center lg:text-left">
-            <p className="text-sm font-semibold tracking-wide text-brand-800 dark:text-brand-400">
-              Join
-            </p>
-            <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
+    <div className="min-h-[calc(100dvh-4rem)] bg-background">
+      {/* ── 01 / Join ─────────────────────────────────────────
+          The pitch. Space, not a rule, separates it from the form. */}
+      <section aria-labelledby="join-heading">
+        <div className={cn(RAIL, 'py-16 md:py-24')}>
+          <header className="home-enter">
+            <p className="text-label uppercase text-muted-foreground">01 / Join</p>
+            <h1
+              id="join-heading"
+              className="mt-3 text-balance text-[2.25rem] font-semibold leading-[1.05] tracking-[-0.028em] text-foreground sm:text-[3rem]"
+            >
               Join CHT
             </h1>
-            <p className="text-pretty mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base lg:mx-0">
+            <p className="text-pretty mt-5 max-w-[54ch] text-lg leading-relaxed text-muted-foreground">
               CHT is a platform for healthcare professionals to participate in accredited education,
               surveys, and research opportunities, and to earn CME credits and honoraria.
             </p>
           </header>
 
-          <ul className="mx-auto flex max-w-md list-none flex-col gap-3 lg:mx-0 lg:max-w-none" role="list">
-            <li>
-              <ValueRow
-                icon={<Award className="h-5 w-5" aria-hidden />}
-                title="Earn CME credits"
-                text="Participate in accredited educational programs."
-              />
-            </li>
-            <li>
-              <ValueRow
-                icon={<DollarSign className="h-5 w-5" aria-hidden />}
-                title="Honoraria"
-                text="Receive payment for eligible activities."
-              />
-            </li>
-            <li>
-              <ValueRow
-                icon={<ClipboardCheck className="h-5 w-5" aria-hidden />}
-                title="On your schedule"
-                text="Short videos and surveys when it works for you."
-              />
-            </li>
+          <ul className="mt-12 grid gap-4 sm:grid-cols-3" role="list">
+            {VALUE_PROPS.map((v, i) => (
+              <li key={v.title} className="home-enter" style={{ animationDelay: `${80 + i * 60}ms` }}>
+                <ValueCard {...v} />
+              </li>
+            ))}
           </ul>
-        </aside>
+        </div>
+      </section>
 
-        <div className="order-1 w-full min-w-0 lg:order-2">
-          <div className="rounded-card border border-gray-200/90 bg-white/95 p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_20px_50px_-24px_rgba(0,0,0,0.14)] sm:p-6">
-            <h2 className="text-balance text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-              Create your account
-            </h2>
+      {/* ── 02 / Account ──────────────────────────────────────
+          The task itself. Fields are the surfaces here: they sit on
+          bg-card above the page, so nothing needs a border. */}
+      <section aria-labelledby="account-heading" className="pb-24 md:pb-32">
+        <div className={RAIL}>
+          <SectionHead
+            index="02 / Account"
+            title="Create your account"
+            sub="Join the Community Health platform."
+            action={
+              <p className="text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="rounded-[6px] font-medium text-brand-600 hover:text-brand-700"
+                >
+                  Sign in
+                </Link>
+              </p>
+            }
+          />
 
-            <p className="text-pretty mt-1 text-sm leading-snug text-muted-foreground">
-              Join the Community Health platform.
-            </p>
-
+          <div className="mt-10 max-w-[42rem]">
             {googleOAuthEnabled ? (
-              <div className="mt-4 space-y-2">
-                <button
+              <div className="space-y-3">
+                <Button
                   type="button"
+                  variant="outline"
+                  size="lg"
                   onClick={() => handleOAuth('google')}
                   disabled={!!oauthLoading}
-                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-card border border-gray-200/90 bg-card px-3 py-2.5 text-sm font-semibold text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.9)_inset,0_6px_16px_-8px_rgba(0,0,0,0.08)] transition-[background-color,transform,box-shadow,color] duration-200 ease-out hover:bg-muted/90 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-50"
+                  className="w-full"
                 >
                   {oauthLoading === 'google' ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-gray-600" />
+                    <span className="size-4 animate-spin rounded-full border-2 border-muted border-t-brand-600" />
                   ) : (
                     <GoogleIcon />
                   )}
                   Continue with Google
-                </button>
+                </Button>
                 <p className="text-center text-xs text-muted-foreground">{GOOGLE_OAUTH_DISCLAIMER}</p>
               </div>
             ) : (
-              <div className="mt-4 rounded-card border border-warning/25 bg-warning/10 px-3 py-2.5 text-sm text-warning">
+              <p className="rounded-[6px] bg-warning/10 px-4 py-3 text-sm text-warning">
                 {googleOAuthMigrationMessage}
-              </div>
+              </p>
             )}
 
-            <div className="mt-4">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="h-px w-full bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="bg-white/95 px-3 text-muted-foreground">Or create account with email</span>
-                </div>
-              </div>
-            </div>
+            {/* No rule across the page: the label alone carries the split. */}
+            <p className="mt-8 text-label uppercase text-muted-foreground">
+              Or create account with email
+            </p>
 
-            <form className="mt-4" onSubmit={handleSubmit} noValidate>
+            <form className="mt-5 space-y-10" onSubmit={handleSubmit} noValidate>
               {error && (
-                <div className="mb-3 rounded-card border border-red-100 bg-destructive/10/90 px-3 py-2.5 text-sm text-destructive shadow-[inset_0_0_0_1px_rgba(254,202,202,0.6)]">
+                <div role="alert" className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   {error}
                 </div>
               )}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-3 sm:gap-y-3">
-                <div className="min-w-0">
-                  <Input
-                    label="First name"
-                    placeholder="Jane"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Input
-                    label="Last name"
-                    placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Input
-                    label="Email address"
-                    type="email"
-                    placeholder="jane@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="min-w-0 space-y-1.5">
-                  <Input
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field
+                  label="First name"
+                  placeholder="Jane"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
+                <Field
+                  label="Last name"
+                  placeholder="Doe"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+                <Field
+                  className="sm:col-span-2"
+                  label="Email address"
+                  type="email"
+                  placeholder="jane@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+                <div className="sm:col-span-2">
+                  <Field
                     label="Password"
                     type="password"
                     placeholder="Create a strong password"
@@ -373,19 +392,19 @@ export default function Join() {
                     required
                     autoComplete="new-password"
                   />
-                  <ul className="space-y-1 pt-1" aria-live="polite">
+                  <ul className="mt-3 flex flex-wrap gap-x-5 gap-y-2" aria-live="polite">
                     {SIGNUP_PASSWORD_RULES.map((rule) => {
                       const ok = passwordRules[rule.id];
                       return (
                         <li key={rule.id} className="flex items-center gap-2 text-xs">
                           <span
-                            className={[
-                              'inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full',
-                              ok ? 'bg-green-600 text-white' : 'bg-muted text-transparent',
-                            ].join(' ')}
+                            className={cn(
+                              'grid size-4 shrink-0 place-items-center rounded-full transition-colors duration-150',
+                              ok ? 'bg-success text-background' : 'bg-muted text-transparent',
+                            )}
                             aria-hidden
                           >
-                            <Check className="h-2.5 w-2.5" strokeWidth={3} />
+                            <Check className="size-2.5" strokeWidth={3} />
                           </span>
                           <span className={ok ? 'text-success' : 'text-muted-foreground'}>
                             {rule.label}
@@ -395,45 +414,42 @@ export default function Join() {
                     })}
                   </ul>
                 </div>
+              </div>
 
-                <div className="min-w-0 sm:col-span-2">
-                  <Select
-                    label="Role"
-                    value={profession}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setProfession(v);
-                      setNpiVerified(null);
-                      setNpiMeta(null);
-                      if (!professionRequiresNpi(v)) setNpiNumber('');
-                    }}
-                    options={JOIN_PROFESSION_OPTIONS}
-                    required
-                  />
-                  {profession && !professionRequiresNpi(profession) ? (
-                    <p className="mt-1.5 rounded-[6px] border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                      <strong>Note:</strong> NPI is not required for your role. Honorarium programs
-                      are designed for licensed healthcare professionals: you can still access all
-                      educational content and events.
-                    </p>
-                  ) : null}
-                </div>
+              <div className="space-y-4">
+                <SelectField
+                  label="Role"
+                  value={profession}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setProfession(v);
+                    setNpiVerified(null);
+                    setNpiMeta(null);
+                    if (!professionRequiresNpi(v)) setNpiNumber('');
+                  }}
+                  options={JOIN_PROFESSION_OPTIONS}
+                  required
+                />
+                {profession && !professionRequiresNpi(profession) ? (
+                  <p className="max-w-[62ch] rounded-[6px] bg-muted px-4 py-3 text-sm leading-relaxed text-muted-foreground">
+                    <strong className="font-medium text-foreground">Note:</strong> NPI is not
+                    required for your role. Honorarium programs are designed for licensed healthcare
+                    professionals: you can still access all educational content and events.
+                  </p>
+                ) : null}
 
                 {requiresNpi && (
-                  <div className="min-w-0 space-y-1.5 sm:col-span-2">
-                    <label className="text-sm font-semibold text-foreground">
+                  <div>
+                    <label htmlFor="npi-number" className="text-sm text-muted-foreground">
                       NPI number
-                      <span className="ml-1 text-destructive" aria-hidden>
-                        *
-                      </span>
-                      <span className="sr-only"> (required)</span>
                     </label>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="mt-1 max-w-[54ch] text-sm text-muted-foreground">
                       Enter your 10-digit National Provider Identifier (NPI). Required for licensed
                       healthcare roles.
                     </p>
-                    <div className="flex gap-2">
+                    <div className="mt-2 flex gap-2">
                       <input
+                        id="npi-number"
                         type="text"
                         inputMode="numeric"
                         placeholder="10-digit NPI"
@@ -446,139 +462,137 @@ export default function Join() {
                         required
                         maxLength={10}
                         aria-describedby="npi-help"
-                        className="min-w-0 flex-1 rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
+                        className={cn(CONTROL, 'min-w-0 flex-1')}
                       />
-                      <button
+                      <Button
                         type="button"
+                        size="lg"
                         disabled={npiDigits.length !== 10 || npiVerifying}
                         onClick={() => void runNpiVerify(npiDigits)}
-                        className="shrink-0 rounded-card bg-brand-600 px-3 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset] transition-[background-color,transform,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
                       >
                         {npiVerifying ? 'Verifying…' : 'Verify'}
-                      </button>
+                      </Button>
                     </div>
                     <p id="npi-help" className="sr-only">
                       NPI must be exactly 10 digits and verified against the NPI registry.
                     </p>
                     {npiVerified === true && !npiMeta?.duplicate && (
-                      <p className="text-xs font-medium text-success">
+                      <p className="mt-2 text-sm font-medium text-success">
                         NPI verified
                         {npiMeta?.providerName ? ` — ${npiMeta.providerName}` : ''}
                         {npiMeta?.providerType ? ` (${npiMeta.providerType})` : ''}.
                       </p>
                     )}
                     {(npiVerified === false || npiMeta?.duplicate) && (
-                      <p className="text-xs font-medium text-destructive">
+                      <p className="mt-2 text-sm font-medium text-destructive">
                         {npiMeta?.error ||
                           'NPI not found in the National Provider Identifier registry. Please check and try again.'}
                       </p>
                     )}
                     {npiVerifying && npiVerified === null ? (
-                      <p className="text-xs text-muted-foreground">Checking NPI registry…</p>
+                      <p className="mt-2 text-sm text-muted-foreground">Checking NPI registry…</p>
                     ) : null}
                   </div>
                 )}
+              </div>
 
-                <div className="border-t border-border/90 pt-3 shadow-[0_-1px_0_0_rgba(255,255,255,0.85)] sm:col-span-2">
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Practice location
-                  </p>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    Institution and city are optional. State and 5-digit ZIP are required.
-                  </p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-3">
-                    <div className="min-w-0 sm:col-span-2">
-                      <Input
-                        label="Institution / Hospital"
-                        placeholder="e.g., Mayo Clinic"
-                        value={institution}
-                        onChange={(e) => setInstitution(e.target.value)}
-                        optional
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <Select
-                        label="State"
-                        value={state}
-                        onChange={(e) => {
-                          setState(e.target.value);
-                          setCity('');
-                        }}
-                        options={US_STATE_SELECT_OPTIONS}
-                        required
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <Input
-                        label="ZIP code"
-                        placeholder="12345"
-                        value={zipCode}
-                        onChange={(e) =>
-                          setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))
-                        }
-                        maxLength={5}
-                        required
-                        inputMode="numeric"
-                      />
-                    </div>
-                    <div className="min-w-0 sm:col-span-2">
-                      <CityTypeahead
-                        label="City"
-                        value={city}
-                        onChange={setCity}
-                        stateCode={state || undefined}
-                        optional
-                      />
-                    </div>
-                  </div>
+              <div>
+                <p className="text-label uppercase text-muted-foreground">Practice location</p>
+                <p className="mt-2 max-w-[54ch] text-sm text-muted-foreground">
+                  Institution and city are optional. State and 5-digit ZIP are required.
+                </p>
+                <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                  <Field
+                    className="sm:col-span-2"
+                    label="Institution / Hospital (optional)"
+                    placeholder="e.g., Mayo Clinic"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                  />
+                  <SelectField
+                    label="State"
+                    value={state}
+                    onChange={(e) => {
+                      setState(e.target.value);
+                      setCity('');
+                    }}
+                    options={US_STATE_SELECT_OPTIONS}
+                    required
+                  />
+                  <Field
+                    label="ZIP code"
+                    placeholder="12345"
+                    value={zipCode}
+                    onChange={(e) => setZipCode(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                    maxLength={5}
+                    required
+                    inputMode="numeric"
+                  />
+                  <CityTypeahead
+                    className="sm:col-span-2"
+                    label="City"
+                    value={city}
+                    onChange={setCity}
+                    stateCode={state || undefined}
+                    optional
+                  />
                 </div>
+              </div>
 
-                <div className="sm:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={!canSubmit}
-                    className="w-full rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_12px_32px_-12px_rgba(0,0,0,0.35)] transition-[background-color,transform,box-shadow,opacity] duration-200 ease-out hover:bg-brand-700 active:scale-[0.96] disabled:pointer-events-none disabled:opacity-70"
-                  >
-                    {!signupEnabled
-                      ? 'Account creation temporarily unavailable'
-                      : submitting
-                        ? 'Creating account...'
-                        : 'Create account'}
-                  </button>
-                  {!canSubmit && signupEnabled ? (
-                    <p className="mt-2 text-center text-xs text-muted-foreground">
-                      Complete required fields (including password rules, role
-                      {requiresNpi ? ', NPI' : ''}, state, and ZIP) to continue.
-                    </p>
-                  ) : null}
-                </div>
+              <div>
+                <Button type="submit" size="lg" disabled={!canSubmit} className="w-full">
+                  {!signupEnabled
+                    ? 'Account creation temporarily unavailable'
+                    : submitting
+                      ? 'Creating account...'
+                      : 'Create account'}
+                </Button>
+                {!canSubmit && signupEnabled ? (
+                  <p className="mt-3 text-center text-sm text-muted-foreground">
+                    Complete required fields (including password rules, role
+                    {requiresNpi ? ', NPI' : ''}, state, and ZIP) to continue.
+                  </p>
+                ) : null}
               </div>
             </form>
 
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-6 text-sm text-muted-foreground">
               By continuing, you agree to our{' '}
-              <Link to="/privacy" className="underline hover:text-muted-foreground">
+              <Link to="/privacy" className="rounded-[6px] underline hover:text-foreground">
                 Privacy Policy
               </Link>
               .
             </p>
 
             <RecaptchaNotice />
-
-            <div className="mt-4 text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-foreground hover:underline">
-                Sign in
-              </Link>
-            </div>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-function ValueRow({
+/* ── the pitch ────────────────────────────────────────────── */
+
+const VALUE_PROPS = [
+  {
+    icon: <Award className="h-5 w-5" aria-hidden />,
+    title: 'Earn CME credits',
+    text: 'Participate in accredited educational programs.',
+  },
+  {
+    icon: <DollarSign className="h-5 w-5" aria-hidden />,
+    title: 'Honoraria',
+    text: 'Receive payment for eligible activities.',
+  },
+  {
+    icon: <ClipboardCheck className="h-5 w-5" aria-hidden />,
+    title: 'On your schedule',
+    text: 'Short videos and surveys when it works for you.',
+  },
+];
+
+function ValueCard({
   icon,
   title,
   text,
@@ -588,108 +602,50 @@ function ValueRow({
   text: string;
 }) {
   return (
-    <div className="flex gap-3 rounded-card border border-gray-200/75 bg-white/70 p-4 shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_10px_32px_-18px_rgba(0,0,0,0.08)] sm:p-4 sm:pr-5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-card border border-gray-200/90 bg-gray-50/90 text-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.08)]">
+    <Card className="h-full">
+      <div className="grid size-11 shrink-0 place-items-center rounded-[6px] bg-muted text-brand-600">
         {icon}
       </div>
-      <div className="min-w-0 pt-0.5">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="text-pretty mt-0.5 text-sm leading-relaxed text-muted-foreground">{text}</p>
-      </div>
-    </div>
+      <p className="mt-5 font-medium text-foreground">{title}</p>
+      <p className="text-pretty mt-1.5 text-sm leading-relaxed text-muted-foreground">{text}</p>
+    </Card>
   );
 }
 
-function FieldLabel({
-  label,
-  required,
-  optional,
-}: {
-  label: string;
-  required?: boolean;
-  optional?: boolean;
-}) {
-  return (
-    <label className="text-sm font-semibold text-foreground">
-      {label}
-      {required ? (
-        <>
-          <span className="ml-1 text-destructive" aria-hidden>
-            *
-          </span>
-          <span className="sr-only"> (required)</span>
-        </>
-      ) : null}
-      {optional ? <span className="ml-1 font-normal text-muted-foreground">(optional)</span> : null}
-    </label>
-  );
-}
+/* ── controls ─────────────────────────────────────────────── */
 
-function Input({
-  label,
-  type = 'text',
-  placeholder,
-  value,
-  onChange,
-  required,
-  optional,
-  minLength,
-  maxLength,
-  autoComplete,
-  inputMode,
-}: {
-  label: string;
-  type?: string;
-  placeholder?: string;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  required?: boolean;
-  optional?: boolean;
-  minLength?: number;
-  maxLength?: number;
-  autoComplete?: string;
-  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
-}) {
-  return (
-    <div className="space-y-1.5">
-      <FieldLabel label={label} required={required} optional={optional} />
-      <input
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        required={required}
-        minLength={minLength}
-        maxLength={maxLength}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] placeholder:text-muted-foreground transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
-      />
-    </div>
-  );
-}
-
-function Select({
+/**
+ * The select counterpart to <Field>: same label, same surface, same
+ * elevation, so a row of mixed controls reads as one set.
+ */
+function SelectField({
   label,
   value,
   onChange,
   options,
   required,
+  className,
 }: {
   label: string;
   value: string;
   onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: { value: string; label: string }[];
   required?: boolean;
+  className?: string;
 }) {
+  const uid = useId();
+  const id = `${uid}-select`;
   return (
-    <div className="space-y-1.5">
-      <FieldLabel label={label} required={required} />
+    <div className={className}>
+      <label htmlFor={id} className="block text-sm text-muted-foreground">
+        {label}
+      </label>
       <select
+        id={id}
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full rounded-card border border-border bg-card px-3 py-2.5 text-sm text-foreground shadow-[0_1px_0_0_rgba(255,255,255,0.85)_inset] transition-[border-color,box-shadow] duration-200 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-500/25"
+        className={cn(CONTROL, 'mt-2')}
       >
         {options.map((opt) => (
           <option key={opt.value || 'empty'} value={opt.value}>

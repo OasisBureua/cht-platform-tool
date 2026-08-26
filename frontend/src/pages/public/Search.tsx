@@ -1,10 +1,12 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search as SearchIcon, SlidersHorizontal, X, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, SlidersHorizontal, X, Loader2, ArrowRight } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
+import { Button, Card, Chip, chipKind, SectionHead } from '../../components/ui';
+import { cn } from '../../lib/cn';
 
 type ResultType = 'Video' | 'Webinar' | 'Collection';
 
@@ -63,6 +65,12 @@ const MOCK_RESULTS: SearchResult[] = [
 const TYPE_FILTERS: Array<ResultType | 'All'> = ['All', 'Video', 'Webinar', 'Collection'];
 
 const SEARCH_DEBOUNCE_MS = 350;
+
+/**
+ * The page gutter, matching `--page-gutter` in index.css so `bleed-x`
+ * and the rail agree about where the content edge sits.
+ */
+const RAIL = 'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -137,197 +145,254 @@ export default function Search() {
     else setSearchParams({}, { replace: true });
   };
 
+  const resetAll = () => {
+    setType('All');
+    setQuery('');
+    setSearchParams({}, { replace: true });
+  };
+
   return (
-    <div className="bg-card">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16 space-y-8">
-        <header className="space-y-3">
-          <h1 className="text-3xl md:text-4xl font-bold text-foreground">Explore catalog</h1>
-          <p className="text-sm md:text-base text-muted-foreground leading-relaxed max-w-2xl">
-            Quick clip search (type at least 2 characters for live catalog matches). For filters and playlists, open
-            the{' '}
-            <Link to="/catalog" className="font-semibold text-foreground underline underline-offset-2">
-              content library
-            </Link>
-            .
-          </p>
-        </header>
+    <div className="bg-background">
+      {/* ── 01 / Search ─────────────────────────────────────────
+          The query is the page's subject, so the field sits inside
+          the head rather than in a toolbar bolted above it. */}
+      <section aria-labelledby="search-heading">
+        <div className={cn(RAIL, 'py-16 md:py-24')}>
+          <Reveal>
+            <p className="text-label uppercase text-muted-foreground">01 / Search</p>
+            <h1
+              id="search-heading"
+              className={cn(
+                'mt-2 text-balance font-semibold text-foreground',
+                'text-[2.25rem] leading-[1.08] tracking-[-0.025em]',
+                'md:text-[3rem] md:leading-[1.05] md:tracking-[-0.028em]',
+              )}
+            >
+              Explore catalog
+            </h1>
+            <p className="mt-5 max-w-[54ch] text-pretty leading-relaxed text-muted-foreground">
+              Quick clip search (type at least 2 characters for live catalog matches). For filters and playlists, open
+              the{' '}
+              <Link
+                to="/catalog"
+                className="font-medium text-foreground underline decoration-muted-foreground/40 underline-offset-4 transition-[text-decoration-color] duration-150 hover:decoration-foreground"
+              >
+                content library
+              </Link>
+              .
+            </p>
+          </Reveal>
 
-        <section className="space-y-4">
-          <form
-            className="flex flex-col md:flex-row md:items-center gap-3"
-            onSubmit={(e) => {
-              e.preventDefault();
-              applyUrl();
-            }}
-          >
-            <div className="flex-1 relative">
-              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by condition, speaker, topic…"
-                className="w-full rounded-card border border-border bg-card pl-11 pr-12 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
+          <Reveal delay={60}>
+            <form
+              className="mt-10 flex max-w-3xl flex-col gap-3 md:flex-row md:items-center"
+              onSubmit={(e) => {
+                e.preventDefault();
+                applyUrl();
+              }}
+            >
+              <div className="relative flex-1">
+                <SearchIcon
+                  aria-hidden
+                  className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search by condition, speaker, topic…"
+                  aria-label="Search by condition, speaker, topic"
+                  className={cn(
+                    'h-12 w-full rounded-[6px] bg-card pl-12 pr-14 text-base text-foreground shadow-card sm:text-sm',
+                    'outline-none placeholder:text-muted-foreground/70',
+                    'transition-shadow duration-150 hover:shadow-card-hover',
+                    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                  )}
+                />
 
-              {query ? (
-                <button
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery('');
+                      setSearchParams({}, { replace: true });
+                    }}
+                    className={cn(
+                      'absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-[6px]',
+                      'text-muted-foreground transition-[background-color,color,scale] duration-150',
+                      'hover:bg-muted hover:text-foreground motion-safe:active:scale-[0.96]',
+                      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                    )}
+                    aria-label="Clear search"
+                  >
+                    <X className="size-4" />
+                  </button>
+                ) : null}
+              </div>
+
+              <Button type="submit" size="lg" className="md:min-w-[7.5rem]">
+                Search
+              </Button>
+            </form>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── 02 / Results ────────────────────────────────────────
+          Filters sit above what they filter, never beside it: a
+          sidebar would push the results into a column narrower
+          than the rows they are ranked in. */}
+      <section aria-label="Results">
+        <div className={cn(RAIL, 'pb-20 md:pb-28')}>
+          <Reveal delay={120}>
+            <SectionHead
+              index="02 / Results"
+              title="Results"
+              action={
+                <Button
                   type="button"
-                  onClick={() => {
-                    setQuery('');
-                    setSearchParams({}, { replace: true });
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 h-9 w-9 rounded-full hover:bg-muted flex items-center justify-center"
-                  aria-label="Clear search"
+                  variant="outline"
+                  onClick={() => setShowFilters((v) => !v)}
+                  aria-expanded={showFilters}
                 >
-                  <X className="h-4 w-4 text-muted-foreground" />
-                </button>
-              ) : null}
+                  <SlidersHorizontal className="size-4" />
+                  Filters
+                </Button>
+              }
+            />
+
+            <div
+              aria-live="polite"
+              className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground"
+            >
+              <span>
+                Showing <span className="font-medium tabular-nums text-foreground">{filtered.length}</span> results
+              </span>
+              {debouncedQ.length >= 2 && apiLoading && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="size-4 animate-spin" />
+                  Searching catalog…
+                </span>
+              )}
+              {debouncedQ.length >= 2 && apiError && (
+                <span className="text-warning">Catalog search unavailable: showing curated matches only.</span>
+              )}
             </div>
 
-            <button
-              type="submit"
-              className="rounded-card bg-brand-600 px-6 py-3 text-sm font-semibold text-white hover:bg-brand-700"
-            >
-              Search
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowFilters((v) => !v)}
-              className="rounded-card border border-border bg-card px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted inline-flex items-center gap-2"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-            </button>
-          </form>
-
-          {showFilters ? (
-            <div className="rounded-card border border-border bg-card p-5 space-y-4">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Type</p>
-                <div className="flex flex-wrap gap-2">
+            {showFilters ? (
+              <div className="mt-8">
+                <p className="text-label uppercase text-muted-foreground">Type</p>
+                <div className="mt-3 flex flex-wrap gap-2">
                   {TYPE_FILTERS.map((t) => (
-                    <button
+                    <Button
                       key={t}
                       type="button"
+                      size="sm"
+                      variant={type === t ? 'solid' : 'outline'}
+                      aria-pressed={type === t}
                       onClick={() => setType(t)}
-                      className={[
-                        'rounded-[6px] px-4 py-2 text-sm font-semibold border',
-                        type === t
-                          ? 'bg-brand-600 text-white border-foreground'
-                          : 'bg-card text-foreground border-border hover:bg-muted',
-                      ].join(' ')}
                     >
                       {t}
-                    </button>
+                    </Button>
                   ))}
                 </div>
-              </div>
 
-              <div className="pt-2 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setType('All');
-                    setQuery('');
-                    setSearchParams({}, { replace: true });
-                  }}
-                  className="rounded-[6px] border border-border bg-card px-5 py-2 text-sm font-semibold text-foreground hover:bg-muted"
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowFilters(false)}
-                  className="rounded-[6px] bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <p>
-              Showing <span className="font-semibold text-foreground">{filtered.length}</span> results
-            </p>
-            {debouncedQ.length >= 2 && apiLoading && (
-              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Searching catalog…
-              </span>
-            )}
-            {debouncedQ.length >= 2 && apiError && (
-              <span className="text-warning">Catalog search unavailable: showing curated matches only.</span>
-            )}
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          <div className="rounded-card border border-border bg-card overflow-hidden">
-            <div className="divide-y divide-gray-200">
-              {filtered.map((r) => (
-                <Link key={r.id} to={r.href} className="block px-5 py-4 hover:bg-muted">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{r.title}</p>
-                      <p className="text-sm text-muted-foreground truncate">{r.subtitle}</p>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <Pill label={r.type} />
-                        {r.tag ? <Pill label={r.tag} muted /> : null}
-                      </div>
-                    </div>
-
-                    <span className="shrink-0 text-muted-foreground">→</span>
-                  </div>
-                </Link>
-              ))}
-
-              {filtered.length === 0 ? (
-                <div className="p-10 text-center">
-                  <p className="text-base font-semibold text-foreground">No results found</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Try a different search term or reset filters.</p>
-                  <div className="mt-6 flex justify-center gap-3">
-                    <Link
-                      to="/catalog"
-                      className="rounded-[6px] border border-border bg-card px-7 py-3 text-sm font-semibold text-foreground hover:bg-muted"
-                    >
-                      Browse Catalogue
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setType('All');
-                        setQuery('');
-                        setSearchParams({}, { replace: true });
-                      }}
-                      className="rounded-[6px] bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700"
-                    >
-                      Reset
-                    </button>
-                  </div>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Button type="button" size="sm" variant="outline" onClick={resetAll}>
+                    Reset
+                  </Button>
+                  <Button type="button" size="sm" onClick={() => setShowFilters(false)}>
+                    Apply
+                  </Button>
                 </div>
-              ) : null}
-            </div>
-          </div>
-        </section>
-      </div>
+              </div>
+            ) : null}
+          </Reveal>
+
+          {filtered.length > 0 ? (
+            <ul className="mt-10 grid gap-3 lg:grid-cols-2">
+              {filtered.map((r, i) => (
+                // The stagger caps out so a 40-result page does not
+                // spend two seconds arriving.
+                <Reveal as="li" key={r.id} delay={Math.min(i, 8) * 60} className="h-full">
+                  <Card to={r.href} className="group h-full p-5">
+                    <div className="flex items-start justify-between gap-5">
+                      <div className="min-w-0">
+                        <h3 className="line-clamp-2 text-base font-medium text-foreground">{r.title}</h3>
+                        <p className="mt-1 truncate text-sm text-muted-foreground">{r.subtitle}</p>
+
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                          <Chip kind="neutral">{r.type}</Chip>
+                          {r.tag ? <Chip kind={chipKind(r.tag)}>{r.tag}</Chip> : null}
+                        </div>
+                      </div>
+
+                      <ArrowRight
+                        aria-hidden
+                        className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-150 group-hover:translate-x-0.5"
+                      />
+                    </div>
+                  </Card>
+                </Reveal>
+              ))}
+            </ul>
+          ) : (
+            <Reveal delay={180}>
+              <Card className="mt-10 px-8 py-16 text-center">
+                <p className="text-xl font-semibold tracking-tight text-foreground">No results found</p>
+                <p className="mx-auto mt-2 max-w-[42ch] text-muted-foreground">
+                  Try a different search term or reset filters.
+                </p>
+                <div className="mt-8 flex flex-wrap justify-center gap-3">
+                  <Button to="/catalog" variant="outline" size="lg">
+                    Browse Catalogue
+                  </Button>
+                  <Button type="button" size="lg" onClick={resetAll}>
+                    Reset
+                  </Button>
+                </div>
+              </Card>
+            </Reveal>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
 
-function Pill({ label, muted }: { label: string; muted?: boolean }) {
+/**
+ * Entrance: opacity plus a 2px lift, nothing more. The flag flips on the
+ * next frame rather than on an observer, so content can never be left
+ * stuck invisible, and reduced motion drops the transition entirely.
+ */
+function Reveal({
+  children,
+  delay = 0,
+  className,
+  as: As = 'div',
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+  as?: 'div' | 'li';
+}) {
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
-    <span
-      className={[
-        'inline-flex items-center rounded-[6px] px-3 py-1 text-xs font-semibold border',
-        muted
-          ? 'bg-muted text-muted-foreground border-border'
-          : 'bg-card text-foreground border-border',
-      ].join(' ')}
+    <As
+      style={{ transitionDelay: `${delay}ms` }}
+      className={cn(
+        'transition-[opacity,transform] duration-500 ease-[cubic-bezier(0,0,0.2,1)]',
+        'motion-reduce:transition-none',
+        shown ? 'opacity-100' : 'translate-y-0.5 opacity-0',
+        className,
+      )}
     >
-      {label}
-    </span>
+      {children}
+    </As>
   );
 }

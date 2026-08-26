@@ -129,6 +129,18 @@
   }
 }
 
+/* Section reveal: the opacity does the work, the lift is 2px. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @layer base {
   html {
     /* clip avoids creating a scroll box that breaks position:sticky on descendants */
@@ -151,9 +163,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-enter {
+  .home-enter,
+  .rise-in {
     animation: none !important;
     opacity: 1 !important;
+    transform: none !important;
   }
 
   .public-drawer-link {
@@ -199,6 +213,15 @@
 
   .home-enter {
     animation: home-chunk-enter 0.5s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  /**
+   * Section reveal. `both` keeps the end state after it runs and the
+   * start state only while the caller's stagger delay is pending, so a
+   * revealed block can never be stranded invisible.
+   */
+  .rise-in {
+    animation: rise-in 0.5s cubic-bezier(0, 0, 0.2, 1) both;
   }
 
   /**

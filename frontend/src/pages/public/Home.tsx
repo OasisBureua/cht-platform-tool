@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search, Monitor, Headphones, FileText, Video, Clock, CalendarClock, LayoutGrid } from 'lucide-react';
+import {
+  ArrowRight,
+  Search,
+  Monitor,
+  Headphones,
+  FileText,
+  Video,
+  Clock,
+  CalendarClock,
+  LayoutGrid,
+} from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
-import { ConversationRow, StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
+import { StripCard, StripRowLoadingThumbnails } from '../../components/home/ConversationRow';
 import { HomeHero } from '../../components/home/HomeHero';
 import {
   ANON_HOME_BIOMARKER_CAROUSEL_IDS,
@@ -12,6 +22,7 @@ import {
 } from '../../components/content/BiomarkerConversationRow';
 import DISEASE_AREAS from '../../data/disease-areas';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
+import { Button, Card, Chip, Rail, SectionHead } from '../../components/ui';
 
 const resourceImages: Record<string, string> = {
   webinars: '/images/resource-webinars.png',
@@ -82,6 +93,59 @@ const HOME_STAGGER_MS = {
   closingCta: 1400,
 } as const;
 
+/**
+ * One content section. Space separates the bands, never a rule: the
+ * generous `py` is the divider, and the inner rail carries the page
+ * gutter that `bleed-x` rails cancel back out.
+ */
+function Band({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return (
+    <section className={className}>
+      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 md:py-24 lg:px-8">{children}</div>
+    </section>
+  );
+}
+
+/** The one "see all" affordance a band is allowed, on the head's baseline. */
+function SeeAll({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Button to={to} variant="outline" size="sm">
+      {children}
+      <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
+    </Button>
+  );
+}
+
+/** How We Help Pharma - copy lives in one place so the accordion is one loop. */
+const PHARMA_FAQ: { title: string; body: string }[] = [
+  {
+    title: 'AI-Powered Content Automation',
+    body: 'Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.',
+  },
+  {
+    title: 'Multi-Audience Reach',
+    body: 'Engage KOLs, HCPs, patients, and caregivers through one connected content system.',
+  },
+  {
+    title: 'Entertainment-Grade Distribution',
+    body: 'Use podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.',
+  },
+  {
+    title: 'First-Party HCP Intelligence',
+    body: 'Access proprietary data for precision targeting, lookalike audiences, and measurable activation.',
+  },
+  {
+    title: 'Real Engagement Analytics',
+    body: 'Move beyond impressions. Track who watched, who shared, and who acted on it.',
+  },
+];
+
+const WHO_WE_REACH: { audience: string; body: string }[] = [
+  { audience: 'HCPs', body: 'Beyond conferences and CME, where they actually consume content' },
+  { audience: 'Patients', body: 'Pre or active treatment, searching for credible information' },
+  { audience: 'Caregivers', body: 'Making decisions, seeking guidance, needing support' },
+];
+
 export default function Home() {
   useLayoutEffect(() => {
     window.scrollTo(0, 0);
@@ -134,290 +198,239 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-w-0 overflow-x-hidden bg-card text-foreground">
+    <div className="min-w-0 overflow-x-hidden bg-background text-foreground">
       <HomeHero tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
 
-      {/* Featured: Replit-style horizontal row + strip cards (same as in-app) */}
-      <section className="space-y-6 pt-4 pb-10 sm:space-y-8 sm:pt-6 sm:pb-12">
+      {/* 01 - Featured: a bleed rail, so the last card runs off the edge
+          rather than being clipped inside the gutter. */}
+      <Band>
         {randomVideosLoading && (
-          <div
-            className="home-enter mx-auto max-w-7xl px-4 sm:px-6"
-            style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
-          >
-            <ConversationRow title="Featured videos" seeAllHref="/catalog?view=clips" seeAllLabel="See all in library">
-              <StripRowLoadingThumbnails />
-            </ConversationRow>
-          </div>
+          <>
+            <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.featHeading}ms` }}>
+              <SectionHead
+                index="01 / Featured"
+                title="Featured videos"
+                action={<SeeAll to="/catalog?view=clips">See all in library</SeeAll>}
+              />
+            </div>
+            <div
+              className="home-enter mt-10"
+              style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
+            >
+              <Rail aria-label="Featured videos">
+                {/* `contents` keeps the <ul>/<li> contract while the six
+                    skeleton tiles stay direct flex items of the rail. */}
+                <li className="contents" aria-hidden>
+                  <StripRowLoadingThumbnails />
+                </li>
+              </Rail>
+            </div>
+          </>
         )}
 
         {!randomVideosLoading && featuredVideos.length > 0 && (
-          <div
-            className="home-enter mx-auto max-w-7xl px-4 sm:px-6"
-            style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
-          >
-            <ConversationRow
-              title="Featured videos"
-              subtitle={`${featuredVideos.length} items`}
-              seeAllHref="/catalog?view=clips"
-              seeAllLabel="See all in library"
+          <>
+            <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.featHeading}ms` }}>
+              <SectionHead
+                index="01 / Featured"
+                title="Featured videos"
+                action={
+                  <div className="flex items-center gap-3">
+                    <Chip>{featuredVideos.length} items</Chip>
+                    <SeeAll to="/catalog?view=clips">See all in library</SeeAll>
+                  </div>
+                }
+              />
+            </div>
+            <div
+              className="home-enter mt-10"
+              style={{ animationDelay: `${HOME_STAGGER_MS.featCarousel}ms` }}
             >
-              {featuredVideos.map((v) => (
-                <StripCard
-                  key={v.id}
-                  to={v.id.startsWith('home-placeholder') ? '/catalog?view=clips' : `/catalog/clip/${getShortClipId(v.id)}`}
-                  title={v.title}
-                  imageUrl={v.imageUrl}
-                  variant="thumbnailOnly"
-                  meta={v.youtubeUrl ? 'YouTube' : 'Conversation'}
-                  hideThumbnailOnError={!v.id.startsWith('home-placeholder')}
-                  onThumbnailError={() =>
-                    setBrokenFeaturedIds((prev) => {
-                      if (prev.has(v.id)) return prev;
-                      const next = new Set(prev);
-                      next.add(v.id);
-                      return next;
-                    })
-                  }
-                />
-              ))}
-            </ConversationRow>
-          </div>
+              <Rail aria-label="Featured videos">
+                {featuredVideos.map((v) => (
+                  <li key={v.id} className="shrink-0 snap-start">
+                    <StripCard
+                      to={v.id.startsWith('home-placeholder') ? '/catalog?view=clips' : `/catalog/clip/${getShortClipId(v.id)}`}
+                      title={v.title}
+                      imageUrl={v.imageUrl}
+                      variant="thumbnailOnly"
+                      meta={v.youtubeUrl ? 'YouTube' : 'Conversation'}
+                      hideThumbnailOnError={!v.id.startsWith('home-placeholder')}
+                      onThumbnailError={() =>
+                        setBrokenFeaturedIds((prev) => {
+                          if (prev.has(v.id)) return prev;
+                          const next = new Set(prev);
+                          next.add(v.id);
+                          return next;
+                        })
+                      }
+                    />
+                  </li>
+                ))}
+              </Rail>
+            </div>
+          </>
         )}
-      </section>
+      </Band>
 
-      {/* Biomarker strips: catalog clips by tag (HER2+ / HR+), not YouTube playlists */}
-      <section className="space-y-6 py-6 sm:space-y-8 sm:py-8">
-        {ANON_HOME_BIOMARKER_CAROUSEL_IDS.map((carouselId, index) => (
-          <div
-            key={carouselId}
-            className="home-enter mx-auto max-w-7xl px-4 sm:px-6"
-            style={{
-              animationDelay: `${
-                carouselId === 'anon-home-hr'
-                  ? HOME_STAGGER_MS.hrBody
-                  : HOME_STAGGER_MS.biomarkerBody + index * 40
-              }ms`,
-            }}
-          >
-            <BiomarkerConversationRow carouselId={carouselId} isInApp={false} />
-          </div>
-        ))}
-      </section>
+      {/* 02 - Biomarker strips: catalog clips by tag (HER2+ / HR+), not YouTube playlists */}
+      <Band>
+        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.biomarkerHead}ms` }}>
+          <SectionHead index="02 / Biomarkers" title="Conversations by biomarker" />
+        </div>
+        <div className="mt-10 space-y-12">
+          {ANON_HOME_BIOMARKER_CAROUSEL_IDS.map((carouselId, index) => (
+            <div
+              key={carouselId}
+              className="home-enter"
+              style={{
+                animationDelay: `${
+                  carouselId === 'anon-home-hr'
+                    ? HOME_STAGGER_MS.hrBody
+                    : HOME_STAGGER_MS.biomarkerBody + index * 40
+                }ms`,
+              }}
+            >
+              <BiomarkerConversationRow carouselId={carouselId} isInApp={false} />
+            </div>
+          ))}
+        </div>
+      </Band>
 
       <DiseaseAreasCarousel staggerBaseMs={HOME_STAGGER_MS.disease} />
 
-      {/* About Us teaser */}
-      <section className="py-10 sm:py-14">
-        <div className="mx-auto flex max-w-7xl justify-center px-4 sm:px-6">
-          <div
-            className="home-enter max-w-2xl space-y-5 text-center"
-            style={{ animationDelay: `${HOME_STAGGER_MS.about}ms` }}
-          >
-            <h4 className="text-balance text-3xl font-semibold text-foreground">About Us</h4>
-            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+      {/* 04 - About Us teaser */}
+      <Band>
+        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.about}ms` }}>
+          <SectionHead
+            index="04 / About"
+            title="About Us"
+            action={<Button to="/about">Learn More</Button>}
+          />
+          <div className="mt-8 max-w-[54ch] space-y-5 text-pretty text-lg leading-relaxed text-muted-foreground">
+            <p>
               Community Health Media (CHM) is a full-service medical communications partner: expert-led content,
               strategic distribution, and multichannel campaigns for healthcare. We help organizations connect with HCPs,
               KOLs, and patient communities through clinically credible communication.
             </p>
-            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
+            <p>
               Learn more about what we stand for, who we serve, and how our platform supports clinical learning.
             </p>
+          </div>
+        </div>
+      </Band>
+
+      {/* 05 - Who We Reach */}
+      <Band>
+        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.whoWe}ms` }}>
+          <SectionHead index="05 / Audience" title="Who We Reach" />
+        </div>
+        <div
+          className="home-enter mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3"
+          style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
+        >
+          {WHO_WE_REACH.map((w) => (
+            <Card key={w.audience}>
+              <p className="text-lg font-semibold text-foreground">{w.audience}</p>
+              <p className="mt-2 max-w-[36ch] text-pretty leading-relaxed text-muted-foreground">{w.body}</p>
+            </Card>
+          ))}
+        </div>
+      </Band>
+
+      {/* 06 - Resources */}
+      <Band>
+        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.resourcesHead}ms` }}>
+          <SectionHead index="06 / Resources" title="Resources" />
+        </div>
+        <div
+          className="home-enter mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4"
+          style={{ animationDelay: `${HOME_STAGGER_MS.resourcesGrid}ms` }}
+        >
+          {resources.map((r) => (
             <Link
-              to="/about"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-6 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.22)_inset,0_8px_26px_-10px_rgba(0,124,255,0.4)] transition-[color,background-color,transform,box-shadow] hover:bg-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-300 active:scale-[0.96]"
+              key={r.id}
+              to={r.href}
+              className="group relative block min-h-[150px] overflow-hidden rounded-card bg-muted shadow-card transition-[box-shadow,translate,scale] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96] md:min-h-[176px]"
             >
-              Learn More
+              <img
+                src={r.imageUrl}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover transition-[scale] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.03]"
+              />
+              {/* The tile is a permanently dark region, so its label is
+                  fixed white rather than a page-following token. */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/35 to-black/20 transition-[opacity] duration-150 group-hover:opacity-90" />
+              <div className="relative flex min-h-[150px] flex-col justify-between p-4 md:min-h-[176px]">
+                <span className="text-white/90 transition-[color] duration-150 group-hover:text-white">{r.icon}</span>
+                <p className="text-balance text-sm font-semibold text-white">{r.title}</p>
+              </div>
             </Link>
-          </div>
+          ))}
         </div>
-      </section>
+      </Band>
 
-      {/* Who We Reach */}
-      <section className="border-t border-border py-10 sm:py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h4
-            className="home-enter mb-8 text-center text-balance text-3xl font-semibold text-foreground"
-            style={{ animationDelay: `${HOME_STAGGER_MS.whoWe}ms` }}
-          >
-            Who We Reach
-          </h4>
-          <div
-            className="home-enter grid grid-cols-1 gap-6 sm:grid-cols-3"
-            style={{ animationDelay: `${HOME_STAGGER_MS.whoWe + 90}ms` }}
-          >
-            <div className="rounded-card bg-card p-6 shadow-card">
-              <p className="mb-2 font-semibold text-foreground">HCPs</p>
-              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Beyond conferences and CME, where they actually consume content</p>
-            </div>
-            <div className="rounded-card bg-card p-6 shadow-card">
-              <p className="mb-2 font-semibold text-foreground">Patients</p>
-              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Pre or active treatment, searching for credible information</p>
-            </div>
-            <div className="rounded-card bg-card p-6 shadow-card">
-              <p className="mb-2 font-semibold text-foreground">Caregivers</p>
-              <p className="text-pretty text-sm leading-relaxed text-muted-foreground">Making decisions, seeking guidance, needing support</p>
-            </div>
-          </div>
+      {/* 07 - How We Help Pharma: each answer is a surface, not a ruled row */}
+      <Band>
+        <div className="home-enter" style={{ animationDelay: `${HOME_STAGGER_MS.faqHead}ms` }}>
+          <SectionHead index="07 / Capabilities" title="How We Help Pharma Educate Healthcare Audiences" />
         </div>
-      </section>
-
-      {/* Resources */}
-      <section className="py-10 sm:py-14">
-        <div className="mx-auto max-w-7xl space-y-6 px-4 sm:px-6">
-          <div className="space-y-2 text-center">
-            <h5
-              className="home-enter text-balance text-4xl font-semibold text-foreground md:text-5xl"
-              style={{ animationDelay: `${HOME_STAGGER_MS.resourcesHead}ms` }}
+        <div
+          className="home-enter mt-10 space-y-3"
+          style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}
+        >
+          {PHARMA_FAQ.map((item) => (
+            <details
+              key={item.title}
+              className="home-faq-item group rounded-card bg-card shadow-card transition-[box-shadow] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:shadow-card-hover"
             >
-              Resources
-            </h5>
-          </div>
-          <div
-            className="home-enter grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4"
-            style={{ animationDelay: `${HOME_STAGGER_MS.resourcesGrid}ms` }}
-          >
-            {resources.map((r) => (
-              <Link
-                key={r.id}
-                to={r.href}
-                className="group relative block min-h-[140px] overflow-hidden rounded-card bg-gray-700 shadow-card transition-[transform] active:scale-[0.96] md:min-h-[160px]"
-              >
-                <img
-                  src={r.imageUrl}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover ring-1 ring-inset ring-black/10"
-                />
-                <div className="absolute inset-0 bg-black/45 transition-[background-color] group-hover:bg-black/55" />
-                <div className="relative flex min-h-[140px] flex-col justify-between p-4 md:min-h-[160px]">
-                  <span className="text-white/95 transition-[color] group-hover:text-white">{r.icon}</span>
-                  <p className="text-balance text-sm font-semibold text-white">{r.title}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How We Help Pharma - FAQ accordion */}
-      <section className="py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h2
-            className="home-enter mb-8 text-center text-balance text-3xl font-semibold tracking-tighter text-foreground md:mb-10 md:text-4xl lg:text-5xl"
-            style={{ animationDelay: `${HOME_STAGGER_MS.faqHead}ms` }}
-          >
-            How We Help Pharma Educate Healthcare Audiences
-          </h2>
-          <div className="home-enter space-y-0" style={{ animationDelay: `${HOME_STAGGER_MS.faqBody}ms` }}>
-            <details className="group home-faq-item">
-              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-success" aria-hidden>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 sm:p-6">
+                <span className="flex min-w-0 items-start gap-3">
+                  <span className="mt-1 shrink-0 text-success" aria-hidden>
                     ✓
                   </span>
-                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">AI-Powered Content Automation</span>
+                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">
+                    {item.title}
+                  </span>
                 </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
+                <span className="grid size-10 shrink-0 place-items-center rounded-[6px] bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
                   <span className="text-lg font-light leading-none">+</span>
                 </span>
               </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
-                Turn one medical webinar or clinical presentation into 20+ platform-specific assets: social posts, podcast clips, infographics, and more.
+              {/* The answer hangs under the question, clear of the check. */}
+              <p className="max-w-[62ch] text-pretty pb-6 pe-5 ps-[3.25rem] text-base leading-relaxed text-muted-foreground sm:pe-6 sm:ps-[3.75rem]">
+                {item.body}
               </p>
             </details>
-            <details className="group home-faq-item">
-              <summary className="list-none flex cursor-pointer items-center justify-between border-b border-border py-5 group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-success" aria-hidden>✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Multi-Audience Reach</span>
-                </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
-                </span>
-              </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
-                Engage KOLs, HCPs, patients, and caregivers through one connected content system.
-              </p>
-            </details>
-            <details className="group home-faq-item">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-border group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-success">✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Entertainment-Grade Distribution</span>
-                </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
-                </span>
-              </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
-                Use podcasts, social media, live events, and owned digital properties to reach audiences where they consume trusted information.
-              </p>
-            </details>
-            <details className="group home-faq-item">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-border group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-success">✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">First-Party HCP Intelligence</span>
-                </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
-                </span>
-              </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
-                Access proprietary data for precision targeting, lookalike audiences, and measurable activation.
-              </p>
-            </details>
-            <details className="group home-faq-item">
-              <summary className="list-none flex items-center justify-between cursor-pointer py-5 border-b border-border group-open:border-b-0">
-                <span className="flex items-center gap-2">
-                  <span className="text-success">✓</span>
-                  <span className="text-balance text-xl font-medium leading-snug text-foreground md:text-[1.375rem]">Real Engagement Analytics</span>
-                </span>
-                <span className="ml-4 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:duration-0 motion-reduce:transition-none group-open:rotate-45">
-                  <span className="text-lg font-light leading-none">+</span>
-                </span>
-              </summary>
-              <p className="text-pretty px-4 pb-5 pt-2 text-base leading-relaxed text-muted-foreground">
-                Move beyond impressions. Track who watched, who shared, and who acted on it.
-              </p>
-            </details>
-          </div>
-          <div
-            className="home-enter mt-10 flex justify-center"
-            style={{ animationDelay: `${HOME_STAGGER_MS.faqBody + 90}ms` }}
-          >
-            <Link
-              to="/join"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-8 py-2.5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
-            >
-              Get Started
-            </Link>
-          </div>
+          ))}
         </div>
-      </section>
+        <div
+          className="home-enter mt-10 flex"
+          style={{ animationDelay: `${HOME_STAGGER_MS.faqBody + 90}ms` }}
+        >
+          <Button to="/join" size="lg">
+            Get Started
+          </Button>
+        </div>
+      </Band>
 
-      {/* A media company thats about more than just content - Figma Frame 13 */}
-      <section className="py-12 sm:py-16">
-        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6">
+      {/* Closing statement. A surface change closes the page; no rule above it. */}
+      <section className="bg-card">
+        <div className="mx-auto max-w-7xl px-4 py-20 text-center sm:px-6 md:py-28 lg:px-8">
           <h2
-            className="home-enter text-balance mx-auto mb-6 md:mb-8 text-foreground"
-            style={{
-              animationDelay: `${HOME_STAGGER_MS.closingHead}ms`,
-              fontFamily: '"Apple Garamond", Garamond, serif',
-              fontSize: 'clamp(2.5rem, 8vw, 96px)',
-              fontWeight: 400,
-              lineHeight: 1.15,
-              maxWidth: '955px',
-            }}
+            className="home-enter mx-auto max-w-[20ch] text-balance text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[3rem] md:text-[3.5rem]"
+            style={{ animationDelay: `${HOME_STAGGER_MS.closingHead}ms` }}
           >
             A Media Company That&apos;s About More Than Just Content
           </h2>
-          <Link
-            to="/join"
-            className="home-enter inline-flex min-h-[48px] min-w-[208px] items-center justify-center rounded-[6px] bg-brand-600 px-10 py-4 text-base font-medium text-white shadow-[0_1px_0_0_rgba(255,255,255,0.08)_inset] transition-[color,background-color,transform] hover:bg-brand-700 active:scale-[0.96]"
+          <div
+            className="home-enter mt-10 flex justify-center"
             style={{ animationDelay: `${HOME_STAGGER_MS.closingCta}ms` }}
           >
-            Join Us
-          </Link>
+            <Button to="/join" size="lg" className="min-w-[13rem]">
+              Join Us
+            </Button>
+          </div>
         </div>
       </section>
     </div>
@@ -479,32 +492,26 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
   }, []);
 
   return (
-    <section className="space-y-6 py-10 sm:space-y-8 sm:py-14">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="space-y-2 text-center">
-          <h3
-            className="home-enter text-balance text-2xl font-medium tracking-tight text-foreground sm:text-3xl md:text-4xl"
-            style={{ animationDelay: `${staggerBaseMs}ms` }}
-          >
-            View treatment specific content
-          </h3>
-          <p
-            className="home-enter mx-auto max-w-xl text-pretty text-sm text-muted-foreground sm:text-base"
-            style={{ animationDelay: `${staggerBaseMs + 90}ms` }}
-          >
-            Explore content by therapeutic area - expert-led education, conversations, and resources.
-          </p>
+    <section className="py-16 md:py-24">
+      {/* 03 - the head keeps the page rail; the strip runs full width. */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="home-enter" style={{ animationDelay: `${staggerBaseMs}ms` }}>
+          <SectionHead
+            index="03 / Areas"
+            title="View treatment specific content"
+            sub="Explore content by therapeutic area - expert-led education, conversations, and resources."
+          />
         </div>
       </div>
 
       <div
-        className="home-enter w-full min-w-0"
+        className="home-enter mt-10 w-full min-w-0"
         style={{ animationDelay: `${staggerBaseMs + 180}ms` }}
       >
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="scrollbar-hide flex snap-x snap-mandatory gap-5 overflow-x-auto overflow-y-hidden scroll-smooth px-4 sm:px-6"
+          className="scrollbar-hide flex snap-x snap-mandatory gap-5 overflow-x-auto overflow-y-hidden scroll-smooth px-4 py-4 sm:px-6"
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           <div
@@ -515,22 +522,24 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
             const inner = (
               <div
                 data-disease-card
-                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-[20px] shadow-[0_16px_40px_-16px_rgba(0,0,0,0.45)] sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px]"
+                className="group relative h-[180px] w-[280px] shrink-0 snap-center overflow-hidden rounded-card shadow-card transition-[box-shadow,translate] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover sm:h-[260px] sm:w-[420px] md:h-[320px] md:w-[560px] lg:h-[340px] lg:w-[640px]"
               >
                 <img
                   src={area.image}
                   alt={area.title}
-                  className="absolute inset-0 h-full w-full object-cover ring-1 ring-inset ring-black/10"
+                  className="absolute inset-0 h-full w-full object-cover transition-[scale] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.03]"
                   loading="lazy"
                   referrerPolicy="no-referrer"
                 />
-                <div className="absolute inset-0 rounded-[20px] bg-black/30" />
-                <div className="absolute inset-0 flex items-center justify-between px-5 sm:px-8 md:px-10">
-                  <h4 className="text-balance text-2xl font-normal text-white sm:text-3xl md:text-4xl">
+                {/* Permanently dark region: the label is fixed white. */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/10" />
+                <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-5 p-5 sm:p-8 md:p-10">
+                  <h3 className="text-balance text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl md:text-[2.25rem] md:leading-[1.08] md:tracking-[-0.025em]">
                     {area.title}
-                  </h4>
-                  <span className="whitespace-nowrap text-sm text-white underline decoration-solid underline-offset-4 transition-[opacity] group-hover:opacity-80 sm:text-base md:text-xl">
+                  </h3>
+                  <span className="inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[6px] bg-white/15 px-4 text-sm font-medium text-white backdrop-blur-sm transition-[background-color] duration-150 group-hover:bg-white/25 sm:text-base">
                     Explore Treatment
+                    <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
                   </span>
                 </div>
               </div>
@@ -539,7 +548,7 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
               <Link
                 key={area.slug}
                 to={`/catalog/${area.slug}`}
-                className="shrink-0 snap-center transition-[transform] active:scale-[0.96]"
+                className="shrink-0 snap-center rounded-card transition-[scale] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.96]"
               >
                 {inner}
               </Link>
@@ -556,9 +565,9 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
         </div>
       </div>
 
-      <div className="mx-auto flex max-w-7xl justify-center px-4 sm:px-6">
+      <div className="mx-auto flex max-w-7xl justify-center px-4 sm:px-6 lg:px-8">
         <div
-          className="home-enter flex flex-wrap items-center justify-center gap-2"
+          className="home-enter flex flex-wrap items-center justify-center gap-1"
           style={{ animationDelay: `${staggerBaseMs + 270}ms` }}
           role="tablist"
           aria-label="Disease area slides"
@@ -570,12 +579,18 @@ function DiseaseAreasCarousel({ staggerBaseMs = 0 }: DiseaseAreasCarouselProps) 
               role="tab"
               aria-selected={idx === activeIdx}
               onClick={() => scrollTo(idx)}
-              className={[
-                'h-2 rounded-full transition-[width,background-color] duration-300',
-                idx === activeIdx ? 'w-8 bg-steel-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
-              ].join(' ')}
+              className="group/dot flex h-9 items-center px-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               aria-label={`Go to disease area ${idx + 1}`}
-            />
+            >
+              <span
+                className={[
+                  'h-2 rounded-[6px] transition-[width,background-color] duration-300',
+                  idx === activeIdx
+                    ? 'w-8 bg-foreground'
+                    : 'w-2 bg-muted-foreground/35 group-hover/dot:bg-muted-foreground/60',
+                ].join(' ')}
+              />
+            </button>
           ))}
         </div>
       </div>

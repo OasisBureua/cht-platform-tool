@@ -1,8 +1,10 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { Search, Loader2, ChevronDown, MonitorPlay } from 'lucide-react';
 import { catalogApi, type MediaHubTags } from '../../api/catalog';
+import { Button, Card, Chip, chipKind, SectionHead } from '../../components/ui';
+import { cn } from '../../lib/cn';
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
@@ -115,6 +117,28 @@ function getDoctorOptions(doctors: { slug: string }[]): { value: string; label: 
 
 const SEARCH_DEBOUNCE_MS = 300;
 const CLIPS_PAGE_SIZE = 24;
+
+/**
+ * The page rail. Its padding matches `--page-gutter`, so a scroller that
+ * breaks out with `.bleed-x` still lines its first card up with the page.
+ */
+const RAIL = 'mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8';
+/** In the app shell the layout already pays the gutter, so the rail only caps width. */
+const APP_RAIL = 'mx-auto w-full max-w-7xl';
+/** The gutter on its own, for in-app sections the shell renders full width. */
+const APP_GUTTER = 'px-4 sm:px-6 lg:px-8';
+/** Space separates sections here; there are no rules between them. */
+const BAND = 'py-14 md:py-20';
+/** 2 → 3 → 4. Fewer, larger tiles with air between them. */
+const CLIP_GRID = 'grid min-w-0 grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-5 lg:grid-cols-4 lg:gap-6';
+/**
+ * Every filter control is the same rectangular chip: a surface change plus
+ * elevation, never a hairline, and a 6px corner rather than a pill.
+ */
+const CONTROL =
+  'h-11 rounded-[6px] bg-card text-sm font-medium text-foreground shadow-card outline-none ' +
+  'transition-[box-shadow,background-color] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] ' +
+  'hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 
 type ClipsPage = Awaited<ReturnType<typeof catalogApi.getClips>>;
 type SortByParam = 'views' | 'likes' | 'posted' | 'recorded_at';
@@ -418,112 +442,229 @@ export default function VideosPage() {
       </section>
     ) : null;
 
-  return (
-    <div className="min-h-screen min-w-0 bg-transparent">
-      <div
-        className={[
-          isInApp && !showClipsGrid
-            ? 'w-full px-0 py-0 space-y-8 md:space-y-10'
-            : 'mx-auto max-w-7xl px-3 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8',
-        ].join(' ')}
-      >
-        {effectiveLibraryView === 'clips' && !isInApp ? (
-          <div className="flex items-center gap-2.5 pt-2 text-foreground sm:pt-4">
-            <MonitorPlay className="h-5 w-5 shrink-0 text-steel-700 dark:text-steel-400" strokeWidth={2} aria-hidden />
-            <h1 className="text-left text-balance text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              Explore our catalogue
-            </h1>
-          </div>
-        ) : null}
+  const sortLabel = SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort by';
 
-        {effectiveLibraryView === 'clips' && !isInApp ? (
-          <ContentLibraryNavTabs isInApp={isInApp} />
-        ) : null}
+  /**
+   * One line of copy under the playlist heading. Same three states the
+   * inline markup carried before, lifted out so `SectionHead` can take it.
+   */
+  const playlistsSub = playlistFocus
+    ? focusClipsLoading
+      ? 'Loading conversations…'
+      : focusClips.length > 0
+        ? `${focusClips.length} conversation${focusClips.length !== 1 ? 's' : ''}`
+        : 'No conversations in this category yet'
+    : 'Browse KOL playlists and ASCO 2026 series';
 
-        {effectiveLibraryView === 'clips' && useMediaHub && (!isInApp || showClipsGrid) && (
-          <section className="flex flex-col gap-3 md:flex-row md:flex-wrap">
-            <div className="relative min-w-[200px] flex-1">
-              <Search
-                className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-full rounded-card border border-border bg-card py-3 pl-11 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
-            </div>
+  /* Filters read as a row of rectangular chips. Each control is carried by
+     elevation on a surface change; nothing here draws a hairline. */
+  const libraryControls = (
+    <div className="mt-8 flex flex-col gap-3 md:flex-row md:flex-wrap md:items-center">
+      <div className="relative min-w-[15rem] flex-1 md:max-w-sm">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search..."
+          aria-label="Search the catalogue"
+          className={cn(CONTROL, 'w-full pl-11 pr-4 font-normal placeholder:text-muted-foreground')}
+        />
+      </div>
 
-            {!wpMode ? (
-              <>
-                <select
-                  value={tagFilter}
-                  onChange={(e) => setTagFilter(e.target.value)}
-                  className="min-w-[160px] rounded-card border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
-                >
-                  <option value="">All tags</option>
-                  {tagGroups.map((group) => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.options.map((opt) => (
-                        <option key={`${group.label}:${opt.value}`} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-
-                <select
-                  value={doctorFilter}
-                  onChange={(e) => setDoctorFilter(e.target.value)}
-                  className="min-w-[160px] rounded-card border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
-                >
-                  <option value="">All doctors</option>
-                  {doctorOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
+      {!wpMode ? (
+        <>
+          <div className="relative">
+            <select
+              value={tagFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              aria-label="Filter by tag"
+              className={cn(CONTROL, 'w-full min-w-[10rem] appearance-none pl-4 pr-10 md:w-auto')}
+            >
+              <option value="">All tags</option>
+              {tagGroups.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={`${group.label}:${opt.value}`} value={opt.value}>
                       {opt.label}
                     </option>
                   ))}
-                </select>
-              </>
-            ) : null}
+                </optgroup>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+          </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setSortOpen(!sortOpen)}
-                className="inline-flex min-w-[140px] items-center justify-between gap-2 rounded-card border border-border bg-card px-4 py-3 text-sm font-medium text-foreground"
-              >
-                {SORT_OPTIONS.find((o) => o.value === sortBy)?.label ?? 'Sort by'}
-                <ChevronDown className={`h-4 w-4 transition-transform ${sortOpen ? 'rotate-180' : ''}`} aria-hidden />
-              </button>
-              {sortOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
-                  <div className="absolute right-0 top-full z-20 mt-1 min-w-[160px] rounded-card border border-border bg-card py-1 shadow-lg">
-                    {SORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          setSortBy(opt.value);
-                          setSortOpen(false);
-                        }}
-                        className={`w-full px-4 py-2 text-left text-sm hover:bg-muted ${
-                          sortBy === opt.value ? 'bg-muted font-medium text-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
+          <div className="relative">
+            <select
+              value={doctorFilter}
+              onChange={(e) => setDoctorFilter(e.target.value)}
+              aria-label="Filter by doctor"
+              className={cn(CONTROL, 'w-full min-w-[10rem] appearance-none pl-4 pr-10 md:w-auto')}
+            >
+              <option value="">All doctors</option>
+              {doctorOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+          </div>
+        </>
+      ) : null}
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setSortOpen(!sortOpen)}
+          aria-expanded={sortOpen}
+          className={cn(
+            CONTROL,
+            'inline-flex w-full min-w-[10rem] items-center justify-between gap-2 px-4 md:w-auto',
+            'motion-safe:active:scale-[0.96]',
+          )}
+        >
+          {sortLabel}
+          <ChevronDown
+            className={`h-4 w-4 text-muted-foreground transition-transform duration-150 ${sortOpen ? 'rotate-180' : ''}`}
+            aria-hidden
+          />
+        </button>
+        {sortOpen && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setSortOpen(false)} aria-hidden />
+            <div className="absolute right-0 top-full z-20 mt-2 min-w-[11rem] rounded-card bg-card p-1 shadow-card-hover">
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    setSortBy(opt.value);
+                    setSortOpen(false);
+                  }}
+                  className={cn(
+                    'block w-full rounded-[6px] px-3 py-2 text-left text-sm transition-colors duration-150',
+                    sortBy === opt.value
+                      ? 'bg-muted font-medium text-foreground'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-          </section>
+          </>
         )}
+      </div>
+    </div>
+  );
 
+  /* What the grid below is actually filtered by, said back in colour:
+     the tag takes its kind, so the scheme holds as the vocabulary grows. */
+  const activeFilterChips = filterOrSortActive ? (
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      {debouncedQuery ? <Chip>Search: {debouncedQuery}</Chip> : null}
+      {tagFilter ? <Chip kind={chipKind(tagFilter)}>{tagFilter}</Chip> : null}
+      {doctorFilter ? <Chip kind="setting">{doctorLabelFromSlug(doctorFilter)}</Chip> : null}
+      {sortBy !== DEFAULT_SORT ? <Chip>{sortLabel}</Chip> : null}
+    </div>
+  ) : null;
+
+  const libraryHead = (
+    <>
+      <SectionHead
+        index="01 / Library"
+        title="Video library"
+        action={
+          useMediaHub && displayItems.length > 0 ? (
+            <p className="text-label uppercase tabular-nums text-muted-foreground">
+              {displayItems.length} video{displayItems.length !== 1 ? 's' : ''}
+            </p>
+          ) : undefined
+        }
+      />
+      {useMediaHub ? libraryControls : null}
+      {useMediaHub ? activeFilterChips : null}
+    </>
+  );
+
+  const loadMoreSentinel = useMediaHub ? (
+    <div ref={loadMoreRef} className="flex justify-center py-10">
+      {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />}
+    </div>
+  ) : null;
+
+  return (
+    /* The public shell paints its own cool grey, which sits a hair off
+       bg-card and would leave every chip and card invisible on it. The page
+       carries the background token so the surfaces separate. */
+    <div className={cn('min-h-screen min-w-0', isInApp ? 'bg-transparent' : 'bg-background')}>
+      {/* ── Hero ──────────────────────────────────────────────────
+          A permanently dark band, so the white here is fixed rather
+          than tokenised: the page-following tokens would resolve to
+          dark grey on black in light mode. */}
+      {effectiveLibraryView === 'clips' && !isInApp ? (
+        <section
+          aria-labelledby="catalogue-heading"
+          className="relative isolate overflow-hidden bg-zinc-950"
+        >
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(104deg, transparent 24%, hsl(var(--cerebral-blue) / 0.30) 46%, hsl(var(--cerebral-cyan) / 0.18) 58%, transparent 78%)',
+              }}
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background:
+                  'radial-gradient(72% 72% at 10% 100%, rgb(9 9 11 / 0.08) 28%, rgb(9 9 11 / 0.9) 100%)',
+              }}
+            />
+          </div>
+
+          <div
+            className={cn(
+              RAIL,
+              'relative flex min-h-[16rem] flex-col justify-end py-16 md:min-h-[20rem] md:py-24',
+            )}
+          >
+            <p className="home-enter text-label uppercase text-white/60">Content library</p>
+            <h1
+              id="catalogue-heading"
+              className="home-enter mt-4 flex items-center gap-3 text-balance text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.028em] text-white sm:text-[3rem]"
+              style={{ animationDelay: '60ms' }}
+            >
+              <MonitorPlay
+                className="hidden h-9 w-9 shrink-0 text-white/70 sm:block"
+                strokeWidth={1.5}
+                aria-hidden
+              />
+              Explore our catalogue
+            </h1>
+          </div>
+        </section>
+      ) : null}
+
+      {/* ── Sections ── the three ways into the library, under the hero */}
+      {effectiveLibraryView === 'clips' && !isInApp ? (
+        <div className={cn(RAIL, 'home-enter pt-12 md:pt-16')} style={{ animationDelay: '120ms' }}>
+          <ContentLibraryNavTabs isInApp={isInApp} />
+        </div>
+      ) : null}
+
+      <div className={isInApp && !showClipsGrid ? 'w-full space-y-12 md:space-y-16' : ''}>
         {effectiveLibraryView === 'clips' && useMediaHub && isInitialClipsLoad && isInApp && !showClipsGrid && (
           <section className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8 lg:-mt-8">
             <ConversationsHeroSkeleton />
@@ -536,134 +677,138 @@ export default function VideosPage() {
           </section>
         )}
 
-
         {effectiveLibraryView === 'playlists' ? (
-            <section className={[isInApp ? 'px-4 sm:px-6 lg:px-8' : '', 'space-y-4'].filter(Boolean).join(' ')}>
-              <PlaylistFocusNav
-                isInApp={isInApp}
-                allowedPlaylistFocusFilters={isInApp ? undefined : PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS}
+          /* ── Playlists ── */
+          <section aria-label="Playlists">
+            <div className={cn(isInApp ? `w-full ${APP_GUTTER}` : RAIL, BAND)}>
+              <SectionHead
+                index="01 / Playlists"
+                title={playlistBrowseHeadingText(playlistFocus)}
+                sub={playlistsSub}
+                action={
+                  !isInApp ? (
+                    <Button to="/catalog?view=clips" variant="outline" size="sm">
+                      Browse conversations
+                    </Button>
+                  ) : undefined
+                }
               />
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                  <h2 className="text-xl font-bold text-foreground">
-                    {playlistBrowseHeadingText(playlistFocus)}
-                  </h2>
-                  {playlistFocus ? (
-                    <p className="text-sm text-muted-foreground">
-                      {focusClipsLoading
-                        ? 'Loading conversations…'
-                        : focusClips.length > 0
-                          ? `${focusClips.length} conversation${focusClips.length !== 1 ? 's' : ''}`
-                          : 'No conversations in this category yet'}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      Browse KOL playlists and ASCO 2026 series
-                    </p>
-                  )}
-                </div>
-                {!isInApp ? (
-                  <Link
-                    to="/catalog?view=clips"
-                    className="shrink-0 text-sm font-semibold text-steel-600 transition-colors hover:text-steel-800 hover:underline dark:text-steel-400 dark:hover:text-steel-300"
-                  >
-                    Browse conversations
-                  </Link>
-                ) : null}
+
+              <div className="mt-8">
+                <PlaylistFocusNav
+                  isInApp={isInApp}
+                  allowedPlaylistFocusFilters={isInApp ? undefined : PUBLIC_CATALOG_PLAYLIST_NAV_FOCUS}
+                />
               </div>
-            {playlistFocus ? (
-              focusClipsLoading ? (
-                <div className="flex justify-center py-16" aria-busy="true">
-                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                </div>
-              ) : focusClipsError ? (
-                <p className="text-sm text-destructive">Could not load conversations. Try again later.</p>
-              ) : focusClips.length > 0 ? (
-                <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {focusClips.map((item) => (
-                    <ConversationsClipCard
-                      key={item.id}
-                      item={item}
-                      href={
-                        isInApp
-                          ? `/app/clip/${getShortClipId(item.id)}`
-                          : `/catalog/clip/${getShortClipId(item.id)}`
-                      }
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No conversations match this category yet.
-                </p>
-              )
-            ) : (
-              <>
-                <PlaylistSections playlists={playlists} isInApp={isInApp} />
-                {playlists.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No playlists configured. Add YouTube playlist IDs on the server.
-                  </p>
-                ) : null}
-              </>
-            )}
+
+              <div className="mt-8 md:mt-10">
+                {playlistFocus ? (
+                  focusClipsLoading ? (
+                    <div className="flex justify-center py-16" aria-busy="true">
+                      <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : focusClipsError ? (
+                    <Card className="px-6 py-14 text-center">
+                      <p className="text-destructive">Could not load conversations. Try again later.</p>
+                    </Card>
+                  ) : focusClips.length > 0 ? (
+                    <div className={CLIP_GRID}>
+                      {focusClips.map((item) => (
+                        <ConversationsClipCard
+                          key={item.id}
+                          item={item}
+                          href={
+                            isInApp
+                              ? `/app/clip/${getShortClipId(item.id)}`
+                              : `/catalog/clip/${getShortClipId(item.id)}`
+                          }
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <Card className="px-6 py-14 text-center">
+                      <p className="text-pretty text-muted-foreground">
+                        No conversations match this category yet.
+                      </p>
+                    </Card>
+                  )
+                ) : (
+                  <>
+                    <PlaylistSections playlists={playlists} isInApp={isInApp} />
+                    {playlists.length === 0 ? (
+                      <Card className="px-6 py-14 text-center">
+                        <p className="text-pretty text-muted-foreground">
+                          No playlists configured. Add YouTube playlist IDs on the server.
+                        </p>
+                      </Card>
+                    ) : null}
+                  </>
+                )}
+              </div>
+            </div>
           </section>
         ) : isInApp && showClipsGrid ? (
-          // /app/catalog?view=clips: full searchable grid, same layout as public /catalog?view=clips
-          <section className="space-y-4">
-            <h2 className="sr-only">Video library</h2>
-            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {!useMediaHub ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-muted-foreground">Video catalog is not connected.</p>
+          /* ── /app/catalog?view=clips: the full searchable grid ── */
+          <section aria-label="Video library">
+            <div className={cn(APP_RAIL, 'pb-12 pt-2')}>
+              {libraryHead}
+              <div className="mt-10">
+                <div className={CLIP_GRID}>
+                  {!useMediaHub ? (
+                    <Card className="col-span-full px-6 py-16 text-center">
+                      <p className="text-pretty text-muted-foreground">Video catalog is not connected.</p>
+                    </Card>
+                  ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+                    <div className="col-span-full flex items-center justify-center py-16">
+                      <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : useMediaHub && displayItems.length === 0 ? (
+                    <Card className="col-span-full px-6 py-16 text-center">
+                      <p className="text-pretty text-muted-foreground">No results match.</p>
+                      <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                        Change search or filters and try again.
+                      </p>
+                    </Card>
+                  ) : (
+                    displayItems.map((item) => (
+                      <ConversationsClipCard
+                        key={item.id}
+                        item={item}
+                        href={`/app/clip/${getShortClipId(item.id)}`}
+                      />
+                    ))
+                  )}
                 </div>
-              ) : useMediaHub && isLoading && displayItems.length === 0 ? (
-                <div className="col-span-full flex items-center justify-center py-16">
-                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                </div>
-              ) : useMediaHub && displayItems.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-muted-foreground">No results match.</p>
-                  <p className="text-pretty text-sm text-muted-foreground">Change search or filters and try again.</p>
-                </div>
-              ) : (
-                displayItems.map((item) => (
-                  <ConversationsClipCard
-                    key={item.id}
-                    item={item}
-                    href={`/app/clip/${getShortClipId(item.id)}`}
-                  />
-                ))
-              )}
-            </div>
-            {useMediaHub && (
-              <div ref={loadMoreRef} className="flex justify-center py-8">
-                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />}
               </div>
-            )}
+              {loadMoreSentinel}
+            </div>
           </section>
         ) : isInApp ? (
-          // /app/catalog (default): strip rows with hero + biomarker sections
-          <section className="space-y-10">
+          /* ── /app/catalog: the strip home ── */
+          <section className="space-y-14 md:space-y-16" aria-label="Video library">
             {!useMediaHub && playlists.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                <p className="mb-2 text-pretty text-muted-foreground">Video catalog needs a MediaHub API key or playlists.</p>
-                <p className="mb-3 text-pretty text-sm text-muted-foreground">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
-                <Link
-                  to={APP_CATALOG_CLIPS_GRID}
-                  className="text-sm font-medium text-foreground transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
-                >
-                  Browse catalog
-                </Link>
-              </div>
+              <Card className="px-6 py-16 text-center">
+                <p className="text-pretty text-muted-foreground">
+                  Video catalog needs a MediaHub API key or playlists.
+                </p>
+                <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                  Set mediahub_api_key or youtube_playlist_ids in the backend.
+                </p>
+                <div className="mt-6 flex justify-center">
+                  <Button to={APP_CATALOG_CLIPS_GRID} variant="outline">
+                    Browse catalog
+                  </Button>
+                </div>
+              </Card>
             ) : !useMediaHub && playlists.length > 0 ? (
               <>
                 {playlistsCarouselStrip}
-                <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
-                  <p className="text-pretty text-muted-foreground">
-                    MediaHub is not connected. Add API keys in the server to load the featured banner and conversation rows.
+                <Card className="px-6 py-14 text-center">
+                  <p className="mx-auto max-w-[54ch] text-pretty text-muted-foreground">
+                    MediaHub is not connected. Add API keys in the server to load the featured banner
+                    and conversation rows.
                   </p>
-                </div>
+                </Card>
               </>
             ) : useMediaHub && isLoading && displayItems.length === 0 ? (
               <>
@@ -678,10 +823,12 @@ export default function VideosPage() {
             ) : useMediaHub && displayItems.length === 0 ? (
               <>
                 {playlistsCarouselStrip}
-                <div className="col-span-full flex flex-col items-center justify-center py-10 text-center">
-                  <p className="mb-2 text-pretty text-muted-foreground">No results match.</p>
-                  <p className="text-pretty text-sm text-muted-foreground">Change search or filters and try again.</p>
-                </div>
+                <Card className="px-6 py-14 text-center">
+                  <p className="text-pretty text-muted-foreground">No results match.</p>
+                  <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                    Change search or filters and try again.
+                  </p>
+                </Card>
                 {BIOMARKER_CAROUSEL_IDS.map((id) => (
                   <BiomarkerConversationRow key={id} carouselId={id} isInApp={true} />
                 ))}
@@ -713,55 +860,64 @@ export default function VideosPage() {
             )}
           </section>
         ) : (
-          <section className="space-y-4">
-            <h2 className="sr-only">Video library</h2>
-            <div className="grid min-w-0 grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {!useMediaHub && playlists.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-muted-foreground">Video catalog needs a MediaHub API key or playlists.</p>
-                  <p className="mb-3 text-pretty text-sm text-muted-foreground">Set mediahub_api_key or youtube_playlist_ids in the backend.</p>
-                  <Link
-                    to={'/catalog?view=clips'}
-                    className="text-sm font-medium text-foreground transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
-                  >
-                    Browse catalog
-                  </Link>
+          /* ── /catalog: the public library ── */
+          <section aria-label="Video library">
+            <div
+              className={cn(RAIL, 'home-enter pb-20 pt-12 md:pb-28 md:pt-16')}
+              style={{ animationDelay: '180ms' }}
+            >
+              {libraryHead}
+              <div className="mt-10 md:mt-12">
+                <div className={CLIP_GRID}>
+                  {!useMediaHub && playlists.length === 0 ? (
+                    <Card className="col-span-full px-6 py-16 text-center">
+                      <p className="text-pretty text-muted-foreground">
+                        Video catalog needs a MediaHub API key or playlists.
+                      </p>
+                      <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                        Set mediahub_api_key or youtube_playlist_ids in the backend.
+                      </p>
+                      <div className="mt-6 flex justify-center">
+                        <Button to="/catalog?view=clips" variant="outline">
+                          Browse catalog
+                        </Button>
+                      </div>
+                    </Card>
+                  ) : !useMediaHub && playlists.length > 0 ? (
+                    <Card className="col-span-full px-6 py-16 text-center">
+                      <p className="mx-auto max-w-[54ch] text-pretty text-muted-foreground">
+                        MediaHub is not connected. Add API keys in the server to load the featured
+                        banner and conversation grid.
+                      </p>
+                      <div className="mt-6 flex justify-center">
+                        <Button to="/catalog?view=clips" variant="outline">
+                          Open catalog
+                        </Button>
+                      </div>
+                    </Card>
+                  ) : useMediaHub && isLoading && displayItems.length === 0 ? (
+                    <div className="col-span-full flex items-center justify-center py-16">
+                      <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : useMediaHub && displayItems.length === 0 ? (
+                    <Card className="col-span-full px-6 py-16 text-center">
+                      <p className="text-pretty text-muted-foreground">No results match.</p>
+                      <p className="mt-2 text-pretty text-sm text-muted-foreground">
+                        Change search or filters and try again.
+                      </p>
+                    </Card>
+                  ) : (
+                    displayItems.map((item) => {
+                      const detailUrl = isInApp
+                        ? `/app/clip/${getShortClipId(item.id)}`
+                        : `/catalog/clip/${getShortClipId(item.id)}`;
+                      return <ConversationsClipCard key={item.id} item={item} href={detailUrl} />;
+                    })
+                  )}
                 </div>
-              ) : !useMediaHub && playlists.length > 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center space-y-4 py-8 text-center">
-                  <p className="text-pretty text-muted-foreground">
-                    MediaHub is not connected. Add API keys in the server to load the featured banner and conversation grid.
-                  </p>
-                  <Link
-                    to={'/catalog?view=clips'}
-                    className="text-sm font-medium text-foreground transition-[color,transform] duration-200 ease-out hover:underline active:scale-[0.98]"
-                  >
-                    Open catalog
-                  </Link>
-                </div>
-              ) : useMediaHub && isLoading && displayItems.length === 0 ? (
-                <div className="col-span-full flex items-center justify-center py-16">
-                  <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-                </div>
-              ) : useMediaHub && displayItems.length === 0 ? (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <p className="mb-2 text-pretty text-muted-foreground">No results match.</p>
-                  <p className="text-pretty text-sm text-muted-foreground">Change search or filters and try again.</p>
-                </div>
-              ) : (
-                displayItems.map((item) => {
-                  const detailUrl = isInApp
-                    ? `/app/clip/${getShortClipId(item.id)}`
-                    : `/catalog/clip/${getShortClipId(item.id)}`;
-                  return <ConversationsClipCard key={item.id} item={item} href={detailUrl} />;
-                })
-              )}
-            </div>
-            {useMediaHub && (
-              <div ref={loadMoreRef} className="flex justify-center py-8">
-                {isFetchingNextPage && <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />}
               </div>
-            )}
+              {loadMoreSentinel}
+            </div>
           </section>
         )}
       </div>

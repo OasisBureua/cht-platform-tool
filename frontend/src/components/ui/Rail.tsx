@@ -51,7 +51,11 @@ export function SectionHead({
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {index && (
-          <p className="text-label uppercase text-muted-foreground">{index}</p>
+          /* Monospace and tabular so the index reads as a fixed-width
+             marker and every section title starts at the same x. */
+          <p className="font-mono text-label uppercase tabular-nums text-muted-foreground">
+            {index}
+          </p>
         )}
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           {title}
