@@ -9,7 +9,7 @@ resource "aws_s3_bucket" "session_assets" {
   tags = {
     Name        = "${local.prefix}-session-assets"
     Environment = var.environment
-    Purpose     = "Public session hero banner images for webinars and meetings"
+    Purpose     = "Session hero images (public session-heroes/*) + private Zoom recordings (zoom-recordings/*)"
   }
 }
 

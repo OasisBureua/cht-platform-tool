@@ -37,6 +37,8 @@ Used for webinar/meeting creation, in-app Meeting SDK embed (iframe + Zoom CDN),
 | `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` | OAuth app |
 | `ZOOM_SDK_KEY`, `ZOOM_SDK_SECRET` | Meeting SDK JWT (Marketplace **Meeting SDK** app — required for in-browser embed) |
 
+**Cloud recordings / reports (S2S scopes):** see [zoom-recordings-pull-guide.md](./zoom-recordings-pull-guide.md) for Sebastien/Syed pull + download guidance (`cloud_recording:*`, `report:read:*`).
+
 ### In-app embed (Meeting SDK)
 
 - Office Hours: `POST /api/office-hours/:id/meeting-sdk-auth`
