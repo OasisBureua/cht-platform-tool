@@ -275,7 +275,12 @@ export default function PublicLayout() {
         </div>
       </header>
 
-      <main id="main" className="min-w-0 flex-1 overflow-x-hidden">
+      {/* `overflow-x: clip`, not hidden. `hidden` computes overflow-y to
+          `auto`, which makes this a scroll container -- any sticky
+          descendant then sticks to <main> instead of the viewport and
+          never engages, because the page scrolls on the body. `clip`
+          clips the same overflow without creating that container. */}
+      <main id="main" className="min-w-0 flex-1 overflow-x-clip">
         <Outlet />
       </main>
       <ChatBubble />
