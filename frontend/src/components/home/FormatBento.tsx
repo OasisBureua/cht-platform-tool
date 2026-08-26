@@ -12,9 +12,12 @@ import { Thumb } from '../ui/Thumb';
  * the two things that are not a recording at all — the live sessions,
  * and the network the sessions come from.
  *
- * Only the card under the pointer animates. Five ambient motions at
- * once is noise, and on a touch screen nothing hovers, so each card
- * still reads at rest.
+ * The format cards animate continuously. Gating them on hover was
+ * wrong twice over: a touch screen never hovers, so on a phone both
+ * cards were simply dead, and the point of the row is that you can see
+ * all three formats at once without touching anything.
+ *
+ * Reduced motion still stops them.
  */
 
 const ARTICLE = [
@@ -73,16 +76,15 @@ function Card({
   );
 }
 
-/** The audio cut. Runs only while the card is hovered or focused. */
+/** The audio cut. Runs continuously. */
 function Wave() {
   const [tick, setTick] = useState(0);
-  const [live, setLive] = useState(false);
 
   useEffect(() => {
-    if (!live || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const id = window.setInterval(() => setTick((t) => t + 1), 220);
     return () => window.clearInterval(id);
-  }, [live]);
+  }, []);
 
   const bars = Array.from(
     { length: 26 },
@@ -90,12 +92,7 @@ function Wave() {
   );
 
   return (
-    <div
-      className="flex h-full items-end gap-[3px]"
-      aria-hidden
-      onPointerEnter={() => setLive(true)}
-      onPointerLeave={() => setLive(false)}
-    >
+    <div className="flex h-full items-end gap-[3px]" aria-hidden>
       {bars.map((h, i) => (
         <span
           key={i}
@@ -119,7 +116,7 @@ function Drift() {
           'linear-gradient(to bottom, transparent, black 14%, black 76%, transparent)',
       }}
     >
-      <div className="motion-safe:group-hover:animate-[editorial-drift_22s_linear_infinite]">
+      <div className="motion-safe:animate-[editorial-drift_22s_linear_infinite]">
         {[0, 1].map((pass) => (
           <div key={pass}>
             {ARTICLE.map((line, i) => (
