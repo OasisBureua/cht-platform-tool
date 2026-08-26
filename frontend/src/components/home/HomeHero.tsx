@@ -115,7 +115,7 @@ export function HomeHero({ tiles }: { tiles: Tile[] }) {
         </div>
       )}
 
-      <div className="rail relative flex flex-col items-center pt-20 pb-24 text-center md:pt-28 md:pb-32">
+      <div className="rail relative flex flex-col items-center pt-20 pb-16 text-center md:pt-28 md:pb-20">
         <h1
           id="hero-heading"
           className="rise display max-w-[16ch] text-[2.75rem] leading-[1.03] tracking-[-0.032em] text-text sm:text-[3.5rem] lg:text-[4.25rem]"

@@ -56,14 +56,18 @@ function Band({
   children,
   labelledBy,
   className = '',
+  pad = 'py-16 md:py-24',
 }: {
   children: ReactNode;
   labelledBy?: string;
   className?: string;
+  /** Overridable, because a band that follows the hero needs less
+      top space than one that follows another band. */
+  pad?: string;
 }) {
   return (
     <section aria-labelledby={labelledBy}>
-      <div className={`rail py-16 md:py-24 ${className}`}>{children}</div>
+      <div className={`rail ${pad} ${className}`}>{children}</div>
     </section>
   );
 }
@@ -449,7 +453,7 @@ export default function HomeBento() {
           No headline. Five cards that each show a format rather than
           describe one — a heading above them would only say in words
           what the cards already say in full. */}
-      <Band labelledBy="engine-heading">
+      <Band labelledBy="engine-heading" pad="pt-6 pb-16 md:pt-8 md:pb-24">
         <h2 id="engine-heading" className="sr-only">
           One recording, three formats
         </h2>
