@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { SegmentedControl } from '../ui';
 import { Link, useMatch } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
@@ -221,29 +222,12 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Episodes</h3>
           {show.remoteEpisodes ? (
-            <div
-              className="inline-flex rounded-full bg-card p-0.5 shadow-card"
-              role="tablist"
-              aria-label="Sort episodes"
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  role="tab"
-                  aria-selected={sort === opt.value}
-                  onClick={() => setSort(opt.value)}
-                  className={[
-                    'min-h-[32px] rounded-[6px] px-3 text-xs font-semibold transition-colors',
-                    sort === opt.value
-                      ? 'bg-accent-600 text-white'
-                      : 'text-muted-foreground hover:text-foreground ',
-                  ].join(' ')}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              label="Sort episodes"
+              segments={SORT_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
+              value={sort}
+              onChange={setSort}
+            />
           ) : (
             <span className="text-xs text-muted-foreground">{episodes.length} episodes</span>
           )}

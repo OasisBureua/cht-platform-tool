@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { ArrowRight, ListVideo, Loader2, Play, Search } from 'lucide-react';
 import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
 import { ChmMark } from '../../components/brand/ChmMark';
-import { Button, Chip } from '../../components/ui';
+import { Button, Chip, SegmentedControl } from '../../components/ui';
 import {
   ConversationsHero,
   ConversationsHeroSkeleton,
@@ -816,32 +816,15 @@ export default function VideosPage() {
 
       {/* ── view switch ────────────────────────────────── */}
       <div className={`${RAIL} ${isInApp ? 'pt-10 md:pt-12' : ''}`}>
-        <div
-          role="tablist"
-          aria-label="Library view"
-          className="inline-flex gap-1 rounded-[8px] bg-surface p-1 shadow-card"
-        >
-          {([['clips', 'Videos'], ['playlists', 'Playlists']] as const).map(([key, label]) => {
-            const on = view === key;
-            return (
-              <button
-                key={key}
-                role="tab"
-                type="button"
-                aria-selected={on}
-                onClick={() => setView(key)}
-                className={`press inline-flex h-9 items-center rounded-[6px] px-4 text-body-s transition-[background-color,color] duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-                  on ? 'bg-ground font-medium text-text shadow-card' : 'text-muted2 hover:text-text'
-                }`}
-              >
-                {label}
-                {key === 'playlists' && playlists.length > 0 ? (
-                  <span className="meta ms-2 tabular-nums text-faint">{playlists.length}</span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
+        <SegmentedControl
+          label="Library view"
+          segments={[
+            { value: 'clips', label: 'Videos' },
+            { value: 'playlists', label: 'Playlists', count: playlists.length || undefined },
+          ]}
+          value={view}
+          onChange={setView}
+        />
       </div>
 
       {/* ── search ─────────────────────────────────────── */}

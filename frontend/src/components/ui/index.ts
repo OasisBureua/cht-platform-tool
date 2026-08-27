@@ -9,3 +9,5 @@ export { default as LoadingSpinner } from './LoadingSpinner';
 export { Reveal } from './Reveal';
 export { AbstractFigure } from './AbstractFigure';
 export { Thumb } from './Thumb';
+export { SegmentedControl } from './SegmentedControl';
+export type { Segment } from './SegmentedControl';
