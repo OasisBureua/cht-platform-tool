@@ -58,14 +58,14 @@ Webhooks → POST /api/webhooks/bill → payment.updated / failed → Payment st
 
 ---
 
-## 3. Product decisions (lock before build)
+## 3. Product decisions (**LOCKED** — PAY-1 / SCRUM-232)
 
-| Decision | Recommendation |
-| -------- | ---------------- |
-| **Connect type** | **Express** for faster onboarding, or **Custom** if you must keep a Bill-like in-app bank form |
-| **Payout rail** | Platform balance → **Transfer / Payout** to connected account (ACH to bank) |
-| **Paper checks** | Stripe does **not** mail checks. **Drop CHECK**, keep manual offline process, or a secondary vendor for checks only |
-| **Tax** | **Stripe Tax Forms** for W-9 collection + 1099 where eligible (replaces Bill vendor tax fields) |
+| Decision | Locked choice |
+| -------- | ------------- |
+| **Connect type** | **Express** — Account Links / Express onboarding (not Custom; no Bill-like in-app bank form in v1) |
+| **Payout rail** | Platform balance → **Transfer / Payout** to connected account (**ACH to bank only**) |
+| **Paper checks** | **Dropped.** Stripe does not mail checks. No secondary check vendor in v1. HCPs who previously used CHECK must re-onboard with a bank account. Offline/manual check only if finance invents an exception SOP outside the app |
+| **Tax** | **Stripe Tax Forms / Connect tax reporting** for W-9 collection + 1099 filing where the platform is eligible (replaces Bill vendor tax fields). **Confirm in Stripe Dashboard** (Connect → Settings → tax / 1099) before PAY-4. Fallback if Tax Forms product not enabled: collect TIN/name/address via Connect requirements / hosted onboarding and document 1099 process with finance |
 | **Cutover** | **No dual-run.** Build and test on **dev**, then deploy to **testapp**, test there, then go live. Stripe replaces Bill in that environment when promoted |
 | **Re-onboard** | Existing `billVendorId` users **must re-onboard** to Connect when that environment switches (IDs do not port) |
 

@@ -130,6 +130,14 @@ resource "aws_iam_role_policy" "backend_task" {
             "s3:PutObject"
           ]
           Resource = "${var.session_assets_bucket_arn}/session-heroes/*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "s3:PutObject",
+            "s3:GetObject"
+          ]
+          Resource = "${var.session_assets_bucket_arn}/zoom-recordings/*"
         }
       ] : [],
       var.cognito_user_pool_arn != "" ? [

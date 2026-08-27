@@ -84,7 +84,7 @@ curl -s "$API/api/admin/programs/$PROGRAM_ID/recordings/$RECORDING_ID/download-u
 | --- | ---- |
 | `ZOOM_ACCOUNT_ID` / `ZOOM_CLIENT_ID` / `ZOOM_CLIENT_SECRET` | S2S Zoom (existing) |
 | `SESSION_ASSETS_S3_BUCKET` | **Existing** session-assets bucket (e.g. `cht-platform-session-assets`). Recordings use prefix `zoom-recordings/` only — no new bucket |
-| AWS creds / task role | `s3:PutObject` + `s3:GetObject` on that bucket |
+| AWS creds / task role | `s3:PutObject` + `s3:GetObject` on `{bucket}/zoom-recordings/*` (ECS task role; `session-heroes/*` is PutObject-only) |
 
 S3 layout (same bucket as hero images):
 
