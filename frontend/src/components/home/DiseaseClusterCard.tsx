@@ -134,7 +134,7 @@ export function DiseaseClusterCard({
   );
 
   const shell =
-    'card relative flex h-40 flex-col justify-end overflow-hidden p-4';
+    'card relative flex h-40 w-60 shrink-0 snap-start flex-col justify-end overflow-hidden p-4';
 
   // An area with no library yet is not a link. It still shows, because
   // the queue is worth seeing; it just does not pretend to go anywhere.

@@ -150,33 +150,30 @@ export default function Contact() {
 
   return (
     <div className="bg-background text-foreground">
-      {/* ── Head ──────────────────────────────────────────── */}
-      <section aria-labelledby="contact-heading" className="rail pt-16 pb-14 md:pt-20 md:pb-16">
-        <Reveal>
-          <p className="eyebrow text-muted2">Contact</p>
-        </Reveal>
-        <Reveal delay={60}>
-          <h1
-            id="contact-heading"
-            className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l"
-          >
-            Talk to the team
-          </h1>
-        </Reveal>
-        <Reveal delay={120}>
-          <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
-            Faculty enquiries, partnership questions, corrections and story pitches all land in the
-            same inbox, and a person reads it.
-          </p>
-        </Reveal>
-      </section>
-
-      {/* ── Who we reach, and the note ────────────────────── */}
-      <section>
-        <div className="rail grid gap-14 py-16 lg:grid-cols-[1fr_26rem]">
+      {/* ── Head, audiences and the note ──────────────────── */}
+      <section aria-labelledby="contact-heading">
+        <div className="rail grid gap-14 pb-16 pt-16 md:pt-20 lg:grid-cols-[1fr_26rem]">
           <div>
             <Reveal>
-              <h2 className="display text-display-m text-text">Who we reach</h2>
+              <p className="eyebrow text-muted2">Contact</p>
+            </Reveal>
+            <Reveal delay={60}>
+              <h1
+                id="contact-heading"
+                className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l"
+              >
+                Talk to the team
+              </h1>
+            </Reveal>
+            <Reveal delay={120}>
+              <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
+                Faculty enquiries, partnership questions, corrections and story pitches all land in
+                the same inbox, and a person reads it.
+              </p>
+            </Reveal>
+
+            <Reveal delay={180}>
+              <h2 className="display mt-16 text-display-m text-text">Who we reach</h2>
             </Reveal>
             <ul className="mt-8 space-y-3">
               {AUDIENCES.map((a, i) => (

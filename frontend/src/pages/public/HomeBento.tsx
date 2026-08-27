@@ -707,10 +707,10 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             sub="Each cluster is sized by what the area actually holds."
           />
         <div className="mt-12">
-          {/* A grid, not a scroller: seven areas fit in two rows, and the
-              page already carries enough horizontal scrollers. */}
-          <div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* overflow-x-auto clips vertically too, so the hover lift needs
+              headroom inside the scroller rather than margin outside it. */}
+          <div className="-my-5">
+            <div className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-3 overflow-x-auto py-5">
               {areas.map((a) => (
                 <DiseaseClusterCard
                   key={a.slug}
