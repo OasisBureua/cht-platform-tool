@@ -31,10 +31,10 @@ export default function DiseaseAreas() {
     <div className="space-y-10 pb-24 md:pb-0">
       <header>
         <div className="flex items-center gap-3 mb-2">
-          <Dna className="h-7 w-7 text-gray-900" />
-          <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">Disease Areas</h1>
+          <Dna className="h-7 w-7 text-foreground" />
+          <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">Disease Areas</h1>
         </div>
-        <p className="text-pretty max-w-2xl text-sm text-gray-600">
+        <p className="text-pretty max-w-2xl text-sm text-muted-foreground">
           Explore content by therapeutic area. Each disease area has Live sessions, conversations,
           surveys, and expert insights: all in one place.
         </p>
@@ -42,7 +42,7 @@ export default function DiseaseAreas() {
 
       {isLoading && (
         <div className="flex justify-center py-16">
-          <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
       )}
 
@@ -68,9 +68,9 @@ export default function DiseaseAreas() {
                   />
                   <div>
                     <div className="flex items-center gap-2">
-                      <h2 className="text-xl font-bold text-gray-900">{area.title}</h2>
+                      <h2 className="text-xl font-bold text-foreground">{area.title}</h2>
                       {area.active ? (
-                        <span className="rounded-full bg-green-100 text-green-800 text-[10px] font-bold px-2 py-0.5 uppercase">
+                        <span className="rounded-full bg-green-100 text-success text-[10px] font-bold px-2 py-0.5 uppercase">
                           Active
                         </span>
                       ) : (
@@ -79,13 +79,13 @@ export default function DiseaseAreas() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-500">{area.description}</p>
+                    <p className="text-sm text-muted-foreground">{area.description}</p>
                   </div>
                 </div>
                 {area.active && (
                   <Link
                     to={`/app/catalog/${area.slug}`}
-                    className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-gray-900 hover:underline"
+                    className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-foreground hover:underline"
                   >
                     View all <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -93,8 +93,8 @@ export default function DiseaseAreas() {
               </div>
 
               {!area.active ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center">
-                  <p className="text-sm text-gray-500">
+                <div className="rounded-card border border-dashed border-border bg-muted p-8 text-center">
+                  <p className="text-sm text-muted-foreground">
                     Content for {area.title} is under development. Check back soon.
                   </p>
                 </div>
@@ -103,7 +103,7 @@ export default function DiseaseAreas() {
                   {/* Live sessions for this area */}
                   {matchedWebinars.length > 0 && (
                     <div className="space-y-3">
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                         Live Sessions · {matchedWebinars.length}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -111,11 +111,11 @@ export default function DiseaseAreas() {
                           <Link
                             key={w.id}
                             to={`/app/live/${w.id}`}
-                            className="rounded-xl border border-gray-200 bg-white p-4 transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995]"
+                            className="rounded-card border border-border bg-card p-4 transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995]"
                           >
-                            <p className="font-semibold text-gray-900 line-clamp-2">{w.title}</p>
+                            <p className="font-semibold text-foreground line-clamp-2">{w.title}</p>
                             {w.startTime && (
-                              <p className="mt-1 text-xs text-gray-500">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {new Date(w.startTime).toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
@@ -132,7 +132,7 @@ export default function DiseaseAreas() {
                   {/* Playlists for this area */}
                   {matchedPlaylists.length > 0 && (
                     <div className="space-y-3">
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                         Playlists · {matchedPlaylists.length}
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -140,9 +140,9 @@ export default function DiseaseAreas() {
                           <Link
                             key={p.id}
                             to={`/app/catalog/playlist/${p.id}`}
-                            className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995]"
+                            className="rounded-card border border-border bg-card overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995]"
                           >
-                            <div className="aspect-video bg-gray-100">
+                            <div className="aspect-video bg-muted">
                               <img
                                 src={p.thumbnailUrl}
                                 alt=""
@@ -152,8 +152,8 @@ export default function DiseaseAreas() {
                               />
                             </div>
                             <div className="p-3">
-                              <p className="font-semibold text-gray-900 text-sm line-clamp-2">{p.title}</p>
-                              <p className="text-xs text-gray-500 mt-1">{p.videoCount} videos</p>
+                              <p className="font-semibold text-foreground text-sm line-clamp-2">{p.title}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{p.videoCount} videos</p>
                             </div>
                           </Link>
                         ))}
@@ -164,7 +164,7 @@ export default function DiseaseAreas() {
                   {/* Recent clips for this area */}
                   {matchedClips.length > 0 && (
                     <div className="space-y-3">
-                      <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                         Recent Conversations · {matchedClips.length}
                       </h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
@@ -172,9 +172,9 @@ export default function DiseaseAreas() {
                           <Link
                             key={c.id}
                             to={`/app/clip/${getShortClipId(c.id)}`}
-                            className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995] group"
+                            className="rounded-card border border-border bg-card overflow-hidden transition-[box-shadow,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-8px_rgba(0,0,0,0.08)] active:scale-[0.995] group"
                           >
-                            <div className="aspect-video bg-gray-100 relative">
+                            <div className="aspect-video bg-muted relative">
                               <img
                                 src={c.thumbnail_url}
                                 alt=""
@@ -187,7 +187,7 @@ export default function DiseaseAreas() {
                               </div>
                             </div>
                             <div className="p-2.5">
-                              <p className="font-medium text-gray-900 text-xs line-clamp-2">{c.title}</p>
+                              <p className="font-medium text-foreground text-xs line-clamp-2">{c.title}</p>
                             </div>
                           </Link>
                         ))}
@@ -196,10 +196,10 @@ export default function DiseaseAreas() {
                   )}
 
                   {matchedPlaylists.length === 0 && matchedClips.length === 0 && matchedWebinars.length === 0 && (
-                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-6 text-center">
-                      <p className="text-sm text-gray-500">
+                    <div className="rounded-card border border-border bg-muted p-6 text-center">
+                      <p className="text-sm text-muted-foreground">
                         No content matched yet. Browse the{' '}
-                        <Link to={`/app/catalog/${area.slug}`} className="font-semibold text-gray-900 hover:underline">
+                        <Link to={`/app/catalog/${area.slug}`} className="font-semibold text-foreground hover:underline">
                           full catalog
                         </Link>{' '}
                         for {area.title}.

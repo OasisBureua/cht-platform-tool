@@ -1,50 +1,173 @@
 import { useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2, Calendar, Clock } from 'lucide-react';
-import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { ArrowRight, Loader2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
 import { webinarsApi, type WebinarItem } from '../../api/webinars';
-import { catalogApi, type CatalogItem } from '../../api/catalog';
+import { isSessionExpired } from '../../utils/live-session-timing';
+import DISEASE_AREAS from '../../data/disease-areas';
+import { ChmMark } from '../../components/brand/ChmMark';
+import { Button, Reveal } from '../../components/ui';
+import { cn } from '../../lib/cn';
 
-const FALLBACK_WEBINAR_IMAGE = '/images/resource-webinars.png';
+/**
+ * For HCPs — transplanted from the design at chm-composio
+ * (`src/app/for-hcps/page.tsx`). The design owns the copy, the sections
+ * and their order; this file owns the Next -> Vite conversion (next/link
+ * -> react-router `Link`, no metadata export) and the wiring of the
+ * platform's real feeds into the design's slots:
+ *
+ *   hero panel   <- the newest catalog clips + the real disease areas
+ *   01 Playlists <- GET /catalog/playlists
+ *   02 Areas     <- src/data/disease-areas
+ *   03 Live      <- GET /webinars
+ *
+ * Where a slot has no real counterpart (the three entry destinations,
+ * every playlist blurb when the feed is empty) the design's own content
+ * stands verbatim.
+ */
 
-const STOCK_IMAGES = {
-  featuredVideo: '/images/resource-watch.png',
-  featuredWebinar: '/images/resource-webinars.png',
-} as const;
+const STALE = 5 * 60 * 1000;
 
-type Treatment = {
-  id: string;
-  title: string;
-  imageUrl: string;
-  slug: string;
-  videoNames: string[];
-  playlistUrl: string;
+/* ── design content ──────────────────────────────────────────
+   Kept verbatim from the reference. `entry` is static in the
+   design too: three destinations, not a feed. */
+
+const entry = [
+  { label: 'Clinical Conversations', href: '/catalog', cta: 'Conversations' },
+  { label: 'CHM Office Hours', href: '/chm-office-hours', cta: 'View sessions' },
+  { label: 'Live panels', href: '/live', cta: 'Join now' },
+];
+
+type PlaylistCard = {
+  key: string;
+  label: string;
+  blurb: string;
+  count: number;
+  cover: string;
+  href: string;
 };
 
-function catalogToTreatment(p: CatalogItem): Treatment {
+/** The design's own four biomarker playlists, for when the feed is empty. */
+const DESIGN_PLAYLISTS: PlaylistCard[] = [
+  {
+    key: 'her2',
+    label: 'HER2+',
+    blurb: 'First-line sequencing, residual disease and the DESTINY-Breast readouts read side by side.',
+    count: 12,
+    cover: '/img/thumb-cleopatra.jpg',
+    href: '/catalog/breast-cancer',
+  },
+  {
+    key: 'hr',
+    label: 'HR+',
+    blurb: 'Endocrine sequencing after CDK4/6i, the PI3K/AKT pathway and proactive toxicity management.',
+    count: 12,
+    cover: '/img/thumb-db09.jpg',
+    href: '/catalog/breast-cancer',
+  },
+  {
+    key: 'residual-disease',
+    label: 'Residual disease',
+    blurb: 'Who needs adjuvant therapy after neoadjuvant treatment, and how the decision gets made.',
+    count: 8,
+    cover: '/img/thumb-patina.jpg',
+    href: '/catalog/breast-cancer',
+  },
+  {
+    key: 'ild-safety',
+    label: 'ILD & safety',
+    blurb: 'Early detection, monitoring cadence and the dose decisions that keep patients on therapy.',
+    count: 7,
+    cover: '/img/thumb-ild.jpg',
+    href: '/catalog/breast-cancer',
+  },
+];
+
+/**
+ * One colour per disease state, as the design's library carries it. The
+ * compatibility layer declares all three; `--color-metabolic` is the
+ * platform's own third area, which the design's six do not include.
+ */
+const AREA_TONE: Record<string, string> = {
+  'breast-cancer': 'var(--color-breast)',
+  'lung-cancer': 'var(--color-lung)',
+  'weight-loss': 'var(--color-metabolic)',
+};
+
+type PanelTile = { key: string; title: string; thumb: string; duration: string };
+
+/** The design's four newest library tiles, for the hero panel's cold start. */
+const DESIGN_TILES: PanelTile[] = [
+  { key: 'neratinib-revisited', title: 'Neratinib revisited: is it time to reconsider an underused therapy?', thumb: '/img/thumb-cleopatra.jpg', duration: '7 MIN' },
+  { key: 'parp-still-earns', title: 'Where PARP still earns its place', thumb: '/img/thumb-db09.jpg', duration: '23:18' },
+  { key: 'bispecific-step-up', title: 'Step-up dosing without a transplant bed', thumb: '/img/thumb-ild.jpg', duration: '28:50' },
+  { key: 'first-line-sequencing-her2', title: 'First-line sequencing in HER2+ mBC', thumb: '/img/thumb-cleopatra.jpg', duration: '18:40' },
+];
+
+/* ── data plumbing ───────────────────────────────────────── */
+
+/**
+ * Both feeds behind this page are merges: webinars come from DB programs
+ * plus live Zoom sessions, playlists from the catalog and its WordPress
+ * overlay. Either can hand back the same id twice, and the old page keyed
+ * rows straight off `id`, which is what logged "two children with the same
+ * key" and then rendered the rail unpredictably.
+ *
+ * Keeping the first row per id fixes that. A row with no id at all is kept
+ * too — dropping content is the worse failure — and takes its index as a
+ * key, widened until it cannot collide with a real id.
+ */
+function keyed<T extends { id?: string | null }>(rows: T[]): { key: string; row: T }[] {
+  const seen = new Set<string>();
+  const out: { key: string; row: T }[] = [];
+  // A failing endpoint hands back an object, not a list, and the old page
+  // took the whole section down with `rows.filter is not a function`.
+  if (!Array.isArray(rows)) return out;
+  rows.forEach((row, i) => {
+    const id = (row.id ?? '').trim();
+    if (id && seen.has(id)) return;
+    let key = id || `row-${i}`;
+    while (seen.has(key)) key = `${key}-${i}`;
+    seen.add(key);
+    out.push({ key, row });
+  });
+  return out;
+}
+
+function playlistToCard(p: CatalogItem, key: string): PlaylistCard {
+  const names = p.videoNames ?? [];
   return {
-    id: p.id,
-    title: p.title,
-    imageUrl: p.thumbnailUrl || '/images/placeholder-playlist.svg',
-    slug: p.id,
-    videoNames: p.videoNames || [],
-    playlistUrl: `/catalog/playlist/${p.id}`,
+    key,
+    label: p.title,
+    // A playlist carries no blurb, so the slot takes what the feed does
+    // have: the first videos in it.
+    blurb: names.slice(0, 3).join(' · '),
+    count: p.videoCount || names.length,
+    cover: p.thumbnailUrl || '/images/placeholder-playlist.svg',
+    href: `/catalog/playlist/${p.id}`,
   };
 }
 
-const FALLBACK_HR: Treatment[] = [
-  { id: 'hr1', title: 'HR+ Big Picture & Practice Change', slug: 'hr-big-picture', imageUrl: 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr2', title: 'First-Line & Sequencing Decisions', slug: 'hr-first-line-sequencing', imageUrl: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-  { id: 'hr3', title: 'High-Risk & CNS Disease', slug: 'hr-high-risk-cns', imageUrl: 'https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&w=800&q=80', videoNames: ['Video Name', 'Video Name', 'Video Name', 'Video Name'], playlistUrl: '/catalog' },
-];
-
-function isExpired(w: WebinarItem): boolean {
-  if (!w.startTime) return false;
-  return isPast(new Date(w.startTime));
+function clipToTile(c: MediaHubClip, key: string): PanelTile {
+  return {
+    key,
+    title: c.title,
+    thumb: c.thumbnail_url || '/images/placeholder-playlist.svg',
+    duration: clipDuration(c.duration_seconds),
+  };
 }
 
-function formatDuration(minutes?: number): string {
+function clipDuration(seconds?: number): string {
+  if (!seconds || seconds <= 0) return '';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function sessionDuration(minutes?: number): string {
   if (!minutes) return '';
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60);
@@ -52,279 +175,453 @@ function formatDuration(minutes?: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
+function facultyLine(w: WebinarItem): string {
+  if (w.hostDisplayName) return w.hostDisplayName;
+  return (w.speakers ?? []).join(', ');
+}
+
+/* ── page ────────────────────────────────────────────────── */
+
 export default function ForHCPs() {
-  const { data: webinars = [], isLoading } = useQuery({
+  const { data: webinars = [], isLoading: webinarsLoading } = useQuery({
     queryKey: ['webinars'],
     queryFn: webinarsApi.list,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE,
   });
 
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE,
   });
 
-  const hrPlusPlaylists = useMemo<Treatment[]>(() => {
-    if (playlists.length === 0) return FALLBACK_HR;
-    const hrOrTnbc = playlists.filter(
-      (p) => /HR\+|hormone|TNBC|mTNBC|CDK4|endocrine|triple.?negative/i.test(p.title) &&
-        !/HER2|her2|DESTINY-Breast/i.test(p.title)
-    );
-    if (hrOrTnbc.length > 0) return hrOrTnbc.map(catalogToTreatment);
-    const nonHer2 = playlists.filter(
-      (p) => !/HER2|her2|DESTINY-Breast|HER2\+|HER2 Low|HER2 Positive/i.test(p.title)
-    );
-    return nonHer2.length > 0 ? nonHer2.map(catalogToTreatment) : FALLBACK_HR;
+  const { data: clipsPage } = useQuery({
+    queryKey: ['catalog', 'clips', 'hcp-hero'],
+    queryFn: () => catalogApi.getClips({ sort_by: 'recent', limit: 4 }),
+    staleTime: STALE,
+  });
+
+  const playlistCards = useMemo<PlaylistCard[]>(() => {
+    const rows = keyed(playlists).map(({ key, row }) => playlistToCard(row, key));
+    return rows.length > 0 ? rows.slice(0, 4) : DESIGN_PLAYLISTS;
   }, [playlists]);
 
-  const { upcoming, past } = useMemo(() => {
-    const now = Date.now();
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-    const sorted = [...webinars].sort((a, b) => {
-      if (!a.startTime && !b.startTime) return 0;
-      if (!a.startTime) return 1;
-      if (!b.startTime) return -1;
-      return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
-    });
-    return {
-      upcoming: sorted.filter((w) => !isExpired(w)),
-      past: sorted.filter((w) => {
-        if (!isExpired(w) || !w.startTime) return false;
-        return new Date(w.startTime).getTime() >= thirtyDaysAgo;
-      }),
-    };
+  const tiles = useMemo<PanelTile[]>(() => {
+    const rows = keyed(clipsPage?.items ?? []).map(({ key, row }) => clipToTile(row, key));
+    return rows.length >= 4 ? rows.slice(0, 4) : DESIGN_TILES;
+  }, [clipsPage]);
+
+  /** The design lists what is coming up; recent replays stand in when nothing is. */
+  const sessions = useMemo(() => {
+    const rows = keyed(webinars)
+      .filter(({ row }) => !!row.startTime)
+      .sort(
+        (a, b) =>
+          new Date(a.row.startTime as string).getTime() -
+          new Date(b.row.startTime as string).getTime(),
+      );
+    const live = rows.filter(({ row }) => !isSessionExpired(row.startTime, row.duration));
+    if (live.length > 0) return live.slice(0, 5);
+    return rows
+      .filter(({ row }) => isSessionExpired(row.startTime, row.duration))
+      .reverse()
+      .slice(0, 5);
   }, [webinars]);
 
-  const firstWebinar = upcoming[0] ?? past[0] ?? null;
   return (
-    <div className="bg-white min-h-screen">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-12 md:space-y-16">
-        {/* Main title */}
-        <header>
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">
-            HCP Platform
-          </h1>
-        </header>
+    <div className="min-h-screen bg-ground">
+      <PageHead
+        eyebrow="For HCPs"
+        title="Built for the ten minutes you actually have"
+        lede="Free for clinicians. Everything is organised by therapeutic area first, then by how much time you have: a full session, an audio cut for the drive, or a written explainer between patients."
+        figure={<CatalogPanel tiles={tiles} />}
+      >
+        <div className="flex flex-wrap gap-3">
+          <Button to="/join" className="font-mono tracking-[-0.011em]">
+            Create a free account
+            <ArrowRight className="size-4" strokeWidth={1.75} />
+          </Button>
+          <Button to="/catalog" variant="outline" className="font-mono tracking-[-0.011em]">
+            Browse the library
+          </Button>
+        </div>
+      </PageHead>
 
-        {/* Featured grid - equal cells, light overlay, pill CTAs */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-5">
-          <FeaturedCard
-            title="Clinical Conversations"
-            imageUrl={STOCK_IMAGES.featuredVideo}
-            cta="Conversations"
-            to="/catalog"
-            showNew
-          />
-          <FeaturedCard
-            title={firstWebinar?.title || 'Featured Webinar'}
-            imageUrl={firstWebinar?.imageUrl || STOCK_IMAGES.featuredWebinar}
-            cta="Join Now"
-            to={firstWebinar ? `/webinars/${firstWebinar.id}` : '/webinars'}
-            showNew
-          />
-          <FeaturedCard
-            title="CHM Office Hours"
-            imageUrl={STOCK_IMAGES.featuredWebinar}
-            cta="View sessions"
-            to="/chm-office-hours"
-            showNew
-          />
-        </section>
+      <section>
+        <div className="rail py-14">
+          <ul className="grid gap-4 md:grid-cols-3">
+            {entry.map((e, i) => (
+              <Reveal as="li" key={e.label} delay={i * 60}>
+                <Link
+                  to={e.href}
+                  className="press lift group flex h-full items-center justify-between gap-6 card p-6"
+                >
+                  <span>
+                    <span className="eyebrow block text-amber-ink">New</span>
+                    <span className="display mt-2 block text-body-l text-text">{e.label}</span>
+                  </span>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-body-s text-muted2 group-hover:text-text">
+                    {e.cta}
+                    <ArrowRight className="size-4" strokeWidth={1.75} />
+                  </span>
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
+        </div>
+      </section>
 
-        {/* Featured Biomarker Playlists - HR+ */}
-        <section className="space-y-5">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
-              Featured Biomarker Playlists
-            </h2>
-            <p className="mt-1 text-lg font-semibold text-gray-900">HR+</p>
+      <Band labelledBy="hcp-playlists">
+        <BandHead
+          id="hcp-playlists"
+          index="01 / Playlists"
+          title="Featured biomarker playlists"
+          seeAll={{ noun: 'playlists', href: '/catalog' }}
+        />
+        {playlistsLoading && playlists.length === 0 ? (
+          <Pending label="Loading playlists" />
+        ) : (
+          <ul className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {playlistCards.map((p, i) => (
+              <Reveal as="li" key={p.key} delay={i * 60}>
+                <Link
+                  to={p.href}
+                  className="press lift group flex h-full flex-col gap-5 card p-5"
+                >
+                  <Thumb src={p.cover} className="aspect-video w-full" />
+                  <div className="flex flex-1 flex-col">
+                    <h3 className="display text-body-l text-text">{p.label}</h3>
+                    {p.blurb ? (
+                      <p className="prose-lede mt-2 line-clamp-3 text-body-s text-muted2">{p.blurb}</p>
+                    ) : null}
+                    <p className="meta mt-auto pt-6 text-faint">
+                      {p.count ? `Play all · ${p.count} videos` : 'Play all'}
+                    </p>
+                  </div>
+                </Link>
+              </Reveal>
+            ))}
+          </ul>
+        )}
+      </Band>
+
+      <Band labelledBy="hcp-areas">
+        <BandHead
+          id="hcp-areas"
+          index="02 / Areas"
+          title="View treatment-specific content"
+          sub="Expert-led education, conversations and resources by therapeutic area."
+        />
+        <ul className="mt-12 grid gap-4 md:grid-cols-3">
+          {DISEASE_AREAS.map((a, i) => (
+            <Reveal as="li" key={a.slug} delay={i * 70}>
+              <Link
+                to={`/catalog/${a.slug}`}
+                className="press lift group flex h-full flex-col card p-7"
+              >
+                <h3 className="display text-display-s text-text">{a.title}</h3>
+                <p className="prose-lede mt-3 text-body-s text-muted2">{a.description}</p>
+                <span className="mt-auto inline-flex items-center gap-1.5 pt-8 text-body-s text-muted2 group-hover:text-text">
+                  Explore treatment
+                  <ArrowRight className="size-4" strokeWidth={1.75} />
+                </span>
+              </Link>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      <Band labelledBy="hcp-live">
+        <BandHead
+          id="hcp-live"
+          index="03 / Live"
+          title="Webinars"
+          seeAll={{ noun: 'sessions', href: '/live' }}
+        />
+        {webinarsLoading && webinars.length === 0 ? (
+          <Pending label="Loading sessions" />
+        ) : sessions.length === 0 ? (
+          <div className="card mt-10 px-8 py-16 text-center">
+            <p className="display text-display-s text-text">No sessions scheduled</p>
+            <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
+              Check back soon for upcoming sessions.
+            </p>
+            <div className="mt-7 flex justify-center">
+              <Button to="/live" variant="outline" className="font-mono tracking-[-0.011em]">
+                See the schedule
+              </Button>
+            </div>
           </div>
-          {playlistsLoading && playlists.length === 0 ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 auto-rows-fr">
-              {hrPlusPlaylists.slice(0, 3).map((card) => (
-                <BiomarkerPlaylistCard key={card.id} card={card} />
-              ))}
-            </div>
-          )}
-        </section>
+        ) : (
+          <ul className="mt-10 space-y-3">
+            {sessions.map(({ key, row: s }, i) => {
+              const start = new Date(s.startTime as string);
+              const meta = [format(start, 'h:mm a'), sessionDuration(s.duration)]
+                .filter(Boolean)
+                .join(' · ');
+              const faculty = facultyLine(s);
+              return (
+                <Reveal as="li" key={key} delay={i * 50}>
+                  <Link
+                    to={`/live/${s.id}`}
+                    className="press group grid items-center gap-x-8 gap-y-2 py-6 md:grid-cols-[12rem_1fr_auto]"
+                  >
+                    <div>
+                      <p className="meta text-signature">{format(start, 'EEE, MMM d, yyyy')}</p>
+                      {meta ? <p className="meta mt-1 text-faint">{meta}</p> : null}
+                    </div>
+                    <div>
+                      <h3 className="display text-body-l text-text">{s.title}</h3>
+                      {faculty ? <p className="mt-1 text-body-s text-muted2">{faculty}</p> : null}
+                    </div>
+                    <span className="inline-flex items-center gap-1.5 justify-self-start text-body-s text-muted2 group-hover:text-text md:justify-self-end">
+                      Learn more
+                      <ArrowRight className="size-4" strokeWidth={1.75} />
+                    </span>
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </ul>
+        )}
+      </Band>
+    </div>
+  );
+}
 
-        {/* Webinars */}
-        <section className="space-y-6">
-          <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">
-            Webinars
+/* =========================================================
+   Design chrome, transplanted from chm-composio's shared
+   components. The shared `SectionHead` in components/ui is
+   the platform's own head — index above the title, semibold
+   sans — so the design's version (mono index parked at a
+   fixed width beside a display title, one "see all" pill)
+   is carried here rather than being flattened into it.
+   ========================================================= */
+
+/**
+ * Inner-page masthead. With a `figure` the hero splits into copy on the
+ * leading side and a raised product panel on the trailing side.
+ */
+function PageHead({
+  eyebrow,
+  title,
+  lede,
+  children,
+  figure,
+}: {
+  eyebrow: string;
+  title: ReactNode;
+  lede?: string;
+  children?: ReactNode;
+  figure?: ReactNode;
+}) {
+  const copy = (
+    <>
+      <p className="eyebrow text-muted2">{eyebrow}</p>
+      <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+        {title}
+      </h1>
+      {lede ? <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">{lede}</p> : null}
+      {children ? <div className="mt-9">{children}</div> : null}
+    </>
+  );
+
+  if (!figure) {
+    return <section className="rail pt-16 pb-14 md:pt-20 md:pb-16">{copy}</section>;
+  }
+
+  return (
+    <section className="rail pt-14 pb-12 md:pt-16 md:pb-16">
+      <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.02fr] lg:gap-16">
+        <div>{copy}</div>
+        <div>{figure}</div>
+      </div>
+    </section>
+  );
+}
+
+/** Full-bleed band; the inner rail carries the margins. */
+function Band({
+  children,
+  className = '',
+  labelledBy,
+}: {
+  children: ReactNode;
+  className?: string;
+  labelledBy?: string;
+}) {
+  return (
+    <section aria-labelledby={labelledBy}>
+      <div className={cn('rail py-16 md:py-24', className)}>{children}</div>
+    </section>
+  );
+}
+
+/**
+ * Section chrome: a mono index label on the leading edge, the heading,
+ * and one "see all" affordance. The index keeps a fixed width so every
+ * section title on the page starts at the same x.
+ */
+function BandHead({
+  index,
+  title,
+  sub,
+  seeAll,
+  id,
+}: {
+  index?: string;
+  title: string;
+  sub?: string;
+  seeAll?: { noun: string; href: string };
+  id?: string;
+}) {
+  return (
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div className="flex min-w-0 items-center gap-6">
+          {index ? <p className="eyebrow hidden w-28 shrink-0 text-muted2 md:block">{index}</p> : null}
+          <h2 id={id} className="display text-display-m text-text">
+            {title}
           </h2>
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
-            </div>
-          ) : webinars.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center">
-              <p className="font-semibold text-gray-900">No webinars scheduled</p>
-              <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {upcoming.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Upcoming · {upcoming.length}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {upcoming.map((w) => (
-                      <WebinarCard key={w.id} webinar={w} expired={false} />
-                    ))}
-                  </div>
-                </div>
-              )}
-              {past.length > 0 && (
-                <div className="space-y-3">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Past · {past.length}
-                  </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-75">
-                    {past.map((w) => (
-                      <WebinarCard key={w.id} webinar={w} expired />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
+        </div>
+        {seeAll ? (
+          <Link
+            to={seeAll.href}
+            className="press inline-flex h-10 shrink-0 items-center gap-2 rounded-[6px] bg-surface px-5 text-body-s text-dim shadow-[var(--shadow-card)] hover:bg-ground hover:text-text hover:shadow-[var(--shadow-card-hover)]"
+          >
+            See all {seeAll.noun}
+            <ArrowRight className="size-4" strokeWidth={1.75} />
+          </Link>
+        ) : null}
+      </div>
+      {sub ? (
+        <p className="prose-lede mt-4 max-w-[52ch] text-body-m text-muted2 md:ms-[8.5rem]">{sub}</p>
+      ) : null}
+    </div>
+  );
+}
+
+/** A state the design's static data never has: a feed still in flight. */
+function Pending({ label }: { label: string }) {
+  return (
+    <div className="flex justify-center py-16" role="status" aria-label={label}>
+      <Loader2 className="size-8 animate-spin text-faint" />
+    </div>
+  );
+}
+
+function Thumb({
+  src,
+  duration,
+  className = '',
+  rounded = 'rounded-[6px]',
+}: {
+  src: string;
+  duration?: string;
+  className?: string;
+  rounded?: string;
+}) {
+  return (
+    <div className={cn('relative overflow-hidden bg-surface-2', rounded, className)}>
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        /* Tailwind v3 renders `scale-*` as a transform, so the transition
+           names transform where the v4 original named `scale`. */
+        className="absolute inset-0 size-full object-cover opacity-90 transition-[transform,opacity] duration-300 ease-[var(--ease-out-strong)] group-hover:scale-[1.03] group-hover:opacity-100"
+      />
+      {/* Permanently dark region from here down: the scrim is fixed black
+          whatever the appearance, so its labels are fixed white. */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+      <div className="img-ring absolute inset-0 rounded-[inherit]" />
+      <ChmMark className="absolute bottom-3 start-3 size-5 text-white/80" />
+      {duration ? <span className="meta absolute end-3 bottom-3 text-white/80">{duration}</span> : null}
+    </div>
+  );
+}
+
+/* ── hero panel ──────────────────────────────────────────── */
+
+/**
+ * Shared frame for the inner-page hero visual: a raised panel on a soft
+ * brand-tinted field, with a bevel highlight along the top edge. Depth
+ * only, no outlines.
+ */
+function HeroPanel({ children }: { children: ReactNode }) {
+  return (
+    <div aria-hidden className="relative">
+      <div
+        className="pointer-events-none absolute -inset-8 rounded-[24px] opacity-80 blur-2xl"
+        style={{
+          background:
+            'radial-gradient(50% 50% at 70% 30%, color-mix(in oklab, var(--color-beam) 34%, transparent), transparent 70%), radial-gradient(45% 45% at 25% 75%, color-mix(in oklab, var(--color-pink) 30%, transparent), transparent 70%)',
+        }}
+      />
+      <div className="relative overflow-hidden rounded-[6px] bg-surface p-3 shadow-[var(--shadow-pop)]">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+        <div className="overflow-hidden rounded-[6px] bg-ground">{children}</div>
       </div>
     </div>
   );
 }
 
-/* =======================
-   UI Components
-   ======================= */
-
-function FeaturedCard({
-  title,
-  imageUrl,
-  cta,
-  to,
-  showNew,
-}: {
-  title: string;
-  imageUrl: string;
-  cta: string;
-  to: string;
-  showNew?: boolean;
-}) {
+function Chrome({ label }: { label: string }) {
   return (
-    <Link
-      to={to}
-      className="group relative rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 min-h-[240px] md:min-h-[280px] h-full flex flex-col"
-    >
-      <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/[0.28] transition-colors pointer-events-none" />
-      {showNew && (
-        <span className="absolute left-3 top-3 z-10 rounded-full bg-black/90 px-2.5 py-1 text-xs font-semibold text-white">
-          New
-        </span>
-      )}
-      <div className="relative mt-auto flex flex-col justify-end p-5 md:p-6 bg-gradient-to-t from-black/75 via-black/35 to-transparent">
-        <p className="text-base md:text-lg font-semibold text-white line-clamp-2">{title}</p>
-        <span className="mt-3 inline-flex w-fit items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-900 shadow-md group-hover:bg-gray-100 transition-colors">
-          {cta} →
-        </span>
-      </div>
-    </Link>
+    <div className="flex items-center gap-2 bg-surface px-4 py-3">
+      {/* The design's dots are white/15, which is invisible on the light
+          ground; the hairline token is the same weight in both. */}
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="size-2.5 rounded-full bg-hairline-strong" />
+      <span className="meta ms-2 text-faint">{label}</span>
+    </div>
   );
 }
 
-
-function BiomarkerPlaylistCard({ card }: { card: Treatment }) {
-  const names = card.videoNames.length > 0 ? card.videoNames : ['Video', 'Video', 'Video', 'Video'];
+/** The content library as the product: real areas, real newest clips. */
+function CatalogPanel({ tiles }: { tiles: PanelTile[] }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col h-full min-h-[380px]">
-      <div className="relative aspect-video shrink-0 bg-gray-100">
-        <img src={card.imageUrl} alt="" className="h-full w-full object-cover" loading="eager" referrerPolicy="no-referrer" />
-      </div>
-      <div className="p-5 flex flex-col flex-1 min-h-0 min-w-0">
-        <h4 className="font-bold text-gray-900 line-clamp-2 min-h-[3.25rem]">{card.title}</h4>
-        <ul className="mt-3 space-y-1.5 flex-1 min-h-0">
-          {names.slice(0, 4).map((name, i) => (
-            <li key={i} className="flex items-center gap-2 text-sm text-gray-600 min-w-0">
-              <span className="h-1 w-1 rounded-full bg-gray-400 shrink-0" />
-              <span className="truncate" title={name}>
-                {name}
+    <HeroPanel>
+      <Chrome label="chm / catalog" />
+      <div className="p-4">
+        <div className="flex flex-wrap gap-1.5">
+          {DISEASE_AREAS.slice(0, 4).map((a, i) => (
+            <span
+              key={a.slug}
+              className={cn(
+                'rounded-[6px] px-2.5 py-1 text-[0.6875rem]',
+                i === 0 ? 'text-on-bright' : 'bg-surface text-muted2',
+              )}
+              style={i === 0 ? { background: AREA_TONE[a.slug] ?? 'var(--color-anchor)' } : undefined}
+            >
+              {a.title}
+            </span>
+          ))}
+        </div>
+        <ul className="mt-3 grid grid-cols-2 gap-2">
+          {tiles.map((t) => (
+            <li key={t.key} className="overflow-hidden rounded-[6px] bg-surface">
+              <span className="relative block aspect-video">
+                <img
+                  src={t.thumb}
+                  alt=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                  className="absolute inset-0 size-full object-cover"
+                />
+                {/* Fixed-black scrim, so the duration on it is fixed white. */}
+                <span className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+                {t.duration ? (
+                  <span className="meta absolute bottom-2 end-2 text-white/90">{t.duration}</span>
+                ) : null}
               </span>
+              <span className="block truncate px-2.5 py-2 text-[0.6875rem] text-text">{t.title}</span>
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-end pt-2 border-t border-gray-100">
-          <Link
-            to={card.playlistUrl}
-            className="rounded-full bg-[#000000] px-5 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            Play all
-          </Link>
-        </div>
       </div>
-    </div>
-  );
-}
-
-function WebinarCard({ webinar: w, expired }: { webinar: WebinarItem; expired: boolean }) {
-  const date = w.startTime ? new Date(w.startTime) : null;
-  const imgSrc = w.imageUrl || FALLBACK_WEBINAR_IMAGE;
-
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden flex flex-col sm:flex-row">
-      <div className="relative w-full sm:w-44 h-40 sm:h-auto shrink-0">
-        <img src={imgSrc} alt="" className="h-full w-full object-cover" loading="eager" />
-        {expired ? (
-          <span className="absolute left-2 top-2 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
-            Expired
-          </span>
-        ) : (
-          <span className="absolute left-2 top-2 rounded bg-black px-2 py-0.5 text-xs font-semibold text-white">
-            Upcoming
-          </span>
-        )}
-      </div>
-      <div className="p-5 flex flex-col flex-1">
-        <h4 className={`font-bold leading-snug ${expired ? 'text-gray-500' : 'text-gray-900'}`}>
-          {w.title}
-        </h4>
-        {date && (
-          <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500 tabular-nums">
-            <span className="inline-flex items-center gap-1">
-              <Calendar className="h-3 w-3" />
-              {format(date, 'EEE, MMM d, yyyy')}
-              {!expired && (
-                <span className="text-gray-400 ml-1">· {formatDistanceToNow(date, { addSuffix: true })}</span>
-              )}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {format(date, 'h:mm a')}
-            </span>
-            {w.duration && <span>{formatDuration(w.duration)}</span>}
-          </div>
-        )}
-        {w.description && (
-          <p className="mt-2 text-sm text-gray-600 leading-relaxed line-clamp-2 flex-1">
-            {w.description}
-          </p>
-        )}
-        <div className="mt-4 flex justify-end">
-          <Link
-            to={`/webinars/${w.id}`}
-            className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            Learn More
-          </Link>
-        </div>
-      </div>
-    </div>
+    </HeroPanel>
   );
 }

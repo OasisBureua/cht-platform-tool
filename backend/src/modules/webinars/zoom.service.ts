@@ -27,6 +27,8 @@ export interface ZoomWebinar {
   thumbnail?: string;
   /** Webinar-only Zoom settings (Q&A, Backstage, HD, recording). */
   settings?: ZoomWebinarSettings;
+  /** Zoom user id of the host (for Meeting SDK host ZAK). */
+  hostId?: string;
 }
 
 interface ZoomTokenResponse {
@@ -76,6 +78,7 @@ interface ZoomWebinarResponse {
   start_url: string;
   timezone: string;
   password?: string;
+  host_id?: string;
   settings?: {
     practice_session?: boolean;
     hd_video?: boolean;
@@ -98,6 +101,7 @@ interface ZoomMeetingApiResponse {
   start_url: string;
   timezone: string;
   password?: string;
+  host_id?: string;
 }
 
 /** Zoom panelist URLs share the webinar path; uniqueness is in the `tk=` query param. */
@@ -448,6 +452,7 @@ export class ZoomService implements OnModuleInit {
         startUrl: data.start_url,
         timezone: data.timezone,
         password: data.password?.trim() || undefined,
+        hostId: data.host_id?.trim() || undefined,
         settings: fromZoomWebinarSettingsApi(data.settings),
       };
     } catch (err) {
@@ -840,12 +845,54 @@ export class ZoomService implements OnModuleInit {
         startUrl: data.start_url,
         timezone: data.timezone,
         password: data.password?.trim() || undefined,
+        hostId: data.host_id?.trim() || undefined,
       };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Zoom getMeeting ${meetingId} failed: ${msg}`);
       return null;
     }
+  }
+
+  /**
+   * Zoom Access Key for hosting via Meeting SDK (role=1).
+   * Requires Server-to-Server OAuth scope user:read:token:admin (or equivalent).
+   */
+  async getZakToken(zoomUserId: string): Promise<string> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom not configured');
+    }
+    const uid = zoomUserId?.trim();
+    if (!uid) {
+      throw new Error('Zoom host user id is required for ZAK');
+    }
+    const token = await this.getAccessToken();
+    const { data } = await firstValueFrom(
+      this.http.get<{ token?: string }>(
+        `https://api.zoom.us/v2/users/${encodeURIComponent(uid)}/token`,
+        {
+          params: { type: 'zak' },
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
+    const zak = data?.token?.trim();
+    if (!zak) {
+      throw new Error('Zoom did not return a ZAK token for the host user');
+    }
+    return zak;
+  }
+
+  /** Resolve host Zoom user id for a webinar or meeting (for Meeting SDK host start). */
+  async getSessionHostId(
+    sessionType: 'WEBINAR' | 'MEETING',
+    meetingNumber: string,
+  ): Promise<string | null> {
+    const remote =
+      sessionType === 'WEBINAR'
+        ? await this.getWebinarById(meetingNumber)
+        : await this.getMeetingById(meetingNumber);
+    return remote?.hostId?.trim() || null;
   }
 
   async updateMeeting(
@@ -892,4 +939,133 @@ export class ZoomService implements OnModuleInit {
       this.logger.warn(`Zoom deleteMeeting ${meetingId} failed: ${msg}`);
     }
   }
+
+  /**
+   * Encode meeting/webinar id for Zoom path. UUIDs with `/` need double-encoding.
+   */
+  encodeMeetingIdForPath(meetingId: string): string {
+    const id = meetingId.trim();
+    if (id.includes('/') || id.startsWith('/')) {
+      return encodeURIComponent(encodeURIComponent(id));
+    }
+    return encodeURIComponent(id);
+  }
+
+  /**
+   * Cloud recording file list for a meeting or webinar (same Zoom endpoint).
+   * Requires cloud_recording:read:list_recording_files:admin (or equivalent).
+   */
+  async getMeetingRecordings(meetingId: string): Promise<ZoomMeetingRecordings> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const token = await this.getAccessToken();
+    const pathId = this.encodeMeetingIdForPath(meetingId);
+    const { data } = await firstValueFrom(
+      this.http.get<ZoomMeetingRecordingsApiResponse>(
+        `https://api.zoom.us/v2/meetings/${pathId}/recordings`,
+        {
+          params: { include_fields: 'download_access_token' },
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
+
+    return {
+      uuid: data.uuid,
+      id: data.id != null ? String(data.id) : meetingId,
+      topic: data.topic,
+      startTime: data.start_time,
+      duration: data.duration,
+      totalSize: data.total_size,
+      downloadAccessToken: data.download_access_token,
+      recordingFiles: (data.recording_files || []).map((f) => ({
+        id: f.id,
+        meetingId: f.meeting_id,
+        fileType: f.file_type,
+        fileExtension: f.file_extension,
+        fileSize: f.file_size,
+        downloadUrl: f.download_url,
+        playUrl: f.play_url,
+        status: f.status,
+        recordingType: f.recording_type,
+        recordingStart: f.recording_start,
+        recordingEnd: f.recording_end,
+      })),
+    };
+  }
+
+  /** Download a Zoom recording file (follows redirects). MP4s need a long timeout. */
+  async downloadRecordingFile(
+    downloadUrl: string,
+    bearerToken?: string,
+  ): Promise<{ buffer: Buffer; contentType?: string }> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const token = bearerToken || (await this.getAccessToken());
+    const { data, headers } = await firstValueFrom(
+      this.http.get<ArrayBuffer>(downloadUrl, {
+        responseType: 'arraybuffer',
+        timeout: 5 * 60 * 1000,
+        maxContentLength: 1024 * 1024 * 1024,
+        maxBodyLength: 1024 * 1024 * 1024,
+        headers: { Authorization: `Bearer ${token}` },
+        maxRedirects: 5,
+      }),
+    );
+    const contentType =
+      typeof headers?.['content-type'] === 'string'
+        ? headers['content-type']
+        : undefined;
+    return { buffer: Buffer.from(data), contentType };
+  }
 }
+
+export type ZoomRecordingFile = {
+  id: string;
+  meetingId?: string;
+  fileType: string;
+  fileExtension?: string;
+  fileSize?: number;
+  downloadUrl: string;
+  playUrl?: string;
+  status?: string;
+  recordingType?: string;
+  recordingStart?: string;
+  recordingEnd?: string;
+};
+
+export type ZoomMeetingRecordings = {
+  uuid?: string;
+  id: string;
+  topic?: string;
+  startTime?: string;
+  duration?: number;
+  totalSize?: number;
+  downloadAccessToken?: string;
+  recordingFiles: ZoomRecordingFile[];
+};
+
+type ZoomMeetingRecordingsApiResponse = {
+  uuid?: string;
+  id?: string | number;
+  topic?: string;
+  start_time?: string;
+  duration?: number;
+  total_size?: number;
+  download_access_token?: string;
+  recording_files?: Array<{
+    id: string;
+    meeting_id?: string;
+    file_type: string;
+    file_extension?: string;
+    file_size?: number;
+    download_url: string;
+    play_url?: string;
+    status?: string;
+    recording_type?: string;
+    recording_start?: string;
+    recording_end?: string;
+  }>;
+};

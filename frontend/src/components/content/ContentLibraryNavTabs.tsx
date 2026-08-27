@@ -5,8 +5,8 @@ function tabClass(active: boolean) {
   return [
     'flex flex-col items-center gap-2 transition-colors min-w-[3.5rem]',
     active
-      ? 'font-medium text-zinc-900 dark:text-zinc-100'
-      : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100',
+      ? 'font-medium text-foreground'
+      : 'text-muted-foreground hover:text-foreground',
   ].join(' ');
 }
 

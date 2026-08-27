@@ -107,7 +107,7 @@ export default function AnalyticsReport() {
             Regenerate
           </button>
           <button
-            className={`${GHOST_BUTTON_BASE} h-7 text-xs text-[#ff9e40]/70 hover:bg-white/10 hover:text-[#ff9e40]`}
+            className={`${GHOST_BUTTON_BASE} h-7 text-xs text-[#f99d9d]/70 hover:bg-white/10 hover:text-[#f99d9d]`}
             disabled={generateInsights.isPending}
             onClick={runGenerate}
           >
@@ -123,7 +123,7 @@ export default function AnalyticsReport() {
             Template
           </button>
           <button
-            className="ml-1 inline-flex h-7 min-h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-[#e7764f] px-3 text-xs font-medium text-white transition-colors hover:bg-[#c0603c] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+            className="ml-1 inline-flex h-7 min-h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-[#c54ebe] px-3 text-xs font-medium text-white transition-colors hover:bg-[#c0603c] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
             onClick={() => window.print()}
           >
             <Printer className="mr-1 h-3 w-3" />

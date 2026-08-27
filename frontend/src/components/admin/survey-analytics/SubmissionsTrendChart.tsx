@@ -35,13 +35,13 @@ function TrendTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+    <div className="rounded-[6px] border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
         {payload[0]?.payload?.label}
       </p>
-      <p className="font-mono text-sm font-bold tabular-nums text-gray-700">
+      <p className="font-mono text-sm font-bold tabular-nums text-muted-foreground">
         {Number(payload[0]?.value ?? 0).toLocaleString()}{' '}
-        <span className="font-sans font-normal text-gray-500">submissions</span>
+        <span className="font-sans font-normal text-muted-foreground">submissions</span>
       </p>
     </div>
   );
@@ -58,7 +58,7 @@ export function SubmissionsTrendChart({ points }: SubmissionsTrendChartProps) {
   );
 
   if (data.length === 0) {
-    return <p className="py-6 text-center text-sm text-gray-500">No submissions yet.</p>;
+    return <p className="py-6 text-center text-sm text-muted-foreground">No submissions yet.</p>;
   }
 
   const height = submissionsTrendHeightPx(data.length);

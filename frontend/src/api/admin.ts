@@ -268,6 +268,28 @@ export interface ProgramRegistrationAdminRow {
   slot: { id: string; startsAt: string; endsAt: string; label: string | null } | null;
 }
 
+export type ProgramZoomRecordingRow = {
+  id: string;
+  programId: string;
+  zoomMeetingId: string;
+  zoomRecordingFileId: string;
+  fileType: string;
+  recordingType?: string | null;
+  fileExtension?: string | null;
+  fileSizeBytes?: number | null;
+  topic?: string | null;
+  recordingStart?: string | null;
+  recordingEnd?: string | null;
+  pulledAt: string;
+  pulledByUserId?: string | null;
+};
+
+export type ProgramZoomRecordingsList = {
+  storageConfigured: boolean;
+  zoomConfigured: boolean;
+  recordings: ProgramZoomRecordingRow[];
+};
+
 export interface PostEventAttendanceAdminRow {
   id: string;
   status: string;
@@ -1123,18 +1145,69 @@ export const adminApi = {
           surveys?: {
             intake?: { id: string; questions: unknown } | null;
             feedback?: { id: string; questions: unknown } | null;
+            all?: Array<{
+              id: string;
+              title: string;
+              type: string;
+              createdAt: string;
+              jotformFormId?: string | null;
+              isCustomized?: boolean;
+            }>;
           };
         }
       | ProgramRegistrationAdminRow[];
     if (Array.isArray(payload)) {
       return {
         registrations: payload,
-        surveys: { intake: null, feedback: null },
+        surveys: { intake: null, feedback: null, all: [] },
       };
     }
     return {
       registrations: payload.registrations ?? [],
-      surveys: payload.surveys ?? { intake: null, feedback: null },
+      surveys: {
+        intake: payload.surveys?.intake ?? null,
+        feedback: payload.surveys?.feedback ?? null,
+        all: payload.surveys?.all ?? [],
+      },
+    };
+  },
+
+  listProgramZoomRecordings: async (programId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/programs/${encodeURIComponent(programId)}/recordings`,
+    );
+    return data as ProgramZoomRecordingsList;
+  },
+
+  pullProgramZoomRecordings: async (
+    programId: string,
+    body?: { zoomMeetingId?: string },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/recordings/pull`,
+      body ?? {},
+    );
+    return data as ProgramZoomRecordingsList & {
+      pulledCount: number;
+      zoomMeetingId: string;
+      topic?: string;
+      errors?: string[];
+    };
+  },
+
+  getProgramZoomRecordingDownloadUrl: async (
+    programId: string,
+    recordingId: string,
+    disposition: 'inline' | 'attachment' = 'attachment',
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/programs/${encodeURIComponent(programId)}/recordings/${encodeURIComponent(recordingId)}/download-url`,
+      { params: { disposition } },
+    );
+    return data as {
+      url: string;
+      expiresInSeconds: number;
+      recording: ProgramZoomRecordingRow;
     };
   },
 

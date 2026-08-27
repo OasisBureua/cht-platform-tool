@@ -103,13 +103,13 @@ export default function SurveyDetail() {
 
   if (!userId) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Sign in to view this survey</p>
-        <p className="mt-1 text-sm text-gray-600">You need to be signed in to open surveys on this platform.</p>
+      <div className="rounded-card border border-border bg-muted p-10 text-center">
+        <p className="font-semibold text-foreground">Sign in to view this survey</p>
+        <p className="mt-1 text-sm text-muted-foreground">You need to be signed in to open surveys on this platform.</p>
         <div className="mt-5">
           <Link
             to="/login"
-            className="inline-flex items-center justify-center rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
           >
             Sign in
           </Link>
@@ -123,11 +123,11 @@ export default function SurveyDetail() {
   if (isError || !survey) {
     const forbidden = isAxiosError(error) && error.response?.status === 403;
     return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">
+      <div className="rounded-card border border-border bg-muted p-10 text-center">
+        <p className="font-semibold text-foreground">
           {forbidden ? 'This survey is not available yet' : 'Survey not found'}
         </p>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-muted-foreground">
           {forbidden
             ? getApiErrorMessage(
                 error,
@@ -138,7 +138,7 @@ export default function SurveyDetail() {
         <div className="mt-5">
           <Link
             to={forbidden ? '/app/live' : '/app/surveys'}
-            className="inline-flex items-center justify-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
+            className="inline-flex items-center justify-center rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-black active:scale-[0.96]"
           >
             {forbidden ? 'Back to Live' : 'Back to surveys'}
           </Link>
@@ -151,26 +151,26 @@ export default function SurveyDetail() {
     <div className="space-y-8">
       {/* Top row */}
       <div className="flex items-center justify-between gap-3">
-        <Link to="/app/surveys" className="text-sm font-semibold text-gray-700 hover:text-gray-900">
+        <Link to="/app/surveys" className="text-sm font-semibold text-muted-foreground hover:text-foreground">
           <span className="inline-flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             Back to surveys
           </span>
         </Link>
 
-        <span className="text-xs font-semibold text-gray-600 rounded-full border border-gray-200 bg-white px-3 py-1">
+        <span className="text-xs font-semibold text-muted-foreground rounded-[6px] border border-border bg-card px-3 py-1">
           {typeLabel(survey.type)} • {survey.required ? 'Required' : 'Optional'}
         </span>
       </div>
 
       {/* Header */}
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">{survey.title}</h1>
-        <p className="text-sm text-gray-600 max-w-3xl">
+        <h1 className="text-2xl md:text-3xl font-semibold text-foreground">{survey.title}</h1>
+        <p className="text-sm text-muted-foreground max-w-3xl">
           {survey.description || 'Complete this survey to contribute your perspective.'}
         </p>
         {survey.type === 'FEEDBACK' && formatHonorarium(survey.program?.honorariumAmount) ? (
-          <p className="text-sm text-gray-600 max-w-3xl">
+          <p className="text-sm text-muted-foreground max-w-3xl">
             Listed honorarium for this program:{' '}
             <strong>{formatHonorarium(survey.program?.honorariumAmount)}</strong>.
           </p>
@@ -182,20 +182,20 @@ export default function SurveyDetail() {
         {/* Left: content */}
         <div className="lg:col-span-8 space-y-6">
           {/* Start / Embed */}
-          <div className="rounded-3xl border border-gray-200 bg-white p-6">
+          <div className="rounded-card border border-border bg-card p-6">
             {formLocked || surveySaved ? (
-              <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <p className="text-sm font-medium text-success bg-success/10 border border-success/25 rounded-card px-4 py-3">
                 {formLocked || isPostEventFeedback
                   ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
                   : 'Your responses are saved. Thank you for completing this survey.'}
               </p>
             ) : !started ? (
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm font-semibold text-gray-900">Ready to complete the survey?</p>
+                <p className="text-sm font-semibold text-foreground">Ready to complete the survey?</p>
                 <button
                   type="button"
                   onClick={() => setStarted(true)}
-                  className="inline-flex w-fit items-center justify-center rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                  className="inline-flex w-fit items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
                 >
                   Start survey <ArrowRight className="ml-2 h-4 w-4" />
                 </button>
@@ -219,7 +219,7 @@ export default function SurveyDetail() {
                 onSubmit={(answers) => submitMutation.mutate(answers)}
               />
             ) : (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 This survey is not available yet. Contact support if you need assistance.
               </p>
             )}
@@ -229,8 +229,8 @@ export default function SurveyDetail() {
             <div className="space-y-4">
               <PostEventAttendanceMessage myRegistration={programRegistration} />
               {registrationApproved && attendanceOkForPostEvent ? (
-                <div className="rounded-3xl border border-gray-200 bg-white p-6 space-y-3">
-                  <h2 className="text-base font-semibold text-gray-900">Record your response and honorarium</h2>
+                <div className="rounded-card border border-border bg-card p-6 space-y-3">
+                  <h2 className="text-base font-semibold text-foreground">Record your response and honorarium</h2>
                   <PostEventFeedbackLearnerActions
                     programId={survey.programId}
                     userId={userId}
@@ -251,8 +251,8 @@ export default function SurveyDetail() {
 
         {/* Right: meta */}
         <aside className="lg:col-span-4 space-y-4">
-          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-6">
-            <p className="text-sm font-semibold text-gray-900">Details</p>
+          <div className="rounded-card border border-border bg-muted p-6">
+            <p className="text-sm font-semibold text-foreground">Details</p>
 
             <div className="mt-4 space-y-3 text-sm">
               <Meta label="Type" value={typeLabel(survey.type)} />
@@ -262,14 +262,14 @@ export default function SurveyDetail() {
 
           </div>
 
-          <div className="rounded-3xl border border-gray-200 bg-brand-950 p-6">
+          <div className="rounded-card border border-gray-200 bg-brand-950 p-6">
             <p className="text-sm font-semibold text-white">Need to earn rewards?</p>
             <p className="mt-2 text-sm text-gray-300">
               Rewards and tracking are available in the app experience.
             </p>
             <Link
               to="/app/home"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-100"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-[6px] bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-100"
             >
               Go home
             </Link>
@@ -283,8 +283,8 @@ export default function SurveyDetail() {
 function Meta({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <span className="text-gray-600">{label}</span>
-      <span className="font-semibold text-gray-900 text-right break-all">{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-semibold text-foreground text-right break-all">{value}</span>
     </div>
   );
 }

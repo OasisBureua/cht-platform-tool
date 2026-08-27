@@ -1,328 +1,373 @@
-import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  Play,
-  Search,
-  LayoutGrid,
-  Users,
-  Shield,
-  Stethoscope,
-  Building2,
-  Award,
-  Radio,
-  MessagesSquare,
-  LineChart,
-} from 'lucide-react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { submitContact } from '../../api/contact';
+import { ChmMark } from '../../components/brand/ChmMark';
+import { Button, Card, Field, Reveal, SectionHead } from '../../components/ui';
+import { cn } from '../../lib/cn';
+import { useKolDirectory } from '../../hooks/useKolDirectory';
 
-const AUDIENCES = [
+/**
+ * Transplanted from chm-composio's `/partner`. The headings, the section
+ * order and every sentence are that page's; none of the old What We Do
+ * copy survives.
+ *
+ * Two slots take real platform data instead of the design's fixtures:
+ * the faculty figure in the results band reads the public KOL directory,
+ * and the walkthrough form posts to the same `/contact` endpoint the
+ * Contact page uses, rather than routing to a static thank-you page.
+ */
+
+const STEPS = [
   {
-    title: 'Physicians & healthcare professionals',
-    body:
-      'CHM provides access to trusted knowledge, expert perspectives, and peer discussion that support continuous professional development and informed clinical practice.',
-    icon: <Stethoscope className="h-5 w-5" />,
+    n: '01',
+    title: 'One conversation',
+    body: 'Two faculty who already disagree sit down for ninety minutes on a question your brand has a stake in. No slides, no script approval, no talking points.',
   },
   {
-    title: 'Healthcare organizations, pharma & industry',
-    body:
-      'CHM helps healthcare organizations connect with professional medical audiences through credible content, expert voices, and multichannel communication strategies that drive engagement and insight.',
-    icon: <Building2 className="h-5 w-5" />,
+    n: '02',
+    title: 'Four channels',
+    body: 'That session becomes long-form video, a podcast episode, an editorial explainer and a set of short clips. One recording day, four distribution surfaces.',
   },
   {
-    title: 'KOLs & experts',
-    body:
-      'CHM offers a platform where experts can share their knowledge, contribute to professional dialogue, and amplify their impact across the medical community.',
-    icon: <Award className="h-5 w-5" />,
+    n: '03',
+    title: 'Placed in the track',
+    body: 'Everything lands inside the disease state where your audience already browses, next to the sessions they came for.',
+  },
+  {
+    n: '04',
+    title: 'Measured on completion',
+    body: 'Not impressions. Completion rate, post-test pass rate and repeat visits by faculty, reported monthly.',
   },
 ] as const;
 
-const SHOW_UP = [
-  {
-    title: 'Credible medical education',
-    body: 'Expert-led content designed for clinical credibility, not volume for its own sake.',
-    icon: <Play className="h-5 w-5" />,
-  },
-  {
-    title: 'Strategic distribution',
-    body: 'Multichannel reach so important knowledge meets audiences where they already learn and engage.',
-    icon: <Radio className="h-5 w-5" />,
-  },
-  {
-    title: 'Community & dialogue',
-    body: 'Formats that turn information into conversation among peers and stakeholders.',
-    icon: <MessagesSquare className="h-5 w-5" />,
-  },
-  {
-    title: 'Engagement & insight',
-    body: 'Signals that help partners understand how professional audiences respond, learn, and stay informed.',
-    icon: <LineChart className="h-5 w-5" />,
-  },
+const FORMATS = [
+  ['Long-form video', '18 to 30 min', 'The full case discussion, chaptered.'],
+  ['Podcast episode', '25 to 40 min', 'Audio cut, syndicated across the four CHM shows.'],
+  ['Editorial explainer', '5 to 8 min read', 'Written by faculty, not by a medical writer.'],
+  ['Short clips', '45 to 90 sec', 'Cut for social and for in-feed placement.'],
 ] as const;
+
+const DISEASE_STATES = ['Breast', 'Lung', 'GI', 'GU', 'Hematology', 'Gynecologic'] as const;
 
 export default function WhatWeDo() {
   return (
-    <div className="bg-white">
-      <section className="border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7 space-y-6">
-              <div className="space-y-3">
-                <h1 className="text-5xl md:text-6xl font-semibold tracking-tight text-gray-900 leading-tight max-w-2xl">
-                  We organize clinical education
-                  <br />
-                  into focused, easy-to-navigate
-                  <br />
-                  experiences
-                </h1>
-                <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
-                  Community Health Media delivers expert-led medical communications: content, distribution, and
-                  engagement across healthcare. Our public platform helps clinicians discover
-                  treatment-specific material, learn through short-form video, and explore curated collections built
-                  around disease areas and subtypes.
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  to="/catalog"
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
-                >
-                  Explore Catalogue <ArrowRight className="h-4 w-4" />
-                </Link>
-                <Link
-                  to="/search"
-                  className="rounded-full bg-white px-7 py-3 text-base font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 inline-flex items-center justify-center"
-                >
-                  Search Content
-                </Link>
-              </div>
-
-              <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <MiniStat label="Collections" value="Curated" />
-                <MiniStat label="Videos" value="Short-form" />
-                <MiniStat label="Discovery" value="Fast" />
-              </div>
-            </div>
-
-            <div className="lg:col-span-5">
-              <div className="rounded-3xl border border-gray-200 bg-gray-50 overflow-hidden">
-                <div
-                  className="h-[340px] w-full bg-cover bg-center"
-                  style={{
-                    backgroundImage:
-                      "url('https://images.unsplash.com/photo-1526948128573-703ee1aeb6fa?auto=format&fit=crop&w=1800&q=80')",
-                  }}
-                >
-                  <div className="h-full w-full bg-black/25" />
-                </div>
-                <div className="p-6 space-y-2">
-                  <p className="text-base font-semibold text-gray-900">Built to support modern clinical workflows</p>
-                  <p className="text-base text-gray-600 leading-relaxed">
-                    Browse disease hubs, curated conversations and videos, and share relevant content with your team.
-                  </p>
-                </div>
-              </div>
+    <div className="bg-background">
+      {/* ── Masthead ─────────────────────────────────────────
+          Permanently dark: everything in here is fixed white or
+          the fixed on-deep amber, never a page-following token. */}
+      <section aria-labelledby="partner-heading" className="relative overflow-hidden bg-cta-deep">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-[260px] right-[-140px] h-[700px] w-[700px] rounded-[6px] bg-signature/[0.16] blur-[75px]"
+        />
+        <div className="rail relative flex flex-wrap items-center justify-between gap-10 py-16">
+          <div>
+            <p className="eyebrow text-amber-on-deep">For pharma partners</p>
+            <h1
+              id="partner-heading"
+              className="display display-tight mt-4 max-w-[48rem] text-[2.5rem] text-white md:text-[3.125rem]"
+            >
+              Whole-brand education starts with the audience.
+            </h1>
+            <p className="mt-6 max-w-[540px] text-[1.0625rem] leading-relaxed text-white/75">
+              CHM does not sell impressions against a banner. We sell the completed session, the
+              faculty relationship behind it, and the four channels one recording produces.
+            </p>
+            <div className="mt-9 flex flex-wrap gap-4">
+              <Button
+                href="#walkthrough"
+                className="bg-amber-on-deep text-on-bright shadow-none hover:bg-amber-on-deep hover:brightness-[0.96]"
+              >
+                Book a walkthrough
+              </Button>
+              <Button
+                to="/catalog"
+                variant="outline"
+                className="bg-white/10 text-white shadow-none hover:bg-white/[0.18] hover:shadow-none"
+              >
+                Browse the library
+              </Button>
             </div>
           </div>
+          <ChmMark className="hidden h-[118px] w-[120px] text-amber-on-deep lg:block" />
         </div>
       </section>
 
-      <section className="border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">Who we serve</h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
-              Different audiences need different promises. Here is how CHM shows up for each.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {AUDIENCES.map(({ title, body, icon }) => (
-              <div key={title} className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">
-                  {icon}
-                </div>
-                <p className="text-xl font-semibold text-gray-900">{title}</p>
-                <p className="text-base text-gray-600 leading-relaxed">{body}</p>
+      {/* ── How the content engine works ─────────────────── */}
+      <Band id="how" label="How the content engine works">
+        <Reveal>
+          <SectionHead
+            title="How the content engine works"
+            sub="One conversation, every channel."
+          />
+        </Reveal>
+        <ul className="mt-8 grid gap-[13px] md:grid-cols-2 xl:grid-cols-4">
+          {STEPS.map((s, i) => (
+            <Reveal as="li" key={s.n} delay={i * 60} className="h-full">
+              <Card className="h-full p-7">
+                <p className="display display-tight text-[1.75rem] tabular-nums text-amber">{s.n}</p>
+                <h3 className="display display-tight mt-4 text-display-s text-text">{s.title}</h3>
+                <p className="prose-lede mt-3 text-body-s text-muted2">{s.body}</p>
+              </Card>
+            </Reveal>
+          ))}
+        </ul>
+      </Band>
+
+      {/* ── What one recording produces ──────────────────── */}
+      <Band label="What one recording produces">
+        <Reveal>
+          <SectionHead title="What one recording produces" />
+        </Reveal>
+        <Reveal delay={60}>
+          <Card className="mt-7 overflow-hidden p-0">
+            {FORMATS.map(([name, len, note], i) => (
+              <div
+                key={name}
+                className={cn(
+                  'grid gap-3 px-7 py-6 md:grid-cols-[220px_160px_1fr]',
+                  i > 0 && 'border-t border-hairline',
+                )}
+              >
+                <p className="display text-body-l text-text">{name}</p>
+                <p className="meta text-anchor">{len}</p>
+                <p className="text-body-s text-muted2">{note}</p>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
+          </Card>
+        </Reveal>
+      </Band>
 
-      <section className="border-b border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">How we show up</h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
-              A concise view of the work behind the scenes, before someone ever hits play.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {SHOW_UP.map(({ title, body, icon }) => (
-              <div key={title} className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-                <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">
-                  {icon}
-                </div>
-                <p className="text-xl font-semibold text-gray-900">{title}</p>
-                <p className="text-base text-gray-600 leading-relaxed">{body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <Results />
 
-      <section>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">
-              Our platform focuses on four things
-            </h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
-              A simple, structured system to make clinical learning easier to discover and faster to consume.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <Pillar
-              icon={<LayoutGrid className="h-5 w-5" />}
-              title="Curated Disease-Area Hubs"
-              body="Treatment-specific pages organized by disease area and subtype, with structured collections."
-              cta={{ label: 'Browse Catalogue', to: '/catalog' }}
-            />
-            <Pillar
-              icon={<Play className="h-5 w-5" />}
-              title="Short-form Video Learning"
-              body="Focused videos designed for busy clinicians, with clear takeaways and practical framing."
-              cta={{ label: 'Explore conversations', to: '/catalog' }}
-            />
-            <Pillar
-              icon={<Search className="h-5 w-5" />}
-              title="Fast Discovery & Search"
-              body="Search across topics, conditions, speakers, and collections with quick filters."
-              cta={{ label: 'Go to Search', to: '/search' }}
-            />
-            <Pillar
-              icon={<Users className="h-5 w-5" />}
-              title="Sharing & Team Learning"
-              body="Make it easy to share relevant resources across your clinical team."
-              cta={{ label: 'Explore Collections', to: '/catalog' }}
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12 space-y-8">
-          <div className="space-y-2">
-            <h2 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900">How it works</h2>
-            <p className="text-base md:text-lg text-gray-600 leading-relaxed max-w-2xl">
-              A clear path from discovery to learning.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <Step
-              step="01"
-              title="Discover"
-              body="Browse the catalogue or search for a condition, topic, or speaker."
-            />
-            <Step
-              step="02"
-              title="Focus"
-              body="Open a disease hub and choose the collection or playlist that matches your clinical question."
-            />
-            <Step
-              step="03"
-              title="Learn & share"
-              body="Watch short-form video, then share links or playlists with colleagues for faster alignment."
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-gray-200">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-12">
-          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-8 md:p-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            <div className="lg:col-span-7 space-y-3">
-              <div className="flex items-center gap-2 text-gray-900">
-                <Shield className="h-5 w-5" />
-                <p className="text-base font-semibold">Built with clarity in mind</p>
-              </div>
-              <h3 className="text-3xl md:text-4xl font-semibold tracking-tight text-gray-900 max-w-md">
-                Structured content experiences,
-                <br />
-                ready to scale
-              </h3>
-              <p className="text-base md:text-lg text-gray-600 leading-relaxed">
-                Read{' '}
-                <Link to="/about" className="font-semibold text-gray-900 underline decoration-gray-300 hover:decoration-gray-900">
-                  About
-                </Link>{' '}
-                for the full CHM story, formats, and what we stand for. For programs, partnerships, or platform
-                questions, contact us.
+      {/* ── Book a walkthrough ───────────────────────────── */}
+      <section id="walkthrough" aria-labelledby="walkthrough-heading">
+        <div className="rail pb-16">
+          <Card className="grid gap-10 p-10 lg:grid-cols-[1fr_26.25rem] lg:items-start">
+            <div>
+              <p className="eyebrow text-muted2">Book a walkthrough</p>
+              <h2
+                id="walkthrough-heading"
+                className="display display-tight mt-3 text-[1.875rem] text-text"
+              >
+                Thirty minutes, and we show you the back end.
+              </h2>
+              <p className="prose-lede mt-4 max-w-[440px] text-body-m text-muted2">
+                Completion curves by session, faculty reach by channel, and the placement map for
+                your disease state. No deck.
               </p>
             </div>
 
-            <div className="lg:col-span-5 flex flex-col gap-3">
-              <Link
-                to="/join"
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-600 px-7 py-3 text-base font-semibold text-white hover:bg-brand-700"
-              >
-                Get Started <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/contact"
-                className="rounded-full bg-white px-7 py-3 text-base font-semibold text-gray-900 border border-gray-200 hover:bg-gray-50 inline-flex items-center justify-center"
-              >
-                Contact Us
-              </Link>
-            </div>
-          </div>
+            <WalkthroughForm />
+          </Card>
         </div>
       </section>
     </div>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <p className="text-sm font-semibold text-gray-600">{label}</p>
-      <p className="text-base font-semibold text-gray-900 mt-1">{value}</p>
-    </div>
-  );
-}
+/**
+ * The results band. Permanently dark, so it takes fixed white and the
+ * fixed on-deep amber rather than the page tokens.
+ *
+ * The faculty figure is the one number here the platform actually holds:
+ * it is the public KOL directory's own total, and falls back to the
+ * design's figure only while the query is in flight.
+ */
+function Results() {
+  const directory = useKolDirectory({ surface: 'public' });
 
-function Pillar({
-  icon,
-  title,
-  body,
-  cta,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-  cta: { label: string; to: string };
-}) {
+  const stats = useMemo(
+    () =>
+      [
+        ['92%', 'session completion', 'Against a CME category average nearer 40%.'],
+        ['2.4M', 'annual views', 'Across video, podcast and editorial.'],
+        [
+          directory.total > 0 ? String(directory.total) : '140+',
+          'KOL faculty',
+          'Practicing clinicians with their own audiences.',
+        ],
+      ] as const,
+    [directory.total],
+  );
+
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-gray-50 text-gray-900">
-        {icon}
+    <section aria-label="What the engine returns">
+      <div className="rail pb-14">
+        <Reveal>
+          <div className="grid gap-8 rounded-[24px] bg-cta-deep p-10 md:grid-cols-3">
+            {stats.map(([n, l, note]) => (
+              <div key={l}>
+                <p className="display display-tight text-[2.625rem] tabular-nums text-amber-on-deep">
+                  {n}
+                </p>
+                <p className="meta mt-2 text-white/70">{l}</p>
+                <p className="mt-3 text-body-s leading-normal text-white/75">{note}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
       </div>
-      <p className="text-xl font-semibold text-gray-900">{title}</p>
-      <p className="text-base text-gray-600 leading-relaxed">{body}</p>
-      <Link to={cta.to} className="text-base font-semibold text-gray-900 hover:text-gray-700 inline-flex items-center gap-2">
-        {cta.label} <span>→</span>
-      </Link>
-    </div>
+    </section>
   );
 }
 
-function Step({ step, title, body }: { step: string; title: string; body: string }) {
+/** Full-bleed band; the inner rail carries the page margins. */
+function Band({ children, label, id }: { children: ReactNode; label: string; id?: string }) {
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-3">
-      <p className="text-base font-semibold text-gray-500">{step}</p>
-      <p className="text-xl font-semibold text-gray-900">{title}</p>
-      <p className="text-base text-gray-600 leading-relaxed">{body}</p>
-    </div>
+    <section id={id} aria-label={label}>
+      <div className="rail py-14">{children}</div>
+    </section>
+  );
+}
+
+type FormState = { name: string; email: string; company: string; disease: string };
+type FormErrors = Partial<Record<keyof FormState, string>>;
+
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * The walkthrough request. The design's version validates on submit,
+ * moves focus to the first field that failed, and then navigates to a
+ * static thank-you route. This platform has no such route and does have
+ * a real endpoint, so the same four fields post to `/contact` and the
+ * panel confirms in place.
+ */
+function WalkthroughForm() {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [form, setForm] = useState<FormState>({
+    name: '',
+    email: '',
+    company: '',
+    disease: DISEASE_STATES[0],
+  });
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [pending, setPending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  const set = (key: keyof FormState) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const next: FormErrors = {};
+    if (!form.name.trim()) next.name = 'Enter your name';
+    if (!form.email.trim()) next.email = 'Enter your work email';
+    else if (!EMAIL.test(form.email.trim()))
+      next.email = 'Enter an email in the format name@hospital.org';
+    if (!form.company.trim()) next.company = 'Enter your company';
+
+    setErrors(next);
+
+    // The first field that failed takes focus, so the message is not
+    // only announced but arrived at.
+    const firstBad = (['name', 'email', 'company'] as const).find((k) => next[k]);
+    if (firstBad) {
+      formRef.current?.querySelector<HTMLElement>(`[name="${firstBad}"]`)?.focus();
+      return;
+    }
+
+    setPending(true);
+    setFailed(null);
+    try {
+      // One name field, two API fields: a single-word name goes in both
+      // rather than posting an empty last name.
+      const [first, ...rest] = form.name.trim().split(/\s+/);
+      await submitContact({
+        firstName: first,
+        lastName: rest.join(' ') || first,
+        email: form.email.trim(),
+        organization: form.company.trim(),
+        role: 'Pharma partner',
+        message: `Walkthrough request. Disease state of interest: ${form.disease}.`,
+      });
+      setSent(true);
+    } catch (err: unknown) {
+      setFailed(
+        err instanceof Error ? err.message : 'That did not send. Try again in a moment.',
+      );
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="rounded-[6px] bg-surface p-7 shadow-card">
+        <p className="display text-body-l text-text">Request received</p>
+        <p className="prose-lede mt-2 text-body-m text-muted2">
+          Someone will write back to set the thirty minutes, usually the same day.
+        </p>
+        <Button to="/catalog" variant="outline" className="mt-6">
+          Browse the library
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form ref={formRef} noValidate onSubmit={handleSubmit} className="space-y-5">
+      {failed && (
+        <p role="alert" className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {failed}
+        </p>
+      )}
+
+      <Field
+        label="Name"
+        name="name"
+        autoComplete="name"
+        value={form.name}
+        error={errors.name}
+        onChange={(e) => set('name')(e.target.value)}
+      />
+
+      <Field
+        label="Work email"
+        name="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        hint="Use the address your institution issued, so we can verify you are a clinician."
+        value={form.email}
+        error={errors.email}
+        onChange={(e) => set('email')(e.target.value)}
+      />
+
+      <Field
+        label="Company"
+        name="company"
+        autoComplete="organization"
+        value={form.company}
+        error={errors.company}
+        onChange={(e) => set('company')(e.target.value)}
+      />
+
+      <div>
+        <label htmlFor="walkthrough-disease" className="text-sm text-muted-foreground">
+          Disease state of interest
+        </label>
+        <select
+          id="walkthrough-disease"
+          name="disease"
+          value={form.disease}
+          onChange={(e) => set('disease')(e.target.value)}
+          className="mt-2 h-12 w-full rounded-[6px] bg-card px-4 text-base text-foreground shadow-card outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:text-sm"
+        >
+          {DISEASE_STATES.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+        {pending ? 'Sending your request' : 'Request the walkthrough'}
+      </Button>
+    </form>
   );
 }

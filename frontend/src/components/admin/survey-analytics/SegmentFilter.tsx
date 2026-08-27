@@ -15,13 +15,13 @@ const OPTIONS: Array<{ value: '' | SurveySegmentDimension; label: string }> = [
 
 export function SegmentFilter({ value, onChange, disabled }: SegmentFilterProps) {
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-600 print:hidden">
+    <label className="flex items-center gap-2 text-sm text-muted-foreground print:hidden">
       <span className="font-medium">Segment by</span>
       <select
         value={value ?? ''}
         disabled={disabled}
         onChange={(e) => onChange((e.target.value || null) as SurveySegmentDimension | null)}
-        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 disabled:opacity-50"
+        className="rounded-[6px] border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
         aria-label="Segment analytics by"
       >
         {OPTIONS.map((o) => (

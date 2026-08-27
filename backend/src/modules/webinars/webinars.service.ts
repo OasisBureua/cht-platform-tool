@@ -27,6 +27,13 @@ export interface MeetingSdkAuthDto {
    * Required by Meeting SDK when Zoom-side registration is enabled.
    */
   tk?: string;
+  /**
+   * Zoom Access Key — required when starting as host (role 1).
+   * @see https://developers.zoom.us/docs/meeting-sdk/auth/
+   */
+  zak?: string;
+  /** 0 = participant, 1 = host */
+  role: 0 | 1;
   sessionKind: 'WEBINAR' | 'MEETING';
 }
 
@@ -360,11 +367,13 @@ export class WebinarsService {
   /**
    * JWT signature + join fields for Zoom Meeting SDK (embedded web client).
    * Supports WEBINAR and MEETING session types with gating that mirrors the in-app Join button.
+   * Pass asHost=true for ADMIN users starting the session (role 1 + ZAK).
    */
   async getMeetingSdkAuth(
     authUser: AuthUser,
     programId: string,
     sessionType: 'WEBINAR' | 'MEETING',
+    opts?: { asHost?: boolean },
   ): Promise<MeetingSdkAuthDto> {
     if (!this.zoomMeetingSdk.isConfigured()) {
       throw new ServiceUnavailableException(
@@ -372,10 +381,23 @@ export class WebinarsService {
       );
     }
 
+    const asHost = !!opts?.asHost;
+    if (asHost && authUser.role !== 'ADMIN') {
+      throw new ForbiddenException(
+        'Only administrators can start a Zoom session as host in the browser.',
+      );
+    }
+
     const userId = authUser.userId;
 
     const program = await this.prisma.program.findFirst({
-      where: { id: programId, status: 'PUBLISHED', zoomSessionType: sessionType },
+      where: {
+        id: programId,
+        zoomSessionType: sessionType,
+        ...(asHost
+          ? { status: { in: ['PUBLISHED', 'DRAFT'] } }
+          : { status: 'PUBLISHED' }),
+      },
     });
     if (!program?.zoomMeetingId) {
       throw new BadRequestException(
@@ -385,22 +407,24 @@ export class WebinarsService {
       );
     }
 
-    await this.assertMeetingSdkJoinEligibility(userId, programId, sessionType);
+    if (!asHost) {
+      await this.assertMeetingSdkJoinEligibility(userId, programId, sessionType);
 
-    const joinWindow = resolveLiveJoinWindow(
-      program.startDate,
-      program.duration,
-    );
-    if (!joinWindow.canJoin) {
-      throw new ForbiddenException(
-        joinWindow.reason || 'Join is not available yet for this session.',
+      const joinWindow = resolveLiveJoinWindow(
+        program.startDate,
+        program.duration,
       );
+      if (!joinWindow.canJoin) {
+        throw new ForbiddenException(
+          joinWindow.reason || 'Join is not available yet for this session.',
+        );
+      }
     }
 
     const userName = (
       authUser.name?.trim() ||
       authUser.email ||
-      'Participant'
+      (asHost ? 'Host' : 'Participant')
     ).slice(0, 200);
     const userEmail = (authUser.email || '').trim();
     if (sessionType === 'WEBINAR' && !userEmail) {
@@ -434,8 +458,36 @@ export class WebinarsService {
       }
     }
 
-    const tk = tkFromJoinUrl(program.zoomJoinUrl) || undefined;
-    const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, 0);
+    const role: 0 | 1 = asHost ? 1 : 0;
+    const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, role);
+
+    let zak: string | undefined;
+    if (asHost) {
+      if (!this.zoom.isConfigured()) {
+        throw new ServiceUnavailableException(
+          'Zoom API is not configured; cannot start as host in-browser. Use the Zoom host start link instead.',
+        );
+      }
+      try {
+        const hostId = await this.zoom.getSessionHostId(sessionType, meetingNumber);
+        if (!hostId) {
+          throw new BadRequestException(
+            'Could not resolve the Zoom host user for this session. Use the Zoom host start link instead.',
+          );
+        }
+        zak = await this.zoom.getZakToken(hostId);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Meeting SDK host ZAK failed for program ${programId}: ${msg}`,
+        );
+        throw new ServiceUnavailableException(
+          'Could not obtain Zoom host credentials for in-browser start. Use “Open host start link” (Zoom) instead, or ensure the Zoom app has user token scopes.',
+        );
+      }
+    }
+
+    const tk = asHost ? undefined : tkFromJoinUrl(program.zoomJoinUrl) || undefined;
 
     return {
       signature,
@@ -444,6 +496,8 @@ export class WebinarsService {
       password,
       userName,
       userEmail,
+      role,
+      ...(zak ? { zak } : {}),
       ...(tk ? { tk } : {}),
       sessionKind: sessionType,
     };
@@ -453,16 +507,18 @@ export class WebinarsService {
   async getOfficeHoursMeetingSdkAuth(
     authUser: AuthUser,
     programId: string,
+    opts?: { asHost?: boolean },
   ): Promise<MeetingSdkAuthDto> {
-    return this.getMeetingSdkAuth(authUser, programId, 'MEETING');
+    return this.getMeetingSdkAuth(authUser, programId, 'MEETING', opts);
   }
 
   /** Live webinar embed auth (WEBINAR). */
   async getWebinarMeetingSdkAuth(
     authUser: AuthUser,
     programId: string,
+    opts?: { asHost?: boolean },
   ): Promise<MeetingSdkAuthDto> {
-    return this.getMeetingSdkAuth(authUser, programId, 'WEBINAR');
+    return this.getMeetingSdkAuth(authUser, programId, 'WEBINAR', opts);
   }
 
   /**

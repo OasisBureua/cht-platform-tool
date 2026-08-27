@@ -62,19 +62,19 @@ export default function MfaSetup() {
     >
       <div className="space-y-4">
         {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
         {success && (
           <div className="space-y-3">
-            <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-700">
+            <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">
               MFA is now enabled for your account.
             </div>
             <button
               type="button"
               onClick={() => navigate(from, { replace: true })}
-              className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
+              className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
             >
               Continue
             </button>
@@ -86,7 +86,7 @@ export default function MfaSetup() {
             type="button"
             onClick={handleStartSetup}
             disabled={loadingSetup}
-            className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+            className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
           >
             {loadingSetup ? 'Preparing...' : 'Start MFA setup'}
           </button>
@@ -94,23 +94,23 @@ export default function MfaSetup() {
 
         {secretCode && !success && (
           <>
-            <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <p className="font-medium text-gray-900">Step 1: Scan with your authenticator app</p>
-              <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm text-gray-700">
+            <div className="rounded-[6px] border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground">Step 1: Scan with your authenticator app</p>
+              <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm text-muted-foreground">
                 <li>Open an authenticator app on your phone.</li>
                 <li>Choose add account / scan QR code.</li>
                 <li>Point your camera at the QR code below.</li>
               </ol>
-              <p className="mt-3 text-xs text-gray-600">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Works with apps such as{' '}
-                <span className="font-medium text-gray-800">Google Authenticator</span>,{' '}
-                <span className="font-medium text-gray-800">Microsoft Authenticator</span>,{' '}
-                <span className="font-medium text-gray-800">Authy</span>,{' '}
-                <span className="font-medium text-gray-800">1Password</span>, or{' '}
-                <span className="font-medium text-gray-800">Apple Passwords</span>.
+                <span className="font-medium text-foreground">Google Authenticator</span>,{' '}
+                <span className="font-medium text-foreground">Microsoft Authenticator</span>,{' '}
+                <span className="font-medium text-foreground">Authy</span>,{' '}
+                <span className="font-medium text-foreground">1Password</span>, or{' '}
+                <span className="font-medium text-foreground">Apple Passwords</span>.
               </p>
               {otpauthUri ? (
-                <div className="mt-4 flex justify-center rounded-lg bg-white p-4">
+                <div className="mt-4 flex justify-center rounded-[6px] bg-card p-4">
                   <QRCodeSVG
                     value={otpauthUri}
                     size={180}
@@ -125,12 +125,12 @@ export default function MfaSetup() {
                 <button
                   type="button"
                   onClick={() => setShowManualKey((v) => !v)}
-                  className="text-xs font-medium text-gray-900 underline hover:no-underline"
+                  className="text-xs font-medium text-foreground underline hover:no-underline"
                 >
                   {showManualKey ? 'Hide manual key' : 'Can’t scan? Enter key manually'}
                 </button>
                 {showManualKey && (
-                  <p className="mt-2 break-all rounded bg-white px-2 py-1.5 font-mono text-xs text-gray-800">
+                  <p className="mt-2 break-all rounded bg-card px-2 py-1.5 font-mono text-xs text-foreground">
                     {secretCode}
                   </p>
                 )}
@@ -139,7 +139,7 @@ export default function MfaSetup() {
 
             <form className="space-y-3" onSubmit={handleVerify}>
               <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-muted-foreground">
                   Step 2: Enter the 6-digit code from your app
                 </label>
                 <input
@@ -150,14 +150,14 @@ export default function MfaSetup() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   required
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={verifying}
-                className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+                className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
               >
                 {verifying ? 'Verifying...' : 'Verify and enable MFA'}
               </button>
@@ -167,13 +167,13 @@ export default function MfaSetup() {
 
         {!success && (
           <div className="pt-2 space-y-2">
-            <p className="text-center text-sm text-gray-600">
-              <Link to="/app/settings" className="font-medium text-gray-900 hover:underline">
+            <p className="text-center text-sm text-muted-foreground">
+              <Link to="/app/settings" className="font-medium text-foreground hover:underline">
                 Back to Settings
               </Link>
             </p>
-            <p className="text-center text-sm text-gray-600">
-              <Link to="/login" className="font-medium text-gray-900 hover:underline">
+            <p className="text-center text-sm text-muted-foreground">
+              <Link to="/login" className="font-medium text-foreground hover:underline">
                 Back to Login
               </Link>
             </p>

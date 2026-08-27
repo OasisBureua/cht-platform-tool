@@ -118,8 +118,8 @@ export default function AdminPayments() {
       {/* Header */}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payments</h1>
-          <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+          <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payments</h1>
+          <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
             Pending payouts from program completions and survey bonuses. Click <strong>Pay now</strong> on each row to send
             through <BillComMark size="sm" className="translate-y-px" /> (ACH or check).
           </p>
@@ -136,7 +136,7 @@ export default function AdminPayments() {
                 })
                 .finally(() => setExporting(false));
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
           >
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export CSV
@@ -168,9 +168,9 @@ export default function AdminPayments() {
       <ManualPaymentForm />
 
       {/* Pending table */}
-      <section id="pending-table" className="rounded-3xl border border-gray-200 bg-white overflow-hidden">
+      <section id="pending-table" className="rounded-card border border-border bg-card overflow-hidden">
         {(payNowMutation.isError || deleteMutation.isError) && (
-          <div className="flex items-start gap-2 border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="flex items-start gap-2 border-b border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold">Pay now failed</p>
@@ -184,19 +184,19 @@ export default function AdminPayments() {
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">User</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Amount</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Method</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Program</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Created</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase whitespace-nowrap">Actions</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">User</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Amount</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Type</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Method</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Created</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {(pending || []).map((p) => (
                 <PendingRow
                   key={p.id}
@@ -219,15 +219,15 @@ export default function AdminPayments() {
         {(pending || []).length === 0 && (
           <div className="px-6 py-12 text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
-            <p className="mt-2 font-medium text-gray-900">No pending payments</p>
-            <p className="text-sm text-gray-500">All payouts are up to date.</p>
-            <p className="mt-4 text-xs text-gray-400">
+            <p className="mt-2 font-medium text-foreground">No pending payments</p>
+            <p className="text-sm text-muted-foreground">All payouts are up to date.</p>
+            <p className="mt-4 text-xs text-muted-foreground">
               Pay now buttons appear in each row when there are pending payments.
             </p>
             {/* Show Pay now button preview when browsing without backend */}
             {import.meta.env.VITE_DISABLE_AUTH === 'true' && (
-              <div className="mt-6 pt-6 border-t border-dashed border-gray-200">
-                <p className="text-xs font-medium text-gray-500 mb-3">Pay now button (appears per row when there is data):</p>
+              <div className="mt-6 pt-6 border-t border-dashed border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Pay now button (appears per row when there is data):</p>
                 <button
                   type="button"
                   disabled
@@ -243,9 +243,9 @@ export default function AdminPayments() {
       </section>
 
       {/* Successful payouts (recent) */}
-      <section className="rounded-3xl border border-green-200 bg-green-50/40 overflow-hidden">
-        <div className="flex items-start gap-3 px-6 pt-5 pb-3 border-b border-green-100 bg-green-50/80">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-700 mt-0.5" aria-hidden />
+      <section className="rounded-card border border-success/25 bg-success/10/40 overflow-hidden">
+        <div className="flex items-start gap-3 px-6 pt-5 pb-3 border-b border-green-100 bg-success/10/80">
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" aria-hidden />
           <div>
             <h2 className="text-base font-semibold text-green-950">Successful payments</h2>
             <p className="mt-0.5 text-sm text-green-900">
@@ -255,7 +255,7 @@ export default function AdminPayments() {
         </div>
         <div className="overflow-x-auto bg-white">
           <table className="min-w-full divide-y divide-green-100 text-sm">
-            <thead className="bg-green-50/60">
+            <thead className="bg-success/10/60">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">User</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Amount</th>
@@ -288,12 +288,12 @@ export default function AdminPayments() {
 
       {/* Failed payments */}
       {failed.length > 0 && (
-        <section className="rounded-3xl border border-red-200 bg-red-50 overflow-hidden">
+        <section className="rounded-card border border-destructive/25 bg-destructive/10 overflow-hidden">
           <div className="flex items-start gap-3 px-6 pt-5 pb-3">
             <XCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-red-900">Failed payments</h2>
-              <p className="mt-0.5 text-sm text-red-800 flex flex-wrap items-center gap-x-1 gap-y-1">
+              <p className="mt-0.5 text-sm text-destructive flex flex-wrap items-center gap-x-1 gap-y-1">
                 These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to try
                 again through <BillComMark size="xs" className="translate-y-px" />.
               </p>
@@ -303,12 +303,12 @@ export default function AdminPayments() {
             <table className="min-w-full divide-y divide-red-200 text-sm">
               <thead className="bg-red-100/60">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Type</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Failed at</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-red-800 uppercase">Reason</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-red-800 uppercase whitespace-nowrap">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Type</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Failed at</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-destructive uppercase">Reason</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-destructive uppercase whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               {failedByProgram.map((group) => (
@@ -316,7 +316,7 @@ export default function AdminPayments() {
                     <tr className="bg-red-100/40">
                       <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-red-900 tracking-wide uppercase">
                         {group.title}
-                        <span className="ml-2 font-normal text-red-700 normal-case">
+                        <span className="ml-2 font-normal text-destructive normal-case">
                           ({group.payments.length} failed)
                         </span>
                       </td>
@@ -336,7 +336,7 @@ export default function AdminPayments() {
             </table>
           </div>
           {retryMutation.isError && (
-            <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-red-800">
+            <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {getApiErrorMessage(retryMutation.error, 'Retry failed.')}
             </div>
@@ -346,12 +346,12 @@ export default function AdminPayments() {
 
       {/* Eligible but not yet submitted for payment */}
       {eligibleNotSubmitted.length > 0 && (
-        <section className="rounded-3xl border border-amber-200 bg-amber-50 overflow-hidden">
+        <section className="rounded-card border border-warning/25 bg-warning/10 overflow-hidden">
           <div className="flex items-start gap-3 px-6 pt-5 pb-3">
             <Clock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
             <div>
               <h2 className="text-base font-semibold text-amber-900">Not yet submitted for payment</h2>
-              <p className="mt-0.5 text-sm text-amber-800">
+              <p className="mt-0.5 text-sm text-warning">
                 These users attended their session and completed the post-event survey, but have not submitted a payment request. Follow up or open their program hub to initiate.
               </p>
             </div>
@@ -360,11 +360,11 @@ export default function AdminPayments() {
             <table className="min-w-full divide-y divide-amber-200 text-sm">
               <thead className="bg-amber-100/60">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">User</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Program</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Honorarium</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Survey completed</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-amber-800 uppercase">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">User</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Program</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Honorarium</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Survey completed</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-warning uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">
@@ -390,7 +390,7 @@ export default function AdminPayments() {
                     <td className="px-4 py-3">
                       <Link
                         to={`/admin/programs/${r.program.id}/hub`}
-                        className="text-xs font-semibold text-amber-900 underline hover:text-amber-700"
+                        className="text-xs font-semibold text-amber-900 underline hover:text-warning"
                       >
                         Open program hub
                       </Link>
@@ -405,18 +405,18 @@ export default function AdminPayments() {
 
       {deleteConfirmPaymentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl space-y-4">
+          <div className="w-full max-w-sm rounded-card bg-card p-6 shadow-card-hover space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 className="font-semibold text-gray-900">Delete payment?</h2>
-                <p className="text-sm text-gray-500 mt-1">
+                <h2 className="font-semibold text-foreground">Delete payment?</h2>
+                <p className="text-sm text-muted-foreground mt-1">
                   This permanently removes this pending payout row. This action cannot be undone.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setDeleteConfirmPaymentId(null)}
-                className="shrink-0 text-gray-400 hover:text-gray-600"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
@@ -426,7 +426,7 @@ export default function AdminPayments() {
               <button
                 type="button"
                 onClick={() => setDeleteConfirmPaymentId(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
               >
                 Cancel
               </button>
@@ -558,12 +558,12 @@ function ManualPaymentForm() {
   };
 
   return (
-    <section className="rounded-3xl border border-gray-200 bg-white p-6 space-y-4">
+    <section className="rounded-card border border-border bg-card p-6 space-y-4">
       <div className="flex items-start gap-3">
-        <Plus className="h-5 w-5 shrink-0 text-gray-700 mt-0.5" aria-hidden />
+        <Plus className="h-5 w-5 shrink-0 text-muted-foreground mt-0.5" aria-hidden />
         <div>
-          <h2 className="text-base font-semibold text-gray-900">Add manual payment</h2>
-          <p className="mt-0.5 text-sm text-gray-600">
+          <h2 className="text-base font-semibold text-foreground">Add manual payment</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
             Queue a pending payout for a specific user and program. It appears in the table below for{' '}
             <strong>Pay now</strong> when you are ready. Honorarium + program still requires attendance
             verified and survey ack before Pay now succeeds.
@@ -573,7 +573,7 @@ function ManualPaymentForm() {
 
       <form onSubmit={onSubmit} className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-2 lg:col-span-2">
-          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">User</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">User</label>
           <input
             type="search"
             value={userQuery}
@@ -582,11 +582,11 @@ function ManualPaymentForm() {
               setSelectedUserId('');
             }}
             placeholder="Search by name or email (min 2 characters)"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm"
           />
-          {usersLoading ? <p className="text-xs text-gray-500">Searching…</p> : null}
+          {usersLoading ? <p className="text-xs text-muted-foreground">Searching…</p> : null}
           {userQuery.trim().length >= 2 && users.length > 0 ? (
-            <ul className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+            <ul className="max-h-40 overflow-y-auto rounded-lg border border-border divide-y divide-gray-100">
               {users.map((u: AdminUser) => (
                 <li key={u.id}>
                   <button
@@ -596,28 +596,28 @@ function ManualPaymentForm() {
                       setUserQuery(`${u.firstName} ${u.lastName} (${u.email})`);
                     }}
                     className={[
-                      'w-full px-3 py-2 text-left text-sm hover:bg-gray-50',
+                      'w-full px-3 py-2 text-left text-sm hover:bg-muted',
                       selectedUserId === u.id ? 'bg-brand-50 font-semibold' : '',
                     ].join(' ')}
                   >
                     {u.firstName} {u.lastName}
-                    <span className="block text-xs text-gray-500">{u.email}</span>
+                    <span className="block text-xs text-muted-foreground">{u.email}</span>
                   </button>
                 </li>
               ))}
             </ul>
           ) : null}
           {selectedUser ? (
-            <p className="text-xs text-green-800">Selected: {selectedUser.email}</p>
+            <p className="text-xs text-success">Selected: {selectedUser.email}</p>
           ) : null}
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Program</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Program</label>
           <select
             value={programId}
             onChange={(e) => setProgramId(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm"
           >
             <option value="">No program (optional)</option>
             {programs.map((p) => (
@@ -629,7 +629,7 @@ function ManualPaymentForm() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Amount (USD)</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Amount (USD)</label>
           <input
             type="number"
             min="0.01"
@@ -637,12 +637,12 @@ function ManualPaymentForm() {
             value={amountDollars}
             onChange={(e) => setAmountDollars(e.target.value)}
             placeholder="250.00"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm"
           />
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Type</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Type</label>
           <select
             value={paymentType}
             onChange={(e) =>
@@ -650,7 +650,7 @@ function ManualPaymentForm() {
                 e.target.value as 'HONORARIUM' | 'CME_COMPLETION' | 'SURVEY_BONUS' | 'REFERRAL',
               )
             }
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm"
           >
             <option value="HONORARIUM">Honorarium</option>
             <option value="CME_COMPLETION">CME completion</option>
@@ -660,13 +660,13 @@ function ManualPaymentForm() {
         </div>
 
         <div className="space-y-2 lg:col-span-2">
-          <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Description (optional)</label>
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Description (optional)</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="e.g. Manual honorarium adjustment"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-border px-3 py-2 text-sm"
             maxLength={500}
           />
         </div>
@@ -684,7 +684,7 @@ function ManualPaymentForm() {
             )}
             {checkingEligibility ? 'Checking eligibility…' : 'Add to pending queue'}
           </button>
-          {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
+          {formError ? <p className="text-sm text-destructive">{formError}</p> : null}
         </div>
       </form>
 
@@ -694,15 +694,15 @@ function ManualPaymentForm() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="manual-pay-eligibility-title"
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl space-y-4"
+            className="w-full max-w-md rounded-card bg-card p-6 shadow-card-hover space-y-4"
           >
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
+              <AlertCircle className="h-5 w-5 shrink-0 text-warning mt-0.5" aria-hidden />
               <div>
-                <h3 id="manual-pay-eligibility-title" className="font-semibold text-gray-900">
+                <h3 id="manual-pay-eligibility-title" className="font-semibold text-foreground">
                   Eligibility incomplete: add anyway?
                 </h3>
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-muted-foreground">
                   This person is not fully ready for Pay now on{' '}
                   <strong>{eligibilityConfirm.programTitle}</strong>. You can still queue the
                   payment, but Pay now will fail until attendance, survey, Bill.com vendor, and W-9
@@ -719,7 +719,7 @@ function ManualPaymentForm() {
               <button
                 type="button"
                 onClick={() => setEligibilityConfirm(null)}
-                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
               >
                 Cancel
               </button>
@@ -753,19 +753,19 @@ function StatCard({
 }) {
   const shell =
     variant === 'danger'
-      ? 'border-red-200 bg-red-50'
+      ? 'border-destructive/25 bg-destructive/10'
       : variant === 'success'
-        ? 'border-green-200 bg-green-50/80'
+        ? 'border-success/25 bg-success/10/80'
         : 'border-gray-200 bg-white';
   const labelCls =
-    variant === 'danger' ? 'text-red-700' : variant === 'success' ? 'text-green-800' : 'text-gray-600';
+    variant === 'danger' ? 'text-destructive' : variant === 'success' ? 'text-success' : 'text-gray-600';
   const valueCls =
     variant === 'danger' ? 'text-red-900' : variant === 'success' ? 'text-green-950' : 'text-gray-900';
   const subCls =
-    variant === 'danger' ? 'text-red-700' : variant === 'success' ? 'text-green-800' : 'text-gray-600';
+    variant === 'danger' ? 'text-destructive' : variant === 'success' ? 'text-success' : 'text-gray-600';
 
   return (
-    <div className={['rounded-3xl border p-6', shell].join(' ')}>
+    <div className={['rounded-card border p-6', shell].join(' ')}>
       <p className={['text-xs font-semibold', labelCls].join(' ')}>{label}</p>
       <p className={['mt-2 text-2xl font-semibold', valueCls].join(' ')}>{value}</p>
       <p className={['mt-1 text-sm', subCls].join(' ')}>{sub}</p>
@@ -799,7 +799,7 @@ function FailedRow({
       <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
         {payment.failedAt ? format(new Date(payment.failedAt), 'MMM d, yyyy') : '-'}
       </td>
-      <td className="px-4 py-3 text-xs text-red-700 max-w-xs">
+      <td className="px-4 py-3 text-xs text-destructive max-w-xs">
         <span className="line-clamp-2" title={payment.failureReason ?? undefined}>
           {payment.failureReason ?? '-'}
         </span>
@@ -913,18 +913,18 @@ function PendingRow({
         : '—';
 
   return (
-    <tr className="hover:bg-gray-50">
+    <tr className="hover:bg-muted">
       <td className="px-4 py-3">
-        <p className="font-medium text-gray-900">
+        <p className="font-medium text-foreground">
           {payment.user.firstName} {payment.user.lastName}
         </p>
-        <p className="text-sm text-gray-500">{payment.user.email}</p>
+        <p className="text-sm text-muted-foreground">{payment.user.email}</p>
       </td>
-      <td className="px-4 py-3 font-semibold text-gray-900">{formatMoney(payment.amount)}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{payment.type.replace(/_/g, ' ')}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{methodLabel}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{payment.program?.title ?? '-'}</td>
-      <td className="px-4 py-3 text-sm text-gray-500">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
+      <td className="px-4 py-3 font-semibold text-foreground">{formatMoney(payment.amount)}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{payment.type.replace(/_/g, ' ')}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{methodLabel}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{payment.program?.title ?? '-'}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-2">
           <button
@@ -947,16 +947,16 @@ function PendingRow({
             onClick={onRequestDelete}
             disabled={isDeleting}
             title="Delete (remove test entry)"
-            className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" aria-hidden />
           </button>
         </div>
         {blockReason ? (
-          <p className="mt-1 text-xs text-amber-600 text-right">{blockReason}</p>
+          <p className="mt-1 text-xs text-warning text-right">{blockReason}</p>
         ) : null}
         {payError ? (
-          <p className="mt-1 text-xs text-red-600 text-right max-w-xs ml-auto">{payError}</p>
+          <p className="mt-1 text-xs text-destructive text-right max-w-xs ml-auto">{payError}</p>
         ) : null}
       </td>
     </tr>

@@ -2,12 +2,13 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Calendar, Clock, ChevronRight, Radio } from 'lucide-react';
-import { format, isPast, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { BillComMark } from '../components/branding/BillComMark';
+import { isSessionExpired } from '../utils/live-session-timing';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -19,8 +20,7 @@ const WEBINAR_PLACEHOLDER_IMAGES = [
 ];
 
 function isExpired(w: WebinarItem): boolean {
-  if (!w.startTime) return false;
-  return isPast(new Date(w.startTime));
+  return isSessionExpired(w.startTime, w.duration);
 }
 
 function formatDuration(minutes?: number): string {
@@ -70,15 +70,15 @@ export default function Webinars() {
     <div className="space-y-8">
       <header className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex items-center gap-2.5 text-gray-900">
+          <div className="flex items-center gap-2.5 text-foreground">
             <Radio className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
-            <h1 className="text-balance text-2xl font-bold text-gray-900 md:text-3xl">LIVE</h1>
+            <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">LIVE</h1>
           </div>
           
         </div>
-        <p className="text-pretty text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+        <p className="text-pretty text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves
-          you, use <span className="font-medium text-gray-800">Join session</span> to open Zoom in your browser or the
+          you, use <span className="font-medium text-foreground">Join session</span> to open Zoom in your browser or the
           Zoom app. Honorarium payouts use{' '}
           <BillComMark size="sm" className="translate-y-px" />.
         </p>
@@ -86,27 +86,27 @@ export default function Webinars() {
 
       {isLoading ? (
         <div className="flex justify-center py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+          <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
         </div>
       ) : webinars.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="font-semibold text-gray-900">No Live sessions scheduled</p>
-          <p className="mt-1 text-sm text-gray-600">Check back soon for upcoming sessions.</p>
+        <div className="rounded-card border border-gray-100/90 bg-card p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="font-semibold text-foreground">No Live sessions scheduled</p>
+          <p className="mt-1 text-sm text-muted-foreground">Check back soon for upcoming sessions.</p>
         </div>
       ) : upcoming.length === 0 && past.length === 0 ? (
-        <div className="rounded-2xl border border-gray-100/90 bg-white p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="font-semibold text-gray-900">No upcoming Live sessions</p>
-          <p className="mt-1 text-sm text-gray-600">Check back soon for new sessions.</p>
+        <div className="rounded-card border border-gray-100/90 bg-card p-12 text-center shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <p className="font-semibold text-foreground">No upcoming Live sessions</p>
+          <p className="mt-1 text-sm text-muted-foreground">Check back soon for new sessions.</p>
         </div>
       ) : (
         <div className="space-y-8">
           {/* Upcoming */}
           {upcoming.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Upcoming · {upcoming.length}
               </h2>
-              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-card border border-gray-100/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {upcoming.map((w, i) => (
                   <WebinarRow
                     key={w.id}
@@ -125,10 +125,10 @@ export default function Webinars() {
           {/* Past / Expired */}
           {past.length > 0 && (
             <section className="space-y-3">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Past · last 5
               </h2>
-              <div className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-100/90 bg-white opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+              <div className="divide-y divide-gray-100 overflow-hidden rounded-card border border-gray-100/90 bg-card opacity-70 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
                 {past.map((w, i) => (
                   <WebinarRow
                     key={w.id}
@@ -166,10 +166,10 @@ function WebinarRow({
   return (
     <Link
       to={`/app/live/${w.id}`}
-      className="group flex items-center gap-3 px-4 py-3 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-50 active:scale-[0.995] sm:gap-4 sm:px-5"
+      className="group flex items-center gap-3 px-4 py-3 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted active:scale-[0.995] sm:gap-4 sm:px-5"
     >
       {/* Left thumbnail */}
-      <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-gray-100 sm:h-16 sm:w-24">
+      <div className="relative h-14 w-20 shrink-0 overflow-hidden rounded-[6px] bg-muted sm:h-16 sm:w-24">
         <img
           src={imageUrl}
           alt=""
@@ -183,7 +183,7 @@ function WebinarRow({
       {/* Info */}
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
+          <p className={['font-semibold truncate', expired ? 'text-muted-foreground' : 'text-foreground'].join(' ')}>
             {w.title}
           </p>
           {w.source === 'zoom' ? (
@@ -192,36 +192,36 @@ function WebinarRow({
             </span>
           ) : null}
           {listBadge ? (
-            <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-900">
+            <span className="shrink-0 rounded-[6px] border border-success/25 bg-success/10 px-2 py-0.5 text-xs font-semibold text-green-900">
               {listBadge}
             </span>
           ) : null}
           {expired && (
-            <span className="shrink-0 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+            <span className="shrink-0 rounded-[6px] border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
               Expired
             </span>
           )}
         </div>
         {w.hostDisplayName && (
-          <p className="text-xs text-gray-600 truncate">
+          <p className="text-xs text-muted-foreground truncate">
             <span className="font-semibold">Host:</span>{' '}
             {w.hostDisplayName}
-            {w.hostBio ? <span className="text-gray-500"> · {w.hostBio}</span> : null}
+            {w.hostBio ? <span className="text-muted-foreground"> · {w.hostBio}</span> : null}
           </p>
         )}
         {w.speakers && w.speakers.length > 0 && (
-          <p className="text-xs text-gray-600 truncate">
+          <p className="text-xs text-muted-foreground truncate">
             <span className="font-semibold">{w.speakers.length === 1 ? 'Speaker:' : 'Speakers:'}</span>{' '}
             {w.speakers.join(', ')}
           </p>
         )}
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {format(date, 'EEE, MMM d, yyyy')}
               {!expired && (
-                <span className="text-gray-400">· {formatDistanceToNow(date, { addSuffix: true })}</span>
+                <span className="text-muted-foreground">· {formatDistanceToNow(date, { addSuffix: true })}</span>
               )}
             </span>
           )}
@@ -236,7 +236,7 @@ function WebinarRow({
           )}
         </div>
         {!w.hostDisplayName && !w.speakers?.length && w.description && (
-          <p className="text-xs text-gray-500 line-clamp-1">{w.description}</p>
+          <p className="text-xs text-muted-foreground line-clamp-1">{w.description}</p>
         )}
       </div>
 
@@ -245,13 +245,13 @@ function WebinarRow({
         <span
           className={[
             'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
-            expired ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-50 text-amber-800',
+            expired ? 'bg-zinc-100 text-zinc-500' : 'bg-warning/10 text-warning',
           ].join(' ')}
         >
           {expired ? 'Session passed' : 'Survey required'}
         </span>
       </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-gray-600" />
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
     </Link>
   );
 }

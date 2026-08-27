@@ -185,11 +185,40 @@ model Program {
   payments          Payment[]
   cmeCredits        CMECredit[]
   webinarParticipantEvents WebinarParticipantEvent[]
+  zoomRecordings    ProgramZoomRecording[]
 
   @@index([status])
   @@index([startDate])
   @@index([status, startDate])
   @@map("Program")
+}
+
+/// Cloud recording file pulled from Zoom into private S3 for admin Program Hub.
+model ProgramZoomRecording {
+  id                   String   @id @default(cuid())
+  programId            String
+  zoomMeetingId        String
+  zoomRecordingFileId  String
+  fileType             String
+  recordingType        String?
+  fileExtension        String?
+  fileSizeBytes        Int?
+  s3Bucket             String
+  s3Key                String
+  recordingStart       DateTime?
+  recordingEnd         DateTime?
+  topic                String?
+  pulledAt             DateTime @default(now())
+  pulledByUserId       String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, zoomRecordingFileId])
+  @@index([programId])
+  @@index([zoomMeetingId])
+  @@map("ProgramZoomRecording")
 }
 
 enum ProgramStatus {

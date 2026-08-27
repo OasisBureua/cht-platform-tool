@@ -90,7 +90,7 @@ export function ProgramSurveyPanel({
 
   if (myResponse?.submitted) {
     return (
-      <p className="text-sm font-medium text-green-800 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+      <p className="text-sm font-medium text-success bg-success/10 border border-success/25 rounded-card px-4 py-3">
         Your survey responses are saved.
       </p>
     );
@@ -98,7 +98,7 @@ export function ProgramSurveyPanel({
 
   if (!surveyHasNativeQuestions(survey.questions)) {
     return (
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-muted-foreground">
         No survey form is configured for this program yet.
       </p>
     );

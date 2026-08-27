@@ -30,8 +30,8 @@ export function SessionHeroImageField({
   const uploadEnabled = adminConfig?.sessionHeroUploadEnabled === true;
 
   const labelCls = spacious
-    ? 'block text-sm font-semibold text-gray-900 mb-1'
-    : 'block text-xs font-semibold text-gray-600 mb-1';
+    ? 'block text-sm font-semibold text-foreground mb-1'
+    : 'block text-xs font-semibold text-muted-foreground mb-1';
 
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,7 +77,7 @@ export function SessionHeroImageField({
   return (
     <div>
       <label className={labelCls}>
-        Session banner image <span className="font-normal text-gray-400">, optional</span>
+        Session banner image <span className="font-normal text-muted-foreground">, optional</span>
       </label>
 
       {uploadEnabled ? (
@@ -93,7 +93,7 @@ export function SessionHeroImageField({
             type="button"
             disabled={uploading}
             onClick={() => fileRef.current?.click()}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
           >
             {uploading ? (
               <>
@@ -105,7 +105,7 @@ export function SessionHeroImageField({
             )}
           </button>
           {uploadError ? (
-            <span className="text-xs text-red-600">{uploadError}</span>
+            <span className="text-xs text-destructive">{uploadError}</span>
           ) : null}
         </div>
       ) : null}
@@ -121,9 +121,9 @@ export function SessionHeroImageField({
               ? 'https://cdn.example.com/session-banner.png'
               : 'https://…'
         }
-        className={`w-full rounded-xl border border-gray-200 px-4 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 ${spacious ? 'py-3' : 'py-2.5'}`}
+        className={`w-full rounded-card border border-border px-4 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 ${spacious ? 'py-3' : 'py-2.5'}`}
       />
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-muted-foreground">
         {uploadEnabled
           ? 'Uploaded images are stored in your session assets bucket; learners load this URL on registration and the session page. You can still paste an external CDN link instead.'
           : 'Paste a public HTTPS image URL. When uploads are configured on the server, an upload button appears here.'}

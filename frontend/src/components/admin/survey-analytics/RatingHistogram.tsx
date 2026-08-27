@@ -27,11 +27,11 @@ function RatingTooltip({
 }) {
   if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
-      <p className="text-xs font-semibold text-gray-900">Rating {label}</p>
-      <p className="font-mono text-sm font-bold tabular-nums text-gray-700">
+    <div className="rounded-[6px] border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-xs font-semibold text-foreground">Rating {label}</p>
+      <p className="font-mono text-sm font-bold tabular-nums text-muted-foreground">
         {Number(payload[0]?.value ?? 0).toLocaleString()}{' '}
-        <span className="font-sans font-normal text-gray-500">responses</span>
+        <span className="font-sans font-normal text-muted-foreground">responses</span>
       </p>
     </div>
   );
@@ -40,7 +40,7 @@ function RatingTooltip({
 /** Vertical histogram of rating values (1..N) → response counts. */
 export function RatingHistogram({ histogram }: RatingHistogramProps) {
   if (histogram.length === 0) {
-    return <p className="py-6 text-center text-sm text-gray-500">No ratings recorded.</p>;
+    return <p className="py-6 text-center text-sm text-muted-foreground">No ratings recorded.</p>;
   }
 
   const nonZeroBuckets = histogram.filter((b) => b.count > 0).length;

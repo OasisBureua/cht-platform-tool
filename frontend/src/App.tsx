@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import ScrollToTop from './components/ScrollToTop';
@@ -14,6 +14,7 @@ import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavIte
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Home                  = lazy(() => import('./pages/public/Home'));
+const HomeBento             = lazy(() => import('./pages/public/HomeBento'));
 const ClipDetail            = lazy(() => import('./pages/public/ClipDetail'));
 const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail'));
 const About                 = lazy(() => import('./pages/public/About'));
@@ -38,7 +39,6 @@ const PublicWebinarDetail   = lazy(() => import('./pages/public/PublicWebinarDet
 const PublicOfficeHours     = lazy(() => import('./pages/public/PublicOfficeHours'));
 const PublicOfficeHoursDetail = lazy(() => import('./pages/public/PublicOfficeHoursDetail'));
 const PublicSurveys         = lazy(() => import('./pages/public/PublicSurveys'));
-const WhatWeDo              = lazy(() => import('./pages/public/WhatWeDo'));
 const Services              = lazy(() => import('./pages/public/Services'));
 const Portfolios            = lazy(() => import('./pages/public/Portfolios'));
 const DolNetwork            = lazy(() => import('./pages/public/DolNetwork'));
@@ -52,6 +52,7 @@ const Webinars              = lazy(() => import('./pages/Webinars'));
 const WebinarDetail         = lazy(() => import('./pages/WebinarDetail'));
 const OfficeHours           = lazy(() => import('./pages/OfficeHours'));
 const OfficeHoursDetail     = lazy(() => import('./pages/OfficeHoursDetail'));
+const ZoomSessionPage       = lazy(() => import('./pages/ZoomSessionPage'));
 const ProgramRegisterWizard = lazy(() => import('./pages/ProgramRegisterWizard'));
 const LiveMultiRegister     = lazy(() => import('./pages/LiveMultiRegister'));
 const Surveys               = lazy(() => import('./pages/Surveys'));
@@ -64,8 +65,6 @@ const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
-const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
-const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -137,7 +136,10 @@ function App() {
                 ======================= */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<Home />} />
+              {/* The homepage is order C: seven sections folded into five. */}
+              <Route path="/home" element={<HomeBento />} />
+              {/* Order B, kept for comparison. Not linked from the nav. */}
+              <Route path="/home-tame" element={<Home />} />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
@@ -174,7 +176,8 @@ function App() {
               <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
               <Route path="/surveys" element={<PublicSurveys />} />
               <Route path="/for-hcps" element={<ForHCPs />} />
-              <Route path="/what-we-do" element={<WhatWeDo />} />
+              {/* Merged into /about: one page for who we are and what we run. */}
+              <Route path="/what-we-do" element={<Navigate to="/about" replace />} />
               <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
               <Route path="/kol-network" element={<DolNetwork />} />
               <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />
@@ -183,64 +186,79 @@ function App() {
 
             {/* =======================
                 APP ROUTES (UNDER /app)
+                Session pages sit outside Layout so Welcome chrome never shows.
                 ======================= */}
             <Route
               path="/app"
               element={
                 <ProtectedRoute>
-                  <Layout />
+                  <Outlet />
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="/app/home" replace />} />
+              {/* Full-screen Zoom — declared before Layout so they outrank live/:id */}
+              <Route path="live/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
+              <Route path="webinars/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
+              <Route
+                path="chm-office-hours/:id/session"
+                element={<ZoomSessionPage sessionKind="MEETING" />}
+              />
+              <Route
+                path="office-hours/:id/session"
+                element={<ZoomSessionPage sessionKind="MEETING" />}
+              />
 
-              <Route path="home" element={<Dashboard />} />
-              <Route path="search" element={<ExploreOpportunities />} />
+              <Route element={<Layout />}>
+                <Route index element={<Navigate to="/app/home" replace />} />
 
-              <Route path="live" element={<Webinars />} />
-              <Route path="live/register-multiple" element={<LiveMultiRegister />} />
-              <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
-              <Route path="live/:id" element={<WebinarDetail />} />
-              <Route path="webinars" element={<Navigate to="/app/live" replace />} />
-              <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
-              <Route path="webinars/:id" element={<WebinarDetail />} />
+                <Route path="home" element={<Dashboard />} />
+                <Route path="search" element={<ExploreOpportunities />} />
 
-              <Route path="chm-office-hours" element={<OfficeHours />} />
-              <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
-              <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
-              <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
-              <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
-              <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
+                <Route path="live" element={<Webinars />} />
+                <Route path="live/register-multiple" element={<LiveMultiRegister />} />
+                <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="live/:id" element={<WebinarDetail />} />
+                <Route path="webinars" element={<Navigate to="/app/live" replace />} />
+                <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="webinars/:id" element={<WebinarDetail />} />
 
-              <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
-              <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
+                <Route path="chm-office-hours" element={<OfficeHours />} />
+                <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
+                <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
+                <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
+                <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
 
-              <Route path="surveys" element={<Surveys />} />
-              <Route path="surveys/:id" element={<SurveyDetail />} />
+                <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
+                <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
 
-              <Route path="podcasts" element={<Podcasts />} />
-              <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
-              <Route path="podcasts/:showId" element={<PodcastShow />} />
+                <Route path="surveys" element={<Surveys />} />
+                <Route path="surveys/:id" element={<SurveyDetail />} />
 
-              <Route path="watch/:videoId" element={<WatchVideo />} />
-              <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
+                <Route path="podcasts" element={<Podcasts />} />
+                <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
+                <Route path="podcasts/:showId" element={<PodcastShow />} />
 
-              <Route path="clip/:id" element={<ClipDetail />} />
-              {/* Legacy in-app links used /app/catalog/clip/:id, keep working */}
-              <Route path="catalog/clip/:id" element={<ClipDetail />} />
+                <Route path="watch/:videoId" element={<WatchVideo />} />
+                <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
 
-              <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
-              <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
-              <Route path="catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
-              <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
-              <Route path="catalog" element={<VideosPage />} />
+                <Route path="clip/:id" element={<ClipDetail />} />
+                {/* Legacy in-app links used /app/catalog/clip/:id, keep working */}
+                <Route path="catalog/clip/:id" element={<ClipDetail />} />
 
-              <Route path="earnings" element={<Earnings />} />
-              <Route path="chatbot" element={<ChatBot />} />
-              <Route path="settings" element={<Settings />} />
-              <Route path="payments" element={<Payments />} />
+                <Route path="catalog/browse" element={<Navigate to="/app/search" replace />} />
+                <Route path="catalog/playlist/:playlistId" element={<PlaylistDetail />} />
+                <Route path="catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
+                <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
+                <Route path="catalog" element={<VideosPage />} />
 
-              <Route path="*" element={<Navigate to="/app/home" replace />} />
+                <Route path="earnings" element={<Earnings />} />
+                <Route path="chatbot" element={<ChatBot />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="payments" element={<Payments />} />
+
+                <Route path="*" element={<Navigate to="/app/home" replace />} />
+              </Route>
             </Route>
 
             {/* =======================

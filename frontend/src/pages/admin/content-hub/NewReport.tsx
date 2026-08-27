@@ -18,7 +18,7 @@ import { PLATFORM_LABELS } from './lib/types';
 import type { Platform, ReportType } from './lib/types';
 
 const INPUT_CLS =
-  'flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+  'flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground shadow-card transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
 const LABEL_CLS = 'mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground';
 

@@ -150,9 +150,9 @@ export default function PostEventParticipantFlow(props: {
 
   if (attendancePending) {
     return (
-      <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-2">
-        <h2 className="text-base font-semibold text-gray-900">Post-event steps</h2>
-        <p className="text-sm text-gray-600">
+      <section className="bg-card border border-border rounded-card p-6 space-y-2">
+        <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
+        <p className="text-sm text-muted-foreground">
           Your registration is approved. An administrator still needs to <strong>verify attendance</strong> after the
           live session before the post-event survey and honorarium steps unlock here.
         </p>
@@ -162,9 +162,9 @@ export default function PostEventParticipantFlow(props: {
 
   if (attendanceDenied) {
     return (
-      <section className="rounded-xl border border-red-200 bg-red-50 p-6 space-y-2">
+      <section className="rounded-card border border-destructive/25 bg-destructive/10 p-6 space-y-2">
         <h2 className="text-base font-semibold text-red-900">Attendance not verified</h2>
-        <p className="text-sm text-red-800">
+        <p className="text-sm text-destructive">
           Your attendance could not be verified for this session. If you believe this is a mistake, contact support.
         </p>
       </section>
@@ -234,8 +234,8 @@ export default function PostEventParticipantFlow(props: {
   };
 
   return (
-    <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-      <h2 className="text-base font-semibold text-gray-900">Post-event steps</h2>
+    <section className="bg-card border border-border rounded-card p-6 space-y-4">
+      <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
 
       {/* Status ladder */}
       <ol className="flex items-center gap-0" aria-label="Post-event progress">
@@ -260,7 +260,7 @@ export default function PostEventParticipantFlow(props: {
                 <span
                   className={[
                     'mt-1 text-[11px] font-semibold text-center whitespace-nowrap',
-                    done ? 'text-green-700' : current ? 'text-gray-900' : 'text-gray-400',
+                    done ? 'text-success' : current ? 'text-gray-900' : 'text-gray-400',
                   ].join(' ')}
                 >
                   {step.label}
@@ -276,7 +276,7 @@ export default function PostEventParticipantFlow(props: {
 
       {phase === 'intro' ? (
         <>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             {hasSurvey ? (
               <>
                 Complete the post-event survey in the next step to save your responses.
@@ -299,7 +299,7 @@ export default function PostEventParticipantFlow(props: {
           <button
             type="button"
             onClick={begin}
-            className="inline-flex rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
           >
             Continue
           </button>
@@ -342,7 +342,7 @@ export default function PostEventParticipantFlow(props: {
                 }}
               />
             ) : (
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 No native post-event survey is configured for this session yet.
               </p>
             )

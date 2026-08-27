@@ -245,6 +245,7 @@ function buildAnalyticsPrintHtml(title: string, analyticsHtml: string, styles: s
     }
 
     [data-testid="survey-analytics-view"] section,
+    [data-testid="survey-analytics-view"] .rounded-card,
     [data-testid="survey-analytics-view"] .rounded-2xl {
       break-inside: avoid;
       page-break-inside: avoid;
@@ -255,6 +256,7 @@ function buildAnalyticsPrintHtml(title: string, analyticsHtml: string, styles: s
       box-shadow: none !important;
       margin-bottom: 14px !important;
     }
+    [data-testid="survey-analytics-view"] [data-print-kpi].rounded-card,
     [data-testid="survey-analytics-view"] [data-print-kpi].rounded-2xl {
       margin-bottom: 0 !important;
       padding: 12px 14px !important;

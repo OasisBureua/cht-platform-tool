@@ -10,7 +10,7 @@ export default function ContentHubHeader() {
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
         <Link to="/admin/content-hub" className="flex items-center gap-2.5">
-          <LogoMark size={26} color="#3da4c0" />
+          <LogoMark size={26} color="#007cff" />
           <div className="leading-tight">
             <div className="text-sm font-semibold text-foreground">Reporting</div>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">

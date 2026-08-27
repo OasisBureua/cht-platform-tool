@@ -313,8 +313,8 @@ export default function AdminHcpIntel() {
     // Only reachable on a VALID 404 from the API: backend/network failures
     // fall back to the demo profile above so the page stays reviewable.
     return (
-      <Card className="border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/30">
-        <CardContent className="flex items-center gap-3 p-4 pt-4 text-sm text-red-700 dark:text-red-300">
+      <Card className="border-red-300 bg-destructive/10 dark:border-red-900 dark:bg-red-950/30">
+        <CardContent className="flex items-center gap-3 p-4 pt-4 text-sm text-destructive dark:text-red-300">
           <AlertCircle className="h-5 w-5 shrink-0" />
           KOL not found.
         </CardContent>

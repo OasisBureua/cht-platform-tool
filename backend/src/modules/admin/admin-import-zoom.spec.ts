@@ -47,6 +47,7 @@ describe('AdminController importZoomSession', () => {
       {} as import('../../auth/auth.service').AuthService,
       zoom as unknown as ZoomService,
       {} as SessionHeroPresignService,
+      {} as import('./program-zoom-recordings.service').ProgramZoomRecordingsService,
       {} as import('../email/ses-email.service').SesEmailService,
     );
   });

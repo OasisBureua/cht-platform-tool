@@ -26,16 +26,16 @@ function CardShell({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="rounded-card border border-border bg-card p-4">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-        <h3 className="text-sm font-semibold text-gray-900">{prompt}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{prompt}</h3>
         {badge ? (
-          <span className="inline-block shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-600">
+          <span className="inline-block shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
             {badge}
           </span>
         ) : null}
       </div>
-      <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -54,7 +54,7 @@ function ChartTypeToggle({
   ];
   return (
     <div
-      className="inline-flex rounded-lg border border-gray-200 p-0.5"
+      className="inline-flex rounded-[6px] border border-border p-0.5"
       role="group"
       aria-label="Chart type"
     >
@@ -67,8 +67,8 @@ function ChartTypeToggle({
             onClick={() => onChange(o.key)}
             aria-pressed={active}
             className={[
-              'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors',
-              active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-700',
+              'inline-flex items-center gap-1 rounded-[6px] px-2 py-1 text-xs font-semibold transition-colors',
+              active ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:text-muted-foreground',
             ].join(' ')}
           >
             <o.Icon className="h-3.5 w-3.5" />
@@ -107,7 +107,10 @@ function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalyt
 
       <ul className="mt-3 space-y-1.5 border-t border-gray-100 pt-3">
         {question.options.map((o, i) => (
-          <li key={o.label} className="flex items-start justify-between gap-3 text-xs text-gray-600">
+          <li
+            key={o.label}
+            className="flex items-start justify-between gap-3 text-xs text-muted-foreground"
+          >
             <span className="flex min-w-0 items-start gap-2 pr-2">
               <span
                 className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
@@ -116,7 +119,7 @@ function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalyt
               />
               <span className="break-words">{o.label}</span>
             </span>
-            <span className="shrink-0 font-mono tabular-nums text-gray-500">
+            <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
               {o.count.toLocaleString()} · {o.percentage.toFixed(0)}%
             </span>
           </li>
@@ -137,11 +140,11 @@ function RatingStats({ q }: { q: SurveyRatingQuestionAnalytics }) {
   return (
     <div className="mb-3 grid grid-cols-4 gap-2">
       {stats.map((s) => (
-        <div key={s.label} className="rounded-lg bg-gray-50 px-2 py-1.5 text-center">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+        <div key={s.label} className="rounded-[6px] bg-muted px-2 py-1.5 text-center">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             {s.label}
           </p>
-          <p className="text-sm font-bold tabular-nums text-gray-900">{s.value}</p>
+          <p className="text-sm font-bold tabular-nums text-foreground">{s.value}</p>
         </div>
       ))}
     </div>
@@ -157,7 +160,7 @@ function TextSamples({ q }: { q: SurveyTextQuestionAnalytics }) {
         type="button"
         data-print-hide
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
         aria-expanded={open}
       >
         {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -172,19 +175,19 @@ function TextSamples({ q }: { q: SurveyTextQuestionAnalytics }) {
           {q.samples.map((sample, i) => (
             <li
               key={i}
-              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-700"
+              className="rounded-[6px] border border-gray-100 bg-muted px-3 py-2 text-sm text-muted-foreground"
             >
               {sample}
             </li>
           ))}
         </ul>
       ) : open ? (
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-muted-foreground">
           No sample responses available. Free-text samples are redacted and shown only on
           request.
         </p>
       ) : (
-        <p data-print-show hidden className="mt-2 text-sm text-gray-500">
+        <p data-print-show hidden className="mt-2 text-sm text-muted-foreground">
           No sample responses available. Free-text samples are redacted and shown only on
           request.
         </p>

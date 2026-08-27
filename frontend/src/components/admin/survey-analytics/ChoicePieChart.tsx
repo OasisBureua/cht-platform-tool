@@ -19,11 +19,11 @@ function PieTooltip({
   const point = payload[0]?.payload;
   if (!point) return null;
   return (
-    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-lg">
-      <p className="text-xs font-semibold text-gray-900">{point.label}</p>
-      <p className="font-mono text-sm font-bold tabular-nums text-gray-700">
+    <div className="rounded-[6px] border border-border bg-card px-3 py-2 shadow-lg">
+      <p className="text-xs font-semibold text-foreground">{point.label}</p>
+      <p className="font-mono text-sm font-bold tabular-nums text-muted-foreground">
         {point.count.toLocaleString()}{' '}
-        <span className="font-sans font-normal text-gray-500">
+        <span className="font-sans font-normal text-muted-foreground">
           ({point.percentage.toFixed(0)}%)
         </span>
       </p>
@@ -39,7 +39,7 @@ function PieTooltip({
 export function ChoicePieChart({ options }: ChoicePieChartProps) {
   const total = options.reduce((sum, o) => sum + o.count, 0);
   if (options.length === 0 || total === 0) {
-    return <p className="py-6 text-center text-sm text-gray-500">No answers recorded.</p>;
+    return <p className="py-6 text-center text-sm text-muted-foreground">No answers recorded.</p>;
   }
 
   // Zero-count options contribute no visible slice (Recharts omits them).

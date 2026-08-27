@@ -5,7 +5,7 @@ import { ADMIN_NAV_ITEMS } from './adminNavItems';
 export default function AdminSidebar() {
   return (
     <aside
-      className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] w-[120px] shrink-0 flex-col self-start overflow-y-auto overflow-x-hidden border-r border-gray-200/80 bg-white md:flex dark:border-zinc-800/80 dark:bg-zinc-950"
+      className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] w-[120px] shrink-0 flex-col self-start overflow-y-auto overflow-x-hidden border-r border-gray-200/80 bg-card md:flex /80"
       aria-label="Admin sidebar"
     >
       <div className="flex h-[82px] w-full shrink-0 items-center justify-center">
@@ -16,24 +16,35 @@ export default function AdminSidebar() {
 
       {/* Pack items at the top with clearer size + spacing */}
       <nav className="flex flex-col items-center gap-2.5 px-1.5 pb-4 pt-2">
-        {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+        {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
           <NavLink
             key={`${to}-${label}`}
             to={to}
             end={end}
             className={({ isActive }) =>
               [
-                'flex w-full flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2.5 text-center transition',
+                'flex w-full flex-col items-center justify-center gap-1 rounded-[6px] px-1.5 py-2.5 text-center transition',
                 isActive
                   ? 'bg-primary/10 text-primary'
-                  : 'text-gray-700 hover:bg-gray-50 hover:text-primary dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-primary',
+                  : 'text-muted-foreground hover:bg-muted hover:text-primary dark:hover:text-primary',
               ].join(' ')
             }
           >
-            <Icon className="h-6 w-6 shrink-0" strokeWidth={2} aria-hidden />
-            <span className="max-w-full px-0.5 text-[11px] font-semibold leading-snug [overflow-wrap:anywhere]">
-              {label}
-            </span>
+            {({ isActive }) => (
+              <>
+                {/* Resting icon carries the destination's own hue. The active
+                    row already tints itself `primary` end to end, so there the
+                    icon inherits that instead of competing with it. */}
+                <Icon
+                  className={isActive ? 'h-6 w-6 shrink-0' : `h-6 w-6 shrink-0 ${iconTone}`}
+                  strokeWidth={2}
+                  aria-hidden
+                />
+                <span className="max-w-full px-0.5 text-[11px] font-semibold leading-snug [overflow-wrap:anywhere]">
+                  {label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

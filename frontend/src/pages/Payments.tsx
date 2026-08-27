@@ -15,11 +15,11 @@ function formatMoney(value: number) {
 }
 
 function statusChip(status: PaymentStatus) {
-  const base = 'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold';
-  if (status === 'PAID') return `${base} border-green-200 bg-green-50 text-green-800`;
+  const base = 'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold';
+  if (status === 'PAID') return `${base} border-success/25 bg-success/10 text-success`;
   if (status === 'PROCESSING') return `${base} border-blue-200 bg-blue-50 text-blue-800`;
-  if (status === 'PENDING') return `${base} border-yellow-200 bg-yellow-50 text-yellow-800`;
-  return `${base} border-red-200 bg-red-50 text-red-800`;
+  if (status === 'PENDING') return `${base} border-warning/25 bg-warning/10 text-yellow-800`;
+  return `${base} border-destructive/25 bg-destructive/10 text-destructive`;
 }
 
 function statusIcon(status: PaymentStatus) {
@@ -79,21 +79,21 @@ export default function Payments() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">Payment Settings</h1>
-        <p className="text-sm text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+        <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payment Settings</h1>
+        <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
           Honoraria and survey bonuses are paid through{' '}
           <BillComMark size="sm" className="translate-y-px" /> using ACH or check. Complete your vendor profile here so
           admins can initiate payouts.
         </p>
-        <p className="text-sm text-gray-600">
-          <Link to="/app/earnings" className="font-medium text-gray-900 underline hover:no-underline">
+        <p className="text-sm text-muted-foreground">
+          <Link to="/app/earnings" className="font-medium text-foreground underline hover:no-underline">
             Earnings summary and charts
           </Link>
         </p>
       </header>
 
       {profileIncomplete ? (
-        <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+        <div className="rounded-card border border-warning/25 bg-warning/10 p-4 text-sm text-amber-950">
           <p className="font-semibold">Complete your profile first</p>
           <p className="mt-1 text-amber-900/90">
             Add your <strong>profession</strong> and <strong>NPI</strong> (when required) under Settings before you can
@@ -124,10 +124,10 @@ export default function Payments() {
         />
       ) : (
         <div className="space-y-3">
-          <div className="rounded-3xl border border-green-200 bg-green-50/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="rounded-card border border-success/25 bg-success/10/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-              <p className="text-sm font-medium text-green-800 inline-flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
                 <BillComMark size="sm" /> vendor on file. You can receive payouts.
               </p>
             </div>
@@ -136,14 +136,14 @@ export default function Payments() {
                 type="button"
                 disabled={profileIncomplete}
                 onClick={() => setEditingPaymentDetails((v) => !v)}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-[6px] border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
               >
                 {editingPaymentDetails ? 'Close editor' : 'Edit payment details'}
               </button>
               <button
                 type="button"
                 onClick={() => setW9ModalOpen(true)}
-                className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-[6px] border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
                 {accountStatus?.w9Submitted ? 'Update W-9' : 'Complete W-9'}
               </button>
@@ -164,18 +164,18 @@ export default function Payments() {
             />
           ) : null}
           {needsW9 && (
-            <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-4">
+            <div className="rounded-card border border-warning/25 bg-warning/10 p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <AlertCircle className="h-6 w-6 text-amber-600 shrink-0" />
                 <div>
                   <p className="font-semibold text-amber-900">W-9 required</p>
-                  <p className="text-sm text-amber-800">Complete the W-9 form to receive payouts.</p>
+                  <p className="text-sm text-warning">Complete the W-9 form to receive payouts.</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setW9ModalOpen(true)}
-                className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
+                className="shrink-0 rounded-[6px] bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700"
               >
                 Complete W-9
               </button>
@@ -192,13 +192,13 @@ export default function Payments() {
       </section>
 
       {/* Payout info */}
-      <section className="rounded-3xl border border-gray-200 bg-white p-6 min-w-0 overflow-hidden">
+      <section className="rounded-card border border-border bg-card p-6 min-w-0 overflow-hidden">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-900">Payouts</p>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm font-semibold text-foreground">Payouts</p>
+          <p className="text-sm text-muted-foreground">
             Last payout:{' '}
             {summary?.lastPayoutDate ? (
-              <span className="font-semibold text-gray-900">
+              <span className="font-semibold text-foreground">
                 {format(new Date(summary.lastPayoutDate), 'MMM d, yyyy')}
               </span>
             ) : null}
@@ -207,7 +207,7 @@ export default function Payments() {
             <button
               type="button"
               onClick={() => setW9ModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+              className="inline-flex items-center gap-2 rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
             >
               <AlertCircle className="h-4 w-4" />
               Complete W-9 to receive payouts
@@ -218,7 +218,7 @@ export default function Payments() {
               type="button"
               disabled={profileIncomplete}
               onClick={() => setW9ModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
             >
               {accountStatus?.w9Submitted ? 'Update W-9' : 'Complete W-9'}
             </button>
@@ -242,19 +242,19 @@ export default function Payments() {
       {/* History */}
       <section id="payment-history" className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-900">Payment history</h2>
-          <span className="text-sm text-gray-600">{(history || []).length} items</span>
+          <h2 className="text-base font-semibold text-foreground">Payment history</h2>
+          <span className="text-sm text-muted-foreground">{(history || []).length} items</span>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-          <div className="divide-y divide-gray-200">
+        <div className="bg-card border border-border rounded-card overflow-hidden">
+          <div className="divide-y divide-border">
             {(history || []).map((item) => (
               <HistoryRow key={item.id} item={item} />
             ))}
           </div>
           {(history || []).length === 0 && (
             <div className="p-10 text-center">
-              <p className="font-semibold text-gray-900">No payments yet</p>
-              <p className="mt-1 text-sm text-gray-600">Complete activities to start earning.</p>
+              <p className="font-semibold text-foreground">No payments yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Complete activities to start earning.</p>
             </div>
           )}
         </div>
@@ -266,10 +266,10 @@ export default function Payments() {
 
 function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
   return (
-    <div className="rounded-3xl border border-gray-200 bg-white p-6">
-      <p className="text-xs font-semibold text-gray-600">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-gray-900">{value}</p>
-      <p className="mt-1 text-sm text-gray-600">{sub}</p>
+    <div className="rounded-card border border-border bg-card p-6">
+      <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{sub}</p>
     </div>
   );
 }
@@ -299,16 +299,16 @@ function HistoryRow({ item }: { item: PaymentItem }) {
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3">
       <div className="min-w-0">
-        <p className="font-medium text-gray-900 truncate">{item.title}</p>
-        <p className="text-sm text-gray-600 truncate">
+        <p className="font-medium text-foreground truncate">{item.title}</p>
+        <p className="text-sm text-muted-foreground truncate">
           {format(new Date(item.date), 'MMM d, yyyy')} • {methodLabel}
         </p>
         {deliveryHint ? (
-          <p className="text-xs text-gray-500 truncate">{deliveryHint}</p>
+          <p className="text-xs text-muted-foreground truncate">{deliveryHint}</p>
         ) : null}
       </div>
       <div className="shrink-0 flex items-center gap-3">
-        <span className="text-sm font-semibold text-gray-900">{formatMoney(item.amount)}</span>
+        <span className="text-sm font-semibold text-foreground">{formatMoney(item.amount)}</span>
         <span className={statusChip(item.status)}>
           {statusIcon(item.status)}
           {item.status}

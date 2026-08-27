@@ -17,7 +17,7 @@ export function AuthMigrationNotice({ variant }: { variant: Variant }) {
   return (
     <div
       role="status"
-      className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-950"
+      className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm leading-relaxed text-amber-950"
     >
       {COPY[variant]}
     </div>
