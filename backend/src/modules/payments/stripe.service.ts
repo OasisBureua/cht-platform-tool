@@ -152,15 +152,14 @@ export class StripeService {
     expiresAt: number;
   }> {
     const stripe = this.getClient();
+    // Do not set disable_stripe_user_authentication — that feature is only valid
+    // when the platform owns requirements collection (Custom). Express / Stripe-
+    // collected recipient accounts reject it with a 400.
     const session = await stripe.accountSessions.create({
       account: accountId,
       components: {
         account_onboarding: {
           enabled: true,
-          features: {
-            // Platform already authenticates the HCP in CHT.
-            disable_stripe_user_authentication: true,
-          },
         },
       },
     });
