@@ -2,7 +2,7 @@ import type { SVGProps } from 'react';
 
 /**
  * Brand Option 2: lowercase wordmark (Community Health Media brand adjustments).
- * Uses Chillax (see index.html / tailwind fontFamily.sans).
+ * Uses Geist (see index.html / tailwind fontFamily.sans).
  */
 export default function ChmWordmarkOption2(props: SVGProps<SVGSVGElement>) {
   const { className, ...rest } = props;
@@ -20,7 +20,7 @@ export default function ChmWordmarkOption2(props: SVGProps<SVGSVGElement>) {
         y="18.5"
         fill="currentColor"
         style={{
-          fontFamily: "'Chillax', system-ui, sans-serif",
+          fontFamily: "'Geist', system-ui, sans-serif",
           fontSize: '20px',
           fontWeight: 700,
           letterSpacing: '-0.06em',

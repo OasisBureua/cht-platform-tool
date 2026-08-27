@@ -36,7 +36,7 @@ export function SurveyAnalyticsPanel({ surveyId, enabled = true }: SurveyAnalyti
 
   if (isError || !data) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <div className="rounded-card border border-destructive/25 bg-destructive/10 p-4 text-destructive">
         Failed to load survey analytics.
       </div>
     );

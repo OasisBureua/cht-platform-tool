@@ -78,12 +78,12 @@ export default function VerifyEmail() {
     >
       <form className="space-y-4" onSubmit={handleSubmit}>
         {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
         {info && (
-          <div className="rounded-lg bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">
             {info}
           </div>
         )}
@@ -110,7 +110,7 @@ export default function VerifyEmail() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 disabled:opacity-70"
+          className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 disabled:opacity-70"
         >
           {submitting ? 'Verifying...' : 'Verify email'}
         </button>
@@ -120,14 +120,14 @@ export default function VerifyEmail() {
         type="button"
         onClick={handleResend}
         disabled={resending}
-        className="mt-3 w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        className="mt-3 w-full rounded-[6px] border border-border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
       >
         {resending ? 'Sending...' : 'Resend verification code'}
       </button>
 
-      <p className="mt-4 text-center text-sm text-gray-600">
+      <p className="mt-4 text-center text-sm text-muted-foreground">
         Already verified?{' '}
-        <Link to="/login" className="font-medium text-gray-900 underline hover:text-gray-700">
+        <Link to="/login" className="font-medium text-foreground underline hover:text-muted-foreground">
           Sign in
         </Link>
       </p>
@@ -142,13 +142,13 @@ function Input({
   const id = props.id || props.name || label.toLowerCase().replace(/\s+/g, '-');
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-700">
+      <label htmlFor={id} className="mb-1 block text-sm font-medium text-muted-foreground">
         {label}
       </label>
       <input
         id={id}
         {...props}
-        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+        className="w-full rounded-[6px] border border-border px-3 py-2 text-sm text-foreground shadow-card focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
       />
     </div>
   );

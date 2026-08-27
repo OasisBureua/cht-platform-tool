@@ -113,12 +113,22 @@ function clipMetaString(c: MediaHubClip, kind: 'recent' | 'views'): string {
 
 const CLIP_LIMIT = 14;
 
-/** Shared bento tile surface */
+/**
+ * Shared bento tile surface. `.card` carries the surface, the elevation
+ * and the 2px hover lift, so the tile no longer hand-rolls an rgba
+ * shadow per appearance.
+ */
 const bentoMetric =
-  'group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.12)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(49,105,149,0.14)] active:scale-[0.995] dark:bg-zinc-900 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.55)] dark:hover:shadow-[0_16px_48px_-28px_rgba(49,105,149,0.1)]';
+  'card group relative flex min-h-[132px] flex-col justify-between overflow-hidden p-5 text-left active:scale-[0.995]';
 
+/**
+ * Same to-br three-stop wash as before, retuned off raw amber/zinc onto
+ * the spectrum: warm coral corner → paper → the deeper paper step. The
+ * gradient paints the surface, so this one keeps `shadow-card` by hand
+ * rather than `.card`, whose flat background would cover the wash.
+ */
 const bentoPending =
-  'group relative flex min-h-[148px] flex-col overflow-hidden rounded-2xl bg-gradient-to-br from-amber-50/90 via-white to-zinc-50 p-5 text-left shadow-[0_8px_36px_-24px_rgba(0,0,0,0.1)] transition-[box-shadow,transform] duration-200 hover:shadow-[0_14px_44px_-26px_rgba(245,158,11,0.18)] active:scale-[0.995] dark:from-amber-950/20 dark:via-zinc-900 dark:to-zinc-950 dark:shadow-[0_10px_40px_-28px_rgba(0,0,0,0.5)] dark:hover:shadow-[0_16px_48px_-28px_rgba(245,158,11,0.08)]';
+  'group relative flex min-h-[148px] flex-col overflow-hidden rounded-card bg-gradient-to-br from-cerebral-coral/25 via-surface to-surface-2 p-5 text-left shadow-card transition-[box-shadow,translate] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:shadow-card-hover active:scale-[0.995]';
 
 type SpotlightSlide = {
   id: string;
@@ -398,17 +408,17 @@ export default function Dashboard() {
   return (
     <div className="-mt-4 space-y-8 sm:-mt-5 md:-mt-6 md:space-y-10 lg:-mt-8">
       {isOnboardingOpen ? (
-        <div className="rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-[0_10px_40px_-22px_rgba(0,0,0,0.2)] sm:p-6">
+        <div className="card p-5 sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-steel-700 dark:text-steel-300">New here?</p>
-              <h2 className="mt-1 text-xl font-black tracking-[-0.02em] text-zinc-900">Pick a place to start</h2>
-              <p className="mt-1 text-sm text-zinc-600">Choose one path and you can switch anytime.</p>
+              <p className="eyebrow text-anchor">New here?</p>
+              <h2 className="display mt-1 text-display-s text-text">Pick a place to start</h2>
+              <p className="prose-lede mt-1 text-body-s text-muted2">Choose one path and you can switch anytime.</p>
             </div>
             <button
               type="button"
               onClick={closeOnboarding}
-              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg text-zinc-500 transition-[color,background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-zinc-100 hover:text-zinc-900 active:scale-[0.96]"
+              className="press inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-[6px] text-muted2 hover:bg-surface-2 hover:text-text"
               aria-label="Close onboarding"
             >
               <X className="h-4 w-4" aria-hidden />
@@ -420,13 +430,13 @@ export default function Dashboard() {
                 key={item.title}
                 to={item.to}
                 onClick={closeOnboarding}
-                className="group rounded-xl border border-zinc-100 bg-zinc-50/50 p-4 transition-[transform,box-shadow,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-white hover:shadow-[0_10px_40px_-22px_rgba(0,0,0,0.15)] active:scale-[0.96]"
+                className="group rounded-card bg-surface-2 p-4 shadow-card transition-[transform,box-shadow,background-color] duration-150 ease-[cubic-bezier(0.4,0,0.2,1)] hover:-translate-y-0.5 hover:bg-surface hover:shadow-card-hover active:scale-[0.96]"
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <item.icon className="h-4 w-4 text-steel-600 dark:text-steel-400" aria-hidden />
-                  <p className="text-sm font-bold text-zinc-900">{item.title}</p>
+                  <item.icon className="h-4 w-4 text-anchor" aria-hidden />
+                  <p className="display text-body-s text-text">{item.title}</p>
                 </div>
-                <p className="text-sm leading-relaxed text-zinc-600">{item.desc}</p>
+                <p className="prose-lede text-body-s text-muted2">{item.desc}</p>
               </Link>
             ))}
           </div>
@@ -434,7 +444,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={closeOnboarding}
-              className="inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-md bg-brand-600 px-4 text-sm font-semibold text-white transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+              className="press inline-flex min-h-[40px] min-w-[44px] items-center justify-center rounded-[6px] bg-cta px-4 text-body-s font-medium text-ground shadow-card hover:bg-cta-deep"
             >
               Continue
             </button>
@@ -442,22 +452,24 @@ export default function Dashboard() {
         </div>
       ) : null}
 
+      {/* Same to-b three-stop band, now off the ground ramp: the tokens
+          follow the appearance, so the dark overrides are gone. */}
       <section
-        className="-mx-4 border-y border-zinc-200/35 bg-gradient-to-b from-white via-zinc-50/95 to-zinc-100/35 dark:border-zinc-800/60 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 sm:-mx-6 lg:-mx-8"
+        className="-mx-4 border-y border-hairline bg-gradient-to-b from-ground via-surface/90 to-surface-2/45 sm:-mx-6 lg:-mx-8"
         aria-labelledby="app-dashboard-overview-heading"
       >
         <div className="px-4 pb-6 pt-5 sm:px-6 sm:pb-8 sm:pt-6 lg:px-8">
           <div className="mb-5 px-0.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-steel-700 dark:text-steel-300">
+            <p className="eyebrow text-anchor">
               Overview
             </p>
             <h2
               id="app-dashboard-overview-heading"
-              className="mt-1 text-xl font-bold tracking-tight text-chm-precision md:text-2xl dark:text-zinc-100"
+              className="display mt-1 text-display-s text-text md:text-display-m"
             >
               Your dashboard
             </h2>
-            <p className="mt-1.5 max-w-xl text-pretty text-sm leading-relaxed text-chm-discovery dark:text-zinc-400">
+            <p className="prose-lede mt-1.5 max-w-xl text-body-s text-muted2">
               Next live session, earnings, activity, and surveys you still need to complete.
             </p>
           </div>
@@ -466,10 +478,12 @@ export default function Dashboard() {
           <Link
             to={nextUpcomingWebinar?.id ? `/app/live/${nextUpcomingWebinar.id}` : '/app/live'}
             className={[
-              'group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-2xl p-4 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px]',
+              'group relative col-span-1 row-span-2 row-start-1 flex min-h-[200px] flex-col justify-between overflow-hidden rounded-card p-4 text-left transition-[transform,box-shadow] duration-200 active:scale-[0.995] sm:p-6 md:col-span-1 md:min-h-[300px]',
               nextLiveCoverUrl
-                ? 'shadow-[0_22px_56px_-28px_rgba(0,0,0,0.4)] hover:shadow-[0_28px_64px_-28px_rgba(0,0,0,0.48)] dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.75)]'
-                : 'bg-gradient-to-br from-steel-100/90 via-white to-amber-50/80 shadow-[0_20px_56px_-30px_rgba(49,105,149,0.12)] hover:shadow-[0_28px_64px_-30px_rgba(49,105,149,0.18)] dark:from-zinc-900 dark:via-steel-950/20 dark:to-zinc-950 dark:shadow-[0_22px_52px_-32px_rgba(0,0,0,0.65)]',
+                ? 'shadow-card hover:shadow-card-hover'
+                : /* Same to-br three-stop wash, off the spectrum now:
+                     cool blue corner → paper → warm coral corner. */
+                  'bg-gradient-to-br from-cerebral-blue/20 via-surface to-cerebral-coral/25 shadow-card hover:shadow-card-hover',
             ].join(' ')}
           >
             {nextLiveCoverUrl ? (
@@ -479,17 +493,20 @@ export default function Dashboard() {
                   alt={nextUpcomingWebinar?.title ? `Cover for ${nextUpcomingWebinar.title}` : ''}
                   className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.02]"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/38 to-black/22" />
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-[58%] max-w-[320px] bg-gradient-to-r from-black/52 to-transparent" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 w-[58%] max-w-[320px] bg-gradient-to-r from-black/50 to-transparent" />
               </>
             ) : (
               <>
-                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-steel-300/25 blur-3xl dark:bg-steel-500/15" />
-                <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-amber-300/35 blur-3xl dark:bg-orange-600/10" />
+                <div className="pointer-events-none absolute -right-12 -top-10 h-40 w-40 rounded-full bg-cerebral-blue/20 blur-3xl dark:bg-cerebral-blue/15" />
+                <div className="pointer-events-none absolute -bottom-10 left-4 h-32 w-32 rounded-full bg-cerebral-coral/35 blur-3xl dark:bg-cerebral-coral/15" />
               </>
             )}
             <div className="relative z-10 flex items-start justify-between gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.15em] text-chm-knowledge shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_2px_16px_-4px_rgba(61,164,192,0.15)] backdrop-blur-md dark:border-white/20 dark:bg-white/15 dark:text-chm-knowledge dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_20px_-6px_rgba(0,0,0,0.4)]">
+              {/* The badge sits over a poster scrim as often as over the
+                  wash, so it is a fixed-bright glass pill carrying the
+                  fixed dark label rather than page-following tokens. */}
+              <span className="eyebrow inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-on-bright shadow-card backdrop-blur-md">
                 <Radio className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Next LIVE
               </span>
@@ -498,7 +515,7 @@ export default function Dashboard() {
                   'h-5 w-5 shrink-0 transition-[color,transform] duration-200 group-hover:translate-x-0.5',
                   nextLiveCoverUrl
                     ? 'text-white/90 group-hover:text-white'
-                    : 'text-chm-expertise group-hover:text-chm-knowledge dark:text-steel-400 dark:group-hover:text-steel-300',
+                    : 'text-anchor group-hover:text-cta',
                 ].join(' ')}
                 aria-hidden
               />
@@ -506,23 +523,23 @@ export default function Dashboard() {
             <div className="relative z-10 mt-4 flex flex-1 flex-col justify-end">
               {webinarsLoading ? (
                 <>
-                  <p className="text-lg font-semibold text-zinc-700 dark:text-zinc-200">Loading sessions…</p>
-                  <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">Checking the schedule</p>
+                  <p className="display text-body-l text-dim">Loading sessions…</p>
+                  <p className="mt-2 text-body-s text-muted2">Checking the schedule</p>
                 </>
               ) : nextUpcomingWebinar ? (
                 <>
                   <p
                     className={[
-                      'line-clamp-3 text-xl font-bold leading-snug tracking-tight',
-                      nextLiveCoverUrl ? 'text-white' : 'text-chm-precision dark:text-white',
+                      'display line-clamp-3 text-display-s',
+                      nextLiveCoverUrl ? 'text-white' : 'text-text',
                     ].join(' ')}
                   >
                     {nextUpcomingWebinar.title}
                   </p>
                   <p
                     className={[
-                      'mt-3 text-sm font-medium',
-                      nextLiveCoverUrl ? 'text-white/88' : 'text-zinc-700 dark:text-zinc-300',
+                      'meta mt-3',
+                      nextLiveCoverUrl ? 'text-white/90' : 'text-dim',
                     ].join(' ')}
                   >
                     {nextUpcomingWebinar.startTime
@@ -531,8 +548,10 @@ export default function Dashboard() {
                   </p>
                   <p
                     className={[
-                      'mt-4 text-xs font-semibold uppercase tracking-[0.12em]',
-                      nextLiveCoverUrl ? 'text-chm-sharing' : 'text-steel-700 dark:text-steel-300',
+                      'eyebrow mt-4',
+                      /* Over a poster this is a permanently dark strip, so
+                         it takes the amber tuned for deep grounds. */
+                      nextLiveCoverUrl ? 'text-amber-on-deep' : 'text-anchor',
                     ].join(' ')}
                   >
                     Tap to open session
@@ -540,8 +559,8 @@ export default function Dashboard() {
                 </>
               ) : (
                 <>
-                  <p className="text-xl font-bold text-chm-precision dark:text-white">Nothing on the calendar</p>
-                  <p className="mt-2 text-sm text-chm-discovery dark:text-zinc-400">
+                  <p className="display text-display-s text-text">Nothing on the calendar</p>
+                  <p className="mt-2 text-body-s text-muted2">
                     Browse the full schedule for new drops.
                   </p>
                 </>
@@ -551,33 +570,33 @@ export default function Dashboard() {
 
           <Link to="/app/earnings" className={`${bentoMetric} col-start-2 row-start-1 md:col-start-2 md:row-start-1`}>
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-chm-expertise dark:text-chm-knowledge">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[6px] text-anchor">
                 <Banknote className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted2 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-anchor" aria-hidden />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Earnings</p>
-              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-chm-precision dark:text-zinc-100">
+              <p className="eyebrow text-muted2">Earnings</p>
+              <p className="display mt-3 text-3xl tabular-nums text-text">
                 {!userId ? '--' : earningsSummaryLoading ? '…' : `$${(earningsSummary?.totalEarnings ?? 0).toFixed(2)}`}
               </p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Total balance</p>
+              <p className="mt-1 text-body-s text-muted2">Total balance</p>
             </div>
           </Link>
 
           <Link to="/app/surveys" className={`${bentoMetric} col-start-2 row-start-2 md:col-start-3 md:row-start-1`}>
             <div className="flex items-start justify-between gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-chm-expertise dark:text-chm-knowledge">
+              <span className="flex h-10 w-10 items-center justify-center rounded-[6px] text-anchor">
                 <Activity className="h-5 w-5" strokeWidth={2} aria-hidden />
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300" aria-hidden />
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted2 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-anchor" aria-hidden />
             </div>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Activity</p>
-              <p className="mt-3 text-3xl font-semibold tabular-nums tracking-tight text-chm-precision dark:text-zinc-100">
+              <p className="eyebrow text-muted2">Activity</p>
+              <p className="display mt-3 text-3xl tabular-nums text-text">
                 {!userId ? '--' : activityStatsLoading ? '…' : (activityStats?.activitiesCompleted ?? 0).toLocaleString()}
               </p>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 text-body-s text-muted2">
                 {!userId
                   ? 'Sign in to track progress'
                   : activityStatsLoading
@@ -595,20 +614,20 @@ export default function Dashboard() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-chm-connection dark:text-chm-sharing">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[6px] text-ink-coral">
                       <ClipboardCheck className="h-5 w-5" strokeWidth={2} aria-hidden />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-discovery dark:text-zinc-400">Pending actions</p>
-                      <p className="mt-0.5 text-lg font-bold text-chm-precision dark:text-zinc-100">Required surveys</p>
+                      <p className="eyebrow text-muted2">Pending actions</p>
+                      <p className="display mt-0.5 text-body-l text-text">Required surveys</p>
                     </div>
                   </div>
                   <ChevronRight
-                    className="h-5 w-5 shrink-0 text-zinc-400 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
+                    className="h-5 w-5 shrink-0 text-muted2 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-ink-coral"
                     aria-hidden
                   />
                 </div>
-                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-chm-discovery dark:text-zinc-400 sm:mt-3">
+                <p className="prose-lede mt-2 line-clamp-2 text-body-s text-muted2 sm:mt-3">
                   {surveysLoading
                     ? 'Loading survey queue…'
                     : requiredSurveysPending.length === 0
@@ -618,12 +637,12 @@ export default function Dashboard() {
                         : 'Open Surveys to finish eligibility tasks.'}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-chm-connection/12 px-5 py-4 shadow-[0_8px_28px_-20px_rgba(231,118,79,0.25)] dark:bg-chm-connection/20">
-                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-chm-connection dark:text-chm-sharing">Due</p>
-                <p className="mt-1 text-3xl font-bold tabular-nums text-chm-precision dark:text-zinc-100">
+              <div className="flex shrink-0 flex-col items-center justify-center rounded-card bg-cerebral-coral/20 px-5 py-4 shadow-card">
+                <p className="eyebrow text-ink-coral">Due</p>
+                <p className="display mt-1 text-3xl tabular-nums text-text">
                   {surveysLoading ? '…' : requiredSurveysPending.length.toLocaleString()}
                 </p>
-                <p className="mt-0.5 text-center text-[10px] font-medium uppercase tracking-wide text-chm-discovery dark:text-zinc-400">
+                <p className="meta mt-0.5 text-center text-[10px] uppercase tracking-wide text-faint">
                   required
                 </p>
               </div>
@@ -635,8 +654,8 @@ export default function Dashboard() {
 
       <section className="w-full space-y-4" aria-label="Featured highlights">
         <div>
-          <h2 className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100 md:text-xl">Featured</h2>
-          <p className="mt-1.5 max-w-2xl text-pretty text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
+          <h2 className="display text-display-s text-text">Featured</h2>
+          <p className="prose-lede mt-1.5 max-w-2xl text-body-s text-muted2">
             Swipe the card or use the dots to rotate highlights.
           </p>
         </div>
@@ -645,7 +664,7 @@ export default function Dashboard() {
           {featuredSlideCount > 0 ? (
             <>
               <div
-                className="overflow-hidden rounded-2xl bg-white shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:bg-zinc-950 dark:ring-zinc-800"
+                className="overflow-hidden rounded-card bg-surface shadow-card"
                 onTouchStart={(e) => {
                   touchStartX.current = e.touches[0].clientX;
                 }}
@@ -682,7 +701,7 @@ export default function Dashboard() {
                         className={[
                           'relative w-full',
                           isPodcastSpotlight
-                            ? 'h-[min(62.4vh,480px)] min-h-[336px] bg-white sm:min-h-[384px] dark:bg-zinc-950'
+                            ? 'h-[min(62.4vh,480px)] min-h-[336px] bg-surface sm:min-h-[384px]'
                             : 'h-[min(52vh,400px)] min-h-[280px] sm:min-h-[320px]',
                         ].join(' ')}
                       >
@@ -701,29 +720,35 @@ export default function Dashboard() {
                           draggable={false}
                           onError={slide.thumbTrackKey ? onSpotlightThumbError : undefined}
                         />
-                        <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
-                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/20 to-transparent" />
+                        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
                         <div className="relative z-10 flex h-full flex-col justify-end p-5 text-white sm:p-7 md:p-8">
-                          <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-chm-sharing drop-shadow-sm">
+                          {/* Permanently dark: over the scrim the eyebrow
+                              takes the amber tuned for deep grounds and the
+                              copy stays fixed white. */}
+                          <p className="eyebrow mb-2 text-amber-on-deep">
                             {slide.eyebrow}
                           </p>
-                          <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">
+                          <h3 className="display mb-2 max-w-[20ch] text-display-s text-white md:text-display-m">
                             {slide.title}
                           </h3>
-                          <p className="mb-4 line-clamp-3 max-w-lg text-pretty text-sm leading-relaxed text-white/90 md:text-[15px]">
+                          <p className="prose-lede mb-4 line-clamp-3 max-w-lg text-body-s text-white/90 md:text-body-m">
                             {slide.description}
                           </p>
                           <div className="flex flex-wrap items-center gap-3">
                             <Link
                               to={slide.primaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-white px-5 text-sm font-semibold text-chm-precision shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
+                              /* Fixed white, written as an arbitrary value so
+                                 the global `.dark .bg-white` remap cannot
+                                 flip it to near-black on this dark scrim. */
+                              className="press inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-[#ffffff] px-5 text-body-s font-medium text-on-bright shadow-card transition-[filter,scale] hover:brightness-95"
                             >
                               <PlayCircle className="h-4 w-4" aria-hidden />
                               {slide.primaryCta}
                             </Link>
                             <Link
                               to={slide.secondaryHref}
-                              className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-md bg-chm-knowledge px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(61,164,192,0.45)] transition-[background-color,transform] duration-200 hover:bg-chm-expertise active:scale-[0.96] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-chm-expertise"
+                              className="press inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-cta px-5 text-body-s font-medium text-ground shadow-card hover:bg-cta-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             >
                               {slide.secondaryCta}
                             </Link>
@@ -752,7 +777,7 @@ export default function Dashboard() {
                         onClick={() => setSpotlightIndex(i)}
                         className={[
                           'h-2 rounded-full transition-[width,background-color] duration-300',
-                          i === spotlightIndex ? 'w-8 bg-chm-knowledge' : 'w-2 bg-chm-discovery/60 dark:bg-zinc-600',
+                          i === spotlightIndex ? 'w-8 bg-cta' : 'w-2 bg-faint/40',
                         ].join(' ')}
                       />
                     ))}
@@ -851,7 +876,7 @@ export default function Dashboard() {
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-pretty text-sm text-zinc-600">
+          <p className="prose-lede text-body-s text-muted2">
             Clips and playlists load when the media catalog is connected. You can still open scheduled sessions and surveys below.
           </p>
         </div>
@@ -867,9 +892,9 @@ export default function Dashboard() {
           {webinarsLoading ? (
             <StripRowLoading />
           ) : webinars.length === 0 ? (
-            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-200/55 bg-zinc-50/80 px-4 py-8 text-center shadow-[0_4px_24px_-16px_rgba(0,0,0,0.06)]">
-              <p className="text-sm font-medium text-zinc-800">No sessions listed yet</p>
-              <p className="mt-1 text-pretty text-sm text-zinc-600">We post new times here when they are ready.</p>
+            <div className="min-w-0 flex-1 rounded-card bg-surface-2 px-4 py-8 text-center shadow-card">
+              <p className="display text-body-s text-text">No sessions listed yet</p>
+              <p className="prose-lede mt-1 text-body-s text-muted2">We post new times here when they are ready.</p>
             </div>
           ) : (
             webinars.slice(0, 12).map((w, i) => (
@@ -899,9 +924,9 @@ export default function Dashboard() {
           {officeHoursLoading ? (
             <StripRowLoading />
           ) : officeHours.length === 0 ? (
-            <div className="min-w-0 flex-1 rounded-2xl border border-dashed border-zinc-200/90 bg-zinc-50/80 px-4 py-8 text-center shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)]">
-              <p className="text-sm font-medium text-zinc-800">No office hours scheduled yet</p>
-              <p className="mt-1 text-pretty text-sm text-zinc-600">When sessions are published, they will appear here.</p>
+            <div className="min-w-0 flex-1 rounded-card bg-surface-2 px-4 py-8 text-center shadow-card">
+              <p className="display text-body-s text-text">No office hours scheduled yet</p>
+              <p className="prose-lede mt-1 text-body-s text-muted2">When sessions are published, they will appear here.</p>
             </div>
           ) : (
             officeHours.slice(0, 12).map((w, i) => (

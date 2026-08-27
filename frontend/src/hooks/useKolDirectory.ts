@@ -74,7 +74,12 @@ export function useKolDirectory(filters: KolListFilters = {}): KolDirectory {
   if (isLoading) {
     return { regions: [], total: 0, institutions: [], loadState: 'loading' };
   }
-  if (isError || !data) {
+  // `items` is checked, not assumed. A 200 carrying something other than
+  // the list (the dev server's SPA fallback answers /api/* with the index
+  // document, for one) otherwise threw out of the hook and took the whole
+  // page down with it, rather than degrading to the empty state the
+  // callers already handle.
+  if (isError || !data || !Array.isArray(data.items)) {
     return { regions: [], total: 0, institutions: [], loadState: 'error' };
   }
 

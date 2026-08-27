@@ -40,7 +40,7 @@ function MultiSelectFilter({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-gray-700">{label}</p>
+        <p className="text-xs font-semibold text-muted-foreground">{label}</p>
         {selected.size > 0 ? (
           <button
             type="button"
@@ -52,23 +52,23 @@ function MultiSelectFilter({
         ) : null}
       </div>
       {options.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-gray-200 px-3 py-2 text-xs text-gray-500">
+        <p className="rounded-[6px] border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
           {emptyMessage}
         </p>
       ) : (
-        <div className="max-h-36 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+        <div className="max-h-36 overflow-y-auto rounded-[6px] border border-border divide-y divide-gray-100">
           {options.map((option) => (
             <label
               key={option}
-              className="flex cursor-pointer items-start gap-2 px-3 py-2 text-sm hover:bg-gray-50"
+              className="flex cursor-pointer items-start gap-2 px-3 py-2 text-sm hover:bg-muted"
             >
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                className="mt-0.5 h-4 w-4 rounded border-border"
                 checked={selected.has(option)}
                 onChange={() => toggle(option)}
               />
-              <span className="min-w-0 text-gray-800">
+              <span className="min-w-0 text-foreground">
                 {formatOption ? formatOption(option) : option}
               </span>
             </label>
@@ -260,18 +260,18 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-card bg-card shadow-card-hover">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-card px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Send registration invites</h2>
-            <p className="mt-1 text-sm text-gray-600">
+            <h2 className="text-lg font-semibold text-foreground">Send registration invites</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
               Share the multi-webinar registration page or email learners a link with sessions pre-selected.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="shrink-0 rounded-[6px] p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -280,24 +280,24 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
 
         <div className="px-6 py-5 space-y-6">
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900">1. Select webinars</h3>
+            <h3 className="text-sm font-semibold text-foreground">1. Select webinars</h3>
             {upcoming.length === 0 ? (
-              <p className="text-sm text-gray-500">No published upcoming webinars.</p>
+              <p className="text-sm text-muted-foreground">No published upcoming webinars.</p>
             ) : (
-              <ul className="max-h-48 overflow-y-auto divide-y divide-gray-100 rounded-xl border border-gray-200">
+              <ul className="max-h-48 overflow-y-auto divide-y divide-gray-100 rounded-card border border-border">
                 {upcoming.map((w) => (
                   <li key={w.id}>
-                    <label className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-gray-50">
+                    <label className="flex cursor-pointer items-start gap-3 px-4 py-3 hover:bg-muted">
                       <input
                         type="checkbox"
-                        className="mt-1 h-4 w-4 rounded border-gray-300"
+                        className="mt-1 h-4 w-4 rounded border-border"
                         checked={selectedProgramIds.has(w.id)}
                         onChange={() => toggleProgram(w.id)}
                       />
                       <span className="min-w-0 flex-1 text-sm">
-                        <span className="font-medium text-gray-900">{w.title}</span>
+                        <span className="font-medium text-foreground">{w.title}</span>
                         {w.startDate ? (
-                          <span className="mt-0.5 block text-gray-500">
+                          <span className="mt-0.5 block text-muted-foreground">
                             {format(parseISO(w.startDate), 'MMM d, yyyy · h:mm a')}
                           </span>
                         ) : null}
@@ -310,19 +310,19 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900">2. Registration landing page</h3>
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
-              <p className="text-gray-600 mb-2">
+            <h3 className="text-sm font-semibold text-foreground">2. Registration landing page</h3>
+            <div className="rounded-card border border-border bg-muted px-4 py-3 text-sm">
+              <p className="text-muted-foreground mb-2">
                 Learners open this link to register for the selected sessions (
-                <code className="text-xs bg-white px-1 rounded">/app/live/register-multiple</code>
+                <code className="text-xs bg-card px-1 rounded">/app/live/register-multiple</code>
                 ).
               </p>
-              <code className="block break-all text-xs text-gray-800">{registerUrl}</code>
+              <code className="block break-all text-xs text-foreground">{registerUrl}</code>
               <button
                 type="button"
                 disabled={selectedProgramIds.size === 0}
                 onClick={() => void copyLink()}
-                className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-40"
+                className="mt-3 inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <Copy className="h-3.5 w-3.5" />
                 {copied ? 'Copied' : 'Copy link'}
@@ -331,7 +331,7 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
           </section>
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900">3. Email recipients</h3>
+            <h3 className="text-sm font-semibold text-foreground">3. Email recipients</h3>
             <div className="flex flex-wrap gap-4 text-sm">
               <label className="inline-flex items-center gap-2">
                 <input
@@ -367,17 +367,17 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                 <select
                   value={role}
                   onChange={(e) => handleRoleChange(e.target.value as 'HCP' | 'KOL')}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  className="rounded-[6px] border border-border px-3 py-2 text-sm"
                 >
                   <option value="HCP">All active HCPs</option>
                   <option value="KOL">All active KOLs</option>
                 </select>
 
-                <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+                <div className="rounded-card border border-border bg-muted p-4 space-y-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">Target by location and organization</p>
-                      <p className="mt-0.5 text-xs text-gray-600">
+                      <p className="text-sm font-semibold text-foreground">Target by location and organization</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
                         Select one or more values in each filter. Multiple filters combine with AND logic.
                       </p>
                     </div>
@@ -385,7 +385,7 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                       <button
                         type="button"
                         onClick={clearLocationFilters}
-                        className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                        className="rounded-[6px] border border-border bg-card px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted"
                       >
                         Clear all filters
                       </button>
@@ -393,7 +393,7 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                   </div>
 
                   {filterOptionsLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading filter options…
                     </div>
@@ -427,42 +427,42 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
 
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-gray-900">Matching recipients</p>
+                    <p className="text-sm font-semibold text-foreground">Matching recipients</p>
                     {roleRecipientsLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     ) : (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600">
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                         {roleRecipientTotal}
                       </span>
                     )}
                   </div>
 
                   {roleRecipientTotal === 0 && !roleRecipientsLoading ? (
-                    <p className="text-sm text-amber-800 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                    <p className="text-sm text-warning rounded-[6px] bg-warning/10 border border-warning/25 px-3 py-2">
                       No active users match the selected role and filters.
                     </p>
                   ) : null}
 
                   {roleRecipientPreview.length > 0 ? (
-                    <ul className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
+                    <ul className="max-h-48 overflow-y-auto rounded-card border border-border divide-y divide-gray-100">
                       {roleRecipientPreview.map((u) => (
                         <li key={u.id} className="px-3 py-2 text-sm">
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-foreground">
                             {u.firstName} {u.lastName}
-                            <span className="font-normal text-gray-500"> · {u.email}</span>
+                            <span className="font-normal text-muted-foreground"> · {u.email}</span>
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-500">{formatLocationBits(u)}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground">{formatLocationBits(u)}</p>
                         </li>
                       ))}
                     </ul>
                   ) : null}
 
                   {roleRecipientTotal > roleRecipientPreview.length ? (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Showing first {roleRecipientPreview.length} of {roleRecipientTotal} matching recipients.
                     </p>
                   ) : roleRecipientTotal > 0 ? (
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       {hasLocationFilters
                         ? 'Filtered active users shown above.'
                         : 'All active users in this role are included.'}
@@ -477,13 +477,13 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                   onChange={(e) => setEmailsInput(e.target.value)}
                   rows={4}
                   placeholder="alice@example.com, bob@example.com&#10;carol@example.com"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+                  className="w-full rounded-[6px] border border-border px-3 py-2 text-sm font-mono"
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Separate with commas, spaces, semicolons, or newlines. Recipients not yet registered will be directed to sign up when they open the link.
                 </p>
                 {parsedEmails.length > 0 || invalidEmailCount > 0 ? (
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-muted-foreground">
                     {parsedEmails.length} valid
                     {invalidEmailCount > 0 ? ` · ${invalidEmailCount} invalid (skipped)` : ''}
                   </p>
@@ -496,16 +496,16 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
                   placeholder="Search by name or email (min. 2 characters)…"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  className="w-full rounded-[6px] border border-border px-3 py-2 text-sm"
                 />
                 {usersLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                 ) : null}
                 {searchUsers.length > 0 ? (
-                  <ul className="max-h-40 overflow-y-auto rounded-xl border border-gray-200 divide-y divide-gray-100">
+                  <ul className="max-h-40 overflow-y-auto rounded-card border border-border divide-y divide-gray-100">
                     {searchUsers.map((u) => (
                       <li key={u.id}>
-                        <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-gray-50 text-sm">
+                        <label className="flex cursor-pointer items-center gap-3 px-3 py-2 hover:bg-muted text-sm">
                           <input
                             type="checkbox"
                             checked={selectedUserIds.has(u.id)}
@@ -513,24 +513,24 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
                           />
                           <span>
                             {u.firstName} {u.lastName}
-                            <span className="text-gray-500"> · {u.email}</span>
+                            <span className="text-muted-foreground"> · {u.email}</span>
                           </span>
                         </label>
                       </li>
                     ))}
                   </ul>
                 ) : userSearch.trim().length >= 2 ? (
-                  <p className="text-xs text-gray-500">No users found.</p>
+                  <p className="text-xs text-muted-foreground">No users found.</p>
                 ) : null}
                 {selectedUserIds.size > 0 ? (
-                  <p className="text-xs text-gray-600">{selectedUserIds.size} user(s) selected</p>
+                  <p className="text-xs text-muted-foreground">{selectedUserIds.size} user(s) selected</p>
                 ) : null}
               </div>
             )}
           </section>
 
           {result ? (
-            <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-950 space-y-1">
+            <div className="rounded-card border border-success/25 bg-success/10 px-4 py-3 text-sm text-green-950 space-y-1">
               <p className="font-semibold">Sent {result.emailed} email(s)</p>
               {result.skipped.length > 0 ? (
                 <p className="text-xs">{result.skipped.length} skipped (see server logs)</p>
@@ -539,15 +539,15 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
           ) : null}
 
           {sendMut.isError ? (
-            <p className="text-sm text-red-600">{getApiErrorMessage(sendMut.error)}</p>
+            <p className="text-sm text-destructive">{getApiErrorMessage(sendMut.error)}</p>
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-gray-200 bg-white px-6 py-4">
+        <div className="sticky bottom-0 flex justify-end gap-3 border-t border-border bg-card px-6 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="rounded-[6px] border border-border px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
           >
             Close
           </button>
@@ -555,7 +555,7 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
             type="button"
             disabled={!canSend}
             onClick={() => sendMut.mutate()}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-40"
           >
             {sendMut.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

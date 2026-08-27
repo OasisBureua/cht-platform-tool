@@ -54,8 +54,8 @@ function hcpLabel(specialty?: string | null): string {
 function hcpBadgeClass(specialty?: string | null): string {
   if (!specialty) return 'bg-gray-100 text-gray-500';
   return HCP_PROFESSIONS.has(specialty)
-    ? 'bg-green-50 text-green-800 border border-green-200'
-    : 'bg-amber-50 text-amber-800 border border-amber-200';
+    ? 'bg-success/10 text-success border border-success/25'
+    : 'bg-warning/10 text-warning border border-warning/25';
 }
 
 export default function AdminWebinarApprovals() {
@@ -312,19 +312,19 @@ export default function AdminWebinarApprovals() {
         />
       ) : null}
       <div>
-        <h1 className="text-2xl font-semibold text-gray-900">Webinar & Office Hours approvals</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <h1 className="text-2xl font-semibold text-foreground">Webinar & Office Hours approvals</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Pending registration requests for published Zoom Webinars and Office Hours (Zoom Meetings). Learners can join via Zoom after
           approval. If you <strong>reject</strong> someone, they can register again; their request returns to pending when
           they resubmit.
         </p>
-        <div className="mt-4 flex gap-2 border-b border-gray-200">
+        <div className="mt-4 flex gap-2 border-b border-border">
           <button
             type="button"
             onClick={() => setTab('registrations')}
             className={[
               'border-b-2 px-3 py-2 text-sm font-semibold',
-              tab === 'registrations' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500',
+              tab === 'registrations' ? 'border-gray-900 text-foreground' : 'border-transparent text-muted-foreground',
             ].join(' ')}
           >
             Registration requests
@@ -334,25 +334,25 @@ export default function AdminWebinarApprovals() {
             onClick={() => setTab('attendance')}
             className={[
               'border-b-2 px-3 py-2 text-sm font-semibold',
-              tab === 'attendance' ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-500',
+              tab === 'attendance' ? 'border-gray-900 text-foreground' : 'border-transparent text-muted-foreground',
             ].join(' ')}
           >
             Post-event attendance
           </button>
         </div>
         {tab === 'attendance' ? (
-          <p className="mt-3 text-sm text-gray-600">
+          <p className="mt-3 text-sm text-muted-foreground">
             Verify attendance after the live session. Verified and denied learners stay in this list with their status
             so you can audit who was marked.
           </p>
         ) : null}
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <label className="text-sm font-semibold text-gray-700 shrink-0">Filter by program:</label>
+          <label className="text-sm font-semibold text-muted-foreground shrink-0">Filter by program:</label>
           <select
             value={programFilter}
             onChange={(e) => { setProgramFilter(e.target.value); setSelectedIds(new Set()); }}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
           >
             <option value="all">All programs</option>
             {programOptions.map(([id, title]) => (
@@ -363,7 +363,7 @@ export default function AdminWebinarApprovals() {
             <button
               type="button"
               onClick={() => { setProgramFilter('all'); setSelectedIds(new Set()); }}
-              className="text-xs font-semibold text-gray-500 underline hover:text-gray-800"
+              className="text-xs font-semibold text-muted-foreground underline hover:text-foreground"
             >
               Clear
             </button>
@@ -375,7 +375,7 @@ export default function AdminWebinarApprovals() {
                 setEmailPrefillEmails(undefined);
                 setEmailModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
             >
               <Mail className="h-3.5 w-3.5" aria-hidden />
               Email registrants
@@ -391,7 +391,7 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'registrations' && isError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
           Failed to load pending registrations.
         </div>
       ) : null}
@@ -403,14 +403,14 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'attendance' && attendanceError ? (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive">
           Failed to load attendance verification queue.
         </div>
       ) : null}
 
       {tab === 'registrations' && !isLoading && !isError && filteredRows.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-          <span className="text-sm text-gray-700">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted px-4 py-3">
+          <span className="text-sm text-muted-foreground">
             {selectedIds.size === 0 ? 'Select rows below, or use Select all.' : `${selectedIds.size} selected`}
           </span>
           <div className="ml-auto flex flex-wrap gap-2">
@@ -426,7 +426,7 @@ export default function AdminWebinarApprovals() {
               type="button"
               disabled={busy || selectedList.length === 0}
               onClick={() => setRejectModalIds([...selectedList])}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 disabled:opacity-40"
+              className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground disabled:opacity-40"
             >
               Reject selected
             </button>
@@ -439,7 +439,7 @@ export default function AdminWebinarApprovals() {
                 );
                 setEmailModalOpen(true);
               }}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground disabled:opacity-40"
             >
               <Mail className="h-3.5 w-3.5" aria-hidden />
               Email registrants
@@ -449,18 +449,18 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'registrations' && (bulkMut.isError || rejectMut.isError) ? (
-        <p className="text-sm text-red-600">One or more updates failed. Try again or use row actions.</p>
+        <p className="text-sm text-destructive">One or more updates failed. Try again or use row actions.</p>
       ) : null}
 
       {tab === 'attendance' && attendanceMut.isError ? (
-        <p className="text-sm text-red-600">Could not update attendance. Try again.</p>
+        <p className="text-sm text-destructive">Could not update attendance. Try again.</p>
       ) : null}
 
       {tab === 'attendance' && !attendanceLoading && !attendanceError ? (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-card border border-border bg-card">
           <table className="min-w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-200 text-left text-gray-600">
+              <tr className="border-b border-border text-left text-muted-foreground">
                 <th className="py-3 px-4">Program</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">User</th>
@@ -477,23 +477,23 @@ export default function AdminWebinarApprovals() {
                 return (
                 <tr key={r.id}>
                   <td className="py-3 px-4">
-                    <span className="font-medium text-gray-900">{r.program.title}</span>
+                    <span className="font-medium text-foreground">{r.program.title}</span>
                     <div className="mt-1">
                       <Link
                         to={`/admin/programs/${r.program.id}/hub`}
-                        className="text-xs font-semibold text-gray-600 hover:text-gray-900"
+                        className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                       >
                         Open program hub
                       </Link>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
+                  <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
                     {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
                   </td>
                   <td className="py-3 px-4">
                     {r.user.firstName} {r.user.lastName}
-                    <div className="text-xs text-gray-500">{r.user.email}</div>
-                    {r.user.specialty && <div className="text-xs text-gray-400">{r.user.specialty}</div>}
+                    <div className="text-xs text-muted-foreground">{r.user.email}</div>
+                    {r.user.specialty && <div className="text-xs text-muted-foreground">{r.user.specialty}</div>}
                   </td>
                   <td className="py-3 px-4">
                     <span
@@ -510,18 +510,18 @@ export default function AdminWebinarApprovals() {
                       className={[
                         'inline-block rounded-full px-2 py-0.5 text-xs font-semibold',
                         att === 'VERIFIED'
-                          ? 'bg-green-100 text-green-800'
+                          ? 'bg-green-100 text-success'
                           : att === 'DENIED'
-                            ? 'bg-red-100 text-red-800'
+                            ? 'bg-red-100 text-destructive'
                             : att === 'PENDING_VERIFICATION'
-                              ? 'bg-amber-50 text-amber-800'
-                              : 'bg-gray-100 text-gray-500',
+                              ? 'bg-warning/10 text-warning'
+                              : 'bg-muted text-muted-foreground',
                       ].join(' ')}
                     >
                       {attendanceStatusLabel(att)}
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-gray-600 whitespace-nowrap text-xs">
+                  <td className="py-3 px-4 text-muted-foreground whitespace-nowrap text-xs">
                     {r.postEventAttendanceReviewedAt
                       ? format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, yyyy h:mm a')
                       : '-'}
@@ -541,13 +541,13 @@ export default function AdminWebinarApprovals() {
                           type="button"
                           disabled={busy}
                           onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
-                          className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                          className="rounded-lg border border-border px-2 py-1 text-xs font-semibold"
                         >
                           Did not attend
                         </button>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-500">No action needed</span>
+                      <span className="text-xs text-muted-foreground">No action needed</span>
                     )}
                   </td>
                 </tr>
@@ -556,7 +556,7 @@ export default function AdminWebinarApprovals() {
             </tbody>
           </table>
           {filteredAttendanceRows.length === 0 && (
-            <p className="text-sm text-gray-500 px-4 py-8 text-center">
+            <p className="text-sm text-muted-foreground px-4 py-8 text-center">
               {programFilter !== 'all'
                 ? 'No attendance records for the selected program.'
                 : 'No attendance records yet. Approved learners appear here when post-event verification is required.'}
@@ -566,8 +566,8 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'registrations' && !recentlyApprovedLoading && visibleRecentlyApproved.length > 0 ? (
-        <section className="overflow-x-auto rounded-2xl border border-amber-200 bg-amber-50/60">
-          <div className="border-b border-amber-200 px-4 py-3">
+        <section className="overflow-x-auto rounded-card border border-warning/25 bg-warning/10/60">
+          <div className="border-b border-warning/25 px-4 py-3">
             <h2 className="text-sm font-semibold text-amber-950">Recently approved</h2>
             <p className="mt-0.5 text-xs text-amber-900">
               Shown until each session ends plus one hour. Undo is available for{' '}
@@ -576,7 +576,7 @@ export default function AdminWebinarApprovals() {
           </div>
           <table className="min-w-full text-sm bg-white/80">
             <thead>
-              <tr className="border-b border-amber-100 text-left text-gray-600">
+              <tr className="border-b border-amber-100 text-left text-muted-foreground">
                 <th className="py-3 px-4">Program</th>
                 <th className="py-3 px-4">Type</th>
                 <th className="py-3 px-4">User</th>
@@ -591,20 +591,20 @@ export default function AdminWebinarApprovals() {
                 const remaining = undoRemainingMs(r.undoExpiresAt);
                 return (
                   <tr key={r.id}>
-                    <td className="py-3 px-4 font-medium text-gray-900">{r.program.title}</td>
-                    <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
+                    <td className="py-3 px-4 font-medium text-foreground">{r.program.title}</td>
+                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
                       {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
                     </td>
                     <td className="py-3 px-4">
                       {r.user.firstName} {r.user.lastName}
-                      <div className="text-xs text-gray-500">{r.user.email}</div>
+                      <div className="text-xs text-muted-foreground">{r.user.email}</div>
                     </td>
                     <td className="py-3 px-4">
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${hcpBadgeClass(r.user.specialty)}`}>
                         {hcpLabel(r.user.specialty)}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
+                    <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
                       {r.reviewedAt ? format(parseISO(r.reviewedAt), 'MMM d, yyyy h:mm a') : '-'}
                     </td>
                     <td className="py-3 px-4 text-amber-900 font-mono text-xs whitespace-nowrap">
@@ -615,7 +615,7 @@ export default function AdminWebinarApprovals() {
                         type="button"
                         disabled={busy || remaining <= 0}
                         onClick={() => undoMut.mutate(r.id)}
-                        className="rounded-lg border border-amber-300 bg-white px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-amber-50 disabled:opacity-40"
+                        className="rounded-lg border border-amber-300 bg-card px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-warning/10 disabled:opacity-40"
                       >
                         Undo approval
                       </button>
@@ -629,18 +629,18 @@ export default function AdminWebinarApprovals() {
       ) : null}
 
       {tab === 'registrations' && undoMut.isError ? (
-        <p className="text-sm text-red-600">Could not undo approval. The window may have expired.</p>
+        <p className="text-sm text-destructive">Could not undo approval. The window may have expired.</p>
       ) : null}
 
       {tab === 'registrations' && !isLoading && !isError ? (
-      <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+      <div className="overflow-x-auto rounded-card border border-border bg-card">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-gray-600">
+            <tr className="border-b border-border text-left text-muted-foreground">
               <th className="w-10 py-3 pl-4 pr-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-border"
                   checked={allSelected}
                   ref={(el) => {
                     if (el) el.indeterminate = someSelected;
@@ -666,7 +666,7 @@ export default function AdminWebinarApprovals() {
                 <td className="py-3 pl-4 pr-2">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300"
+                    className="h-4 w-4 rounded border-border"
                     checked={selectedIds.has(r.id)}
                     onChange={() => toggleOne(r.id)}
                     disabled={busy}
@@ -674,32 +674,32 @@ export default function AdminWebinarApprovals() {
                   />
                 </td>
                 <td className="py-3 px-4">
-                  <span className="font-medium text-gray-900">{r.program.title}</span>
+                  <span className="font-medium text-foreground">{r.program.title}</span>
                   <div className="mt-1">
                     <Link
                       to={`/admin/programs/${r.program.id}/hub`}
-                      className="text-xs font-semibold text-gray-600 hover:text-gray-900"
+                      className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                     >
                       Open program hub
                     </Link>
                   </div>
                 </td>
-                <td className="py-3 px-4 text-gray-700 whitespace-nowrap">
+                <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
                   {r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
                 </td>
                 <td className="py-3 px-4">
                   {r.user.firstName} {r.user.lastName}
-                  <div className="text-xs text-gray-500">{r.user.email}</div>
-                  {r.user.specialty && <div className="text-xs text-gray-400">{r.user.specialty}</div>}
+                  <div className="text-xs text-muted-foreground">{r.user.email}</div>
+                  {r.user.specialty && <div className="text-xs text-muted-foreground">{r.user.specialty}</div>}
                 </td>
                 <td className="py-3 px-4">
                   <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${hcpBadgeClass(r.user.specialty)}`}>
                     {hcpLabel(r.user.specialty)}
                   </span>
                 </td>
-                <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.institution)}</td>
-                <td className="py-3 px-4 text-gray-700">{displayOrNA(r.user.city)}</td>
-                <td className="py-3 px-4 text-gray-600 whitespace-nowrap">
+                <td className="py-3 px-4 text-muted-foreground">{displayOrNA(r.user.institution)}</td>
+                <td className="py-3 px-4 text-muted-foreground">{displayOrNA(r.user.city)}</td>
+                <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
                   {format(parseISO(r.lastSubmittedAt ?? r.createdAt), 'MMM d, yyyy h:mm a')}
                 </td>
                 <td className="py-3 px-4">
@@ -716,7 +716,7 @@ export default function AdminWebinarApprovals() {
                       type="button"
                       disabled={busy}
                       onClick={() => setRejectModalIds([r.id])}
-                      className="rounded-lg border border-gray-300 px-2 py-1 text-xs font-semibold"
+                      className="rounded-lg border border-border px-2 py-1 text-xs font-semibold"
                     >
                       Reject
                     </button>
@@ -727,7 +727,7 @@ export default function AdminWebinarApprovals() {
           </tbody>
         </table>
         {filteredRows.length === 0 && (
-          <p className="text-sm text-gray-500 px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground px-4 py-8 text-center">
             {programFilter !== 'all' ? 'No pending registrations for the selected program.' : 'No pending registrations.'}
           </p>
         )}

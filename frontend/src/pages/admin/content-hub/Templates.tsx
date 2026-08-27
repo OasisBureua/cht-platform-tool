@@ -21,7 +21,7 @@ const primaryButtonClasses =
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50 min-h-9 px-4 py-2 bg-primary hover:bg-primary-hover text-primary-foreground';
 
 const inputClasses =
-  'flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50';
+  'flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground shadow-card transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50';
 
 const labelClasses =
   'mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground';
@@ -133,7 +133,7 @@ export default function Templates() {
 
         {modalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="w-full max-w-md rounded-2xl border border-border bg-card shadow-card-hover">
               <div className="flex items-center justify-between border-b border-border px-6 py-4">
                 <h2 className="font-semibold text-foreground">New Template</h2>
                 <button

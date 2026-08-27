@@ -1,7 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { ProfileBanner } from '../../components/kol/ProfileBanner';
+import { useMemo, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft,
   ArrowRight,
   Briefcase,
   ExternalLink,
@@ -52,7 +52,6 @@ function IconLinkedIn({ className }: { className?: string }) {
   );
 }
 
-type TabId = 'overview' | 'background' | 'engagement';
 
 function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
@@ -95,7 +94,6 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
 
 export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
-  const [tab, setTab] = useState<TabId>('overview');
 
   const profile = useKolProfile(kolId);
 
@@ -106,7 +104,7 @@ export default function KolProfilePage() {
 
   if (profile.loadState === 'loading') {
     return (
-      <div className="min-h-screen w-full bg-zinc-50 px-6 py-20 text-center text-zinc-500 dark:bg-black dark:text-zinc-400">
+      <div className="min-h-screen w-full bg-ground px-6 py-20 text-center text-muted2">
         Loading profile…
       </div>
     );
@@ -123,187 +121,164 @@ export default function KolProfilePage() {
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
   return (
-    <div className="min-h-screen w-full bg-zinc-50 pb-20 text-zinc-900 dark:bg-black dark:text-zinc-100">
-      <div className="sticky top-0 z-30 w-full border-b border-zinc-200/80 bg-white/90 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90">
-        <div className="flex w-full max-w-none items-center gap-1 px-4 py-2 sm:px-6 lg:px-8">
-          <Link
-            to="/kol-network"
-            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
-            aria-label="Back to KOL directory"
-          >
-            <ArrowLeft className="h-5 w-5" strokeWidth={2} />
-          </Link>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-bold leading-tight">{vm.displayName}</p>
-            <p className="truncate text-[13px] text-zinc-500 dark:text-zinc-400">
-              {(entry.role.split(/[.;]/)[0]?.trim() ?? '').slice(0, 56)}
-              {(entry.role.split(/[.;]/)[0]?.trim() ?? '').length > 56 ? '…' : ''}
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div className="min-h-screen w-full bg-ground pb-20 text-text">
       <div className="w-full max-w-none">
         {/* Banner: full viewport width */}
-        <div className="relative h-36 w-full bg-gradient-to-br from-slate-800 via-brand-900 to-zinc-950 sm:h-48">
+        {/* A banner rather than a slab: the cluster motif seeded from
+            this profile, so the page reads as part of the site instead
+            of a stock gradient. A supplied banner image still wins. */}
+        <div className="relative h-24 w-full overflow-hidden bg-surface sm:h-28">
           {vm.bannerImageUrl ? (
-            <img src={vm.bannerImageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
-          ) : null}
+            <img src={vm.bannerImageUrl} alt="" className="size-full object-cover" loading="lazy" />
+          ) : (
+            <ProfileBanner seed={entry.id} />
+          )}
         </div>
 
-        <div className="relative px-4 pb-4 sm:px-6 lg:px-8">
-          {/* Avatar overlap */}
-          <div className="relative -mt-16 flex justify-between sm:-mt-[4.25rem]">
+
+        {/* ── Dossier ──────────────────────────────────────────
+            A sticky identity rail beside a scrolling record. The tabs
+            are gone: they hid two thirds of the profile behind a click,
+            and the fields a partner wants to compare -- sessions,
+            publications, Open Payments -- were never on screen together. */}
+        <div className="rail grid gap-8 pb-6 lg:grid-cols-[21rem_1fr] lg:gap-12">
+          <aside className="lg:sticky lg:top-24 lg:h-fit lg:self-start">
             <img
               src={entry.photoUrl || avatarUrl(entry.name)}
               alt=""
-              className="h-24 w-24 rounded-full border-4 border-zinc-50 bg-zinc-200 object-cover shadow-lg ring ring-zinc-200/80 dark:border-black dark:bg-zinc-800 dark:ring-zinc-800 sm:h-[7.25rem] sm:w-[7.25rem]"
+              className="-mt-12 size-24 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-28"
             />
-            <div className="flex flex-col items-end gap-2 pt-20 sm:pt-24">
-              <span className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-semibold text-brand-900 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-brand-200">
-                CHM Network
-              </span>
-              <Link
-                to={catalogHref}
-                className="inline-flex min-h-[36px] items-center gap-1 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
-              >
-                Catalog videos
-                <ArrowRight className="h-3.5 w-3.5 opacity-70" aria-hidden />
-              </Link>
-            </div>
-          </div>
 
-          <div className="mt-3 space-y-3">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">{vm.displayName}</h1>
-                {entry.featured ? (
-                  <span
-                    className="rounded bg-brand-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white"
-                    title="Curator-featured KOL"
-                  >
-                    ★ Featured
-                  </span>
-                ) : null}
-              </div>
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <h1 className="display text-[1.75rem] leading-[1.06] tracking-[-0.028em] text-text">
+                {vm.displayName}
+              </h1>
+              {entry.featured ? (
+                <span className="eyebrow rounded-[5px] bg-cta px-2 py-1 text-ground">Featured</span>
+              ) : null}
               {vm.rosterOnly ? (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded bg-teal-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-teal-900 dark:bg-teal-950/60 dark:text-teal-200">
-                    Roster
-                  </span>
-                </div>
+                <span className="eyebrow rounded-[5px] bg-surface-2 px-2 py-1 text-muted2">Roster</span>
               ) : null}
             </div>
+            <p className="prose-lede mt-2 text-body-s text-muted2">{vm.institution}</p>
 
-            <div className="grid gap-3 sm:grid-cols-2 text-[14px]">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Specialty</p>
-                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.specialty}</p>
-              </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">State</p>
-                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.stateName}</p>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Institution</p>
-                <p className="mt-1 text-zinc-800 dark:text-zinc-200">{vm.institution}</p>
-              </div>
-              {entry.education?.trim() ? (
-                <div className="sm:col-span-2">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Education & training</p>
-                  <p className="mt-1 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-200">{entry.education}</p>
+            {/* The hard numbers, pinned. This is the block that has to
+                stay on screen while the narrative scrolls past it. */}
+            <dl className="mt-6 border-t border-hairline">
+              {(
+                [
+                  ['Specialty', vm.specialty],
+                  ['Location', vm.stateName],
+                  entry.shootCount ? ['Sessions', String(entry.shootCount)] : null,
+                  entry.intel?.publicationsApprox
+                    ? ['Publications', `~${entry.intel.publicationsApprox}`]
+                    : null,
+                  entry.intel?.openPayments
+                    ? ['Open Payments', `$${entry.intel.openPayments.total.toLocaleString()}`]
+                    : null,
+                  entry.intel?.openPayments
+                    ? ['Records', `${entry.intel.openPayments.records} · ${entry.intel.openPayments.years}`]
+                    : null,
+                  entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
+                  entry.intel?.handle ? ['Handle', entry.intel.handle] : null,
+                ].filter(Boolean) as [string, string][]
+              ).map(([k, v]) => (
+                <div
+                  key={k}
+                  className="flex items-baseline justify-between gap-4 border-b border-hairline py-2.5"
+                >
+                  <dt className="text-body-s text-faint">{k}</dt>
+                  <dd className="meta text-end tabular-nums text-text">{v}</dd>
                 </div>
-              ) : null}
-            </div>
+              ))}
+            </dl>
+
+            <Link
+              to={catalogHref}
+              className="press mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-cta text-body-s font-medium text-ground hover:bg-cta-deep focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Catalog videos
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
 
             {(vm.phone || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {vm.phone ? (
                   <a
                     href={`tel:${vm.phone.replace(/\D/g, '')}`}
-                    className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400"
+                    className="press inline-flex h-10 items-center rounded-[6px] bg-surface px-3 text-body-s text-anchor shadow-card hover:brightness-110"
                   >
                     {vm.phone}
                   </a>
                 ) : null}
                 <SocialIcon href={vm.linkedInUrl} label="LinkedIn">
-                  <IconLinkedIn className="h-4 w-4" />
+                  <IconLinkedIn className="size-4" />
                 </SocialIcon>
                 <SocialIcon href={vm.twitterUrl} label="Twitter / X">
-                  <IconTwitter className="h-4 w-4" />
+                  <IconTwitter className="size-4" />
                 </SocialIcon>
                 <SocialIcon href={vm.webUrl} label="Website">
-                  <ExternalLink className="h-4 w-4" />
+                  <ExternalLink className="size-4" />
                 </SocialIcon>
               </div>
             )}
-          </div>
+          </aside>
 
-          {/* Tabs */}
-          <nav className="mt-5 flex border-b border-zinc-200 dark:border-zinc-800" aria-label="Profile sections">
-            {(
-              [
-                ['overview', 'Overview'],
-                ['background', 'Background'],
-                ['engagement', 'Engagement'],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-                className={[
-                  'min-h-[44px] flex-1 border-b-[3px] py-3 text-sm font-semibold transition-colors',
-                  tab === id
-                    ? 'border-brand-600 text-zinc-900 dark:border-brand-400 dark:text-white'
-                    : 'border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900/80',
-                ].join(' ')}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
+          <div className="min-w-0 lg:pt-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+              <div>
+                <p className="eyebrow text-faint">Role</p>
+                <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.role}</p>
+              </div>
+              {entry.intel?.affiliation ? (
+                <div>
+                  <p className="eyebrow text-faint">Affiliation</p>
+                  <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.intel.affiliation}</p>
+                </div>
+              ) : null}
+              {entry.education?.trim() ? (
+                <div className="sm:col-span-2">
+                  <p className="eyebrow text-faint">Education &amp; training</p>
+                  <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.education}</p>
+                </div>
+              ) : null}
+            </div>
 
-          <div className="mt-4 space-y-4" role="tabpanel">
-            {tab === 'overview' ? (
-              <>
+            <div className="mt-8 space-y-4">
+
                 {displayBrief ? (
-                  <article className="overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <div className="flex items-center gap-2 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+                  <article className="card overflow-hidden p-0">
+                    <div className="flex items-center gap-2 border-b border-hairline px-6 py-4">
                       <Sparkles
-                        className={`h-4 w-4 ${displayBrief.isAiGenerated ? 'text-amber-500' : 'text-zinc-400'}`}
+                        className={`size-4 ${displayBrief.isAiGenerated ? 'text-anchor' : 'text-faint'}`}
                         aria-hidden
                       />
-                      <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Intel summary</span>
-                      <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-zinc-400">
+                      <span className="display text-body-m text-text">Intel summary</span>
+                      <span className="eyebrow ms-auto text-faint">
                         {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
                       </span>
                     </div>
-                    <div className="space-y-4 px-4 py-4 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+                    <div className="space-y-5 px-6 py-5 text-body-s leading-relaxed text-muted2">
                       <div>
-                        <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">Who they are</p>
-                        <p className="mt-1">{displayBrief.whoTheyAre}</p>
+                        <p className="eyebrow text-faint">Who they are</p>
+                        <p className="mt-2">{displayBrief.whoTheyAre}</p>
                       </div>
                       {displayBrief.focus ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">
-                            What they focus on
-                          </p>
-                          <p className="mt-1">{displayBrief.focus}</p>
+                          <p className="eyebrow text-faint">What they focus on</p>
+                          <p className="mt-2">{displayBrief.focus}</p>
                         </div>
                       ) : null}
                       {displayBrief.chmContext ? (
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-wide text-zinc-400">CHM context</p>
-                          <p className="mt-1">{displayBrief.chmContext}</p>
+                          <p className="eyebrow text-faint">CHM context</p>
+                          <p className="mt-2">{displayBrief.chmContext}</p>
                         </div>
                       ) : null}
                     </div>
                     {displayBrief.isAiGenerated ? (
-                      <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-800">
-                        <p className="text-[10px] leading-snug text-zinc-500 dark:text-zinc-500">
+                      <div className="border-t border-hairline px-6 py-4">
+                        <p className="text-body-s leading-snug text-faint">
                           AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
                           important details against primary sources.
                         </p>
@@ -312,50 +287,44 @@ export default function KolProfilePage() {
                   </article>
                 ) : null}
 
-                <KolPublicationsSection kolId={entry.id} />
-
-                <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                  <h2 className="flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                <article className="card p-6">
+                  <h2 className="display flex items-center gap-2 text-body-m text-text">
                     <Briefcase className="h-4 w-4" aria-hidden />
                     Role
                   </h2>
-                  <p className="mt-2 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.role}</p>
+                  <p className="prose-lede mt-3 text-body-s text-muted2">{entry.role}</p>
                 </article>
 
                 <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
-              </>
-            ) : null}
-
-            {tab === 'background' ? (
-              <div className="space-y-4">
+              
                 {showBioOnBackground ? (
-                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Summary</h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{entry.bio}</p>
+                  <article className="card p-6">
+                    <h2 className="display text-body-m text-text">Summary</h2>
+                    <p className="prose-lede mt-3 text-body-s text-muted2">{entry.bio}</p>
                   </article>
                 ) : null}
                 {vm.researchHighlights ? (
-                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Research highlights</h2>
-                    <p className="mt-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{vm.researchHighlights}</p>
+                  <article className="card p-6">
+                    <h2 className="display text-body-m text-text">Research highlights</h2>
+                    <p className="prose-lede mt-3 text-body-s text-muted2">{vm.researchHighlights}</p>
                   </article>
                 ) : null}
                 {vm.awards && vm.awards.length > 0 ? (
-                  <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                    <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">Recognition</h2>
-                    <ul className="mt-3 list-inside list-disc space-y-1 text-[15px] text-zinc-700 dark:text-zinc-300">
+                  <article className="card p-6">
+                    <h2 className="display text-body-m text-text">Recognition</h2>
+                    <ul className="mt-3 list-inside list-disc space-y-1.5 text-body-s text-muted2">
                       {vm.awards.map((a) => (
                         <li key={a}>{a}</li>
                       ))}
                     </ul>
                   </article>
                 ) : null}
-              </div>
-            ) : null}
 
-            {tab === 'engagement' ? (
-              <KolCatalogContentSection entry={entry} variant="engagement" limit={12} />
-            ) : null}
+                {/* Last: seventeen indexed papers is a reference list, not
+                    the reason anyone opened the page. */}
+                <KolPublicationsSection kolId={entry.id} />
+              
+            </div>
           </div>
         </div>
       </div>
@@ -371,7 +340,7 @@ function SocialIcon({ href, label, children }: { href?: string; label: string; c
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm transition-[color,transform] hover:text-brand-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+      className="press grid size-10 place-items-center rounded-[6px] bg-surface text-muted2 shadow-card transition-colors duration-150 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       {children}
     </a>

@@ -14,6 +14,7 @@ import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavIte
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Home                  = lazy(() => import('./pages/public/Home'));
+const HomeBento             = lazy(() => import('./pages/public/HomeBento'));
 const ClipDetail            = lazy(() => import('./pages/public/ClipDetail'));
 const PlaylistDetail        = lazy(() => import('./pages/public/PlaylistDetail'));
 const About                 = lazy(() => import('./pages/public/About'));
@@ -38,7 +39,6 @@ const PublicWebinarDetail   = lazy(() => import('./pages/public/PublicWebinarDet
 const PublicOfficeHours     = lazy(() => import('./pages/public/PublicOfficeHours'));
 const PublicOfficeHoursDetail = lazy(() => import('./pages/public/PublicOfficeHoursDetail'));
 const PublicSurveys         = lazy(() => import('./pages/public/PublicSurveys'));
-const WhatWeDo              = lazy(() => import('./pages/public/WhatWeDo'));
 const Services              = lazy(() => import('./pages/public/Services'));
 const Portfolios            = lazy(() => import('./pages/public/Portfolios'));
 const DolNetwork            = lazy(() => import('./pages/public/DolNetwork'));
@@ -65,8 +65,6 @@ const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
-const ChmDocs               = lazy(() => import('./pages/ChmDocs'));
-const DiseaseAreas          = lazy(() => import('./pages/DiseaseAreas'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -138,7 +136,10 @@ function App() {
                 ======================= */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route path="/home" element={<Home />} />
+              {/* The homepage is order C: seven sections folded into five. */}
+              <Route path="/home" element={<HomeBento />} />
+              {/* Order B, kept for comparison. Not linked from the nav. */}
+              <Route path="/home-tame" element={<Home />} />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
@@ -175,7 +176,8 @@ function App() {
               <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
               <Route path="/surveys" element={<PublicSurveys />} />
               <Route path="/for-hcps" element={<ForHCPs />} />
-              <Route path="/what-we-do" element={<WhatWeDo />} />
+              {/* Merged into /about: one page for who we are and what we run. */}
+              <Route path="/what-we-do" element={<Navigate to="/about" replace />} />
               <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
               <Route path="/kol-network" element={<DolNetwork />} />
               <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />

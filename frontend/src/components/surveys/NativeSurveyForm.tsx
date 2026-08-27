@@ -119,7 +119,7 @@ export function NativeSurveyForm({
 
   if (!surveyHasNativeQuestions(questions)) {
     return (
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-muted-foreground">
         This survey is not available as a native form yet. Contact support if you need assistance.
       </p>
     );
@@ -161,7 +161,7 @@ export function NativeSurveyForm({
       data-survey-id={surveyId}
     >
       {authenticated && userSummary ? (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+        <div className="rounded-card border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
           Submitting as{' '}
           <strong>
             {[userSummary.firstName, userSummary.lastName].filter(Boolean).join(' ') || 'your account'}
@@ -186,7 +186,7 @@ export function NativeSurveyForm({
       ))}
 
       {showPayoutNotice ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-950">
+        <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-3 text-xs text-amber-950">
           W-9 and honorarium payout details are managed in your{' '}
           <Link to={w9ProfileHref} className="font-semibold underline">
             profile &amp; payments
@@ -199,7 +199,7 @@ export function NativeSurveyForm({
         <button
           type="submit"
           disabled={disabled || submitting}
-          className="inline-flex items-center justify-center rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="inline-flex items-center justify-center rounded-[6px] bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-300"
         >
           {submitting ? 'Submitting…' : submitLabel ?? `Submit ${title}`}
         </button>
@@ -256,8 +256,8 @@ function NativeQuestionField(props: {
 
   if (question.type === 'info' || question.type === 'link') {
     return (
-      <div className="text-sm text-gray-700">
-        <p className="font-medium text-gray-900">{prompt}</p>
+      <div className="text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">{prompt}</p>
       </div>
     );
   }
@@ -265,12 +265,12 @@ function NativeQuestionField(props: {
   if (question.type === 'long_text') {
     return (
       <label className="block space-y-1 text-sm">
-        <span className="font-medium text-gray-900">
+        <span className="font-medium text-foreground">
           {prompt}
           {required ? ' *' : ''}
         </span>
         <textarea
-          className="w-full rounded-lg border border-gray-300 px-3 py-2"
+          className="w-full rounded-[6px] border border-border px-3 py-2"
           rows={4}
           required={required}
           disabled={disabled}
@@ -286,7 +286,7 @@ function NativeQuestionField(props: {
     const max = typeof question.scaleMax === 'number' ? question.scaleMax : 5;
     return (
       <fieldset className="space-y-2 text-sm" disabled={disabled}>
-        <legend className="font-medium text-gray-900">
+        <legend className="font-medium text-foreground">
           {prompt}
           {required ? ' *' : ''}
         </legend>
@@ -295,7 +295,7 @@ function NativeQuestionField(props: {
             (rating) => (
               <label
                 key={rating}
-                className="inline-flex min-w-10 cursor-pointer items-center justify-center rounded-lg border border-gray-300 px-3 py-2 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50"
+                className="inline-flex min-w-10 cursor-pointer items-center justify-center rounded-[6px] border border-border px-3 py-2 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50"
               >
                 <input
                   type="radio"
@@ -319,7 +319,7 @@ function NativeQuestionField(props: {
     const max = typeof question.maxSelections === 'number' ? question.maxSelections : undefined;
     return (
       <fieldset className="space-y-2 text-sm" disabled={disabled}>
-        <legend className="font-medium text-gray-900">
+        <legend className="font-medium text-foreground">
           {prompt}
           {required ? ' *' : ''}
           {max ? ` (up to ${max})` : ''}
@@ -348,7 +348,7 @@ function NativeQuestionField(props: {
   if (question.type === 'single_choice' && Array.isArray(question.options)) {
     return (
       <fieldset className="space-y-2 text-sm" disabled={disabled}>
-        <legend className="font-medium text-gray-900">
+        <legend className="font-medium text-foreground">
           {prompt}
           {required ? ' *' : ''}
         </legend>
@@ -370,12 +370,12 @@ function NativeQuestionField(props: {
 
   return (
     <label className="block space-y-1 text-sm">
-      <span className="font-medium text-gray-900">
+      <span className="font-medium text-foreground">
         {prompt}
         {required ? ' *' : ''}
       </span>
       <input
-        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+        className="w-full rounded-[6px] border border-border px-3 py-2"
         required={required}
         disabled={disabled}
         value={typeof value === 'string' ? value : ''}

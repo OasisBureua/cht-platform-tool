@@ -37,7 +37,7 @@ describe('Login', () => {
 
     expect(screen.getByPlaceholderText(/johndoe@gmail.com/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/••••••••/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
   });
 
   it('calls login with email and password on form submit', async () => {
@@ -51,7 +51,7 @@ describe('Login', () => {
     fireEvent.change(screen.getByPlaceholderText(/••••••••/), {
       target: { value: 'password123' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: /login/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /sign in/i }).closest('form')!);
 
     await screen.findByText(/signing in/i);
 
@@ -69,7 +69,7 @@ describe('Login', () => {
     fireEvent.change(screen.getByPlaceholderText(/••••••••/), {
       target: { value: 'wrongpass' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: /login/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /sign in/i }).closest('form')!);
 
     expect(await screen.findByText(/invalid credentials/i)).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('Login', () => {
     fireEvent.change(screen.getByPlaceholderText(/••••••••/), {
       target: { value: 'password123' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: /login/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /sign in/i }).closest('form')!);
 
     expect(await screen.findByText(/set up authenticator mfa/i)).toBeInTheDocument();
     expect(screen.getByTitle('MFA setup QR code')).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe('Login', () => {
     fireEvent.change(screen.getByPlaceholderText(/••••••••/), {
       target: { value: 'password123' },
     });
-    fireEvent.submit(screen.getByRole('button', { name: /login/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /sign in/i }).closest('form')!);
 
     const link = await screen.findByRole('link', { name: /verify your email/i });
     expect(link).toHaveAttribute(

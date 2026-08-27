@@ -194,8 +194,8 @@ export default function WatchVideo() {
   if (!videoId) {
     return (
       <div className="space-y-3">
-        <h1 className="text-xl font-semibold text-gray-900">Video not found</h1>
-        <p className="text-sm text-gray-600">Missing video id.</p>
+        <h1 className="text-xl font-semibold text-foreground">Video not found</h1>
+        <p className="text-sm text-muted-foreground">Missing video id.</p>
       </div>
     );
   }
@@ -205,15 +205,15 @@ export default function WatchVideo() {
       <div className="space-y-4">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back
         </button>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-6">
-          <h1 className="text-xl font-semibold text-gray-900">Video not found</h1>
-          <p className="mt-1 text-sm text-gray-600">
+        <div className="bg-card border border-border rounded-card p-6">
+          <h1 className="text-xl font-semibold text-foreground">Video not found</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             We couldn’t locate that video in your current programs feed.
           </p>
         </div>
@@ -233,7 +233,7 @@ export default function WatchVideo() {
       <div className="flex items-center justify-between gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back
@@ -241,7 +241,7 @@ export default function WatchVideo() {
 
         <button
           onClick={() => navigate(`/webinars/${program.id}`)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           Webinar Details
           <ExternalLink className="h-4 w-4" />
@@ -249,11 +249,11 @@ export default function WatchVideo() {
       </div>
 
       {/* Header / Progress */}
-      <section className="bg-white border border-gray-200 rounded-xl p-5">
+      <section className="bg-card border border-border rounded-card p-5">
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-gray-900">{video.title}</p>
-          <p className="text-sm text-gray-600">{video.description || program.title}</p>
-          <p className="text-sm text-gray-700 tabular-nums">
+          <p className="text-sm font-semibold text-foreground">{video.title}</p>
+          <p className="text-sm text-muted-foreground">{video.description || program.title}</p>
+          <p className="text-sm text-muted-foreground tabular-nums">
             {video.platform} • {duration ? `${Math.round(duration / 60)} min` : 'Video'}
           </p>
 
@@ -266,7 +266,7 @@ export default function WatchVideo() {
               />
             </div>
 
-            <div className="mt-2 flex items-center justify-between text-xs text-gray-600 tabular-nums">
+            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground tabular-nums">
               <span>
                 {watchedLabel} / {totalLabel}
               </span>
@@ -274,14 +274,14 @@ export default function WatchVideo() {
             </div>
 
             {completed ? (
-              <div className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-3 py-1">
+              <div className="mt-2 inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground bg-muted border border-border rounded-[6px] px-3 py-1">
                 <CheckCircle2 className="h-4 w-4" />
                 Completed
               </div>
             ) : null}
 
             {syncError ? (
-              <p className="mt-2 text-xs text-red-600">
+              <p className="mt-2 text-xs text-destructive">
                 Sync issue: {syncError}
               </p>
             ) : null}
@@ -292,14 +292,14 @@ export default function WatchVideo() {
             {!hasStarted ? (
               <button
                 onClick={() => setHasStarted(true)}
-                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                className="rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 {canResume ? 'Resume' : 'Start'}
               </button>
             ) : (
               <button
                 onClick={() => setHasStarted(false)}
-                className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="rounded-[6px] border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
               >
                 Pause
               </button>
@@ -312,7 +312,7 @@ export default function WatchVideo() {
                 setLastSyncedSeconds(0);
                 syncNow(0);
               }}
-              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
             >
               <RotateCcw className="h-4 w-4" />
               Reset Progress
@@ -326,7 +326,7 @@ export default function WatchVideo() {
                   setWatchedSeconds(forcedSeconds);
                   syncNow(forcedSeconds);
                 }}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+                className="inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Mark Complete (DEV)
@@ -334,14 +334,14 @@ export default function WatchVideo() {
             ) : null}
 
             {updateMutation.isPending ? (
-              <span className="text-xs font-medium text-gray-600 self-center">Syncing…</span>
+              <span className="text-xs font-medium text-muted-foreground self-center">Syncing…</span>
             ) : null}
           </div>
         </div>
       </section>
 
       {/* Video player - IFrame API with GA4 events */}
-      <section className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <section className="bg-card border border-border rounded-card overflow-hidden">
         <div className="aspect-video w-full bg-black">
           <YouTubePlayer
             youtubeUrl={video.embedUrl}

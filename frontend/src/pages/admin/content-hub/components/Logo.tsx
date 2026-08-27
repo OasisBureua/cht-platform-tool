@@ -1,5 +1,5 @@
 // CHM logo mark: ported from the report generator's src/components/Logo.tsx.
-export function LogoMark({ size = 34, color = '#3da4c0' }: { size?: number; color?: string }) {
+export function LogoMark({ size = 34, color = '#007cff' }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
       <g transform="translate(24,24)" fill={color}>

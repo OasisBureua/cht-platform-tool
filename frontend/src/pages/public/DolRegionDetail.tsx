@@ -20,7 +20,7 @@ export default function DolRegionDetail() {
 
   if (directory.loadState === 'loading') {
     return (
-      <div className="bg-white px-6 py-20 text-center text-gray-500">Loading state…</div>
+      <div className="bg-card px-6 py-20 text-center text-muted-foreground">Loading state…</div>
     );
   }
   if (!region) {
@@ -28,22 +28,22 @@ export default function DolRegionDetail() {
   }
 
   return (
-    <div className="bg-white">
+    <div className="bg-card">
       {/* Hero */}
       <section>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
           <Link
             to="/kol-network"
-            className="inline-flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground mb-4"
           >
             <ChevronLeft className="h-4 w-4" />
             All states
           </Link>
           <div className="max-w-3xl space-y-2">
-            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-gray-900 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-foreground leading-tight">
               Key Opinion Leader (KOL) Network
             </h1>
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed">
+            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
               Oncology & Breast Cancer Specialists
             </p>
           </div>
@@ -54,11 +54,11 @@ export default function DolRegionDetail() {
       <section className="py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 space-y-4">
           <div>
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900">
+            <h2 className="text-2xl md:text-3xl font-semibold text-foreground">
               {region.title}
             </h2>
             {region.subtitle && (
-              <p className="mt-1 text-base text-gray-600">{region.subtitle}</p>
+              <p className="mt-1 text-base text-muted-foreground">{region.subtitle}</p>
             )}
           </div>
           <div className="space-y-6">
@@ -66,13 +66,13 @@ export default function DolRegionDetail() {
               <div
                 key={entry.id}
                 id={entry.id}
-                className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 space-y-3 scroll-mt-24"
+                className="rounded-card border border-border bg-card p-5 sm:p-6 space-y-3 scroll-mt-24"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-lg font-semibold text-foreground">
                     {entry.name}
                     {entry.isNew && (
-                      <span className="ml-2 text-xs font-medium text-gray-500">★ NEW</span>
+                      <span className="ml-2 text-xs font-medium text-muted-foreground">★ NEW</span>
                     )}
                   </h3>
                   <Link
@@ -82,14 +82,14 @@ export default function DolRegionDetail() {
                     View profile →
                   </Link>
                 </div>
-                <p className="text-sm font-medium text-gray-700">
-                  <span className="text-gray-500">Role:</span> {entry.role}
+                <p className="text-sm font-medium text-muted-foreground">
+                  <span className="text-muted-foreground">Role:</span> {entry.role}
                 </p>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  <span className="text-gray-500">Bio:</span> {entry.bio}
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  <span className="text-muted-foreground">Bio:</span> {entry.bio}
                 </p>
-                <p className="text-sm text-gray-600">
-                  <span className="text-gray-500">Education:</span> {entry.education}
+                <p className="text-sm text-muted-foreground">
+                  <span className="text-muted-foreground">Education:</span> {entry.education}
                 </p>
               </div>
             ))}
@@ -98,9 +98,9 @@ export default function DolRegionDetail() {
       </section>
 
       {/* Region nav */}
-      <section className="border-t border-gray-200 py-6">
+      <section className="border-t border-border py-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
             Other states
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -110,7 +110,7 @@ export default function DolRegionDetail() {
                 <Link
                   key={r.id}
                   to={`/kol-network/${r.id}`}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+                  className="rounded-[6px] border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:border-border"
                 >
                   {r.title}
                 </Link>
@@ -119,8 +119,8 @@ export default function DolRegionDetail() {
         </div>
       </section>
 
-      <div className="border-t border-gray-200 py-6">
-        <p className="text-center text-xs text-gray-500">
+      <div className="border-t border-border py-6">
+        <p className="text-center text-xs text-muted-foreground">
           Community Health Technologies - Confidential KOL Network Document | ★ = Newly Added
         </p>
       </div>

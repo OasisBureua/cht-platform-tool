@@ -133,14 +133,14 @@ export function BillVendorSetupForm(props: {
     opts?: { placeholder?: string; maxLength?: number; type?: string },
   ) => (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-gray-700">{label}</label>
+      <label className="text-xs font-semibold text-muted-foreground">{label}</label>
       <input
         type={opts?.type ?? 'text'}
         value={form[key]}
         onChange={set(key)}
         placeholder={opts?.placeholder}
         maxLength={opts?.maxLength}
-        className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+        className="rounded-card border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gray-900"
         disabled={mutation.isPending || locked}
       />
     </div>
@@ -151,27 +151,27 @@ export function BillVendorSetupForm(props: {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-3xl border border-gray-200 bg-white p-6 space-y-6 min-w-0 overflow-hidden"
+      className="rounded-card border border-border bg-card p-6 space-y-6 min-w-0 overflow-hidden"
     >
       {locked ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+        <p className="rounded-[6px] border border-warning/25 bg-warning/10 px-3 py-2 text-sm text-amber-950">
           Complete your <strong>profession</strong> and <strong>NPI</strong> (when required) under Settings before you
           can save payment details.
         </p>
       ) : null}
 
       <div>
-        <h2 className="text-base font-semibold text-gray-900">
+        <h2 className="text-base font-semibold text-foreground">
           {isUpdate ? 'Update payment details' : 'Set up your payment account'}
         </h2>
-        <p className="mt-0.5 text-sm text-gray-600">
+        <p className="mt-0.5 text-sm text-muted-foreground">
           Choose how you want to receive honoraria, then enter payee and mailing details
           {paymentMethod === 'ACH' ? ' plus bank account for ACH' : ''}.
         </p>
       </div>
 
       <div
-        className="rounded-xl border border-brand-200 bg-brand-50/80 px-4 py-3 text-sm text-brand-950 leading-relaxed"
+        className="rounded-card border border-brand-200 bg-brand-50/80 px-4 py-3 text-sm text-brand-950 leading-relaxed"
         role="note"
       >
         <p className="font-semibold text-brand-900">Official payee of record</p>
@@ -188,58 +188,58 @@ export function BillVendorSetupForm(props: {
       </div>
 
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <legend className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           Payment method
         </legend>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <label
             className={[
-              'flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-card border px-4 py-3 transition-colors',
               paymentMethod === 'ACH'
                 ? 'border-brand-600 bg-brand-50'
-                : 'border-gray-200 bg-white hover:bg-gray-50',
+                : 'border-border bg-card hover:bg-muted',
               locked ? 'opacity-60 pointer-events-none' : '',
             ].join(' ')}
           >
             <input
               type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="mt-1 h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
               checked={paymentMethod === 'ACH'}
               onChange={() => setPaymentMethod('ACH')}
               disabled={mutation.isPending || locked}
             />
             <span>
-              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Building2 className="h-4 w-4" aria-hidden />
                 ACH (direct deposit)
               </span>
-              <span className="mt-0.5 block text-xs text-gray-600">
+              <span className="mt-0.5 block text-xs text-muted-foreground">
                 Deposit to your US bank account. Fastest for most payouts.
               </span>
             </span>
           </label>
           <label
             className={[
-              'flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 transition-colors',
+              'flex cursor-pointer items-start gap-3 rounded-card border px-4 py-3 transition-colors',
               paymentMethod === 'CHECK'
                 ? 'border-brand-600 bg-brand-50'
-                : 'border-gray-200 bg-white hover:bg-gray-50',
+                : 'border-border bg-card hover:bg-muted',
               locked ? 'opacity-60 pointer-events-none' : '',
             ].join(' ')}
           >
             <input
               type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+              className="mt-1 h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
               checked={paymentMethod === 'CHECK'}
               onChange={() => setPaymentMethod('CHECK')}
               disabled={mutation.isPending || locked}
             />
             <span>
-              <span className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+              <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <Mail className="h-4 w-4" aria-hidden />
                 Check (mail)
               </span>
-              <span className="mt-0.5 block text-xs text-gray-600">
+              <span className="mt-0.5 block text-xs text-muted-foreground">
                 Paper check mailed to the address below. You can track delivery status after payout.
               </span>
             </span>
@@ -248,7 +248,7 @@ export function BillVendorSetupForm(props: {
       </fieldset>
 
       {paymentMethod === 'ACH' ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed flex flex-wrap items-center gap-x-1 gap-y-1">
+        <div className="rounded-[6px] border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed flex flex-wrap items-center gap-x-1 gap-y-1">
           <strong className="text-slate-900 shrink-0">Security:</strong>
           <span>
             Bank credentials are transmitted securely and processed by{' '}
@@ -260,16 +260,16 @@ export function BillVendorSetupForm(props: {
       ) : null}
 
       {paymentMethod === 'CHECK' ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 leading-relaxed">
+        <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-3 py-2.5 text-xs text-amber-950 leading-relaxed">
           <strong>Check delivery:</strong> Checks are mailed to the US address you enter below. Confirm it is current.
           Delivery status (mailed / in transit / delivered) appears on your Payments page and for admins after payout.
         </div>
       ) : null}
 
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Payee information</legend>
+        <legend className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Payee information</legend>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-semibold text-gray-700">
+          <label className="text-xs font-semibold text-muted-foreground">
             Payee name (legal name of the payee of record)
           </label>
           <input
@@ -277,10 +277,10 @@ export function BillVendorSetupForm(props: {
             value={form.payeeName}
             onChange={set('payeeName')}
             placeholder="e.g., Jane Smith, MD or Smith Medical Consulting LLC"
-            className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+            className="rounded-card border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gray-900"
             disabled={mutation.isPending || locked}
           />
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Use your personal legal name for individual payments, or the exact LLC / business legal name if the
             organization is the payee. This name appears on checks and tax reporting.
           </p>
@@ -288,7 +288,7 @@ export function BillVendorSetupForm(props: {
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide">US mailing address</legend>
+        <legend className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">US mailing address</legend>
         {field('Street address', 'addressLine1', { placeholder: '123 Main St' })}
         <div className="grid grid-cols-2 gap-3">
           {field('City', 'city', { placeholder: 'New York' })}
@@ -299,14 +299,14 @@ export function BillVendorSetupForm(props: {
 
       {paymentMethod === 'ACH' ? (
         <fieldset className="space-y-3">
-          <legend className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex flex-wrap items-center gap-2">
+          <legend className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex flex-wrap items-center gap-2">
             <BillComMark size="xs" />
             <span>Bank account (ACH)</span>
           </legend>
           {field('Name on account', 'nameOnAccount', { placeholder: 'Jane Smith' })}
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-700">Routing number</label>
+            <label className="text-xs font-semibold text-muted-foreground">Routing number</label>
             <input
               type="text"
               inputMode="numeric"
@@ -314,17 +314,17 @@ export function BillVendorSetupForm(props: {
               onChange={set('routingNumber')}
               placeholder="9-digit ABA number"
               maxLength={9}
-              className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+              className="rounded-card border border-border px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gray-900"
               disabled={mutation.isPending || locked}
             />
             {routingHint && (
               <p
                 className={`text-xs ${
                   routingHint.startsWith('✓')
-                    ? 'text-green-700'
+                    ? 'text-success'
                     : routingHint.includes('Invalid')
-                      ? 'text-red-600'
-                      : 'text-gray-500'
+                      ? 'text-destructive'
+                      : 'text-muted-foreground'
                 }`}
               >
                 {routingHint}
@@ -333,7 +333,7 @@ export function BillVendorSetupForm(props: {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-700">Account number</label>
+            <label className="text-xs font-semibold text-muted-foreground">Account number</label>
             <div className="relative">
               <input
                 type={showAccount ? 'text' : 'password'}
@@ -342,13 +342,13 @@ export function BillVendorSetupForm(props: {
                 onChange={set('accountNumber')}
                 placeholder="Checking or savings (4–17 digits)"
                 maxLength={17}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2 pr-10 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900"
+                className="w-full rounded-card border border-border px-3 py-2 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gray-900"
                 disabled={mutation.isPending || locked}
               />
               <button
                 type="button"
                 onClick={() => setShowAccount((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-700"
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
                 aria-label={showAccount ? 'Hide account number' : 'Show account number'}
                 tabIndex={-1}
               >
@@ -356,21 +356,21 @@ export function BillVendorSetupForm(props: {
               </button>
             </div>
             {accountHint && (
-              <p className={`text-xs ${accountHint.includes('✓') ? 'text-green-700' : 'text-amber-700'}`}>
+              <p className={`text-xs ${accountHint.includes('✓') ? 'text-success' : 'text-warning'}`}>
                 {accountHint}
               </p>
             )}
-            <p className="text-xs text-gray-400">4–17 digits. Numbers only: no spaces or dashes.</p>
+            <p className="text-xs text-muted-foreground">4–17 digits. Numbers only: no spaces or dashes.</p>
           </div>
         </fieldset>
       ) : null}
 
-      {error && <p className="text-sm text-red-600 font-medium">{error}</p>}
+      {error && <p className="text-sm text-destructive font-medium">{error}</p>}
 
       <button
         type="submit"
         disabled={mutation.isPending || locked || !paymentMethod}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-800 active:scale-[0.96] disabled:opacity-60"
+        className="flex w-full items-center justify-center gap-2 rounded-card bg-gray-900 px-4 py-3 text-sm font-semibold text-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)] transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-gray-800 active:scale-[0.96] disabled:opacity-60"
       >
         {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
         {mutation.isPending

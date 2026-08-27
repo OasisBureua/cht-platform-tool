@@ -65,7 +65,7 @@ export function NotificationBell() {
             if (isAdmin) queryClient.invalidateQueries({ queryKey: ['admin', 'webhook-imports'] });
           }
         }}
-        className="relative p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        className="relative p-2 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
         aria-label="Notifications"
         aria-expanded={open}
       >
@@ -85,13 +85,13 @@ export function NotificationBell() {
         ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-xl border border-gray-200 bg-white shadow-lg z-50 text-[100%] dark:border-zinc-700 dark:bg-zinc-900">
-          <p className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-gray-500 border-b border-gray-100 dark:border-zinc-800 dark:text-zinc-400">
+        <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-h-[min(24rem,70vh)] overflow-y-auto overscroll-contain rounded-card border border-border bg-card shadow-lg z-50 text-[100%]">
+          <p className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border">
             Notifications
           </p>
 
           {profileIncomplete ? (
-            <div className="border-b border-amber-200/80 bg-amber-50/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
+            <div className="border-b border-warning/25/80 bg-warning/10/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
               <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Add your profession and NPI</p>
               <p className="mt-1.5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
                 You can use the app, but you must add your <strong>profession</strong> and <strong>NPI</strong> (where
@@ -101,7 +101,7 @@ export function NotificationBell() {
               <Link
                 to="/app/settings"
                 onClick={() => setOpen(false)}
-                className="mt-2 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-amber-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-900 dark:bg-amber-600 dark:hover:bg-amber-500"
+                className="mt-2 inline-flex min-h-[40px] items-center justify-center rounded-[6px] bg-amber-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-900 dark:bg-amber-600 dark:hover:bg-amber-500"
               >
                 Complete required profile
               </Link>
@@ -110,10 +110,10 @@ export function NotificationBell() {
 
           {isAdmin && webhookImports.length > 0 ? (
             <>
-              <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 dark:border-zinc-800 dark:text-zinc-400">
+              <p className="px-4 py-2 text-xs font-semibold text-muted-foreground border-b border-border">
                 Admin: Zoom imports need review
               </p>
-              <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
+              <ul className="divide-y divide-gray-100">
                 {webhookImports.map((prog) => (
                   <li key={prog.id}>
                     <Link
@@ -121,7 +121,7 @@ export function NotificationBell() {
                       onClick={() => setOpen(false)}
                       className="block px-4 py-3 hover:bg-orange-50 dark:hover:bg-orange-950/30"
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{prog.title}</p>
+                      <p className="text-sm font-medium text-foreground">{prog.title}</p>
                       <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
                         Imported from Zoom
                         {prog.startDate
@@ -129,7 +129,7 @@ export function NotificationBell() {
                           : ''}
                       </p>
                       {prog.missingFields.length > 0 ? (
-                        <p className="text-xs text-gray-500 dark:text-zinc-500 mt-0.5">
+                        <p className="text-xs text-muted-foreground mt-0.5">
                           Missing: {prog.missingFields.join(', ')}
                         </p>
                       ) : null}
@@ -140,25 +140,25 @@ export function NotificationBell() {
             </>
           ) : null}
 
-          <p className="px-4 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100 dark:border-zinc-800 dark:text-zinc-400">
+          <p className="px-4 py-2 text-xs font-semibold text-muted-foreground border-b border-border">
             Live follow-ups
           </p>
           {items.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-gray-600 dark:text-zinc-400">
+            <p className="px-4 py-4 text-sm text-muted-foreground">
               All caught up. Live session reminders (e.g. post-event surveys) appear here after you enroll, or after
               approval, if required.
             </p>
           ) : (
-            <ul className="divide-y divide-gray-100 dark:divide-zinc-800">
+            <ul className="divide-y divide-gray-100">
               {items.map((it) => (
                 <li key={it.id}>
                   <Link
                     to={it.href}
                     onClick={() => setOpen(false)}
-                    className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-zinc-800/80"
+                    className="block px-4 py-3 hover:bg-muted"
                   >
-                    <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">{it.title}</p>
-                    <p className="text-xs text-gray-600 dark:text-zinc-400 mt-0.5">{it.body}</p>
+                    <p className="text-sm font-medium text-foreground">{it.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{it.body}</p>
                   </Link>
                 </li>
               ))}

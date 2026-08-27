@@ -37,7 +37,7 @@ export default function ChatBot() {
   return (
     <div className="flex flex-col -mx-4 sm:-mx-6 lg:-mx-8 -mt-4 sm:-mt-6 lg:-mt-8 -mb-4 sm:-mb-6 lg:-mb-8 h-[calc(100vh-112px)] md:h-[calc(100vh-56px)] lg:h-[calc(100vh-64px)] min-h-0">
       {!resolvedToken && (
-        <p className="px-4 sm:px-6 lg:px-8 pt-3 pb-1 text-sm text-amber-600 shrink-0">
+        <p className="px-4 sm:px-6 lg:px-8 pt-3 pb-1 text-sm text-warning shrink-0">
           Anonymous mode: limited to 5 queries per 24 hours. Sign in with Google for unlimited access.
         </p>
       )}
