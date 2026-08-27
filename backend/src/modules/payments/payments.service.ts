@@ -15,6 +15,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BillService } from './bill.service';
+import { StripeService } from './stripe.service';
 import {
   CreateConnectAccountResponseDto,
   AccountLinkResponseDto,
@@ -36,10 +37,24 @@ export class PaymentsService {
   constructor(
     private prisma: PrismaService,
     private billService: BillService,
+    private stripeService: StripeService,
     private configService: ConfigService,
   ) {
     this.frontendUrl =
       this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
+  }
+
+  /** When Stripe is configured, Bill is not used on the payments happy path. */
+  private useStripe(): boolean {
+    return this.stripeService.isConfigured();
+  }
+
+  private assertStripeNotRequiredBillPath(): void {
+    if (this.useStripe()) {
+      throw new BadRequestException(
+        'This environment uses Stripe Connect. Use Account Link / Stripe onboarding instead of Bill.com.',
+      );
+    }
   }
 
   /**
@@ -67,6 +82,9 @@ export class PaymentsService {
           state: true,
           zipCode: true,
           billVendorId: true,
+          stripeAccountId: true,
+          stripePayoutsEnabled: true,
+          bankAccountLast4: true,
           w9Submitted: true,
           specialty: true,
           npiNumber: true,
@@ -105,8 +123,8 @@ export class PaymentsService {
             .join(', ')
         : null;
 
-    let maskedBankLast4: string | null = null;
-    if (user.billVendorId) {
+    let maskedBankLast4: string | null = user.bankAccountLast4 ?? null;
+    if (!maskedBankLast4 && user.billVendorId && !this.useStripe()) {
       try {
         const raw = await this.billService.getVendorJson(user.billVendorId);
         maskedBankLast4 = this.extractMaskedBankLast4(raw);
@@ -117,13 +135,18 @@ export class PaymentsService {
       }
     }
 
+    const hasPayoutAccount = this.useStripe()
+      ? !!user.stripeAccountId
+      : !!user.billVendorId;
+
     return {
       programTitle: program.title,
       honorariumAmountCents: program.honorariumAmount,
       payeeDisplayName,
       maskedBankLast4,
       addressSummary,
-      hasBillVendor: !!user.billVendorId,
+      /** Legacy field name — true when Stripe Connect or Bill vendor is linked. */
+      hasBillVendor: hasPayoutAccount,
       w9Submitted: user.w9Submitted,
     };
   }
@@ -172,6 +195,7 @@ export class PaymentsService {
     userId: string,
     vendorId: string,
   ): Promise<{ saved: boolean }> {
+    this.assertStripeNotRequiredBillPath();
     if (!vendorId?.trim())
       throw new BadRequestException('vendorId is required');
     const user = await this.prisma.user.findUnique({
@@ -199,13 +223,97 @@ export class PaymentsService {
     success: true;
     organizationId: string;
   }> {
+    this.assertStripeNotRequiredBillPath();
     return this.billService.testConnection();
   }
 
   /**
-   * Create Bill.com vendor for user (with bank details)
+   * Create Stripe Express account (or Bill.com vendor when Stripe is not configured).
    */
   async createConnectAccount(
+    userId: string,
+    vendorDto?: CreateVendorDto,
+  ): Promise<CreateConnectAccountResponseDto> {
+    if (this.useStripe()) {
+      return this.createStripeConnectAccount(userId);
+    }
+    return this.createBillConnectAccount(userId, vendorDto);
+  }
+
+  private async createStripeConnectAccount(
+    userId: string,
+  ): Promise<CreateConnectAccountResponseDto> {
+    this.logger.log(`Creating Stripe Express account for user: ${userId}`);
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+    assertProfileCompleteForPayments(user);
+
+    let accountId = user.stripeAccountId;
+    if (!accountId) {
+      const account = await this.stripeService.createExpressAccount({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        userId: user.id,
+      });
+      accountId = account.id;
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          stripeAccountId: accountId,
+          stripeAccountStatus: 'onboarding_incomplete',
+          preferredPaymentMethod: 'ACH',
+        },
+      });
+    }
+
+    const refreshUrl = `${this.frontendUrl}/settings/payments?stripe=refresh`;
+    const returnUrl = `${this.frontendUrl}/settings/payments?stripe=return`;
+    const link = await this.stripeService.createAccountLink(accountId, {
+      refreshUrl,
+      returnUrl,
+    });
+
+    return {
+      accountId,
+      onboardingUrl: link.url,
+      accountStatus: user.stripeAccountStatus ?? 'onboarding_incomplete',
+    };
+  }
+
+  /**
+   * Account Session client_secret for Connect Embedded onboarding (Settings UI).
+   */
+  async createStripeAccountSession(userId: string): Promise<{
+    clientSecret: string;
+    publishableKey: string;
+    accountId: string;
+    expiresAt: number;
+  }> {
+    if (!this.useStripe()) {
+      throw new BadRequestException(
+        'Stripe is not configured in this environment.',
+      );
+    }
+    const created = await this.createStripeConnectAccount(userId);
+    const session = await this.stripeService.createAccountSession(
+      created.accountId,
+    );
+    const publishableKey = this.stripeService.getPublishableKey();
+    if (!publishableKey) {
+      throw new BadRequestException(
+        'STRIPE_PUBLISHABLE_KEY is not configured.',
+      );
+    }
+    return {
+      clientSecret: session.clientSecret,
+      publishableKey,
+      accountId: created.accountId,
+      expiresAt: session.expiresAt,
+    };
+  }
+
+  private async createBillConnectAccount(
     userId: string,
     vendorDto?: CreateVendorDto,
   ): Promise<CreateConnectAccountResponseDto> {
@@ -346,9 +454,17 @@ export class PaymentsService {
   }
 
   /**
-   * Get payment settings URL (Bill.com - no external onboarding link)
+   * Stripe Account Link (Express onboarding) or Bill settings URL.
    */
   async createAccountLink(userId: string): Promise<AccountLinkResponseDto> {
+    if (this.useStripe()) {
+      const created = await this.createStripeConnectAccount(userId);
+      return {
+        url: created.onboardingUrl,
+        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      };
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -366,9 +482,117 @@ export class PaymentsService {
   }
 
   /**
-   * Get user's payment account status
+   * Get user's payment account status (Stripe when configured).
    */
   async getAccountStatus(userId: string): Promise<AccountStatusDto> {
+    if (this.useStripe()) {
+      return this.getStripeAccountStatus(userId);
+    }
+    return this.getBillAccountStatus(userId);
+  }
+
+  private async getStripeAccountStatus(
+    userId: string,
+  ): Promise<AccountStatusDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        stripeAccountId: true,
+        stripeAccountStatus: true,
+        stripePayoutsEnabled: true,
+        paymentEnabled: true,
+        w9Submitted: true,
+        w9SubmittedAt: true,
+        totalEarnings: true,
+        preferredPaymentMethod: true,
+        bankAccountLast4: true,
+      },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    if (!user.stripeAccountId) {
+      return {
+        hasAccount: false,
+        paymentEnabled: false,
+        w9Submitted: false,
+        totalEarnings: user.totalEarnings / 100,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+        usesStripeConnect: true,
+        preferredPaymentMethod: 'ACH',
+        bankAccountLast4: user.bankAccountLast4 ?? null,
+      };
+    }
+
+    try {
+      const account = await this.stripeService.retrieveAccount(
+        user.stripeAccountId,
+      );
+      const summary = this.stripeService.summarizeAccount(account);
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          stripeAccountStatus: summary.status,
+          stripePayoutsEnabled: summary.payoutsEnabled,
+          paymentEnabled: summary.payoutsEnabled && summary.taxComplete,
+          preferredPaymentMethod: 'ACH',
+          // PAY-4: w9Submitted mirrors Stripe taxComplete only (ignore legacy Bill W-9).
+          w9Submitted: summary.taxComplete,
+          ...(summary.taxComplete
+            ? { w9SubmittedAt: user.w9SubmittedAt ?? new Date() }
+            : {}),
+          ...(summary.bankAccountLast4
+            ? { bankAccountLast4: summary.bankAccountLast4 }
+            : {}),
+          ...(summary.detailsSubmitted
+            ? { stripeOnboardingCompleteAt: new Date() }
+            : {}),
+        },
+      });
+      return {
+        hasAccount: true,
+        accountId: user.stripeAccountId,
+        accountStatus: summary.status,
+        paymentEnabled: summary.payoutsEnabled && summary.taxComplete,
+        w9Submitted: summary.taxComplete,
+        w9SubmittedAt: summary.taxComplete
+          ? (user.w9SubmittedAt ?? new Date()).toISOString()
+          : undefined,
+        totalEarnings: user.totalEarnings / 100,
+        chargesEnabled: summary.chargesEnabled,
+        payoutsEnabled: summary.payoutsEnabled,
+        detailsSubmitted: summary.detailsSubmitted,
+        usesStripeConnect: true,
+        preferredPaymentMethod: 'ACH',
+        bankAccountLast4:
+          summary.bankAccountLast4 ?? user.bankAccountLast4 ?? null,
+      };
+    } catch (err) {
+      this.logger.warn(
+        `Stripe account status fallback for ${userId}: ${(err as Error).message}`,
+      );
+      return {
+        hasAccount: true,
+        accountId: user.stripeAccountId,
+        accountStatus: user.stripeAccountStatus ?? undefined,
+        paymentEnabled: user.paymentEnabled,
+        w9Submitted: user.w9Submitted,
+        w9SubmittedAt: user.w9SubmittedAt?.toISOString(),
+        totalEarnings: user.totalEarnings / 100,
+        chargesEnabled: false,
+        payoutsEnabled: user.stripePayoutsEnabled,
+        detailsSubmitted: !!user.stripeAccountId,
+        usesStripeConnect: true,
+        preferredPaymentMethod: 'ACH',
+        bankAccountLast4: user.bankAccountLast4 ?? null,
+      };
+    }
+  }
+
+  private async getBillAccountStatus(
+    userId: string,
+  ): Promise<AccountStatusDto> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -397,6 +621,7 @@ export class PaymentsService {
         chargesEnabled: false,
         payoutsEnabled: false,
         detailsSubmitted: false,
+        usesStripeConnect: false,
         preferredPaymentMethod: user.preferredPaymentMethod ?? null,
         bankAccountLast4: user.bankAccountLast4 ?? null,
       };
@@ -415,6 +640,7 @@ export class PaymentsService {
         chargesEnabled: true,
         payoutsEnabled: user.paymentEnabled,
         detailsSubmitted: !!vendor,
+        usesStripeConnect: false,
         preferredPaymentMethod: user.preferredPaymentMethod ?? null,
         bankAccountLast4: user.bankAccountLast4 ?? null,
       };
@@ -430,6 +656,7 @@ export class PaymentsService {
         chargesEnabled: false,
         payoutsEnabled: user.paymentEnabled,
         detailsSubmitted: false,
+        usesStripeConnect: false,
         preferredPaymentMethod: user.preferredPaymentMethod ?? null,
         bankAccountLast4: user.bankAccountLast4 ?? null,
       };
@@ -488,6 +715,8 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             billVendorId: true,
+            stripeAccountId: true,
+            stripePayoutsEnabled: true,
             w9Submitted: true,
             preferredPaymentMethod: true,
             bankAccountLast4: true,
@@ -527,6 +756,8 @@ export class PaymentsService {
         firstName: true,
         lastName: true,
         billVendorId: true,
+        stripeAccountId: true,
+        stripePayoutsEnabled: true,
         w9Submitted: true,
       },
     });
@@ -572,13 +803,23 @@ export class PaymentsService {
       warnings.push('Post-event survey has not been acknowledged yet.');
     }
 
-    const hasBillVendor = !!user.billVendorId;
+    const hasPayoutAccount = this.useStripe()
+      ? !!user.stripeAccountId && !!user.stripePayoutsEnabled
+      : !!user.billVendorId;
     const w9Submitted = !!user.w9Submitted;
-    if (!hasBillVendor) {
-      warnings.push('HCP has not added Bill.com bank details yet.');
+    if (!hasPayoutAccount) {
+      warnings.push(
+        this.useStripe()
+          ? 'HCP has not completed Stripe Connect ACH onboarding yet.'
+          : 'HCP has not added Bill.com bank details yet.',
+      );
     }
     if (!w9Submitted) {
-      warnings.push('W-9 has not been submitted yet.');
+      warnings.push(
+        this.useStripe()
+          ? 'Tax details are not complete on the Stripe Connect account yet.'
+          : 'W-9 has not been submitted yet.',
+      );
     }
 
     const programEligibilityOk =
@@ -587,7 +828,8 @@ export class PaymentsService {
       (!surveyRequired || surveyAcknowledged) &&
       reg.postEventAttendanceStatus !== PostEventAttendanceStatus.DENIED;
 
-    const payNowReady = programEligibilityOk && hasBillVendor && w9Submitted;
+    const hasBillVendor = hasPayoutAccount;
+    const payNowReady = programEligibilityOk && hasPayoutAccount && w9Submitted;
 
     return {
       userId: user.id,
@@ -671,6 +913,8 @@ export class PaymentsService {
             firstName: true,
             lastName: true,
             billVendorId: true,
+            stripeAccountId: true,
+            stripePayoutsEnabled: true,
             w9Submitted: true,
             preferredPaymentMethod: true,
             bankAccountLast4: true,
@@ -915,6 +1159,10 @@ export class PaymentsService {
       }
     }
 
+    if (this.useStripe()) {
+      return this.payNowWithStripe(paymentId, payment, user);
+    }
+
     if (!user.billVendorId) {
       this.logger.warn(
         `Pay now blocked: user ${user.id} has no Bill.com vendor`,
@@ -1043,6 +1291,120 @@ export class PaymentsService {
     }
   }
 
+  private async payNowWithStripe(
+    paymentId: string,
+    payment: {
+      id: string;
+      userId: string;
+      amount: number;
+      type: string;
+      description: string | null;
+    },
+    user: {
+      id: string;
+      stripeAccountId: string | null;
+      stripePayoutsEnabled: boolean;
+      w9Submitted: boolean;
+      paymentEnabled: boolean;
+    },
+  ): Promise<PayoutResponseDto> {
+    if (!user.stripeAccountId) {
+      throw new BadRequestException(
+        'HCP has not completed Stripe Connect onboarding. Ask them to finish Settings → Payment, then try Pay now again.',
+      );
+    }
+
+    const account = await this.stripeService.retrieveAccount(
+      user.stripeAccountId,
+    );
+    const summary = this.stripeService.summarizeAccount(account);
+    if (!summary.payoutsEnabled) {
+      throw new BadRequestException(
+        'HCP Stripe account cannot receive payouts yet. Ask them to finish Connect onboarding.',
+      );
+    }
+    if (!summary.taxComplete) {
+      throw new BadRequestException(
+        'HCP has not completed tax / W-9 requirements in Stripe. Ask them to finish Connect onboarding, then try again.',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        stripePayoutsEnabled: summary.payoutsEnabled,
+        stripeAccountStatus: summary.status,
+        paymentEnabled: true,
+        preferredPaymentMethod: 'ACH',
+        w9Submitted: true,
+        w9SubmittedAt: new Date(),
+        ...(summary.bankAccountLast4
+          ? { bankAccountLast4: summary.bankAccountLast4 }
+          : {}),
+      },
+    });
+
+    const locked = await this.prisma.payment.updateMany({
+      where: { id: paymentId, status: 'PENDING' },
+      data: {
+        status: 'PROCESSING',
+        deliveryMethod: 'ACH',
+        checkStatus: null,
+      },
+    });
+    if (locked.count !== 1) {
+      throw new ConflictException(
+        'Could not start payment (another request may have started it). Refresh and try again.',
+      );
+    }
+
+    try {
+      const transfer = await this.stripeService.createTransfer({
+        amountCents: payment.amount,
+        destinationAccountId: user.stripeAccountId,
+        paymentId: payment.id,
+        userId: payment.userId,
+        description: payment.description || `${payment.type} payment`,
+      });
+
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'PAID',
+          stripeTransferId: transfer.id,
+          paidAt: new Date(),
+          deliveryMethod: 'ACH',
+        },
+      });
+      await this.prisma.user.update({
+        where: { id: payment.userId },
+        data: { totalEarnings: { increment: payment.amount } },
+      });
+
+      this.logger.log(
+        `Pay now successful: ${paymentId} -> Stripe transfer ${transfer.id}`,
+      );
+      return {
+        paymentId: payment.id,
+        amount: payment.amount,
+        status: 'PAID',
+        transferId: transfer.id,
+      };
+    } catch (error) {
+      const err = error as Error;
+      this.logger.error(`Pay now (Stripe) failed: ${err.message}`);
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          failureReason: err.message.slice(0, 500),
+        },
+      });
+      throw new BadRequestException(`Pay now failed: ${err.message}`);
+    }
+  }
+
   /**
    * Create payout to user via Bill.com (admin only).
    * Admins decide who gets paid, choose ACH or check in Bill.com, and verify W-9 before paying.
@@ -1061,16 +1423,23 @@ export class PaymentsService {
       throw new NotFoundException('User not found');
     }
 
-    if (!user.paymentEnabled) {
-      throw new BadRequestException(
-        'User is not enabled for payments. Complete onboarding first.',
-      );
-    }
-
-    if (!user.billVendorId) {
-      throw new BadRequestException(
-        'User does not have a Bill.com vendor account',
-      );
+    if (this.useStripe()) {
+      if (!user.stripeAccountId || !user.stripePayoutsEnabled) {
+        throw new BadRequestException(
+          'User does not have an active Stripe Connect account ready for payouts.',
+        );
+      }
+    } else {
+      if (!user.paymentEnabled) {
+        throw new BadRequestException(
+          'User is not enabled for payments. Complete onboarding first.',
+        );
+      }
+      if (!user.billVendorId) {
+        throw new BadRequestException(
+          'User does not have a Bill.com vendor account',
+        );
+      }
     }
 
     // Enforce eligibility contract for honorarium payouts linked to a program.
@@ -1198,6 +1567,48 @@ export class PaymentsService {
       throw new ConflictException('Could not start payout processing.');
     }
 
+    if (this.useStripe()) {
+      try {
+        const transfer = await this.stripeService.createTransfer({
+          amountCents: dto.amount,
+          destinationAccountId: user.stripeAccountId!,
+          paymentId: payment.id,
+          userId: dto.userId,
+          description: dto.description || 'Honorarium payment',
+        });
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: 'PAID',
+            stripeTransferId: transfer.id,
+            paidAt: new Date(),
+            deliveryMethod: 'ACH',
+          },
+        });
+        await this.prisma.user.update({
+          where: { id: dto.userId },
+          data: { totalEarnings: { increment: dto.amount } },
+        });
+        return {
+          paymentId: payment.id,
+          amount: dto.amount,
+          status: 'PAID',
+          transferId: transfer.id,
+        };
+      } catch (error) {
+        const err = error as Error;
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: 'FAILED',
+            failedAt: new Date(),
+            failureReason: err.message.slice(0, 500),
+          },
+        });
+        throw new BadRequestException(`Payout failed: ${err.message}`);
+      }
+    }
+
     const deliveryMethod =
       user.preferredPaymentMethod === 'CHECK' ||
       user.preferredPaymentMethod === 'ACH'
@@ -1221,12 +1632,12 @@ export class PaymentsService {
     try {
       if (deliveryMethod === 'CHECK') {
         await this.billService.syncVendorPaymentMethod(
-          user.billVendorId,
+          user.billVendorId!,
           'CHECK',
         );
       } else {
         await this.billService.ensureVendorPaymentMethodMatches(
-          user.billVendorId,
+          user.billVendorId!,
           'ACH',
         );
       }
@@ -1249,7 +1660,7 @@ export class PaymentsService {
 
     try {
       const billPayment = await this.billService.createPayment(
-        user.billVendorId,
+        user.billVendorId!,
         dto.amount,
         dto.description || 'Honorarium payment',
       );
@@ -1262,22 +1673,15 @@ export class PaymentsService {
           paidAt: new Date(),
           deliveryMethod,
           ...(deliveryMethod === 'CHECK'
-            ? {
-                checkStatus: 'SENT',
-                checkMailedAt: new Date(),
-              }
-            : { checkStatus: null }),
+            ? { checkStatus: 'SENT', checkMailedAt: new Date() }
+            : {}),
         },
       });
 
       await this.prisma.user.update({
         where: { id: dto.userId },
-        data: {
-          totalEarnings: { increment: dto.amount },
-        },
+        data: { totalEarnings: { increment: dto.amount } },
       });
-
-      this.logger.log(`Payout successful: ${payment.id}`);
 
       return {
         paymentId: payment.id,
@@ -1287,9 +1691,7 @@ export class PaymentsService {
       };
     } catch (error) {
       const err = error as Error;
-      this.logger.error(`Payout failed: ${err.message}`);
       const summary = summarizeBillError(err);
-
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
@@ -1298,7 +1700,6 @@ export class PaymentsService {
           failureReason: summary,
         },
       });
-
       throw new BadRequestException(`Payout failed: ${summary}`);
     }
   }
@@ -1309,7 +1710,11 @@ export class PaymentsService {
   async getSummary(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { billVendorId: true, totalEarnings: true },
+      select: {
+        billVendorId: true,
+        stripeAccountId: true,
+        totalEarnings: true,
+      },
     });
     if (!user) throw new NotFoundException('User not found');
 
@@ -1335,6 +1740,8 @@ export class PaymentsService {
       lastPayoutDate,
       billConnected: !!user.billVendorId,
       billVendorId: user.billVendorId,
+      stripeConnected: !!user.stripeAccountId,
+      stripeAccountId: user.stripeAccountId,
     };
   }
 
@@ -1360,7 +1767,9 @@ export class PaymentsService {
           ? 'Check'
           : p.deliveryMethod === 'ACH'
             ? 'ACH'
-            : 'Bill.com',
+            : p.stripeTransferId
+              ? 'Stripe'
+              : 'Bill.com',
       deliveryMethod: p.deliveryMethod ?? null,
       checkStatus: p.checkStatus ?? null,
       checkMailedAt: p.checkMailedAt?.toISOString() ?? null,
@@ -1369,13 +1778,28 @@ export class PaymentsService {
     }));
   }
 
-  /**
-   * Submit W-9 tax information to Bill.com vendor
-   */
   async submitW9(
     userId: string,
     data: { taxId: string; taxIdType: 'SSN' | 'EIN'; companyName?: string },
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: boolean; usesStripeConnect?: boolean }> {
+    if (this.useStripe()) {
+      // PAY-4: Bill vendor tax push is unused. TIN is collected in Express onboarding;
+      // this endpoint only refreshes w9Submitted from Stripe requirements.
+      void data;
+      const status = await this.getStripeAccountStatus(userId);
+      if (!status.hasAccount) {
+        throw new BadRequestException(
+          'Complete Stripe Connect onboarding before tax status can be synced.',
+        );
+      }
+      if (!status.w9Submitted) {
+        throw new BadRequestException(
+          'Tax information is collected in Stripe Connect embedded onboarding. Finish bank and tax details there, then refresh status.',
+        );
+      }
+      return { success: true, usesStripeConnect: true };
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -1417,14 +1841,26 @@ export class PaymentsService {
     });
 
     this.logger.log(`W-9 submitted for user ${userId}`);
-    return { success: true };
+    return { success: true, usesStripeConnect: false };
   }
 
   /**
-   * Sync account status from Bill.com
+   * Sync account status from Stripe or Bill.com
    */
   async syncAccountStatus(userId: string) {
     this.logger.log(`Syncing account status for user: ${userId}`);
+
+    if (this.useStripe()) {
+      const status = await this.getStripeAccountStatus(userId);
+      return {
+        userId,
+        stripeAccountId: status.accountId,
+        accountStatus: status.accountStatus,
+        paymentEnabled: status.paymentEnabled,
+        w9Submitted: status.w9Submitted,
+        payoutsEnabled: status.payoutsEnabled,
+      };
+    }
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -1467,8 +1903,10 @@ export class PaymentsService {
         w9Submitted: paymentEnabled,
       };
     } catch (error) {
-      this.logger.error(`Sync failed: ${error.message}`);
-      throw new BadRequestException(`Sync failed: ${error.message}`);
+      this.logger.error(`Sync failed: ${(error as Error).message}`);
+      throw new BadRequestException(
+        `Sync failed: ${(error as Error).message}`,
+      );
     }
   }
 }

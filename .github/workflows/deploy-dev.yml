@@ -334,6 +334,10 @@ jobs:
           TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
           TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
           TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
           TF_VAR_cognito_google_client_id: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}

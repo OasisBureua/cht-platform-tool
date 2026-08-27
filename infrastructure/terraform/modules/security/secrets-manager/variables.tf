@@ -234,6 +234,34 @@ variable "bill_mfa_device_name" {
   default     = ""
 }
 
+variable "stripe_secret_key" {
+  description = "Stripe secret API key (sk_test_ / sk_live_)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_publishable_key" {
+  description = "Stripe publishable key (pk_test_ / pk_live_)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret for Your account destination"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_connect_webhook_secret" {
+  description = "Stripe webhook signing secret for Connected accounts destination"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "admin_bootstrap_secret" {
   description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
   type        = string

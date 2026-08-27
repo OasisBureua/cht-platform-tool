@@ -35,12 +35,18 @@ model User {
   role            UserRole @default(HCP)
   status          UserStatus @default(ACTIVE)
   
-  // Bill.com (Payment system)
+  // Bill.com (Payment system) — historical; Stripe is the active rail when configured
   billVendorId     String?
   billVendorStatus String?  // onboarding_incomplete, pending, active, rejected
   paymentEnabled   Boolean @default(false)
   w9Submitted     Boolean @default(false)
   w9SubmittedAt   DateTime?
+
+  // Stripe Connect Express
+  stripeAccountId              String?
+  stripeAccountStatus          String?  // onboarding_incomplete, pending, active, restricted, rejected
+  stripePayoutsEnabled         Boolean  @default(false)
+  stripeOnboardingCompleteAt   DateTime?
 
   /// Learner preference for how honoraria should be paid (ACH vs paper check).
   preferredPaymentMethod PreferredPaymentMethod?
@@ -69,6 +75,7 @@ model User {
   @@index([email])
   @@index([authId])
   @@index([billVendorId])
+  @@index([stripeAccountId])
   @@index([totalEarnings])
   @@map("User")
 }
@@ -531,9 +538,13 @@ model Payment {
   status      PaymentStatus
   description String?
   
-  // Bill.com integration
+  // Bill.com integration (historical audit rows)
   billPaymentIntentId String? @unique
   billPaymentId       String? @unique
+
+  // Stripe Connect transfers / payouts
+  stripeTransferId String? @unique
+  stripePayoutId   String?
 
   /// Unique per logical payout; worker uses ON CONFLICT DO NOTHING for SQS at-least-once / duplicate enqueue.
   idempotencyKey String? @unique

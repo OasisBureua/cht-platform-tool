@@ -7,7 +7,7 @@ import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
-import { BillComMark } from '../components/branding/BillComMark';
+import { StripeMark } from '../components/branding/StripeMark';
 import { isSessionExpired } from '../utils/live-session-timing';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -80,7 +80,7 @@ export default function Webinars() {
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves
           you, use <span className="font-medium text-foreground">Join session</span> to open Zoom in your browser or the
           Zoom app. Honorarium payouts use{' '}
-          <BillComMark size="sm" className="translate-y-px" />.
+          <StripeMark size="sm" className="translate-y-px" />.
         </p>
       </header>
 

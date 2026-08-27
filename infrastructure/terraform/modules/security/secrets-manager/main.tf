@@ -89,6 +89,10 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     bill_webhook_secret                       = var.bill_webhook_secret
     bill_mfa_remember_me_id                   = var.bill_mfa_remember_me_id
     bill_mfa_device_name                      = var.bill_mfa_device_name
+    stripe_secret_key                         = var.stripe_secret_key
+    stripe_publishable_key                    = var.stripe_publishable_key
+    stripe_webhook_secret                     = var.stripe_webhook_secret
+    stripe_connect_webhook_secret             = var.stripe_connect_webhook_secret
     admin_bootstrap_secret                    = var.admin_bootstrap_secret
     hubspot_access_token                      = var.hubspot_access_token
     recaptcha_secret_key                      = var.recaptcha_secret_key

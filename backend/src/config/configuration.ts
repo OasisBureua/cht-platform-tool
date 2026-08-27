@@ -104,6 +104,15 @@ export default () => ({
     })(),
   },
 
+  // Stripe Connect (Express) — when secret key is set, payments happy path uses Stripe (not Bill)
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY?.trim() || '',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY?.trim() || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() || '',
+    connectWebhookSecret:
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim() || '',
+  },
+
   // AWS
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',

@@ -34,6 +34,11 @@ export class AccountStatusDto {
   @IsBoolean()
   detailsSubmitted: boolean;
 
+  /** True when this env settles via Stripe Connect (Bill W-9 / vendor tax unused). */
+  @IsBoolean()
+  @IsOptional()
+  usesStripeConnect?: boolean;
+
   @IsOptional()
   @IsIn(['ACH', 'CHECK'])
   preferredPaymentMethod?: 'ACH' | 'CHECK' | null;

@@ -62,23 +62,25 @@ Webhooks → POST /api/webhooks/bill → payment.updated / failed → Payment st
 
 | Decision | Locked choice |
 | -------- | ------------- |
-| **Connect type** | **Express** — Account Links / Express onboarding (not Custom; no Bill-like in-app bank form in v1) |
+| **Connect type** | **Express** — **Connect Embedded Components** in Settings/Payments (Account Session). Hosted Account Link remains available as fallback |
 | **Payout rail** | Platform balance → **Transfer / Payout** to connected account (**ACH to bank only**) |
 | **Paper checks** | **Dropped.** Stripe does not mail checks. No secondary check vendor in v1. HCPs who previously used CHECK must re-onboard with a bank account. Offline/manual check only if finance invents an exception SOP outside the app |
-| **Tax** | **Stripe Tax Forms / Connect tax reporting** for W-9 collection + 1099 filing where the platform is eligible (replaces Bill vendor tax fields). **Confirm in Stripe Dashboard** (Connect → Settings → tax / 1099) before PAY-4. Fallback if Tax Forms product not enabled: collect TIN/name/address via Connect requirements / hosted onboarding and document 1099 process with finance |
+| **Tax** | **PAY-4:** Collect TIN/name/address via **Express embedded onboarding** requirements (`requirements.currently_due` / `past_due`). No Stripe Tax Forms product in Dashboard — finance owns 1099 (assumed NEC). `User.w9Submitted` is set **only** from Stripe `taxComplete` (legacy Bill W-9 does not satisfy eligibility on Stripe envs). `POST /w9` syncs status only; does not push TIN to Bill |
 | **Cutover** | **No dual-run.** Build and test on **dev**, then deploy to **testapp**, test there, then go live. Stripe replaces Bill in that environment when promoted |
 | **Re-onboard** | Existing `billVendorId` users **must re-onboard** to Connect when that environment switches (IDs do not port) |
+| **Env secrets** | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET` — when secret key is set, Bill happy path is disabled |
+| **PAY-3 UX** | In-app embedded onboarding; copy uses **legal name / business entity** (not “payee”); brand marks use Stripe logo |
 
 ---
 
 ## 4. Target architecture
 
 ```text
-HCP Settings → Stripe Connect onboarding (Account Link or embedded)
+HCP Settings → Stripe Connect Embedded onboarding (Account Session)
                  → User.stripeAccountId, payoutsEnabled, bankAccountLast4
-                 → Stripe Tax Forms (W-9) → w9Submitted / stripe tax status
+                 → Express tax requirements → w9Submitted / stripe tax status
 
-Admin Pay now → eligibility unchanged (attendance, survey, vendor ready)
+Admin Pay now → eligibility (attendance, survey, Stripe account ready)
                  → Stripe Transfer (or Payout) to connected account
                  → Payment.stripeTransferId / stripePayoutId, status PAID/FAILED
 
@@ -190,11 +192,12 @@ Do **not** run Bill and Stripe side-by-side for different users in the same envi
 ### Dev / testapp test checklist
 
 - [ ] Connect onboarding completes; `stripeAccountId` stored  
-- [ ] Tax Forms / W-9 satisfied; `w9Submitted` (or equivalent) true  
+- [ ] Tax / W-9 satisfied via Express requirements; `w9Submitted` true from Stripe `taxComplete` only  
 - [ ] Admin Pay-now creates Stripe transfer/payout; row → `PAID` via webhook  
 - [ ] Forced failure path → `FAILED` + reason  
 - [ ] Retry from admin works  
 - [ ] Historical Bill payment rows still display in admin (read-only)  
+- [ ] Bill `POST /w9` vendor tax push unused when `STRIPE_SECRET_KEY` set  
 - [ ] CHECK UX removed or documented offline if still needed 
 
 ---
@@ -223,8 +226,8 @@ Do **not** run Bill and Stripe side-by-side for different users in the same envi
 - [ ] Dev test plan passed; testapp test plan passed  
 - [ ] HCPs on cut-over env onboard on Stripe Connect only  
 - [ ] Admin Pay-now settles via Stripe; webhook marks `PAID` / `FAILED`  
-- [ ] Tax/W-9 satisfied via Stripe Tax Forms (or documented equivalent)  
-- [ ] Bill secrets removed from that env; no Bill pay path left  
+- [ ] Tax/W-9 satisfied via Stripe Express requirements (documented Tax Forms equivalent); eligibility uses `taxComplete` → `w9Submitted`  
+- [ ] Bill secrets removed from that env; no Bill pay / W-9 path left  
 - [ ] Historical Bill payments still readable in admin for audit  
 - [ ] Check product decision documented and reflected in UI  
 

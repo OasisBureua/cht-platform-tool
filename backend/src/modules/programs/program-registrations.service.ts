@@ -2107,19 +2107,33 @@ export class ProgramRegistrationsService {
         specialty: true,
         npiNumber: true,
         billVendorId: true,
+        stripeAccountId: true,
+        stripePayoutsEnabled: true,
         w9Submitted: true,
       },
     });
     if (!payUser) throw new NotFoundException('User not found');
     assertProfileCompleteForPayments(payUser);
-    if (!payUser.billVendorId) {
+
+    const useStripe = !!this.config.get<string>('stripe.secretKey');
+    const hasPayoutAccount = useStripe
+      ? !!payUser.stripeAccountId
+      : !!payUser.billVendorId;
+    if (!hasPayoutAccount) {
       throw new BadRequestException(
         'Add your payment profile under Payments before requesting an honorarium.',
       );
     }
+    if (useStripe && !payUser.stripePayoutsEnabled) {
+      throw new BadRequestException(
+        'Finish Stripe Connect ACH onboarding under Payments before requesting an honorarium.',
+      );
+    }
     if (!payUser.w9Submitted) {
       throw new BadRequestException(
-        'Submit your W-9 under Payments before requesting an honorarium.',
+        useStripe
+          ? 'Finish tax details in Stripe Connect onboarding under Payments before requesting an honorarium.'
+          : 'Submit your W-9 under Payments before requesting an honorarium.',
       );
     }
 

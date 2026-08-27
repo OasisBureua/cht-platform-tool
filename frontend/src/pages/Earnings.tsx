@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { BillComMark } from '../components/branding/BillComMark';
+import { StripeMark } from '../components/branding/StripeMark';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
@@ -63,7 +63,7 @@ export default function Earnings() {
         </div>
         <p className="text-pretty text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
           Balances and activity. Actual payouts are sent through{' '}
-          <BillComMark size="sm" className="translate-y-px" />. Open{' '}
+          <StripeMark size="sm" className="translate-y-px" />. Open{' '}
           <Link
             to="/app/settings"
             state={{ settingsTab: 'payment' as const }}
@@ -146,7 +146,7 @@ export default function Earnings() {
             <p className="text-sm font-semibold text-foreground">No payments yet</p>
             <p className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
               Completed honoraria and bonuses appear here after admins process them through{' '}
-              <BillComMark size="xs" className="translate-y-px" />.
+              <StripeMark size="xs" className="translate-y-px" />.
             </p>
           </div>
         ) : (

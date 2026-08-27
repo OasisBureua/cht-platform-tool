@@ -44,7 +44,20 @@ export const paymentsApi = {
     }
   },
 
-  /** Submit payee + address, and bank details when ACH is selected */
+  /** Stripe Connect Embedded Account Session (client_secret + publishable key). */
+  createAccountSession: async (
+    userId: string,
+  ): Promise<{
+    clientSecret: string;
+    publishableKey: string;
+    accountId: string;
+    expiresAt: number;
+  }> => {
+    const { data } = await apiClient.post(`/payments/${userId}/account-session`);
+    return data;
+  },
+
+  /** @deprecated Bill.com path — use createAccountSession when Stripe is configured */
   createConnectAccount: async (
     userId: string,
     bankData: {
@@ -89,7 +102,7 @@ export const paymentsApi = {
     return data;
   },
 
-  /** Re-fetch vendor state from Bill.com and update local user flags (after changes in Bill.com UI). */
+  /** Re-fetch Connect / vendor state and update local user flags. */
   syncAccountStatus: async (userId: string) => {
     const { data } = await apiClient.post(`/payments/${userId}/sync-account`);
     return data;

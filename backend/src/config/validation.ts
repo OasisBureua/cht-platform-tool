@@ -56,6 +56,12 @@ export const validationSchema = Joi.object({
     .optional(),
   BILL_PAY_SESSION_CACHE_MS: Joi.string().allow('').optional(),
 
+  // Stripe Connect (optional until env cut over)
+  STRIPE_SECRET_KEY: Joi.string().allow('').optional(),
+  STRIPE_PUBLISHABLE_KEY: Joi.string().allow('').optional(),
+  STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+  STRIPE_CONNECT_WEBHOOK_SECRET: Joi.string().allow('').optional(),
+
   // AWS (optional - empty strings allowed)
   AWS_REGION: Joi.string().default('us-east-1'),
   AWS_ACCESS_KEY_ID: Joi.string().allow('').optional(),

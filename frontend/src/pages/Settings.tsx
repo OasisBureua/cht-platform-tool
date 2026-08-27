@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { User, LogOut, CreditCard, CheckCircle2, AlertCircle } from 'lucide-react';
-import { W9Modal } from '../components/W9Modal';
+import { User, LogOut, CreditCard, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
@@ -20,8 +19,8 @@ import {
   normalizeUsStateCode,
   normalizeUsZip5,
 } from '../data/us-states';
-import { BillVendorSetupForm } from '../components/payments/BillVendorSetupForm';
-import { BillComMark } from '../components/branding/BillComMark';
+import { StripeConnectOnboarding } from '../components/payments/StripeConnectOnboarding';
+import { StripeMark } from '../components/branding/StripeMark';
 function getInitials(name: string, email?: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
@@ -506,7 +505,7 @@ function PaymentSettingsSection({
   userId,
   accountStatus,
   isLoading,
-  displayName,
+  displayName: _displayName,
   profileCity: _profileCity,
   profileState: _profileState,
   profileZip: _profileZip,
@@ -534,8 +533,6 @@ function PaymentSettingsSection({
   embedded?: boolean;
   onSuccess: () => void;
 }) {
-  const [error, setError] = useState<string | null>(null);
-  const [w9ModalOpen, setW9ModalOpen] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ ok?: string; err?: string }>({});
   const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
   const profileIncomplete = profileComplete === false;
@@ -544,12 +541,14 @@ function PaymentSettingsSection({
     mutationFn: () => paymentsApi.syncAccountStatus(userId),
     onMutate: () => setSyncMessage({}),
     onSuccess: () => {
-      setSyncMessage({ ok: 'Vendor status refreshed.' });
+      setSyncMessage({ ok: 'Payout account status refreshed.' });
       window.setTimeout(() => setSyncMessage({}), 4000);
       onSuccess();
     },
     onError: (err: unknown) => {
-      setSyncMessage({ err: getApiErrorMessage(err, 'Could not refresh vendor status.') });
+      setSyncMessage({
+        err: getApiErrorMessage(err, 'Could not refresh payout account status.'),
+      });
     },
   });
 
@@ -559,14 +558,8 @@ function PaymentSettingsSection({
 
   const hasAccount = accountStatus?.hasAccount ?? false;
   const w9Submitted = accountStatus?.w9Submitted ?? false;
-  const needsW9 = hasAccount && !w9Submitted;
   const preferredMethod = accountStatus?.preferredPaymentMethod;
-
-  useEffect(() => {
-    if (needsW9 && !isLoading) {
-      setW9ModalOpen(true);
-    }
-  }, [needsW9, isLoading]);
+  const payoutsEnabled = accountStatus?.payoutsEnabled ?? false;
 
   if (isLoading) {
     return (
@@ -574,7 +567,7 @@ function PaymentSettingsSection({
         <div className="flex items-center gap-2 mb-4">
           <CreditCard className="h-5 w-5 text-muted-foreground" />
           <h2 className="text-lg font-bold text-foreground inline-flex flex-wrap items-center gap-2">
-            <BillComMark size="md" /> payouts
+            <StripeMark size="md" /> payouts
           </h2>
         </div>
         <div className="py-8 flex justify-center">
@@ -589,16 +582,17 @@ function PaymentSettingsSection({
       <div className="flex items-center gap-2 mb-4">
         <CreditCard className="h-5 w-5 text-muted-foreground shrink-0" />
         <h2 className="text-lg font-bold text-foreground inline-flex flex-wrap items-center gap-2 min-w-0">
-          <BillComMark size="md" /> payouts
+          <StripeMark size="md" /> payouts
         </h2>
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 align-middle">
-          <BillComMark size="md" className="translate-y-px shrink-0" />
+          <StripeMark size="md" className="translate-y-px shrink-0" />
           <span>
-            is how you get paid. Choose <strong>ACH</strong> or <strong>Check</strong>, then enter the{' '}
-            <strong>official payee of record</strong> (your name or LLC / business entity). Complete your{' '}
-            <BillComMark size="xs" className="translate-y-px" /> vendor profile and W-9 before admins can issue payouts.
+            is how you get paid. Payouts are <strong>ACH direct deposit only</strong> (no
+            paper checks). Connect your bank and verify your identity using your{' '}
+            <strong>legal name or business entity</strong> for tax reporting. Finish
+            onboarding before admins can issue honoraria.
           </span>
         </span>
       </p>
@@ -607,41 +601,38 @@ function PaymentSettingsSection({
         <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-950 mb-4">
           <p className="font-semibold">Complete your profile first</p>
           <p className="mt-1 text-amber-900/90">
-            Add your profession and NPI (when required) in the <strong>Profile</strong> tab before saving payment details
-            or submitting a W-9.
+            Add your profession and NPI (when required) in the <strong>Profile</strong> tab
+            before connecting payouts.
           </p>
         </div>
       ) : null}
 
-      {hasAccount ? (
+      {hasAccount && payoutsEnabled ? (
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-[6px] border border-success/25 bg-success/10 px-4 py-3">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
               <div>
                 <p className="font-medium text-green-900 inline-flex flex-wrap items-center gap-2">
-                  <BillComMark size="sm" /> vendor connected
+                  <StripeMark size="sm" /> account ready for ACH payouts
                 </p>
                 <p className="text-sm text-success">
-                  Preferred method:{' '}
-                  <strong>
-                    {preferredMethod === 'CHECK'
-                      ? 'Check (mail)'
-                      : preferredMethod === 'ACH'
-                        ? `ACH${accountStatus?.bankAccountLast4 ? ` · ••••${accountStatus.bankAccountLast4}` : ''}`
-                        : 'Not set — edit payment details'}
-                  </strong>
+                  {accountStatus?.bankAccountLast4
+                    ? `Bank on file · ••••${accountStatus.bankAccountLast4}`
+                    : preferredMethod === 'ACH'
+                      ? 'ACH direct deposit'
+                      : 'Payouts enabled'}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
               <button
                 type="button"
-                disabled={profileIncomplete || syncMutation.isPending}
+                disabled={profileIncomplete}
                 onClick={() => setEditingPaymentDetails((v) => !v)}
                 className="rounded-[6px] border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
               >
-                {editingPaymentDetails ? 'Close editor' : 'Edit payment details'}
+                {editingPaymentDetails ? 'Close' : 'Update bank / tax details'}
               </button>
               <button
                 type="button"
@@ -649,16 +640,14 @@ function PaymentSettingsSection({
                 onClick={() => syncMutation.mutate()}
                 className="shrink-0 rounded-[6px] border border-green-300 bg-white px-3 py-2 text-sm font-semibold text-green-900 hover:bg-green-100 disabled:opacity-50"
               >
-                {syncMutation.isPending ? 'Syncing…' : 'Refresh vendor status'}
+                {syncMutation.isPending ? 'Syncing…' : 'Refresh status'}
               </button>
             </div>
           </div>
           {editingPaymentDetails && !profileIncomplete ? (
-            <BillVendorSetupForm
+            <StripeConnectOnboarding
               userId={userId}
-              variant="update"
               locked={profileIncomplete}
-              initialMethod={preferredMethod === 'ACH' || preferredMethod === 'CHECK' ? preferredMethod : null}
               onSuccess={() => {
                 setEditingPaymentDetails(false);
                 onSuccess();
@@ -666,72 +655,38 @@ function PaymentSettingsSection({
             />
           ) : null}
           {syncMessage.ok && <p className="text-sm text-success">{syncMessage.ok}</p>}
-          {syncMessage.err && <p className="text-sm text-red-600 bg-destructive/10 rounded-[6px] px-3 py-2">{syncMessage.err}</p>}
+          {syncMessage.err && (
+            <p className="text-sm text-red-600 bg-destructive/10 rounded-[6px] px-3 py-2">
+              {syncMessage.err}
+            </p>
+          )}
 
-          {!w9Submitted ? (
-            <div className="rounded-[6px] border border-warning/25 bg-warning/10 p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-amber-900">W-9 required</p>
-                  <p className="text-sm text-warning mt-1 flex flex-wrap items-center gap-x-1 gap-y-1">
-                    Complete the W-9 in <BillComMark size="xs" className="translate-y-px" /> so admins can issue payouts.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={profileIncomplete}
-                    onClick={() => setW9ModalOpen(true)}
-                    className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-amber-900 hover:underline disabled:opacity-50"
-                  >
-                    Complete W-9
-                  </button>
-                </div>
-              </div>
+          {w9Submitted ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              <span>
+                Tax information on file
+                {accountStatus?.w9SubmittedAt
+                  ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})`
+                  : ''}
+              </span>
             </div>
           ) : (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-success" />
-                <span>
-                  W-9 on file
-                  {accountStatus?.w9SubmittedAt
-                    ? ` (${format(new Date(accountStatus.w9SubmittedAt), 'MMM d, yyyy')})`
-                    : ''}
-                </span>
-              </div>
-              <button
-                type="button"
-                disabled={profileIncomplete}
-                onClick={() => setW9ModalOpen(true)}
-                className="text-sm font-semibold text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
-              >
-                Update W-9
-              </button>
+            <div className="rounded-[6px] border border-warning/25 bg-warning/10 p-4 text-sm text-amber-900">
+              Finish Stripe onboarding (including tax details) so admins can issue payouts.
+              Use <strong>Update bank / tax details</strong> above if anything is still incomplete.
             </div>
           )}
-          <W9Modal
-            isOpen={w9ModalOpen}
-            onClose={() => setW9ModalOpen(false)}
-            onSubmit={async (data) => {
-              if (profileIncomplete) return;
-              await paymentsApi.submitW9(userId, data);
-              onSuccess();
-            }}
-            displayName={displayName}
-          />
         </div>
       ) : (
-        <div className="space-y-3">
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <BillVendorSetupForm
-            userId={userId}
-            variant="create"
-            locked={profileIncomplete}
-            onSuccess={() => {
-              setError(null);
-              onSuccess();
-            }}
-          />
+        <div className="space-y-4">
+          {!profileIncomplete ? (
+            <StripeConnectOnboarding
+              userId={userId}
+              locked={profileIncomplete}
+              onSuccess={onSuccess}
+            />
+          ) : null}
         </div>
       )}
     </div>
