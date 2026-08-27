@@ -51,6 +51,7 @@ import {
 } from '../webinars/zoom-webinar-settings';
 import { SesEmailService } from '../email/ses-email.service';
 import { SessionHeroPresignService } from './session-hero-presign.service';
+import { ProgramZoomRecordingsService } from './program-zoom-recordings.service';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
 import { CreateProgramDto } from './dto/create-program.dto';
 import { CreateSurveyDto } from './dto/create-survey.dto';
@@ -99,6 +100,7 @@ export class AdminController {
     private authService: AuthService,
     private zoom: ZoomService,
     private sessionHeroPresign: SessionHeroPresignService,
+    private programZoomRecordings: ProgramZoomRecordingsService,
     private sesEmail: SesEmailService,
   ) {}
 
@@ -1843,6 +1845,84 @@ export class AdminController {
       overallProgress: e.overallProgress,
       user: e.user,
     }));
+  }
+
+  @Get('programs/:id/recordings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List Zoom cloud recordings stored in S3 for this program (Program Hub)',
+  })
+  async listProgramZoomRecordings(@Param('id') id: string) {
+    return this.programZoomRecordings.list(id);
+  }
+
+  @Post('programs/:id/recordings/pull')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Pull Zoom cloud recordings for this program into private S3 (idempotent by Zoom file id)',
+  })
+  @ApiBody({
+    required: false,
+    schema: {
+      type: 'object',
+      properties: {
+        zoomMeetingId: {
+          type: 'string',
+          description:
+            'Optional override. Defaults to program.zoomMeetingId (webinar or meeting id).',
+        },
+      },
+    },
+  })
+  async pullProgramZoomRecordings(
+    @Param('id') id: string,
+    @Body() body: { zoomMeetingId?: string },
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.programZoomRecordings.pull(id, {
+      zoomMeetingId: body?.zoomMeetingId,
+      adminUserId: admin.userId,
+    });
+  }
+
+  @Get('programs/:id/recordings/:recordingId/download-url')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Presigned S3 GET URL for an admin to view/download a stored Zoom recording',
+  })
+  @ApiQuery({
+    name: 'disposition',
+    required: false,
+    enum: ['inline', 'attachment'],
+    description:
+      'inline opens in the browser; attachment forces download. Default: attachment.',
+  })
+  async programZoomRecordingDownloadUrl(
+    @Param('id') id: string,
+    @Param('recordingId') recordingId: string,
+    @Query('disposition') disposition?: string,
+  ) {
+    if (
+      disposition &&
+      disposition !== 'inline' &&
+      disposition !== 'attachment'
+    ) {
+      throw new BadRequestException(
+        'disposition must be inline or attachment',
+      );
+    }
+    return this.programZoomRecordings.createDownloadUrl(id, recordingId, {
+      disposition: disposition === 'inline' ? 'inline' : 'attachment',
+    });
   }
 
   @Get('programs/:id/registrations')

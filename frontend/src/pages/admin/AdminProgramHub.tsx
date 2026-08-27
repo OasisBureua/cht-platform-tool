@@ -15,6 +15,7 @@ import {
 } from '../../utils/admin-survey-display';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
+import { getApiErrorMessage } from '../../api/client';
 
 type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys';
 
@@ -472,6 +473,7 @@ export default function AdminProgramHub() {
       </section>
 
       <ZoomLinksSection program={program} programId={programId} />
+      <ZoomRecordingsSection program={program} programId={programId!} />
 
       {zoomType === 'MEETING' && (
         <section className="rounded-card border border-border bg-card p-6 space-y-4">
@@ -1460,6 +1462,203 @@ function CopyButton({ url }: { url: string }) {
       {copied ? <Check className="h-3.5 w-3.5 text-success" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
       {copied ? 'Copied' : 'Copy'}
     </button>
+  );
+}
+
+function ZoomRecordingsSection({
+  program,
+  programId,
+}: {
+  program: unknown;
+  programId: string;
+}) {
+  const pr = program as Record<string, unknown>;
+  const hasMeetingId = !!String(pr.zoomMeetingId || '').trim();
+  const [overrideId, setOverrideId] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pullMessage, setPullMessage] = useState<string | null>(null);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['admin', 'program', programId, 'recordings'],
+    queryFn: () => adminApi.listProgramZoomRecordings(programId),
+    enabled: !!programId,
+  });
+
+  const pullMut = useMutation({
+    mutationFn: () =>
+      adminApi.pullProgramZoomRecordings(
+        programId,
+        overrideId.trim() ? { zoomMeetingId: overrideId.trim() } : undefined,
+      ),
+    onSuccess: (res) => {
+      setActionError(null);
+      setPullMessage(
+        `Pulled ${res.pulledCount} file${res.pulledCount === 1 ? '' : 's'} from Zoom into S3` +
+          (res.errors?.length ? ` (${res.errors.length} file error(s))` : ''),
+      );
+      void refetch();
+    },
+    onError: (err) => {
+      setPullMessage(null);
+      setActionError(getApiErrorMessage(err, 'Could not pull Zoom recordings'));
+    },
+  });
+
+  const openRecording = async (recordingId: string, mode: 'view' | 'download') => {
+    setActionError(null);
+    try {
+      const { url, recording } = await adminApi.getProgramZoomRecordingDownloadUrl(
+        programId,
+        recordingId,
+        mode === 'view' ? 'inline' : 'attachment',
+      );
+      if (mode === 'download') {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${recording.fileType.toLowerCase()}-${recording.zoomRecordingFileId}.${recording.fileExtension || 'bin'}`;
+        a.rel = 'noopener';
+        a.click();
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      setActionError(getApiErrorMessage(err, 'Could not get download URL'));
+    }
+  };
+
+  const recordings = data?.recordings ?? [];
+
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Zoom recordings</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Pull cloud recordings from Zoom into private S3, then view or download here. Requires cloud
+            recording to have finished processing on Zoom.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setPullMessage(null);
+            setActionError(null);
+            pullMut.mutate();
+          }}
+          disabled={pullMut.isPending || (!hasMeetingId && !overrideId.trim())}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+        >
+          {pullMut.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          {pullMut.isPending ? 'Pulling…' : 'Pull from Zoom'}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2">
+        <label className="block min-w-[220px] flex-1 text-xs font-medium text-gray-700">
+          Zoom meeting / webinar id (optional override)
+          <input
+            type="text"
+            value={overrideId}
+            onChange={(e) => setOverrideId(e.target.value)}
+            placeholder={
+              hasMeetingId
+                ? String(pr.zoomMeetingId)
+                : 'e.g. 81517150352'
+            }
+            className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+          />
+        </label>
+        {!hasMeetingId ? (
+          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            This program has no stored Zoom id — enter one above to pull.
+          </p>
+        ) : null}
+      </div>
+
+      {data && !data.storageConfigured ? (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          S3 not configured. Set <code className="text-[11px]">SESSION_ASSETS_S3_BUCKET</code> (recordings use prefix{' '}
+          <code className="text-[11px]">zoom-recordings/</code>).
+        </p>
+      ) : null}
+      {data && !data.zoomConfigured ? (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          Zoom API credentials are not configured on this server.
+        </p>
+      ) : null}
+      {pullMessage ? (
+        <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+          {pullMessage}
+        </p>
+      ) : null}
+      {actionError ? (
+        <p className="text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          {actionError}
+        </p>
+      ) : null}
+
+      {isLoading ? (
+        <p className="text-sm text-gray-500">Loading recordings…</p>
+      ) : recordings.length === 0 ? (
+        <p className="text-sm text-gray-500">
+          No recordings in S3 yet. After the live session, click <strong>Pull from Zoom</strong>.
+        </p>
+      ) : (
+        <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100">
+          {recordings.map((r) => (
+            <li
+              key={r.id}
+              className="flex flex-wrap items-center justify-between gap-3 px-3 py-2.5 text-sm"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-gray-900">
+                  {r.fileType}
+                  {r.recordingType ? (
+                    <span className="font-normal text-gray-500"> · {r.recordingType}</span>
+                  ) : null}
+                  {['TRANSCRIPT', 'CC'].includes(r.fileType.toUpperCase()) ? (
+                    <span className="ml-2 inline-flex rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] font-semibold text-green-800">
+                      Transcript
+                    </span>
+                  ) : null}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {r.recordingStart
+                    ? `${format(parseISO(r.recordingStart), 'MMM d, yyyy h:mm a')} · `
+                    : ''}
+                  {r.fileSizeBytes != null
+                    ? `${Math.max(1, Math.round(r.fileSizeBytes / 1024))} KB · `
+                    : ''}
+                  pulled {format(parseISO(r.pulledAt), 'MMM d, yyyy h:mm a')}
+                </p>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={() => void openRecording(r.id, 'view')}
+                  className="inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-900 hover:bg-gray-50"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void openRecording(r.id, 'download')}
+                  className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

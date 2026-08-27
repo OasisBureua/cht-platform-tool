@@ -117,6 +117,14 @@ export default () => ({
     publicUrlBase: process.env.SESSION_ASSETS_PUBLIC_URL_BASE?.trim() || '',
   },
 
+  /**
+   * Zoom cloud recordings use the existing session-assets bucket with prefix
+   * `zoom-recordings/` (private; only `session-heroes/*` is public-read).
+   */
+  zoomRecordings: {
+    s3Bucket: process.env.SESSION_ASSETS_S3_BUCKET?.trim() || '',
+  },
+
   // Transactional email (Amazon SES): e.g. registration approved for Live / Office Hours
   email: {
     // RFC-5322 mailbox format: "Display Name" <address@domain>. SESv2 accepts
