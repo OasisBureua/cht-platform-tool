@@ -62,7 +62,7 @@ Webhooks → POST /api/webhooks/bill → payment.updated / failed → Payment st
 
 | Decision | Locked choice |
 | -------- | ------------- |
-| **Connect type** | **Express** — **Connect Embedded Components** in Settings/Payments (Account Session). Hosted Account Link remains available as fallback |
+| **Connect type** | **Express-style recipient** via **Accounts v2** (`POST /v2/core/accounts` + `recipient` + `stripe_transfers`). Embedded Account Session for onboarding. (Accounts v1 `type=express` create is blocked for new platforms on API `2026-08-26.dahlia` unless Dashboard `feat_accounts_v1_support` is enabled.) |
 | **Payout rail** | Platform balance → **Transfer / Payout** to connected account (**ACH to bank only**) |
 | **Paper checks** | **Dropped.** Stripe does not mail checks. No secondary check vendor in v1. HCPs who previously used CHECK must re-onboard with a bank account. Offline/manual check only if finance invents an exception SOP outside the app |
 | **Tax** | **PAY-4:** Collect TIN/name/address via **Express embedded onboarding** requirements (`requirements.currently_due` / `past_due`). No Stripe Tax Forms product in Dashboard — finance owns 1099 (assumed NEC). `User.w9Submitted` is set **only** from Stripe `taxComplete` (legacy Bill W-9 does not satisfy eligibility on Stripe envs). `POST /w9` syncs status only; does not push TIN to Bill |

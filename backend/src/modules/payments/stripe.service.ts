@@ -63,41 +63,85 @@ export class StripeService {
     return this.client;
   }
 
+  /**
+   * Create a Connect recipient account via Accounts v2.
+   * New Connect platforms cannot use Accounts v1 `accounts.create` (Express)
+   * without enabling a Dashboard compatibility flag — use `/v2/core/accounts`.
+   * @see https://docs.stripe.com/connect/accounts-v2/account-creation
+   */
   async createExpressAccount(input: {
     email: string;
     firstName?: string | null;
     lastName?: string | null;
     userId: string;
-  }): Promise<Stripe.Account> {
+  }): Promise<{ id: string }> {
     const stripe = this.getClient();
-    return stripe.accounts.create({
-      type: 'express',
-      country: 'US',
-      email: input.email,
-      capabilities: {
-        transfers: { requested: true },
+    const displayName =
+      [input.firstName, input.lastName].filter(Boolean).join(' ').trim() ||
+      input.email;
+
+    const account = await stripe.v2.core.accounts.create({
+      contact_email: input.email,
+      display_name: displayName,
+      // Express-style dashboard; requires application fee/loss responsibility.
+      dashboard: 'express',
+      identity: {
+        country: 'us',
+        entity_type: 'individual',
+        individual: {
+          email: input.email,
+          ...(input.firstName ? { given_name: input.firstName } : {}),
+          ...(input.lastName ? { surname: input.lastName } : {}),
+        },
       },
-      business_type: 'individual',
-      individual: {
-        email: input.email,
-        ...(input.firstName ? { first_name: input.firstName } : {}),
-        ...(input.lastName ? { last_name: input.lastName } : {}),
+      configuration: {
+        recipient: {
+          capabilities: {
+            stripe_balance: {
+              // Replaces v1 `transfers` — receive platform → connected transfers.
+              stripe_transfers: { requested: true },
+            },
+          },
+        },
+      },
+      defaults: {
+        currency: 'usd',
+        locales: ['en-US'],
+        responsibilities: {
+          fees_collector: 'application',
+          losses_collector: 'application',
+        },
       },
       metadata: { userId: input.userId },
+      include: ['configuration.recipient', 'identity', 'requirements'],
     });
+
+    this.logger.log(
+      `Created Stripe v2 recipient account ${account.id} for user ${input.userId}`,
+    );
+    return { id: account.id };
   }
 
   async createAccountLink(
     accountId: string,
     urls: { refreshUrl: string; returnUrl: string },
-  ): Promise<Stripe.AccountLink> {
+  ): Promise<{ url: string }> {
     const stripe = this.getClient();
-    return stripe.accountLinks.create({
+    const link = await stripe.v2.core.accountLinks.create({
       account: accountId,
-      refresh_url: urls.refreshUrl,
-      return_url: urls.returnUrl,
-      type: 'account_onboarding',
+      use_case: {
+        type: 'account_onboarding',
+        account_onboarding: {
+          configurations: ['recipient'],
+          refresh_url: urls.refreshUrl,
+          return_url: urls.returnUrl,
+        },
+      },
     });
+    if (!link.url) {
+      throw new BadRequestException('Stripe did not return an Account Link URL');
+    }
+    return { url: link.url };
   }
 
   /**
