@@ -31,6 +31,7 @@ import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { buildUserRecipientWhere } from '../admin/user-recipient-filters.util';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
+import { InvitesService } from '../invites/invites.service';
 import { QueueService } from '../../queue/queue.service';
 import {
   matchRegistrationsToZoomJoins,
@@ -103,6 +104,7 @@ export class ProgramRegistrationsService {
     private config: ConfigService,
     private queueService: QueueService,
     private sesEmail: SesEmailService,
+    private invites: InvitesService,
   ) {}
 
   private syncUserOutbound(user: {
@@ -1627,13 +1629,22 @@ export class ProgramRegistrationsService {
         });
       }
     }
+    // SCRUM-175: unregistered recipients get an opaque-token invite URL that
+    // resolves server-side to pre-fill the /join signup form with their email
+    // + the target programs. Keeps email PII out of URLs and lets us revoke or
+    // expire links.
     for (const email of unregisteredEmails) {
       try {
+        const { token } = await this.invites.createInvite({
+          email,
+          programIds: programs.map((p) => p.id),
+        });
+        const inviteUrl = `${base}/join?invite=${encodeURIComponent(token)}`;
         await this.sesEmail.sendRegistrationInviteEmail({
           to: email,
           firstName: '',
           programTitles: programs.map((p) => p.title),
-          registerUrl,
+          registerUrl: inviteUrl,
         });
         emailed += 1;
       } catch (err) {

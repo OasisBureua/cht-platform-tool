@@ -30,6 +30,7 @@ describe('ProgramRegistrationsService', () => {
       { get: jest.fn() } as unknown as ConfigService,
       {} as QueueService,
       {} as SesEmailService,
+      {} as import('../invites/invites.service').InvitesService,
     );
   });
 
