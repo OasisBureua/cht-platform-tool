@@ -793,7 +793,12 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
                   <span className="display mt-4 block text-body-m text-text group-hover:text-anchor">
                     {k.name}
                   </span>
-                  <span className="mt-1 block text-body-s text-muted2">{institutionLine(k)}</span>
+                  {/* Two lines, then ellipsis. A full affiliation string runs to
+                      four lines on a five-up grid and drags the row height
+                      with it. */}
+                  <span className="mt-1 line-clamp-2 block text-body-s text-muted2">
+                    {institutionLine(k)}
+                  </span>
                 </Link>
               </Reveal>
             ))}
