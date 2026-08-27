@@ -82,7 +82,7 @@ export function ChoiceDistributionChart({ options }: ChoiceDistributionChartProp
             tick={{ fontSize: 11, fill: MUTED }}
           />
           <Tooltip cursor={{ fill: 'rgba(61,164,192,0.08)' }} content={<ChoiceTooltip />} />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive animationDuration={600}>
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
             {data.map((entry) => (
               <Cell key={entry.label} fill={TEAL} />
             ))}

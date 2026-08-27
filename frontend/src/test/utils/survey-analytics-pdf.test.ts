@@ -90,7 +90,7 @@ describe('printSurveyAnalyticsPdf', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens print preview via a hidden about:blank iframe (no pop-up window)', () => {
+  it('opens print preview via a hidden about:blank iframe (no pop-up window)', async () => {
     document.body.innerHTML = `
       <div data-testid="survey-analytics-view">
         <div data-print-hide="true">
@@ -132,14 +132,22 @@ describe('printSurveyAnalyticsPdf', () => {
       if (typeof cb === 'function') cb();
       return 0 as unknown as number;
     }) as typeof setTimeout);
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(((cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    }) as typeof requestAnimationFrame);
 
     const previousTitle = document.title;
     const ok = printSurveyAnalyticsPdf('Program One / Feedback');
-
     expect(ok).toBe(true);
+
+    // Print is scheduled after chart-ready wait (microtasks + mocked timers).
+    await vi.waitFor(() => {
+      expect(write).toHaveBeenCalledOnce();
+    });
+
     expect(iframe.getAttribute('src') ?? iframe.src).toContain('about:blank');
     expect(openSpy).not.toHaveBeenCalled();
-    expect(write).toHaveBeenCalledOnce();
     const html = String(write.mock.calls[0]?.[0] ?? '');
     expect(html).toContain('Program One / Feedback');
     expect(html).toContain('Community Health');

@@ -107,9 +107,7 @@ export function SubmissionsTrendChart({ points }: SubmissionsTrendChartProps) {
             fill="url(#submissionsTrendFill)"
             dot={false}
             activeDot={{ r: 4, fill: TEAL, stroke: '#fff', strokeWidth: 2 }}
-            isAnimationActive
-            animationDuration={800}
-            animationEasing="ease-out"
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

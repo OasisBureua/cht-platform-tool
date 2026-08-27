@@ -367,20 +367,70 @@ function buildAnalyticsPrintHtml(title: string, analyticsHtml: string, styles: s
 </html>`;
 }
 
+const CHART_TEST_IDS = [
+  'choice-pie-chart',
+  'choice-distribution-chart',
+  'submissions-trend-chart',
+  'rating-histogram',
+] as const;
+
+/** True when every mounted chart SVG has a usable layout box (or the chart has no SVG yet). */
+export function areAnalyticsChartsReady(root: HTMLElement): boolean {
+  const charts = CHART_TEST_IDS.flatMap((id) =>
+    Array.from(root.querySelectorAll<HTMLElement>(`[data-testid="${id}"]`)),
+  );
+  if (charts.length === 0) return true;
+
+  return charts.every((el) => {
+    const svg = el.querySelector('svg');
+    // Empty / text-only chart states have no SVG — treat as ready.
+    if (!svg) return true;
+    const box = svg.getBoundingClientRect();
+    const attrW = Number(svg.getAttribute('width') || '');
+    const attrH = Number(svg.getAttribute('height') || '');
+    const wideEnough = box.width > 8 || (Number.isFinite(attrW) && attrW > 8);
+    const tallEnough = box.height > 8 || (Number.isFinite(attrH) && attrH > 8);
+    return wideEnough && tallEnough;
+  });
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 /**
- * Opens the system print preview (Save as PDF) via a same-document hidden
- * iframe — same preview flow as before.
- *
- * The iframe is loaded as about:blank so Chrome's "Headers and footers" URL
- * is not the admin SPA path. Browsers may still print date/title/about:blank
- * unless the user turns Headers and footers off in the print dialog.
+ * Wait until Recharts ResponsiveContainers have measured, so the first PDF
+ * click does not snapshot half-sized / mid-animation SVGs.
  */
-export function printSurveyAnalyticsPdf(title: string): boolean {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+export async function waitForAnalyticsChartsReady(
+  root: HTMLElement,
+  opts?: { maxAttempts?: number; intervalMs?: number },
+): Promise<void> {
+  const maxAttempts = opts?.maxAttempts ?? 40;
+  const intervalMs = opts?.intervalMs ?? 50;
 
-  const view = document.querySelector<HTMLElement>('[data-testid="survey-analytics-view"]');
-  if (!view) return false;
+  try {
+    window.dispatchEvent(new Event('resize'));
+  } catch {
+    // ignore
+  }
 
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (areAnalyticsChartsReady(root)) {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve());
+        });
+      });
+      return;
+    }
+    await delay(intervalMs);
+  }
+}
+
+function snapshotAnalyticsView(view: HTMLElement): HTMLElement {
   const clone = view.cloneNode(true) as HTMLElement;
   clone.querySelectorAll('[data-print-hide], button, select, label, [role="group"]').forEach((el) => {
     el.remove();
@@ -392,7 +442,35 @@ export function printSurveyAnalyticsPdf(title: string): boolean {
     }
   });
   prepareAnalyticsPrintClone(clone);
+  return clone;
+}
 
+/**
+ * Opens the system print preview (Save as PDF) via a same-document hidden
+ * iframe — same preview flow as before.
+ *
+ * The iframe is loaded as about:blank so Chrome's "Headers and footers" URL
+ * is not the admin SPA path. Browsers may still print date/title/about:blank
+ * unless the user turns Headers and footers off in the print dialog.
+ *
+ * Charts are snapshotted only after layout is ready — first-click PDF used to
+ * capture Recharts before ResponsiveContainer finished measuring.
+ */
+export function printSurveyAnalyticsPdf(title: string): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+
+  const view = document.querySelector<HTMLElement>('[data-testid="survey-analytics-view"]');
+  if (!view) return false;
+
+  void (async () => {
+    await waitForAnalyticsChartsReady(view);
+    openAnalyticsPrintIframe(title, snapshotAnalyticsView(view));
+  })();
+
+  return true;
+}
+
+function openAnalyticsPrintIframe(title: string, clone: HTMLElement): void {
   const styles = Array.from(
     document.querySelectorAll('link[rel="stylesheet"], style'),
   )
@@ -444,7 +522,7 @@ export function printSurveyAnalyticsPdf(title: string): boolean {
       } finally {
         window.setTimeout(cleanup, 1000);
       }
-    }, 250);
+    }, 400);
   };
 
   iframe.addEventListener('load', writeAndPrint, { once: true });
@@ -458,8 +536,6 @@ export function printSurveyAnalyticsPdf(title: string): boolean {
   } catch {
     // cross-origin guard — load listener remains the fallback
   }
-
-  return true;
 }
 
 /** @deprecated Prefer printSurveyAnalyticsPdf */

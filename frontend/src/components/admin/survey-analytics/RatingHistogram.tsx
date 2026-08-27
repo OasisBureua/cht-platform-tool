@@ -74,8 +74,7 @@ export function RatingHistogram({ histogram }: RatingHistogramProps) {
             dataKey="count"
             fill={TEAL}
             radius={[4, 4, 0, 0]}
-            isAnimationActive
-            animationDuration={600}
+            isAnimationActive={false}
           />
         </BarChart>
       </ResponsiveContainer>

@@ -67,8 +67,8 @@ export function ChoicePieChart({ options }: ChoicePieChartProps) {
             paddingAngle={0}
             stroke="#fff"
             strokeWidth={1}
-            isAnimationActive
-            animationDuration={600}
+            // Off: first PDF click clones mid-animation and donuts look cut off.
+            isAnimationActive={false}
           >
             {slices.map((entry) => (
               <Cell key={entry.label} fill={seriesColor(entry.colorIndex)} />
