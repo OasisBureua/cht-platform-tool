@@ -134,6 +134,10 @@ function mockPrisma(counts?: {
         { id: 'prog-1', title: 'Program One' },
       ]),
     },
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
+      findUnique: jest.fn().mockResolvedValue(null),
+    },
   };
 }
 
@@ -522,24 +526,30 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           count: jest.fn().mockResolvedValue(1),
           findMany: jest.fn().mockResolvedValue([
             {
+              userId: 'user-1',
               programId: 'prog-1',
               reviewedAt,
               updatedAt: reviewedAt,
               postEventAttendanceReviewedAt: null,
               postEventSurveyAcknowledgedAt: null,
-              user: {
-                id: 'user-1',
-                firstName: 'Ada',
-                lastName: 'Lovelace',
-                email: 'ada@example.com',
-                npiNumber: '1234567890',
-              },
-              program: { id: 'prog-1', title: 'Program One' },
             },
           ]),
         },
         program: {
-          findMany: jest.fn().mockResolvedValue([]),
+          findMany: jest.fn().mockResolvedValue([
+            { id: 'prog-1', title: 'Program One' },
+          ]),
+        },
+        user: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'user-1',
+              firstName: 'Ada',
+              lastName: 'Lovelace',
+              email: 'ada@example.com',
+              npiNumber: '1234567890',
+            },
+          ]),
         },
       };
       const service = new CampaignsFunnelService(
@@ -568,6 +578,61 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
         programTitle: 'Program One',
       });
       expect(prisma.programRegistration.findMany).toHaveBeenCalled();
+      expect(
+        prisma.programRegistration.findMany.mock.calls[0][0].include,
+      ).toBeUndefined();
+      const where = prisma.programRegistration.findMany.mock.calls[0][0].where;
+      expect(where.program).toEqual({ is: {} });
+      expect(where.user).toEqual({ is: {} });
+      expect(prisma.program.findMany).toHaveBeenCalled();
+      expect(prisma.user.findMany).toHaveBeenCalled();
+    });
+
+    it('skips registrations whose program no longer exists instead of 500ing', async () => {
+      const reviewedAt = new Date('2026-06-15T12:00:00.000Z');
+      const prisma = {
+        programRegistration: {
+          count: jest.fn().mockResolvedValue(1),
+          findMany: jest.fn().mockResolvedValue([
+            {
+              userId: 'user-1',
+              programId: 'deleted-prog',
+              reviewedAt,
+              updatedAt: reviewedAt,
+              postEventAttendanceReviewedAt: null,
+              postEventSurveyAcknowledgedAt: null,
+            },
+          ]),
+        },
+        program: {
+          findMany: jest.fn().mockResolvedValue([]),
+        },
+        user: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'user-1',
+              firstName: 'Ada',
+              lastName: 'Lovelace',
+              email: 'ada@example.com',
+              npiNumber: null,
+            },
+          ]),
+        },
+      };
+      const service = new CampaignsFunnelService(
+        mockHubspot() as never,
+        mockContentHub({ configured: true, items: [] }) as never,
+        prisma as never,
+      );
+
+      const result = await service.getPeople({
+        stage: 'registered',
+        startDate: '2026-05-01',
+        endDate: '2026-08-01',
+      });
+
+      expect(result.items).toEqual([]);
+      expect(result.total).toBe(1);
     });
 
     it('queries Attended people with VERIFIED attendance status', async () => {
@@ -577,23 +642,31 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           count: jest.fn().mockResolvedValue(1),
           findMany: jest.fn().mockResolvedValue([
             {
+              userId: 'user-2',
               programId: 'prog-1',
               reviewedAt: attendAt,
               updatedAt: attendAt,
               postEventAttendanceReviewedAt: attendAt,
               postEventSurveyAcknowledgedAt: null,
-              user: {
-                id: 'user-2',
-                firstName: 'Avery',
-                lastName: 'Attended',
-                email: 'avery@example.com',
-                npiNumber: null,
-              },
-              program: { id: 'prog-1', title: 'Program One' },
             },
           ]),
         },
-        program: { findMany: jest.fn().mockResolvedValue([]) },
+        program: {
+          findMany: jest.fn().mockResolvedValue([
+            { id: 'prog-1', title: 'Program One' },
+          ]),
+        },
+        user: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'user-2',
+              firstName: 'Avery',
+              lastName: 'Attended',
+              email: 'avery@example.com',
+              npiNumber: null,
+            },
+          ]),
+        },
       };
       const service = new CampaignsFunnelService(
         mockHubspot() as never,
@@ -624,23 +697,31 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           count: jest.fn().mockResolvedValue(1),
           findMany: jest.fn().mockResolvedValue([
             {
+              userId: 'user-3',
               programId: 'prog-1',
               reviewedAt: surveyAt,
               updatedAt: surveyAt,
               postEventAttendanceReviewedAt: surveyAt,
               postEventSurveyAcknowledgedAt: surveyAt,
-              user: {
-                id: 'user-3',
-                firstName: 'Casey',
-                lastName: 'Converted',
-                email: 'casey@example.com',
-                npiNumber: null,
-              },
-              program: { id: 'prog-1', title: 'Program One' },
             },
           ]),
         },
-        program: { findMany: jest.fn().mockResolvedValue([]) },
+        program: {
+          findMany: jest.fn().mockResolvedValue([
+            { id: 'prog-1', title: 'Program One' },
+          ]),
+        },
+        user: {
+          findMany: jest.fn().mockResolvedValue([
+            {
+              id: 'user-3',
+              firstName: 'Casey',
+              lastName: 'Converted',
+              email: 'casey@example.com',
+              npiNumber: null,
+            },
+          ]),
+        },
       };
       const service = new CampaignsFunnelService(
         mockHubspot() as never,
@@ -733,7 +814,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           ]),
         },
         program: {
-          findMany: jest.fn().mockResolvedValue([]),
+          findMany: jest.fn().mockResolvedValue([
+            { id: 'prog-1', title: 'Program One' },
+          ]),
         },
       };
       const service = new CampaignsFunnelService(
